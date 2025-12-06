@@ -17,7 +17,6 @@ load(
     "WINDOWS",
 )
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     ":defs.bzl",
     "CXXFLAGS",
@@ -39,7 +38,6 @@ fb_dirsync_cpp_library(
     name = "memory",
     headers = ["Memory.h"],
     fbobjc_complete_nullability = True,
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         ":constexpr_math",
@@ -64,7 +62,6 @@ fb_dirsync_cpp_library(
         "ObserverContainer.h",
     ],
     fbobjc_complete_nullability = True,
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         ":constructor_callback_list",
@@ -83,7 +80,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "operation_cancelled",
     headers = ["OperationCancelled.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
 )
 
@@ -91,7 +87,6 @@ fb_dirsync_cpp_library(
     name = "optional",
     headers = ["Optional.h"],
     fbobjc_complete_nullability = True,
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -109,7 +104,6 @@ fb_dirsync_cpp_library(
     headers = [
         "BenchmarkUtil.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         ":portability",
@@ -124,7 +118,6 @@ non_fbcode_target(
         "Benchmark.cpp",
     ],
     enable_static_variant = True,
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Benchmark.h",
     ],
@@ -157,7 +150,6 @@ fb_dirsync_cpp_library(
     name = "scope_guard",
     srcs = ["ScopeGuard.cpp"],
     headers = ["ScopeGuard.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -172,7 +164,6 @@ fb_dirsync_cpp_library(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "synchronized",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Synchronized.h",
     ],
@@ -219,7 +210,6 @@ non_fbcode_target(
     fbandroid_deps = [
         "//xplat/third-party/linker_lib:dl",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Singleton-inl.h",
         "Singleton.h",
@@ -295,7 +285,6 @@ non_fbcode_target(
 fb_dirsync_cpp_library(
     name = "thread_local",
     headers = ["ThreadLocal.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -313,7 +302,6 @@ non_fbcode_target(
     srcs = [
         "SingletonThreadLocal.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SingletonThreadLocal.h",
     ],
@@ -334,7 +322,6 @@ non_fbcode_target(
     srcs = [
         "Random.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Random.h",
         "Random-inl.h",
@@ -366,7 +353,6 @@ non_fbcode_target(
     srcs = [
         "File.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "File.h",
     ],
@@ -394,7 +380,6 @@ non_fbcode_target(
     srcs = [
         "FileUtil.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FileUtil.h",
     ],
@@ -422,7 +407,6 @@ non_fbcode_target(
     srcs = [
         "Executor.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     force_static = select({
         "DEFAULT": False,
         "ovr_config//build_mode:arvr_mode": select({
@@ -458,7 +442,6 @@ non_fbcode_target(
         "//xplat/third-party/linker_lib:dl",
     ],
     fbandroid_use_host_platform = True,
-    feature = triage_InfrastructureSupermoduleOptou,
     force_static = False,
     platforms = (CXX, ANDROID, APPLE),
     raw_headers = [
@@ -505,7 +488,6 @@ non_fbcode_target(
         "Uri.cpp",
     ],
     enable_static_variant = False,
-    feature = triage_InfrastructureSupermoduleOptou,
     force_static = False,
     raw_headers = [
         "Uri.h",
@@ -527,7 +509,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_stdlib",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:stdlib"],
 )
 
@@ -535,7 +516,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_dirent",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:dirent"],
 )
 
@@ -543,7 +523,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_fcntl",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:fcntl"],
 )
 
@@ -551,7 +530,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_filesystem",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:filesystem"],
 )
 
@@ -559,7 +537,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_fmt_compile",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:fmt_compile"],
 )
 
@@ -567,7 +544,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_event",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:event"],
 )
 
@@ -575,7 +551,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_headers",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:headers"],
 )
 
@@ -583,7 +558,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_openssl",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:openssl"],
 )
 
@@ -591,7 +565,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_source_location",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:source_location"],
 )
 
@@ -602,7 +575,6 @@ fb_dirsync_cpp_library(
         "-fno-omit-frame-pointer",
     ],
     fbobjc_complete_nullability = True,
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -623,7 +595,6 @@ fb_dirsync_cpp_library(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "fbvector",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FBVector.h",
     ],
@@ -635,7 +606,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "fixed_string",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FixedString.h",
     ],
@@ -656,7 +626,6 @@ fb_dirsync_cpp_library(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
@@ -686,7 +655,6 @@ fb_dirsync_cpp_library(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     deps = [
         ":constexpr_math",
@@ -724,7 +692,6 @@ fb_dirsync_cpp_library(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     deps = [
@@ -753,7 +720,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_extended",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:extended"],
 )
 
@@ -761,7 +727,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_unistd",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:unistd"],
 )
 
@@ -769,7 +734,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_sockets",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:sockets"],
 )
 
@@ -777,7 +741,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_string",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:string"],
 )
 
@@ -785,7 +748,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_constexpr",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:constexpr"],
 )
 
@@ -793,7 +755,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_gflags",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:gflags"],
 )
 
@@ -801,7 +762,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_time",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:time"],
 )
 
@@ -809,7 +769,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_sys_time",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:sys_time"],
 )
 
@@ -817,7 +776,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_sys_stat",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:sys_stat"],
 )
 
@@ -825,7 +783,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_sys_membarrier",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:sys_membarrier"],
 )
 
@@ -833,7 +790,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_sys_mman",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:sys_mman"],
 )
 
@@ -841,7 +797,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_sys_resource",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:sys_resource"],
 )
 
@@ -849,7 +804,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_sys_file",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:sys_file"],
 )
 
@@ -857,7 +811,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_sys_uio",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:sys_uio"],
 )
 
@@ -865,7 +818,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_builtins",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:builtins"],
 )
 
@@ -873,7 +825,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "assume",
-    feature = triage_InfrastructureSupermoduleOptou,
     deps = [
         "//xplat/folly/lang:assume",
     ],
@@ -882,7 +833,6 @@ non_fbcode_target(
 fb_dirsync_cpp_library(
     name = "bits",
     headers = ["Bits.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = ["//folly/lang:bits"],
@@ -891,7 +841,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "hash",
     headers = ["Hash.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -903,7 +852,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "hash_detail_checksum_detail",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/hash/detail:checksum_detail"],
 )
 
@@ -911,7 +859,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "hash_checksum",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/hash:checksum"],
 )
 
@@ -927,7 +874,6 @@ non_fbcode_target(
     export_header_unit = "include",
     export_header_unit_filter = ["folly/Conv.h"],
     fbobjc_complete_nullability = True,
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Conv.h",
     ],
@@ -963,7 +909,6 @@ non_fbcode_target(
     export_header_unit = "include",
     export_header_unit_filter = [".*"],
     fbobjc_complete_nullability = True,
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "DynamicConverter.h",
         "dynamic.h",
@@ -1008,7 +953,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "f14_hash",
-    feature = triage_InfrastructureSupermoduleOptou,
     deps = [
         "//xplat/folly/container:f14_hash",
     ],
@@ -1018,7 +962,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "f14_mask",
-    feature = triage_InfrastructureSupermoduleOptou,
     deps = [
         "//xplat/folly/container/detail:f14_mask",
     ],
@@ -1030,7 +973,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Indestructible.h",
     ],
@@ -1044,7 +986,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "evicting_cache_map",
-    feature = triage_InfrastructureSupermoduleOptou,
     deps = [
         "//xplat/folly/container:evicting_cache_map",
     ],
@@ -1053,7 +994,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "io_iobuf",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/io:iobuf",
     ],
@@ -1066,7 +1006,6 @@ non_fbcode_target(
     exported_headers = [
         "test/JsonTestUtil.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     platforms = (CXX, ANDROID, APPLE, WINDOWS, FBCODE),
     exported_deps = [
         "//xplat/folly/json:json_test_util",
@@ -1079,7 +1018,6 @@ non_fbcode_target(
     exported_headers = [
         "test/JsonMockUtil.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     platforms = (CXX, ANDROID, APPLE, WINDOWS, FBCODE),
     exported_deps = [
         "//xplat/folly/json:json_mock_util",
@@ -1092,7 +1030,6 @@ non_fbcode_target(
     exported_headers = [
         "test/ComparisonOperatorTestUtil.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     platforms = (CXX, ANDROID, APPLE, WINDOWS, FBCODE),
     exported_deps = [
         "fbsource//xplat/folly/portability:gtest",
@@ -1103,7 +1040,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "safe_assert",
-    feature = triage_InfrastructureSupermoduleOptou,
     deps = [
         "//xplat/folly/lang:safe_assert",
     ],
@@ -1112,7 +1048,6 @@ non_fbcode_target(
 fb_dirsync_cpp_library(
     name = "cpu_id",
     headers = ["CpuId.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [":portability"],
 )
@@ -1121,7 +1056,6 @@ fb_dirsync_cpp_library(
     name = "cpp_attributes",
     headers = ["CppAttributes.h"],
     apple_sdks = (IOS, MACOSX, WATCHOS),
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [":portability"],
@@ -1133,7 +1067,6 @@ non_fbcode_target(
     apple_sdks = (IOS, MACOSX, WATCHOS),
     exported_preprocessor_flags = CPPFLAGS,
     fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "folly-config.h",
     ],
@@ -1142,7 +1075,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "constexpr_math",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ConstexprMath.h",
     ],
@@ -1156,7 +1088,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "constructor_callback_list",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ConstructorCallbackList.h",
     ],
@@ -1168,7 +1099,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "math",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Math.h",
     ],
@@ -1177,7 +1107,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "move_wrapper",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MoveWrapper.h",
     ],
@@ -1187,7 +1116,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_iovec",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:iovec"],
 )
 
@@ -1195,7 +1123,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_libunwind",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:libunwind"],
 )
 
@@ -1203,7 +1130,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_math",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:math"],
 )
 
@@ -1211,7 +1137,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_windows",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:windows"],
 )
 
@@ -1220,14 +1145,12 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "portability_sys_types",
     apple_sdks = (IOS, MACOSX, WATCHOS),
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:sys_types"],
 )
 
 fb_dirsync_cpp_library(
     name = "likely",
     headers = ["Likely.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/lang:builtin",
@@ -1237,7 +1160,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "unit",
     headers = ["Unit.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
 )
 
@@ -1246,7 +1168,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "portability_config",
     apple_sdks = (IOS, MACOSX, WATCHOS),
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:config"],
 )
 
@@ -1254,7 +1175,6 @@ fb_dirsync_cpp_library(
     name = "c_portability",
     headers = ["CPortability.h"],
     apple_sdks = (IOS, MACOSX, WATCHOS),
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/portability:config",
@@ -1264,7 +1184,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "preprocessor",
     headers = ["Preprocessor.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -1277,7 +1196,6 @@ fb_dirsync_cpp_library(
     headers = ["Portability.h"],
     apple_sdks = (IOS, MACOSX, WATCHOS),
     fbobjc_complete_nullability = True,
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -1289,7 +1207,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "traits",
     headers = ["Traits.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [":portability"],
 )
@@ -1299,7 +1216,6 @@ fb_dirsync_cpp_library(
     headers = [
         "Utility.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         ":c_portability",
@@ -1312,7 +1228,6 @@ fb_dirsync_cpp_library(
     name = "function",
     headers = ["Function.h"],
     fbobjc_complete_nullability = True,
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -1332,7 +1247,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AtomicHashMap.h",
         "AtomicHashMap-inl.h",
@@ -1355,7 +1269,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AtomicIntrusiveLinkedList.h",
         "AtomicLinkedList.h",
@@ -1368,7 +1281,6 @@ non_fbcode_target(
 fb_dirsync_cpp_library(
     name = "chrono",
     headers = ["Chrono.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -1415,7 +1327,6 @@ fb_dirsync_cpp_library(
         # using [[maybe_unused]] attribute.
         "ovr_config//distro/constraints:conda": ["-Wno-unused-function"],
     }),
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     deps = [
@@ -1443,7 +1354,6 @@ fb_dirsync_cpp_library(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         ":conv",
@@ -1463,7 +1373,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExceptionString.h",
     ],
@@ -1483,7 +1392,6 @@ non_fbcode_target(
     srcs = [
         "ExceptionWrapper.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ExceptionWrapper.h",
         "ExceptionWrapper-inl.h",
@@ -1509,7 +1417,6 @@ fb_dirsync_cpp_library(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -1536,7 +1443,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FmtUtility.h",
     ],
@@ -1556,7 +1462,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "FormatTraits.h",
     ],
@@ -1568,7 +1473,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "GLog.h",
     ],
@@ -1584,7 +1488,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "IndexedMemPool.h",
     ],
@@ -1600,7 +1503,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "intrusive_list",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "IntrusiveList.h",
     ],
@@ -1613,7 +1515,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "io_shutdown_socket_set",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/io:shutdown_socket_set",
     ],
@@ -1623,7 +1524,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "io_socket_option_map",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/io:socket_option_map",
     ],
@@ -1632,7 +1532,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "map_util",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MapUtil.h",
     ],
@@ -1650,7 +1549,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MicroLock.h",
     ],
@@ -1667,7 +1565,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "mpmc_queue",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MPMCQueue.h",
     ],
@@ -1692,7 +1589,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "IPAddress.h",
         "IPAddressException.h",
@@ -1740,7 +1636,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Overload.h",
     ],
@@ -1755,7 +1650,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_pthread",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:pthread"],
 )
 
@@ -1768,7 +1662,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SharedMutex.h",
     ],
@@ -1793,7 +1686,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "small_vector",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "small_vector.h",
     ],
@@ -1806,7 +1698,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "sorted_vector_types",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["sorted_vector_types.h"],
     exported_deps = [
         "//xplat/folly/container:sorted_vector_types",
@@ -1819,7 +1710,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SpinLock.h",
     ],
@@ -1832,7 +1722,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "stop_watch",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "stop_watch.h",
     ],
@@ -1847,7 +1736,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_asymmetric_thread_fence",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:asymmetric_thread_fence",
     ],
@@ -1857,7 +1745,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_atomic_util",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:atomic_util",
     ],
@@ -1867,7 +1754,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_atomic_notification",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:atomic_notification",
     ],
@@ -1877,7 +1763,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_atomic_ref",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:atomic_ref",
     ],
@@ -1887,7 +1772,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_atomic_struct",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:atomic_struct",
     ],
@@ -1897,7 +1781,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_baton",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/lang:switch",
         "//xplat/folly/synchronization:baton",
@@ -1908,7 +1791,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_call_once",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:call_once",
     ],
@@ -1918,7 +1800,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_delayed_init",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:delayed_init",
     ],
@@ -1928,7 +1809,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_distributed_mutex",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:distributed_mutex",
     ],
@@ -1938,7 +1818,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_flat_combining",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:flat_combining",
     ],
@@ -1948,7 +1827,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_hazptr",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:hazptr",
     ],
@@ -1958,7 +1836,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_hazptr_thread_pool_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:hazptr_thread_pool_executor",
     ],
@@ -1968,7 +1845,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_latch",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:latch",
     ],
@@ -1978,7 +1854,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_lifo_sem",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:lifo_sem",
     ],
@@ -1988,7 +1863,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_throttled_lifo_sem",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:throttled_lifo_sem",
     ],
@@ -1998,7 +1872,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_lock",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:lock",
     ],
@@ -2008,7 +1881,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_micro_spin_lock",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:micro_spin_lock",
     ],
@@ -2018,7 +1890,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_native_semaphore",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:native_semaphore",
     ],
@@ -2028,7 +1899,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_pico_spin_lock",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:pico_spin_lock",
     ],
@@ -2038,7 +1908,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_parking_lot",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:parking_lot",
     ],
@@ -2048,7 +1917,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_rcu",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:rcu",
     ],
@@ -2058,7 +1926,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_relaxed_atomic",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:relaxed_atomic",
     ],
@@ -2068,7 +1935,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_rw_spin_lock",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:rw_spin_lock",
     ],
@@ -2078,7 +1944,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_sanitize_thread",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:sanitize_thread",
     ],
@@ -2088,7 +1953,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_saturating_semaphore",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/lang:switch",
         "//xplat/folly/synchronization:saturating_semaphore",
@@ -2099,7 +1963,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_small_locks",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:small_locks",
     ],
@@ -2109,7 +1972,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_wait_options",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization:wait_options",
     ],
@@ -2119,7 +1981,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_atomic_utils",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization/detail:atomic_utils",
     ],
@@ -2129,7 +1990,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_hazptr_utils",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization/detail:hazptr_utils",
     ],
@@ -2139,7 +1999,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_sleeper",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization/detail:sleeper",
     ],
@@ -2149,7 +2008,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_spin",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization/detail:spin",
     ],
@@ -2159,7 +2017,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_inline_function_ref",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization/detail:inline_function_ref",
     ],
@@ -2168,7 +2025,6 @@ non_fbcode_target(
 fb_dirsync_cpp_library(
     name = "varint",
     headers = ["Varint.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         ":conv",
@@ -2188,7 +2044,6 @@ non_fbcode_target(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "external/farmhash/farmhash.h",
     ],
@@ -2207,7 +2062,6 @@ non_fbcode_target(
         "DEFAULT": [],
         "ovr_config//os:android-x86_64": ["-mpclmul"],
     }),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "external/fast-crc32/avx512_crc32c_v8s3x4.h",
     ],
@@ -2224,7 +2078,6 @@ non_fbcode_target(
         "DEFAULT": [],
         "ovr_config//os:android-x86_64": ["-mpclmul"],
     }),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "external/fast-crc32/sse_crc32c_v8s3x3.h",
     ],
@@ -2241,7 +2094,6 @@ non_fbcode_target(
         "DEFAULT": [],
         "ovr_config//os:android-arm64": ["-march=armv8-a+crypto+crc"],
     }),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "external/fast-crc32/neon_crc32c_v3s4x2e_v2.h",
     ],
@@ -2262,7 +2114,6 @@ non_fbcode_target(
         "DEFAULT": [],
         "ovr_config//os:android-arm64": ["-march=armv8.2-a+crypto+sha3"],
     }),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "external/fast-crc32/neon_eor3_crc32_v9s3x2e_s3.h",
         "external/fast-crc32/neon_eor3_crc32c_v8s2x4_s3.h",
@@ -2293,7 +2144,6 @@ non_fbcode_target(
         "//xplat/folly:folly-test",
     ],
     fbobjc_complete_nullability = True,
-    feature = triage_InfrastructureSupermoduleOptou,
     ios_tests = [
         "//xplat/folly:folly-test",
     ],
@@ -2570,7 +2420,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_extended_xplat_library,
     name = "extended_light",
-    feature = triage_InfrastructureSupermoduleOptou,
     labels = [
         # This library should be used via :extended or :futures. Depslint
         # doesn't support the concept of target-reexports (nor do we know the
@@ -2899,7 +2748,6 @@ non_fbcode_target(
         "//xplat/third-party/linker_lib:atomic",
     ],
     fbobjc_compiler_flags = FBOBJC_CXXFLAGS,
-    feature = triage_InfrastructureSupermoduleOptou,
     labels = [
         # This library "re-exports" symbols in :futures_core. Depslint doesn't
         # support the concept of target-reexports (nor do we know the best
@@ -3040,7 +2888,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "test_test_utils",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "test/TestUtils.h",
     ],
@@ -3060,7 +2907,6 @@ non_fbcode_target(
     srcs = [
         "test/SocketAddressTestHelper.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "test/SocketAddressTestHelper.h",
     ],
@@ -3717,7 +3563,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_sched",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:sched"],
 )
 
@@ -3725,7 +3570,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_sys_syscall",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:sys_syscall"],
 )
 
@@ -3733,7 +3577,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_stack_trace",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/experimental/symbolizer:stack_trace"],
 )
 
@@ -3748,7 +3591,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "futures_detail_types",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/futures/detail:types"],
 )
 
@@ -3763,7 +3605,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_syslog",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:syslog"],
 )
 
@@ -3774,7 +3615,6 @@ non_fbcode_target(
         "TimeoutQueue.cpp",
     ],
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TimeoutQueue.h",
     ],
@@ -3788,7 +3628,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_libgen",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:libgen"],
 )
 
@@ -3798,7 +3637,6 @@ non_fbcode_target(
     srcs = [
         "Try.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Try.h",
         "Try-inl.h",
@@ -3818,7 +3656,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "thread_cached_int",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ThreadCachedInt.h",
     ],
@@ -3834,7 +3671,6 @@ non_fbcode_target(
     srcs = [
         "CancellationToken.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "CancellationToken.h",
         "CancellationToken-inl.h",
@@ -3856,7 +3692,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_gmock",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:gmock"],
 )
 
@@ -3864,7 +3699,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "stats_bucketed_time_series",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/stats:bucketed_time_series"],
 )
 
@@ -3872,7 +3706,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "stats_histogram",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/stats:histogram"],
 )
 
@@ -3880,7 +3713,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "quantile_histogram",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/stats:quantile_histogram"],
 )
 
@@ -3888,7 +3720,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "stats_streaming_stats",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/stats:streaming_stats"],
 )
 
@@ -3896,7 +3727,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_io_huge_pages",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/experimental/io:huge_pages",
     ],
@@ -3906,7 +3736,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_io_fs_util",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/experimental/io:fs_util",
     ],
@@ -3916,7 +3745,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_cleanup",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/futures:cleanup"],
 )
 
@@ -3946,7 +3774,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "gen_core",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/gen:core"],
 )
 
@@ -3954,7 +3781,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "io_global_shutdown_socket_set",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/io:global_shutdown_socket_set",
     ],
@@ -3964,7 +3790,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_function_scheduler",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/experimental:function_scheduler",
     ],
@@ -3974,7 +3799,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "hash_spooky_hash_v1",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/hash:spooky_hash_v1"],
 )
 
@@ -3982,7 +3806,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "hash_traits",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/hash:traits"],
 )
 
@@ -3990,7 +3813,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "hash_murmur_hash",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/hash:murmur_hash"],
 )
 
@@ -3998,7 +3820,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_asm",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:asm"],
 )
 
@@ -4006,14 +3827,12 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_malloc",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:malloc"],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "poly_exception",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "PolyException.h",
     ],
@@ -4026,7 +3845,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "hash_farm_hash",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/hash:farm_hash"],
 )
 
@@ -4034,7 +3852,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "hash_rapidhash",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/hash:rapidhash"],
 )
 
@@ -4042,7 +3859,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "logging_init_weak",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/logging:init_weak",
     ],
@@ -4052,7 +3868,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "futures_portability",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/futures:portability"],
 )
 
@@ -4063,7 +3878,6 @@ non_fbcode_target(
         "ClockGettimeWrappers.cpp",
     ],
     cxx_deps = ["//third-party/toolchains:rt"],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ClockGettimeWrappers.h",
     ],
@@ -4079,7 +3893,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_atomic",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:atomic"],
 )
 
@@ -4087,14 +3900,12 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "hash_spooky_hash_v2",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/hash:spooky_hash_v2"],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "concurrent_bit_set",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ConcurrentBitSet.h",
     ],
@@ -4106,7 +3917,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "padded",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Padded.h",
     ],
@@ -4122,7 +3932,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "gen_istream",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/gen:istream"],
 )
 
@@ -4130,7 +3939,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_hardware",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization/detail:hardware",
     ],
@@ -4139,7 +3947,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "replaceable",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Replaceable.h",
     ],
@@ -4154,7 +3961,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "logging_rate_limiter",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/logging:rate_limiter",
     ],
@@ -4164,7 +3970,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "logging_glog_bridge",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/logging:glog_bridge",
     ],
@@ -4173,7 +3978,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "rw_spin_lock",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "RWSpinLock.h",
     ],
@@ -4186,7 +3990,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_gtest",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:gtest"],
 )
 
@@ -4194,7 +3997,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_gtest_prod",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:gtest_prod"],
 )
 
@@ -4211,7 +4013,6 @@ non_fbcode_target(
     srcs = [
         "Fingerprint.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Fingerprint.h",
     ],
@@ -4227,14 +4028,12 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_memory",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:memory"],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "micro_spin_lock",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MicroSpinLock.h",
     ],
@@ -4247,14 +4046,12 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "stats_tdigest",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/stats:tdigest"],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "discriminated_ptr",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "DiscriminatedPtr.h",
     ],
@@ -4272,7 +4069,6 @@ non_fbcode_target(
     srcs = [
         "GroupVarint.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "GroupVarint.h",
     ],
@@ -4291,7 +4087,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "logging_log_name",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/logging:log_name",
     ],
@@ -4300,7 +4095,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "lazy",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Lazy.h",
     ],
@@ -4314,14 +4108,12 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "hash_hash",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/hash:hash"],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "utf8_string",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "UTF8String.h",
     ],
@@ -4336,7 +4128,6 @@ non_fbcode_target(
     name = "utf8_string_icu",
     apple_sdks = (IOS, MACOSX),
     enable_static_variant = False,
-    feature = triage_InfrastructureSupermoduleOptou,
     platforms = (CXX, ANDROID, APPLE),
     raw_headers = [
         "UTF8String.h",
@@ -4351,7 +4142,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_threaded_repeating_function_runner",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/experimental:threaded_repeating_function_runner",
     ],
@@ -4360,7 +4150,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "poly",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Poly.h",
         "Poly-inl.h",
@@ -4380,7 +4169,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_stdio",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/portability:stdio"],
 )
 
@@ -4390,7 +4178,6 @@ non_fbcode_target(
     srcs = [
         "Unicode.cpp",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "Unicode.h",
     ],
@@ -4404,7 +4191,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "logging_log_level",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/logging:log_level",
     ],
@@ -4414,7 +4200,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "init_init",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/init:init"],
 )
 
@@ -4422,7 +4207,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "init_phase",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/init:phase"],
 )
 
@@ -4430,7 +4214,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "logging_init",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/logging:init",
     ],
@@ -4440,7 +4223,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "logging_logging",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/logging:logging",
     ],
@@ -4450,7 +4232,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "logging_log_handler",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/logging:log_handler",
     ],
@@ -4460,7 +4241,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "io_typed_io_buf",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/io:typed_io_buf",
     ],
@@ -4470,7 +4250,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "stats_multi_level_time_series",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/stats:multi_level_time_series"],
 )
 
@@ -4478,7 +4257,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_env_util",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/system:env_util"],
 )
 
@@ -4486,7 +4264,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_program_options",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/cli:program_options"],
 )
 
@@ -4494,7 +4271,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_detail_debug",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/experimental/symbolizer/detail:debug"],
 )
 
@@ -4502,7 +4278,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_line_reader",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/experimental/symbolizer:line_reader"],
 )
 
@@ -4510,7 +4285,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_auto_timer",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/logging:auto_timer"],
 )
 
@@ -4518,7 +4292,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "stats_timeseries_histogram",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/stats:timeseries_histogram"],
 )
 
@@ -4526,14 +4299,12 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_elf",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/experimental/symbolizer:elf"],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "token_bucket",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "TokenBucket.h",
     ],
@@ -4550,7 +4321,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "producer_consumer_queue",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ProducerConsumerQueue.h",
     ],
@@ -4563,7 +4333,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_elf_cache",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/experimental/symbolizer:elf_cache"],
 )
 
@@ -4571,7 +4340,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_dwarf",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/experimental/symbolizer:dwarf"],
 )
 
@@ -4579,7 +4347,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolized_frame",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/experimental/symbolizer:symbolized_frame"],
 )
 
@@ -4587,7 +4354,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_event_count",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/experimental:event_count",
     ],
@@ -4596,7 +4362,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "packed_sync_ptr",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "PackedSyncPtr.h",
     ],
@@ -4611,14 +4376,12 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "gen_combine",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/gen:combine"],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "synchronized_ptr",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "SynchronizedPtr.h",
     ],
@@ -4631,7 +4394,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "gen_parallel",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/gen:parallel"],
 )
 
@@ -4639,7 +4401,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_symbolizer_detail",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/experimental/symbolizer/detail:debug"],
 )
 
@@ -4647,7 +4408,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_symbolizer",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/experimental/symbolizer:symbolizer"],
 )
 
@@ -4655,7 +4415,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "stats_digest_builder",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/stats:digest_builder"],
 )
 
@@ -4663,7 +4422,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "logging_file_handler_factory",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/logging:file_handler_factory",
     ],
@@ -4673,7 +4431,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_dynamic_parser",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/json:dynamic_parser",
     ],
@@ -4683,7 +4440,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "logging_example_lib",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/logging/example:lib",
     ],
@@ -4692,7 +4448,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "mpmc_pipeline",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "MPMCPipeline.h",
     ],
@@ -4707,7 +4462,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "gen_parallel_map",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/gen:parallel_map"],
 )
 
@@ -4715,7 +4469,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_detail_rcu-detail",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization/detail:rcu-detail",
     ],
@@ -4724,7 +4477,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "concurrent_lazy",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["ConcurrentLazy.h"],
     deps = [
         ":synchronization_delayed_init",
@@ -4735,7 +4487,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "concurrent_skip_list",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "ConcurrentSkipList.h",
         "ConcurrentSkipList-inl.h",
@@ -4763,7 +4514,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_settings_settings",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/experimental/settings:settings",
     ],
@@ -4772,7 +4522,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "default_keep_alive_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "DefaultKeepAliveExecutor.h",
     ],
@@ -4787,7 +4536,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "virtual_executor",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "VirtualExecutor.h",
     ],
@@ -4799,7 +4547,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "atomic_hash_array",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AtomicHashArray.h",
         "AtomicHashArray-inl.h",
@@ -4819,7 +4566,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_flat_combining_priority_queue",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/experimental:flat_combining_priority_queue",
     ],
@@ -4828,7 +4574,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "atomic_unordered_map",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = [
         "AtomicUnorderedMap.h",
     ],
@@ -4849,7 +4594,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "futures_detail_core",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/futures/detail:core"],
 )
 
@@ -4857,7 +4601,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_example_hazptr_swmr_set",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization/example:hazptr_swmr_set",
     ],
@@ -4867,7 +4610,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_example_hazptr_lock_free_lifo",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization/example:hazptr_lock_free_lifo",
     ],
@@ -4877,7 +4619,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "stats_quantile_estimator",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/stats:quantile_estimator"],
 )
 
@@ -4885,7 +4626,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "io_record_io",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/io:record_io",
     ],
@@ -4895,7 +4635,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "synchronization_example_hazptr_wide_cas",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/synchronization/example:hazptr_wide_cas",
     ],
@@ -4906,7 +4645,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "json_schema",
     apple_sdks = (IOS, MACOSX),
-    feature = triage_InfrastructureSupermoduleOptou,
     platforms = (APPLE, CXX, FBCODE, WINDOWS),
     exported_deps = [
         "//xplat/folly/json:json_schema",
@@ -4917,7 +4655,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "futures_core",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/futures:core"],
 )
 
@@ -4925,7 +4662,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "futures_manual_timekeeper",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/futures:manual_timekeeper"],
 )
 
@@ -4933,7 +4669,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "futures_barrier",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/futures:barrier"],
 )
 
@@ -4941,7 +4676,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "futures_shared_promise",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/futures:shared_promise"],
 )
 
@@ -4949,7 +4683,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "futures_future_splitter",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/futures:future_splitter"],
 )
 
@@ -4957,7 +4690,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "futures_futures",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = ["//xplat/folly/futures:futures"],
 )
 
@@ -4965,7 +4697,6 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "experimental_io_async_base",
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//xplat/folly/experimental/io:async_base",
     ],
@@ -4991,14 +4722,12 @@ non_fbcode_target(
         "memcpy.S",
     ],
     fbcode_compiler_flags_override = [],
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["FollyMemcpy.h"],
 )
 
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "base64",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["base64.h"],
     deps = [
         "//xplat/folly/detail/base64_detail:base64_common",
@@ -5015,7 +4744,6 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "maybe_managed_ptr",
-    feature = triage_InfrastructureSupermoduleOptou,
     raw_headers = ["MaybeManagedPtr.h"],
     deps = [],
     exported_deps = [],
@@ -5575,7 +5303,6 @@ fbcode_target(
 fb_dirsync_cpp_library(
     # @shim
     name = "json",
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         ":dynamic",
@@ -5587,7 +5314,6 @@ fb_dirsync_cpp_library(
     headers = [
         "json_pointer.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/json:json_pointer",
@@ -5599,7 +5325,6 @@ fb_dirsync_cpp_library(
     headers = [
         "json_patch.h",
     ],
-    feature = triage_InfrastructureSupermoduleOptou,
     exported_deps = [
         "//folly/json:json_patch",
     ],

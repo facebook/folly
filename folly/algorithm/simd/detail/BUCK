@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../../../defs.bzl",
     "folly_xplat_library",
@@ -10,7 +9,6 @@ oncall("fbcode_entropy_wardens_folly")
 fb_dirsync_cpp_library(
     name = "simd_any_of",
     headers = ["SimdAnyOf.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -23,7 +21,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "simd_platform",
     headers = ["SimdPlatform.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -37,7 +34,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "simd_contains_impl",
     headers = ["ContainsImpl.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -51,7 +47,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "simd_for_each",
     headers = ["SimdForEach.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -66,7 +61,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "traits",
     headers = ["Traits.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -80,7 +74,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "unroll_utils",
     headers = ["UnrollUtils.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [

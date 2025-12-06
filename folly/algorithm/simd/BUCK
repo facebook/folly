@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 load(
     "../../defs.bzl",
     "folly_xplat_library",
@@ -11,7 +10,6 @@ fb_dirsync_cpp_library(
     name = "contains",
     srcs = ["Contains.cpp"],
     headers = ["Contains.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     deps = [
@@ -26,7 +24,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "find_first_of",
     headers = ["find_first_of.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -44,7 +41,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "find_first_of_extra",
     headers = ["find_first_of_extra.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -59,7 +55,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "find_fixed",
     headers = ["FindFixed.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -72,7 +67,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "ignore",
     headers = ["Ignore.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
@@ -83,7 +77,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "movemask",
     headers = ["Movemask.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
