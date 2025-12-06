@@ -53,7 +53,7 @@ struct TemporaryEmplaceKey {
   KeyType& value() { return *static_cast<KeyType*>(static_cast<void*>(&raw_)); }
 
   Alloc& alloc_;
-  std::aligned_storage_t<sizeof(KeyType), alignof(KeyType)> raw_;
+  folly::aligned_storage_for_t<KeyType> raw_;
 };
 
 // A map's emplace(args...) function takes arguments that can be used to
