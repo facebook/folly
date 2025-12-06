@@ -1180,6 +1180,9 @@ jobs:
             if override_build_type:
                 build_type_arg = f"--build-type {override_build_type} "
 
+            if args.shared_libs:
+                build_type_arg += "--shared-libs "
+
             if build_opts.free_up_disk:
                 free_up_disk = "--free-up-disk "
                 if not build_opts.is_windows():
