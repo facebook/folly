@@ -46,13 +46,18 @@ class FOLLY_EXPORT AsyncSocketException : public std::runtime_error {
     CANCELED = 17,
   };
 
+  /// Asserts (in debug builds) the errno value to be nonnegative to help with
+  /// linux io-uring, which passes errno values as negative numbers. But permits
+  /// a special negative number which does not map to any actual errno errors.
   AsyncSocketException(
       AsyncSocketExceptionType type,
       const std::string& message,
       int errnoCopy = 0)
       : std::runtime_error(getMessage(type, message, errnoCopy)),
         type_(type),
-        errno_(errnoCopy) {}
+        errno_(errnoCopy) {
+    assert(errnoCopy >= 0 || errnoCopy == INT_MIN);
+  }
 
   AsyncSocketExceptionType getType() const noexcept { return type_; }
 

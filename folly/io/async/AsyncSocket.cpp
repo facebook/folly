@@ -3145,7 +3145,7 @@ AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
     // the kernel. Only once we have seen 0 bytes returned from the kernel do we
     // want to return the error to the caller.
     if (zc.err) {
-      zerocopyReadErr_ = zc.err;
+      zerocopyReadErr_ = -zc.err; // note: zc.err <= 0
     }
 
     assert(zc.length % sysconf(_SC_PAGESIZE) == 0);
