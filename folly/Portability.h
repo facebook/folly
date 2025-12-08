@@ -78,22 +78,6 @@ constexpr bool kHasUnalignedAccess = false;
   __attribute__((__format__(__printf__, format_param, dots_param)))
 #endif
 
-// warn unused result
-#if defined(__has_cpp_attribute)
-#if __has_cpp_attribute(nodiscard)
-#if defined(__clang__) || defined(__GNUC__)
-#if __clang_major__ >= 10 || __GNUC__ >= 10
-// early clang and gcc both warn on [[nodiscard]] when applied to class ctors
-// easiest option is just to avoid emitting [[nodiscard]] under early clang/gcc
-#define FOLLY_NODISCARD [[nodiscard]]
-#endif
-#endif
-#endif
-#endif
-#ifndef FOLLY_NODISCARD
-#define FOLLY_NODISCARD
-#endif
-
 // older clang-format gets confused by [[deprecated(...)]] on class decls
 #define FOLLY_DEPRECATED(...) [[deprecated(__VA_ARGS__)]]
 
