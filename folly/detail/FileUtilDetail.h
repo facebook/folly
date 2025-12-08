@@ -18,6 +18,7 @@
 
 #include <cerrno>
 #include <cstddef>
+#include <functional>
 #include <string>
 #include <type_traits>
 
@@ -34,9 +35,9 @@ namespace fileutil_detail {
 //  against interrupt and partial op completions.
 
 // Wrap call to f(args) in loop to retry on EINTR
-template <class F, class... Args>
-ssize_t wrapNoInt(F f, Args... args) {
-  ssize_t r;
+template <class F, class... Args, class R = std::invoke_result_t<F&, Args&...>>
+R wrapNoInt(F f, Args... args) {
+  R r;
   do {
     r = f(args...);
   } while (r == -1 && errno == EINTR);

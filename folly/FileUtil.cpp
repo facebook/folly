@@ -53,7 +53,7 @@ int openNoInt(const char* name, int flags, mode_t mode) {
   // https://github.com/llvm/llvm-project/commit/0a0e411204a2baa520fd73a8d69b664f98b428ba
   //
   auto openWrapper = [&] { return fileops::open(name, flags, mode); };
-  return int(wrapNoInt(openWrapper));
+  return wrapNoInt(openWrapper);
 }
 
 static int filterCloseReturn(int r) {
@@ -81,41 +81,41 @@ int closeNoInt(NetworkSocket fd) {
 }
 
 int fsyncNoInt(int fd) {
-  return int(wrapNoInt(fsync, fd));
+  return wrapNoInt(fsync, fd);
 }
 
 int dupNoInt(int fd) {
-  return int(wrapNoInt(dup, fd));
+  return wrapNoInt(dup, fd);
 }
 
 int dup2NoInt(int oldFd, int newFd) {
-  return int(wrapNoInt(dup2, oldFd, newFd));
+  return wrapNoInt(dup2, oldFd, newFd);
 }
 
 int fdatasyncNoInt(int fd) {
 #if defined(__APPLE__)
-  return int(wrapNoInt(fcntl, fd, F_FULLFSYNC));
+  return wrapNoInt(fcntl, fd, F_FULLFSYNC);
 #elif defined(__FreeBSD__) || defined(_MSC_VER)
-  return int(wrapNoInt(fsync, fd));
+  return wrapNoInt(fsync, fd);
 #else
-  return int(wrapNoInt(fdatasync, fd));
+  return wrapNoInt(fdatasync, fd);
 #endif
 }
 
 int ftruncateNoInt(int fd, off_t len) {
-  return int(wrapNoInt(ftruncate, fd, len));
+  return wrapNoInt(ftruncate, fd, len);
 }
 
 int truncateNoInt(const char* path, off_t len) {
-  return int(wrapNoInt(truncate, path, len));
+  return wrapNoInt(truncate, path, len);
 }
 
 int flockNoInt(int fd, int operation) {
-  return int(wrapNoInt(flock, fd, operation));
+  return wrapNoInt(flock, fd, operation);
 }
 
 int shutdownNoInt(NetworkSocket fd, int how) {
-  return int(wrapNoInt(netops::shutdown, fd, how));
+  return wrapNoInt(netops::shutdown, fd, how);
 }
 
 ssize_t readNoInt(int fd, void* buf, size_t count) {
