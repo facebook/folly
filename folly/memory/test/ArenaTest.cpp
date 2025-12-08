@@ -301,7 +301,9 @@ TEST(Arena, Clear) {
   for (int i = 0; i < 10; ++i) {
     std::vector<size_t> sizes(1000);
     std::generate(sizes.begin(), sizes.end(), []() {
-      return Random::rand32(blockSize) * 2;
+      // Avoid zero-sized allocations: the arena returns nullptr before any
+      // block exists, which breaks the address reuse check below.
+      return Random::rand32(1, blockSize) * 2;
     });
 
     std::vector<void*> addresses;
