@@ -2,9 +2,10 @@
 name = python
 
 [homebrew]
-python@3.8
+python@3.10
 
-[rpms]
+# sapling needs match statements with arrive in python 3.12 in centos 10
+[rpms.not(all(distro=centos_stream,distro_vers=9))]
 python3
 python3-devel
 
@@ -13,23 +14,20 @@ python3-devel
 python3.12
 python3.12-devel
 
-# sapling needs dataclasses which arrive in 3.7, and the bionic python is 3.6
-[debs.all(distro=ubuntu,distro_vers="18.04")]
-python3.8-dev
-
-[debs.not(all(distro=ubuntu,distro_vers="18.04"))]
+# sapling needs match statements with arrive in python 3.10 in ubuntu 22.04
+[debs.not(all(distro=ubuntu,any(distro_vers="18.04",distro_vers="20.04")))]
 python3-all-dev
 
 [pps]
 python3
 
 [download]
-url = https://www.python.org/ftp/python/3.8.13/Python-3.8.13.tgz
-sha256 = 903b92d76354366b1d9c4434d0c81643345cef87c1600adfa36095d7b00eede4
+url = https://www.python.org/ftp/python/3.10.19/Python-3.10.19.tgz
+sha256 = a078fb2d7a216071ebbe2e34b5f5355dd6b6e9b0cd1bacc4a41c63990c5a0eec
 
 [build]
 builder = autoconf
-subdir = Python-3.8.13
+subdir = Python-3.10.19
 
 [autoconf.args]
 --enable-shared
