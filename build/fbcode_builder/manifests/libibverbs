@@ -3,6 +3,26 @@ name = libibverbs
 
 [debs]
 libibverbs-dev
+rdma-core
 
 [rpms]
 libibverbs
+rdma-core-devel
+
+[download]
+url = https://github.com/linux-rdma/rdma-core/releases/download/v60.0/rdma-core-60.0.tar.gz
+sha256 = 9b1b892e4eaaaa5dfbade07a290fbf5079e39117724fa1ef80d0ad78839328de
+
+[build]
+builder = cmake
+subdir = rdma-core-60.0
+
+[dependencies]
+libnl
+
+[cmake.defines]
+NO_MAN_PAGES=1
+NO_PYVERBS=1
+ENABLE_RESOLVE_NEIGH=0
+# Use absolute short path for runtime dir to avoid Unix socket path length limit (108 chars)
+CMAKE_INSTALL_RUNDIR=/tmp/ibacm
