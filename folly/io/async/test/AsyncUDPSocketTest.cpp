@@ -175,8 +175,10 @@ class UDPServer {
 
   std::unique_ptr<AsyncUDPServerSocket> socket_;
   std::vector<std::thread> threads_;
-  std::vector<folly::EventBase> evbs_;
   std::vector<UDPAcceptor> acceptors_;
+  // destroy evbs_ before acceptors_ so that onListenStopped not called on a
+  // freed UDPAcceptor
+  std::vector<folly::EventBase> evbs_;
   bool changePortForWrites_{true};
 };
 
@@ -245,7 +247,8 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   }
 
   void sendPingsClustered() {
-    scheduleTimeout(5);
+    // give the server a bit more time to burst befor we time out
+    scheduleTimeout(50);
     while (n_ > 0) {
       --n_;
       writePing(folly::IOBuf::copyBuffer(folly::to<std::string>("PING ", n_)));
