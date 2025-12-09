@@ -25,6 +25,7 @@
 #include <tuple>
 #include <vector>
 
+#include <folly/Traits.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -317,8 +318,10 @@ TEST(ForEach, FetchTestPreferIterator) {
 template <typename...>
 struct LargeTuple {};
 template <size_t I, typename... T>
-type_pack_element_t<I, T...>& get(LargeTuple<T...>&) {
-  static type_pack_element_t<I, T...> elem;
+folly::traits_detail::type_pack_element_fallback<I, T...>& get(
+    LargeTuple<T...>&) {
+  using Elem = folly::traits_detail::type_pack_element_fallback<I, T...>;
+  static Elem elem;
   return elem;
 }
 namespace std {
