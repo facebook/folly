@@ -94,29 +94,13 @@ class xoshiro256pp {
 
   vector_type state[StateSize * VecResCount]{};
   
-  union {
-    vector_type vecRes[VecResCount]{};
-    result_type res[ResultCount];
-  };
+  result_type res[ResultCount];
   uint64_t cur = ResultCount;
 
   template <typename Size, typename CharT, typename Traits>
   friend std::basic_ostream<CharT, Traits>& operator<<(
       std::basic_ostream<CharT, Traits>& os,
       const xoshiro256pp<Size>& rng);
-
-  template <typename T>
-  static inline T seed_vec(uint64_t& seed) {
-    if constexpr (sizeof(T) != sizeof(uint64_t)) {
-      T sbase{};
-      for (uint64_t i = 0; i < sizeof(vector_type) / sizeof(uint64_t); i++) {
-        sbase[i] = splitmix64(seed);
-      }
-      return sbase;
-    } else {
-      return T(splitmix64(seed));
-    }
-  }
 
   static inline uint64_t splitmix64(uint64_t& cur) noexcept {
     uint64_t z = (cur += 0x9e3779b97f4a7c15);
