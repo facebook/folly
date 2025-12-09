@@ -23,6 +23,7 @@
 #  IBVERBS_FOUND
 #  IBVERBS_INCLUDE_DIRS
 #  IBVERBS_LIBRARIES
+#  IBVERBS_VERSION
 
 find_path(IBVERBS_INCLUDE_DIRS
   NAMES infiniband/verbs.h
@@ -38,6 +39,56 @@ find_library(IBVERBS_LIBRARIES
   ${IBVERBS_ROOT_DIR}
   ${IBVERBS_ROOT_DIR}/lib)
 
+# Try to determine the rdma-core version
+if(IBVERBS_INCLUDE_DIRS AND IBVERBS_LIBRARIES)
+  # First try using pkg-config if available
+  find_package(PkgConfig QUIET)
+  if(PKG_CONFIG_FOUND)
+    pkg_check_modules(PC_RDMA_CORE QUIET rdma-core)
+    if(PC_RDMA_CORE_VERSION)
+      set(IBVERBS_VERSION ${PC_RDMA_CORE_VERSION})
+    endif()
+  endif()
+
+  # If pkg-config didn't work, try to extract version from library filename
+  # According to rdma-core Documentation/versioning.md:
+  # Library filename format:
+  #   libibverbs.so.SONAME.ABI.PACKAGE_VERSION_MAIN[.PACKAGE_VERSION_BRANCH]
+  # Where:
+  #   - SONAME: Major version (1st field)
+  #   - ABI: ABI version number (2nd field)
+  #   - PACKAGE_VERSION_MAIN: Main package version (3rd field)
+  #   - PACKAGE_VERSION_BRANCH: Optional counter for branched stable
+  #     releases (4th field, part of PACKAGE_VERSION)
+  # Example: libibverbs.so.1.14.57.0 → SONAME=1, ABI=14,
+  #   PACKAGE_VERSION=57.0
+  if(NOT IBVERBS_VERSION)
+    # Get the real path of the library (follows symlinks)
+    get_filename_component(IBVERBS_REAL_PATH "${IBVERBS_LIBRARIES}" REALPATH)
+    get_filename_component(IBVERBS_LIB_NAME "${IBVERBS_REAL_PATH}" NAME)
+
+    # Extract version from filename
+    if(IBVERBS_LIB_NAME MATCHES
+       "libibverbs\\.so\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)")
+      # Four-component version: PACKAGE_VERSION_MAIN.PACKAGE_VERSION_BRANCH
+      set(IBVERBS_VERSION_MAJOR ${CMAKE_MATCH_3})
+      set(IBVERBS_VERSION_MINOR ${CMAKE_MATCH_4})
+      set(IBVERBS_VERSION "${IBVERBS_VERSION_MAJOR}.${IBVERBS_VERSION_MINOR}")
+    elseif(IBVERBS_LIB_NAME MATCHES
+           "libibverbs\\.so\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)")
+      # Three-component version: PACKAGE_VERSION_MAIN only
+      set(IBVERBS_VERSION_MAJOR ${CMAKE_MATCH_3})
+      set(IBVERBS_VERSION "${IBVERBS_VERSION_MAJOR}.0")
+    else()
+      # If we can't parse the filename, set to empty string
+      # Feature detection will be done in CMakeLists.txt
+      set(IBVERBS_VERSION "")
+    endif()
+  endif()
+endif()
+
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(ibverbs DEFAULT_MSG IBVERBS_INCLUDE_DIRS IBVERBS_LIBRARIES)
-mark_as_advanced(IBVERBS_INCLUDE_DIRS IBVERBS_LIBRARIES)
+find_package_handle_standard_args(ibverbs
+  REQUIRED_VARS IBVERBS_INCLUDE_DIRS IBVERBS_LIBRARIES
+  VERSION_VAR IBVERBS_VERSION)
+mark_as_advanced(IBVERBS_INCLUDE_DIRS IBVERBS_LIBRARIES IBVERBS_VERSION)
