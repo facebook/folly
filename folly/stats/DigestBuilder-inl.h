@@ -69,15 +69,15 @@ DigestT DigestBuilder<DigestT>::build() {
     }
   }
 
-  std::vector<DigestT> digests;
-  digests.reserve(digestPtrs.size());
-  for (auto& digestPtr : digestPtrs) {
-    digests.push_back(std::move(*digestPtr));
-  }
-
   size_t count = 0;
   for (const auto& vec : valuesVec) {
     count += vec.size();
+  }
+
+  std::vector<DigestT> digests;
+  digests.reserve(digestPtrs.size() + (count > 0 ? 1 : 0));
+  for (auto& digestPtr : digestPtrs) {
+    digests.push_back(std::move(*digestPtr));
   }
   if (count) {
     std::vector<double> values;
