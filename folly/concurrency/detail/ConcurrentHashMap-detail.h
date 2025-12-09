@@ -161,6 +161,13 @@ class ValueHolder<
   }; // CountedItem
   // Back to ValueHolder specialization
 
+  struct DeallocateFn { // Avoids dependent lambdas in function templates
+    ValueHolder& self;
+    void operator()() const noexcept {
+      Allocator().deallocate((uint8_t*)self.item_, sizeof(CountedItem));
+    }
+  };
+
   CountedItem* item_; // Link to unique key-value item.
 
  public:
@@ -175,9 +182,7 @@ class ValueHolder<
   template <typename Arg, typename... Args>
   ValueHolder(std::piecewise_construct_t, Arg&& k, Args&&... args) {
     item_ = (CountedItem*)Allocator().allocate(sizeof(CountedItem));
-    auto g = makeGuard([&] {
-      Allocator().deallocate((uint8_t*)item_, sizeof(CountedItem));
-    });
+    auto g = makeGuard(DeallocateFn{*this});
     new (item_) CountedItem(
         std::piecewise_construct,
         std::forward<Arg>(k),
@@ -201,6 +206,13 @@ class ValueHolder<
 
 template <typename Node, typename Allocator>
 struct AllocNodeGuard : NonCopyableNonMovable {
+  struct DeallocateFn { // Avoids dependent lambdas in function templates
+    AllocNodeGuard& self;
+    void operator()() const noexcept {
+      self.alloc.deallocate((uint8_t*)self.node, sizeof(Node));
+    }
+  };
+
   Allocator alloc;
   Node* node{};
 
@@ -210,9 +222,7 @@ struct AllocNodeGuard : NonCopyableNonMovable {
   template <typename... Arg>
   explicit AllocNodeGuard(Allocator alloc_, Arg&&... arg)
       : alloc{std::move(alloc_)}, node{(Node*)alloc.allocate(sizeof(Node))} {
-    auto guard = makeGuard([&] {
-      alloc.deallocate((uint8_t*)node, sizeof(Node));
-    });
+    auto guard = makeGuard(DeallocateFn{*this});
     new (node) Node(std::forward<Arg>(arg)...);
     guard.dismiss();
   }
@@ -1764,6 +1774,14 @@ class alignas(64) SIMDTable {
 
 #endif // FOLLY_SSE_PREREQ(4, 2) && FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
+template <typename ValueType>
+struct EqualTo1 {
+  const ValueType& rhs;
+  bool operator()(const ValueType& lhs) const { return lhs == rhs; }
+};
+template <typename ValueType>
+EqualTo1(const ValueType&) -> EqualTo1<ValueType>;
+
 } // namespace concurrenthashmap
 
 /* A Segment is a single shard of the ConcurrentHashMap.
@@ -1858,7 +1876,7 @@ class alignas(64) ConcurrentHashMapSegment {
         h,
         g.node->getItem().first,
         InsertType::DOES_NOT_EXIST,
-        [](const ValueType&) { return false; },
+        variadic_constant_of<false>,
         g.node);
     if (res) {
       g.dismiss();
@@ -1875,7 +1893,7 @@ class alignas(64) ConcurrentHashMapSegment {
         h,
         std::forward<Key>(k),
         InsertType::DOES_NOT_EXIST,
-        [](const ValueType&) { return false; },
+        variadic_constant_of<false>,
         std::forward<Key>(k),
         std::forward<Args>(args)...);
   }
@@ -1887,7 +1905,7 @@ class alignas(64) ConcurrentHashMapSegment {
         h,
         k,
         InsertType::DOES_NOT_EXIST,
-        [](const ValueType&) { return false; },
+        variadic_constant_of<false>,
         node);
   }
 
@@ -1900,7 +1918,7 @@ class alignas(64) ConcurrentHashMapSegment {
         h,
         g.node->getItem().first,
         InsertType::ANY,
-        [](const ValueType&) { return false; },
+        variadic_constant_of<false>,
         g.node);
     if (res) {
       g.dismiss();
@@ -1938,7 +1956,7 @@ class alignas(64) ConcurrentHashMapSegment {
         h,
         g.node->getItem().first,
         InsertType::MUST_EXIST,
-        [](const ValueType&) { return false; },
+        variadic_constant_of<false>,
         g.node);
     if (res) {
       g.dismiss();
@@ -1979,7 +1997,7 @@ class alignas(64) ConcurrentHashMapSegment {
         h,
         std::forward<Key>(k),
         std::forward<Value>(desired),
-        [&expected](const ValueType& v) { return v == expected; });
+        concurrenthashmap::EqualTo1{expected});
   }
 
   template <typename MatchFunc, typename K, typename... Args>
@@ -2018,9 +2036,7 @@ class alignas(64) ConcurrentHashMapSegment {
   // Listed separately because we need a prev pointer.
   template <typename K>
   size_type erase(size_t h, const K& key) {
-    return erase_internal(h, key, nullptr, [](const ValueType&) {
-      return true;
-    });
+    return erase_internal(h, key, nullptr, variadic_constant_of<true>);
   }
 
   template <typename K, typename Predicate>
@@ -2041,7 +2057,7 @@ class alignas(64) ConcurrentHashMapSegment {
   // This is a small departure from standard stl containers: erase may
   // throw if hash or key_eq functions throw.
   void erase(Iterator& res, Iterator& pos, size_t h) {
-    erase_internal(h, pos->first, &res, [](const ValueType&) { return true; });
+    erase_internal(h, pos->first, &res, variadic_constant_of<true>);
     // Invalidate the iterator.
     pos = cend();
   }
