@@ -635,20 +635,30 @@ TYPED_TEST(BitsAllUintsTest, GetBitAtLE) {
   }
 
   for (std::size_t i = 0; i != 64; ++i) {
-    auto in = ~std::uint64_t(0);
-    const auto* ptr = reinterpret_cast<const T*>(&in);
+    // stop linter complaining when T == uint64_t
+    // @lint-ignore CLANGTIDY bugprone-sizeof-expression
+    auto words =
+        std::bit_cast<std::array<T, sizeof(std::uint64_t) / sizeof(T)>>(
+            ~std::uint64_t(0));
+    const auto* ptr = words.data();
     EXPECT_TRUE(folly::get_bit_at(ptr, i));
   }
 
   for (std::size_t i = 0; i != 64; ++i) {
-    auto in = std::uint64_t(0);
-    const auto* ptr = reinterpret_cast<const T*>(&in);
+    // stop linter complaining when T == uint64_t
+    // @lint-ignore CLANGTIDY bugprone-sizeof-expression
+    auto words =
+        std::bit_cast<std::array<T, sizeof(std::uint64_t) / sizeof(T)>>(
+            std::uint64_t(0));
+    const auto* ptr = words.data();
     EXPECT_FALSE(folly::get_bit_at(ptr, i));
   }
 
   {
     const std::uint8_t in[] = {0b101, 0b1110, 0, 0, 0, 0, 0, 0};
-    const auto* ptr = reinterpret_cast<const T*>(in);
+    std::array<T, sizeof(in) / sizeof(T)> words{};
+    std::memcpy(words.data(), in, sizeof(in));
+    const auto* ptr = words.data();
 
     // in[0]
     EXPECT_EQ(1, folly::get_bit_at(ptr, 0));
