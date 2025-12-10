@@ -295,8 +295,8 @@ non_fbcode_target(
     name = "iobuf_lib",
     srcs = ["iobuf.cpp"],
     exported_headers = {
+        "folly/python/iobuf.h": "iobuf.h",
         "folly/python/iobuf_api.h": ":iobuf__iobuf_api.h",
-        "iobuf.h": "iobuf.h",
     },
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
     platforms = CYTHON_DEFAULT_PLATFORMS,
