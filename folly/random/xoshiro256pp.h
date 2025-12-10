@@ -70,9 +70,9 @@ class xoshiro256pp {
 
   void seed(uint64_t pSeed = default_seed) noexcept {
     uint64_t seed_val = pSeed;
-    for (uint64_t result_count = 0; result_count < VecResCount; result_count++) {
-      for (uint64_t state_count = 0; state_count < StateSize; state_count++) {
-        state[idx(state_count, result_count)] = splitmix64(seed_val);
+    for (uint64_t result_idx = 0; result_idx < VecResCount; result_idx++) {
+      for (uint64_t state_idx = 0; state_idx < StateSize; state_idx++) {
+        state[idx(state_idx, result_idx)] = splitmix64(seed_val);
       }
     }
     cur = ResultCount;
