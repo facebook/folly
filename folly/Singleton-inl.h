@@ -240,6 +240,28 @@ void SingletonHolder<T>::createInstance() {
     detail::singletonWarnCreateCircularDependencyAndAbort(type());
   }
 
+  // NOTE: Keeping the vault state lock at the top of the createInstance
+  // function is important to not deadlock singleton creation in child
+  // processes.
+  //
+  // We take and hold the vault state lock at the start to ensure that a write
+  // lock for the vault state isn't taken during the time that this Singleton's
+  // mutex_ is held, as it may result in a deadlock in creation of this
+  // singleton in the future if a fork happens in-between the mutex_ being
+  // acquired and the completion of this function that could "easily" happen if
+  // there's contention on the vault state, as another thread may initiate to
+  // destroyInstances in preparation for a fork
+  //
+  // This still doesn't 100% remove the risk of deadlock in child processes, as
+  // it's possible that the vault state rlock here is acquired in another
+  // thread before the fork happens. That would block the child process from
+  // re-instantiating the singleton vault, as it would never be able to get a
+  // write lock on it.
+  auto vault_state = vault_.state_.rlock();
+  if (vault_state->state == detail::SingletonVaultState::Type::Quiescing) {
+    return;
+  }
+
   std::lock_guard entry_lock(mutex_);
   if (state_.load(std::memory_order_acquire) == SingletonHolderState::Living) {
     return;
@@ -279,14 +301,10 @@ void SingletonHolder<T>::createInstance() {
 
   creating_thread_.store(std::this_thread::get_id(), std::memory_order_release);
 
-  auto state = vault_.state_.rlock();
   if (vault_.type_.load(std::memory_order_relaxed) !=
           SingletonVault::Type::Relaxed &&
-      !state->registrationComplete) {
+      !vault_state->registrationComplete) {
     detail::singletonWarnCreateBeforeRegistrationCompleteAndAbort(type());
-  }
-  if (state->state == detail::SingletonVaultState::Type::Quiescing) {
-    return;
   }
 
   auto destroy_baton = std::make_shared<folly::Baton<>>();
