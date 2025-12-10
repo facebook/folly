@@ -221,6 +221,7 @@ fbcode_target(
         "//folly/concurrency/memory:read_mostly_shared_ptr",
         "//folly/container:enumerate",
         "//folly/container:f14_hash",
+        "//folly/lang:keep",
         "//folly/portability:gflags",
         "//folly/synchronization:hazptr",
         "//folly/synchronization:rcu",

@@ -28,11 +28,50 @@
 #include <folly/concurrency/memory/ReadMostlySharedPtr.h>
 #include <folly/container/Enumerate.h>
 #include <folly/container/F14Set.h>
+#include <folly/lang/Keep.h>
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/RWSpinLock.h>
 #include <folly/synchronization/Rcu.h>
 
 using namespace folly;
+
+namespace folly {
+template <typename Value>
+struct hazptr_obj_of
+    : detail::inheritable<Value>,
+      hazptr_obj_base<hazptr_obj_of<Value>> {};
+} // namespace folly
+
+extern "C" FOLLY_KEEP long check_folly_hazptr_protect(
+    folly::hazptr_holder<std::atomic>& holder,
+    std::atomic<hazptr_obj_of<long>*>& channel) {
+  auto ptr = holder.protect(channel);
+  return ptr ? *ptr : 0;
+}
+
+extern "C" FOLLY_KEEP long check_folly_hazptr_local_protect_default(
+    std::atomic<hazptr_obj_of<long>*>& channel) {
+  hazptr_local<1> local;
+  auto& holder = local[1];
+  auto ptr = holder.protect(channel);
+  return ptr ? *ptr : 0;
+}
+
+extern "C" FOLLY_KEEP long check_folly_hazptr_make_protect(
+    folly::hazptr_domain<std::atomic>& domain,
+    std::atomic<hazptr_obj_of<long>*>& channel) {
+  auto holder = folly::make_hazard_pointer(domain);
+  auto ptr = holder.protect(channel);
+  return ptr ? *ptr : 0;
+}
+
+extern "C" FOLLY_KEEP long check_folly_hazptr_make_protect_default(
+    std::atomic<hazptr_obj_of<long>*>& channel) {
+  auto& domain = folly::default_hazptr_domain();
+  auto holder = folly::make_hazard_pointer(domain);
+  auto ptr = holder.protect(channel);
+  return ptr ? *ptr : 0;
+}
 
 namespace {
 
