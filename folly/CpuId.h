@@ -142,11 +142,11 @@ class CpuId {
     vendor_[1] = v0d;
     vendor_[2] = v0c;
     if (n >= 1) {
-      uint32_t f1a;
+      [[maybe_unused]] uint32_t f1a;
       __asm__("cpuid" : "=a"(f1a), "=c"(f1c_), "=d"(f1d_) : "a"(1) : "ebx");
     }
     if (n >= 7) {
-      uint32_t f7a;
+      [[maybe_unused]] uint32_t f7a;
       __asm__("cpuid"
               : "=a"(f7a), "=b"(f7b_), "=c"(f7c_), "=d"(f7d_)
               : "a"(7), "c"(0));
