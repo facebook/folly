@@ -650,11 +650,11 @@ mod tests {
         let d = Dynamic::new_bool(true);
         assert!(d.is_bool());
         assert!(!d.is_null_value());
-        assert_eq!(d.as_bool().unwrap(), true);
+        assert!(d.as_bool().unwrap());
 
         let d = Dynamic::new_bool(false);
         assert!(d.is_bool());
-        assert_eq!(d.as_bool().unwrap(), false);
+        assert!(!d.as_bool().unwrap());
     }
 
     #[test]
@@ -881,10 +881,10 @@ mod tests {
         {
             let mut enabled_value = config_obj.get_mut("enabled").unwrap();
             assert!(enabled_value.is_bool());
-            assert_eq!(enabled_value.as_bool().unwrap(), true);
+            assert!(enabled_value.as_bool().unwrap());
 
             enabled_value.set_value(false);
-            assert_eq!(enabled_value.as_bool().unwrap(), false);
+            assert!(!enabled_value.as_bool().unwrap());
         }
 
         {
@@ -917,7 +917,7 @@ mod tests {
         assert_eq!(data_array[0].as_int().unwrap(), 10);
         assert_eq!(data_array[1].as_int().unwrap(), 99);
         assert_eq!(data_array[2].as_int().unwrap(), 30);
-        assert_eq!(config_obj["enabled"].as_bool().unwrap(), false);
+        assert!(!config_obj["enabled"].as_bool().unwrap());
         assert_eq!(config_obj["count"].as_int().unwrap(), 100);
         assert_eq!(config_obj["name"].as_string().unwrap(), "modified");
         assert_eq!(config_obj["score"].as_double().unwrap(), 2.71);
@@ -937,7 +937,7 @@ mod tests {
             let mut bool_field = obj.get_mut("bool_field").unwrap();
             bool_field.set_value(true);
             assert!(bool_field.is_bool());
-            assert_eq!(bool_field.as_bool().unwrap(), true);
+            assert!(bool_field.as_bool().unwrap());
         }
 
         {
@@ -1007,7 +1007,7 @@ mod tests {
         }
 
         assert!(obj["null_field"].is_null_value());
-        assert_eq!(obj["bool_field"].as_bool().unwrap(), true);
+        assert!(obj["bool_field"].as_bool().unwrap());
         assert_eq!(obj["int_field"].as_int().unwrap(), 42);
         assert_eq!(obj["int32_field"].as_int().unwrap(), 123);
         assert_eq!(obj["double_field"].as_double().unwrap(), 3.14);
@@ -1043,7 +1043,7 @@ mod tests {
 
         assert_eq!(arr[0].as_int().unwrap(), 100);
         assert_eq!(arr[1].as_str().unwrap(), "array_string");
-        assert_eq!(arr[2].as_bool().unwrap(), true);
+        assert!(arr[2].as_bool().unwrap());
     }
 
     #[test]
@@ -1116,7 +1116,7 @@ mod tests {
 
         let d = Dynamic::from_json("true").unwrap();
         assert!(d.is_bool());
-        assert_eq!(d.as_bool().unwrap(), true);
+        assert!(d.as_bool().unwrap());
 
         let d = Dynamic::from_json("null").unwrap();
         assert!(
@@ -1130,7 +1130,7 @@ mod tests {
         assert_eq!(d.size().unwrap(), 3);
         assert_eq!(d[0].as_int().unwrap(), 1);
         assert_eq!(d[1].as_string().unwrap(), "test");
-        assert_eq!(d[2].as_bool().unwrap(), false);
+        assert!(!d[2].as_bool().unwrap());
 
         let d = Dynamic::from_json("{\"name\": \"Alice\", \"age\": 30}").unwrap();
         assert!(d.is_object());
