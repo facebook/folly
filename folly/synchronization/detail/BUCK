@@ -33,6 +33,7 @@ non_fbcode_target(
         "//xplat/folly:portability",
         "//xplat/folly/lang:assume",
         "//xplat/folly/lang:exception",
+        "//xplat/folly/system:hardware",
     ],
 )
 
@@ -205,6 +206,7 @@ fbcode_target(
     headers = ["Hardware.h"],
     deps = [
         "//folly/lang:exception",
+        "//folly/system:hardware",
     ],
     exported_deps = [
         "//folly:portability",

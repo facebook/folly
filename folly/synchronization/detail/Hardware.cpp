@@ -23,6 +23,7 @@
 #include <boost/preprocessor/repetition/repeat.hpp>
 
 #include <folly/lang/Exception.h>
+#include <folly/system/Hardware.h>
 
 #if FOLLY_X64 && defined(__RTM__)
 #include <immintrin.h>
@@ -33,7 +34,6 @@
 
 #if FOLLY_RTM_SUPPORT
 #if defined(__GNUC__) || defined(__clang__)
-#include <cpuid.h>
 #elif defined(_MSC_VER)
 #include <intrin.h>
 #endif
@@ -46,33 +46,16 @@ static bool rtmEnabledImpl() {
 
   return false;
 
-#elif defined(__GNUC__) || defined(__clang__)
+#else
 
-  if (__get_cpuid_max(0, nullptr) < 7) {
+  if (x86_cpuid_max(0, nullptr) < 7) {
     // very surprising, older than Core Duo!
     return false;
   }
-  unsigned ax, bx, cx, dx;
-  // CPUID EAX=7, ECX=0: Extended Features
-  // EBX bit 11 -> RTM support
-  __cpuid_count(7, 0, ax, bx, cx, dx);
-  return ((bx >> 11) & 1) != 0;
 
-#elif defined(_MSC_VER)
-
-  // __cpuidex:
-  // https://docs.microsoft.com/en-us/cpp/intrinsics/cpuid-cpuidex?view=vs-2019
-  int cpui[4];
-  __cpuid(cpui, 0);
-  if (unsigned(cpui[0]) < 7) {
-    return false;
-  }
-  __cpuidex(cpui, 7, 0);
-  return ((cpui[1] >> 11) & 1) != 0;
-
-#else
-
-  return false;
+  unsigned int reg[4] = {};
+  x86_cpuid(reg, 7, 0);
+  return ((reg[1] >> 11) & 1) != 0;
 
 #endif
 }
