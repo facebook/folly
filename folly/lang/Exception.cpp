@@ -902,26 +902,19 @@ exception_shared_string& exception_shared_string::operator=(
   if (this != &that) {
     ruin_state();
     state::copy(to_state(that.tagged_what_));
-    const_cast<tagged_what_t&>(tagged_what_) = that.tagged_what_;
+    tagged_what_ = that.tagged_what_;
   }
   return *this;
 }
 
 #if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
 
-exception_shared_string::exception_shared_string(
-    exception_shared_string&& that) noexcept
-    : tagged_what_{that.tagged_what_} {
-  const_cast<tagged_what_t&>(that.tagged_what_) =
-      tagged_what_t{vtag<true>, ""}; // safe-to-read moved-out state
-}
-
 exception_shared_string& exception_shared_string::operator=(
     exception_shared_string&& that) noexcept {
   if (this != &that) {
     ruin_state();
-    const_cast<tagged_what_t&>(tagged_what_) = that.tagged_what_;
-    const_cast<tagged_what_t&>(that.tagged_what_) =
+    tagged_what_ = that.tagged_what_;
+    that.tagged_what_ =
         tagged_what_t{vtag<true>, ""}; // safe-to-read moved-out state
   }
   return *this;
