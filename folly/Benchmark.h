@@ -43,6 +43,8 @@
 
 FOLLY_GFLAGS_DECLARE_bool(benchmark);
 FOLLY_GFLAGS_DECLARE_uint32(bm_result_width_chars);
+FOLLY_GFLAGS_DECLARE_int32(bm_min_iters);
+FOLLY_GFLAGS_DECLARE_int64(bm_max_iters);
 
 namespace folly {
 

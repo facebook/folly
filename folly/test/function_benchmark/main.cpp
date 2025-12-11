@@ -24,9 +24,6 @@
 
 using folly::makeGuard;
 
-// Declare the bm_max_iters flag from folly/Benchmark.cpp
-DECLARE_int32(bm_max_iters);
-
 // Directly invoking a function
 BENCHMARK(fn_invoke, iters) {
   for (size_t n = 0; n < iters; ++n) {
