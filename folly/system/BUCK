@@ -55,18 +55,6 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
-    name = "hardware",
-    srcs = [],
-    headers = ["Hardware.h"],
-    feature = triage_InfrastructureSupermoduleOptou,
-    use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
-    exported_deps = [
-        "//folly:portability",
-    ],
-)
-
-fb_dirsync_cpp_library(
     name = "hardware_concurrency",
     srcs = ["HardwareConcurrency.cpp"],
     headers = ["HardwareConcurrency.h"],
