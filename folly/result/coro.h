@@ -51,8 +51,8 @@
 ///
 ///   // Or: `res = co_await value_or_error_or_stopped(asyncFn());`
 ///   auto res = syncResultFn();
-///    if (auto* ex = get_exception<MyError>(res)) {
-///     /* handle ex */
+///    if (auto ex = get_exception<MyError>(res)) {
+///     // handle ex, which quacks like `const MyError*`
 ///   } else {
 ///     auto v = co_await or_unwind(std::move(res)); // propagate unhandled
 ///   }

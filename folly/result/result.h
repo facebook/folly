@@ -33,7 +33,9 @@
 ///     as far as control flow is concerned.
 ///
 ///   - Easy exception checks:
-///       if (auto* ex = folly::get_exception<Ex>(res)) { /*...*/ }
+///       if (auto ex = folly::get_exception<Ex>(res)) {
+///         // Handle `ex`, quacks like `const Ex*`
+///       }
 ///
 ///   - User-friendly constructors & conversions -- you can write
 ///     `result<T>`-returning functions as-if they returned `T`, while returning

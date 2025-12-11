@@ -515,6 +515,66 @@ TEST_F(ExceptionTest, get_exception_from_std_exception_ptr) {
           decltype(get_mutable_exception<std::runtime_error>(eptr))>);
 }
 
+namespace {
+// Example of using `get_exception` with a custom pointer wrapper
+template <typename T>
+struct AccessCountingPtr {
+  T* ptr_;
+  std::atomic<int>* accessCount_;
+
+  AccessCountingPtr(T* p, std::atomic<int>* count)
+      : ptr_(p), accessCount_(count) {}
+  explicit operator bool() const { return ptr_; }
+  T& operator*() const {
+    ++*accessCount_;
+    return *ptr_;
+  }
+  T* operator->() const {
+    ++*accessCount_;
+    return ptr_;
+  }
+};
+
+// Example of an exception container with a custom pointer wrapper
+struct CustomExceptionPtr : std::exception_ptr {
+  mutable std::atomic<int> accessCount_ = 0;
+
+  explicit CustomExceptionPtr(std::exception_ptr ep)
+      : std::exception_ptr(std::move(ep)) {}
+
+  template <typename Ex>
+  AccessCountingPtr<const Ex> get_exception(
+      folly::get_exception_tag_t) const noexcept {
+    return {
+        folly::exception_ptr_get_object_hint<const Ex>(*this), &accessCount_};
+  }
+
+  template <typename Ex>
+  AccessCountingPtr<Ex> get_mutable_exception(
+      folly::get_exception_tag_t) noexcept {
+    return {folly::exception_ptr_get_object_hint<Ex>(*this), &accessCount_};
+  }
+};
+} // namespace
+
+TEST_F(ExceptionTest, get_exception_with_custom_pointer_traits) {
+  auto customPtr = CustomExceptionPtr{folly::make_exception_ptr_with(
+      std::in_place_type<std::runtime_error>, "custom pointer test")};
+
+  EXPECT_EQ(0, customPtr.accessCount_);
+
+  if (auto ex = folly::get_exception<std::runtime_error>(customPtr)) {
+    EXPECT_EQ(0, customPtr.accessCount_); // No access yet
+    EXPECT_STREQ("custom pointer test", ex->what());
+    EXPECT_EQ(1, customPtr.accessCount_); // Access counted
+  }
+
+  if (auto ex = folly::get_mutable_exception<std::runtime_error>(customPtr)) {
+    EXPECT_STREQ("custom pointer test", (*ex).what());
+    EXPECT_EQ(2, customPtr.accessCount_); // Second access
+  }
+}
+
 template <typename String>
 void test_exception_shared_string_construct(const char* c, String s0) {
   EXPECT_STREQ(c, s0.what());

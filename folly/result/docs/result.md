@@ -73,7 +73,7 @@ than thrown exceptions, and more flexible than error codes:
   - The standard pattern for accessing the value is `co_await
     or_unwind(resultFn())`, which also **visibly and efficiently** propagates
     unhandled exceptions (and cancellation) to the caller.
-  - Handling specific exceptions via `if (auto* ex = get_exception<Ex>(res))` is
+  - Handling specific exceptions via `if (auto ex = get_exception<Ex>(res))` is
     as clear as `try-catch`, and lacks the many gotchas of the
     exception-unwinding context.
   - You only need one error path -- `result` coroutines capture all internally
@@ -99,8 +99,8 @@ result<size_t> countGrapefruitSeeds() {
   // `co_await or_unwind` immediately propagates that result to the caller!
   auto box = co_await or_unwind(getFruitBox());
   auto boxRes = box.findFruit(FruitTypes::GRAPEFRUIT);
-  if (auto* ex = get_exception<RottenFruit>(boxRes)) {
-    logDiscardedGrapefruit(ex);
+  if (auto ex = get_exception<RottenFruit>(boxRes)) {
+    logDiscardedGrapefruit(ex); // `ex` quacks like `const RottenFruit*`
     return 0;
   }
   const auto& grapefruit = co_await or_unwind(boxRes);
@@ -145,8 +145,8 @@ slightly better ergonomics:
 ```cpp
 result<int> intRes = co_await coro::value_or_error_or_stopped(
     taskReturningInt());
-if (auto* ex = get_exception<MyError>(intRes)) {
-  /* handle ex */
+if (auto ex = get_exception<MyError>(intRes)) {
+  // Handle `ex`, it quacks like `const MyError*`
 } else {
   // `std::move()` is optional, makes error propagation cheaper
   sum += co_await or_unwind(std::move(intRes));
@@ -304,7 +304,7 @@ If you want to check for a single error, `folly::get_exception` is all you need:
 result<> handlesErrors() {
   auto r = propagatesErrors();
   if (auto* ex = get_exception<MyErr>(r)) {
-    // handle `ex`
+    // Handle `ex`, it quacks like `const MyErr*`
   } else {
     auto v = co_await or_unwind(std::move(r)); // propagates error or stopped
   }
@@ -474,7 +474,7 @@ result<int> plantSeeds(int n) {
     int seedsLeft = n;
     for (int i = 0; i < n; ++i) {}
       auto rh = digHole(i);
-      if (auto* ex = get_exception<HitBigRock>(rh)) {
+      if (auto ex = get_exception<HitBigRock>(rh)) {
         continue; // skip planting this seed
       } else if (!rh.has_value()) {
         return rh.non_value(); // unhandled error or stopped

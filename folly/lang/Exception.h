@@ -625,6 +625,13 @@ struct get_exception_tag_t {};
 /// `get_exception<Ex>(v)` is meant to become the default way for accessing
 /// exception-containers in `folly`.
 ///
+///   if (auto ex = get_exception<MyError>(eptr)) {
+///     LOG(INFO) << ex->myErrorDetails();
+///   }
+///
+/// NB: Above, `ex` quacks like `MyError*`, but in some cases may be a proxy
+/// class type with `->`.  Avoid having to know by writing `auto`, not `auto*`.
+///
 /// For the less-common scenario where you need mutable access to an error, use
 /// `get_mutable_exception<Ex>(v)`.  This is a separate verb because:
 ///    - Mutable exception access is rare.  It may run into thread-safety bugs
@@ -633,28 +640,37 @@ struct get_exception_tag_t {};
 ///    - Making mutable access explicit enables no-alloctions, no-atomics
 ///      optimizations for the `const`-access path.
 ///
-/// Both verbs return:
-///   - `nullptr` if `v` is of a variant type, but is not in an "error" state,
-///   - A pointer to the `Ex` held by `v`, if it holds an error whose type
-///     `From` permits `std::is_convertible<From*, Ex*>`,
+/// ## Implementing this protocol
+///
+/// Any exception container may provide these verbs via member functions
+/// `get_exception` and `get_mutable_exception` taking `get_exception_tag_t`.
+/// For an example, see `ExceptionWrapper.h`.  Requirements:
+///   - Return a bare pointer to `Ex`, or a pointer-like with:
+///     - `operator bool` to test if an exception was found,
+///     - `operator*` and `operator->` to access the exception object,
+///       respecting the const-qualification of `Ex`.
+///   - Returns null if the container is not in an "error" state.
+///   - Returns null if the container has an error incompatible with `Ex`.
+///   - Returns a `Ex` pointer-like into the container, if it holds an error
+///     whose type `From` permits `std::is_convertible<From*, Ex*>`,
 ///   - `nullptr` for errors incompatible with `Ex*`.
-///
-/// In addition to the `std::exception_ptr` support above, a type can support
-/// this verb by providing member functions taking `get_exception_tag_t`.  For
-/// an example, see `ExceptionWrapper.h`.  Requirements:
+///   - `const` access via `get_exception`, mutable via `get_mutable_exception`.
 ///   - `noexcept`
-///   - returns `Ex*` or `const Ex*` depending on the verb.
 ///
-/// This is most efficient when `Ex` matches the exact stored type, or when the
+/// This header provides `get_exception` support for `std::exception_ptr`.
+///
+/// ## Design notes
+///
+/// Lookup is more efficient if `Ex` matches the exact stored type, or if the
 /// type alias `Ex::folly_get_exception_hint_types` provides a correct hint.
 ///
 /// NB: `result<T>` supports `get_exception<Ex>(res)`, but `Try<T>` currently
 /// omits `get_exception(get_exception_tag_t)`, because that might encourage
 /// "empty state" bugs:
 ///
-///   if (auto* ex = get_exception<MyError>(tryData)) {
+///   if (auto ex = get_exception<MyError>(tryData)) {
 ///     // handle error
-///   } else {
+///   } else { // Should've checked `hasValue()`!
 ///     doStuff(tryData.value()); // Oops, may throw `UsingUninitializedTry`!
 ///   }
 ///
@@ -664,7 +680,7 @@ template <typename Ex>
 class get_exception_fn {
  public:
   template <typename Src>
-  const Ex* operator()(
+  constexpr auto operator()(
       [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] const Src& src) const noexcept {
     if constexpr (std::is_same_v<Src, std::exception_ptr>) {
       return exception_ptr_get_object_hint<const Ex>(src);
@@ -672,15 +688,15 @@ class get_exception_fn {
       constexpr get_exception_tag_t passkey;
       static_assert( // Return type & `noexcept`ness must match
           std::is_same_v<
-              const Ex*,
-              decltype(src.template get_exception<Ex>(passkey))> &&
-          noexcept(noexcept(src.template get_exception<Ex>(passkey))));
+              const Ex&,
+              decltype(*src.template get_exception<Ex>(passkey))> &&
+          noexcept(noexcept(*src.template get_exception<Ex>(passkey))));
       return src.template get_exception<Ex>(passkey);
     }
   }
   // For a mutable ptr, use `folly::get_mutable_exception<Ex>(v)` instead.
   template <typename Src>
-  const Ex* operator()(
+  constexpr auto operator()(
       [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] Src& s) const noexcept {
     return operator()(std::as_const(s));
   }
@@ -696,16 +712,16 @@ template <typename Ex>
 class get_mutable_exception_fn {
  public:
   template <typename Src>
-  Ex* operator()([[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] Src& src) const noexcept {
+  auto operator()([[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] Src& src) const noexcept {
     if constexpr (std::is_same_v<Src, std::exception_ptr>) {
       return exception_ptr_get_object_hint<Ex>(src);
     } else {
       constexpr get_exception_tag_t passkey;
       static_assert( // Return type & `noexcept`ness must match
           std::is_same_v<
-              Ex*,
-              decltype(src.template get_mutable_exception<Ex>(passkey))> &&
-          noexcept(noexcept(src.template get_mutable_exception<Ex>(passkey))));
+              Ex&,
+              decltype(*src.template get_mutable_exception<Ex>(passkey))> &&
+          noexcept(noexcept(*src.template get_mutable_exception<Ex>(passkey))));
       return src.template get_mutable_exception<Ex>(passkey);
     }
   }

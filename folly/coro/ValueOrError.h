@@ -29,7 +29,7 @@ namespace folly::coro {
 /// In a `folly::coro` async coroutine, use `value_or_error_or_stopped` like so:
 ///
 ///   result<int> res = co_await value_or_error_or_stopped(taskReturningInt());
-///   if (auto* ex = get_exception<MyError>(res)) {
+///   if (auto ex = get_exception<MyError>(res)) {
 ///     /* handle ex */
 ///   } else {
 ///     sum += co_await co_ready(res); // efficiently propagate unhandled error

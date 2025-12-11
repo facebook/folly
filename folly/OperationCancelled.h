@@ -42,13 +42,13 @@ namespace folly {
 ///
 ///       auto res = co_await coro::value_or_error_or_stopped(
 ///           mightGetCancelled());
-///       if (auto* ex = get_exception<MyErr>(res)) {
-///         // HANDLE ERROR HERE
+///       if (auto ex = get_exception<MyErr>(res)) {
+///         // Handle error here; `ex` quacks like `const MyErr*`.
 ///       } else if (res.has_stopped()) {
-///         // HANDLE CANCELLATION HERE
+///         // Handle cancellation here
 ///         co_yield coro::co_cancelled;
 ///       } else { // get value, or propagate unhandled errors/cancellation
-///         auto v = co_await coro::co_ready(std::move(res));
+///         auto v = co_await folly::or_unwind(std::move(res));
 ///       }
 ///
 ///     OR: If you want to transparently propagate cancellation to the parent
