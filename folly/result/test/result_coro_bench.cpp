@@ -19,12 +19,17 @@
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
 #include <folly/lang/Keep.h>
+#include <folly/result/test/common.h>
 
 #if FOLLY_HAS_RESULT
 
 #include <folly/result/coro.h>
 
 namespace folly {
+
+TEST(ResultCoroBench, benchmarksDoNotCrash) {
+  runBenchmarksAsTest();
+}
 
 // Simple result coroutine that adds 1 to the input
 result<int> result_coro(result<int>&& r) {
@@ -127,10 +132,8 @@ BENCHMARK(catching_result_func_error, iters) {
 
 } // namespace folly
 
-int main(int argc, char** argv) {
-  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
-  folly::runBenchmarks();
-  return 0;
-}
-
 #endif // FOLLY_HAS_RESULT
+
+int main(int argc, char** argv) {
+  return folly::benchmarkMain(argc, argv);
+}

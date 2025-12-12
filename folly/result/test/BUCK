@@ -1,5 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -13,6 +13,16 @@ fbcode_target(
         "//folly/coro:value_or_error",
         "//folly/coro/safe:now_task",
         "//folly/result:coro",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "common",
+    headers = ["common.h"],
+    exported_deps = [
+        "//folly:benchmark",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -37,11 +47,13 @@ fbcode_target(
     ],
 )
 
+# Runs as a test by default, pass --benchmark=1 to run as benchmark.
 fbcode_target(
-    _kind = cpp_benchmark,
+    _kind = cpp_unittest,
     name = "result_coro_bench",
     srcs = ["result_coro_bench.cpp"],
     deps = [
+        ":common",
         "//folly:benchmark",
         "//folly:portability",
         "//folly/lang:keep",
