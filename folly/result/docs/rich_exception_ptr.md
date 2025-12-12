@@ -29,9 +29,9 @@ handful of features any production project is likely to want:
     logging.  Note that, in contrast, the `std::exception` API of `const char*
     what()` makes it hard to avoid allocations when logging dynamic messages.
 
-  - Annotations aka "message stacks".  These let you cheaply add debugging
-    context to an exception, as it propagates, without changing the type
-    identity of the underlying exception.
+  - `enrich_non_value()` to stack or chain contextual information as an exception
+    propagates.  This is inexpensive (60ns, reducible to < 5ns), and does
+    not change the type identity of the underlying exception.
 
 To make things even better, typical usage of `rich_error` APIs is able to
 completely avoid RTTI, making it faster than the `std::exception` hierarchy.
@@ -230,7 +230,7 @@ current implementation.
       this with "Idea 1" below without hurting "is eptr?" performance.
     * Furthermore, all it would enable is RTTI-free code to log `what()`.  As
       discussed above, `what()` is a poor API, and logging `rich_error` -- with
-      detailed context & stacked annotations -- should be strongly preferred.
+      detailed context & enrichment chains -- should be strongly preferred.
 
   - It would be technically straightforward to support immortal exceptions
     of non-`rich_error` type, but:
@@ -242,8 +242,8 @@ current implementation.
       making your immortal error speak the `rich_error` protocol.
 
   - As noted in the `rich_error_base` docblock, if we had another free bit in
-    `rich_exception_ptr`, we could use it to cache the absence of a parent
-    error in the annotation stack.  However, the current solution is pretty
+    `rich_exception_ptr`, we could use it to cache the absence of an underlying
+    error in the enrichment chain.  However, the current solution is pretty
     good, and it's not trivial to eke out another cross-platform bit.
 
 ## Design space
