@@ -23,6 +23,7 @@
 #include <limits>
 #include <type_traits>
 
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/TurnSequencer.h>
@@ -718,10 +719,14 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
         pushSpinCutoff_(0),
         popSpinCutoff_(0) {
     if (queueCapacity == 0) {
-      // Stride computation in derived classes would sigfpe if capacity is 0
-      throw_exception<std::invalid_argument>(
-          "MPMCQueue with explicit capacity 0 is impossible");
+#if FOLLY_HAS_EXCEPTIONS
+      throw std::invalid_argument(
+          "MPMCQueue with explicit capacity 0 is impossible"
+          // Stride computation in derived classes would sigfpe if capacity is 0
+      );
+#endif
     }
+    FOLLY_SAFE_CHECK(queueCapacity > 0);
 
     // ideally this would be a static assert, but g++ doesn't allow it
     assert(
