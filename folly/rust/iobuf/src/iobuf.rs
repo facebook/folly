@@ -89,10 +89,6 @@ impl IOBufShared {
         IOBufCursor::from(self)
     }
 
-    // This is internal-only to avoid external folly depending on fbthrift,
-    // that complicates build. A potentially long-term fix might be moving
-    // BufExt to a small, shared, and published crate.
-    #[cfg(fbcode_build)]
     /// Converts a `BufExt` into a potentially chained `IOBufShared`. Whether
     /// this conversion copies is dependent on whether
     /// `BufExt::copy_or_reuse_bytes` copies.
