@@ -294,7 +294,10 @@ template <class T, class Traits>
 inline auto Bits<T, Traits>::innerGet(const T* p, size_t offset, size_t count)
     -> UnderlyingType {
 #ifdef __BMI__
-  return _bextr_u64(Traits::load(*p), offset, count);
+  return _bextr_u64(
+      Traits::load(*p),
+      static_cast<unsigned int>(offset),
+      static_cast<unsigned int>(count));
 #else
   return (Traits::load(*p) >> offset) & ones(count);
 #endif
