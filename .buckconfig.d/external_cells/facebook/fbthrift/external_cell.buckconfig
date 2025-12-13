@@ -1,0 +1,9 @@
+[cells]
+gh_facebook_fbthrift = gh_facebook_fbthrift
+
+[external_cells]
+gh_facebook_fbthrift = git
+
+[external_cell_gh_facebook_fbthrift]
+git_origin = https://github.com/facebook/fbthrift.git
+commit_hash = 851a2225eee7425ef8555c1ee836352f9fd0b43a
