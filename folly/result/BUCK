@@ -100,6 +100,22 @@ fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "rich_error_fwd",
+    raw_headers = ["rich_error_fwd.h"],
+    exported_deps = ["//xplat/folly:portability"],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "rich_error_fwd",
+    headers = ["rich_error_fwd.h"],
+    exported_deps = ["//folly:portability"],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "rich_msg",
     raw_headers = ["rich_msg.h"],
     exported_deps = [
