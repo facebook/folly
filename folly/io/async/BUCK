@@ -654,6 +654,7 @@ non_fbcode_target(
     name = "liburing",
     raw_headers = ["Liburing.h"],
     exported_deps = liburing_deps,
+    target_compatible_with = ["ovr_config//os:linux"],
 )
 
 fbcode_target(
@@ -662,6 +663,7 @@ fbcode_target(
     name = "liburing",
     headers = ["Liburing.h"],
     exported_deps = liburing_deps,
+    target_compatible_with = ["ovr_config//os:linux"],
 )
 
 fb_dirsync_cpp_library(
@@ -675,6 +677,7 @@ fb_dirsync_cpp_library(
     ],
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
+    target_compatible_with = ["ovr_config//os:linux"],
     deps = [
         ":io_uring_event_base_local",
         ":io_uring_provided_buffer_ring",
@@ -711,6 +714,7 @@ fb_dirsync_cpp_library(
     headers = ["SimpleAsyncIO.h"],
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
+    target_compatible_with = ["ovr_config//os:linux"],
     deps = [
         "//folly:string",
         "//folly/coro:baton",
@@ -768,6 +772,7 @@ fb_dirsync_cpp_library(
     headers = ["EventBasePoller.h"],
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
+    target_compatible_with = ["ovr_config//os:linux"],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:file_util",
@@ -838,6 +843,7 @@ fb_dirsync_cpp_library(
     external_deps = [
         "glog",
     ],
+    target_compatible_with = ["ovr_config//os:linux"],
 )
 
 fb_dirsync_cpp_library(
@@ -890,6 +896,7 @@ fb_dirsync_cpp_library(
         "boost",
         "glog",
     ],
+    target_compatible_with = ["ovr_config//os:linux"],
 )
 
 fb_dirsync_cpp_library(
@@ -919,6 +926,7 @@ fb_dirsync_cpp_library(
     exported_external_deps = [
         "boost",
     ],
+    target_compatible_with = ["ovr_config//os:linux"],
 )
 
 fb_dirsync_cpp_library(
@@ -943,6 +951,7 @@ fb_dirsync_cpp_library(
         ":liburing",
         "//folly/io:iobuf",
     ],
+    target_compatible_with = ["ovr_config//os:linux"],
 )
 
 fb_dirsync_cpp_library(
@@ -962,6 +971,7 @@ fb_dirsync_cpp_library(
         "//folly/io/async:io_uring_backend",
         "//folly/io/async:liburing",
     ],
+    target_compatible_with = ["ovr_config//os:linux"],
 )
 
 fb_dirsync_cpp_library(
@@ -984,4 +994,5 @@ fb_dirsync_cpp_library(
         "//folly/io/async:io_uring_backend",
         "//folly/io/async:liburing",
     ],
+    target_compatible_with = ["ovr_config//os:linux"],
 )

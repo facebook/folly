@@ -31,6 +31,7 @@ fb_dirsync_cpp_library(
         "Liburing.h",
     ],
     xplat_impl = folly_xplat_library,
+    target_compatible_with = ["ovr_config//os:linux"],
     exported_deps = [
         "//folly/io/async:liburing",
     ],
@@ -43,6 +44,7 @@ fb_dirsync_cpp_library(
         "AsyncIoUringSocketFactory.h",
     ],
     xplat_impl = folly_xplat_library,
+    target_compatible_with = ["ovr_config//os:linux"],
     exported_deps = [
         "//folly/io/async:async_io_uring_socket",
     ],
@@ -54,6 +56,7 @@ fb_dirsync_cpp_library(
         "SimpleAsyncIO.h",
     ],
     xplat_impl = folly_xplat_library,
+    target_compatible_with = ["ovr_config//os:linux"],
     exported_deps = [
         "//folly/io/async:simple_async_io",
     ],
@@ -89,6 +92,7 @@ fb_dirsync_cpp_library(
         "EventBasePoller.h",
     ],
     xplat_impl = folly_xplat_library,
+    target_compatible_with = ["ovr_config//os:linux"],
     exported_deps = [
         "//folly/io/async:event_base_poller",
     ],
@@ -111,6 +115,7 @@ fb_dirsync_cpp_library(
         "IoUring.h",
     ],
     xplat_impl = folly_xplat_library,
+    target_compatible_with = ["ovr_config//os:linux"],
     exported_deps = [
         "//folly/io/async:io_uring",
     ],
@@ -123,6 +128,7 @@ fb_dirsync_cpp_library(
         "IoUringBase.h",
     ],
     xplat_impl = folly_xplat_library,
+    target_compatible_with = ["ovr_config//os:linux"],
     exported_deps = [
         "//folly/io/async:io_uring_backend",
         "//folly/io/async:io_uring_provided_buffer_ring",
@@ -137,6 +143,7 @@ fb_dirsync_cpp_library(
         "IoUringProvidedBufferRing.h",
     ],
     xplat_impl = folly_xplat_library,
+    target_compatible_with = ["ovr_config//os:linux"],
     exported_deps = [
         "//folly/io/async:io_uring_provided_buffer_ring",
     ],
@@ -148,6 +155,7 @@ fb_dirsync_cpp_library(
         "IoUringEvent.h",
     ],
     xplat_impl = folly_xplat_library,
+    target_compatible_with = ["ovr_config//os:linux"],
     exported_deps = [
         "//folly/io/async:io_uring_event",
     ],
@@ -159,6 +167,7 @@ fb_dirsync_cpp_library(
         "IoUringEventBaseLocal.h",
     ],
     xplat_impl = folly_xplat_library,
+    target_compatible_with = ["ovr_config//os:linux"],
     exported_deps = [
         "//folly/io/async:io_uring_event_base_local",
     ],
