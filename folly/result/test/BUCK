@@ -63,6 +63,16 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
+    name = "rich_msg_test",
+    srcs = ["rich_msg_test.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/result:rich_msg",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
     name = "value_only_result_test",
     srcs = ["value_only_result_test.cpp"],
     deps = [
