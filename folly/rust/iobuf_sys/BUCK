@@ -1,0 +1,60 @@
+load("@fbsource//tools/build_defs:default_platform_defs.bzl", "ANDROID", "APPLE", "CXX", "FBCODE", "WINDOWS")
+load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
+load("@fbsource//tools/build_defs:fb_xplat_suffixed_aliases.bzl", "create_forwarding_aliases")
+load("@fbsource//tools/build_defs:fbsource_utils.bzl", "is_fbcode_compatible", "is_fbcode_mode_mac", "is_fbcode_mode_win", "is_xplat")
+load("@fbsource//tools/build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
+
+oncall("rust_libraries")
+
+rust_bindgen_library(
+    name = "iobuf-sys",
+    allowlist_funcs = [
+        "facebook::rust::.*",
+    ],
+    allowlist_types = [
+        "folly::IOBuf",
+        "facebook::rust::.*",
+    ],
+    allowlist_vars = [
+        "facebook::rust::.*",
+    ],
+    blocklist_types = [
+        # These seems to come from type_traits / make_signed via fbvector
+        "folly::fbvector.*",
+        "__type",
+        "type_",
+    ],
+    cpp_deps = [":iobuf-ffi"],
+    cxx_namespaces = True,
+    generate = ("types", "vars", "functions"),
+    header = "iobuf.h",
+    opaque_types = [
+        "std::.*",
+        "folly::fbstring.*",
+    ],
+    platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
+    src_includes = ["src/lib.rs"],
+    visibility = [],
+)
+
+create_forwarding_aliases(
+    name = "iobuf-ffi",
+    actual_name = get_cell_name() + "//" + package_name() + ":_iobuf-ffi",
+    platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
+    visibility = ["PUBLIC"],
+)
+
+fb_xplat_cxx_library(
+    name = "_iobuf-ffi",
+    srcs = ["iobuf.cpp"],
+    exported_headers = ["iobuf.h"],
+    platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
+    preferred_linkage = "static",
+    visibility = [
+        "fbcode//folly/rust/iobuf/...",
+        "fbsource//xplat/folly/rust/iobuf/...",
+    ],
+    exported_deps = [
+        "//" + package_name().replace("/rust/iobuf_sys", "/io") + ":iobuf",
+    ],
+)

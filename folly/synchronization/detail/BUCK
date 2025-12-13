@@ -22,6 +22,7 @@ non_fbcode_target(
     ],
     compiler_flags = select({
         "DEFAULT": [],
+        "prelude//cpu:x86_64": ["-mrtm"],
         "ovr_config//os:android-x86_64": ["-mrtm"],
     }),
     raw_headers = [
@@ -199,7 +200,10 @@ fbcode_target(
         # dependents that don't also set it.
         (
             "Hardware.cpp",
-            ["-mrtm"],
+            select({
+                "DEFAULT": [],
+                "prelude//cpu:x86_64": ["-mrtm"],
+            }),
         ),
     ],
     headers = ["Hardware.h"],
