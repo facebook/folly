@@ -66,7 +66,7 @@
     "windows-x86_64": {
       "size": 30072072,
       "hash": "blake3",
-      "digest": "4e9f8ea0d64fd6233088a17940a0e0d1c92f4682eb56b5479d74b96ac7b0c8a2",
+      "digest": "ef4de8f61f0c7106ee9c7e38ee1ef94fe7aead51bb15df69e00286ce3c02de92",
       "format": "zst",
       "path": "buck2-x86_64-pc-windows-msvc.exe",
       "providers": [

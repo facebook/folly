@@ -5453,6 +5453,7 @@ fbcode_target(
     srcs = [
         "FollyMemcpy.cpp",
     ] + select({
+        "DEFAULT": [],
         "ovr_config//cpu:x86_64": [
             "memcpy.S",
         ],
