@@ -3,7 +3,7 @@ import shutil
 import subprocess
 
 from conan import ConanFile
-from conan.tools.system.package_manager import Apt
+from conan.tools.system.package_manager import Apt, Brew, Chocolatey
 
 BLAKE3_GIT_URL = "https://github.com/BLAKE3-team/BLAKE3.git"
 
@@ -17,11 +17,16 @@ class FollyConan(ConanFile):
         "fmt/[*]",
         "gflags/[*]",
         "glog/[*]",
-        "libdwarf/[*]",
-        "libiberty/[*]",
-        "libunwind/[*]",
-        "liburing/[*]",
+        "libdwarf/[<100]",
     ]
+
+    def configure(self):
+        if self.settings.os != "Windows":
+            self.requires("libiberty/[*]")
+        if self.settings.os in ("Linux", "FreeBSD"):
+            self.requires("libunwind/[*]")
+        if self.settings.os == "Linux":
+            self.requires("liburing/[*]")
 
     def _run(self, args, **kwargs):
         """Run a command, raising on failure."""
@@ -36,14 +41,26 @@ class FollyConan(ConanFile):
         if os.path.exists(blake3_dir):
             shutil.rmtree(blake3_dir)
 
+        # Platform-specific install prefix
+        if self.settings.os == "Windows":
+            install_prefix = "C:/Program Files/BLAKE3"
+        else:
+            install_prefix = "/usr/local"
+
         # Clone and build
         self._run(["git", "clone", "--depth", "1", BLAKE3_GIT_URL, blake3_dir])
-        self._run(["cmake", "-B", build_dir, "-DCMAKE_INSTALL_PREFIX=/usr/local"],
+        self._run(["cmake", "-B", build_dir, f"-DCMAKE_INSTALL_PREFIX={install_prefix}"],
                   cwd=os.path.join(blake3_dir, "c"))
         self._run(["cmake", "--build", build_dir])
-        self._run(["sudo", "cmake", "--install", build_dir])
+
+        # Install (sudo required on Unix, not on Windows)
+        if self.settings.os == "Windows":
+            self._run(["cmake", "--install", build_dir])
+        else:
+            self._run(["sudo", "cmake", "--install", build_dir])
 
     def system_requirements(self):
+        # Linux (Debian/Ubuntu)
         Apt(self).install([
             "libboost-all-dev",
             "libc++-dev",
@@ -58,4 +75,25 @@ class FollyConan(ConanFile):
             "libssl-dev",
             "libxxhash-dev",
         ], update=True, check=True)
+
+        # macOS
+        Brew(self).install([
+            "boost",
+            "double-conversion",
+            "googletest",
+            "jemalloc",
+            "libevent",
+            "libsodium",
+            "lz4",
+            "openssl",
+            "snappy",
+            "xxhash",
+        ], update=True, check=True)
+
+        # Windows
+        Chocolatey(self).install([
+            "boost-msvc-14.3",
+            "openssl",
+        ], update=True, check=True)
+
         self._install_blake3()
