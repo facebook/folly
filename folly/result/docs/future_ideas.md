@@ -99,15 +99,59 @@ These are sorted from "near future" to "far future".
       - Start by setting up a corresponding CI environment / test protocol.
       - You will almost certainly want to implement eptr-free error storage
         first (see previous bullet).
-      - `folly::throw_exception` abstracts this choice away, and there are many
-        other similar utilities.
+      - `folly::throw_exception` abstracts "throw if supported, terminate
+        otherwise".  There are many other similar utilities.  Lacking a
+        utility, code can always gate on `kHasExceptions` and `kHasRtti`.
 
   - Implement `future_small_value.md`, the small value optimization for
     `result<int>`, `result<T*>`, `result<T&>` et al, and for
     `result<unique_ptr<T>>`.
 
-  - Either implement `future_fast_rtti.md`, or build type_info caching (F14ValueSet
-    + some eviction strategy) for `rich_error_base`, likely in `lang/Exception.h`
-    via another member type plugin.
+  - Either implement `future_fast_rtti.md`, or build `std::type_info` caching
+    (`F14ValueSet` with some eviction strategy) for `rich_error_base`, likely in
+    `lang/Exception.h` via another member type plugin.
 
-  - Very far future: Which of my code needs to be gated on `kHasRtti`?
+## Auto-capture locations for immortals on C++23
+
+A "nice to have" would be a way to automatically capture `std::source_location`
+while supplying a `rich_msg` to an `immortal_rich_error<MyErr, ...>` template
+parameter list.
+
+You can see a not-very-satisfactory example of what *can* be done today in
+`immortal_rich_error_test.cpp`. Roughly:
+
+```cpp
+constexpr static auto myLoc = std::source_location::current();
+auto rep = immortal_rich_error<MyErr, &myLoc>.ptr();
+```
+
+Since `rich_msg` is non-structural, any auto-capture must be done via a
+structural helper type implicitly-convertible to `rich_msg` (as with `vtag<Str>`
+today). We do want to use `rich_msg` in the user types, since that offers a
+consistent & good experience for runtime errors.
+
+The trouble is that `source_location` is not structural, and so the helper type
+can only store its pointer. But, in C++20, there is no way to allocate static
+storage from a variable -- unlesss it's `constexpr`, which an auto-captured
+`source_location::current()` could not be. So, we have to wait for C++23 support
+of `static constexpr` locals. As of late 2025, this sort of thing only works on
+GCC. Clang wrongly garbage-collects the `loc` symbol, getting a linker error.
+And the MSVC on Godbolt doesn't seem to support the C++23 feature yet.
+
+```cpp
+template<const std::source_location* Loc>
+struct SourceTag { ... };
+#define HERE() \
+([] { \
+  static constexpr auto loc = std::source_location::current(); \
+  return SourceTag<&loc>{}; \
+}())
+```
+
+Technically, one could side-step these issues by creating a custom structural
+type that stores filename & function name as char arrays, and is constructed via
+a macro. Essentially, roll-your-own-`source_location` (be sure to indirect it
+through a pointer so that `rich_msg` stays 8 bytes!). However, using a
+non-standard type is a heavy interface cost, for a use-case that doesn't seem
+that critical. After all, one can usually easily search for an immortal string
+to find the source location.
