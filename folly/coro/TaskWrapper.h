@@ -131,7 +131,7 @@ class TaskPromiseWrapperBase {
   //    static casts are special in that they discard offsets.  So, the below
   //    equality would always be true during constant evaluation.
   template <typename Me>
-  static FOLLY_CONSTEVAL auto promise_at_offset0(Me me) {
+  static consteval auto promise_at_offset0(Me me) {
     return std::bool_constant<
         static_cast<const void*>(&me) ==
         static_cast<const void*>(&me.promise_)>{};
@@ -146,7 +146,7 @@ class TaskPromiseWrapperBase {
   // technically UB, but it's practically safe so long as the layouts of
   // `Promise` and `TaskPromiseWrapperBase` are identical, which is what we
   // verify here.
-  static FOLLY_CONSTEVAL bool is_promise_type_punning_safe() {
+  static consteval bool is_promise_type_punning_safe() {
     return require_sizeof<Promise> == require_sizeof<TaskPromiseWrapperBase> &&
         decltype(promise_at_offset0(
             FOLLY_DECLVAL(TaskPromiseWrapperBase)))::value;
