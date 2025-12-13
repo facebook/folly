@@ -37,7 +37,7 @@ class import_cache_nocapture {
  public:
   using sig = int();
 
-  FOLLY_CONSTEVAL import_cache_nocapture(sig& fun) noexcept : fun_{fun} {}
+  consteval import_cache_nocapture(sig& fun) noexcept : fun_{fun} {}
 
   bool operator()() const {
     // protecting this with the cxxabi mutex (the mutex that
@@ -68,7 +68,7 @@ class import_cache_nocapture {
  */
 class import_cache {
  public:
-  FOLLY_CONSTEVAL import_cache(
+  consteval import_cache(
       import_cache_nocapture::sig& fun, char const* const name) noexcept
       : impl_{fun}, name_{name ? name : "<unknown>"} {}
 
