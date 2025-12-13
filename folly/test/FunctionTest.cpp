@@ -1483,7 +1483,7 @@ template <typename T>
 union consteval_immortal {
   T value;
   template <typename... A>
-  explicit FOLLY_CONSTEVAL consteval_immortal(std::in_place_t, A&&... a)
+  explicit consteval consteval_immortal(std::in_place_t, A&&... a)
       : value{static_cast<A&&>(a)...} {}
   ~consteval_immortal() {}
 };
