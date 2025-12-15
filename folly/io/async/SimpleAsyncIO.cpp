@@ -85,7 +85,7 @@ SimpleAsyncIO::SimpleAsyncIO(Config cfg)
   if (cfg.evb_) {
     initHandler(cfg.evb_, NetworkSocket::fromFd(asyncIO_->pollFd()));
   } else {
-    evb_ = std::make_unique<ScopedEventBaseThread>();
+    evb_ = std::make_unique<ScopedEventBaseThread>("SimpleAsyncIO");
     initHandler(
         evb_->getEventBase(), NetworkSocket::fromFd(asyncIO_->pollFd()));
   }
@@ -163,13 +163,17 @@ void SimpleAsyncIO::submitOp(
         CHECK(op_ == opHolder.get());
         int rc = op_->result();
 
-        completionExecutor_->add(
-            [rc, completor{std::move(completor)}]() mutable { completor(rc); });
+        auto completionExecutor = completionExecutor_;
 
-        // NB: the moment we put the opHolder, the destructor might delete the
-        // current instance. So do not access any member variables after this
-        // point! Also, obviously, do not access op_.
+        // make sure return opHolder before call completor: otherwise the caller
+        // might start another IO assuming this one is completed. NB: the moment
+        // we put the opHolder, the destructor might delete the current
+        // instance. So do not access any member variables after this point!
+        // Also, obviously, do not access op_.
         putOp(std::move(opHolder));
+
+        completionExecutor->add(
+            [rc, completor{std::move(completor)}]() mutable { completor(rc); });
       });
   asyncIO_->submit(op);
 }
