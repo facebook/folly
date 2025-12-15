@@ -142,7 +142,7 @@ TEST(SmallLocks, SpinLockCorrectness) {
   EXPECT_EQ(sizeof(MicroSpinLock), 1);
 
   std::atomic<bool> go = true;
-  int nthrs = sysconf(_SC_NPROCESSORS_ONLN) * 2;
+  int nthrs = folly::available_concurrency() * 2;
   std::vector<std::thread> threads;
   for (int i = 0; i < nthrs; ++i) {
     threads.push_back(std::thread(splock_test, &go));

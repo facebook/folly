@@ -111,6 +111,7 @@ non_fbcode_target(
         "//xplat/folly:expected",
         "//xplat/folly:mpmc_pipeline",
         "//xplat/folly/functional:invoke",
+        "//xplat/folly/system:hardware_concurrency",
     ],
 )
 
@@ -219,6 +220,7 @@ fbcode_target(
         "//folly:mpmc_pipeline",
         "//folly/functional:invoke",
         "//folly/synchronization:event_count",
+        "//folly/system:hardware_concurrency",
     ],
 )
 

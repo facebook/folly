@@ -140,6 +140,7 @@ fbcode_target(
         "//folly/portability:atomic",
         "//folly/portability:gtest",
         "//folly/portability:sys_time",
+        "//folly/system:hardware_concurrency",
     ],
     external_deps = [
         "glog",
@@ -1649,6 +1650,7 @@ fbcode_target(
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/portability:unistd",
+        "//folly/system:hardware_concurrency",
     ],
 )
 

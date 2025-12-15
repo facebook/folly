@@ -29,6 +29,7 @@
 #include <folly/MPMCPipeline.h>
 #include <folly/functional/Invoke.h>
 #include <folly/synchronization/EventCount.h>
+#include <folly/system/HardwareConcurrency.h>
 
 namespace folly::gen::detail {
 
@@ -177,7 +178,7 @@ class PMap : public Operator<PMap<Predicate>> {
     Generator(Source source, const Predicate& pred, size_t nThreads)
         : source_(std::move(source)),
           pred_(pred),
-          nThreads_(nThreads ? nThreads : sysconf(_SC_NPROCESSORS_ONLN)) {}
+          nThreads_(nThreads ? nThreads : folly::available_concurrency()) {}
 
     template <class Body>
     void foreach(Body&& body) const {

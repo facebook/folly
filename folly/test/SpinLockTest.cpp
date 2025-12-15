@@ -24,6 +24,7 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/HardwareConcurrency.h>
 
 namespace {
 
@@ -99,7 +100,7 @@ void trylockTestThread(TryLockState<LOCK>* state, size_t count) {
 
 template <typename LOCK>
 void correctnessTest() {
-  size_t nthrs = folly::to_unsigned(sysconf(_SC_NPROCESSORS_ONLN) * 2);
+  size_t nthrs = folly::to_unsigned(folly::available_concurrency() * 2);
   std::vector<std::thread> threads;
   LockedVal<LOCK> v;
   for (size_t i = 0; i < nthrs; ++i) {
@@ -112,7 +113,7 @@ void correctnessTest() {
 
 template <typename LOCK>
 void trylockTest() {
-  int nthrs = sysconf(_SC_NPROCESSORS_ONLN) + 4;
+  int nthrs = folly::available_concurrency() + 4;
   std::vector<std::thread> threads;
   TryLockState<LOCK> state;
   size_t count = 100;

@@ -543,7 +543,7 @@ TEST(SimpleSubprocessTest, AffinitySuccess) {
 TEST(SimpleSubprocessTest, AffinityFailure) {
   cpu_set_t cpuSet0;
   CPU_ZERO(&cpuSet0);
-  CPU_SET(16 * sysconf(_SC_NPROCESSORS_ONLN), &cpuSet0);
+  CPU_SET(16 * sysconf(_SC_NPROCESSORS_CONF), &cpuSet0);
   auto options = Subprocess::Options().pipeStdin().pipeStdout();
   options.setCpuSet(cpuSet0);
   EXPECT_THROW(
@@ -554,7 +554,7 @@ TEST(SimpleSubprocessTest, AffinityFailure) {
 TEST(SimpleSubprocessTest, AffinityFailureIntoErrnum) {
   cpu_set_t cpuSet0;
   CPU_ZERO(&cpuSet0);
-  CPU_SET(16 * sysconf(_SC_NPROCESSORS_ONLN), &cpuSet0);
+  CPU_SET(16 * sysconf(_SC_NPROCESSORS_CONF), &cpuSet0);
   auto options = Subprocess::Options().pipeStdin().pipeStdout();
   int cpusetErrnum = 0;
   options.setCpuSet(cpuSet0, to_shared_ptr_non_owning(&cpusetErrnum));
