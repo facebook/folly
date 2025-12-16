@@ -1989,8 +1989,7 @@ namespace {
 struct A {
   int value;
 
-  bool operator==(A const& rhs) const { return value == rhs.value; }
-  bool operator!=(A const& rhs) const { return !(*this == rhs); }
+  friend bool operator==(A const&, A const&) = default;
 };
 
 struct AHasher {
