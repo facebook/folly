@@ -45,8 +45,8 @@ class alignas(hardware_destructive_interference_size) hazptr_rec {
 
   explicit hazptr_rec(hazptr_domain<Atom>* domain) noexcept : domain_{domain} {}
 
-  const void* hazptr() const noexcept {
-    return hazptr_.load(std::memory_order_acquire);
+  const void* hazptr(std::memory_order order) const noexcept {
+    return hazptr_.load(order);
   }
 
   FOLLY_ALWAYS_INLINE void reset_hazptr(const void* p = nullptr) noexcept {

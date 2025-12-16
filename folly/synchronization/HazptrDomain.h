@@ -23,6 +23,7 @@
 #include <folly/concurrency/container/atomic_grow_array.h>
 #include <folly/container/F14Set.h>
 #include <folly/synchronization/AsymmetricThreadFence.h>
+#include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/Hazptr-fwd.h>
 #include <folly/synchronization/HazptrObj.h>
 #include <folly/synchronization/HazptrRec.h>
@@ -462,10 +463,14 @@ class hazptr_domain {
     auto sz = std::max(0, hcount_.load(std::memory_order_relaxed));
     if (auto* hprecs = hprecs_.load(std::memory_order_acquire)) {
       for (auto hprec : hprecs->as_ptr_span(size_t(sz))) {
-        if (auto ptr = hprec->hazptr()) {
+        constexpr auto order = kIsSanitizeThread
+            ? std::memory_order_acquire // tsan does not instrument fences
+            : std::memory_order_relaxed; // fence below provides acquire order
+        if (auto ptr = hprec->hazptr(order)) {
           hs.insert(ptr);
         }
       }
+      atomic_thread_fence_traits<Atom>::fence(std::memory_order_acquire);
     }
     return hs;
   }
