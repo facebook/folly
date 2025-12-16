@@ -135,9 +135,6 @@ HugePageSizeVec readHugePageSizes() {
     bool operator()(const HugePageSize& a, size_t b) const {
       return a.size < b;
     }
-    bool operator()(size_t a, const HugePageSize& b) const {
-      return a < b.size;
-    }
   };
 
   // Read and parse /proc/mounts
