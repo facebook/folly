@@ -194,6 +194,24 @@ struct TaskWrapperTest : testing::Test {
     EXPECT_TRUE(ran);
   }
 
+  now_task<> checkNestedCancellation() {
+    bool ran = false;
+    EXPECT_THROW(
+        co_await timeout(
+            [&]() -> TaskT<void> {
+              // Regression test: `CommutativeWrapperAwaitable` used to fail to
+              // propagate cancellation to immovable tasks.
+              co_await co_awaitTry([&]() -> TaskT<void> {
+                ran = true;
+                folly::fibers::Semaphore stuck{0}; // a cancellable baton
+                co_await stuck.co_wait();
+              }());
+            }(),
+            200ms),
+        folly::FutureTimeout);
+    EXPECT_TRUE(ran);
+  }
+
   Task<void> checkWithExecutor() {
     auto ex = co_await co_current_executor;
     static_assert(
@@ -240,6 +258,13 @@ CO_TEST_F(NowTaskWrapperTest, cancellation) {
 }
 CO_TEST_F(MovableTaskWrapperTest, cancellation) {
   co_await checkCancellation();
+}
+
+CO_TEST_F(NowTaskWrapperTest, nestedCancellation) {
+  co_await checkNestedCancellation();
+}
+CO_TEST_F(MovableTaskWrapperTest, nestedCancellation) {
+  co_await checkNestedCancellation();
 }
 
 CO_TEST_F(NowTaskWrapperTest, exceptions) {

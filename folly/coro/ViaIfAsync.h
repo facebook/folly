@@ -704,6 +704,7 @@ class CommutativeWrapperAwaitable {
 
   template <
       typename T2 = T,
+      std::enable_if_t<!folly::ext::must_use_immediately_v<T2>, int> = 0,
       typename Result = decltype(folly::coro::co_withCancellation(
           FOLLY_DECLVAL(const folly::CancellationToken&), FOLLY_DECLVAL(T2&&)))>
   friend Derived<Result> co_withCancellation(
@@ -714,7 +715,22 @@ class CommutativeWrapperAwaitable {
               cancelToken, static_cast<T&&>(awaitable.inner_));
         }};
   }
-  // This overload exists to avoid unnecessarily copying `cancelToken`, which
+  template <
+      typename T2 = T,
+      std::enable_if_t<folly::ext::must_use_immediately_v<T2>, int> = 0,
+      typename Result = decltype(folly::coro::co_withCancellation(
+          FOLLY_DECLVAL(const folly::CancellationToken&), FOLLY_DECLVAL(T2)))>
+  friend Derived<Result> co_withCancellation(
+      const folly::CancellationToken& cancelToken, Derived<T>&& awaitable) {
+    return Derived<Result>{
+        std::in_place, [&]() -> decltype(auto) {
+          return folly::coro::co_withCancellation(
+              cancelToken,
+              folly::ext::must_use_immediately_unsafe_mover(
+                  std::move(awaitable.inner_))());
+        }};
+  }
+  // These overloads exist to avoid unnecessarily copying `cancelToken`, which
   // has atomic refcount costs.
   //  - Taking it by-value would force unnecessary token copies for underlying
   //    awaitables that ignore the token.
@@ -723,6 +739,7 @@ class CommutativeWrapperAwaitable {
   //    `WithCancellation.h`.
   template <
       typename T2 = T,
+      std::enable_if_t<!folly::ext::must_use_immediately_v<T2>, int> = 0,
       typename Result = decltype(folly::coro::co_withCancellation(
           FOLLY_DECLVAL(folly::CancellationToken&&), FOLLY_DECLVAL(T2&&)))>
   friend Derived<Result> co_withCancellation(
@@ -731,6 +748,21 @@ class CommutativeWrapperAwaitable {
         std::in_place, [&]() -> decltype(auto) {
           return folly::coro::co_withCancellation(
               std::move(cancelToken), static_cast<T&&>(awaitable.inner_));
+        }};
+  }
+  template <
+      typename T2 = T,
+      std::enable_if_t<folly::ext::must_use_immediately_v<T2>, int> = 0,
+      typename Result = decltype(folly::coro::co_withCancellation(
+          FOLLY_DECLVAL(folly::CancellationToken&&), FOLLY_DECLVAL(T2)))>
+  friend Derived<Result> co_withCancellation(
+      folly::CancellationToken&& cancelToken, Derived<T>&& awaitable) {
+    return Derived<Result>{
+        std::in_place, [&]() -> decltype(auto) {
+          return folly::coro::co_withCancellation(
+              std::move(cancelToken),
+              folly::ext::must_use_immediately_unsafe_mover(
+                  std::move(awaitable.inner_))());
         }};
   }
 
