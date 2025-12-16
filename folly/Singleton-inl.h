@@ -263,11 +263,11 @@ void SingletonHolder<T>::createInstance() {
   }
 
   std::lock_guard entry_lock(mutex_);
-  if (state_.load(std::memory_order_acquire) == SingletonHolderState::Living) {
+  auto state = state_.load(std::memory_order_acquire);
+  if (state == SingletonHolderState::Living) {
     return;
   }
-  if (state_.load(std::memory_order_relaxed) ==
-      SingletonHolderState::LivingInChildAfterFork) {
+  if (state == SingletonHolderState::LivingInChildAfterFork) {
     if (vault_.failOnUseAfterFork_) {
       LOG(DFATAL) << "Attempting to use singleton " << type().name()
                   << " in child process after fork";
@@ -275,21 +275,15 @@ void SingletonHolder<T>::createInstance() {
       LOG(ERROR) << "Attempting to use singleton " << type().name()
                  << " in child process after fork";
     }
-    auto expected = SingletonHolderState::LivingInChildAfterFork;
     state_.compare_exchange_strong(
-        expected,
+        state,
         SingletonHolderState::Living,
         std::memory_order_relaxed,
         std::memory_order_relaxed);
     return;
   }
-  if (state_.load(std::memory_order_acquire) ==
-      SingletonHolderState::NotRegistered) {
+  if (state == SingletonHolderState::NotRegistered) {
     detail::singletonWarnCreateUnregisteredAndAbort(type());
-  }
-
-  if (state_.load(std::memory_order_acquire) == SingletonHolderState::Living) {
-    return;
   }
 
   SCOPE_EXIT {
