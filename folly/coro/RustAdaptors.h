@@ -71,6 +71,11 @@ class PollFuture final : private Executor {
     }
   }
 
+  PollFuture(const PollFuture&) = delete;
+  PollFuture& operator=(const PollFuture&) = delete;
+  PollFuture(PollFuture&&) = delete;
+  PollFuture& operator=(PollFuture&&) = delete;
+
   Poll poll(Waker waker) {
     while (true) {
       std::queue<Func> funcs;
