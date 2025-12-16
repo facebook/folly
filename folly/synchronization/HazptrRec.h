@@ -74,7 +74,12 @@ class alignas(hardware_destructive_interference_size) hazptr_rec {
     //  removed from the list of retired pointers. From this synchronization,
     //  all modifications to that object during the critical section in the
     //  reader thread happen-before reclamation in the reclaimer thread.
-    hazptr_.store(p, std::memory_order_release);
+    if constexpr (detail::hazptr_prefer_fence_light) {
+      asymmetric_thread_fence_traits<Atom>::light(std::memory_order_release);
+      hazptr_.store(p, std::memory_order_relaxed);
+    } else {
+      hazptr_.store(p, std::memory_order_release);
+    }
   }
 
   hazptr_rec<Atom>* next_avail() { return nextAvail_; }

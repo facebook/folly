@@ -487,7 +487,11 @@ class hazptr_domain {
           hs.insert(ptr);
         }
       }
-      atomic_thread_fence_traits<Atom>::fence(std::memory_order_acquire);
+      if constexpr (detail::hazptr_prefer_fence_light) {
+        asymmetric_thread_fence_traits<Atom>::heavy(std::memory_order_acquire);
+      } else {
+        atomic_thread_fence_traits<Atom>::fence(std::memory_order_acquire);
+      }
     }
     return hs;
   }

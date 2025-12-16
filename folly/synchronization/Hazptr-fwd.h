@@ -19,6 +19,7 @@
 #include <atomic>
 #include <memory>
 
+#include <folly/Portability.h>
 #include <folly/portability/Config.h>
 
 ///
@@ -34,6 +35,19 @@
 #endif
 
 namespace folly {
+
+namespace detail {
+
+/// hazptr_prefer_fence_light
+///
+/// For select cases of load-acquire and store-release internal to the hazptr
+/// implementation, but occurring within hot paths, whether to prefer relaxed
+/// load and store operations combined with lightweight fences - at the cost of
+/// heavyweight fences in the reclamation path.
+constexpr inline bool hazptr_prefer_fence_light =
+    kIsArchAArch64 && kIsLinux && !kIsSanitizeThread;
+
+} // namespace detail
 
 ///
 /// Hazard pointer record.
