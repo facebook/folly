@@ -435,10 +435,10 @@ ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags) {
 #endif
 }
 
-[[maybe_unused]] static ssize_t fakeSendmsg(
+#ifdef _WIN32
+static ssize_t fakeSendmsg(
     [[maybe_unused]] NetworkSocket socket,
     [[maybe_unused]] const msghdr* message) {
-#ifdef _WIN32
   SOCKET h = socket.data;
   ssize_t bytesSent = 0;
   for (size_t i = 0; i < message->msg_iovlen; i++) {
@@ -468,10 +468,8 @@ ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags) {
     bytesSent += r;
   }
   return bytesSent;
-#else
-  throw std::logic_error("Not implemented!");
-#endif
 }
+#endif
 
 #ifdef _WIN32
 [[maybe_unused]] ssize_t wsaSendMsgDirect(
@@ -488,11 +486,11 @@ ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags) {
 }
 #endif
 
-[[maybe_unused]] static ssize_t wsaSendMsg(
+#ifdef _WIN32
+static ssize_t wsaSendMsg(
     [[maybe_unused]] NetworkSocket socket,
     [[maybe_unused]] const msghdr* message,
     [[maybe_unused]] int flags) {
-#ifdef _WIN32
   // Translate msghdr to WSAMSG.
   WSAMSG msg;
   msg.name = (LPSOCKADDR)message->msg_name;
@@ -510,10 +508,8 @@ ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags) {
     msg.lpBuffers[i].len = (ULONG)message->msg_iov[i].iov_len;
   }
   return wsaSendMsgDirect(socket, &msg);
-#else
-  throw std::logic_error("Not implemented!");
-#endif
 }
+#endif
 
 ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags) {
 #ifdef _WIN32
