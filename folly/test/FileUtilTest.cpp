@@ -56,8 +56,6 @@ class Reader {
   // pwritev-like
   ssize_t operator()(int fd, const iovec* iov, int count, off_t offset);
 
-  const std::deque<ssize_t> spec() const { return spec_; }
-
  private:
   ssize_t nextSize();
 
