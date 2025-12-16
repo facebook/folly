@@ -479,10 +479,36 @@ class hazptr_domain {
     Set hs;
     auto sz = std::max(0, hcount_.load(std::memory_order_relaxed));
     if (auto* hprecs = hprecs_.load(std::memory_order_acquire)) {
-      for (auto hprec : hprecs->as_ptr_span(size_t(sz))) {
-        constexpr auto order = kIsSanitizeThread
-            ? std::memory_order_acquire // tsan does not instrument fences
-            : std::memory_order_relaxed; // fence below provides acquire order
+      // chunk the loop to avoid a single loop-carried dependency on the loop
+      // counter; helpful when the hprecs array is large but sparse
+      constexpr size_t chunk_width = kNumShards;
+      constexpr auto order = kIsSanitizeThread
+          ? std::memory_order_acquire // tsan does not instrument fences
+          : std::memory_order_relaxed; // fence below provides acquire order
+      auto ptrspan = hprecs->as_ptr_span(size_t(sz));
+      for (size_t i = 0; i + chunk_width <= ptrspan.size(); i += chunk_width) {
+        // load a batch of hazard pointers up-front so that the branches below
+        // can run in parallel with each other on x86
+        const void* ptrs[chunk_width];
+        for (size_t j = 0; j < chunk_width; ++j) {
+          auto hprec = ptrspan[i + j];
+          ptrs[j] = hprec->hazptr(order);
+        }
+        // when the hprecs array is sparse, the branches in this loop can run in
+        // parallel with each other on x86 since they are not blocked on loads
+        // from memory or cache; the loads are served either from registers or
+        // from the store buffer and do not block each other
+        for (auto ptr : ptrs) {
+          if (ptr) {
+            hs.insert(ptr);
+          }
+        }
+      }
+      // final undersized chunk; keep it here, rather than blending into the
+      // chunked loop above, to minimize the number of instructions executed in
+      // the main loop body
+      ptrspan = ptrspan.subspan(ptrspan.size() & ~(chunk_width - 1));
+      for (auto hprec : ptrspan) {
         if (auto ptr = hprec->hazptr(order)) {
           hs.insert(ptr);
         }
