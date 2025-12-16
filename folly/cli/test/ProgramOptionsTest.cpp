@@ -55,10 +55,10 @@ std::string callHelper(
   std::vector<std::string> env;
   switch (style) {
     case ProgramOptionsStyle::GNU:
-      env.push_back("PROGRAM_OPTIONS_TEST_STYLE=GNU");
+      env.emplace_back("PROGRAM_OPTIONS_TEST_STYLE=GNU");
       break;
     case ProgramOptionsStyle::GFLAGS:
-      env.push_back("PROGRAM_OPTIONS_TEST_STYLE=GFLAGS");
+      env.emplace_back("PROGRAM_OPTIONS_TEST_STYLE=GFLAGS");
       break;
   }
 
