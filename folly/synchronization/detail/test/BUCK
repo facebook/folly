@@ -14,18 +14,3 @@ fbcode_target(
         "//folly/synchronization/detail:inline_function_ref",
     ],
 )
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "hardware_test",
-    srcs = [
-        "HardwareTest.cpp",
-    ],
-    deps = [
-        "//folly/portability:gtest",
-        "//folly/synchronization/detail:hardware",
-    ],
-    external_deps = [
-        "glog",
-    ],
-)

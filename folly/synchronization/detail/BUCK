@@ -16,28 +16,6 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_library,
-    name = "hardware",
-    srcs = [
-        "Hardware.cpp",
-    ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//os:android-x86_64": ["-mrtm"],
-    }),
-    raw_headers = [
-        "Hardware.h",
-    ],
-    deps = [
-        "//third-party/boost:boost",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:portability",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/lang:exception",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
     name = "hazptr_utils",
     raw_headers = [
         "HazptrUtils.h",
@@ -186,30 +164,5 @@ fbcode_target(
         "//folly:traits",
         "//folly:utility",
         "//folly/functional:invoke",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "hardware",
-    srcs = [
-        # Use source-specific flags so that these flags aren't applied to this
-        # rules headers when they're compiled as a module, as they don't contain
-        # any code that requires RTM and they'd conflict when imported by
-        # dependents that don't also set it.
-        (
-            "Hardware.cpp",
-            ["-mrtm"],
-        ),
-    ],
-    headers = ["Hardware.h"],
-    deps = [
-        "//folly/lang:exception",
-    ],
-    exported_deps = [
-        "//folly:portability",
-    ],
-    external_deps = [
-        ("boost", None, "boost_preprocessor"),
     ],
 )

@@ -3937,15 +3937,6 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "synchronization_detail_hardware",
-    exported_deps = [
-        "//xplat/folly/synchronization/detail:hardware",
-    ],
-)
-
-non_fbcode_target(
     _kind = folly_xplat_library,
     name = "replaceable",
     raw_headers = [

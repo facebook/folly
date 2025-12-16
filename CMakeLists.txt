@@ -1087,7 +1087,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST synchronization_small_locks_test SOURCES SmallLocksTest.cpp
 
     DIRECTORY synchronization/detail/test/
-      TEST synchronization_detail_hardware_test SOURCES HardwareTest.cpp
       TEST synchronization_detail_inline_function_ref_test
         SOURCES InlineFunctionRefTest.cpp
 
