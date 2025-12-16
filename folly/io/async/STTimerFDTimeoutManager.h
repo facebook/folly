@@ -24,6 +24,10 @@ class STTimerFDTimeoutManager : public TimeoutManager, TimerFD {
  public:
   explicit STTimerFDTimeoutManager(folly::EventBase* eventBase);
   ~STTimerFDTimeoutManager() override;
+  STTimerFDTimeoutManager(const STTimerFDTimeoutManager&) = delete;
+  STTimerFDTimeoutManager& operator=(const STTimerFDTimeoutManager&) = delete;
+  STTimerFDTimeoutManager(STTimerFDTimeoutManager&&) = delete;
+  STTimerFDTimeoutManager& operator=(STTimerFDTimeoutManager&&) = delete;
 
   /**
    * Attaches/detaches TimeoutManager to AsyncTimeout
