@@ -204,7 +204,7 @@ class AsyncSSLSocket : public AsyncSocket {
     // handshakeVer() if set. Then, verifyLeaf() is invoked to verify the
     // peer's end-entity leaf certificate, but only if OpenSSL's chain
     // validation, handshakeVer(), and verifyContext() all succeeded.
-    std::shared_ptr<CertificateIdentityVerifier> verifier;
+    std::shared_ptr<const CertificateIdentityVerifier> verifier;
     bool deferSecurityNegotiation{};
     bool isServer{};
     std::string serverName;
@@ -994,7 +994,8 @@ class AsyncSSLSocket : public AsyncSocket {
   std::shared_ptr<const folly::SSLContext> ctx_;
   // Callback for SSL_accept() or SSL_connect()
   HandshakeCB* handshakeCallback_{nullptr};
-  std::shared_ptr<CertificateIdentityVerifier> certificateIdentityVerifier_;
+  std::shared_ptr<const CertificateIdentityVerifier>
+      certificateIdentityVerifier_;
   ssl::SSLUniquePtr ssl_;
   Timeout handshakeTimeout_;
   Timeout connectionTimeout_;
