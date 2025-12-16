@@ -138,7 +138,7 @@ struct KeyThatThrowsOnCopies {
   int32_t key{};
   bool throwOnCopy{};
 
-  KeyThatThrowsOnCopies() {}
+  [[maybe_unused]] KeyThatThrowsOnCopies() {}
 
   /* implicit */ KeyThatThrowsOnCopies(int32_t key) noexcept
       : key(key), throwOnCopy(false) {}
