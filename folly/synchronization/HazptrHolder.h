@@ -83,7 +83,7 @@ class hazptr_holder {
       hprec_->reset_hazptr();
       auto domain = hprec_->domain();
 #if FOLLY_HAZPTR_THR_LOCAL
-      if (FOLLY_LIKELY(domain == &default_hazptr_domain<Atom>())) {
+      if (FOLLY_LIKELY(domain->is_default_domain())) {
         if (FOLLY_LIKELY(hazptr_tc_tls<Atom>().try_put(hprec_))) {
           return;
         }
@@ -185,7 +185,7 @@ template <template <typename> class Atom>
 FOLLY_ALWAYS_INLINE hazptr_holder<Atom> make_hazard_pointer(
     hazptr_domain<Atom>& domain) {
 #if FOLLY_HAZPTR_THR_LOCAL
-  if (FOLLY_LIKELY(&domain == &default_hazptr_domain<Atom>())) {
+  if (FOLLY_LIKELY(domain.is_default_domain())) {
     auto hprec = hazptr_tc_tls<Atom>().try_get();
     if (FOLLY_LIKELY(hprec != nullptr)) {
       return hazptr_holder<Atom>(hprec);

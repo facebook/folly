@@ -22,6 +22,7 @@
 #include <folly/Portability.h>
 #include <folly/concurrency/container/atomic_grow_array.h>
 #include <folly/container/F14Set.h>
+#include <folly/detail/StaticSingletonManager.h>
 #include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/Hazptr-fwd.h>
@@ -44,6 +45,9 @@ constexpr int hazptr_domain_rcount_threshold() {
 }
 
 void hazptr_inline_executor_add(folly::Function<void()> func);
+
+template <template <typename> class Atom>
+struct default_hazptr_domain_impl;
 
 } // namespace detail
 
@@ -143,6 +147,11 @@ class hazptr_domain {
   Atom<ExecutorFn> exec_fn_{&no_executor};
   Atom<int> exec_backlog_{0};
 
+  /** is_default_domain_ is loaded in every call to make_hazard_pointer and
+   *  ~hazptr_holder. This is the only piece of domain state that is loaded for
+   *  reader chrome or critical sections when using the default domain. */
+  alignas(hardware_destructive_interference_size) bool is_default_domain_{};
+
  public:
   /** Constructor */
   hazptr_domain() = default;
@@ -163,6 +172,8 @@ class hazptr_domain {
   hazptr_domain(hazptr_domain&&) = delete;
   hazptr_domain& operator=(const hazptr_domain&) = delete;
   hazptr_domain& operator=(hazptr_domain&&) = delete;
+
+  bool is_default_domain() const noexcept { return is_default_domain_; }
 
   void set_executor(ExecutorFn exfn) {
     exec_fn_.store(exfn, std::memory_order_release);
@@ -232,6 +243,7 @@ class hazptr_domain {
   }
 
  private:
+  friend struct detail::default_hazptr_domain_impl<Atom>;
   friend void hazptr_domain_push_retired<Atom>(
       hazptr_obj_list<Atom>&, hazptr_domain<Atom>&) noexcept;
   friend hazptr_holder<Atom> make_hazard_pointer<Atom>(hazptr_domain<Atom>&);
@@ -244,7 +256,12 @@ class hazptr_domain {
   friend class hazptr_tc<Atom>;
 #endif
 
+  struct default_domain_tag {};
+
   static bool no_executor(Func&&) { return false; }
+
+  explicit hazptr_domain(default_domain_tag) noexcept
+      : is_default_domain_{true} {}
 
   int load_count() { return count_.load(std::memory_order_acquire); }
 
@@ -602,7 +619,7 @@ class hazptr_domain {
   void free_hazptr_recs() {
     /* Leak the hazard pointers for the default domain to avoid
        destruction order issues with thread caches. */
-    if (this == &default_hazptr_domain<Atom>()) {
+    if (is_default_domain()) {
       return;
     }
     delete hprecs_.load(std::memory_order_acquire);
@@ -740,7 +757,7 @@ class hazptr_domain {
     };
 
     bool canUseExecutor = std::is_same<Atom<int>, std::atomic<int>>{} &&
-        this == &default_hazptr_domain<Atom>() && hazptr_use_executor();
+        is_default_domain() && hazptr_use_executor();
     if (canUseExecutor) {
       auto fn = exec_fn_.load(std::memory_order_acquire);
       if (fn(std::move(recl_fn))) {
@@ -781,6 +798,17 @@ class hazptr_domain {
   }
 }; // hazptr_domain
 
+namespace detail {
+
+template <template <typename> class Atom>
+struct default_hazptr_domain_impl : hazptr_domain<Atom> {
+  using base = hazptr_domain<Atom>;
+  using tag = typename base::default_domain_tag;
+  default_hazptr_domain_impl() noexcept : base{tag{}} {}
+};
+
+} // namespace detail
+
 /**
  *  Free functions related to hazptr domains
  */
@@ -788,23 +816,9 @@ class hazptr_domain {
 /** default_hazptr_domain: Returns reference to the default domain */
 
 template <template <typename> class Atom>
-struct hazptr_default_domain_helper {
-  static FOLLY_ALWAYS_INLINE hazptr_domain<Atom>& get() {
-    static hazptr_domain<Atom> domain;
-    return domain;
-  }
-};
-
-template <>
-struct hazptr_default_domain_helper<std::atomic> {
-  static FOLLY_ALWAYS_INLINE hazptr_domain<std::atomic>& get() {
-    return default_domain;
-  }
-};
-
-template <template <typename> class Atom>
 FOLLY_ALWAYS_INLINE hazptr_domain<Atom>& default_hazptr_domain() {
-  return hazptr_default_domain_helper<Atom>::get();
+  using impl = detail::default_hazptr_domain_impl<Atom>;
+  return detail::createGlobal<impl, void>();
 }
 
 template <template <typename> class Atom>

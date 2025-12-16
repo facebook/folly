@@ -166,7 +166,7 @@ class hazptr_obj {
   void push_obj(hazptr_domain<Atom>& domain) {
     auto coh = cohort();
     if (coh) {
-      DCHECK_EQ(&domain, &default_hazptr_domain<Atom>());
+      DCHECK(domain.is_default_domain());
       coh->push_obj(this);
     } else {
       push_to_retired(domain);

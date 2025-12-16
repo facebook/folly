@@ -1092,7 +1092,7 @@ class HazptrPreInitTest : public testing::Test {
  private:
   // pre-init to avoid deadlock when using DeterministicAtomic
   hazptr_domain<DeterministicAtomic>& defaultDomainHelper_{
-      folly::hazptr_default_domain_helper<DeterministicAtomic>::get()};
+      folly::default_hazptr_domain<DeterministicAtomic>()};
 };
 
 // Tests
