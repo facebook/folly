@@ -46,8 +46,6 @@ class Concatenator {
   void cat(const std::string& name);
   void cat(FILE* file);
 
-  bool printLineNumbers() const { return printLineNumbers_; }
-
  private:
   bool printLineNumbers_;
   size_t lineNumber_ = 0;
