@@ -40,7 +40,8 @@ CO_TEST(AsyncClosure, invalid_co_cleanup) {
   co_await checkCleanup(tag<ValidCleanup>);
 
   struct InvalidCleanupNonVoid : NonCopyableNonMovable {
-    as_noexcept<Task<int>, OnCancel{0}> co_cleanup(async_closure_private_t) {
+    [[maybe_unused]] as_noexcept<Task<int>, OnCancel{0}> co_cleanup(
+        async_closure_private_t) {
       co_return 1;
     }
   };
@@ -49,14 +50,18 @@ CO_TEST(AsyncClosure, invalid_co_cleanup) {
 #endif
 
   struct InvalidCleanupLacksNoexcept : NonCopyableNonMovable {
-    Task<void> co_cleanup(async_closure_private_t) { co_return; }
+    [[maybe_unused]] Task<void> co_cleanup(async_closure_private_t) {
+      co_return;
+    }
   };
 #if 0 // Manual test -- this uses `static_assert` for better UX.
   co_await checkCleanup(tag<InvalidCleanupLacksNoexcept>);
 #endif
 
   struct InvalidCleanupIsMovable {
-    as_noexcept<Task<>> co_cleanup(async_closure_private_t) { co_return; }
+    [[maybe_unused]] as_noexcept<Task<>> co_cleanup(async_closure_private_t) {
+      co_return;
+    }
   };
 #if 0 // Manual test -- this failure escapes `is_detected_v`.
   co_await checkCleanup(tag<InvalidCleanupIsMovable>);
