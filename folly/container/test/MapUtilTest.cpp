@@ -339,8 +339,8 @@ namespace {
 
 class TestConstruction {
  public:
-  TestConstruction() { EXPECT_TRUE(false); }
-  TestConstruction(TestConstruction&&) { EXPECT_TRUE(false); }
+  [[maybe_unused]] TestConstruction() { EXPECT_TRUE(false); }
+  [[maybe_unused]] TestConstruction(TestConstruction&&) { EXPECT_TRUE(false); }
   TestConstruction(const TestConstruction&) { EXPECT_TRUE(false); }
 
   explicit TestConstruction(std::string&& string)
