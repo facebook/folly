@@ -59,3 +59,14 @@ TEST_F(X86Test, x86_cpuid_get_vendor) {
     EXPECT_EQ(folly::x86_cpuid_vendor::unknown, vend);
   }
 }
+
+TEST_F(X86Test, x86_cpuid_get_llc_cache_info) {
+  auto info = folly::x86_cpuid_get_llc_cache_info();
+  if (folly::kIsArchX86 || folly::kIsArchAmd64) {
+    EXPECT_FALSE(info.cache_type_null());
+    EXPECT_LT(0, info.cache_size());
+  } else {
+    EXPECT_TRUE(info.cache_type_null());
+    EXPECT_EQ(0, info.cache_size());
+  }
+}

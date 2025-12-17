@@ -131,4 +131,64 @@ FOLLY_ALWAYS_INLINE x86_cpuid_vendor x86_cpuid_get_vendor() {
   return x86_cpuid_vendor::unknown;
 }
 
+struct x86_cpuid_cache_info {
+  static inline constexpr unsigned int id_count_max = 32;
+
+  unsigned int eax = 0;
+  unsigned int ebx = 0;
+  unsigned int ecx = 0;
+
+  size_t cache_type() const noexcept { return eax & 0x1F; }
+  bool cache_type_data() const noexcept { return cache_type() & 1; }
+  bool cache_type_inst() const noexcept { return cache_type() & 2; }
+  bool cache_type_null() const noexcept { return !cache_type(); }
+
+  size_t level() const noexcept { return (eax >> 5) & 0x7; }
+  size_t line_size() const noexcept { return (ebx & 0xFFF) + 1; }
+  size_t partitions() const noexcept { return ((ebx >> 12) & 0x3FF) + 1; }
+  size_t ways() const noexcept { return ((ebx >> 22) & 0x3FF) + 1; }
+  size_t sets() const noexcept { return ecx + 1; }
+  size_t cache_size() const noexcept {
+    return !cache_type_null() * ways() * partitions() * line_size() * sets();
+  }
+};
+
+FOLLY_ALWAYS_INLINE x86_cpuid_cache_info
+x86_cpuid_get_cache_info(x86_cpuid_vendor vend, unsigned int id) {
+  unsigned int info[4];
+  switch (vend) {
+    case x86_cpuid_vendor::unknown:
+      return x86_cpuid_cache_info{};
+    case x86_cpuid_vendor::intel:
+      x86_cpuid(info, /* leaf = */ 4, /* tag = */ id + 1);
+      return x86_cpuid_cache_info{info[0], info[1], info[2]};
+    case x86_cpuid_vendor::amd:
+      x86_cpuid(info, /* leaf = */ 0x8000001D, /* tag = */ id + 1);
+      return x86_cpuid_cache_info{info[0], info[1], info[2]};
+    default:
+      assert(0 && "unsupported x86 vendor");
+      return x86_cpuid_cache_info{};
+  }
+}
+
+FOLLY_ALWAYS_INLINE x86_cpuid_cache_info
+x86_cpuid_get_llc_cache_info(x86_cpuid_vendor vend) {
+  x86_cpuid_cache_info cache_info{};
+  for (unsigned int i = 0; i < x86_cpuid_cache_info::id_count_max; ++i) {
+    auto const info = x86_cpuid_get_cache_info(vend, i);
+    if (info.cache_type_null()) {
+      break;
+    }
+    if (info.cache_type_data()) {
+      cache_info = info;
+    }
+  }
+  return cache_info;
+}
+
+FOLLY_ALWAYS_INLINE x86_cpuid_cache_info x86_cpuid_get_llc_cache_info() {
+  auto const vend = x86_cpuid_get_vendor();
+  return x86_cpuid_get_llc_cache_info(vend);
+}
+
 } // namespace folly
