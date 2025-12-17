@@ -177,7 +177,9 @@ struct hash<TestEnum> {
 
 template <>
 struct hash<TestStruct> {
-  std::size_t operator()(TestStruct const&) const noexcept { return 0; }
+  [[maybe_unused]] std::size_t operator()(TestStruct const&) const noexcept {
+    return 0;
+  }
 };
 } // namespace std
 
