@@ -103,4 +103,32 @@ FOLLY_ALWAYS_INLINE unsigned int x86_cpuid_max( //
   return info[0]; // eax
 }
 
+enum class x86_cpuid_vendor { unknown, intel, amd };
+
+union x86_cpuid_vendor_name {
+  char const str[13];
+  unsigned int words[3];
+};
+inline constexpr x86_cpuid_vendor_name x86_cpuid_vendor_names[3] = {
+    {},
+    {"GenuineIntel"},
+    {"AuthenticAMD"},
+};
+
+FOLLY_ALWAYS_INLINE x86_cpuid_vendor x86_cpuid_get_vendor() {
+  if constexpr (kIsArchX86 || kIsArchAmd64) {
+    unsigned int info[4];
+    x86_cpuid(info, 0);
+    constexpr auto num_names =
+        sizeof(x86_cpuid_vendor_names) / sizeof(x86_cpuid_vendor_name);
+    for (unsigned int i = 1; i < num_names; ++i) {
+      auto& name = x86_cpuid_vendor_names[i].words;
+      if (info[1] == name[0] && info[2] == name[2] && info[3] == name[1]) {
+        return static_cast<x86_cpuid_vendor>(i);
+      }
+    }
+  }
+  return x86_cpuid_vendor::unknown;
+}
+
 } // namespace folly

@@ -16,6 +16,9 @@
 
 #include <folly/system/arch/x86.h>
 
+#include <array>
+
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 struct X86Test : testing::Test {};
@@ -41,5 +44,18 @@ TEST_F(X86Test, x86_cpuid_max) {
   } else {
     EXPECT_EQ(0, res);
     EXPECT_EQ(0, sig);
+  }
+}
+
+TEST_F(X86Test, x86_cpuid_get_vendor) {
+  auto vend = folly::x86_cpuid_get_vendor();
+  if (folly::kIsArchX86 || folly::kIsArchAmd64) {
+    constexpr auto avail = std::array{
+        folly::x86_cpuid_vendor::intel,
+        folly::x86_cpuid_vendor::amd,
+    };
+    EXPECT_THAT(avail, testing::Contains(vend));
+  } else {
+    EXPECT_EQ(folly::x86_cpuid_vendor::unknown, vend);
   }
 }

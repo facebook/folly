@@ -18,6 +18,7 @@ non_fbcode_target(
         ci.windows(ci.aarch64()),
     ),
     deps = [
+        "//xplat/folly/portability:gmock",
         "//xplat/folly/portability:gtest",
         "//xplat/folly/system/arch:x86",
     ],
@@ -36,6 +37,7 @@ fbcode_target(
         ci.windows(ci.aarch64()),
     ),
     deps = [
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/system/arch:x86",
     ],
