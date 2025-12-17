@@ -46,7 +46,7 @@ void checkNotTransparent() {
 struct StringVector {
   std::vector<std::string> data_;
 
-  /* implicit */ operator Range<std::string const*>() const {
+  [[maybe_unused]] /* implicit */ operator Range<std::string const*>() const {
     return {&data_[0], data_.size()};
   }
 };
@@ -56,7 +56,7 @@ struct StringVector {
 namespace std {
 template <>
 struct hash<StringVector> {
-  std::size_t operator()(StringVector const& value) const {
+  [[maybe_unused]] std::size_t operator()(StringVector const& value) const {
     return folly::hash::hash_range(value.data_.begin(), value.data_.end());
   }
 };
