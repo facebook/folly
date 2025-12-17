@@ -970,9 +970,7 @@ fbcode_target(
         "DEFAULT": [],
         # These make it so linking libpython is optional
         "ovr_config//os:macos": [
-            "-Xlinker",
             "-undefined",
-            "-Xlinker",
             "dynamic_lookup",
         ],
     }),
@@ -999,9 +997,7 @@ non_fbcode_target(
         "DEFAULT": [],
         # These make it so linking libpython is optional
         "ovr_config//os:macos": [
-            "-Xlinker",
             "-undefined",
-            "-Xlinker",
             "dynamic_lookup",
         ],
     }),

@@ -5382,9 +5382,10 @@ fbcode_target(
         "FollyMemset.cpp",
     ] + select({
         "DEFAULT": [],
-        "ovr_config//cpu:x86_64": [
-            "memset.S",
-        ],
+        "ovr_config//cpu:x86_64": select({
+            "DEFAULT": ["memset.S"],
+            "ovr_config//compiler:msvc": [],
+        }),
         "ovr_config//os:linux-arm64": [
             "memset_select_aarch64.cpp",
         ],
@@ -5423,9 +5424,10 @@ fbcode_target(
         "FollyMemset.cpp",
     ] + select({
         "DEFAULT": [],
-        "ovr_config//cpu:x86_64": [
-            "memset.S",
-        ],
+        "ovr_config//cpu:x86_64": select({
+            "DEFAULT": ["memset.S"],
+            "ovr_config//compiler:msvc": [],
+        }),
         "ovr_config//os:linux-arm64": [
             "memset_select_aarch64.cpp",
         ],
@@ -5459,9 +5461,10 @@ fbcode_target(
         "FollyMemcpy.cpp",
     ] + select({
         "DEFAULT": [],
-        "ovr_config//cpu:x86_64": [
-            "memcpy.S",
-        ],
+        "ovr_config//cpu:x86_64": select({
+            "DEFAULT": ["memcpy.S"],
+            "ovr_config//compiler:msvc": [],
+        }),
         "ovr_config//os:linux-arm64": [
             "memcpy_select_aarch64.cpp",
         ],
@@ -5500,9 +5503,10 @@ fbcode_target(
         "FollyMemcpy.cpp",
     ] + select({
         "DEFAULT": [],
-        "ovr_config//cpu:x86_64": [
-            "memcpy.S",
-        ],
+        "ovr_config//cpu:x86_64": select({
+            "DEFAULT": ["memcpy.S"],
+            "ovr_config//compiler:msvc": [],
+        }),
         "ovr_config//os:linux-arm64": [
             "memcpy_select_aarch64.cpp",
         ],

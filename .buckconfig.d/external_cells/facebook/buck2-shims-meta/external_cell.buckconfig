@@ -6,4 +6,4 @@ gh_facebook_buck2_shims_meta = git
 
 [external_cell_gh_facebook_buck2_shims_meta]
 git_origin = https://github.com/ben--/buck2-shims-meta.git
-commit_hash = b7b9a2c986136c8b3e11bf589742333822bdc1e7
+commit_hash = b238d80b4ef287ec841fb1e455ed3930c36a4ebd

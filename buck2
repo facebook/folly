@@ -4,9 +4,9 @@
   "name": "buck2",
   "platforms": {
     "macos-aarch64": {
-      "size": 33391257,
+      "size": 33150511,
       "hash": "blake3",
-      "digest": "5c228d156c11a21a49d0d097788ecfba106548c6760394584545af8b1d2d46d8",
+      "digest": "8b27541aee3b6632e267f957cf7bd1ca506d54f762fdd967edf2850eb1ea8521",
       "format": "zst",
       "path": "buck2-aarch64-apple-darwin",
       "providers": [
@@ -16,9 +16,9 @@
       ]
     },
     "windows-aarch64": {
-      "size": 28615118,
+      "size": 28934462,
       "hash": "blake3",
-      "digest": "ef4de8f61f0c7106ee9c7e38ee1ef94fe7aead51bb15df69e00286ce3c02de92",
+      "digest": "099ebeb79cbf31e14bc3a3b5550523e3c30fefb5defee27ff11037eb20da580d",
       "format": "zst",
       "path": "buck2-aarch64-pc-windows-msvc.exe",
       "providers": [
@@ -28,9 +28,9 @@
       ]
     },
     "linux-aarch64": {
-      "size": 34769200,
+      "size": 34432328,
       "hash": "blake3",
-      "digest": "972575819507249d7d80a94cfec769c87029e27d6efe16eebdf0e9e3473e8790",
+      "digest": "0e24d9c1e8199396b84c63084ec27f4a0a73a30f93be2e6b3bc74b5b13139301",
       "format": "zst",
       "path": "buck2-aarch64-unknown-linux-musl",
       "providers": [
@@ -40,9 +40,9 @@
       ]
     },
     "linux-riscv64": {
-      "size": 37257391,
+      "size": 36807159,
       "hash": "blake3",
-      "digest": "4e9f8ea0d64fd6233088a17940a0e0d1c92f4682eb56b5479d74b96ac7b0c8a2",
+      "digest": "72b7f8cf014dba2c2d84bc42eba9a821ea87afddc0828f58c90f7dd64e86fd90",
       "format": "zst",
       "path": "buck2-riscv64gc-unknown-linux-gnu",
       "providers": [
@@ -52,9 +52,9 @@
       ]
     },
     "macos-x86_64": {
-      "size": 34600393,
+      "size": 35298190,
       "hash": "blake3",
-      "digest": "c5816b2edd1477871cf8c483163afce2a0b27ebcc21bb964cb6305bd45ed71b0",
+      "digest": "4d95fced9b734b467c9b47000580a82b9881e4d8554adb8aae8f7120489d9e7b",
       "format": "zst",
       "path": "buck2-x86_64-apple-darwin",
       "providers": [
@@ -64,9 +64,9 @@
       ]
     },
     "windows-x86_64": {
-      "size": 30072072,
+      "size": 30556274,
       "hash": "blake3",
-      "digest": "ef4de8f61f0c7106ee9c7e38ee1ef94fe7aead51bb15df69e00286ce3c02de92",
+      "digest": "fd2284476958f287d1862fe65617e9d337514def16062c64840dbfa65c7f8c63",
       "format": "zst",
       "path": "buck2-x86_64-pc-windows-msvc.exe",
       "providers": [
@@ -76,9 +76,9 @@
       ]
     },
     "linux-x86_64": {
-      "size": 36061383,
+      "size": 35818994,
       "hash": "blake3",
-      "digest": "da5f132ef44548131525c3f24311b2d3190bc0febc20f1f75461b47ead5c8d94",
+      "digest": "d932525c10fb0f4c04e195dc5b0a1db846541d3a68848b8140b0670639038612",
       "format": "zst",
       "path": "buck2-x86_64-unknown-linux-musl",
       "providers": [
