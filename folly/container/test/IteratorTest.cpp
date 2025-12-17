@@ -164,7 +164,7 @@ struct Object {
     ++gMoveOpCnt;
     return *this;
   }
-  Object& operator=(int) noexcept {
+  [[maybe_unused]] Object& operator=(int) noexcept {
     ++gConvertOpCnt;
     return *this;
   }
