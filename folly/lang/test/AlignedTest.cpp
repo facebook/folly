@@ -35,7 +35,7 @@ TEST_F(AlignedTest, constructors) {
 
   {
     struct T {
-      T() noexcept(false) {}
+      [[maybe_unused]] T() noexcept(false) {}
     };
     EXPECT_TRUE((std::is_constructible<A<T>>::value));
     EXPECT_FALSE((std::is_nothrow_constructible<A<T>>::value));
@@ -43,7 +43,7 @@ TEST_F(AlignedTest, constructors) {
 
   {
     struct T {
-      T() noexcept(true) {}
+      [[maybe_unused]] T() noexcept(true) {}
     };
     EXPECT_TRUE((std::is_constructible<A<T>>::value));
     EXPECT_TRUE((std::is_nothrow_constructible<A<T>>::value));
