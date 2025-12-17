@@ -65,11 +65,11 @@ TEST(ConcurrentLazy, MultipleReaders) {
   m.lock();
   std::vector<std::thread> readers;
   for (int i = 0; i < 10; ++i) {
-    readers.push_back(std::thread([&] {
+    readers.emplace_back([&] {
       for (int j = 0; j < 1000; ++j) {
         EXPECT_EQ(val(), 12);
       }
-    }));
+    });
   }
 
   m.unlock();

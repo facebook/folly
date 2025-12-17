@@ -225,7 +225,7 @@ TEST(ThreadCachedInt, MultiThreadedCached) {
     std::atomic<int> threadsDone(0);
     std::vector<std::thread> threads;
     for (int i = 0; i < FLAGS_numThreads; ++i) {
-      threads.push_back(std::thread([&] {
+      threads.emplace_back([&] {
         FOR_EACH_RANGE (k, 0, numPerThread) {
           ++TCInt64;
         }
@@ -233,7 +233,7 @@ TEST(ThreadCachedInt, MultiThreadedCached) {
         while (run.load()) {
           usleep(100);
         }
-      }));
+      });
     }
 
     // We create and increment another ThreadCachedInt here to make sure it

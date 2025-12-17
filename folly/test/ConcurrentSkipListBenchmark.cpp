@@ -499,8 +499,7 @@ void BM_ContentionCSL(int iters, int size) {
   susp.dismiss();
 
   for (int i = 0; i < FLAGS_num_threads; ++i) {
-    threads.push_back(
-        std::thread(&ConcurrentAccessData::runSkipList, data, i, iters));
+    threads.emplace_back(&ConcurrentAccessData::runSkipList, data, i, iters);
   }
   FOR_EACH (t, threads) {
     (*t).join();
@@ -514,8 +513,7 @@ void BM_ContentionStdSet(int iters, int size) {
   susp.dismiss();
 
   for (int i = 0; i < FLAGS_num_threads; ++i) {
-    threads.push_back(
-        std::thread(&ConcurrentAccessData::runSet, data, i, iters));
+    threads.emplace_back(&ConcurrentAccessData::runSet, data, i, iters);
   }
   FOR_EACH (t, threads) {
     (*t).join();

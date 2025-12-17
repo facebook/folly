@@ -361,14 +361,14 @@ int main(int argc, char** argv) {
       if (err != std::errc()) {
         throw std::runtime_error("failed to convert to string");
       }
-      randomValues.push_back(std::string(buffer, end));
+      randomValues.emplace_back(buffer, end);
     }
   }
 
   {
     // generates single digit ints values 0 through 9
     for (char i = '0'; i <= '9'; ++i) {
-      singleDigitIntValues.push_back(std::string(1, i));
+      singleDigitIntValues.emplace_back(1, i);
     }
 
     // shuffle to fuzz out performance of different ordering
@@ -382,7 +382,7 @@ int main(int argc, char** argv) {
       buf[0] = i;
       for (char j = '0'; j <= '9'; ++j) {
         buf[1] = j;
-        doubleDigitIntValues.push_back(std::string(buf, 2));
+        doubleDigitIntValues.emplace_back(buf, 2);
       }
     }
     std::shuffle(doubleDigitIntValues.begin(), doubleDigitIntValues.end(), gen);
@@ -401,7 +401,7 @@ int main(int argc, char** argv) {
           buf[3] = x;
           for (char y = '0'; y <= '9'; ++y) {
             buf[4] = y;
-            fourDigitPercentageValues.push_back(std::string(buf, 5));
+            fourDigitPercentageValues.emplace_back(buf, 5);
           }
         }
       }

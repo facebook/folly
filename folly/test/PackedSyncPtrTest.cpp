@@ -108,7 +108,7 @@ TEST(PackedSyncPtr, Application) {
   }
   std::vector<std::thread> thrs;
   for (intptr_t i = 0; i < nthrs; i++) {
-    thrs.push_back(std::thread(appThread, i));
+    thrs.emplace_back(appThread, i);
   }
   for (auto& t : thrs) {
     t.join();

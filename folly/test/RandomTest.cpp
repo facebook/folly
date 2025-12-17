@@ -91,9 +91,7 @@ TEST(Random, MultiThreaded) {
   std::vector<uint32_t> seeds(n);
   std::vector<std::thread> threads;
   for (int i = 0; i < n; ++i) {
-    threads.push_back(std::thread([i, &seeds] {
-      seeds[i] = randomNumberSeed();
-    }));
+    threads.emplace_back([i, &seeds] { seeds[i] = randomNumberSeed(); });
   }
   for (auto& t : threads) {
     t.join();

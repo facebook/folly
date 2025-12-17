@@ -314,7 +314,7 @@ TEST(Ahm, counter) {
   vector<std::thread> threads;
   for (auto key : keys) {
     FOR_EACH_RANGE (i, 0, key * mult) {
-      threads.push_back(std::thread([&, key] { c.increment(key); }));
+      threads.emplace_back([&, key] { c.increment(key); });
     }
   }
   for (auto& t : threads) {

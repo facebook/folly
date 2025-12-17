@@ -307,9 +307,8 @@ TEST(ConcurrentSkipList, ConcurrentAdd) {
   vector<SetType> verifiers(numThreads);
   try {
     for (int i = 0; i < numThreads; ++i) {
-      threads.push_back(
-          std::thread(
-              &randomAdding, 1000000, skipList, &verifiers[i], kMaxValue));
+      threads.emplace_back(
+          &randomAdding, 1000000, skipList, &verifiers[i], kMaxValue);
     }
   } catch (const std::system_error& e) {
     LOG(WARNING) << "Caught " << exceptionStr(e) << ": could only create "
@@ -336,8 +335,8 @@ void testConcurrentRemoval(int numThreads, int maxValue) {
   vector<SetType> verifiers(numThreads);
   try {
     for (int i = 0; i < numThreads; ++i) {
-      threads.push_back(
-          std::thread(&randomRemoval, 100, skipList, &verifiers[i], maxValue));
+      threads.emplace_back(
+          &randomRemoval, 100, skipList, &verifiers[i], maxValue);
     }
   } catch (const std::system_error& e) {
     LOG(WARNING) << "Caught " << exceptionStr(e) << ": could only create "
@@ -388,29 +387,18 @@ static void testConcurrentAccess(
     switch (i % 8) {
       case 0:
       case 1:
-        threads.push_back(
-            std::thread(
-                randomAdding,
-                numInsertions,
-                skipList,
-                &verifiers[i],
-                maxValue));
+        threads.emplace_back(
+            randomAdding, numInsertions, skipList, &verifiers[i], maxValue);
         break;
       case 2:
-        threads.push_back(
-            std::thread(
-                randomRemoval,
-                numDeletions,
-                skipList,
-                &verifiers[i],
-                maxValue));
+        threads.emplace_back(
+            randomRemoval, numDeletions, skipList, &verifiers[i], maxValue);
         break;
       case 3:
-        threads.push_back(
-            std::thread(concurrentSkip, &skipValues[i], skipList));
+        threads.emplace_back(concurrentSkip, &skipValues[i], skipList);
         break;
       default:
-        threads.push_back(std::thread(sumAllValues, skipList, &sums[i]));
+        threads.emplace_back(sumAllValues, skipList, &sums[i]);
         break;
     }
   }
