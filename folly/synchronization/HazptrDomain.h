@@ -795,6 +795,7 @@ class hazptr_domain {
       }
     }
 
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     invoke_reclamation_may_deadlock(std::move(recl_fn));
   }
 
