@@ -63,7 +63,8 @@ class ExplicitlyCopyableString : public std::string {
   explicit ExplicitlyCopyableString(const ExplicitlyCopyableString&) = default;
   ExplicitlyCopyableString(ExplicitlyCopyableString&&) = default;
   ExplicitlyCopyableString& operator=(const ExplicitlyCopyableString&) = delete;
-  ExplicitlyCopyableString& operator=(ExplicitlyCopyableString&&) = default;
+  [[maybe_unused]] ExplicitlyCopyableString& operator=(
+      ExplicitlyCopyableString&&) = default;
 };
 } // namespace
 
@@ -164,7 +165,8 @@ TEST(CoroGTestHelpers, CoReturnByMoveWithImplicitConversionTest) {
         delete;
 
     ImplicitToStringMoveOnly(ImplicitToStringMoveOnly&&) = default;
-    ImplicitToStringMoveOnly& operator=(ImplicitToStringMoveOnly&&) = default;
+    [[maybe_unused]] ImplicitToStringMoveOnly& operator=(
+        ImplicitToStringMoveOnly&&) = default;
 
     operator std::string() { return "abc"; }
   };
