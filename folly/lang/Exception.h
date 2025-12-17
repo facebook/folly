@@ -817,8 +817,14 @@ std::exception_ptr make_exception_ptr_with_(
 template <typename F>
 struct make_exception_ptr_with_fn_ {
   F& f_;
+  // Throw and catch instead of using std::make_exception_ptr which copies.
+  // The throw expression moves from the rvalue returned by f_().
   FOLLY_ERASE std::exception_ptr operator()() const {
-    return std::make_exception_ptr(f_());
+    try {
+      throw f_();
+    } catch (...) {
+      return std::current_exception();
+    }
   }
 };
 
