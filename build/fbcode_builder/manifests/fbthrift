@@ -17,6 +17,12 @@ fbthrift = thrift/lib/rust
 builder = cmake
 job_weight_mib = 2048
 
+[cmake.defines.all(not(os=windows),test=on)]
+enable_tests=ON
+
+[cmake.defines.any(os=windows,test=off)]
+enable_tests=OFF
+
 [dependencies]
 fizz
 fmt
