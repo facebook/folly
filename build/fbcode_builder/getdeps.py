@@ -1174,7 +1174,7 @@ jobs:
                 # && is not supported on default windows powershell, so use cmd
                 out.write("      shell: cmd\n")
 
-            out.write("    - uses: actions/checkout@v4\n")
+            out.write("    - uses: actions/checkout@v6\n")
 
             build_type_arg = ""
             if override_build_type:
@@ -1365,7 +1365,7 @@ jobs:
                 f"--final-install-prefix /usr/local\n"
             )
 
-            out.write("    - uses: actions/upload-artifact@v4\n")
+            out.write("    - uses: actions/upload-artifact@v6\n")
             out.write("      with:\n")
             out.write("        name: %s\n" % manifest.name)
             out.write("        path: _artifacts\n")
