@@ -1333,10 +1333,11 @@ TEST(Future, makeSemiFutureFromMoveOnlyException) {
       throw std::logic_error("Copy constructor is called");
     }
     MoveOnlyException(MoveOnlyException&&) = default;
-    MoveOnlyException& operator=(MoveOnlyException const&) {
+    [[maybe_unused]] MoveOnlyException& operator=(MoveOnlyException const&) {
       throw std::logic_error("Copy assignment operator is called");
     }
-    MoveOnlyException& operator=(MoveOnlyException&&) = default;
+    [[maybe_unused]] MoveOnlyException& operator=(MoveOnlyException&&) =
+        default;
   };
 
   std::string msg = "exception message";
