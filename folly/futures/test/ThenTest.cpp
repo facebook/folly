@@ -32,7 +32,7 @@ struct Widget {
   Widget& operator=(const Widget& /* other */) {
     throw std::logic_error("unexpected copy assignment");
   }
-  Widget& operator=(Widget&& /* other */) {
+  [[maybe_unused]] Widget& operator=(Widget&& /* other */) {
     throw std::logic_error("unexpected move assignment");
   }
 };
