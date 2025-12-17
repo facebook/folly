@@ -42,7 +42,7 @@ struct ImmCv : Cv {
 struct Fn {
   char operator()(int, int) noexcept { return 'a'; }
   int volatile&& operator()(int, char const*) { return std::move(x_); }
-  float operator()(float, float) { return 3.14; }
+  [[maybe_unused]] float operator()(float, float) { return 3.14; }
   /* implicit */ [[maybe_unused]] Cv operator()(Cv*) noexcept;
   /* implicit */ [[maybe_unused]] ImmCv operator()(ImmCv*) noexcept;
   int volatile x_ = 17;
@@ -57,7 +57,7 @@ FOLLY_CREATE_MEMBER_INVOKER_SUITE(test);
 struct Obj {
   char test(int, int) noexcept { return 'a'; }
   int volatile&& test(int, char const*) { return std::move(x_); }
-  float test(float, float) { return 3.14; }
+  [[maybe_unused]] float test(float, float) { return 3.14; }
   int volatile x_ = 17;
 };
 
@@ -375,7 +375,7 @@ TEST_F(InvokeTest, static_member_invoke) {
       static int volatile x_ = 17;
       return std::move(x_);
     }
-    static float stat(float, float) { return 3.14; }
+    [[maybe_unused]] static float stat(float, float) { return 3.14; }
   };
   using traits = folly::invoke_traits<decltype(invoker::stat<HasStat>)>;
 
