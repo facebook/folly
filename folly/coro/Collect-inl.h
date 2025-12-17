@@ -772,6 +772,13 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
       detail::range_reference_t<InputRange>>>
       tryResults;
 
+  if constexpr (is_invocable_v<folly::access::size_fn, InputRange&>) {
+    tryResults.reserve(
+        static_cast<std::size_t>(folly::access::size(awaitables)));
+  } else if constexpr (range_has_known_distance_v<InputRange&>) {
+    tryResults.reserve(static_cast<std::size_t>(std::distance(iter, iterEnd)));
+  }
+
   exception_wrapper iterationException;
 
   auto makeWorker = [&]() -> detail::BarrierTask {
