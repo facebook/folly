@@ -1098,7 +1098,7 @@ TEST(smallVector, NoCopyCtor) {
   struct Tester {
     Tester() = default;
     Tester(const Tester&) = delete;
-    Tester(Tester&&) = default;
+    [[maybe_unused]] Tester(Tester&&) = default;
 
     int field = 42;
   };
@@ -1187,7 +1187,7 @@ class Counter {
     ++counts->copyCount;
     return *this;
   }
-  Counter& operator=(Counter&& rhs) noexcept {
+  [[maybe_unused]] Counter& operator=(Counter&& rhs) noexcept {
     EXPECT_EQ(counts, rhs.counts);
     ++counts->moveCount;
     return *this;
