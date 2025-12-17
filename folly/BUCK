@@ -101,10 +101,20 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "benchmark_util",
+    srcs = [
+        "BenchmarkUtil.cpp",
+    ],
     headers = [
         "BenchmarkUtil.h",
     ],
     xplat_impl = folly_xplat_library,
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly/lang:align",
+        "//folly/portability:sched",
+        "//folly/portability:windows",
+        "//folly/system/arch:x86",
+    ],
     exported_deps = [
         ":portability",
         "//folly/lang:hint",

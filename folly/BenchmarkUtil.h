@@ -44,4 +44,19 @@ FOLLY_ALWAYS_INLINE void makeUnpredictable(T& datum) {
   compiler_must_not_predict(datum);
 }
 
+namespace detail {
+size_t bm_llc_size_fallback();
+}
+
+/// bm_llc_size
+///
+/// Calculates the size of the LLC (Last Level Cache, typically L3 on x86-64).
+size_t bm_llc_size();
+
+/// bm_llc_evict
+///
+/// Write to a large block of memory and evict whatever cache lines might
+/// currently be resident in any levels of cache.
+void bm_llc_evict(size_t value);
+
 } // namespace folly

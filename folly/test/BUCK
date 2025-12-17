@@ -189,6 +189,16 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_unittest,
+    name = "benchmark_util_test",
+    srcs = ["BenchmarkUtilTest.cpp"],
+    deps = [
+        "//folly:benchmark_util",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_benchmark,
     name = "benchmark_integration_test",
     srcs = ["BenchmarkIntegrationTest.cpp"],
