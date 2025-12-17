@@ -49,10 +49,6 @@ struct Overloaded {
   bool func(bool) { return true; }
 };
 
-struct Func {
-  int operator()() const { return 1; }
-};
-
 struct CopyCount {
   CopyCount() {}
   CopyCount(CopyCount const&) { std::cout << "copy count copy ctor\n"; }
@@ -65,10 +61,13 @@ std::function<void(int, int, double)> makeFunc() {
 }
 
 struct GuardObjBase {
-  GuardObjBase(GuardObjBase&&) noexcept {}
   GuardObjBase() {}
   GuardObjBase(GuardObjBase const&) = delete;
+  [[maybe_unused]] GuardObjBase(GuardObjBase&&) noexcept {}
   GuardObjBase& operator=(GuardObjBase const&) = delete;
+  [[maybe_unused]] GuardObjBase& operator=(GuardObjBase&&) noexcept {
+    return *this;
+  }
 };
 
 template <class F, class Tuple>
@@ -99,9 +98,10 @@ GuardObj<typename std::decay<F>::type, std::tuple<Args...>> guard(
 
 struct Mover {
   Mover() {}
-  Mover(Mover&&) noexcept {}
   Mover(const Mover&) = delete;
+  [[maybe_unused]] Mover(Mover&&) noexcept {}
   Mover& operator=(const Mover&) = delete;
+  [[maybe_unused]] Mover& operator=(Mover&&) noexcept { return *this; }
 };
 
 void move_only_func(Mover&&) {}
