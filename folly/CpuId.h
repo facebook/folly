@@ -20,10 +20,7 @@
 #include <cstring>
 
 #include <folly/Portability.h>
-
-#ifdef _MSC_VER
-#include <intrin.h>
-#endif
+#include <folly/system/arch/x86.h>
 
 namespace folly {
 
@@ -42,116 +39,23 @@ class CpuId {
   // mode since inlining happens more likely, and it doesn't happen for
   // statically linked binaries which don't depend on the PLT)
   FOLLY_ALWAYS_INLINE CpuId() {
-#if defined(_MSC_VER) && (FOLLY_X64 || defined(_M_IX86))
-#if !defined(__clang__)
-    int reg[4];
-    __cpuid(static_cast<int*>(reg), 0);
-    vendor_[0] = (uint32_t)reg[1];
-    vendor_[1] = (uint32_t)reg[3];
-    vendor_[2] = (uint32_t)reg[2];
+    unsigned int reg[4];
+    x86_cpuid(reg, 0);
+    vendor_[0] = reg[1];
+    vendor_[1] = reg[3];
+    vendor_[2] = reg[2];
     const int n = reg[0];
     if (n >= 1) {
-      __cpuid(static_cast<int*>(reg), 1);
-      f1c_ = uint32_t(reg[2]);
-      f1d_ = uint32_t(reg[3]);
+      x86_cpuid(reg, 1);
+      f1c_ = reg[2];
+      f1d_ = reg[3];
     }
     if (n >= 7) {
-      __cpuidex(static_cast<int*>(reg), 7, 0);
-      f7b_ = uint32_t(reg[1]);
-      f7c_ = uint32_t(reg[2]);
-      f7d_ = uint32_t(reg[3]);
+      x86_cpuid(reg, 7);
+      f7b_ = reg[1];
+      f7c_ = reg[2];
+      f7d_ = reg[3];
     }
-#else
-    // Clang compiler has a bug (fixed in https://reviews.llvm.org/D101338) in
-    // which the `__cpuid` intrinsic does not save and restore `rbx` as it needs
-    // to due to being a reserved register. So in that case, do the `cpuid`
-    // ourselves. Clang supports inline assembly anyway.
-    uint32_t n;
-    uint32_t v0b, v0d, v0c;
-    __asm__(
-        "pushq %%rbx\n\t"
-        "cpuid\n\t"
-        "movl %%ebx, %1\n\t"
-        "popq %%rbx\n\t"
-        : "=a"(n), "=r"(v0b), "=d"(v0d), "=c"(v0c)
-        : "a"(0));
-    vendor_[0] = v0b;
-    vendor_[1] = v0d;
-    vendor_[2] = v0c;
-    if (n >= 1) {
-      uint32_t f1a;
-      __asm__(
-          "pushq %%rbx\n\t"
-          "cpuid\n\t"
-          "popq %%rbx\n\t"
-          : "=a"(f1a), "=c"(f1c_), "=d"(f1d_)
-          : "a"(1)
-          :);
-    }
-    if (n >= 7) {
-      __asm__(
-          "pushq %%rbx\n\t"
-          "cpuid\n\t"
-          "movq %%rbx, %%rax\n\t"
-          "popq %%rbx"
-          : "=a"(f7b_), "=c"(f7c_), "=d"(f7d_)
-          : "a"(7), "c"(0));
-    }
-#endif
-#elif defined(__i386__) && defined(__PIC__) && !defined(__clang__) && \
-    defined(__GNUC__)
-    // The following block like the normal cpuid branch below, but gcc
-    // reserves ebx for use of its pic register so we must specially
-    // handle the save and restore to avoid clobbering the register
-    uint32_t n;
-    uint32_t v0b, v0d, v0c;
-    __asm__(
-        "pushl %%ebx\n\t"
-        "cpuid\n\t"
-        "movl %%ebx, %1\n\t"
-        "popl %%ebx\n\t"
-        : "=a"(n), "=r"(v0b), "=d"(v0d), "=c"(v0c)
-        : "a"(0));
-    vendor_[0] = v0b;
-    vendor_[1] = v0d;
-    vendor_[2] = v0c;
-    if (n >= 1) {
-      uint32_t f1a;
-      __asm__(
-          "pushl %%ebx\n\t"
-          "cpuid\n\t"
-          "popl %%ebx\n\t"
-          : "=a"(f1a), "=c"(f1c_), "=d"(f1d_)
-          : "a"(1)
-          :);
-    }
-    if (n >= 7) {
-      __asm__(
-          "pushl %%ebx\n\t"
-          "cpuid\n\t"
-          "movl %%ebx, %%eax\n\t"
-          "popl %%ebx"
-          : "=a"(f7b_), "=c"(f7c_), "=d"(f7d_)
-          : "a"(7), "c"(0));
-    }
-#elif FOLLY_X64 || defined(__i386__)
-    uint32_t n;
-    uint32_t v0b, v0d, v0c;
-    __asm__("cpuid" : "=a"(n), "=b"(v0b), "=d"(v0d), "=c"(v0c) : "a"(0));
-    vendor_[0] = v0b;
-    vendor_[1] = v0d;
-    vendor_[2] = v0c;
-    if (n >= 1) {
-      [[maybe_unused]] uint32_t f1a;
-      __asm__("cpuid" : "=a"(f1a), "=c"(f1c_), "=d"(f1d_) : "a"(1) : "ebx");
-    }
-    if (n >= 7) {
-      [[maybe_unused]] uint32_t f7a;
-      __asm__("cpuid"
-              : "=a"(f7a), "=b"(f7b_), "=c"(f7c_), "=d"(f7d_)
-              : "a"(7), "c"(0));
-    }
-#endif
   }
 
 #define FOLLY_DETAIL_CPUID_X(name, r, bit) \

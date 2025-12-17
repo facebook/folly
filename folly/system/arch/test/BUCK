@@ -1,0 +1,42 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
+load("../../../defs.bzl", "folly_xplat_cxx_test")
+
+oncall("fbcode_entropy_wardens_folly")
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "x86_test",
+    srcs = ["x86_test.cpp"],
+    labels = ci.labels(
+        ci.linux(ci.x86_64()),
+        ci.mac(ci.x86_64()),
+        ci.windows(ci.x86_64()),
+        ci.linux(ci.aarch64()),
+        ci.mac(ci.aarch64()),
+        ci.windows(ci.aarch64()),
+    ),
+    deps = [
+        "//xplat/folly/portability:gtest",
+        "//xplat/folly/system/arch:x86",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "x86_test",
+    srcs = ["x86_test.cpp"],
+    labels = ci.labels(
+        ci.linux(ci.x86_64()),
+        ci.mac(ci.x86_64()),
+        ci.windows(ci.x86_64()),
+        ci.linux(ci.aarch64()),
+        ci.mac(ci.aarch64()),
+        ci.windows(ci.aarch64()),
+    ),
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/system/arch:x86",
+    ],
+)
