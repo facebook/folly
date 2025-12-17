@@ -224,7 +224,7 @@ TEST(UnboundedQueue, cleanupOnDestruction) {
         ++(*p_);
       }
     }
-    Foo& operator=(Foo&& o) noexcept {
+    [[maybe_unused]] Foo& operator=(Foo&& o) noexcept {
       p_ = std::exchange(o.p_, nullptr);
       return *this;
     }
