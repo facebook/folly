@@ -51,12 +51,14 @@ class FollyConan(ConanFile):
         self._run(["git", "clone", "--depth", "1", BLAKE3_GIT_URL, blake3_dir])
         self._run(["cmake", "-B", build_dir, f"-DCMAKE_INSTALL_PREFIX={install_prefix}"],
                   cwd=os.path.join(blake3_dir, "c"))
-        self._run(["cmake", "--build", build_dir])
 
         # Install (sudo required on Unix, not on Windows)
+        # Windows MSBuild needs --config Release for both build and install
         if self.settings.os == "Windows":
-            self._run(["cmake", "--install", build_dir])
+            self._run(["cmake", "--build", build_dir, "--config", "Release"])
+            self._run(["cmake", "--install", build_dir, "--config", "Release"])
         else:
+            self._run(["cmake", "--build", build_dir])
             self._run(["sudo", "cmake", "--install", build_dir])
 
     def system_requirements(self):
