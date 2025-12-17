@@ -39,7 +39,7 @@ namespace {
 
 template <class Operation>
 void parallelRun(
-    Operation op, size_t numThreads = folly::hardware_concurrency()) {
+    Operation op, size_t numThreads = folly::available_concurrency()) {
   std::vector<std::thread> threads;
   for (size_t t = 0; t < numThreads; ++t) {
     threads.emplace_back([&, t] { op(t); });

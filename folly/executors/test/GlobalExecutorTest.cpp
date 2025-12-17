@@ -124,14 +124,15 @@ TEST(GlobalExecutorTest, IOThreadCountFlagUnset) {
   auto io_threadpool = dynamic_cast<folly::IOThreadPoolExecutor*>(
       folly::getGlobalIOExecutor().get());
 
-  EXPECT_EQ(io_threadpool->numThreads(), folly::hardware_concurrency());
+  EXPECT_EQ(io_threadpool->numThreads(), folly::available_concurrency());
 }
 
 TEST(GlobalExecutorTest, CPUThreadCountFlagUnset) {
   folly::gflags::FlagSaver flagsaver;
 
   EXPECT_EQ(
-      getGlobalCPUExecutorCounters().numThreads, folly::hardware_concurrency());
+      getGlobalCPUExecutorCounters().numThreads,
+      folly::available_concurrency());
 }
 
 TEST(GlobalExecutorTest, GetGlobalCPUExecutorCounters) {

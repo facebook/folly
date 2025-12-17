@@ -59,7 +59,7 @@ Singleton<std::shared_ptr<DefaultCPUExecutor>> gDefaultGlobalCPUExecutor([] {
 Singleton<std::shared_ptr<ImmutableGlobalCPUExecutor>, GlobalTag>
     gImmutableGlobalCPUExecutor([] {
       size_t nthreads = FLAGS_folly_global_cpu_executor_threads;
-      nthreads = nthreads ? nthreads : folly::hardware_concurrency();
+      nthreads = nthreads ? nthreads : folly::available_concurrency();
       return new std::shared_ptr<ImmutableGlobalCPUExecutor>(
           new ImmutableGlobalCPUExecutor(
               nthreads,
@@ -69,7 +69,7 @@ Singleton<std::shared_ptr<ImmutableGlobalCPUExecutor>, GlobalTag>
 Singleton<std::shared_ptr<IOThreadPoolExecutor>, GlobalTag>
     gImmutableGlobalIOExecutor([] {
       size_t nthreads = FLAGS_folly_global_io_executor_threads;
-      nthreads = nthreads ? nthreads : folly::hardware_concurrency();
+      nthreads = nthreads ? nthreads : folly::available_concurrency();
       return new std::shared_ptr<IOThreadPoolExecutor>(new IOThreadPoolExecutor(
           nthreads,
           std::make_shared<NamedThreadFactory>("GlobalIOThreadPool")));

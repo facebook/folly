@@ -494,7 +494,7 @@ namespace {
 // in the executor (so it should ideally not impose any overhead).
 void benchmarkSaturation(
     size_t meteredExecutorChainDepth, uint32_t maxInQueue, size_t iters) {
-  const size_t numThreads = folly::hardware_concurrency();
+  const size_t numThreads = folly::available_concurrency();
 
   BenchmarkSuspender suspender;
 

@@ -339,7 +339,7 @@ BENCHMARK_RELATIVE(combining_no_dedicated_tc_async_dup, iters) {
 BENCHMARK_DRAW_LINE();
 
 void benchmarkSetup() {
-  int numCores = folly::hardware_concurrency();
+  int numCores = folly::available_concurrency();
   std::cout << "\nRunning benchmarks on machine with " << numCores
             << " logical cores" << std::endl;
 }

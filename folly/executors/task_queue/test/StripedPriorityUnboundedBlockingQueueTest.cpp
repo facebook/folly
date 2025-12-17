@@ -40,7 +40,7 @@ struct RandomStripe {
 } // namespace
 
 TEST(StripedPriorityUnboundedBlockingQueue, SmokeTest) {
-  const size_t kNumThreads = folly::hardware_concurrency();
+  const size_t kNumThreads = folly::available_concurrency();
   const size_t kNumTasksPerThread = 1024;
 
   folly::CPUThreadPoolExecutor consumers(

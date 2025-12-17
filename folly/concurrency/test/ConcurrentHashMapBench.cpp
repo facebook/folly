@@ -215,7 +215,7 @@ void benches() {
             << std::endl;
   std::cout << "Test name                         Max time  Avg time  Min time"
             << std::endl;
-  const int maxThreads = folly::hardware_concurrency();
+  const int maxThreads = folly::available_concurrency();
   for (int nthr = 1; nthr <= maxThreads;) {
     std::cout << "========================= " << std::setw(2) << nthr
               << " threads" << " =========================" << std::endl;

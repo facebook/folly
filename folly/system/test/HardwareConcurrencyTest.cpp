@@ -19,6 +19,6 @@
 #include <folly/portability/GTest.h>
 
 TEST(HardwareConcurrency, ReturnsNonzero) {
-  auto concurrency = folly::hardware_concurrency();
+  auto concurrency = folly::available_concurrency();
   EXPECT_GT(concurrency, 0u);
 }
