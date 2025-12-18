@@ -87,7 +87,11 @@ class MPMCQueueBase;
 /// enforced at compile time using type traits, which requires that T be
 /// adorned with accurate noexcept information.  If your type does not
 /// use noexcept, you will have to wrap it in something that provides
-/// the guarantee.
+/// the guarantee.  We provide an alternate safe implementation for types
+/// that don't use noexcept but that are marked folly::IsRelocatable
+/// and std::is_nothrow_constructible, which is common for folly types.
+/// In particular, if you can declare FOLLY_ASSUME_FBVECTOR_COMPATIBLE
+/// then your type can be put in MPMCQueue.
 ///
 /// If you have a pool of N queue consumers that you want to shut down
 /// after the queue has drained, one way is to enqueue N sentinel values
@@ -104,9 +108,6 @@ class MPMCQueue
     : public detail::MPMCQueueBase<MPMCQueue<T, Atom, Dynamic, Allocator>>,
       std::allocator_traits<Allocator>::template rebind_alloc<
           detail::SingleElementQueue<T, Atom>> {
-  static_assert(std::is_nothrow_move_constructible_v<T>);
-  static_assert(std::is_nothrow_destructible_v<T>);
-
   friend class detail::MPMCPipelineStageImpl<T>;
   using Base = detail::MPMCQueueBase<MPMCQueue<T, Atom, Dynamic, Allocator>>;
   using Slot = detail::SingleElementQueue<T, Atom>;
@@ -699,8 +700,10 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
   // template
   using DerivedType = Derived<T, Atom, Dynamic, Allocator>;
 
-  static_assert(std::is_nothrow_move_constructible_v<T>);
-  static_assert(std::is_nothrow_destructible_v<T>);
+  static_assert(
+      std::is_nothrow_constructible<T, T&&>::value ||
+          folly::IsRelocatable<T>::value,
+      "T must be relocatable or have a noexcept move constructor");
 
  public:
   using value_type = T;
@@ -1371,24 +1374,42 @@ struct SingleElementQueue {
   }
 
   /// enqueue using in-place noexcept construction
-  template <typename... Args>
+  template <
+      typename... Args,
+      typename = typename std::enable_if<
+          std::is_nothrow_constructible<T, Args...>::value>::type>
   void enqueue(
       const uint32_t turn,
       Atom<uint32_t>& spinCutoff,
       const bool updateSpinCutoff,
       Args&&... args) noexcept {
-    static_assert(std::is_nothrow_constructible_v<T, Args...>);
     sequencer_.waitForTurn(turn * 2, spinCutoff, updateSpinCutoff);
     new (&contents_) T(std::forward<Args>(args)...);
     sequencer_.completeTurn(turn * 2);
   }
 
+  /// enqueue using move construction, either real (if
+  /// is_nothrow_move_constructible) or simulated using relocation and
+  /// default construction (if IsRelocatable and is_nothrow_constructible)
+  template <
+      typename = typename std::enable_if<
+          (folly::IsRelocatable<T>::value &&
+           std::is_nothrow_constructible<T>::value) ||
+          std::is_nothrow_constructible<T, T&&>::value>::type>
   void enqueue(
       const uint32_t turn,
       Atom<uint32_t>& spinCutoff,
       const bool updateSpinCutoff,
       T&& goner) noexcept {
-    enqueueImpl(turn, spinCutoff, updateSpinCutoff, std::move(goner));
+    enqueueImpl(
+        turn,
+        spinCutoff,
+        updateSpinCutoff,
+        std::move(goner),
+        typename std::conditional<
+            std::is_nothrow_constructible<T, T&&>::value,
+            ImplByMove,
+            ImplByRelocation>::type());
   }
 
   /// Waits until either:
@@ -1415,7 +1436,15 @@ struct SingleElementQueue {
       Atom<uint32_t>& spinCutoff,
       const bool updateSpinCutoff,
       T& elem) noexcept {
-    dequeueImpl(turn, spinCutoff, updateSpinCutoff, elem);
+    dequeueImpl(
+        turn,
+        spinCutoff,
+        updateSpinCutoff,
+        elem,
+        typename std::conditional<
+            folly::IsRelocatable<T>::value,
+            ImplByRelocation,
+            ImplByMove>::type());
   }
 
   /// Waits until either:
@@ -1447,21 +1476,66 @@ struct SingleElementQueue {
   T* ptr() noexcept { return static_cast<T*>(static_cast<void*>(&contents_)); }
 
   void destroyContents() noexcept {
-    ptr()->~T(); // assume noexcept
+    catch_exception(
+        [this]() { ptr()->~T(); },
+        // g++ doesn't seem to have std::is_nothrow_destructible yet
+        variadic_noop);
     if (kIsDebug) {
       memset(&contents_, 'Q', sizeof(T));
     }
   }
+
+  /// Tag classes for dispatching to enqueue/dequeue implementation.
+  struct ImplByRelocation {};
+  struct ImplByMove {};
 
   /// enqueue using nothrow move construction.
   void enqueueImpl(
       const uint32_t turn,
       Atom<uint32_t>& spinCutoff,
       const bool updateSpinCutoff,
-      T&& goner) noexcept {
+      T&& goner,
+      ImplByMove) noexcept {
     sequencer_.waitForTurn(turn * 2, spinCutoff, updateSpinCutoff);
     new (&contents_) T(std::move(goner));
     sequencer_.completeTurn(turn * 2);
+  }
+
+  /// enqueue by simulating nothrow move with relocation, followed by
+  /// default construction to a noexcept relocation.
+  void enqueueImpl(
+      const uint32_t turn,
+      Atom<uint32_t>& spinCutoff,
+      const bool updateSpinCutoff,
+      T&& goner,
+      ImplByRelocation) noexcept {
+    sequencer_.waitForTurn(turn * 2, spinCutoff, updateSpinCutoff);
+    memcpy(
+        static_cast<void*>(&contents_),
+        static_cast<void const*>(&goner),
+        sizeof(T));
+    sequencer_.completeTurn(turn * 2);
+    new (&goner) T();
+  }
+
+  /// dequeue by destructing followed by relocation.  This version is preferred,
+  /// because as much work as possible can be done before waiting.
+  void dequeueImpl(
+      uint32_t turn,
+      Atom<uint32_t>& spinCutoff,
+      const bool updateSpinCutoff,
+      T& elem,
+      ImplByRelocation) noexcept {
+    catch_exception(
+        [&elem]() { elem.~T(); },
+        // unlikely, but if we don't complete our turn the queue will die
+        variadic_noop);
+    sequencer_.waitForTurn(turn * 2 + 1, spinCutoff, updateSpinCutoff);
+    memcpy(
+        static_cast<void*>(&elem),
+        static_cast<void const*>(&contents_),
+        sizeof(T));
+    sequencer_.completeTurn(turn * 2 + 1);
   }
 
   /// dequeue by nothrow move assignment.
@@ -1469,7 +1543,8 @@ struct SingleElementQueue {
       uint32_t turn,
       Atom<uint32_t>& spinCutoff,
       const bool updateSpinCutoff,
-      T& elem) noexcept {
+      T& elem,
+      ImplByMove) noexcept {
     sequencer_.waitForTurn(turn * 2 + 1, spinCutoff, updateSpinCutoff);
     elem = std::move(*ptr());
     destroyContents();
