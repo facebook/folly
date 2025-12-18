@@ -604,11 +604,8 @@ class hazptr_domain {
     while (obj) {
       auto next = obj->next();
       DCHECK_NE(obj, next);
-      if (cond(obj)) {
-        match.push(obj);
-      } else {
-        nomatch.push(obj);
-      }
+      auto& list = cond(obj) ? match : nomatch;
+      list.push(obj);
       obj = next;
     }
   }
