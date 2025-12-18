@@ -104,6 +104,13 @@ class IoUringZeroCopyBufferPoolImpl {
   size_t getPendingBuffersSize() const noexcept {
     return pendingBuffers_.size();
   }
+  uint32_t getFlushThreshold() const noexcept { return flushThreshold_; }
+  uint16_t getAndResetFlushFailures() noexcept {
+    return flushFailures_.exchange(0, std::memory_order_relaxed);
+  }
+  uint16_t getAndResetFlushCount() noexcept {
+    return flushCount_.exchange(0, std::memory_order_relaxed);
+  }
 
  private:
   void mapMemory();
@@ -111,6 +118,7 @@ class IoUringZeroCopyBufferPoolImpl {
   void delayedDestroy(uint32_t refs) noexcept;
   uint32_t getRingQueuedCount() const noexcept;
   void writeBufferToRing(Buffer* buffer) noexcept;
+  void flushRefillQueue() noexcept;
 
   struct io_uring* ring_{nullptr};
   size_t pageSize_{0};
@@ -132,6 +140,9 @@ class IoUringZeroCopyBufferPoolImpl {
   std::atomic<bool> wantsShutdown_{false};
   uint32_t shutdownReferences_{0};
   std::queue<Buffer*> pendingBuffers_;
+  uint32_t flushThreshold_{128};
+  std::atomic<uint16_t> flushFailures_{0};
+  std::atomic<uint16_t> flushCount_{0};
 };
 
 struct ImplDeleter {
@@ -172,6 +183,25 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
     buf.pool = this;
   }
   mapMemory();
+
+  // Calculate flush threshold to bound pending queue growth.
+  //
+  // When pending buffers reach this threshold, we flush to the kernel which
+  // drains entries from the refill ring, freeing space for pending buffers.
+  //
+  // Threshold = max(128, min(rqEntries/4, numPages/20)):
+  // - rqEntries/4 (25% of ring): scales with kernel's drain capacity per flush
+  // - numPages/20 (5% of pool): caps memory sitting idle in pending queue
+  // - min(): use the smaller limit to respect both constraints
+  // - max(128): floor of 4 × ZCRX_FLUSH_BATCH to ensure batching efficiency
+  constexpr uint32_t kKernelFlushBatch = 32;
+  constexpr uint32_t kMinFlushThreshold = 4 * kKernelFlushBatch;
+  flushThreshold_ = std::max(
+      kMinFlushThreshold,
+      std::min(
+          static_cast<uint32_t>(rqEntries_ / 4), // 25% of ring
+          static_cast<uint32_t>(params.numPages / 20))); // 5% of pool
+
   if (!test) {
     initialRegister(params.ifindex, params.queueId);
   } else {
@@ -321,6 +351,14 @@ void IoUringZeroCopyBufferPoolImpl::returnBuffer(Buffer* buffer) noexcept {
   }
 
   uint32_t startTail = rqTail_;
+
+  // Trigger flush when pending buffers reach threshold computed from:
+  // max(128, min(25% of ring, 5% of pool))
+  // This bounds pending queue growth per Little's Law: L = λW
+  if (pendingBuffers_.size() >= flushThreshold_) {
+    flushRefillQueue();
+  }
+
   uint32_t queueLength = getRingQueuedCount();
   uint32_t slots = rqRing_.ring_entries - queueLength;
   auto numToProcess =
@@ -344,6 +382,29 @@ void IoUringZeroCopyBufferPoolImpl::returnBuffer(Buffer* buffer) noexcept {
 void IoUringZeroCopyBufferPoolImpl::delayedDestroy(uint32_t refs) noexcept {
   if (refs == 0) {
     delete this;
+  }
+}
+
+void IoUringZeroCopyBufferPoolImpl::flushRefillQueue() noexcept {
+  // ring_ is nullptr in unit tests which don't have a real io_uring.
+  if (ring_ == nullptr) {
+    return;
+  }
+  struct zcrx_ctrl ctrl{};
+  ctrl.zcrx_id = id_;
+  ctrl.op = ZCRX_CTRL_FLUSH_RQ;
+
+  // Best-effort flush: on failure (e.g., -EOPNOTSUPP on older kernels),
+  // buffers remain in pendingBuffers_ and are processed when ring space
+  // becomes available naturally.
+  int ret =
+      io_uring_register(ring_->ring_fd, IORING_REGISTER_ZCRX_CTRL, &ctrl, 0);
+  flushCount_.fetch_add(1, std::memory_order_relaxed);
+  if (ret < 0) {
+    flushFailures_.fetch_add(1, std::memory_order_relaxed);
+    LOG_EVERY_N(WARNING, 100)
+        << "Zero copy receive refill queue flush failed: "
+        << folly::errnoStr(-ret);
   }
 }
 
@@ -433,6 +494,18 @@ uint32_t IoUringZeroCopyBufferPool::getRingFreeCount() const noexcept {
 
 size_t IoUringZeroCopyBufferPool::getPendingBuffersSize() const noexcept {
   return impl_->getPendingBuffersSize();
+}
+
+uint32_t IoUringZeroCopyBufferPool::getFlushThreshold() const noexcept {
+  return impl_->getFlushThreshold();
+}
+
+uint16_t IoUringZeroCopyBufferPool::getAndResetFlushFailures() noexcept {
+  return impl_->getAndResetFlushFailures();
+}
+
+uint16_t IoUringZeroCopyBufferPool::getAndResetFlushCount() noexcept {
+  return impl_->getAndResetFlushCount();
 }
 
 } // namespace folly
