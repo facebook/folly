@@ -503,6 +503,126 @@ BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 65536)
 BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 262144)
 BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 1048576)
 
+BENCHMARK_DRAW_LINE();
+
+static void do_hazptr_cleanup_retired(
+    size_t iters, size_t const retired_count, size_t const hazard_count) {
+  using ObjDeleter = folly::variadic_noop_fn;
+  struct ObjBase {
+    size_t value = 0;
+  };
+  struct Obj : ObjBase, folly::hazptr_obj_base<Obj, std::atomic, ObjDeleter> {};
+
+  folly::BenchmarkSuspender braces;
+
+  std::mt19937_64 rng;
+
+  std::vector<Obj> objects;
+  objects.reserve(retired_count);
+
+  std::vector<size_t> indices;
+  indices.resize(retired_count);
+  std::iota(indices.begin(), indices.end(), 0);
+  std::shuffle(indices.begin(), indices.end(), rng);
+
+  hazptr_domain<> domain;
+
+  std::vector<folly::hazptr_holder<>> holders;
+  holders.reserve(hazard_count);
+  for (size_t i = 0; i < hazard_count; ++i) {
+    holders.emplace_back(folly::make_hazard_pointer(domain));
+  }
+
+  std::uniform_int_distribution<size_t> protected_dist(0, retired_count - 1);
+
+  while (iters--) {
+    // create N objects quickly, without new/delete
+    objects.clear();
+    for (size_t i = 0; i < retired_count; ++i) {
+      objects.emplace_back(ObjBase{i});
+    }
+
+    // protect objects according to hazard_count
+    for (size_t i = 0; i < hazard_count; ++i) {
+      std::atomic<Obj*> channel{&objects[indices[protected_dist(rng)]]};
+      std::ignore = holders[i].protect(channel);
+    }
+
+    // retire objects in a randomized order to simulate typical patterns
+    for (size_t idx : indices) {
+      objects[idx].retire(domain);
+    }
+
+    // objects are typically retired in writer threads and reclaimed in the
+    // reclaimer thread, so they will not be in cache in the reclaimer thread;
+    // simulate this by evicting the entire last-level cache (aka L3C)
+    bm_llc_evict(iters);
+
+    // measure a reclamation pass
+    braces.dismissing([&] { //
+      domain.cleanup();
+    });
+
+    // reclaim remaining objects that survived measured reclamation pass
+    for (auto& holder : holders) {
+      holder.reset_protection();
+    }
+    domain.cleanup();
+  }
+}
+
+static void hazptr_cleanup_retired_zero_hazards(
+    size_t iters, size_t const retired_count) {
+  do_hazptr_cleanup_retired(iters, retired_count, 0);
+}
+
+BENCHMARK_PARAM(hazptr_cleanup_retired_zero_hazards, 1)
+BENCHMARK_PARAM(hazptr_cleanup_retired_zero_hazards, 4)
+BENCHMARK_PARAM(hazptr_cleanup_retired_zero_hazards, 16)
+BENCHMARK_PARAM(hazptr_cleanup_retired_zero_hazards, 64)
+BENCHMARK_PARAM(hazptr_cleanup_retired_zero_hazards, 256)
+BENCHMARK_PARAM(hazptr_cleanup_retired_zero_hazards, 1024)
+BENCHMARK_PARAM(hazptr_cleanup_retired_zero_hazards, 4096)
+BENCHMARK_PARAM(hazptr_cleanup_retired_zero_hazards, 16384)
+BENCHMARK_PARAM(hazptr_cleanup_retired_zero_hazards, 65536)
+BENCHMARK_PARAM(hazptr_cleanup_retired_zero_hazards, 262144)
+BENCHMARK_PARAM(hazptr_cleanup_retired_zero_hazards, 1048576)
+
+static void hazptr_cleanup_retired_unit_hazards(
+    size_t iters, size_t const retired_count) {
+  do_hazptr_cleanup_retired(iters, retired_count, 1);
+}
+
+BENCHMARK_PARAM(hazptr_cleanup_retired_unit_hazards, 1)
+BENCHMARK_PARAM(hazptr_cleanup_retired_unit_hazards, 4)
+BENCHMARK_PARAM(hazptr_cleanup_retired_unit_hazards, 16)
+BENCHMARK_PARAM(hazptr_cleanup_retired_unit_hazards, 64)
+BENCHMARK_PARAM(hazptr_cleanup_retired_unit_hazards, 256)
+BENCHMARK_PARAM(hazptr_cleanup_retired_unit_hazards, 1024)
+BENCHMARK_PARAM(hazptr_cleanup_retired_unit_hazards, 4096)
+BENCHMARK_PARAM(hazptr_cleanup_retired_unit_hazards, 16384)
+BENCHMARK_PARAM(hazptr_cleanup_retired_unit_hazards, 65536)
+BENCHMARK_PARAM(hazptr_cleanup_retired_unit_hazards, 262144)
+BENCHMARK_PARAM(hazptr_cleanup_retired_unit_hazards, 1048576)
+
+static void hazptr_cleanup_retired_sqrt_hazards(
+    size_t iters, size_t const retired_count) {
+  do_hazptr_cleanup_retired(
+      iters, retired_count, static_cast<size_t>(std::sqrt(retired_count)));
+}
+
+BENCHMARK_PARAM(hazptr_cleanup_retired_sqrt_hazards, 1)
+BENCHMARK_PARAM(hazptr_cleanup_retired_sqrt_hazards, 4)
+BENCHMARK_PARAM(hazptr_cleanup_retired_sqrt_hazards, 16)
+BENCHMARK_PARAM(hazptr_cleanup_retired_sqrt_hazards, 64)
+BENCHMARK_PARAM(hazptr_cleanup_retired_sqrt_hazards, 256)
+BENCHMARK_PARAM(hazptr_cleanup_retired_sqrt_hazards, 1024)
+BENCHMARK_PARAM(hazptr_cleanup_retired_sqrt_hazards, 4096)
+BENCHMARK_PARAM(hazptr_cleanup_retired_sqrt_hazards, 16384)
+BENCHMARK_PARAM(hazptr_cleanup_retired_sqrt_hazards, 65536)
+BENCHMARK_PARAM(hazptr_cleanup_retired_sqrt_hazards, 262144)
+BENCHMARK_PARAM(hazptr_cleanup_retired_sqrt_hazards, 1048576)
+
 int main(int argc, char* argv[]) {
   folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   runBenchmarks();
