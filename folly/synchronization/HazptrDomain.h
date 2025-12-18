@@ -524,25 +524,25 @@ class hazptr_domain {
 
   /** match_tagged */
   int match_tagged(Obj* tagged[], Set& hs) {
+    int counts[kNumShards] = {}; // avoid single loop-carried dependency
+    ObjList match[kNumShards]; // protected, not reclaimable, to be reinserted
+    list_walk_sharded(tagged, [&](int s, Obj* obj) {
+      if (hs.contains(obj->raw_ptr())) {
+        match[s].push(obj);
+      } else {
+        counts[s] += 1;
+        auto cohort = obj->cohort();
+        DCHECK(cohort);
+        cohort->push_safe_obj(obj);
+      }
+    });
     int count = 0;
     for (int s = 0; s < kNumShards; ++s) {
       if (tagged[s]) {
-        ObjList match, nomatch;
-        list_match_condition(tagged[s], match, nomatch, [&](Obj* o) {
-          return hs.count(o->raw_ptr()) > 0;
-        });
-        count += nomatch.count();
-        auto obj = nomatch.head();
-        while (obj) {
-          auto next = obj->next();
-          auto cohort = obj->cohort();
-          DCHECK(cohort);
-          cohort->push_safe_obj(obj);
-          obj = next;
-        }
-        List l(match.head(), match.tail());
+        List l(match[s].head(), match[s].tail());
         tagged_[s].push_unlock(l);
       }
+      count += counts[s];
     }
     return count;
   }
@@ -550,25 +550,30 @@ class hazptr_domain {
   /** match_reclaim_untagged */
   int match_reclaim_untagged(Obj* untagged[], Set& hs, bool& done) {
     done = true;
-    ObjList not_reclaimed;
+    int counts[kNumShards] = {}; // avoid single loop-carried dependency
+    ObjList not_reclaimed[kNumShards]; // not reclaimed, to be reinserted
+    list_walk_sharded(untagged, [&](int s, Obj* obj) {
+      if (hs.contains(obj->raw_ptr())) {
+        not_reclaimed[s].push(obj);
+      } else {
+        counts[s] += 1;
+        ObjList children;
+        (*(obj->reclaim()))(obj, children);
+        if (!children.empty()) {
+          done = false;
+          not_reclaimed[s].splice(children);
+        }
+      }
+    });
+    if (!untagged_empty()) {
+      done = false;
+    }
     int count = 0;
     for (int s = 0; s < kNumShards; ++s) {
-      ObjList match, nomatch;
-      list_match_condition(untagged[s], match, nomatch, [&](Obj* o) {
-        return hs.count(o->raw_ptr()) > 0;
-      });
-      ObjList children;
-      count += nomatch.count();
-      reclaim_unprotected(nomatch.head(), children);
-      if (!untagged_empty() || !children.empty()) {
-        done = false;
-      }
-      count -= children.count();
-      not_reclaimed.splice(match);
-      not_reclaimed.splice(children);
+      List l(not_reclaimed[s].head(), not_reclaimed[s].tail());
+      untagged_[s].push(l, RetiredList::kMayNotBeLocked);
+      count += counts[s];
     }
-    List l(not_reclaimed.head(), not_reclaimed.tail());
-    untagged_[0].push(l, RetiredList::kMayNotBeLocked);
     return count;
   }
 
@@ -597,6 +602,31 @@ class hazptr_domain {
     dec_num_bulk_reclaims();
   }
 
+  /** list_walk_sharded */
+  template <typename Body>
+  void list_walk_sharded(Obj* objs[kNumShards], Body body) {
+    // Walk shards of a linked list in parallel. A long linked-list can create
+    // long loop-carried dependency chains, eventually stalling the processor.
+    // If a long linked-list is sharded, walking the shards in parallel can help
+    // reduce the impact of loop-carried dependencies. Note that the parallelism
+    // here refers to instruction-level parallism v.s. thread-level parallelism
+    // or processor-level parallelism.
+    Obj* heads[kNumShards];
+    for (int s = 0; s < kNumShards; ++s) {
+      heads[s] = objs[s];
+    }
+    for (bool more = true; more;) {
+      more = false;
+      for (int s = 0; s < kNumShards; ++s) {
+        if (auto obj = heads[s]) {
+          more = true;
+          heads[s] = obj->next();
+          body(s, obj);
+        }
+      }
+    }
+  }
+
   /** list_match_condition */
   template <typename Cond>
   void list_match_condition(
@@ -606,15 +636,6 @@ class hazptr_domain {
       DCHECK_NE(obj, next);
       auto& list = cond(obj) ? match : nomatch;
       list.push(obj);
-      obj = next;
-    }
-  }
-
-  /** reclaim_unprotected */
-  void reclaim_unprotected(Obj* obj, ObjList& children) {
-    while (obj) {
-      auto next = obj->next();
-      (*(obj->reclaim()))(obj, children);
       obj = next;
     }
   }
