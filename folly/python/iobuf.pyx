@@ -71,6 +71,54 @@ cdef cIOBuf* ptr_from_python_iobuf(object obj) except NULL:
 
 
 cdef class IOBuf:
+    """
+    Python wrapper for folly::IOBuf, providing efficient zero-copy buffer management.
+
+    IOBuf is designed for high-performance network programming and data processing,
+    allowing multiple IOBuf objects to share the same underlying memory buffer with
+    reference counting. IOBuf objects can be chained together to represent
+    non-contiguous data efficiently.
+
+    Key Features:
+        - Zero-copy buffer sharing with reference counting
+        - Support for buffer chaining to represent fragmented data
+        - Compatible with Python's buffer protocol (memoryview, bytes, bytearray)
+        - Immutable data access (use WritableIOBuf for mutable operations)
+
+    Usage:
+        Create from bytes:
+            >>> buf = IOBuf(b"hello world")
+            >>> len(buf)
+            11
+
+        Access as bytes:
+            >>> bytes(buf)
+            b'hello world'
+
+        Use with memoryview:
+            >>> mv = memoryview(buf)
+            >>> bytes(mv)
+            b'hello world'
+
+        Chain multiple buffers:
+            >>> buf1 = IOBuf(b"hello")
+            >>> buf2 = IOBuf(b" world")
+            >>> chain = make_chain([buf1, buf2])
+            >>> b''.join(chain)
+            b'hello world'
+            >>> chain.chain_size()
+            11
+
+    Thread Safety:
+        IOBuf objects are not thread-safe. Multiple threads should not access
+        the same IOBuf instance concurrently without external synchronization.
+        The underlying buffer's reference count is atomic, but IOBuf chain
+        operations require external locking when used across threads.
+
+    See Also:
+        - WritableIOBuf: Mutable variant for buffer modification
+        - C++ documentation: https://fburl.com/fbcref_iobuf
+    """
     def __init__(self, buffer not None):
         cdef memoryview view = memoryview(buffer, PyBUF_C_CONTIGUOUS)
         self._ours = move(from_python_buffer(view))
