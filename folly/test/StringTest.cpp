@@ -440,6 +440,23 @@ PrettyTestCase prettyTestCases[] = {
     {string("1 y"), 1e-24, PRETTY_SI},
     {string("10 y"), 1e-23, PRETTY_SI},
 
+    // check bits metric printing (useful for network bandwidth)
+    {string("853 b "), 853., PRETTY_BITS_METRIC},
+    {string("853 kb"), 853.e3, PRETTY_BITS_METRIC},
+    {string("853 Mb"), 853.e6, PRETTY_BITS_METRIC},
+    {string("8.53 Gb"), 8.53e9, PRETTY_BITS_METRIC},
+    {string("853 Gb"), 853.e9, PRETTY_BITS_METRIC},
+    {string("853 Tb"), 853.e12, PRETTY_BITS_METRIC},
+
+    {string("0 b "), 0, PRETTY_BITS_METRIC},
+    {string("1 b "), 1.0, PRETTY_BITS_METRIC},
+    {string("1 kb"), 1.0e+3, PRETTY_BITS_METRIC},
+    {string("1 Mb"), 1.0e+6, PRETTY_BITS_METRIC},
+    {string("1 Gb"), 1.0e+9, PRETTY_BITS_METRIC},
+    {string("1 Tb"), 1.0e+12, PRETTY_BITS_METRIC},
+    {string("1 Pb"), 1.0e+15, PRETTY_BITS_METRIC},
+    {string("1 Eb"), 1.0e+18, PRETTY_BITS_METRIC},
+
     // check that negative values work
     {string("-85.3 s "), -85.3, PRETTY_TIME},
     {string("-85.3 ms"), -85.3e-3, PRETTY_TIME},

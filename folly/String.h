@@ -387,6 +387,10 @@ enum PrettyType {
   PRETTY_UNITS_BINARY_IEC,
 
   PRETTY_SI,
+
+  PRETTY_BITS_METRIC,
+  PRETTY_BITS = PRETTY_BITS_METRIC,
+
   PRETTY_NUM_TYPES,
 };
 
@@ -411,6 +415,9 @@ enum PrettyType {
  *     PRETTY_UNITS_BINARY_IEC - Ki, Mi, Gi, etc
  *     PRETTY_SI           - full SI metric prefixes from yocto to Yotta
  *                           http://en.wikipedia.org/wiki/Metric_prefix
+ *     PRETTY_BITS_METRIC  - kb, Mb, Gb, etc (goes up by 10^3 = 1000 each time)
+ *                           Useful for network bandwidth (e.g., 1 Gbps)
+ *     PRETTY_BITS         - alias for PRETTY_BITS_METRIC
  *
  */
 std::string prettyPrint(double val, PrettyType, bool addSpace = true);
