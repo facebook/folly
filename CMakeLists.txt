@@ -394,7 +394,7 @@ if (IS_X86_64_ARCH AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     "-mavx512f" "-mavx512vl"
   )
 else()
-  # Windows doesn't nead the extra flags.
+  # Windows doesn't need the extra flags.
   message(
     STATUS
     "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
