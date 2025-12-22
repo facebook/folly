@@ -207,7 +207,7 @@ TEST(RWSpinLock, concurrentHolderTest) {
 
   std::vector<std::thread> threads;
   for (int i = 0; i < FLAGS_num_threads; ++i) {
-    threads.push_back(std::thread(go));
+    threads.emplace_back(go);
   }
 
   sleep(5);

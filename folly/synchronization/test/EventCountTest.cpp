@@ -105,14 +105,14 @@ TEST(EventCount, Simple) {
           sem.up();
         }
       };
-      threads.push_back(std::thread(fn));
+      threads.emplace_back(fn);
     } else {
       auto fn = [&sem, n]() mutable {
         while (n--) {
           sem.down();
         }
       };
-      threads.push_back(std::thread(fn));
+      threads.emplace_back(fn);
     }
   }
 

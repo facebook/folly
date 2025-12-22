@@ -108,7 +108,7 @@ TEST(RcuTest, Stress) {
     ints[i].store(new int(0), std::memory_order_release);
   }
   for (unsigned th = 0; th < FLAGS_threads; th++) {
-    readers.push_back(std::thread([&]() {
+    readers.emplace_back([&]() {
       for (int i = 0; i < FLAGS_iters / 100; i++) {
         std::scoped_lock<rcu_domain> lock(rcu_default_domain());
         int sum = 0;
@@ -121,19 +121,19 @@ TEST(RcuTest, Stress) {
         }
         EXPECT_EQ(sum, 0);
       }
-    }));
+    });
   }
   folly::relaxed_atomic<bool> done{false};
   std::vector<std::thread> updaters;
   for (unsigned th = 0; th < FLAGS_threads; th++) {
-    updaters.push_back(std::thread([&]() {
+    updaters.emplace_back([&]() {
       while (!done) {
         auto newint = new int(0);
         auto oldint = ints[folly::Random::rand32() % sz].exchange(
             newint, std::memory_order_acq_rel);
         delete_or_retire_oldint(oldint);
       }
-    }));
+    });
   }
   for (auto& t : readers) {
     t.join();
@@ -154,11 +154,11 @@ TEST(RcuTest, Stress) {
 TEST(RcuTest, Synchronize) {
   std::vector<std::thread> threads;
   for (unsigned th = 0; th < FLAGS_threads; th++) {
-    threads.push_back(std::thread([&]() {
+    threads.emplace_back([&]() {
       for (int i = 0; i < 10; i++) {
         rcu_synchronize();
       }
-    }));
+    });
   }
   for (auto& t : threads) {
     t.join();
@@ -307,14 +307,13 @@ TEST(RcuTest, DeeplyNestedReaders) {
   std::atomic<int*> int_ptr = std::atomic<int*>(nullptr);
   int_ptr.store(new int(0), std::memory_order_release);
   for (unsigned th = 0; th < 32; th++) {
-    readers.push_back(std::thread([&]() {
+    readers.emplace_back([&]() {
       std::vector<std::unique_lock<rcu_domain>> domain_readers;
       for (unsigned i = 0; i < 8192; i++) {
-        domain_readers.push_back(
-            std::unique_lock<rcu_domain>(rcu_default_domain()));
+        domain_readers.emplace_back(rcu_default_domain());
         EXPECT_EQ(*(int_ptr.load(std::memory_order_acquire)), 0);
       }
-    }));
+    });
   }
 
   folly::relaxed_atomic<bool> done{false};
