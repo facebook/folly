@@ -36,6 +36,9 @@ class HeapTimekeeper : public Timekeeper {
 
   SemiFuture<Unit> after(HighResDuration) override;
 
+ protected:
+  virtual void worker() const;
+
  private:
   using Clock = std::chrono::steady_clock;
 

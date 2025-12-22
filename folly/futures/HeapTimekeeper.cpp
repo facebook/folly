@@ -300,7 +300,7 @@ void HeapTimekeeper::State::worker() {
 }
 
 HeapTimekeeper::HeapTimekeeper() : state_(std::make_shared<State>()) {
-  thread_ = std::thread{[this] { state_->worker(); }};
+  thread_ = std::thread{[this] { worker(); }};
 }
 
 HeapTimekeeper::~HeapTimekeeper() {
@@ -312,6 +312,10 @@ SemiFuture<Unit> HeapTimekeeper::after(HighResDuration dur) {
   auto [timeout, sf] = Timeout::create(*this, Clock::now() + dur);
   state_->enqueue(State::Op::Type::kSchedule, std::move(timeout));
   return std::move(sf);
+}
+
+void HeapTimekeeper::worker() const {
+  state_->worker();
 }
 
 } // namespace folly
