@@ -18,12 +18,12 @@ from .builder import (
     CMakeBuilder,
     Iproute2Builder,
     MakeBuilder,
+    MesonBuilder,
     NinjaBootstrap,
     NopBuilder,
     OpenSSLBuilder,
     SetupPyBuilder,
     SqliteBuilder,
-    SystemdBuilder,
 )
 from .cargo import CargoBuilder
 from .expr import parse_expr
@@ -116,6 +116,7 @@ SCHEMA = {
     "make.build_args": {"optional_section": True},
     "make.install_args": {"optional_section": True},
     "make.test_args": {"optional_section": True},
+    "meson.setup_args": {"optional_section": True},
     "header-only": {"optional_section": True, "fields": {"includedir": REQUIRED}},
     "shipit.pathmap": {"optional_section": True},
     "shipit.strip": {"optional_section": True},
@@ -689,8 +690,8 @@ class ManifestParser(object):
                 inst_dir,
             )
 
-        if builder == "systemd":
-            return SystemdBuilder(
+        if builder == "meson":
+            return MesonBuilder(
                 loader,
                 dep_manifests,
                 build_options,
