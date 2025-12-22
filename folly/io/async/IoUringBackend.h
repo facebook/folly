@@ -33,6 +33,7 @@
 #include <folly/CppAttributes.h>
 #include <folly/ExceptionString.h>
 #include <folly/Function.h>
+#include <folly/IPAddress.h>
 #include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/io/IOBuf.h>
@@ -65,6 +66,11 @@ class IoUringBackend : public EventBaseBackendBase {
 
   using ResolveNapiIdCallback =
       std::function<int(int ifindex, uint32_t queueId)>;
+  using SrcPortForQueueIdCallback = std::function<int(
+      const folly::IPAddress& destAddr,
+      uint16_t destPort,
+      int targetNapiId,
+      const char* ifname)>;
 
   struct Options {
     enum Flags {
@@ -242,6 +248,12 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setZcrxSrcPortCallback(SrcPortForQueueIdCallback&& v) {
+      srcPortQueueId = std::move(v);
+
+      return *this;
+    }
+
     Options& setZeroCopyRxNumPages(int v) {
       zcRxNumPages = v;
 
@@ -305,6 +317,7 @@ class IoUringBackend : public EventBaseBackendBase {
     int zcRxQueueId{-1};
     int zcRxIfindex{-1};
     ResolveNapiIdCallback resolveNapiId;
+    SrcPortForQueueIdCallback srcPortQueueId;
     int zcRxNumPages{-1};
     int zcRxRefillEntries{-1};
 
@@ -325,6 +338,9 @@ class IoUringBackend : public EventBaseBackendBase {
   bool useReqBatching() const {
     return options_.timeout.count() > 0 && options_.batchSize > 0;
   }
+
+  int computeSrcPortForQueueId(
+      const folly::IPAddress& destAddr, uint16_t destPort);
 
   // from EventBaseBackendBase
   int getPollableFd() const override { return ioRing_.ring_fd; }

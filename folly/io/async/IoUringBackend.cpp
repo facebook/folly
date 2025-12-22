@@ -343,7 +343,8 @@ IoUringProvidedBufferRing::UniquePtr makeProvidedBufferRing(Args&&...) {
 bool validateZeroCopyRxOptions(IoUringBackend::Options& options) {
   if (options.zeroCopyRx &&
       (options.zcRxIfname.empty() || options.zcRxIfindex <= 0 ||
-       options.zcRxQueueId == -1 || !options.resolveNapiId)) {
+       options.zcRxQueueId == -1 || !options.resolveNapiId ||
+       !options.srcPortQueueId)) {
     return false;
   }
 
@@ -1908,6 +1909,16 @@ void IoUringBackend::queueRecvZc(
   ioSqe->backendCb_ = processRecvZcCB;
 
   submitImmediateIoSqe(*ioSqe);
+}
+
+int IoUringBackend::computeSrcPortForQueueId(
+    const folly::IPAddress& destAddr, uint16_t destPort) {
+  if (!options_.srcPortQueueId || napiId_ < 0) {
+    return -1;
+  }
+
+  return options_.srcPortQueueId(
+      destAddr, destPort, napiId_, options_.zcRxIfname.c_str());
 }
 
 void IoUringBackend::processFileOp(IoSqe* sqe, int res) noexcept {

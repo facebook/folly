@@ -882,6 +882,7 @@ fb_dirsync_cpp_library(
         "//folly:cpp_attributes",
         "//folly:exception_string",
         "//folly:function",
+        "//folly:network_address",
         "//folly:optional",
         "//folly:range",
         "//folly:small_vector",
