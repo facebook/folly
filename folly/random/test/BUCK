@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
@@ -47,6 +48,17 @@ non_fbcode_target(
 )
 
 # fbcode build rules
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "engine_bench",
+    srcs = ["engine_bench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/lang:keep",
+        "//folly/random:xoshiro256pp",
+    ],
+)
 
 fbcode_target(
     _kind = cpp_unittest,
