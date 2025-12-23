@@ -271,13 +271,17 @@ TEST(Wait, waitWithDuration) {
 }
 
 TEST(Wait, multipleWait) {
+  // Use Promise/Future to control completion deterministically,
+  // avoiding flakiness from wall-clock timing dependencies.
   folly::TestExecutor executor(1);
-  auto f = futures::sleep(milliseconds(100)).via(&executor);
+  Promise<Unit> p;
+  auto f = p.getSemiFuture().via(&executor);
   for (size_t i = 0; i < 5; ++i) {
     EXPECT_FALSE(f.isReady());
     f.wait(milliseconds(3));
   }
   EXPECT_FALSE(f.isReady());
+  p.setValue();
   f.wait();
   EXPECT_TRUE(f.isReady());
   f.wait();
