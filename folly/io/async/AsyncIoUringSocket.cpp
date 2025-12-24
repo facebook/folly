@@ -394,10 +394,10 @@ void AsyncIoUringSocket::processConnectResult(const io_uring_cqe* cqe) {
   connectSqe_.reset();
   connectEndTime_ = std::chrono::steady_clock::now();
   if (res == 0) {
+    setStateEstablished();
     if (connectCallback_) {
       connectCallback_->connectSuccess();
     }
-    setStateEstablished();
   } else {
     state_ = State::Error;
     if (connectCallback_) {

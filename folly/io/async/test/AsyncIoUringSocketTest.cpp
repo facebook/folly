@@ -677,6 +677,38 @@ TEST_P(AsyncIoUringSocketTest, BindAddressNoPort) {
   socket->close();
 }
 
+TEST_P(AsyncIoUringSocketTest, ConnectSuccessStateEstablished) {
+  MAYBE_SKIP();
+
+  struct ConnectCB : AsyncSocket::ConnectCallback {
+    explicit ConnectCB(AsyncIoUringSocket* s) : socket(s) {}
+    void connectSuccess() noexcept override { prom.setValue(socket->good()); }
+    void connectErr(const AsyncSocketException& ex) noexcept override {
+      prom.setException(ex);
+    }
+
+    Promise<bool> prom;
+    AsyncIoUringSocket* socket;
+  };
+
+  AsyncIoUringSocket::UniquePtr socket(
+      new AsyncIoUringSocket(base.get(), ioUringSocketOptions()));
+
+  ConnectCB cb(socket.get());
+  socket->connect(&cb, serverAddress);
+  auto fd =
+      fdPromise.getFuture().within(kTimeout).via(base.get()).getVia(base.get());
+  fdPromise = {};
+  auto server = AsyncSocket::newSocket(base.get(), fd);
+
+  auto isGood =
+      cb.prom.getSemiFuture()
+          .within(kTimeout)
+          .via(base.get())
+          .getVia(base.get());
+  EXPECT_TRUE(isGood);
+}
+
 TEST_P(AsyncIoUringSocketTest, ReadCallbackSetDuringConnect) {
   MAYBE_SKIP();
 
