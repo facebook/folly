@@ -85,3 +85,14 @@
 #cmakedefine01 FOLLY_HAVE_LIBRT
 
 #cmakedefine01 FOLLY_HAVE_VSOCK
+
+// Record the C++ standard version used to compile the Folly library.
+// This enables ABI compatibility checks when headers are included by
+// applications compiled with a different C++ standard version.
+// See: https://github.com/facebook/folly/issues/2477
+#define FOLLY_LIBRARY_CXX_STANDARD @CMAKE_CXX_STANDARD@
+
+// Record whether [[no_unique_address]] was active when building the library.
+// This attribute changes struct layout and can cause ODR violations if
+// headers are compiled with a different C++ standard than the library.
+#cmakedefine01 FOLLY_LIBRARY_HAS_NO_UNIQUE_ADDRESS
