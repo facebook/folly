@@ -34,6 +34,40 @@
 
 static_assert(FOLLY_CPLUSPLUS >= 201703L, "__cplusplus >= 201703L");
 
+/**
+ * ABI Compatibility Check
+ *
+ * When linking against a pre-compiled Folly library, the C++ standard version
+ * used by the application should match the library to avoid ODR violations.
+ * Key layout-affecting features differ between C++17 and C++20:
+ *   - [[no_unique_address]] attribute availability and behavior
+ *   - Coroutine support structures
+ *   - std::span vs folly::span selection
+ *
+ * See: https://github.com/facebook/folly/issues/2477
+ */
+#if defined(FOLLY_LIBRARY_CXX_STANDARD) && !defined(FOLLY_SKIP_ABI_CHECK)
+// Determine if there's a C++ standard version mismatch that could affect ABI
+#if (FOLLY_LIBRARY_CXX_STANDARD < 20 && FOLLY_CPLUSPLUS >= 202002L) || \
+    (FOLLY_LIBRARY_CXX_STANDARD >= 20 && FOLLY_CPLUSPLUS < 202002L)
+// There's a C++17/C++20 boundary crossing, which affects [[no_unique_address]]
+#if defined(__GNUC__) || defined(__clang__)
+#pragma message( \
+     "Warning: Folly library was compiled with C++" \
+     FOLLY_PP_STRINGIZE(FOLLY_LIBRARY_CXX_STANDARD) \
+     ", but application is using a different C++ standard. " \
+     "This may cause ABI issues. See issue #2477. " \
+     "Define FOLLY_SKIP_ABI_CHECK to suppress this warning.")
+#endif
+#endif
+#endif
+
+// Helper macro for stringizing (used in the warning above)
+#ifndef FOLLY_PP_STRINGIZE
+#define FOLLY_PP_STRINGIZE_IMPL(x) #x
+#define FOLLY_PP_STRINGIZE(x) FOLLY_PP_STRINGIZE_IMPL(x)
+#endif
+
 #if defined(__GNUC__) && !defined(__clang__)
 #if defined(FOLLY_CONFIG_TEMPORARY_DOWNGRADE_GCC)
 static_assert(__GNUC__ >= 9, "__GNUC__ >= 9");
