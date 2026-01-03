@@ -65,8 +65,8 @@ special character like a comma or semicolon use the JSON format instead.
 
 <category_config> ::= <cat_level_config> <handler_list>
 <cat_level_config> ::= <level>
-                     | <catgory_name> "=" <level>
-                     | <catgory_name> ":=" <level>
+                     | <category_name> "=" <level>
+                     | <category_name> ":=" <level>
 <handler_list> ::= ":" <handler_name> <handler_list>
                  | <empty_string>
 
@@ -75,7 +75,7 @@ special character like a comma or semicolon use the JSON format instead.
 <handler_options> ::= "," <option_name> "=" <option_value> <handler_options>
                     | <empty_string>
 
-<catgory_name> ::= <atom>
+<category_name> ::= <atom>
 <handler_name> ::= <atom>
 <handler_type> ::= <atom>
 <option_name> ::= <atom>
@@ -175,7 +175,7 @@ Example log configuration strings:
 
   Defines two log handlers: "x" which writes to stderr and "y" which
   writes to the file /tmp/y.log
-  Sets the root log catgory level to ERROR, and configures it to use the
+  Sets the root log category level to ERROR, and configures it to use the
   "x" handler.  Sets the log level for the "folly" category to INFO and
   configures it to use the "y" handler.
 
@@ -183,7 +183,7 @@ Example log configuration strings:
 
   Defines two log handlers: "default" which writes to stderr and "x" which
   writes to the file /tmp/x.log
-  Sets the root log catgory level to ERROR, and configures it to use both
+  Sets the root log category level to ERROR, and configures it to use both
   the "default" and "x" handlers.
 
 * `ERROR:`

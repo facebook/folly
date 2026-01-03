@@ -54,7 +54,7 @@ namespace simd::detail {
 template <typename Platform>
 struct SimdPlatformCommon {
   /**
-   * sclar_t - type of scalar we operate on (uint8_t, uint16_t etc)
+   * scalar_t - type of scalar we operate on (uint8_t, uint16_t etc)
    * reg_t - type of a simd register (__m128i)
    * logical_t - type of a simd logical register (matches reg_t so far)
    **/
@@ -281,7 +281,7 @@ struct SimdSse42PlatformSpecific {
   FOLLY_ERASE
   static bool any(logical_t log) { return movemask<scalar_t>(log).first; }
 
-#if 0 // disabled untill we have a test where this is relevant
+#if 0 // disabled until we have a test where this is relevant
   FOLLY_ERASE
   static bool all(logical_t log) {
     auto [bits, bitsPerElement] = movemask<scalar_t>(log);
@@ -360,7 +360,7 @@ struct SimdAvx2PlatformSpecific {
   FOLLY_ERASE
   static bool any(logical_t log) { return simd::movemask<scalar_t>(log).first; }
 
-#if 0 // disabled untill we have a test where this is relevant
+#if 0 // disabled until we have a test where this is relevant
   FOLLY_ERASE
   static bool all(logical_t log) {
     auto [bits, bitsPerElement] = movemask<scalar_t>(log);
@@ -480,7 +480,7 @@ struct SimdAarch64PlatformSpecific {
     return vgetq_lane_u64(u64, 0);
   }
 
-#if 0 // disabled untill we have a test where this is relevant
+#if 0 // disabled until we have a test where this is relevant
   FOLLY_ERASE
   static bool all(logical_t log) {
     // Not quite what they did in .Net runtime, but

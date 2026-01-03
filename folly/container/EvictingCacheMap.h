@@ -49,7 +49,7 @@ namespace folly {
  * NOTE: maxSize==0 is a special case that disables automatic evictions.
  * prune() can be used for manually trimming down the number of entries.
  *
- * Implementaion: Maintains a doubly linked list (`lru_`) of entry nodes in
+ * Implementation: Maintains a doubly linked list (`lru_`) of entry nodes in
  * LRU order, which are also connected to hash table index (`index_`). The
  * access order is maintained on the list by moving an element to the front
  * of list on a get, and adding to the front on insert. Assuming quality
@@ -181,7 +181,7 @@ class EvictingCacheMap {
    * Adjust the max size of EvictingCacheMap, evicting as needed to ensure the
    * new max is not exceeded.
    *
-   * Calling this function with an arugment of 0 removes the limit on the cache
+   * Calling this function with an argument of 0 removes the limit on the cache
    * size and elements are not evicted unless clients explicitly call prune.
    *
    * @param maxSize new maximum size of the cache map.
@@ -739,7 +739,7 @@ class EvictingCacheMap {
     }
   }
 
-  // A zero clear size doesnt make sense. If you want to disable clearing, set
+  // A zero clear size doesn't make sense. If you want to disable clearing, set
   // maxSize to 0.
   static std::size_t clampClearSize(std::size_t clearSize) {
     return std::max(clearSize, std::size_t{1});

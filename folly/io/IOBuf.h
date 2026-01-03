@@ -1088,7 +1088,7 @@ class IOBuf {
    *
    * @post  headroom() >= minHeadroom
    * @post  tailroom() >= minTailroom
-   * @post  The contents between data() and tail() are preseved
+   * @post  The contents between data() and tail() are preserved
    *
    * @methodset Buffer Capacity
    */
@@ -1111,7 +1111,7 @@ class IOBuf {
    * Is this IOBuf part of a chain.
    *
    * Technically, all IOBufs are part of a chain, possibly of length 1. This
-   * functin checks if the chain is non-trivial, i.e. the chain has more than
+   * function checks if the chain is non-trivial, i.e. the chain has more than
    * just one IOBuf in it.
    *
    * @returns  true iff the the IOBuf's chain has more than 1 IOBuf in it

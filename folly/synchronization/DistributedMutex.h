@@ -49,9 +49,9 @@ namespace distributed_mutex {
  * faster than flat combining and even faster than std::atomic<> in some
  * cases, allowing more work with higher throughput.  In the uncontended case,
  * it is a few cycles faster than folly::MicroLock but a bit slower than
- * std::mutex.  DistributedMutex is also resistent to tail latency pathalogies
+ * std::mutex.  DistributedMutex is also resistant to tail latency pathologies
  * unlike many of the other mutexes in use, which sleep for large time
- * quantums to reduce spin churn, this causes elevated latencies for threads
+ * quantum to reduce spin churn, this causes elevated latencies for threads
  * that enter the sleep cycle.  The tail latency of lock acquisition can go up
  * to 10x lower because of a more deterministic scheduling algorithm that is
  * managed almost entirely in userspace.  Detailed results comparing the
@@ -299,9 +299,9 @@ class DistributedMutex {
   auto lock_combine(Task task) -> folly::invoke_result_t<const Task&>;
 
   /**
-   * Try to combine a task as a combined critical section untill the given time
+   * Try to combine a task as a combined critical section until the given time
    *
-   * Like the other try_lock() mehtods, this is allowed to fail spuriously,
+   * Like the other try_lock() methods, this is allowed to fail spuriously,
    * and is not guaranteed to return true even when the mutex is currently
    * unlocked.
    *
@@ -314,7 +314,7 @@ class DistributedMutex {
       const std::chrono::duration<Rep, Period>& duration, Task task);
 
   /**
-   * Try to combine a task as a combined critical section untill the given time
+   * Try to combine a task as a combined critical section until the given time
    *
    * Other than the difference in the meaning of the second argument, the
    * semantics of this function are identical to try_lock_combine_for()

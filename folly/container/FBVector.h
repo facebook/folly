@@ -610,7 +610,7 @@ class fbvector {
   //     Destroys the old data.
   //
   //  3: relocate_undo
-  //     Destoys the new data and restores the old data.
+  //     Destroys the new data and restores the old data.
   //
   // The three steps are used because there may be an exception after part 1
   //  has completed. If that is the case, then relocate_undo can nullify the

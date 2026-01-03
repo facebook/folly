@@ -241,7 +241,7 @@ void QueueTest::maxQueueSize() {
   // putMessage() should let us exceed the maximum
   queue.putMessage(6);
 
-  // Pull another mesage off
+  // Pull another message off
   EXPECT_TRUE(queue.tryConsume(result));
   EXPECT_EQ(1, result);
 

@@ -59,7 +59,7 @@ constexpr bool is_register_pass_v<T&&> = true;
 /// register_pass_t
 ///
 /// Chooses an optimal argument type for passing values of type T based on
-/// whehter such values may be passed in registers.
+/// whether such values may be passed in registers.
 template <typename T>
 using register_pass_t = conditional_t<is_register_pass_v<T>, T const, T const&>;
 

@@ -498,7 +498,7 @@ TEST(SocketAddress, CheckComparatorBehavior) {
 
   // IP V4
 
-  // port comparisions
+  // port comparisons
   first.setFromIpPort("128.0.0.0", 0);
   second.setFromIpPort("128.0.0.0", 0xFFFF);
   CheckFirstLessThanSecond(first, second);
@@ -511,7 +511,7 @@ TEST(SocketAddress, CheckComparatorBehavior) {
   second.setFromIpPort("128.0.0.100", 10);
   CheckFirstLessThanSecond(first, second);
 
-  // Comaprision between IPV4 and IPV6
+  // Comparision between IPV4 and IPV6
   first.setFromIpPort("128.0.0.0", 0);
   second.setFromIpPort("::ffff:127.0.0.1", 0);
   CheckFirstLessThanSecond(first, second);
@@ -521,7 +521,7 @@ TEST(SocketAddress, CheckComparatorBehavior) {
 
   // IPV6 comparisons
 
-  // port comparisions
+  // port comparisons
   first.setFromIpPort("::0", 0);
   second.setFromIpPort("::0", 0xFFFF);
   CheckFirstLessThanSecond(first, second);

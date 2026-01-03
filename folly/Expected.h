@@ -888,7 +888,7 @@ namespace expected_detail {
  *     .then([](C c){return D(c);});
  *
  * To avoid the redundant error checking that would happen if a call at the
- * front of the chain returns an error, these call chains can be collaped into
+ * front of the chain returns an error, these call chains can be collapsed into
  * a single call to .then:
  *
  * Expected<D, Error> maybeD = someFunc()
@@ -934,7 +934,7 @@ namespace expected_detail {
  * to-Error or vice versa) throws. Trying to access either the contained value
  * or error object causes Expected to throw folly::BadExpectedAccess.
  *
- * Expected models OptionalPointee, so calling 'get_pointer(ex)' will return a
+ * Expected models OptionalPointer, so calling 'get_pointer(ex)' will return a
  * pointer to nullptr if the 'ex' is in the error state, and a pointer to the
  * value otherwise:
  *

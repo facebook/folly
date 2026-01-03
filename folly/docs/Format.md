@@ -133,7 +133,7 @@ Format specification:
     - for floating point values, number of digits after decimal point ('`f`' or
       '`F`' presentation) or number of significant digits ('`g`' or '`G`')
     - for others, maximum field size (truncate subsequent characters)
-- '`.`' (when used after precision or in lieu of precison): Forces a trailing
+- '`.`' (when used after precision or in lieu of precision): Forces a trailing
   decimal point to make it clear this is a floating point value.
 - `type`: presentation format, see below
 

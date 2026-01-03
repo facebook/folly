@@ -64,7 +64,7 @@ struct AnyOfDelegate {
  * simdAnyOf<Platform, unrolling = 4>(f, l, p);
  *
  * Like std::any_of but with vectorized predicates.
- * Predicate shoud accept Platform::reg_t and return Platform::logical_t.
+ * Predicate should accept Platform::reg_t and return Platform::logical_t.
  *
  * By default is unrolled 4 ways but for expensive predicates you might want to
  * use an unroll factor of 1.

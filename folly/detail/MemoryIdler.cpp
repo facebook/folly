@@ -53,7 +53,7 @@ bool MemoryIdler::isUnmapUnusedStackAvailable() noexcept {
   // stack on demand. Before the main thread stack grows to its full extent, the
   // vma corresponding to the main thread stack is not yet fully allocated. It's
   // possible for the kernel to allocate the not-yet-allocated main thread stack
-  // vma to ramdon sbrk() or mmap() requests, and for the resulting regions from
+  // vma to random sbrk() or mmap() requests, and for the resulting regions from
   // these requests to be used by other user code. If this happens, the madvise-
   // dontneed here is dangerous - it can zero arbitrary heap buffers! So it must
   // be skipped. In the case where this runs a fork() child in that thread which

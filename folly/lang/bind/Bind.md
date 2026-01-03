@@ -174,7 +174,7 @@ I will describe how to add your business logic.
 users to pass the outer type **only** via prvalue semantics.  This is
 required in order to minimize lifetime bugs.  These "binding" types
 typically store references, which (thanks to lifetime extension) are valid
-in the current statement, but can easily become invalid later.  Insistiing
+in the current statement, but can easily become invalid later.  Insisting
 on pass-by-prvalue makes it harder for the user to accidentally write
 lifetime bugs.  Why go this far to prevent pass-by-move?  Implementation
 experience shows that assigning a binding type to a named variable feels

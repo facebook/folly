@@ -15,7 +15,7 @@
  */
 
 /*
- * folly::merge() is an implementation of std::merge with one additonal
+ * folly::merge() is an implementation of std::merge with one additional
  * guarantee: if the input ranges overlap, the order that values *from the two
  * different ranges* appear in the output is well defined (std::merge only
  * guarantees relative ordering is maintained within a single input range).

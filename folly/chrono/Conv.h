@@ -71,7 +71,7 @@ struct is_chrono_conversion {
  * fits in the range of numbers representable by time_t.
  *
  * This is similar to the normal folly::tryTo() behavior when converting
- * arthmetic types to an integer type, except that it does not complain about
+ * arithmetic types to an integer type, except that it does not complain about
  * floating point conversions losing precision.
  */
 template <typename Src>
@@ -87,7 +87,7 @@ Expected<time_t, ConversionCode> chronoRangeCheck(Src value) {
     // 18446744073709551615 <- time_t max (when time_t is int64_t)
     // 18446744073709551616 <- next representable float or double.
     // The floating point value that gets chosen depends on the floating point
-    // implementation. IEEE arthimetic rounds to nearest.
+    // implementation. IEEE arithmetic rounds to nearest.
     static_assert(
         std::numeric_limits<Src>::round_style == std::round_to_nearest,
         "This function is only implemented for IEEE round to nearest. Please update it if you need other round styles.");

@@ -1387,7 +1387,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloMultiplePackets) {
 }
 
 /**
- * Verify sucessful behavior of SSL certificate validation.
+ * Verify successful behavior of SSL certificate validation.
  */
 TEST(AsyncSSLSocketTest, SSLHandshakeValidationSuccess) {
   EventBase eventBase;

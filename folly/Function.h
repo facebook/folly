@@ -617,8 +617,8 @@ using DispatchOf = Dispatch<
     InSituSize && InSituAlign && InSituNoexcept,
     std::is_trivially_copyable_v<Fun>>;
 
-// This cannot be done inseide `Function` class, because the word
-// `Function` there refers to the instantion and not the template.
+// This cannot be done inside `Function` class, because the word
+// `Function` there refers to the instantiation and not the template.
 template <typename T>
 constexpr bool is_instantiation_of_folly_function_v =
     is_instantiation_of_v<Function, T>;

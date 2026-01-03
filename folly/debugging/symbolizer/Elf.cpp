@@ -281,7 +281,7 @@ ElfFile::OpenResult ElfFile::init() noexcept {
 
   // We support executable and shared object files and extracting debug info
   // from relocatable objects (.dwo sections in .o/.dwo files). The e_phnum and
-  // e_phentsize header fileds are not required for relocatable files.
+  // e_phentsize header fields are not required for relocatable files.
   // https://docs.oracle.com/cd/E19620-01/805-4693/6j4emccrq/index.html
   if (elfHeader.e_type != ET_REL) {
     if (elfHeader.e_phnum == 0) {

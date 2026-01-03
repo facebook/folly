@@ -417,7 +417,7 @@ constexpr T constexpr_ceil(T t, T round) {
 
 /// constexpr_mult
 ///
-/// Multiply two values, allowing for constexpr floating-pooint overflow to
+/// Multiply two values, allowing for constexpr floating-point overflow to
 /// infinity.
 template <typename T>
 constexpr T constexpr_mult(T const a, T const b) {
@@ -513,7 +513,7 @@ constexpr T constexpr_ipow(T const base, E const exp) {
 /// constant evaluations. Like std::exp, which becomes constexpr in C++26.
 ///
 /// The integer overload uses iterated squaring and multiplication. The
-/// floating-point overlaod naively evaluates the taylor series of exp(num)
+/// floating-point overload naively evaluates the taylor series of exp(num)
 /// until approximate convergence.
 ///
 /// mimic: std::exp (C++23, C++26)
@@ -875,7 +875,7 @@ constexpr_clamp_cast(Src src) {
       // If Src is larger in size, we need to clamp it to valid range in Dst.
       Dst(constexpr_clamp(src, Src(L::min()), Src(L::max()))))
     // Src and Dst have different signedness.
-    // Check if it's signed -> unsigend cast.
+    // Check if it's signed -> unsigned cast.
     : std::is_signed<Src>::value && std::is_unsigned<Dst>::value
     ? (
       // If src < 0, the result should be 0.

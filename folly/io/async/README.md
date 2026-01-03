@@ -165,7 +165,7 @@ Generally there is a single accept() thread, and multiple
 AcceptCallback objects.  The Acceptee objects then will manage the
 individual AsyncSockets.  While AsyncSockets *can* be moved between
 event bases, most users just tie them to a single event base to get
-better cache locallity, and to avoid locking.
+better cache locality, and to avoid locking.
 
 Multiple ServerSockets can be made, but currently the linux kernel has
 a lock on accept()ing from a port, preventing more than ~20k accepts /
@@ -197,7 +197,7 @@ consumers), the spinlock is almost always uncontended, and we haven't
 seen any perf issues with it in practice.
 
 The eventfd or pipe is only notified if the thread isn't already
-awake, to avoid syscalls.  A naive implementaiton that does one write
+awake, to avoid syscalls.  A naive implementation that does one write
 per message in the queue, or worse, writes the whole message to the
 queue, would be significantly slower.
 

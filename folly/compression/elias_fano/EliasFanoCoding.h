@@ -879,7 +879,7 @@ class EliasFanoReader {
     return readLowerPart(position()) | (upper_.value() << numLowerBits_);
   }
 
-  // Ordering of fields is counter-intutive but it optimizes the layout.
+  // Ordering of fields is counter-intuitive but it optimizes the layout.
   UpperBitsReader upper_;
   const uint8_t* const lower_;
   ValueType value_;

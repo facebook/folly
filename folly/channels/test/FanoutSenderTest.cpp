@@ -194,7 +194,7 @@ TEST_F(FanoutSenderFixture, ReceiverCancelled_DelayedCancellationCallback) {
   fanoutSender.write(1);
   executor_.drain();
 
-  // This call triggers the cancellation callback that would have occured
+  // This call triggers the cancellation callback that would have occurred
   // before, if we had not cancelled it. This should trigger the destruction of
   // the FanoutSenderProcessor.
   callback->consume(bridge1.get());
@@ -224,7 +224,7 @@ TEST_F(FanoutSenderFixture, Close_DelayedCancellationCallback) {
 
   std::move(fanoutSender).close();
 
-  // This call triggers the cancellation callback that would have occured
+  // This call triggers the cancellation callback that would have occurred
   // before, if we had not cancelled it. This should trigger the destruction of
   // the FanoutSenderProcessor.
   callback->consume(bridge1.get());

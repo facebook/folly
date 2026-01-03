@@ -221,7 +221,7 @@ refcount operations. `folly::CoreCachedSharedPtr` is a version of shared-ptr
 accelerated with a fixed-size slab of copies to ensure that refcount operations
 be relatively uncontended, but can be subject to exotic race conditions. And
 `folly::AtomicCoreCachedSharedPtr` is a version of that where the operations are
-transactional and not subject to those exocit races. These facilities do help
+transactional and not subject to those exotic races. These facilities do help
 with scaling over many cores, but are still costly.
 
 There are two publish/observe lifetime-protection mechanisms for shared objects
@@ -255,7 +255,7 @@ it is safe to destroy shared objects - very much like the garbage collector in
 many programming languages, but explicit and opt-in.
 
 The basic tradeoff with these mechanisms is:
-* Observervation is extremely fast, scales linearly with core count, and neither
+* Observation is extremely fast, scales linearly with core count, and neither
   waits nor causes any other operations to wait (modulo synchronization within
   the allocator and when initializing global variables).
 * Publication is pessimized compared with typical techniques.

@@ -54,7 +54,7 @@ using namespace folly::ssl;
 using folly::ssl::OpenSSLUtils;
 
 // We have one single dummy SSL context so that we can implement attach
-// and detach methods in a thread safe fashion without modifying opnessl.
+// and detach methods in a thread safe fashion without modifying openssl.
 SSLContext* dummyCtx = nullptr;
 SpinLock dummyCtxLock;
 
@@ -1824,7 +1824,7 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
     // up and written over multiple calls to sendmsg, we have to take care to
     // unset the EOR flag if it was included in the WriteFlags passed in and
     // we're writing a buffer that does _not_ contain the final byte of the
-    // orignally passed buffer.
+    // originally passed buffer.
     //
     // We handle EOR as follows:
     //   - We set currWriteFlags_ to the passed in WriteFlags.

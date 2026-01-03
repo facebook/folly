@@ -32,7 +32,7 @@ std::string submatch(const boost::cmatch& m, int idx) {
 
 } // namespace
 
-// private default contructor
+// private default constructor
 Uri::Uri() : hasAuthority_(false), port_(0) {}
 
 // public string constructor

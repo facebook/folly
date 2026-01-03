@@ -595,7 +595,7 @@ TEST(Gen, DistinctMove) { //  0  1  4  9  6  5  6  9  4  1  0
 
 TEST(Gen, DistinctInfinite) {
   // distinct should be able to handle an infinite sequence, provided that, of
-  // of cource, is it eventually made finite before returning the result.
+  // of course, is it eventually made finite before returning the result.
   auto expected = seq(0) | take(5) | as<vector>(); // 0 1 2 3 4
 
   auto actual = seq(0) // 0 1 2 3 4 5 6 7 ...
@@ -610,7 +610,7 @@ TEST(Gen, DistinctInfinite) {
 TEST(Gen, DistinctByInfinite) {
   // Similarly to the DistinctInfinite test case, distinct by should be able to
   // handle infinite sequences. Note that depending on how many values we take()
-  // at the end, the sequence may infinite loop. This is fine becasue we cannot
+  // at the end, the sequence may infinite loop. This is fine because we cannot
   // solve the halting problem.
   auto expected = vector<int>{1, 2};
   auto actual = seq(1) // 1 2 3 4 5 6 7 8 ...
@@ -735,7 +735,7 @@ TEST(Gen, Reduce) {
 TEST(Gen, ReduceBad) {
   auto gen = seq(1) | take(0);
   auto actual = gen | reduce(add);
-  EXPECT_FALSE(actual); // Empty sequences are okay, they just yeild 'none'
+  EXPECT_FALSE(actual); // Empty sequences are okay, they just yield 'none'
 }
 
 TEST(Gen, Moves) {
@@ -1053,7 +1053,7 @@ TEST(Gen, Cycle) {
     int* pcount = &c;
     auto countdown = GENERATOR(int) {
       ASSERT_GE(*pcount, 0)
-          << "Cycle should have stopped when it didnt' get values!";
+          << "Cycle should have stopped when it didn't get values!";
       for (int i = 1; i <= *pcount; ++i) {
         yield(i);
       }

@@ -21,7 +21,7 @@
 /**
  * Range abstraction using a pair of iterators. It is not
  * similar to boost's range abstraction because an API identical
- * with the former StringPiece class is required, which is used alot
+ * with the former StringPiece class is required, which is used a lot
  * internally. This abstraction does fulfill the needs of boost's
  * range-oriented algorithms though.
  *
@@ -590,7 +590,7 @@ class Range {
   }
 
   /**
-   * Reset start and end interator based on size
+   * Reset start and end iterator based on size
    */
   void reset(Iter start, size_type size) {
     b_ = start;

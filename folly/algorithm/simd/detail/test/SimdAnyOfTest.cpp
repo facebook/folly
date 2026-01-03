@@ -72,7 +72,7 @@ void anySpacesTest(folly::StringPiece sChars, bool expected) {
 #endif
 }
 
-// Main tests for this are comming from fuzzing users
+// Main tests for this are coming from fuzzing users
 
 TEST(SimdAnyOfSimple, Basic) {
   anySpacesTest("", false);

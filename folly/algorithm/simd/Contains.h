@@ -55,7 +55,7 @@ constexpr bool convertible_with_no_loss() {
 }
 
 // All the requirements to call contains(haystack, needle);
-//  * both are simd friendly (contigious range, primitive types)
+//  * both are simd friendly (contiguous range, primitive types)
 //  * integrals only
 //  * needle can be converted to the value_type of haystack and
 //    the result of equality comparison will be the same.

@@ -292,7 +292,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
 
 /**
  * Similar to XLOG(...) except it logs a message if the condition predicate
- * evalutes to true or approximately every @param n invocations
+ * evaluates to true or approximately every @param n invocations
  *
  * See concurrency discussion for XLOG_EVERY_N which applies here as well.
  */
@@ -326,7 +326,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
 
 /**
  * Similar to XLOGF(...) except it logs a message if the condition predicate
- * evalutes to true or approximately every @param n invocations
+ * evaluates to true or approximately every @param n invocations
  *
  * See concurrency discussion for XLOG_EVERY_N which applies here as well.
  */
@@ -916,7 +916,7 @@ class XlogLevelInfo<false> {
     }
 
     // If we are still here we the file-scope log level either needs to be
-    // initalized, or the log level check legitimately passed.
+    // initialized, or the log level check legitimately passed.
     auto currentLevel =
         loadLevelFull(categoryName, isOverridden, fileScopeInfo);
     return levelToCheck >= currentLevel;

@@ -693,7 +693,7 @@ FOLLY_POP_WARNING
        true)
 
 /**
- * Allows execution of code that doesn't count torward the benchmark's
+ * Allows execution of code that doesn't count toward the benchmark's
  * time budget. Example:
  *
  * BENCHMARK_START_GROUP(insertVectorBegin, n) {

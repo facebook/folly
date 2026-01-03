@@ -2403,7 +2403,7 @@ TEST(AsyncSocket, ConnectReadUninstallRead) {
   evb.loop();
   ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
 
-  /* we shoud've only read maxBufferSz data since readCallback_
+  /* we should've only read maxBufferSz data since readCallback_
    * was reset in dataAvailableCallback */
   ASSERT_EQ(rcb.dataRead(), maxBufferSz);
   ASSERT_EQ(socket.immediateReadCalled, false);

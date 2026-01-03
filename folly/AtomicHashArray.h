@@ -19,7 +19,7 @@
  *  core lock-free functionality, but is limited by the fact that it cannot
  *  grow past its initialization size and is a little more awkward (no public
  *  constructor, for example).  If you're confident that you won't run out of
- *  space, don't mind the awkardness, and really need bare-metal performance,
+ *  space, don't mind the awkwardness, and really need bare-metal performance,
  *  feel free to use AHA directly.
  *
  *  Check out AtomicHashMap.h for more thorough documentation on perf and
@@ -131,7 +131,7 @@ class AtomicHashArray {
 
   // You really shouldn't need this if you use the SmartPtr provided by create,
   // but if you really want to do something crazy like stick the released
-  // pointer into a DescriminatedPtr or something, you'll need this to clean up
+  // pointer into a DiscriminatedPtr or something, you'll need this to clean up
   // after yourself.
   static void destroy(AtomicHashArray*);
 

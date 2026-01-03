@@ -19,7 +19,7 @@ It works as follows:
 # Encoding
 
 So, we have 2 steps needed to do the conversion: 1. get indexes 0-64, 2. lookup the corresponding char.
-There is also a little bit of tail handling, see the apropriate section.
+There is also a little bit of tail handling, see the appropriate section.
 
 If one letter represents two bits, it looks smth like this (remember - our machines are little endian):
 
@@ -49,17 +49,17 @@ PONM,LKJI,HGFE,DCBA => KLJK,GIGH,EFDE,BCAB
 > * Loaded on a LE machine they become DCBA.
 > * The first output dword will only fit ABC,
     D goes into the second dword.
-> * We will also reshuffle CBA as BCAB becuase this will make
-    futher operations simpler.
+> * We will also reshuffle CBA as BCAB because this will make
+    further operations simpler.
 
 After this we will mutate each dword (letter+digit indicate 2 bits):
 
 ```
 shuffled b2b3c1c2'c3d1d2d3'a1a2a3b1'b2b3c1c2
-exepcted 00d1d2d3'00c1c2c3'00b1b2b3'00a1a2a3
+expected 00d1d2d3'00c1c2c3'00b1b2b3'00a1a2a3
 ```
 
-At the moment of writing this we only have an SSE4.2 version. We can do it fairly straightforwardly with shifts and blends. However the 0x80 blogs suggests that using a tricky mutliplication scheme is superior, and that's what we do.
+At the moment of writing this we only have an SSE4.2 version. We can do it fairly straightforwardly with shifts and blends. However the 0x80 blogs suggests that using a tricky multiplication scheme is superior, and that's what we do.
 
 For neon there are by element shift instructions which would help.
 On avx2 there are `srlv` family of instructions that can come in handy as well.
@@ -69,7 +69,7 @@ The 0x80 blog also talks about a BMI implementation (pdep/pext instructions). Th
 
 The idea is to use table lookup/shuffle instructions (`pshuvb` on sse4.2). They allow you to shuffle a register by index (`0..16`).
 
-We have values `0..64`. However, we can utilize that the output values are not random. The are split into a few contigious groups. We don't have to lookup the complete encoding, we just need to lookup the offset to add.
+We have values `0..64`. However, we can utilize that the output values are not random. The are split into a few contiguous groups. We don't have to lookup the complete encoding, we just need to lookup the offset to add.
 
 
 | Index | Maps to | Add to encode |
@@ -139,19 +139,19 @@ Decisions:
 If there are extra bits on the end, those are not allowed: iZ== is not a valid input
 because no input sequence will produce it.
 `base64URLDecode`: allows everything encoded with plain base64 and base64URL.
-It will succesfully decode some combinations that are not either. The extra bits on
+It will successfully decode some combinations that are not either. The extra bits on
 the end are currently allowed: iZ== will decode successfully (this decision is not
 motivated by anything).
 
 *NOTE:* details on `baseURLDecode` rules:
-* Padding bytes follow regual base64: if they are present they are allowed to be only in positions that
+* Padding bytes follow regular base64: if they are present they are allowed to be only in positions that
   regular base64 allows them to be in: 4th or 3rd and 4th in the 4 byte chunk. "aa==", "aaa=" - OK, "aa=", "==" - not OK. This decision follows the previous most common implementation of base64 in the codebase.
 * Both ['+', '/'] and ['-', '_'] are allowed in any combinations. "+-" is legal for example.
 
 
 *NOTE: this follows the previous design and not necessarily how other places define
 base64URLDecode. The difference comes to decoding invalid sequence of padding characters.
-Example: "ba=" we consider invalid while some other implmenetations might just strip '='. We
+Example: "ba=" we consider invalid while some other implementations might just strip '='. We
 suspect it won't be an issue*.
 
 This behaviour matches what the previous implementation did.
@@ -167,7 +167,7 @@ If we encounter an error, we are not going to stop processing data. We are just 
 
 ## decodeCharToIndex
 
-Convertions we want
+Conversions we want
 
 | Char      | Char's Hex code | Res     | Res Hex     |
 |-----------|-----------------|---------|-------------|
@@ -188,10 +188,10 @@ We can find a unique offset with pshuvb by it.
 We need to move '+' and '/' into their own nibbles.
 It's important that all previously invalid chars stay invalid.
 
-The best way I see to do it is to substact 0x0f from everything less than or equal to +.
+The best way I see to do it is to subtract 0x0f from everything less than or equal to +.
 The reason to use 0x0f is that it's a constant we will need anyways ot get 4 higher nibbles.
 
-However on intel there is no unsigned comparison, so all the negative values will be considered as <= '+'. To deal with it, we can use a signed comparison but subtract with satuation.
+However on intel there is no unsigned comparison, so all the negative values will be considered as <= '+'. To deal with it, we can use a signed comparison but subtract with saturation.
 
  * <= '+' gives -1 where '+'
  * and 0x0f
@@ -199,9 +199,9 @@ However on intel there is no unsigned comparison, so all the negative values wil
 
 Everything bigger than '+' will stay the same.
 Everything smaller than '+' is invalid and will become even smaller.
-It will saturate to -127 which is still ivalid, so we are OK.
+It will saturate to -127 which is still invalid, so we are OK.
 
- *NOTE: I was also thinking if this is possible to do with just one subtruction and no mask. Unfortunatly we also need to keep a separate nibble for '0' and '/' and '0' == '/' + 1, so that subtraction will guarantee put '/' and '0' on the same higher nibble.*
+ *NOTE: I was also thinking if this is possible to do with just one subtraction and no mask. Unfortunately we also need to keep a separate nibble for '0' and '/' and '0' == '/' + 1, so that subtraction will guarantee put '/' and '0' on the same higher nibble.*
 
  *NOTE: If we drop the requirement on invalid elements, again - this is much easier*.
 
@@ -237,7 +237,7 @@ Now for all possible lower nibbles we have a set of valid higher nibbles.
 
 
 So: by higher nibble lookup a bit that indicates that higher nibble
-    by lower nible lookup a set of valid bits
+    by lower nibble lookup a set of valid bits
     and
 
 This will give us a non-zero when it's OK.
@@ -283,7 +283,7 @@ The 0x80 blog suggests the following trick.
 
 ### Multiply add (MADD) solution
 
-On SSE there are `madd` instrucitons for adjacent bytes (`_mm_maddubs_epi16`)  and words (`_mm_madd_epi16`). Multiply is a strictly more powerful operation than shift, so this will work.
+On SSE there are `madd` instructions for adjacent bytes (`_mm_maddubs_epi16`)  and words (`_mm_madd_epi16`). Multiply is a strictly more powerful operation than shift, so this will work.
 
 *NOTE: all of our numbers are positive so the sign of the operations doesn't matter*
 
@@ -311,7 +311,7 @@ For example, for 16 bytes of input (no padding) we only have 12 bytes of output 
 A simple way to answer if we have enough space is to compute how much output space we'll need overall.
 However, this operation is somewhat expensive and is likely already done for the allocation. So computing output size ideally should be avoided.
 
-We can prove that as long as the `Register` is bigger than 16 bytes, `1.5 Register` of input space is enough to guarantee at least one register of the output sopace.
+We can prove that as long as the `Register` is bigger than 16 bytes, `1.5 Register` of input space is enough to guarantee at least one register of the output space.
 
 Proof.
 
@@ -346,13 +346,13 @@ Previous version of Base64Decode was using some bit tricks and, as a result,
 was beating our performance for tails.
 
 On top of that, if the platform lacks the necessary SIMD capabilities, SWAR is
-benefitial, so we decided to implement it.
+beneficial, so we decided to implement it.
 
 How does it work?
 
-The simple version of the decoding alogirhtm matches from the input char to
+The simple version of the decoding algorithm matches from the input char to
 the index: let's say char `a` is matched to the number `26`. So we would first match
-chars to the corresponding indexes and then blend those indexes toghether.
+chars to the corresponding indexes and then blend those indexes together.
 
 Let's say (one letter still 2 bits):
 

@@ -205,7 +205,7 @@ class fbstring_core_model {
 
 /**
  * This is the core of the string. The code should work on 32- and
- * 64-bit and both big- and little-endianan architectures with any
+ * 64-bit and both big- and little-endian architectures with any
  * Char size.
  *
  * The storage is selected as follows (assuming we store one-byte

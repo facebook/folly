@@ -192,7 +192,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
      */
 
     // TODO(T81599451): Remove the acceptError(const std::exception&)
-    // after migration and remove compile warning supression.
+    // after migration and remove compile warning suppression.
     FOLLY_PUSH_WARNING
     FOLLY_GNU_DISABLE_WARNING("-Woverloaded-virtual")
     virtual void acceptError(exception_wrapper ew) noexcept {

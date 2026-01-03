@@ -651,7 +651,7 @@ estimateSpaceNeeded(Src value) {
 /// Operating mode for the floating point type version of
 /// `folly::ToAppend`. This is modeled after
 /// `double_conversion::DoubleToStringConverter::DtoaMode`.
-/// Dtoa is an acryonym for Double to ASCII.
+/// Dtoa is an acronym for Double to ASCII.
 enum class DtoaMode {
   /// Outputs the shortest representation of a `double`.
   /// The output is either in decimal or exponential notation; which ever is
@@ -669,14 +669,14 @@ enum class DtoaMode {
   /// Outputs with a precision that is independent of the decimal point.
   /// The outputs is either decimal or exponential notation, depending on the
   /// value and the precision.
-  /// Similar to `printf`'s %g formating.
+  /// Similar to `printf`'s %g formatting.
   /// Use the `numDigits` parameter to specify the precision.
   PRECISION,
 };
 
 /// Flags for the floating point type version of `folly::ToAppend`.
 /// This is modeled after `double_conversion::DoubleToStringConverter::Flags`.
-/// Dtoa is an acryonym for Double to ASCII.
+/// Dtoa is an acronym for Double to ASCII.
 /// This enum is used to store bit wise flags, so a variable of this type may be
 /// a bitwise combination of these definitions.
 enum class DtoaFlags {
@@ -737,7 +737,7 @@ constexpr double_conversion::DoubleToStringConverter::DtoaMode convert(
       return double_conversion::DoubleToStringConverter::PRECISION;
     default: /* unexpected */
       assert(false);
-      // Default to PRECISION per exising behavior.
+      // Default to PRECISION per existing behavior.
       return double_conversion::DoubleToStringConverter::PRECISION;
   }
 }

@@ -404,7 +404,7 @@ unique_ptr<IOBuf> IOBuf::create(std::size_t capacity) {
     auto mallocSize = goodMallocSize(capacity);
     // round capacity to a multiple of 8
     size_t minSize = ((capacity + 7) & ~7) + sizeof(SharedInfo);
-    // if we do not have space for the overhead, allocate the mem separateley
+    // if we do not have space for the overhead, allocate the mem separately
     if (mallocSize < minSize) {
       auto* buf = checkedMalloc(mallocSize);
       return takeOwnership(SIZED_FREE, buf, mallocSize, 0, 0);

@@ -711,7 +711,7 @@ void Subprocess::spawnInternal(
   returnCode_ = ProcessReturnCode::makeRunning();
 }
 
-// With -Wclobbered, gcc complains about vfork potentially cloberring the
+// With -Wclobbered, gcc complains about vfork potentially clobbering the
 // childDir variable, even though we only use it on the child side of the
 // vfork.
 

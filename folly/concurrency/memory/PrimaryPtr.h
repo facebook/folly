@@ -187,7 +187,7 @@ class PrimaryPtr {
     return nullptr;
   }
 
-  // Waits until all the refereces obtained via lock() are released. Then
+  // Waits until all the references obtained via lock() are released. Then
   // destroys the object in the current thread.
   // Can not be called concurrently with set().
   void join() {
@@ -197,7 +197,7 @@ class PrimaryPtr {
     this->cleanup().get();
   }
 
-  // Returns: a SemiFuture that waits until all the refereces obtained via
+  // Returns: a SemiFuture that waits until all the references obtained via
   // lock() are released. Then destroys the object on the Executor provided to
   // the SemiFuture.
   //
@@ -211,7 +211,7 @@ class PrimaryPtr {
         .deferValue([this](folly::Unit) {
           if (!this->outerPtrShared_) {
             LOG(FATAL)
-                << "Cleanup already run - lock() was previouly disabled.";
+                << "Cleanup already run - lock() was previously disabled.";
           }
           this->outerPtrShared_.reset();
           return std::move(this->unreferenced_);

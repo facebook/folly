@@ -67,7 +67,7 @@ struct UnrollUtils {
    * Do operation N times or until it returns true to break.
    * Op accepts index_constant so it can keep track of a step begin executed.
    *
-   * Returns wether true if it was interrupted (you can know if the op breaked)
+   * Returns whether true if it was interrupted (you can know if the op broke)
    */
   template <std::size_t N, typename Op>
   FOLLY_ALWAYS_INLINE static constexpr bool unrollUntil(Op op) {

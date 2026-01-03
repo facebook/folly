@@ -476,7 +476,7 @@ class Subprocess {
      * - If you want to automatically clean up the child process when the
      *   Subprocess is destroyed, use killChildOnDestruction() or
      *   terminateChildOnDestruction()
-     * - If you want to allow the parent process to exit without waiting on thie
+     * - If you want to allow the parent process to exit without waiting on the
      *   child, prefer simply leaking the folly::Subprocess object when the
      *   parent process exits.  You could exit with _exit(), or you could
      *   explicitly leak the Subprocess using std::unique_ptr::release() or

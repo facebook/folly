@@ -37,7 +37,7 @@ namespace folly::simd {
  * register: [true, true, false, false, false, false, false, true]
  * indexes   [0,    1,    2,     3,     4,     5,     6,     7   ]
  *
- * ignore_extema{.first = 1, .last = 2}
+ * ignore_extrema{.first = 1, .last = 2}
  * means that elements with indexes 0, 6, and 7 will be ignored
  * (w/e that means for an operation)
  */

@@ -285,7 +285,7 @@ class exception_wrapper final {
   //! assert( !exception_wrapper{}.with_exception([](int& e){/*...*/}) );
   //! \endcode
   //! \tparam Ex Optionally, the type of the exception that `fn` accepts.
-  //! \tparam Fn The type of a monomophic function object.
+  //! \tparam Fn The type of a monomorphic function object.
   //! \param fn A function object to call with the wrapped exception
   //! \return `true` if and only if `fn` was called.
   //! \note Optionally, you may explicitly specify the type of the exception

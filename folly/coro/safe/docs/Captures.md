@@ -313,7 +313,7 @@ To understand the solution, let's reformulate this bug more abstractly:
         That is, in fact, the fix!
 
         **Anytime a closure takes a `shared_cleanup` input, it loses the
-        abilitity to instantiate plain captures.** Its owned captures get the
+        ability to instantiate plain captures.** Its owned captures get the
         `after_cleanup_` prefix (the "downgrade"), and it can no longer
         "upgrade" `after_cleanup_capture` references that it gets from a parent
         -- more on both below.

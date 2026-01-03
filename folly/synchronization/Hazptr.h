@@ -194,7 +194,7 @@
 /// --------------------------------------
 /// - The latest standard proposal is in wg21.link/p1121. The
 ///   substance of the proposal was frozen around October 2017, but
-///   there were subsequent API changes based on committee feadback.
+///   there were subsequent API changes based on committee feedback.
 /// - The main differences are:
 ///   o This library uses an extra atomic template parameter for
 ///     testing and debugging.

@@ -79,7 +79,7 @@ FOLLY_ALWAYS_INLINE T* previousAlignedAddress(T* ptr, int to) {
 /**
  * SimdForEachMainLoop
  *
- * Implementaiton detail of simdForEach
+ * Implementation detail of simdForEach
  *
  * Regardless of how you chose to handle tails, the middle will be the same.
  * The operator() returns true if the delegate returned to break.

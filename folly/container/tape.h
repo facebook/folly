@@ -83,13 +83,13 @@ namespace folly {
  * Construction
  * If you know for a fact that all the elements are fitting into SSO buffer,
  * and you always have complete records (not building) then `tape` does not help
- * you, or can even be a slignt regression.
+ * you, or can even be a slight regression.
  *
  * Otherwise tape can give you good speedups, especially if you need to
  * `push_back` on individual records.
  *
  * Potential future perf improvements.
- * * it is possible to do a tape with one allocation for both metada and
+ * * it is possible to do a tape with one allocation for both metadata and
  *   data (in special cases).
  * * when converting indexes to pointers, compiler has to shift.
  *   For contigious containers we can store offsets in bytes.
