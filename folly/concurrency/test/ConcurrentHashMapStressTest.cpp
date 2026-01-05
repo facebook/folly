@@ -21,6 +21,8 @@
 #include <thread>
 #include <vector>
 
+#include <folly/portability/SysMman.h>
+
 #include <folly/Traits.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Latch.h>
@@ -70,7 +72,7 @@ TYPED_TEST_P(ConcurrentHashMapStressTest, StressTestReclamation) {
   struct constant_hash {
     uint64_t operator()(unsigned long) const noexcept { return 0; }
   };
-  CHM<unsigned long, unsigned long, constant_hash> map;
+  using Map = CHM<unsigned long, unsigned long, constant_hash>;
   static constexpr unsigned long key_prev =
       0; // A key that the test key has a link to - to guard against immediate
          // reclamation.
@@ -79,35 +81,94 @@ TYPED_TEST_P(ConcurrentHashMapStressTest, StressTestReclamation) {
   static constexpr unsigned long key_link_explosion =
       2; // A key that is linked to the test key.
 
+  Map map;
   EXPECT_TRUE(map.insert(std::make_pair(key_prev, 0)).second);
   EXPECT_TRUE(map.insert(std::make_pair(key_test, 0)).second);
   EXPECT_TRUE(map.insert(std::make_pair(key_link_explosion, 0)).second);
 
-  std::vector<std::thread> threads;
+  struct alignas(32) ThreadInfo {
+    pthread_t id;
+    uint64_t idx;
+    Map* map;
+    folly::Latch* start;
+  };
+
   // Test with (2^16)+ threads, enough to overflow a 16 bit integer.
   // It should be uncommon to have more than 2^32 concurrent accesses.
-  static constexpr uint64_t num_threads = std::numeric_limits<uint16_t>::max();
+  static constexpr uint64_t num_threads = 1u << 16; // 2^16
   static constexpr uint64_t iters = 100;
+  // Separately allocating the thread args would be costly. This cost can be
+  // optimized by allocating them all together.
+  std::vector<ThreadInfo> threads;
+  threads.reserve(num_threads);
   folly::Latch start(num_threads);
-  for (uint64_t t = 0; t < num_threads; t++) {
-    threads.push_back(std::thread([t, &map, &start]() {
-      start.arrive_and_wait();
-      static constexpr uint64_t progress_report_pct =
-          (iters / 20); // Every 5% we log progress
-      for (uint64_t i = 0; i < iters; i++) {
-        if (t == 0 && (i % progress_report_pct) == 0) {
-          // To a casual observer - to know that the test is progressing, even
-          // if slowly
-          LOG(INFO) << "Progress: " << (i * 100 / iters);
-        }
 
-        map.insert_or_assign(key_test, i * num_threads);
+  // Separately mapping each thread stack would be costly. This cost can be
+  // optimized by mapping all thread stacks together at once. Separately
+  // faulting in each top page of each thread stack is costly. This cost can be
+  // optimized by prefaulting the entire mapping. There will still be a TLB miss
+  // in each thread but perhaps that would be tolerable.
+  constexpr size_t stack_size = 1u << 16; // 64KiB
+#if !defined(_WIN32)
+  const auto mm_len = stack_size * num_threads;
+  const auto mm_prot = PROT_READ | PROT_WRITE;
+  const auto mm_flags =
+      MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_POPULATE;
+  const auto stack_array = ::mmap(nullptr, mm_len, mm_prot, mm_flags, -1, 0);
+  ASSERT_NE(stack_array, MAP_FAILED);
+  SCOPE_EXIT {
+    ::munmap(stack_array, stack_size * num_threads);
+  };
+#endif
+
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setstacksize(&attr, stack_size);
+#if !defined(_WIN32)
+  // Since the thread stacks are all allocated together, there are no guard
+  // pages.
+  pthread_attr_setguardsize(&attr, 0);
+#endif
+
+  auto thfunc = +[](void* arg) -> void* {
+    auto info = *static_cast<ThreadInfo*>(arg);
+    auto t = info.idx;
+    auto& map = *info.map;
+    auto& start = *info.start;
+
+    start.arrive_and_wait();
+    static constexpr uint64_t progress_report_pct =
+        (iters / 20); // Every 5% we log progress
+    for (uint64_t i = 0; i < iters; i++) {
+      if (t == 0 && (i % progress_report_pct) == 0) {
+        // To a casual observer - to know that the test is progressing, even
+        // if slowly
+        LOG(INFO) << "Progress: " << (i * 100 / iters);
       }
-    }));
+
+      map.insert_or_assign(key_test, i * num_threads);
+    }
+    return nullptr;
+  };
+
+  for (uint64_t t = 0; t < num_threads; t++) {
+#if !defined(_WIN32)
+    void* stack_base = (char*)stack_array + (t * stack_size);
+    pthread_attr_setstack(&attr, stack_base, stack_size);
+#endif
+    auto& tharg = threads.emplace_back(
+        ThreadInfo{.id = {}, .idx = t, .map = &map, .start = &start});
+    auto ret = pthread_create(&tharg.id, &attr, thfunc, &tharg);
+    PCHECK(ret == 0);
   }
   for (auto& t : threads) {
-    t.join();
+    void* retval = nullptr;
+    auto ret = pthread_join(t.id, &retval);
+    PCHECK(ret == 0);
+    DCHECK(retval == nullptr);
   }
+
+  pthread_attr_destroy(&attr);
 }
 
 REGISTER_TYPED_TEST_SUITE_P( //

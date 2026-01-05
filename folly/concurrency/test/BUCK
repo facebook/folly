@@ -126,6 +126,7 @@ fbcode_target(
         "//folly:traits",
         "//folly/concurrency:concurrent_hash_map",
         "//folly/portability:gtest",
+        "//folly/portability:sys_mman",
         "//folly/synchronization:latch",
     ],
 )
@@ -165,6 +166,7 @@ fbcode_target(
         "//folly:traits",
         "//folly/concurrency:concurrent_hash_map",
         "//folly/portability:gtest",
+        "//folly/portability:sys_mman",
         "//folly/synchronization:latch",
     ],
 )
