@@ -1013,10 +1013,10 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "json_test_util",
-    exported_headers = [
+    platforms = (CXX, ANDROID, APPLE, WINDOWS, FBCODE),
+    raw_headers = [
         "test/JsonTestUtil.h",
     ],
-    platforms = (CXX, ANDROID, APPLE, WINDOWS, FBCODE),
     exported_deps = [
         "//xplat/folly/json:json_test_util",
     ],

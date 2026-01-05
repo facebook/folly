@@ -361,9 +361,9 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "fibers_lib",
     srcs = ["fibers.cpp"],
-    exported_headers = ["fibers.h"],
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
     platforms = CYTHON_DEFAULT_PLATFORMS,
+    raw_headers = ["fibers.h"],
     deps = [
         ":import",
         ":weak",
