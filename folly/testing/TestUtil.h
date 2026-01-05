@@ -214,7 +214,7 @@ inline std::string glogErrOrWarnPattern() {
 class CaptureFD {
  private:
   struct NoOpChunkCob {
-    void operator()(StringPiece) {}
+    void operator()(StringPiece /*unused*/) {}
   };
 
  public:
