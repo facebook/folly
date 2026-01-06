@@ -174,16 +174,6 @@ class EventHandler {
 
   bool isPending() const;
 
-  void setEventCallback(EventReadCallback* cb) { event_.setCallback(cb); }
-
-  void setEventCallback(EventRecvmsgCallback* cb) { event_.setCallback(cb); }
-
-  void setRecvmsgMultishotCallback(EventRecvmsgMultishotCallback* cb) {
-    event_.setCallback(cb);
-  }
-
-  void resetEventCallback() { event_.resetCallback(); }
-
   /*
    * If supported by the backend updates the event to be edge-triggered.
    * Returns true iff the update was successful.
