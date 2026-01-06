@@ -117,14 +117,6 @@ class EventFD : public folly::EventHandler, public folly::EventReadCallback {
     }
   }
 
-  void useAsyncReadCallback(bool val) {
-    if (val) {
-      setEventCallback(this);
-    } else {
-      resetEventCallback();
-    }
-  }
-
   // from folly::EventHandler
   void handlerReady(uint16_t /*events*/) noexcept override {
     // we do not read to leave the fd signalled
@@ -143,8 +135,6 @@ class EventFD : public folly::EventHandler, public folly::EventReadCallback {
       }
     }
   }
-
-  uint64_t getAsyncNum() const { return asyncNum_; }
 
   uint64_t getNum() const { return num_; }
 
@@ -205,7 +195,6 @@ class EventFD : public folly::EventHandler, public folly::EventReadCallback {
     // save it for future use
     ioVecPtr_.reset(ioVec);
 
-    ++asyncNum_;
     if (total_ > 0) {
       --total_;
     }
@@ -221,7 +210,6 @@ class EventFD : public folly::EventHandler, public folly::EventReadCallback {
     }
   }
 
-  uint64_t asyncNum_{0};
   uint64_t num_{0};
   uint64_t& total_;
   int fd_{-1};
@@ -254,7 +242,7 @@ std::unique_ptr<folly::EventBase> getEventBase() {
   return getEventBase(options);
 }
 
-void testEventFD(bool overflow, bool persist, bool asyncRead) {
+void testEventFD(bool overflow, bool persist) {
   static constexpr size_t kBackendCapacity = 64;
   static constexpr size_t kBackendMaxSubmit = 8;
   // for overflow == true  we use a greater than kBackendCapacity number of
@@ -276,20 +264,15 @@ void testEventFD(bool overflow, bool persist, bool asyncRead) {
     auto ev = std::make_unique<EventFD>(
         true, 2 * kEventFdCount, total, persist, evbPtr.get());
 
-    ev->useAsyncReadCallback(asyncRead);
-
     eventsVec.emplace_back(std::move(ev));
   }
 
   evbPtr->loop();
 
   for (size_t i = 0; i < kNumEventFds; i++) {
-    EXPECT_GE(
-        (asyncRead ? eventsVec[i]->getAsyncNum() : eventsVec[i]->getNum()),
-        kEventFdCount)
+    EXPECT_GE(eventsVec[i]->getNum(), kEventFdCount)
         << " persist=" << persist << " overflow=" << overflow
-        << " asyncRead=" << asyncRead << " num= "
-        << (asyncRead ? eventsVec[i]->getAsyncNum() : eventsVec[i]->getNum())
+        << " num= " << eventsVec[i]->getNum()
         << " kEventFdCount=" << kEventFdCount << " i=" << i;
   }
 }
@@ -384,7 +367,6 @@ class EventRecvmsgCallback : public folly::EventRecvmsgCallback {
     // reuse the msgHdr
     msgHdr_.reset(msgHdr);
 
-    ++asyncNum_;
     if (total_ > 0) {
       --total_;
       if (total_ == 0) {
@@ -419,15 +401,12 @@ class EventRecvmsgCallback : public folly::EventRecvmsgCallback {
     return ret;
   }
 
-  uint64_t getAsyncNum() const { return asyncNum_; }
-
  private:
   const std::string& data_;
   folly::SocketAddress addr_;
   size_t numBytes_{0};
   uint64_t& total_;
   folly::EventBase* evb_;
-  uint64_t asyncNum_{0};
   std::unique_ptr<MsgHdr> msgHdr_;
 };
 
@@ -479,7 +458,6 @@ class EventRecvmsgMultishotCallback
     addr.setFromSockaddr((sockaddr*)(p.name.data()), p.name.size());
     EXPECT_EQ(addr, addr_);
 
-    ++asyncNum_;
     if (total_ > 0) {
       --total_;
       if (total_ == 0) {
@@ -508,15 +486,12 @@ class EventRecvmsgMultishotCallback
     return new Hdr(this);
   }
 
-  uint64_t getAsyncNum() const { return asyncNum_; }
-
  private:
   const std::string& data_;
   folly::SocketAddress addr_;
   size_t numBytes_{0};
   uint64_t& total_;
   folly::EventBase* evb_;
-  uint64_t asyncNum_{0};
 };
 
 } // namespace
@@ -1022,23 +997,19 @@ TEST(IoUringBackend, Fallocate) {
 }
 
 TEST(IoUringBackend, EventFDNooverflownopersist) {
-  testEventFD(false, false, false);
+  testEventFD(false, false);
 }
 
 TEST(IoUringBackend, EventFDOverflownopersist) {
-  testEventFD(true, false, false);
+  testEventFD(true, false);
 }
 
 TEST(IoUringBackend, EventFDNooverflowpersist) {
-  testEventFD(false, true, false);
+  testEventFD(false, true);
 }
 
 TEST(IoUringBackend, EventFDOverflowpersist) {
-  testEventFD(true, true, false);
-}
-
-TEST(IoUringBackend, EventFDPersistAsyncread) {
-  testEventFD(false, true, true);
+  testEventFD(true, true);
 }
 
 // 9 valid fds followed by an invalid one

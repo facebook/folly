@@ -572,7 +572,7 @@ class IoUringBackend : public EventBaseBackendBase {
 
   void processPollIo(IoSqe* ioSqe, int res, uint32_t flags) noexcept;
 
-  IoSqe* FOLLY_NULLABLE allocIoSqe(const EventCallback& cb);
+  IoSqe* FOLLY_NULLABLE allocIoSqe();
   void releaseIoSqe(IoSqe* aioIoSqe) noexcept;
 
   // submit immediate if POLL_SQ | POLL_SQ_IMMEDIATE_IO flags are set
@@ -647,143 +647,11 @@ class IoUringBackend : public EventBaseBackendBase {
     void processSubmit(struct io_uring_sqe* sqe) noexcept override {
       auto* ev = event_->getEvent();
       if (ev) {
-        const auto& cb = event_->getCallback();
-        switch (cb.type_) {
-          case EventCallback::Type::TYPE_NONE:
-            break;
-          case EventCallback::Type::TYPE_READ:
-            if (auto* iov = cb.readCb_->allocateData()) {
-              prepRead(
-                  sqe,
-                  ev->ev_fd,
-                  &iov->data_,
-                  0,
-                  (ev->ev_events & EV_PERSIST) != 0);
-              cbData_.set(iov);
-              return;
-            }
-            break;
-          case EventCallback::Type::TYPE_RECVMSG:
-            if (auto* msg = cb.recvmsgCb_->allocateData()) {
-              prepRecvmsg(
-                  sqe,
-                  ev->ev_fd,
-                  &msg->data_,
-                  (ev->ev_events & EV_PERSIST) != 0);
-              cbData_.set(msg);
-              return;
-            }
-            break;
-          case EventCallback::Type::TYPE_RECVMSG_MULTISHOT:
-            if (auto* hdr =
-                    cb.recvmsgMultishotCb_->allocateRecvmsgMultishotData()) {
-              prepRecvmsgMultishot(sqe, ev->ev_fd, &hdr->data_);
-              cbData_.set(hdr);
-              return;
-            }
-            break;
-        }
         prepPollAdd(sqe, ev->ev_fd, getPollFlags(ev->ev_events));
       }
     }
 
     virtual void processActive() {}
-
-    struct EventCallbackData {
-      EventCallback::Type type_{EventCallback::Type::TYPE_NONE};
-      union {
-        EventReadCallback::IoVec* ioVec_;
-        EventRecvmsgCallback::MsgHdr* msgHdr_;
-        EventRecvmsgMultishotCallback::Hdr* hdr_;
-      };
-
-      void set(EventReadCallback::IoVec* ioVec) {
-        type_ = EventCallback::Type::TYPE_READ;
-        ioVec_ = ioVec;
-      }
-
-      void set(EventRecvmsgCallback::MsgHdr* msgHdr) {
-        type_ = EventCallback::Type::TYPE_RECVMSG;
-        msgHdr_ = msgHdr;
-      }
-
-      void set(EventRecvmsgMultishotCallback::Hdr* hdr) {
-        type_ = EventCallback::Type::TYPE_RECVMSG_MULTISHOT;
-        hdr_ = hdr;
-      }
-
-      void reset() { type_ = EventCallback::Type::TYPE_NONE; }
-
-      bool processCb(IoUringBackend* backend, int res, uint32_t flags) {
-        bool ret = false;
-        bool released = false;
-        switch (type_) {
-          case EventCallback::Type::TYPE_READ: {
-            released = ret = true;
-            auto cbFunc = ioVec_->cbFunc_;
-            cbFunc(ioVec_, res);
-            break;
-          }
-          case EventCallback::Type::TYPE_RECVMSG: {
-            released = ret = true;
-            auto cbFunc = msgHdr_->cbFunc_;
-            cbFunc(msgHdr_, res);
-            break;
-          }
-          case EventCallback::Type::TYPE_RECVMSG_MULTISHOT: {
-            ret = true;
-            std::unique_ptr<IOBuf> buf;
-            if (flags & IORING_CQE_F_BUFFER) {
-              if (IoUringProvidedBufferRing* bp = backend->bufferProvider()) {
-                auto hasMore = (flags & IORING_CQE_F_BUF_MORE) != 0;
-                uint16_t bufId = flags >> IORING_CQE_BUFFER_SHIFT;
-                VLOG(5) << "bufId=" << bufId << " bp=" << (void*)bp
-                        << " sizePerBuffer=" << bp->sizePerBuffer()
-                        << " startBuf=" << bufId;
-                buf = bp->getIoBuf(bufId, res, hasMore);
-              }
-            }
-            hdr_->cbFunc_(hdr_, res, std::move(buf));
-            if (!(flags & IORING_CQE_F_MORE)) {
-              hdr_->freeFunc_(hdr_);
-              released = true;
-            }
-            break;
-          }
-          case EventCallback::Type::TYPE_NONE:
-            break;
-        }
-
-        if (released) {
-          type_ = EventCallback::Type::TYPE_NONE;
-        }
-
-        return ret;
-      }
-
-      void releaseData() {
-        switch (type_) {
-          case EventCallback::Type::TYPE_READ: {
-            auto freeFunc = ioVec_->freeFunc_;
-            freeFunc(ioVec_);
-            break;
-          }
-          case EventCallback::Type::TYPE_RECVMSG: {
-            auto freeFunc = msgHdr_->freeFunc_;
-            freeFunc(msgHdr_);
-            break;
-          }
-          case EventCallback::Type::TYPE_RECVMSG_MULTISHOT:
-            hdr_->freeFunc_(hdr_);
-            break;
-          case EventCallback::Type::TYPE_NONE:
-            break;
-        }
-        type_ = EventCallback::Type::TYPE_NONE;
-      }
-    };
-
-    EventCallbackData cbData_;
 
     void prepPollAdd(
         struct io_uring_sqe* sqe, int fd, uint32_t events) noexcept {
@@ -1190,7 +1058,7 @@ class IoUringBackend : public EventBaseBackendBase {
     backend->processRecvZc(ioSqe, cqe);
   }
 
-  IoUringBackend::IoSqe* allocNewIoSqe(const EventCallback& /*cb*/) {
+  IoUringBackend::IoSqe* allocNewIoSqe() {
     // allow pool alloc if numPooledIoSqeInUse_ < numEntries_
     auto* ret = new IoSqe(this, numPooledIoSqeInUse_ < numEntries_);
     ++numPooledIoSqeInUse_;

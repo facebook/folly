@@ -935,20 +935,19 @@ size_t IoUringBackend::processSignals() {
   return ret;
 }
 
-IoUringBackend::IoSqe* IoUringBackend::allocIoSqe(const EventCallback& cb) {
+IoUringBackend::IoSqe* IoUringBackend::allocIoSqe() {
   // try to allocate from the pool first
-  if ((cb.type_ == EventCallback::Type::TYPE_NONE) && (!freeList_.empty())) {
+  if (!freeList_.empty()) {
     auto* ret = &freeList_.front();
     freeList_.pop_front();
     return ret;
   }
 
   // alloc a new IoSqe
-  return allocNewIoSqe(cb);
+  return allocNewIoSqe();
 }
 
 void IoUringBackend::releaseIoSqe(IoUringBackend::IoSqe* aioIoSqe) noexcept {
-  aioIoSqe->cbData_.releaseData();
   // unregister the file dsecriptor record
   if (aioIoSqe->fdRecord_) {
     unregisterFd(aioIoSqe->fdRecord_);
@@ -976,9 +975,6 @@ void IoUringBackend::processPollIo(
       SCOPE_EXIT {
         ioSqe->useCount_--;
       };
-      if (ioSqe->cbData_.processCb(this, res, flags)) {
-        return;
-      }
     }
 
     // if this is not a persistent event
@@ -1024,15 +1020,13 @@ size_t IoUringBackend::processActiveEvents() {
       bool inserted = (event_ref_flags(ev) & EVLIST_INSERTED);
       // prevent the callback from freeing the aioIoSqe
       ioSqe->useCount_++;
-      if (!ioSqe->cbData_.processCb(this, ioSqe->res_, ioSqe->cqeFlags_)) {
-        // adjust the ev_res for the poll case
-        ev->ev_res = getPollEvents(ioSqe->res_, ev->ev_events);
-        // handle spurious poll events that return 0
-        // this can happen during high load on process startup
-        if (ev->ev_res) {
-          (*event_ref_callback(ev))(
-              (int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
-        }
+      // adjust the ev_res for the poll case
+      ev->ev_res = getPollEvents(ioSqe->res_, ev->ev_events);
+      // handle spurious poll events that return 0
+      // this can happen during high load on process startup
+      if (ev->ev_res) {
+        (*event_ref_callback(ev))(
+            (int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
       }
       // get the event again
       event = ioSqe->event_;
@@ -1289,7 +1283,7 @@ int IoUringBackend::eb_event_add(Event& event, const struct timeval* timeout) {
 
   if ((ev->ev_events & (EV_READ | EV_WRITE)) &&
       !(event_ref_flags(ev) & (EVLIST_INSERTED | EVLIST_ACTIVE))) {
-    auto* ioSqe = allocIoSqe(event.getCallback());
+    auto* ioSqe = allocIoSqe();
     CHECK(ioSqe);
     ioSqe->event_ = &event;
     ioSqe->setEventBase(event.eb_ev_base());
@@ -1443,7 +1437,7 @@ void IoUringBackend::cancel(IoSqeBase* ioSqe) {
 }
 
 int IoUringBackend::cancelOne(IoSqe* ioSqe) {
-  auto* rentry = static_cast<IoSqe*>(allocIoSqe(EventCallback()));
+  auto* rentry = static_cast<IoSqe*>(allocIoSqe());
   if (!rentry) {
     return 0;
   }
