@@ -3108,8 +3108,10 @@ AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
     VLOG(5) << "AsyncSocket::processZeroCopyRead() this=" << this
             << ", reading pre-received data";
 
+    auto len = preReceivedData_->computeChainDataLength();
     readCallback_->readZeroCopyDataAvailable(
         std::move(preReceivedData_), 0 /*additionalBytes*/);
+    appBytesReceived_ += len;
 
     return ReadCode::READ_DONE;
   }
@@ -3180,6 +3182,7 @@ AsyncSocket::ReadCode AsyncSocket::processZeroCopyRead() {
 
     if (len) {
       readCallback_->readZeroCopyDataAvailable(std::move(buf), zc.copybuf_len);
+      appBytesReceived_ += len;
 
       // If we completely filled up the zerocopy buffer then we likely have
       // more data buffered in the kernel, so return READ_CONTINUE to try again.

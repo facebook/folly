@@ -1067,6 +1067,7 @@ TEST_P(AsyncSocketConnectTest, ConnectAndZeroCopyRead) {
 
   ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
   rcb.verifyData(data);
+  ASSERT_EQ(socket->getAppBytesReceived(), data.size());
 
   ASSERT_FALSE(socket->isClosedBySelf());
   ASSERT_FALSE(socket->isClosedByPeer());
