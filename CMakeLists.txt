@@ -425,13 +425,16 @@ set(ARM_AOR_ASM_FILES
   ${FOLLY_DIR}/external/aor/memcpy-mops.S
   ${FOLLY_DIR}/external/aor/memmove-mops.S
   ${FOLLY_DIR}/external/aor/memset-mops.S
+  ${FOLLY_DIR}/external/aor/memchr-armv8.S
+  ${FOLLY_DIR}/external/aor/memchr-advsimd.S
 )
 if (IS_AARCH64_ARCH)
   foreach (AOR_FILE IN LISTS ARM_AOR_ASM_FILES)
+  # Added -march crypto-sha2 compilation. If not supported on target, #ifdef won't compile this codepath
     set_property(
       SOURCE
       ${AOR_FILE}
-      APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp"
+      APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp" "-march=armv8-a+crypto+sha2"
     )
     list(APPEND folly_base_files
       ${AOR_FILE}
@@ -1169,6 +1172,8 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST math_test SOURCES MathTest.cpp
       BENCHMARK memcpy_benchmark SOURCES MemcpyBenchmark.cpp
       TEST memcpy_test SOURCES MemcpyTest.cpp
+      TEST memchr_test SOURCES MemchrTest.cpp
+      BENCHMARK memchr_bench SOURCES MemchrBenchmark.cpp
       TEST memory_idler_test SOURCES MemoryIdlerTest.cpp
       TEST memory_test WINDOWS_DISABLED
         SOURCES MemoryTest.cpp
