@@ -136,8 +136,6 @@ class AsyncUDPServerSocket
         validateSocketOptions(
             options, addy.getFamily(), SocketOptionKey::ApplyPos::POST_BIND),
         SocketOptionKey::ApplyPos::POST_BIND);
-
-    applyEventCallback();
   }
 
   void setReusePort(bool reusePort) { reusePort_ = reusePort; }
@@ -255,16 +253,6 @@ class AsyncUDPServerSocket
     }
   }
 
-  void setEventCallback(EventRecvmsgCallback* cb) {
-    eventCb_ = cb;
-    applyEventCallback();
-  }
-
-  void setRecvmsgMultishotCallback(EventRecvmsgMultishotCallback* cb) {
-    multishotCb_ = cb;
-    applyEventCallback();
-  }
-
   bool setTimestamping(int val) { return socket_->setTimestamping(val); }
 
  private:
@@ -344,18 +332,6 @@ class AsyncUDPServerSocket
     }
   }
 
-  void applyEventCallback() {
-    if (socket_) {
-      if (eventCb_) {
-        socket_->setEventCallback(eventCb_);
-      } else if (multishotCb_) {
-        socket_->setRecvmsgMultishotCallback(multishotCb_);
-      } else {
-        socket_->resetEventCallback();
-      }
-    }
-  }
-
   EventBase* const evb_;
   const size_t packetSize_;
 
@@ -376,9 +352,6 @@ class AsyncUDPServerSocket
   bool reusePort_{false};
   bool reuseAddr_{false};
   bool recvTos_{false};
-
-  EventRecvmsgCallback* eventCb_{nullptr};
-  EventRecvmsgMultishotCallback* multishotCb_{nullptr};
 };
 
 } // namespace folly

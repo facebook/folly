@@ -519,88 +519,6 @@ class EventRecvmsgMultishotCallback
   uint64_t asyncNum_{0};
 };
 
-void testAsyncUDPRecvmsg(bool useRegisteredFds, bool multishot = false) {
-  static constexpr size_t kBackendCapacity = 16;
-  static constexpr size_t kBackendMaxSubmit = 8;
-  static constexpr size_t kBackendMaxGet = 8;
-  static constexpr size_t kNumSockets = 8;
-  static constexpr size_t kNumBytes = 16;
-  static constexpr size_t kNumPackets = 32;
-  auto total = kNumPackets * kNumSockets;
-
-  folly::PollIoBackend::Options options;
-  options.setCapacity(kBackendCapacity)
-      .setMaxSubmit(kBackendMaxSubmit)
-      .setMaxGet(kBackendMaxGet)
-      .setUseRegisteredFds(useRegisteredFds ? kBackendCapacity : 0);
-  if (multishot) {
-    options.setInitialProvidedBuffers(
-        kNumBytes * 2 + 4 + sizeof(struct sockaddr_storage), 1000);
-  }
-  auto evbPtr = getEventBase(options);
-  SKIP_IF(!evbPtr) << "Backend not available";
-  if (multishot && !folly::IoUringBackend::kernelSupportsRecvmsgMultishot()) {
-    LOG(INFO) << "multishot not available";
-    return;
-  }
-
-  // create the server sockets
-  std::vector<std::unique_ptr<folly::AsyncUDPServerSocket>> serverSocketVec;
-  serverSocketVec.reserve(kNumSockets);
-
-  std::vector<std::unique_ptr<folly::AsyncUDPSocket>> clientSocketVec;
-  clientSocketVec.reserve(kNumSockets);
-
-  std::vector<folly::Function<uint64_t() const>> cbVec;
-  cbVec.reserve(kNumSockets);
-
-  std::string data(kNumBytes, 'A');
-
-  for (size_t i = 0; i < kNumSockets; i++) {
-    auto clientSock = std::make_unique<folly::AsyncUDPSocket>(evbPtr.get());
-    clientSock->bind(folly::SocketAddress("::1", 0));
-
-    auto serverSock = std::make_unique<folly::AsyncUDPServerSocket>(
-        evbPtr.get(),
-        1500,
-        folly::AsyncUDPServerSocket::DispatchMechanism::RoundRobin);
-    // set the event callback
-    if (multishot) {
-      auto cb_m = std::make_unique<EventRecvmsgMultishotCallback>(
-          data, clientSock->address(), kNumBytes, total, evbPtr.get());
-      serverSock->setRecvmsgMultishotCallback(cb_m.get());
-      cbVec.emplace_back([c = std::move(cb_m)]() { return c->getAsyncNum(); });
-    } else {
-      auto cb = std::make_unique<EventRecvmsgCallback>(
-          data, clientSock->address(), kNumBytes, total, evbPtr.get());
-      serverSock->setEventCallback(cb.get());
-      cbVec.emplace_back([c = std::move(cb)]() { return c->getAsyncNum(); });
-    }
-    // bind
-    serverSock->bind(folly::SocketAddress("::1", 0));
-    // retrieve the real address
-    folly::SocketAddress addr = serverSock->address();
-
-    serverSock->listen();
-
-    serverSocketVec.emplace_back(std::move(serverSock));
-
-    // connect the client
-    clientSock->connect(addr);
-    for (size_t j = 0; j < kNumPackets; j++) {
-      auto buf = folly::IOBuf::copyBuffer(data.c_str(), data.size());
-      CHECK_EQ(clientSock->write(addr, std::move(buf)), data.size());
-    }
-
-    clientSocketVec.emplace_back(std::move(clientSock));
-  }
-
-  evbPtr->loopForever();
-
-  for (size_t i = 0; i < kNumSockets; i++) {
-    CHECK_GE(cbVec[i](), kNumPackets);
-  }
-}
 } // namespace
 
 TEST(IoUringBackend, FailCreateNoRetry) {
@@ -1101,18 +1019,6 @@ TEST(IoUringBackend, Fallocate) {
   backendPtr->queueFallocate(fd, 0, 0, 4096, std::move(fallocateCb));
 
   evbPtr->loopForever();
-}
-
-TEST(IoUringBackend, AsyncUDPRecvmsgNoRegisterFd) {
-  testAsyncUDPRecvmsg(false);
-}
-
-TEST(IoUringBackend, AsyncUDPRecvmsgRegisterFd) {
-  testAsyncUDPRecvmsg(true);
-}
-
-TEST(IoUringBackend, AsyncUDPRecvmsgMultishotRegisterFd) {
-  testAsyncUDPRecvmsg(true, true);
 }
 
 TEST(IoUringBackend, EventFDNooverflownopersist) {
