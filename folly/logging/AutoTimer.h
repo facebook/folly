@@ -39,13 +39,18 @@ struct GoogleLogger;
  * destruction or whenever the log() method is called. For example:
  *
  *   AutoTimer t("Foo() completed");
- *   doWork();
+ *   doWork();  // Takes ~1.2 seconds
  *   t.log("Do work finished");
- *   doMoreWork();
+ *   doMoreWork();  // Takes ~1.1 seconds
  *
  * This would print something like:
  *   "Do work finished in 1.2 seconds"
- *   "Foo() completed in 4.3 seconds"
+ *   "Foo() completed in 1.1 seconds"
+ *
+ * Note that the start of the timer is reset after every call to log(). This
+ * means the destruction message printed after a prior call to log() will
+ * log the time since the last call to log(), not the time since the object
+ * was created.
  *
  * You can customize what you use as the logger and clock. The logger needs
  * to have an operator()(StringPiece, std::chrono::duration<double>) that
