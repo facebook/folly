@@ -523,12 +523,12 @@ auto posixTimeToDuration(
     // Perform the division as an integer, and check that the result fits in
     // the output integer type
     auto outputValue = (seconds / Tgt::period::num);
-    auto expectedOuput = tryTo<typename Tgt::rep>(outputValue);
-    if (expectedOuput.hasError()) {
-      return makeUnexpected(expectedOuput.error());
+    auto expectedOutput = tryTo<typename Tgt::rep>(outputValue);
+    if (expectedOutput.hasError()) {
+      return makeUnexpected(expectedOutput.error());
     }
 
-    return Tgt{expectedOuput.value()};
+    return Tgt{expectedOutput.value()};
   }
 }
 

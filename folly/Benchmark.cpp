@@ -832,7 +832,7 @@ runBenchmarksWithPrinterImpl(
   for (std::size_t i = 0; i != toRun.benchmarks.size(); ++i) {
     std::pair<double, UserCounters> elapsed;
     const detail::BenchmarkRegistration& bm = *toRun.benchmarks[i];
-    bool shoudDrawLineAfter = shouldDrawLineTracker();
+    bool shouldDrawLineAfter = shouldDrawLineTracker();
 
     if (FLAGS_bm_profile) {
       elapsed = runProfilingGetNSPerIteration(bm.func, globalBaseline.first);
@@ -847,7 +847,7 @@ runBenchmarksWithPrinterImpl(
     // counters have been used, then the header can be printed out properly
     if (printer != nullptr) {
       printer->print({{bm.file, bm.name, elapsed.first, elapsed.second}});
-      if (shoudDrawLineAfter) {
+      if (shouldDrawLineAfter) {
         printer->separator('-');
       }
     }
