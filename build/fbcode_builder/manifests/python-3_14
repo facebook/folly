@@ -3,9 +3,10 @@
 [manifest]
 name = python-3_14
 
-[git]
-repo_url = https://github.com/python/cpython.git
-branch = 3.14
+[download]
+url = https://github.com/python/cpython/archive/refs/tags/v3.14.2.tar.gz
+sha256 = 452d758a660bf1faa31b0b5e39999721b6034421b1cb0a3a26223a344c4fa949
 
 [build]
 builder = autoconf
+subdir = cpython-3.14.2
