@@ -277,7 +277,6 @@ class AsyncReader {
   // Read methods that aren't part of AsyncTransport.
   virtual void setReadCB(ReadCallback* callback) = 0;
   virtual ReadCallback* getReadCallback() const = 0;
-  virtual void setEventCallback(EventRecvmsgCallback* /*cb*/) {}
   virtual std::unique_ptr<IOBuf> takePreReceivedData() { return {}; }
 
  protected:

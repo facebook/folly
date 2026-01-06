@@ -795,13 +795,6 @@ class AsyncSocket : public AsyncSocketTransport {
   // Read and write methods
   void setReadCB(ReadCallback* callback) override;
   ReadCallback* getReadCallback() const override;
-  void setEventCallback(EventRecvmsgCallback* cb) override {
-    if (cb) {
-      ioHandler_.setEventCallback(cb);
-    } else {
-      ioHandler_.resetEventCallback();
-    }
-  }
 
   /**
    * Create a memory store to use for zero copy reads.
