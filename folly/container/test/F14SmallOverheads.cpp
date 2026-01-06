@@ -23,6 +23,7 @@
 #include <utility>
 
 #include <folly/container/F14Map.h>
+#include <folly/lang/Keep.h>
 
 using namespace std;
 using namespace folly;
@@ -122,69 +123,68 @@ void runSingleInserts(std::string const& name) {
       name + " string 128");
 }
 
-FOLLY_NOINLINE int codeSize_find_Std(
+FOLLY_KEEP int codeSize_find_Std(
     std::unordered_map<int16_t, float>& m, int16_t k) {
   auto i = m.find(k);
   return i != m.end() ? 1 : 0;
 }
 
-FOLLY_NOINLINE int codeSize_find_F14Value(
+FOLLY_KEEP int codeSize_find_F14Value(
     F14ValueMap<int16_t, float>& m, int16_t k) {
   auto i = m.find(k);
   return i != m.end() ? 1 : 0;
 }
 
-FOLLY_NOINLINE int codeSize_find_F14Node(
-    F14NodeMap<int16_t, float>& m, int16_t k) {
+FOLLY_KEEP int codeSize_find_F14Node(F14NodeMap<int16_t, float>& m, int16_t k) {
   auto i = m.find(k);
   return i != m.end() ? 1 : 0;
 }
 
-FOLLY_NOINLINE int codeSize_find_F14Vector(
+FOLLY_KEEP int codeSize_find_F14Vector(
     F14VectorMap<int16_t, float>& m, int16_t k) {
   auto i = m.find(k);
   return i != m.end() ? 1 : 0;
 }
 
-FOLLY_NOINLINE void codeSize_bracket_Std(
+FOLLY_KEEP void codeSize_bracket_Std(
     std::unordered_map<int16_t, uint32_t>& m, int16_t k, uint32_t v) {
   m[k] = v;
 }
 
-FOLLY_NOINLINE void codeSize_bracket_F14Value(
+FOLLY_KEEP void codeSize_bracket_F14Value(
     F14ValueMap<int16_t, uint32_t>& m, int16_t k, uint32_t v) {
   m[k] = v;
 }
 
-FOLLY_NOINLINE void codeSize_bracket_F14Node(
+FOLLY_KEEP void codeSize_bracket_F14Node(
     F14NodeMap<int16_t, uint32_t>& m, int16_t k, uint32_t v) {
   m[k] = v;
 }
 
-FOLLY_NOINLINE void codeSize_bracket_F14Vector(
+FOLLY_KEEP void codeSize_bracket_F14Vector(
     F14VectorMap<int16_t, uint32_t>& m, int16_t k, uint32_t v) {
   m[k] = v;
 }
 
-FOLLY_NOINLINE void codeSize_erase_Std(
+FOLLY_KEEP void codeSize_erase_Std(
     std::unordered_map<int16_t, uint32_t>& m,
     std::unordered_map<int16_t, uint32_t>::iterator iter) {
   m.erase(iter);
 }
 
-FOLLY_NOINLINE void codeSize_erase_F14Value(
+FOLLY_KEEP void codeSize_erase_F14Value(
     F14ValueMap<int16_t, uint32_t>& m,
     F14ValueMap<int16_t, uint32_t>::iterator iter) {
   m.erase(iter);
 }
 
-FOLLY_NOINLINE void codeSize_erase_F14Node(
+FOLLY_KEEP void codeSize_erase_F14Node(
     F14NodeMap<int16_t, uint32_t>& m,
     F14NodeMap<int16_t, uint32_t>::iterator iter) {
   m.erase(iter);
 }
 
-FOLLY_NOINLINE void codeSize_erase_F14Vector(
+FOLLY_KEEP void codeSize_erase_F14Vector(
     F14VectorMap<int16_t, uint32_t>& m,
     F14VectorMap<int16_t, uint32_t>::iterator iter) {
   m.erase(iter);

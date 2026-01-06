@@ -775,6 +775,7 @@ fbcode_target(
     ],
     deps = [
         "//folly/container:f14_hash",
+        "//folly/lang:keep",
     ],
 )
 
