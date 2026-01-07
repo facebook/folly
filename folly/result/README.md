@@ -3,7 +3,8 @@
 `folly/result` offers an error-handling paradigm that can be safer than
 throwing, more explicit, and over 100x cheaper on the error path.  It
 interoperates smoothly with exception-throwing code, and with `folly::coro`.  It
-is intended to supersede `folly::Try` in new code.
+is intended to supersede `folly::Try` in new code (rationale in
+`docs/design_notes.md`).
 
 This file is just a teaser!  Before adopting `result` in your project, be sure
 to review `docs/result.md` and `docs/rich_error.md`.  For API details, consult

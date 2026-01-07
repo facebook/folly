@@ -56,8 +56,9 @@ are natively usable in the exception-style API of `result`.
 ### Why we special-case `OperationCancelled` (aka `OC`)
 
 `folly/coro` has a convention by which child task may signal to its parent that
-it stopped due to cancellation.  First, look through https://wg21.link/p1677 to
-understand the problem space.
+it stopped due to cancellation.  First, look through
+[P1677](https://wg21.link/p1677) to understand the problem space. Then, read the
+`design_notes.md` section that mentions that paper.
 
 Today, `folly/OperationCancelled.h` propagates as an exception through
 `folly/coro` coroutines. Child tasks can emit it in a number of ways, but

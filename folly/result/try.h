@@ -20,6 +20,7 @@
 #include <folly/result/result.h>
 
 /// `result<T>` <-> `Try<T>` conversions to aid in migrating legacy `Try` code.
+/// See `design_notes.md` for reasons to migrate away from `Try`.
 ///
 /// Perfect interconversion is not always possible:
 ///   - `Try` does not support reference types, but `result` does.

@@ -132,6 +132,9 @@ anything with `folly::get_exception` support.
 
 ## Prior art: Why this custom design instead of <my favorite header>?
 
+For a high-level comparison of `result` with `std::expected`, `boost::outcome`,
+and other coded-error alternatives, see `design_notes.md`.
+
 The closest thing to standard error-code handling is `<system_error>`.  Sadly,
 it has many defects.  For details, see [P0824](wg21.link/p0824), or a summary
 in Niall Douglas's [`status_code` docs](https://github.com/ned14/status-code)).

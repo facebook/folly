@@ -44,7 +44,7 @@ particular scenarios that are common in Meta's code.
 ### Use-case 1: Explicit error propagation in synchronous code
 
 Exceptions in C++ are common, unavoidable, useful, and a frequent source of bugs
-(`DesignNotes.md` has more in "Exceptions are imperfect & inevitable"). However,
+(see "Exceptions are imperfect & inevitable" in `design_notes.md`). However,
 some circumstances -- such as low-level systems programs, high-performance, or
 high-reliability applications -- can benefit from policies along these lines:
   - never throw exceptions,
@@ -162,7 +162,7 @@ propagate any value *or* unhandled error to the parent of the current coro.
 `result` is a bit opinionated, aiming to popularize several reliability &
 efficiency best practices. Reading this contract will help you understand the
 design principles.  If you want to know **why** `result` was designed this way,
-check out `DesignNotes.md`.  For example, they offer comparisons with `folly`
+check out `design_notes.md`.  For example, they offer comparisons with `folly`
 prior art, like `Expected`, `Try`, and `coro::Task`.
 
 In bullets, `result<T>`:

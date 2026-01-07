@@ -13,7 +13,7 @@ when building new features:
          compile code that relies on undefined behavior.
        - Since a lot of errors are static, pushing their allocation &
          construction to build-time is good for performance.  For this reason,
-         immortal `rich_exception_ptr` already working in `constexpr` code.
+         immortal `rich_exception_ptr` is already working in `constexpr` code.
   - Rich errors have a huge test matrix: (packed/separate storage) x
     (owned/immortal/misc errors) x (enriched/underlying errors) x
     (move/copy/assign/compare/format fundamentals).  To deal with this, current
@@ -23,7 +23,7 @@ when building new features:
         ad-hoc test scenarios.  It should be easy to tell that the whole test
         matrix is covered, without doing extensive book-keeping.
       - **Do** provide "usage example" integration-style tests as well.
-  - Get expert review, especially when touching bit-discrimnated variant code,
+  - Get expert review, especially when touching bit-discriminated variant code,
     which is (by necessity) teetering on the edge of "acceptable UB".
 
 These are sorted from "near future" to "far future".
@@ -39,6 +39,17 @@ These are sorted from "near future" to "far future".
     I'm thinking of symbolizing the stack and attaching it to the exception in
     `unhandled_exception`.  Perf-wise this should be "fine" since `throw` is
     already stupid-expensive.  Update docs, since this is Very Useful.
+      * This would likely be implemented as a public helper function, so that
+        user `catch` clauses can also do this.  We probably don't want to
+        integrate `folly/experimental/exception_tracer`, but the implementation
+        is instructive.  Also see https://fburl.com/cpp_debug_only_stack_trace.
+      * A further extension would be to also enrich the error with the coroutine
+        stack (see `AsyncStack` code in `folly/coro`).
+
+  - Make it easy to mark certain enrichments debug-only.  Ideally it would also
+    be easy to toggle some enrichments at runtime for debugging production
+    issues, in the spirit of `VLOG`. Some words here may be useful
+    https://fburl.com/enrichment_scopes_fast_or_slow
 
   - Are we happy with the moved-out behavior of `non_value_result`?  Today it's
     "dfatal crash" / empty eptr.
@@ -50,6 +61,11 @@ These are sorted from "near future" to "far future".
     that is formattable with enrichments (provenance).  One API idea is to add
     a `get_rich_error_code<rich_code<Code>>()` overload, another is to just add
     a new verb.
+
+  - `result_generator`: Similar to `std::generator` but yields `result`s, so
+    generator errors don't have to throw.  Any error ends the stream.  Supports
+    `or_unwind` semantics.  https://fburl.com/result_generator_impl has a draft
+    implementation (based on `folly::coro::Generator`); it needs updates.
 
   - Rich error / result formatters may want to parse out some options to
     customize the output style (separator / indentation).  Another important
@@ -76,6 +92,9 @@ These are sorted from "near future" to "far future".
     location where the nesting took place (and maybe a message).  This
     implementation would follow or extend `detail::enriched_non_value`.
 
+  - (*C++23 required*) The internals of `result` should migrate to
+    `std::expected` to avoid needing to handle the "empty by exception" state.
+
   - Implement the enrichment optimization from `future_enrich_in_place.md`.
 
   - A specialized `rich_exception_ptr::operator bool` might be faster than
@@ -95,13 +114,27 @@ These are sorted from "near future" to "far future".
   - In order for `result` to become the backing implementation of `Try`,
     we must support no-RTTI / no-exceptions codebases.  This is both feasible
     and useful for embedded systems, but hasn't been prioritized yet. When
-    working on this, a few things breadcrumbs may help:
+    working on this, a few breadcrumbs may help:
       - Start by setting up a corresponding CI environment / test protocol.
       - You will almost certainly want to implement eptr-free error storage
         first (see previous bullet).
       - `folly::throw_exception` abstracts "throw if supported, terminate
         otherwise".  There are many other similar utilities.  Lacking a
         utility, code can always gate on `kHasExceptions` and `kHasRtti`.
+
+  - Error handling via the `if`-`get_exception` pattern is fine, but sometimes
+    declarative is better. One idea is to tag lambdas via `operator=`:
+    ```cpp
+    auto v = res.value_or_handle_via(
+        folly::type<YourErr> = [](const YourErr& ex) { ... },
+        folly::type<OtherErr> = [](const OtherErr& ex) { ... },
+        [](const non_value_result& nvr) { /* catch-all */ });
+    ```
+    This could also be `co_await handle_or_unwind(res, ...)` without the
+    catch-all. As syntax "sugar", this does not have much urgency. But,
+    statically knowing the full list of queried types would support faster
+    dynamic type resolution, either via `exception_ptr_get_object_hint` or via
+    `future_fast_rtti.md`.
 
   - Implement `future_small_value.md`, the small value optimization for
     `result<int>`, `result<T*>`, `result<T&>` et al, and for
@@ -110,6 +143,13 @@ These are sorted from "near future" to "far future".
   - Either implement `future_fast_rtti.md`, or build `std::type_info` caching
     (`F14ValueSet` with some eviction strategy) for `rich_error_base`, likely in
     `lang/Exception.h` via another member type plugin.
+
+  - `result<T&&>` is not equality-comparable, since
+    `folly::rvalue_reference_wrapper` is neither implicitly convertible to the
+    ref, nor provides `operator==`. If there's a strong use-case for this, the
+    right fix is probably to add that operator. At that point, `result_test.cpp`
+    already has `// FIXME: Implement rvalue_reference_wrapper::operator==`
+    commented-out test coverage. Also update `value_only_result_test.cpp`.
 
 ## Auto-capture locations for immortals on C++23
 
@@ -132,7 +172,7 @@ consistent & good experience for runtime errors.
 
 The trouble is that `source_location` is not structural, and so the helper type
 can only store its pointer. But, in C++20, there is no way to allocate static
-storage from a variable -- unlesss it's `constexpr`, which an auto-captured
+storage from a variable -- unless it's `constexpr`, which an auto-captured
 `source_location::current()` could not be. So, we have to wait for C++23 support
 of `static constexpr` locals. As of late 2025, this sort of thing only works on
 GCC. Clang wrongly garbage-collects the `loc` symbol, getting a linker error.
