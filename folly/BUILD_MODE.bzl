@@ -24,7 +24,7 @@ _extra_clang_flags = [
     "-Wimplicit-fallthrough",
     "-Wmismatched-tags",
     "-Wmissing-braces",
-    "-Wmissing-noreturn",
+    "-Wno-missing-noreturn",  # until C++23 / P2173R1 - attributes on lambdas
     "-Wshadow",
     "-Wshift-sign-overflow",
     "-Wsometimes-uninitialized",
