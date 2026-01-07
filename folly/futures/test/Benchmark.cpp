@@ -292,12 +292,12 @@ void contend(void (*func)()) {
   pthread_barrier_init(&barrier, nullptr, N + 1);
   std::vector<std::thread> threads;
   for (int i = 0; i < N; i++) {
-    threads.push_back(std::thread([&]() {
+    threads.emplace_back([&]() {
       pthread_barrier_wait(&barrier);
       for (int j = 0; j < iters; j++) {
         func();
       }
-    }));
+    });
   }
   pthread_barrier_wait(&barrier);
   s.dismiss();

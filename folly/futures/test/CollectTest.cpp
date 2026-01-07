@@ -1088,7 +1088,7 @@ TEST(Collect, CollectRangeWithDestroyedWeakRef) {
 
   auto futures = std::vector<folly::SemiFuture<folly::Unit>>{};
   futures.push_back(folly::makeSemiFuture());
-  futures.push_back(
+  futures.emplace_back(
       folly::makeSemiFuture()
           .via(one.get())
           .thenValue([&](auto) {
