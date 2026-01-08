@@ -1295,4 +1295,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
   endif()
 endif()
 
+add_definitions(-DGLOG_USE_GLOG_EXPORT)
+
 add_subdirectory(folly)
