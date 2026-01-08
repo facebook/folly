@@ -45,6 +45,7 @@ openssl
 zlib
 
 [dependencies.os=linux]
+libaio
 libiberty
 libunwind
 
