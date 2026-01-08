@@ -30,7 +30,7 @@
 #endif
 #endif // FOLLY_MOBILE
 
-#cmakedefine FOLLY_HAVE_PTHREAD 1
+#cmakedefine01 FOLLY_HAVE_PTHREAD
 #cmakedefine FOLLY_HAVE_PTHREAD_ATFORK 1
 
 #cmakedefine FOLLY_HAVE_LIBGFLAGS 1
@@ -47,7 +47,7 @@
 #cmakedefine01 FOLLY_HAVE_GETRANDOM
 #cmakedefine FOLLY_HAVE_PREADV 1
 #cmakedefine FOLLY_HAVE_PWRITEV 1
-#cmakedefine FOLLY_HAVE_CLOCK_GETTIME 1
+#cmakedefine01 FOLLY_HAVE_CLOCK_GETTIME
 #cmakedefine FOLLY_HAVE_PIPE2 1
 
 #cmakedefine FOLLY_HAVE_IFUNC 1
