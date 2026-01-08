@@ -978,8 +978,9 @@ void cohort_safe_list_children_test() {
   DCHECK_EQ(sum, 4000);
 }
 
-void fork_test() {
 #ifndef _WIN32
+
+void fork_test() {
   folly::enable_hazptr_thread_pool_executor();
   auto trigger_reclamation = [] {
     hazptr_obj_cohort b;
@@ -1010,8 +1011,9 @@ void fork_test() {
   } else {
     PLOG(FATAL) << "Failed to fork()";
   }
-#endif
 }
+
+#endif
 
 template <template <typename> class Atom = std::atomic>
 void lifo_test() {
@@ -1307,9 +1309,13 @@ TEST(HazptrTest, cohortSafeListChildren) {
   cohort_safe_list_children_test();
 }
 
+#ifndef _WIN32
+
 TEST(HazptrTest, fork) {
   fork_test();
 }
+
+#endif
 
 TEST(HazptrTest, lifo) {
   lifo_test();
