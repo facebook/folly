@@ -193,6 +193,13 @@ class rich_error_base {
   virtual const rich_exception_ptr* next_error_for_enriched_message()
       const noexcept;
 
+  // Future: this passkey for `rich_exception_ptr::exception_type()` could
+  // perhaps be removed, see its docblock.
+  class private_get_exception_ptr_type_t {
+    friend class rich_error_base;
+    private_get_exception_ptr_type_t() = default;
+  };
+
   // Used only by "transparent" error wrappers like `enrich_non_value()`.
   // Otherwise, `nullptr`, meaning that `this` itself is the underlying error.
   //

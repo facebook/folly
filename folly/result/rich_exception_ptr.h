@@ -549,6 +549,38 @@ class rich_exception_ptr_impl : private B {
         B::NOTHROW_OPERATION_CANCELLED_eq);
   }
 
+  /// Returns the `typeid` of the innermost exception object, ignoring
+  /// enriching wrappers.  If no exception object is stored, returns null.
+  ///
+  /// Future: Could perhaps be made public, currently PRIVATE due to the API
+  /// design issue with immortals documented inline.  That would simplify the
+  /// `rich_error_base` plumbing.
+  constexpr const std::type_info* exception_type(
+      rich_error_base::private_get_exception_ptr_type_t) const noexcept {
+    using bits_t = typename B::bits_t; // MSVC thinks `B::BIT_NAME` is private
+    return with_underlying([](auto* rep) -> const std::type_info* {
+      if (bits_t::OWNS_EXCEPTION_PTR_and & rep->get_bits()) {
+        return exception_ptr_get_type(rep->get_eptr_ref_guard().ref());
+      } else if (
+          bits_t::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq == rep->get_bits()) {
+        // This shouldn't even be hit on our internal formatting code path.
+        //
+        // FIXME: This is potentially too confusing for a public API, since:
+        //  - The actual storage type is `immortal_rich_error_storage`, which
+        //    is not user-addressable.
+        //  - The user can get `const UserBase*`, `rich_error<UserBase>*>, or
+        //    `const rich_error<UserBase>*`, but the latter 2 have costs,
+        //    and all 3 are distinct objects.
+        return rep->get_immortal_storage()
+            ? rep->get_immortal_storage()->user_base_type_
+            : nullptr;
+      } else if (bits_t::NOTHROW_OPERATION_CANCELLED_eq == rep->get_bits()) {
+        return &typeid(StubNothrowOperationCancelled);
+      }
+      return nullptr; // Non-exceptions: empty `Try`, small value uintptr
+    });
+  }
+
   /// Returns `true` when both `lhs` and `rhs`...
   ///  - ... point at the same underlying exception, per the details below.
   ///  - ... occur in the `Try` implementation, and both contain empty `Try`.
