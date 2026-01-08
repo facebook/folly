@@ -14,6 +14,7 @@ non_fbcode_target(
     ],
     raw_headers = [
         "rich_error_base.h",
+        "rich_exception_ptr.h",
     ],
     exported_deps = [
         ":rich_error_fwd",
@@ -22,6 +23,8 @@ non_fbcode_target(
         "//xplat/folly:portability_source_location",
         "//xplat/folly:traits",
         "//xplat/folly:utility",
+        "//xplat/folly/lang:exception",
+        "//xplat/folly/result/detail:rich_exception_ptr_storage",
     ],
 )
 
@@ -33,6 +36,7 @@ fbcode_target(
     ],
     headers = [
         "rich_error_base.h",
+        "rich_exception_ptr.h",
     ],
     exported_deps = [
         ":rich_error_fwd",
@@ -40,7 +44,9 @@ fbcode_target(
         "//folly:portability",
         "//folly:traits",
         "//folly:utility",
+        "//folly/lang:exception",
         "//folly/portability:source_location",
+        "//folly/result/detail:rich_exception_ptr_storage",
     ],
 )
 

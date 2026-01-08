@@ -15,6 +15,7 @@
  */
 
 #include <folly/result/rich_error_base.h>
+#include <folly/result/rich_exception_ptr.h>
 
 #if FOLLY_HAS_RESULT
 
