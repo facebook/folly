@@ -11,6 +11,7 @@ non_fbcode_target(
     name = "rich_error_base",
     srcs = [
         "rich_error_base.cpp",
+        "rich_exception_ptr.cpp",
     ],
     raw_headers = [
         "rich_error_base.h",
@@ -33,6 +34,7 @@ fbcode_target(
     name = "rich_error_base",
     srcs = [
         "rich_error_base.cpp",
+        "rich_exception_ptr.cpp",
     ],
     headers = [
         "rich_error_base.h",

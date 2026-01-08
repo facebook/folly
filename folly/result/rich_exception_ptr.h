@@ -47,6 +47,9 @@ struct StubThrownOperationCancelled : std::exception {};
 struct StubUsingUninitializedTry : std::exception {};
 struct StubTryException : std::exception {};
 
+// Free function to get a singleton exception_ptr for bad_result_access
+const std::exception_ptr& bad_result_access_singleton();
+
 template <typename T>
 using detect_folly_detail_base_of_rich_error =
     typename T::folly_detail_base_of_rich_error;
@@ -276,6 +279,103 @@ class rich_exception_ptr_impl : private B {
       copy_unowned_pointer_sized_state(other);
     }
     other.make_moved_out(other_bits);
+  }
+
+  // Call ONLY after handling owned-eptr in `to_exception_ptr_...()`
+  template <bool PartOfTryImpl> //  `true` only when called from `Try.h`.
+  std::exception_ptr to_exception_ptr_non_owned(bits_t bits) const {
+    if (B::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq == bits) {
+      const auto* s = get_immortal_storage();
+      return s ? s->to_exception_ptr() : std::exception_ptr{};
+    }
+    if constexpr (PartOfTryImpl) {
+      if (B::SIGIL_eq == bits) {
+        // For empty `Try`, match behavior of `Try::throwUnlessValue` ... in
+        // some other usage `Try` insetad throws `TryException`, but luckily
+        // `UsingUninitializedTry` derives from that.
+        throw StubUsingUninitializedTry{};
+      } else if (B::SMALL_VALUE_eq == bits) {
+        throw StubTryException{}; // Match `Try::exception()` behavior
+      } // Else: fall through...
+    }
+    // We're NOT implementing `Try`, and are either in the small value state,
+    // or in the empty `Try` state. Both are debug-fatal. For simplicity,
+    // we have both match `result::non_value()` failure behavior.
+    B::debug_assert(
+        "Cannot use `to_exception_ptr_slow` in value or empty `Try` state",
+        false);
+    return bad_result_access_singleton();
+  }
+
+  template <bool PartOfTryImpl> //  `true` only when called from `Try.h`.
+  std::exception_ptr to_exception_ptr_copy() const {
+    // Code that examines `exception_ptr` may rethrow or use legacy APIs, so we
+    // have to drop enriching wrappers.
+    return with_underlying([](auto* rep) {
+      auto bits = rep->get_bits();
+      if ((B::OWNS_EXCEPTION_PTR_and & bits) ||
+          // Future: It's quite silly that this copy op, and its eventual dtor,
+          // both contend on the atomic refcount for the singleton...  when a
+          // leaky singleton doesn't even need refcounts.  See the
+          // `get_outer_exception` doc for a bithacking idea to fix this.
+          (B::NOTHROW_OPERATION_CANCELLED_eq == bits)) {
+        return rep->get_eptr_ref_guard().ref();
+      }
+      return rep->template to_exception_ptr_non_owned<PartOfTryImpl>(bits);
+    });
+  }
+
+  template <bool PartOfTryImpl> //  `true` only when called from `Try.h`.
+  std::exception_ptr to_exception_ptr_move() {
+    // Similar logic to `to_exception_ptr_copy()`, but we are moving out the
+    // inner exception -- so that needs to be "moved out".  Then, any outer
+    // exceptions need to be destroyed.
+    std::exception_ptr eptr;
+    bits_t outer_bits = B::get_bits();
+    using bits_t = typename B::bits_t; // MSVC thinks `B::BIT_NAME` is private
+    bool this_is_wrapper = with_underlying([&eptr](auto* rep) {
+      bits_t bits = rep->get_bits();
+      // `with_underlying` makes `rep` a pointer-to-`const` iff `this` is not
+      // an underlying error, or equivalently if `rep` is not an outer error.
+      constexpr bool rep_is_not_outer =
+          std::is_const_v<std::remove_pointer_t<decltype(rep)>>;
+      if (bits_t::OWNS_EXCEPTION_PTR_and & bits) {
+        if constexpr (rep_is_not_outer) {
+          // When `rep` is not `this`, it comes from `with_underlying`, which
+          // (by design!) points to `const`.  So, the `else` branch shouldn't
+          // compile (again, by design), but more importantly, it would violate
+          // the principle that enrichment wrappers are transparent.  The doc
+          // of `rich_error_base::mutable_underlying_error` speaks to this.
+          // Concretely:
+          //   rich_exception_ptr rep1 = /* enrichment-wrapped MyErr */;
+          //   auto rep2 = rep1; // Both share the same `enriched_non_value`!
+          // This would mutate `enriched_non_value::next_` for *both*.
+          //   auto eptr2 = std::move(rep2).to_exception_ptr_slow();
+          // So `rep1` would now be a wrapper around a moved-out (empty) REP.
+          eptr = rep->get_eptr_ref_guard().ref();
+        } else { // If `rep` is `this`, then we can safely move it.
+          eptr = detail::extract_exception_ptr(
+              std::move(rep->get_eptr_ref_guard().ref()));
+        }
+      } else if (bits_t::NOTHROW_OPERATION_CANCELLED_eq == bits) {
+        // For nothrow OC, the stored eptr is a non-owning copy of a leaky
+        // singleton. We must copy (not move/extract) to properly increment
+        // refcounts, matching the behavior of `to_exception_ptr_copy()`.
+        //
+        // Future: See `to_exception_ptr_copy` for an optimization idea.
+        eptr = rep->get_eptr_ref_guard().ref();
+      } else {
+        eptr = rep->template to_exception_ptr_non_owned<PartOfTryImpl>(bits);
+      }
+      return rep_is_not_outer;
+    });
+    if (this_is_wrapper) {
+      // We just moved out the underlying error, but the wrapper chain still
+      // needs to be destroyed, or `make_moved_out` would leak it.
+      destroy_owned_state_and_bits_caller_must_reset();
+    }
+    make_moved_out(outer_bits);
+    return detail::extract_exception_ptr(std::move(eptr));
   }
 
   template <typename D1, typename B1, typename D2, typename B2>
@@ -547,6 +647,31 @@ class rich_exception_ptr_impl : private B {
         // Bitwise-copy the singleton without bumping the eptr's refcount
         [&](auto& d) { d.eptr_ref_guard_ = singleton; },
         B::NOTHROW_OPERATION_CANCELLED_eq);
+  }
+
+  /// Returns the `std::exception_ptr` for the innermost exception, DISCARDING
+  /// enriching wrappers.
+  ///
+  /// Overload differences:
+  ///   - `const&` copies the inner eptr (cost: an atomic refcount increment).
+  ///   - `&&` moves the inner eptr, destroys any enriching wrappers, and
+  ///     leaves `this` in a moved-out, empty eptr state.
+  ///
+  /// Precondition: Contains an exception, or empty eptr (debug-fatal otherwise)
+  std::exception_ptr to_exception_ptr_slow() const& {
+    return to_exception_ptr_copy</*PartOfTryImpl=*/false>();
+  }
+  std::exception_ptr to_exception_ptr_slow() && {
+    return to_exception_ptr_move</*PartOfTryImpl=*/false>();
+  }
+  // PRIVATE TO `Try`: `to_exception_ptr_slow()` with edge case differences.
+  std::exception_ptr to_exception_ptr_slow(
+      try_rich_exception_ptr_private_t) const& {
+    return to_exception_ptr_copy</*PartOfTryImpl=*/true>();
+  }
+  std::exception_ptr to_exception_ptr_slow(
+      try_rich_exception_ptr_private_t) && {
+    return to_exception_ptr_move</*PartOfTryImpl=*/true>();
   }
 
   /// Returns the `typeid` of the innermost exception object, ignoring
