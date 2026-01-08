@@ -69,12 +69,12 @@ TEST_F(HHWheelTimerTest, FireOnce) {
 
   ASSERT_EQ(t.count(), 0);
 
-  t.scheduleTimeout(&t1, milliseconds(5));
-  t.scheduleTimeout(&t2, milliseconds(5));
+  t.scheduleTimeout(&t1, milliseconds(20));
+  t.scheduleTimeout(&t2, milliseconds(20));
   // Verify scheduling it twice cancels, then schedules.
   // Should only get one callback.
-  t.scheduleTimeout(&t2, milliseconds(5));
-  t.scheduleTimeout(&t3, milliseconds(10));
+  t.scheduleTimeout(&t2, milliseconds(20));
+  t.scheduleTimeout(&t3, milliseconds(40));
 
   ASSERT_EQ(t.count(), 3);
 
@@ -88,10 +88,10 @@ TEST_F(HHWheelTimerTest, FireOnce) {
 
   ASSERT_EQ(t.count(), 0);
 
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(5));
-  T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(5));
-  T_CHECK_TIMEOUT(start, t3.timestamps[0], milliseconds(10));
-  T_CHECK_TIMEOUT(start, end, milliseconds(10));
+  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(20));
+  T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(20));
+  T_CHECK_TIMEOUT(start, t3.timestamps[0], milliseconds(40));
+  T_CHECK_TIMEOUT(start, end, milliseconds(40));
 }
 
 TEST_F(HHWheelTimerTest, NoRequestContextLeak) {
