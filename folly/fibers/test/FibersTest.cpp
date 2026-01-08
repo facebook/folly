@@ -423,7 +423,7 @@ TEST(FiberManager, addTasksNoncopyable) {
       manager.addTask([&]() {
         std::vector<std::function<std::unique_ptr<int>()>> funcs;
         for (int i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() {
+          funcs.emplace_back([i, &pendingFibers]() {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -491,7 +491,7 @@ TEST(FiberManager, addTasksThrow) {
       manager.addTask([&]() {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() {
+          funcs.emplace_back([i, &pendingFibers]() {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -543,7 +543,7 @@ TEST(FiberManager, addTasksVoid) {
       manager.addTask([&]() {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([&pendingFibers]() {
+          funcs.emplace_back([&pendingFibers]() {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -585,7 +585,7 @@ TEST(FiberManager, addTasksVoidThrow) {
       manager.addTask([&]() {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() {
+          funcs.emplace_back([i, &pendingFibers]() {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -635,7 +635,7 @@ TEST(FiberManager, addTasksReserve) {
       manager.addTask([&]() {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([&pendingFibers]() {
+          funcs.emplace_back([&pendingFibers]() {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -725,7 +725,7 @@ TEST(FiberManager, forEach) {
       manager.addTask([&]() {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() {
+          funcs.emplace_back([i, &pendingFibers]() {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -768,7 +768,7 @@ TEST(FiberManager, collectN) {
       manager.addTask([&]() {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() {
+          funcs.emplace_back([i, &pendingFibers]() {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -808,7 +808,7 @@ TEST(FiberManager, collectNThrow) {
       manager.addTask([&]() {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([&pendingFibers]() -> size_t {
+          funcs.emplace_back([&pendingFibers]() -> size_t {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -847,7 +847,7 @@ TEST(FiberManager, collectNVoid) {
       manager.addTask([&]() {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([&pendingFibers]() {
+          funcs.emplace_back([&pendingFibers]() {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -883,7 +883,7 @@ TEST(FiberManager, collectNVoidThrow) {
       manager.addTask([&]() {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([&pendingFibers]() {
+          funcs.emplace_back([&pendingFibers]() {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -922,7 +922,7 @@ TEST(FiberManager, collectAll) {
       manager.addTask([&]() {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() {
+          funcs.emplace_back([i, &pendingFibers]() {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -961,7 +961,7 @@ TEST(FiberManager, collectAllVoid) {
       manager.addTask([&]() {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([&pendingFibers]() {
+          funcs.emplace_back([&pendingFibers]() {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -996,7 +996,7 @@ TEST(FiberManager, collectAny) {
       manager.addTask([&]() {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() {
+          funcs.emplace_back([i, &pendingFibers]() {
             await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -2364,7 +2364,7 @@ void createJobs(
     size_t count) {
   jobs.clear();
   for (size_t i = 0; i < count; ++i) {
-    jobs.emplace_back(Job(atomicBatchDispatcher.getToken(), i));
+    jobs.emplace_back(atomicBatchDispatcher.getToken(), i);
   }
 }
 
