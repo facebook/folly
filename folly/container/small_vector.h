@@ -1102,9 +1102,15 @@ class small_vector
     FOLLY_PUSH_WARNING
     FOLLY_GCC_DISABLE_WARNING("-Wclass-memaccess")
     if constexpr (kMayCopyWholeInlineStorage) {
-      std::memcpy(u.buffer(), o.u.buffer(), MaxInline * kSizeOfValue);
+      std::memcpy(
+          reinterpret_cast<void*>(u.buffer()),
+          reinterpret_cast<const void*>(o.u.buffer()),
+          MaxInline * kSizeOfValue);
     } else {
-      std::memcpy(u.buffer(), o.u.buffer(), n * kSizeOfValue);
+      std::memcpy(
+          reinterpret_cast<void*>(u.buffer()),
+          reinterpret_cast<const void*>(o.u.buffer()),
+          n * kSizeOfValue);
     }
     FOLLY_POP_WARNING
     this->setSize(n);
