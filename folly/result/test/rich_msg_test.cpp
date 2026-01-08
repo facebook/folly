@@ -52,7 +52,7 @@ TEST(RichMsgTest, basics) {
 }
 
 TEST(RichMsgTest, constructFromLiteralString) {
-  auto line = std::source_location::current().line() + 1;
+  auto line = source_location::current().line() + 1;
   rich_msg msg{"simple message"};
   EXPECT_STREQ(msg.message(), "simple message");
   EXPECT_EQ(line, msg.location().line());
@@ -62,14 +62,14 @@ TEST(RichMsgTest, constructFromFormatString) {
 #if 0 // Manual test -- format string mismatch with argument type
   rich_msg msg{"{:d}", "not an int"};
 #endif
-  auto line = std::source_location::current().line() + 1;
+  auto line = source_location::current().line() + 1;
   rich_msg msg{"{} bottles of kheer", 42};
   EXPECT_STREQ(msg.message(), "42 bottles of kheer");
   EXPECT_EQ(line, msg.location().line());
 }
 
 TEST(RichMsgTest, constructFromComponents) {
-  auto loc = std::source_location::current();
+  auto loc = source_location::current();
   rich_msg msg{exception_shared_string{"msg"}, loc};
   EXPECT_STREQ(msg.message(), "msg");
   EXPECT_EQ(msg.location().line(), loc.line());

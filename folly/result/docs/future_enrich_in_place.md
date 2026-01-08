@@ -158,7 +158,7 @@ lock, garbling the count. Mitigations:
 #### Nullable entries for tear-free reads
 
 `rich_msg` has two fields: `exception_shared_string` (a pointer) and
-`std::source_location` (8 bytes). A 16-byte atomic write is costly on most
+`source_location` (8 bytes). A 16-byte atomic write is costly on most
 architectures. Fortunately, the single-writer-per-slot invariant means each
 entry has exactly one writer, so we only need reader-writer synchronization.
 
@@ -168,7 +168,7 @@ in `std::atomic`:
 
 ```cpp
 class nullable_rich_msg {
-  std::source_location loc_;               // not atomic
+  source_location loc_;                    // not atomic
   nullable_exception_shared_string str_;   // contains std::atomic<char*>
 
 public:
@@ -185,7 +185,7 @@ public:
   }
 
   // Precondition: !empty()
-  std::source_location source_location() const noexcept { return loc_; }
+  folly::source_location source_location() const noexcept { return loc_; }
 };
 ```
 

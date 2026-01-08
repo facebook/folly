@@ -8,6 +8,46 @@ oncall("fbcode_entropy_wardens_folly")
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "rich_error_base",
+    srcs = [
+        "rich_error_base.cpp",
+    ],
+    raw_headers = [
+        "rich_error_base.h",
+    ],
+    exported_deps = [
+        ":rich_error_fwd",
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:portability",
+        "//xplat/folly:portability_source_location",
+        "//xplat/folly:traits",
+        "//xplat/folly:utility",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "rich_error_base",
+    srcs = [
+        "rich_error_base.cpp",
+    ],
+    headers = [
+        "rich_error_base.h",
+    ],
+    exported_deps = [
+        ":rich_error_fwd",
+        "//folly:cpp_attributes",
+        "//folly:portability",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/portability:source_location",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "gtest_helpers",
     raw_headers = ["gtest_helpers.h"],
     exported_deps = [
@@ -120,7 +160,10 @@ non_fbcode_target(
     raw_headers = ["rich_msg.h"],
     exported_deps = [
         "//third-party/fmt:fmt",
+        "//xplat/folly:portability_source_location",
+        "//xplat/folly:utility",
         "//xplat/folly/lang:exception",
+        "//xplat/folly/lang:safe_assert",
     ],
 )
 
@@ -133,6 +176,7 @@ fbcode_target(
         "//folly:utility",
         "//folly/lang:exception",
         "//folly/lang:safe_assert",
+        "//folly/portability:source_location",
     ],
 )
 ### this line is a hint for source control merge

@@ -21,8 +21,7 @@
 #include <folly/Utility.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/SafeAssert.h>
-
-#include <source_location>
+#include <folly/portability/SourceLocation.h>
 
 namespace folly {
 
@@ -49,7 +48,7 @@ namespace ext { // For extension authors -- public details
 ///
 /// BUG ALERT: Due to https://github.com/llvm/llvm-project/issues/137907 avoid
 /// writing constructors like this: T(source_location sl =
-/// std::source_location::current()) A constructor with a defaulted
+/// source_location::current()) A constructor with a defaulted
 /// `source_location` should take at least one mandatory argument to avoid this
 /// pitfall.
 template <typename... Args>
@@ -57,14 +56,13 @@ class format_string_and_location {
  private:
   friend class ::folly::rich_msg;
 
-  std::source_location loc_;
+  source_location loc_;
   fmt::format_string<Args...> fmt_str_;
   literal_c_str lit_str_;
 
  public:
   /* implicit */ consteval format_string_and_location(
-      const char* str,
-      std::source_location loc = std::source_location::current())
+      const char* str, source_location loc = source_location::current())
       : loc_{std::move(loc)}, fmt_str_{str}, lit_str_{str} {}
 
   constexpr exception_shared_string as_exception_shared_string(Args const&...)
@@ -99,7 +97,7 @@ class format_string_and_location {
 class rich_msg {
  private:
   exception_shared_string msg_;
-  std::source_location loc_;
+  source_location loc_;
 
  public:
   // Writing `rich_error{"fmt {} str {}", 1, 2}` auto-captures the location.
@@ -130,12 +128,10 @@ class rich_msg {
   /* implicit */ consteval rich_msg(vtag_t<Str>)
       : msg_{literal_c_str{Str.c_str()}}, loc_{} {}
 
-  rich_msg(exception_shared_string msg, std::source_location loc)
+  rich_msg(exception_shared_string msg, source_location loc)
       : msg_{std::move(msg)}, loc_{std::move(loc)} {}
 
-  constexpr const std::source_location& location() const noexcept {
-    return loc_;
-  }
+  constexpr const source_location& location() const noexcept { return loc_; }
   constexpr const char* message() const noexcept { return msg_.what(); }
 };
 

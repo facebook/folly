@@ -153,7 +153,7 @@ These are sorted from "near future" to "far future".
 
 ## Auto-capture locations for immortals on C++23
 
-A "nice to have" would be a way to automatically capture `std::source_location`
+A "nice to have" would be a way to automatically capture `source_location`
 while supplying a `rich_msg` to an `immortal_rich_error<MyErr, ...>` template
 parameter list.
 
@@ -161,7 +161,7 @@ You can see a not-very-satisfactory example of what *can* be done today in
 `immortal_rich_error_test.cpp`. Roughly:
 
 ```cpp
-constexpr static auto myLoc = std::source_location::current();
+constexpr static auto myLoc = source_location::current();
 auto rep = immortal_rich_error<MyErr, &myLoc>.ptr();
 ```
 
@@ -179,11 +179,11 @@ GCC. Clang wrongly garbage-collects the `loc` symbol, getting a linker error.
 And the MSVC on Godbolt doesn't seem to support the C++23 feature yet.
 
 ```cpp
-template<const std::source_location* Loc>
+template<const source_location* Loc>
 struct SourceTag { ... };
 #define HERE() \
 ([] { \
-  static constexpr auto loc = std::source_location::current(); \
+  static constexpr auto loc = source_location::current(); \
   return SourceTag<&loc>{}; \
 }())
 ```
