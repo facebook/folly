@@ -26,6 +26,7 @@
 #include <glog/logging.h>
 
 #include <folly/Memory.h>
+#include <folly/Random.h>
 #include <folly/String.h>
 #include <folly/container/Foreach.h>
 #include <folly/memory/Arena.h>
@@ -87,8 +88,9 @@ static void randomAdding(
     SkipListAccessor skipList,
     SetType* verifier,
     int maxValue = kMaxValue) {
+  ThreadLocalPRNG rng;
   for (int i = 0; i < size; ++i) {
-    int32_t r = rand() % maxValue;
+    int32_t r = folly::Random::rand32(rng) % maxValue;
     verifier->insert(r);
     skipList.add(r);
   }
@@ -99,8 +101,9 @@ static void randomRemoval(
     SkipListAccessor skipList,
     SetType* verifier,
     int maxValue = kMaxValue) {
+  ThreadLocalPRNG rng;
   for (int i = 0; i < size; ++i) {
-    int32_t r = rand() % maxValue;
+    int32_t r = folly::Random::rand32(rng) % maxValue;
     verifier->insert(r);
     skipList.remove(r);
   }
