@@ -281,6 +281,60 @@ class rich_exception_ptr_impl : private B {
     other.make_moved_out(other_bits);
   }
 
+  // Must call via `with_underlying()` -- code that rethrows may target `catch`,
+  // so the only right behavior is to drop enriching wrappers.
+  template <bool PartOfTryImpl> //  `true` only when called from `Try.h`.
+  [[noreturn]] void throw_exception_impl() const {
+    bits_t bits = B::get_bits();
+    if (bits_t::OWNS_EXCEPTION_PTR_and & bits) {
+      const auto& epg = B::get_eptr_ref_guard();
+      const auto& ep = epg.ref();
+      if (ep) {
+        std::rethrow_exception(ep);
+      }
+      // Empty eptr, fall through to terminate...  Should not be reached --
+      // `from_exception_ptr_slow` rewrites empty eptrs as immortal `nullptr`s.
+      B::debug_assert("Bug: empty owned eptr stored inside a REP", false);
+    } else if (B::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq == bits) {
+      if (auto* immortal_storage = get_immortal_storage()) {
+        immortal_storage->throw_exception();
+        compiler_may_unsafely_assume_unreachable(); // required for [[noreturn]]
+      }
+      // Empty eptr, fall through to terminate...
+    } else if (bits_t::NOTHROW_OPERATION_CANCELLED_eq == bits) {
+      // Don't bother with the stored eptr since re-throwing does not
+      // preserve object identity.
+      // NOLINTNEXTLINE(facebook-hte-ThrowNonStdExceptionIssue)
+      throw StubNothrowOperationCancelled{};
+    } else if (B::SIGIL_eq == bits) {
+      B::debug_assert(
+          "throw_exception SIGIL_eq", B::get_uintptr() == B::kSigilEmptyTry);
+      if (PartOfTryImpl) {
+        // Match behavior of `Try::throwUnlessValue` ...  in some other usage
+        // `Try` instead throws `TryException`, but luckily
+        // `UsingUninitializedTry` derives from that.
+        throw StubUsingUninitializedTry{};
+      } else { // Match `result::value_or_throw()` behavior
+        B::debug_assert("Cannot `throw_exception` on empty `Try`", false);
+        throw STUB_empty_result_error{};
+      }
+    } else if (B::SMALL_VALUE_eq == bits) {
+      if constexpr (PartOfTryImpl) {
+        throw StubTryException{}; // Match `Try::exception()` behavior
+      } else { // Match `result::non_value()` behavior
+        B::debug_assert("Cannot `throw_exception` in value state", false);
+        throw STUB_bad_result_access_error{};
+      }
+    }
+    // Else: the above bit tests are intended to exhaustively cover all allowed
+    // states, so we only fall through to terminate when:
+    //   - Our bit state is invalid.
+    //   - `this` contains an empty eptr.  Per the standard, rethrowing one is
+    //     UB, and our current termination behavior matches `exception_wrapper`.
+    // Future: maybe relax these to debug-fatal/opt-throw, like `result` does.
+    B::terminate_on_empty_or_invalid_eptr(bits);
+  }
+
   // Call ONLY after handling owned-eptr in `to_exception_ptr_...()`
   template <bool PartOfTryImpl> //  `true` only when called from `Try.h`.
   std::exception_ptr to_exception_ptr_non_owned(bits_t bits) const {
@@ -647,6 +701,24 @@ class rich_exception_ptr_impl : private B {
         // Bitwise-copy the singleton without bumping the eptr's refcount
         [&](auto& d) { d.eptr_ref_guard_ = singleton; },
         B::NOTHROW_OPERATION_CANCELLED_eq);
+  }
+
+  /// Throws the innermost exception, ignoring enriching wrappers.
+  ///
+  /// Precondition: Contains a nonempty exception.  Terminates on empty
+  /// `exception_ptr`, on invalid internal state.  Small-value is debug-fatal.
+  [[noreturn]] void throw_exception() const {
+    with_underlying([](auto* rep) {
+      rep->template throw_exception_impl</*PartOfTryImpl=*/false>();
+    });
+    compiler_may_unsafely_assume_unreachable(); // required for [[noreturn]]
+  }
+  // PRIVATE TO `Try`: `throw_exception()` with slight behavior differences.
+  [[noreturn]] void throw_exception(try_rich_exception_ptr_private_t) const {
+    with_underlying([](auto* rep) {
+      rep->template throw_exception_impl</*PartOfTryImpl=*/true>();
+    });
+    compiler_may_unsafely_assume_unreachable(); // required for [[noreturn]]
   }
 
   /// Returns the `std::exception_ptr` for the innermost exception, DISCARDING
