@@ -70,9 +70,21 @@ if (PYTHON_EXTENSIONS)
   # Tell setup.py where to find includes and libfolly.so
   set(prop "$<TARGET_PROPERTY:folly_base,INCLUDE_DIRECTORIES>")
   set(incs "$<$<BOOL:${prop}>:-I$<JOIN:${prop},:>>")
-  set(glog_lib "${GLOG_LIBRARY}")
-  cmake_path(REMOVE_FILENAME glog_lib)
-  set(libs "-L${CMAKE_BINARY_DIR}:${glog_lib}")
+
+  set(libs "-L${CMAKE_BINARY_DIR}")
+  if(TARGET glog::glog)
+    # Modern glog with imported targets - get the library location
+    get_target_property(glog_location glog::glog IMPORTED_LOCATION)
+    if(glog_location)
+      cmake_path(REMOVE_FILENAME glog_location OUTPUT_VARIABLE glog_lib_dir)
+      set(libs "${libs}:${glog_lib_dir}")
+    endif()
+  elseif(GLOG_LIBRARY)
+    # Traditional FindModule approach fallback
+    set(glog_lib "${GLOG_LIBRARY}")
+    cmake_path(REMOVE_FILENAME glog_lib)
+    set(libs "${libs}:${glog_lib}")
+  endif()
 
   add_custom_target(folly_python_bindings ALL
     DEPENDS folly create_binding_symlink
@@ -113,6 +125,7 @@ if (PYTHON_EXTENSIONS)
   add_dependencies(folly_python_cpp folly_python_bindings create_post_binding_symlink)
   set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
   target_compile_definitions(folly_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
+  target_compile_definitions(folly_python_cpp PRIVATE GLOG_USE_GLOG_EXPORT)
   target_include_directories(folly_python_cpp PRIVATE "${_cybld}")
   target_link_libraries(folly_python_cpp PUBLIC folly)
   apply_folly_compile_options_to_target(folly_python_cpp)
