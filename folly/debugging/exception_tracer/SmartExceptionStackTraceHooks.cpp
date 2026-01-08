@@ -77,10 +77,9 @@ void throwCallback(
       meta->traceAsync.frameCount = nAsync;
     }
 
-    auto oldMeta = detail::getMetaMap().withWLock([&](auto& wlock) {
-      return std::exchange(wlock[ex], std::move(meta));
+    detail::getMetaMap().withWLock([&](auto& wlock) {
+      CHECK(wlock.try_emplace(ex, std::move(meta)).second);
     });
-    CHECK(oldMeta == nullptr);
   } catch (const std::bad_alloc&) {
   }
 }
