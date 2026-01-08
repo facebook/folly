@@ -96,6 +96,19 @@ const E* ElfFile::iterateSectionEntries(const ElfShdr& section, Fn&& fn) const
   FOLLY_SAFE_CHECK(
       section.sh_entsize == sizeof(E), "invalid entry size in table");
 
+  // Validate that the entire section data is within the mapped file bounds.
+  // There exist malformed ELF binaries with invalid section offsets/sizes,
+  // which can cause SIGBUS when iterating past the valid mapped memory
+  // region. This code must handle malformed binaries without crashing.
+  size_t sectionEnd;
+  if (!folly::checked_add(
+          &sectionEnd,
+          static_cast<size_t>(section.sh_offset),
+          static_cast<size_t>(section.sh_size)) ||
+      sectionEnd > length_) {
+    return nullptr;
+  }
+
   const E* ent = &at<E>(section.sh_offset);
   const E* end = ent + (section.sh_size / section.sh_entsize);
 
