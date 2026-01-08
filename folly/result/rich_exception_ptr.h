@@ -109,6 +109,74 @@ class rich_exception_ptr_impl : private B {
         bits);
   }
 
+  template <typename Ex>
+  consteval static void assert_operation_cancelled_queries() {
+    static_assert(
+        !std::is_same_v<const Ex, const StubNothrowOperationCancelled> &&
+            !std::is_same_v<const Ex, const StubThrownOperationCancelled>,
+        "User code may only test for `OperationCancelled`; its derived classes "
+        "are private implementation details.");
+  }
+
+  template <typename MaybeConstEx>
+  MaybeConstEx* get_exception_from_nothrow_oc() const {
+    B::debug_assert(
+        "get_exception_from_nothrow_oc",
+        B::NOTHROW_OPERATION_CANCELLED_eq == B::get_bits());
+    const auto& epg = B::get_eptr_ref_guard();
+    // Since `assert_operation_cancelled_queries` forbids testing for
+    // the private derived classes of OC, we don't need `derived_from`.
+    if constexpr (std::
+                      is_same_v<const MaybeConstEx, const OperationCancelled>) {
+      return static_cast<MaybeConstEx*>(exception_ptr_get_object(epg.ref()));
+    }
+    return nullptr; // Stored OC, but queried for other type.
+  }
+
+  template <typename MaybeConstEx>
+  MaybeConstEx* get_exception_from_owned_eptr() const {
+    B::debug_assert(
+        "get_exception_from_owned_eptr",
+        B::OWNS_EXCEPTION_PTR_and & B::get_bits());
+    const auto& epg = B::get_eptr_ref_guard();
+    const auto& ep = epg.ref();
+    const auto fast_path_bits = B::mask_FAST_PATH_TYPES & B::get_bits();
+    // Fast path for `result::has_stopped()`.  This is exhaustive since
+    // `OperationCancelled` is the base for the only "official" cancellation
+    // signals -- user derived classes are forbidden via
+    // `assert_operation_cancelled_queries()`.
+    if constexpr (std::
+                      is_same_v<const MaybeConstEx, const OperationCancelled>) {
+      if (fast_path_bits == B::IS_OPERATION_CANCELLED_masked_eq) {
+        return static_cast<MaybeConstEx*>(exception_ptr_get_object(ep));
+      } else if (fast_path_bits != B::owned_eptr_UNKNOWN_TYPE_masked_eq) {
+        return nullptr; // Known type, but not `MaybeConstEx`
+      }
+      // ... fall through
+    } else if constexpr (
+        std::is_same_v<const MaybeConstEx, const rich_error_base>) {
+      // Fast path for `rich_error_base`.  We currently don't try to accelerate
+      // lookup of its derived classes, except for the "miss" case below.
+      //
+      // Future: See if knowing that the pointed-to type derives from
+      // `rich_error_base` gives a faster `dynamic_cast` than our fallback.
+      if (fast_path_bits == B::IS_RICH_ERROR_BASE_masked_eq) {
+        // The owned eptr ctor checks `rich_error_base` has offset 0
+        return static_cast<MaybeConstEx*>(exception_ptr_get_object(ep));
+      } else if (fast_path_bits != B::owned_eptr_UNKNOWN_TYPE_masked_eq) {
+        return nullptr; // Known type, but not `MaybeConstEx`
+      }
+      // ... fall through
+    }
+    if constexpr (std::derived_from<MaybeConstEx, rich_error_base>) {
+      if (fast_path_bits != B::IS_RICH_ERROR_BASE_masked_eq &&
+          fast_path_bits != B::owned_eptr_UNKNOWN_TYPE_masked_eq) {
+        return nullptr;
+      }
+    }
+    return exception_ptr_get_object_hint<MaybeConstEx>(ep);
+  }
+
   // Pre-condition: `rich_exception_ptr` is in any valid state.
   //
   // Post-condition: Any stored owned object (i.e. eptr) is destructed, and
@@ -351,6 +419,189 @@ class rich_exception_ptr_impl : private B {
         // Bitwise-copy the singleton without bumping the eptr's refcount
         [&](auto& d) { d.eptr_ref_guard_ = singleton; },
         B::NOTHROW_OPERATION_CANCELLED_eq);
+  }
+
+  // Like `folly::get_exception<Ex>()`, but accesses the actual outermost
+  // exception, even if it's wrapping another one -- instead of walking to the
+  // underlying error.
+  //
+  // CAREFUL: The type of this exception is different from whatever error
+  // actually occurred, see `enrich_non_value.h` for the most common example.
+  //
+  // This is used by `rich_error_base::format_to` to walk the enrichment chain.
+  template <typename Ex>
+  constexpr Ex const* get_outer_exception() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    assert_operation_cancelled_queries<Ex>();
+    bits_t bits = B::get_bits();
+    if (B::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq == bits) {
+      if (!get_immortal_storage()) {
+        return nullptr; // empty eptr
+      }
+
+      // The goal of the branches below is to hide from the end user that
+      // (until C++26) `rich_error<UserBase>` cannot be `constexpr`, and thus
+      // `immortal_ptr_` is `immortal_rich_error_storage<UserBase>`.
+      //
+      // So, the below tests for `folly_detail_base_of_rich_error` (2nd) and
+      // `std::exception` (1st) aren't just optimizations, we need them to
+      // correctly query `Ex` types that derive from `std::exception`.
+      //
+      // Internally, both `get_immortal_storage()->as_immutable_*` calls
+      // instantiate an immortal singleton of `rich_error<UserBase>` with a
+      // copy of the `constexpr` instance of `UserBase`.
+      if constexpr (std::is_same_v<const std::exception, const Ex>) {
+        return get_immortal_storage()->as_immutable_std_exception();
+      }
+
+      const rich_error_base* immortal_ptr =
+          get_immortal_storage()->immortal_ptr_;
+
+      // WATCH OUT: The `rich_error<Err>` part of this "fast path" logic is NOT
+      // best-effort, but mandatory, see the prior comment.
+      //
+      // The "exact type" tests below can never pass if `Ex` isn't related to
+      // `rich_error_base` (e.g.  `std::runtime_error`), and the `static_cast`
+      // won't even compile.
+      if constexpr (std::derived_from<Ex, rich_error_base>) {
+        // Querying for `rich_error<Err>`?
+        if constexpr (is_detected_v<
+                          detect_folly_detail_base_of_rich_error,
+                          Ex>) {
+          // Querying for `rich_error<Err>` when the immortal has `Err`.
+          if (&typeid(Ex) == get_immortal_storage()->rich_error_leaf_type_ ||
+              // We MUST fall back to the slower comparison of `type_info`
+              // objects, since in multi-DSO programs, there may exist multiple
+              // `type_info` pointers for the same type.
+              typeid(Ex) == *get_immortal_storage()->rich_error_leaf_type_) {
+            return static_cast<const Ex*>(
+                get_immortal_storage()->as_immutable_leaf_rich_error());
+          }
+          // Since we compared `type_info`s (and not just pointers), there's no
+          // need to fall back to `dynamic_cast` -- `rich_error<>` is final.
+          return nullptr;
+        } else { // Querying for non-leaf (abstract) `Ex`...
+          // Querying for `Ex` when the immortal stores `Ex`.
+          //
+          // Best-effort "fast path" to avoid RTTI when the query type exactly
+          // matches the stored type.  This optimization may fail in multi-DSO
+          // code (where many copies of the same `type_info` may exist at
+          // different addresses).  Like `exception_ptr_get_object_hint`, this
+          // gives a nice speedup for the common case.
+          //
+          // Only compare pointers, not `type_info` -- falling back to
+          // `dynamic_cast` will do that part anyway.
+          //
+          // Future: Neither this branch, nor the `get_mutable_exception` one
+          // uses `Ex::folly_get_exception_hint_types`, since the "exact type"
+          // checks take care of the common case.  Implementing hint support is
+          // possible, but first we need a use-case where it matters.
+          if (&typeid(Ex) == get_immortal_storage()->user_base_type_) {
+            return static_cast<const Ex*>(immortal_ptr);
+          }
+        }
+      }
+      // Fallback. Cheap & RTTI-free only when `Ex == rich_error_base`.
+      //
+      // Future: See `docs/future_fast_rtti.md` for how to avoid RTTI entirely.
+      //
+      // Future: If we do later support non-rich immortals, keep in mind that
+      // `dynamic_cast` only works when the pointed-to expression is
+      // polymorphic -- deriving from `std::exception` or `rich_error_base` is
+      // fine.  We may require one of these bases for immortals.
+      return dynamic_cast<const Ex*>(immortal_ptr);
+    } else if (B::OWNS_EXCEPTION_PTR_and & bits) {
+      return get_exception_from_owned_eptr<const Ex>();
+    } else if (B::NOTHROW_OPERATION_CANCELLED_eq == bits) {
+      return get_exception_from_nothrow_oc<const Ex>();
+    }
+    // The remaining bit states are not exceptions, so `nullptr` is a good
+    // match for `folly::get_exception(result<T>)` semantics.
+    B::debug_assert(
+        "const get_outer_exception unexpected bits",
+        B::SIGIL_eq == bits || B::SMALL_VALUE_eq == bits);
+    return nullptr;
+  }
+
+  /// See docs on the `const` overload of `get_outer_exception<Ex>()`.  The
+  /// mutable one mainly exists to implement `folly::get_mutable_exception<>()`.
+  ///
+  /// IMPORTANT: For immortal errors, there is no read-after-write consistency
+  /// in the sense that you might expect.  Rather, this returns a pointer into
+  /// a mutable, immortal singleton of `rich_error<UserBase>` that is
+  /// completely separate from the one that the `const` overload accesses.
+  ///
+  /// ## Why don't you have ONE read/write singleton for immortals?
+  ///
+  /// We could, but it would broadly add cost for a use-case that shouldn't
+  /// really come up.  If your edge-case usage relies on mutable access to an
+  /// immortal, you're probably aware of this gotcha, and can arrange to
+  /// call `get_mutable_exception` or the non-`const` overload of
+  /// `get_outer_exception` where it matters.
+  ///
+  /// Here's a closer look at the downsides of a 1-singleton implementation:
+  ///   - `get_exception<UserBase>()` & `get_exception<rich_error<UserBase>>()`
+  ///     must access the same instance.  To achieve this, immortals would need
+  ///     a mutable pointer to redirect from the constexpr `UserBase` to the
+  ///     immortal singleton, as soon as the first mutable access happens.
+  ///   - This pointer needs to be a relaxed read / relaxed write atomic,
+  ///     which, while not very costly, adds indirection.  This also implies a
+  ///     second indirection, for a virtual `immortal_ptr()` instead of the
+  ///     current `immortal_ptr_`.  Finally, there'd be an extra branch.  The
+  ///     expected extra cost is 3-5ns without memory contention, which is as
+  ///     much as the current `get_rich_error()` latency.
+  ///   - A further plus for the current 2-singletons implementation is that
+  ///     it’s technically possible to avoid the atomic-increment cost of
+  ///     `to_exception_ptr_slow()` through some bithacking.  Namely, the
+  ///     mutable singleton `std::exception_ptr` is initially prepared with a
+  ///     Very High Refcount of 2^63, and we reset it if it goes too low or too
+  ///     high.  A concrete pattern would involve a relaxed-atomic check of the
+  ///     first 2 bits.  If the bits are 00, or 11, then reset back to 2^63.
+  ///     This allows safely handing out copies without bumping the refcount --
+  ///     it would only break if a user simultaneously stored over 2^63 eptrs.
+  template <typename Ex>
+  constexpr Ex* get_outer_exception() noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    assert_operation_cancelled_queries<Ex>();
+    // This mirrors the `const` overload, read that first for the comments.
+    bits_t bits = B::get_bits();
+    if (B::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq == bits) {
+      if (!get_immortal_storage()) {
+        return nullptr;
+      }
+      B::debug_assert(
+          "mutable get_outer_exception",
+          B::get_bits() == B::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq);
+      if constexpr (std::is_same_v<const std::exception, const Ex>) {
+        return get_immortal_storage()->as_mutable_std_exception();
+      }
+      auto* leaf_rich_error =
+          get_immortal_storage()->as_mutable_leaf_rich_error();
+      if constexpr (std::derived_from<Ex, rich_error_base>) {
+        // Try to avoid RTTI when the immortal stores `Err` and the query is
+        // either `Err` or `rich_error<Err>`.
+        auto* type_to_match =
+            is_detected_v<detect_folly_detail_base_of_rich_error, Ex>
+            // NB: This could "miss" 8x faster by reusing the `const` pattern,
+            // but...  people really shouldn't use mutable errors, anyhow!
+            ? get_immortal_storage()->rich_error_leaf_type_
+            : get_immortal_storage()->user_base_type_;
+        // Best-effort optimization, may fail in multi-DSO code: Compare only
+        // ptrs, not `type_info` -- `dynamic_cast` will do that part anyway.
+        if (&typeid(Ex) == type_to_match) {
+          return static_cast<Ex*>(leaf_rich_error);
+        }
+      }
+      return dynamic_cast<Ex*>(leaf_rich_error);
+    } else if (B::OWNS_EXCEPTION_PTR_and & bits) {
+      return get_exception_from_owned_eptr<Ex>();
+    } else if (B::NOTHROW_OPERATION_CANCELLED_eq == bits) {
+      return get_exception_from_nothrow_oc<Ex>();
+    }
+    B::debug_assert(
+        "mutable get_outer_exception unexpected bits",
+        B::SIGIL_eq == bits || B::SMALL_VALUE_eq == bits);
+    return nullptr;
   }
 };
 
