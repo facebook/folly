@@ -177,6 +177,23 @@ class rich_exception_ptr_impl : private B {
     return exception_ptr_get_object_hint<MaybeConstEx>(ep);
   }
 
+  static constexpr auto with_underlying_impl(auto* me, auto fn)
+      -> decltype(fn(me));
+
+  // Calls `fn` with the underlying exception, bypassing any chain of enriching
+  // wrappers that `this` might represent, and returns the result.
+  //
+  // Note that `fn` must be generic, ready to accept either of:
+  //   - The `rich_exception_ptr_impl<...>` sliced from `rich_exception_ptr`
+  //     (default params!) returned by `rich_error_base::underlying_error()`, or
+  //   - ... this `rich_exception_ptr_impl*`, if that's a different type.
+  constexpr decltype(auto) with_underlying(auto fn) const {
+    return with_underlying_impl(this, fn);
+  }
+  constexpr decltype(auto) with_underlying(auto fn) {
+    return with_underlying_impl(this, fn);
+  }
+
   // Pre-condition: `rich_exception_ptr` is in any valid state.
   //
   // Post-condition: Any stored owned object (i.e. eptr) is destructed, and
@@ -259,6 +276,117 @@ class rich_exception_ptr_impl : private B {
       copy_unowned_pointer_sized_state(other);
     }
     other.make_moved_out(other_bits);
+  }
+
+  template <typename D1, typename B1, typename D2, typename B2>
+  static constexpr bool immortal_compares_equal(
+      // `B1` & `B2` may differ, see `operator==` and `compare_equal`
+      const rich_exception_ptr_impl<D1, B1>* immortal,
+      const rich_exception_ptr_impl<D2, B2>* other,
+      bits_t other_bits) {
+    if (B::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq == other_bits) {
+      // Why aren't we comparing `get_immortal_storage()->immortal_ptr_`?
+      //  (1) We only expect immortal `rich_exception_ptr`s to be created via
+      //      `immortal_rich_error`, so it is fine to assume that each immortal
+      //      exception has a unique `get_immortal_storage()`.
+      //  (2) `get_immortal_storage()` is null for `rich_exception_ptr` empty.
+      return immortal->get_immortal_storage() == other->get_immortal_storage();
+    } else if (B::OWNS_EXCEPTION_PTR_and & other_bits) {
+      if (auto* immortal_storage = immortal->get_immortal_storage()) {
+        // An immortal eptr can only compare equal to an owned one if the latter
+        // is a copy of the immortal's mutable singleton.  We don't want to
+        // eagerly create that singleton here, so instead check whether it has
+        // already been created.
+        //
+        // The right memory ordering here is TBD, but its impact is low, since
+        // it would only save a few cycles of "acquire" on ARM (acquire loads
+        // are free on x86).  For now, we go with (2), the more conservative of
+        // two conflicting points of view:
+        //
+        // (1) We may test for "is created" with a relaxed load of the
+        //     underlying `eptr_`, and only load the ref to the value when it
+        //     is known to be there.
+        //
+        // (2) Must use "acquire" ordering for happens-before synchronization
+        //     with the store-release in the singleton's `ensure_created()`.
+        //     On weaker memory models (e.g.  ARM), using "relaxed" here could
+        //     read a stale `nullptr` after `other` was copied from the same
+        //     singleton, causing us to incorrectly return `false`.
+        if (auto* mutable_eptr =
+                immortal_storage
+                    ->acquire_mutable_singleton_ptr_if_already_created()) {
+          return *mutable_eptr == other->get_eptr_ref_guard().ref();
+        }
+        return false;
+      } else { // `immortal` is empty
+        return !other->get_eptr_ref_guard().ref();
+      }
+    }
+    B::debug_assert(
+        "operator== / immortal exhaustiveness check",
+        // These states aren't errors
+        B::SMALL_VALUE_eq == other_bits || B::SIGIL_eq == other_bits ||
+            // Has eptr, but will never equal an immortal rich eptr, since
+            // nothrow OC uses its own separate singleton.
+            B::NOTHROW_OPERATION_CANCELLED_eq == other_bits);
+    return false;
+  }
+
+  // Must call via `with_underlying()` -- we want to compare the innermost
+  // exception, ignoring enriching wrappers.
+  template <typename D1, typename B1, typename D2, typename B2>
+  static constexpr bool compare_equal(
+      const rich_exception_ptr_impl<D1, B1>* lp,
+      // The doc of `operator==` explains the argument asymmetry.
+      const rich_exception_ptr_impl<D2, B2>* rp) {
+    const auto lbits = lp->get_bits(), rbits = rp->get_bits();
+    if (B::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq == lbits) {
+      return immortal_compares_equal(lp, rp, rbits);
+    } else if (B::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq == rbits) {
+      // Future: Check if it's worth manually pruning the "immmortal
+      // other_bits" branch within this call (it was covered above).
+      return immortal_compares_equal(rp, lp, lbits);
+    } else if (
+        ((B::OWNS_EXCEPTION_PTR_and & lbits) ||
+         B::NOTHROW_OPERATION_CANCELLED_eq == lbits) &&
+        ((B::OWNS_EXCEPTION_PTR_and & rbits) ||
+         B::NOTHROW_OPERATION_CANCELLED_eq == rbits)) {
+      return lp->get_eptr_ref_guard().ref() == rp->get_eptr_ref_guard().ref();
+    } else if (B::SMALL_VALUE_eq == lbits && B::SMALL_VALUE_eq == rbits) {
+      B::debug_assert(
+          "rich_exception_ptr::operator== invalid for 2 small value uintptrs",
+          false);
+      // The fallback could trivally compare `get_uintptr()`, to return `true`
+      // correctly sometimes, but the the right comparison semantics must
+      // actually be determined by `result<T>` that knows the small-value type.
+      return false;
+    }
+    // Cases now ruled out:
+    //   - Either side is an immortal rich error.
+    //   - Both sides use eptr_ref_guard (either owned or nothrow OC).
+    //   - Both sides hold small value uintptrs.
+    //
+    // Those covered all comparisons that can go "across" bit states, namely
+    // comparing the various kinds of errors.  All the remaining heterogeneous
+    // comparisons are false:
+    //   small value uintptr VS eptr_ref_guard
+    //   sigil (empty Try) VS eptr_ref_guard
+    //   sigil (empty Try) VS small value uintptr
+    //
+    // This means that the only possible true comparison is "sigil VS sigil".
+    //
+    // NB: Here, we assume that we're part of the `Try` impl if the bits are
+    // `SIGIL_eq` -- this is done to avoid templating the container on "is it
+    // in `Try`?" to make it easier to interconvert `Try` and `result`.
+    if (B::SIGIL_eq == lbits && B::SIGIL_eq == rbits) {
+      B::debug_assert(
+          "operator== SIGIL_eq",
+          lp->get_uintptr() == B::kSigilEmptyTry &&
+              rp->get_uintptr() == B::kSigilEmptyTry);
+    } else {
+      B::debug_assert("operator== !SIGIL_eq", lbits != rbits);
+    }
+    return lbits == rbits;
   }
 
  protected:
@@ -419,6 +547,55 @@ class rich_exception_ptr_impl : private B {
         // Bitwise-copy the singleton without bumping the eptr's refcount
         [&](auto& d) { d.eptr_ref_guard_ = singleton; },
         B::NOTHROW_OPERATION_CANCELLED_eq);
+  }
+
+  /// Returns `true` when both `lhs` and `rhs`...
+  ///  - ... point at the same underlying exception, per the details below.
+  ///  - ... occur in the `Try` implementation, and both contain empty `Try`.
+  ///
+  /// When `lhs` and `rhs` are both representable as eptrs, we compare the
+  /// underlying exception object **pointers** -- ignoring enriching wrappers.
+  ///
+  /// Caveat 1: If the same `immortal_rich_error<...>::ptr()` is instantiated
+  /// in multiple DSOs, then you may end up with multiple copies of the
+  /// underlying error, and their pointers will compare unequal.  To stop this,
+  /// pick a single link unit to instantiate your `immortal_rich_error`, and
+  /// expose only the `rich_exception_ptr` via the corresponding header.
+  ///
+  /// Caveat 2: Since `std::exception_ptr` isn't `constexpr`, an immortal rich
+  /// errors lazily makes an eptr singleton once needed.  Actually, there are
+  /// two singletons -- immutable & mutable -- for reasons discussed on
+  /// `get_outer_exception()`.  It is worth knowing that `operator==` can
+  /// compare an "owned eptr" with the mutable singleton of a "immortal rich
+  /// error".  This will happen, for example, if you copy
+  /// `to_exception_ptr_slow`:
+  ///
+  ///   auto rep1 = immortal_error<YourErr>::get();
+  ///   auto rep2 = rich_exception_ptr::from_exception_ptr_slow(
+  ///       rep.to_exception_ptr_slow());
+  ///   assert(rep1 == rep2);
+  ///
+  /// The immutable singleton is never exposed as an eptr, so the 2-singleton
+  /// inconsistency is not observable via this `operator==`.
+  template <typename D2, typename B2>
+  friend constexpr inline bool operator==(
+      const rich_exception_ptr_impl& lhs,
+      // The template setup is asymmetric, but the implementation should anyhow
+      // be symmetric in lhs & rhs, so I don't expect issues from that.
+      //
+      // Besides symmetry, the key implementation constraint is NEVER to
+      // use the union members or `bits_`.  Always, use the base-independent
+      // accessors -- this is required to support cross-base comparison.
+      //
+      // Note that this doesn't allow cross-value comparisons YET, just like
+      // `folly::result`, but this can be extended to follow `std::expected`.
+      const rich_exception_ptr_impl<D2, B2>& rhs) {
+    return lhs.with_underlying([&rhs](const auto* lp) {
+      return rhs.with_underlying([lp](const auto* rp) {
+        // MSVC needs full qualification here
+        return rich_exception_ptr_impl<Derived, B>::compare_equal(lp, rp);
+      });
+    });
   }
 
   // Like `folly::get_exception<Ex>()`, but accesses the actual outermost
@@ -633,6 +810,30 @@ using rich_exception_ptr_base = rich_exception_ptr_impl<
 class rich_exception_ptr final : public detail::rich_exception_ptr_base {
   using detail::rich_exception_ptr_base::rich_exception_ptr_base;
 };
+
+namespace detail {
+
+template <typename Derived, typename B>
+/*static*/ constexpr inline auto
+rich_exception_ptr_impl<Derived, B>::with_underlying_impl(auto* me, auto fn)
+    -> decltype(fn(me)) {
+  // Why only these bits, and no others?
+  //   - The `consteval rich_exception_ptr_impl` ctor guarantees that immortals
+  //     don't have a `underlying_error()` & explains how to extend if needed.
+  //   - None of the other states, nothrow OC included, are rich errors.
+  if (B::OWNS_EXCEPTION_PTR_and & me->get_bits()) {
+    if (const auto* rex = me->template get_outer_exception<rich_error_base>()) {
+      // The doc of `mutable_underlying_error()` explains why the `const` here
+      // is crucial.  Also, `to_exception_ptr_move` logic above relies on this.
+      if (const auto* rep = rex->underlying_error()) {
+        return fn(rep);
+      }
+    }
+  }
+  return fn(me);
+}
+
+} // namespace detail
 
 } // namespace folly
 
