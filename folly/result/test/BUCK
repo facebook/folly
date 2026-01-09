@@ -38,6 +38,25 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_library,
+    name = "rich_exception_ptr_common",
+    headers = ["rich_exception_ptr_common.h"],
+    exported_deps = [
+        "//folly/portability:gtest",
+        "//folly/result:rich_error_base",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "rich_exception_ptr_constexpr_test",
+    srcs = ["rich_exception_ptr_constexpr.cpp"],
+    deps = [
+        ":rich_exception_ptr_common",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_unittest,
     name = "try_test",
     srcs = ["try_test.cpp"],
