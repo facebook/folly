@@ -1,0 +1,18 @@
+# This is primarily to support CinderX's CI, so it's not heavily configured.
+
+[manifest]
+name = python-main
+fbsource_path = third-party/python/main/pristine
+# We don't actually have a shipit project for python-main, but we use getdeps
+# built-in shipit implementation which just needs a shipit.pathmap.
+shipit_project = dummy-name
+
+
+[git]
+repo_url = https://github.com/python/cpython.git
+
+[shipit.pathmap]
+third-party/python/main/pristine = .
+
+[build]
+builder = autoconf
