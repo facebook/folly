@@ -462,6 +462,7 @@ non_fbcode_target(
         "request_context.h",
         "request_context.pxd",
     ],
+    header_namespace = "folly/python",
     compatible_with = [
         "ovr_config//os:linux",
         "ovr_config//os:macos",

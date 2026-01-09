@@ -48,6 +48,7 @@ non_fbcode_target(
     name = "simple_bridge",
     srcs = ["simplebridge.pyx"],
     headers = ["simple.h"],
+    header_namespace = "folly/python/test",
     cpp_deps = [
         "fbsource//xplat/folly/futures:core",
     ],
@@ -87,6 +88,7 @@ non_fbcode_target(
     name = "simple_bridge_coro",
     srcs = ["simplebridgecoro.pyx"],
     headers = ["simplecoro.h"],
+    header_namespace = "folly/python/test",
     cpp_deps = [
         "//xplat/folly/coro:baton",
         "//xplat/folly/coro:task",
@@ -105,6 +107,7 @@ non_fbcode_target(
     name = "simple_generator",
     srcs = ["simplegenerator.pyx"],
     headers = ["simplegenerator.h"],
+    header_namespace = "folly/python/test",
     cpp_deps = [
         "//xplat/folly/experimental/coro:async_generator",
     ],
