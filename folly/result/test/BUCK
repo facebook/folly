@@ -22,7 +22,9 @@ fbcode_target(
     headers = ["common.h"],
     exported_deps = [
         "//folly:benchmark",
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
+        "//folly/result:rich_error_base",
     ],
 )
 
@@ -34,6 +36,19 @@ fbcode_target(
         "fbsource//third-party/googletest:gtest",
         "//folly/coro:traits",
         "//folly/result:gtest_helpers",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "rich_error_test",
+    srcs = ["rich_error_test.cpp"],
+    deps = [
+        ":common",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/result:rich_error",
+        "//folly/result:rich_error_base",
     ],
 )
 

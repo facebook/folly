@@ -20,9 +20,40 @@
 #include <string>
 
 #include <folly/Benchmark.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/result/rich_exception_ptr.h>
 
 namespace folly {
+
+constexpr void test(bool cond) {
+  if (!cond) {
+    // NOLINTNEXTLINE(facebook-hte-ThrowNonStdExceptionIssue)
+    throw "test failed";
+  }
+}
+
+namespace detail { // Some tests are defined in `detail`...
+using folly::test;
+} // namespace detail
+
+void checkFormat(const auto& err, const std::string& re) {
+  EXPECT_THAT(fmt::format("{}", err), ::testing::MatchesRegex(re));
+  std::stringstream ss;
+  ss << err;
+  EXPECT_THAT(ss.str(), ::testing::MatchesRegex(re));
+}
+
+template <typename... Queries>
+void checkFormatViaGet(const auto& container, const std::string& re) {
+  (checkFormat(get_exception<Queries>(container), re), ...);
+}
+
+template <typename... Queries>
+void checkFormatOfErrAndRep(const auto& err, const std::string& re) {
+  checkFormat(err, re);
+  checkFormatViaGet<Queries...>(rich_exception_ptr{err}, re);
+}
 
 // Helper to run benchmarks as a smoke test with minimal iterations.
 // A "benchmarks don't crash" test is meaningful (1) since the benchmarks
