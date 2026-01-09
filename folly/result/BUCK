@@ -17,14 +17,19 @@ non_fbcode_target(
         "rich_error_base.h",
         "rich_exception_ptr.h",
     ],
+    deps = [
+        "//third-party/glog:glog",
+        "//xplat/folly:demangle",
+    ],
     exported_deps = [
         ":rich_error_fwd",
         "//xplat/folly:cpp_attributes",
         "//xplat/folly:portability",
         "//xplat/folly:portability_source_location",
-        "//xplat/folly:traits",
+        "//xplat/folly:unit",
         "//xplat/folly:utility",
         "//xplat/folly/lang:exception",
+        "//xplat/folly/lang:pretty",
         "//xplat/folly/result/detail:rich_exception_ptr_storage",
     ],
 )
@@ -40,16 +45,19 @@ fbcode_target(
         "rich_error_base.h",
         "rich_exception_ptr.h",
     ],
+    deps = ["//folly:demangle"],
     exported_deps = [
         ":rich_error_fwd",
         "//folly:cpp_attributes",
         "//folly:portability",
-        "//folly:traits",
+        "//folly:unit",
         "//folly:utility",
         "//folly/lang:exception",
+        "//folly/lang:pretty",
         "//folly/portability:source_location",
         "//folly/result/detail:rich_exception_ptr_storage",
     ],
+    external_deps = ["glog"],
 )
 
 ### this line is a hint for source control merge

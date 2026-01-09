@@ -19,9 +19,15 @@
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h> // FOLLY_HAS_RESULT
 #include <folly/Traits.h>
+#include <folly/Unit.h>
 #include <folly/Utility.h> // FOLLY_DECLVAL
+#include <folly/lang/Pretty.h>
 #include <folly/portability/SourceLocation.h>
 #include <folly/result/rich_error_fwd.h>
+
+#include <iosfwd>
+#include <iterator>
+#include <fmt/core.h>
 
 #if FOLLY_HAS_RESULT
 
@@ -169,6 +175,16 @@ class rich_error_base {
   // Storing only structured data & literal strings, they are cheap to make.
   virtual const char* partial_message() const noexcept = 0;
 
+  // Rendering for rich errors via `fmt` and `ostream<<`.
+  virtual void format_to(fmt::appender& out) const;
+
+  // Format this enrichment chain, starting with its underlying error.
+  void format_enriched(fmt::appender& out) const;
+
+  // Format only the enrichment chain, omitting the first underlying error.
+  // Precondition: `this` is a wrapper, not an underlying error.
+  void format_enriched_without_first_underlying(fmt::appender& out) const;
+
   // Formatting of rich errors follows the `next_error_for_enriched_message()`
   // linked list, printing each one in turn.  There are two use-cases:
   //
@@ -251,6 +267,11 @@ class rich_error_base {
   }
 };
 
+/// `rich_error_base` is `fmt` formattable (below), but also has this sugar for
+/// writing rich errors to glog & `std` streams.  This ought to be more robust
+/// under OOM than `stream << fmt::format("{}", err)`, since `fmt` may allocate.
+std::ostream& operator<<(std::ostream&, const rich_error_base&);
+
 template <typename Ex>
 class rich_ptr_to_underlying_error;
 
@@ -269,6 +290,7 @@ class rich_ptr_to_underlying_error {
   Ex* raw_ptr_{nullptr};
   const rich_error_base* top_rich_error_{nullptr};
 
+  friend struct fmt::formatter<rich_ptr_to_underlying_error>;
   template <auto, typename T>
   friend void detail::expectGetExceptionResult(
       const rich_ptr_to_underlying_error<T>&);
@@ -332,6 +354,116 @@ class rich_ptr_to_underlying_error {
   }
 };
 
+} // namespace folly
+
+// `rich_error_base` AND derived classes are formattable.
+template <>
+struct fmt::formatter<folly::rich_error_base> {
+  constexpr format_parse_context::iterator parse(format_parse_context& ctx) {
+    // FIXME: We don't currently support align/fill/padding, not because it's
+    // impossible, but because `fmt` didn't make it easy -- all the code
+    // related to spec handling, and padded/filled/aligned output of strings is
+    // in `fmt::detail`.  When we do, don't use `fmt::nested_formatter` (this
+    // allocates, which adds unnecessary fragility on an error handling path).
+    // Instead, add a `rich_error_base::formatted_size()` and use that.
+    return ctx.begin();
+  }
+  format_context::iterator format(
+      const folly::rich_error_base& e, format_context& ctx) const {
+    auto it = ctx.out();
+    e.format_enriched(it);
+    return it;
+  }
+};
+template <typename T>
+  requires std::is_convertible_v<T*, folly::rich_error_base*>
+struct fmt::formatter<T> : fmt::formatter<folly::rich_error_base> {};
+
+// Format pointer-like returned by `get_exception<Ex>(rich_exception_ptr)`.
+// Crucially, this displays `enrich_non_value()` chains when available.
+//
+template <typename Ex>
+struct fmt::formatter<folly::rich_ptr_to_underlying_error<Ex>> {
+ private:
+  // `Ex` is formattable AND not a `rich_error_base`: format `Ex` first, then
+  // append the rich error formatting.
+  //
+  // Rather than branch a single class on this, it would be cleaner to use
+  // multiple partial specializations with mutually-exclusive `requires`
+  // clauses, but GCC treats those as redefinitions.
+  static constexpr bool kUseExFormatter = fmt::is_formattable<Ex>::value &&
+      !std::is_convertible_v<Ex*, const folly::rich_error_base*>;
+
+  [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] folly::conditional_t<
+      kUseExFormatter,
+      fmt::formatter<std::remove_cv_t<Ex>>,
+      folly::Unit> ex_formatter_;
+
+ public:
+  constexpr format_parse_context::iterator parse(format_parse_context& ctx) {
+    if constexpr (kUseExFormatter) {
+      return ex_formatter_.parse(ctx);
+    } else {
+      return ctx.begin();
+    }
+  }
+
+  format_context::iterator format(
+      const folly::rich_ptr_to_underlying_error<Ex>& p,
+      format_context& ctx) const {
+    using UncvEx = std::remove_cv_t<Ex>;
+    auto it = ctx.out();
+    if (p.raw_ptr_ == nullptr) {
+      fmt::format_to(it, "[nullptr folly::rich_ptr_to_underlying_error]");
+      return it;
+    }
+    if constexpr (kUseExFormatter) {
+      it = ex_formatter_.format(*p.raw_ptr_, ctx);
+      if (p.top_rich_error_) {
+        // Underlying error already formatted above, just format the wrappers
+        p.top_rich_error_->format_enriched_without_first_underlying(it);
+      }
+      return it;
+    } else {
+      // Use detailed rich-error formatting if available: either we have an
+      // enrichment wrapper, or the underlying error is rich, or both.
+      if (std::is_convertible_v<Ex*, const folly::rich_error_base*> ||
+          p.top_rich_error_) {
+        p.top_rich_error_->format_enriched(it);
+      } else {
+        // For non-formattable non-rich errors without a wrapper, match the
+        // `rich_error_base::format_to` formatting.
+        if constexpr (std::is_convertible_v<Ex*, const std::exception*>) {
+          fmt::format_to(
+              it, "{}: {}", folly::pretty_name<UncvEx>(), p.raw_ptr_->what());
+        } else {
+          fmt::format_to(it, "{}", folly::pretty_name<UncvEx>());
+        }
+      }
+      return it;
+    }
+  }
+};
+
+namespace folly {
+namespace detail {
+std::ostream& ostream_write_via_fmt(std::ostream& os, const auto& v) {
+  try {
+    os << fmt::format("{}", v);
+  } catch (const std::bad_alloc&) {
+    // Per `ostream_append_simple_rich_error`, ~4.5x slower than `os <<
+    // fmt::format("{}", e);` for small strings, but doesn't use heap.
+    fmt::format_to(std::ostream_iterator<char>(os), "{}", v);
+  }
+  return os;
+}
+} // namespace detail
+
+template <typename Ex>
+std::ostream& operator<<(
+    std::ostream& os, const rich_ptr_to_underlying_error<Ex>& ep) {
+  return detail::ostream_write_via_fmt(os, ep);
+}
 } // namespace folly
 
 namespace folly::detail {
