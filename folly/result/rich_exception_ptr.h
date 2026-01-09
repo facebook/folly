@@ -1009,6 +1009,50 @@ class rich_exception_ptr_impl : private B {
         B::SIGIL_eq == bits || B::SMALL_VALUE_eq == bits);
     return nullptr;
   }
+
+ private:
+  // Calls `get_outer_exception` on the underlying error in the enrichment chain
+  template <typename CEx>
+  static constexpr rich_ptr_to_underlying_error<CEx> get_exception_impl(
+      auto* rep);
+
+ public:
+  /// Implementation of `folly::get_exception<Ex>(rich_exception_ptr)`
+  ///
+  /// Transparently handles errors with enriching wrappers -- the returned
+  /// pointer-like resolves to the underlying, original exception. But, `fmt` or
+  /// `ostream::operator<<` will display the full enrichment chain.
+  ///
+  /// Avoid converting the result to `Ex*`, or you will lose the enrichments.
+  ///
+  /// Sample usage:
+  ///
+  ///   if (auto ex = get_exception<Ex>(...)) { // NOT `Ex* ex`!
+  ///     LOG(INFO) << ex; // Will include enrichments
+  ///   }
+  ///
+  /// IMPORTANT: For immortal errors, this `const` accessor will access a
+  /// different instance than `get_mutable_exception` does.  This will not
+  /// matter for 99% of usage, since mutating exceptions is VERY rare, and
+  /// likely a design smell.  In short, this was done is to avoid globally
+  /// imposing the cost of synchronization for the sake of a tiny minority
+  /// use-case.  The non-`const` overload of `get_outer_exception` says more.
+  ///
+  /// Future: There's no return state for "did not match `Ex` (aka `nullptr`),
+  /// but still have enrichments" -- but it is easy to add if useful.
+  template <typename Ex>
+  constexpr rich_ptr_to_underlying_error<const Ex> get_exception(
+      get_exception_tag_t) const noexcept {
+    return get_exception_impl<const Ex>(this);
+  }
+  // IMPORTANT: For immortal errors, this will access a different instance than
+  // `get_exception` does, see the details in the non-`const` overload of
+  // `get_outer_exception`.
+  template <typename Ex>
+  constexpr rich_ptr_to_underlying_error<Ex> get_mutable_exception(
+      get_exception_tag_t) noexcept {
+    return get_exception_impl<Ex>(this);
+  }
 };
 
 using rich_exception_ptr_base = rich_exception_ptr_impl<
@@ -1060,6 +1104,61 @@ rich_exception_ptr_impl<Derived, B>::with_underlying_impl(auto* me, auto fn)
     }
   }
   return fn(me);
+}
+
+// Specializes the `with_underlying()` traversal for `get_exception<>()`, while
+// populating `top_rich_error_` to support enriched formatting.
+//
+// Future: A possible micro-optimization idea to try to save 1-2ns would be to
+// deduplicate the PLT call to `exception_ptr_get_object` (one per
+// `get_outer_exception` call below).
+template <typename Derived, typename B>
+template <typename CEx>
+constexpr inline auto rich_exception_ptr_impl<Derived, B>::get_exception_impl(
+    auto* rep) -> rich_ptr_to_underlying_error<CEx> {
+  assert_operation_cancelled_queries<CEx>();
+  const rich_error_base* top_rich_error = nullptr;
+  auto bits = rep->get_bits();
+  if (B::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq == bits) {
+    // Per the `consteval rich_exception_ptr_impl` ctor, all immortals are
+    // underlying.  So, they get special logic to set `top_rich_error_`.
+    if constexpr (std::derived_from<CEx, rich_error_base>) {
+      auto* ex = rep->template get_outer_exception<CEx>();
+      return {ex, static_cast<const rich_error_base*>(ex)};
+    } else if constexpr (!std::is_same_v<const CEx, const std::exception>) {
+      // Immortals are rich, but query is neither std::exception, nor rich.
+      return {nullptr, nullptr};
+    } // else: `std::exception` IS accessible on immortals, needs 2 queries:
+    top_rich_error = rep->template get_outer_exception<rich_error_base>();
+    // Fall through to query for `CEx` in the final `return`...
+  } else if (B::OWNS_EXCEPTION_PTR_and & bits) {
+    // This dynamic eptr may be an enrichment wrapper, so we have to retrieve
+    // the underlying error.  This gives us `top_rich_error_` for free.
+    if (auto* rex = rep->template get_outer_exception<rich_error_base>()) {
+      top_rich_error = rex;
+      if (auto* new_rep = [rex]() {
+            if constexpr (std::is_const_v<CEx>) {
+              return rex->underlying_error();
+            } else {
+              return rex->mutable_underlying_error(
+                  rich_error_base::underlying_error_private_t{});
+            }
+          }()) {
+        // We found the underlying error, time to query `CEx`!
+        // NB: Falling through with `rep = new_rep;` emitted slower code.
+        return {new_rep->template get_outer_exception<CEx>(), top_rich_error};
+      } else if constexpr (std::is_same_v<const CEx, const rich_error_base>) {
+        // `rex` is underlying error, and exactly what was queried
+        return {rex, top_rich_error};
+      } // Else: `rep` is underlying & `top_rich_error` is set; fall through...
+    } else if constexpr (std::derived_from<CEx, rich_error_base>) {
+      // Outer isn't a `rich_error_base`, so it's also the underlying error,
+      // and thus cannot match any `rich_error_base`-derived `CEx`.
+      return {nullptr, nullptr};
+    } // Else: `rep` is underlying & non-rich; `top_rich_error` stays null...
+    // ... fall through to query `CEx`.
+  } // Else: We only need to resolve underlying for "owned" bits.
+  return {rep->template get_outer_exception<CEx>(), top_rich_error};
 }
 
 } // namespace detail

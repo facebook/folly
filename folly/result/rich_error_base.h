@@ -251,6 +251,87 @@ class rich_error_base {
   }
 };
 
+template <typename Ex>
+class rich_ptr_to_underlying_error;
+
+namespace detail {
+template <auto, typename Ex>
+void expectGetExceptionResult(const rich_ptr_to_underlying_error<Ex>&);
+} // namespace detail
+
+// Quacks like `Ex*`, but show a chain of enrichment info when formatted.
+// Returned by `get_exception<Ex>(rep)` and `get_mutable_exception<Ex>(rep)`,
+// for `rich_exception_ptr<...> rep`.  The respective `get_exception()`
+// implementations have more detailed docs.
+template <typename Ex>
+class rich_ptr_to_underlying_error {
+ private:
+  Ex* raw_ptr_{nullptr};
+  const rich_error_base* top_rich_error_{nullptr};
+
+  template <auto, typename T>
+  friend void detail::expectGetExceptionResult(
+      const rich_ptr_to_underlying_error<T>&);
+
+ protected:
+  template <typename, typename>
+  friend class detail::rich_exception_ptr_impl;
+  constexpr rich_ptr_to_underlying_error(Ex* p, const rich_error_base* top)
+      : raw_ptr_(p), top_rich_error_(top) {}
+
+ public:
+  // `get_exception<Ex>(result)` needs this.
+  explicit constexpr rich_ptr_to_underlying_error(std::nullptr_t) {}
+
+  // Immovable for now, since the primary use-case is just:
+  //   if (auto ex = get_exception<Ex>(rich_eptr)) { /*...*/ }
+  // Escape hatch ideas:
+  //   - `Ex* raw_ptr()` below
+  //   - to delegate formatting to helper func, pass by `auto&`
+  //
+  // Future: Relax this if you have a compelling reason.  Some redundant
+  // safety comes from the `lifetimebound` annotation on `get_exception`.
+  // But, in clang-17 that doesn't catch some obvious use-after-frees.
+  rich_ptr_to_underlying_error(const rich_ptr_to_underlying_error&) = delete;
+  rich_ptr_to_underlying_error operator=(const rich_ptr_to_underlying_error&) =
+      delete;
+  rich_ptr_to_underlying_error(rich_ptr_to_underlying_error&&) = delete;
+  rich_ptr_to_underlying_error operator=(rich_ptr_to_underlying_error&&) =
+      delete;
+  ~rich_ptr_to_underlying_error() = default;
+
+  constexpr Ex& operator*() const { return *raw_ptr_; }
+  constexpr Ex* operator->() const { return raw_ptr_; }
+  constexpr Ex* raw_ptr() const { return raw_ptr_; }
+
+  // Conversion to raw pointer lossy.  Make it explicit to avoid accidentally
+  // shedding rich error formatting context -- propagation notes, source
+  // locations, codes, etc.
+  explicit constexpr operator Ex*() const { return raw_ptr_; }
+
+  // Make `if (auto ex = get_exception<...>(...))` work.  Or, use `bool{ex}`
+  // for explicit conversion.  Truly quacking like a raw pointer would make
+  // this implicit, but that has undesirable consequences.  For example, any
+  // common protocol that takes `bool` like `fmt` or `<<(ostream&, bool)` would
+  // treat these as `bool`, unless a more specific match is provided.  In the
+  // future, we could reconsider this trade-off.
+  explicit constexpr operator bool() const { return raw_ptr_; }
+
+  friend constexpr bool operator==(
+      std::nullptr_t, const rich_ptr_to_underlying_error& p) {
+    return p.raw_ptr_ == nullptr;
+  }
+  friend constexpr bool operator==(
+      const Ex* raw_p, const rich_ptr_to_underlying_error& p) {
+    return raw_p == p.raw_ptr_;
+  }
+  friend constexpr bool operator==(
+      const rich_ptr_to_underlying_error& lhs,
+      const rich_ptr_to_underlying_error& rhs) {
+    return lhs.raw_ptr_ == rhs.raw_ptr_;
+  }
+};
+
 } // namespace folly
 
 namespace folly::detail {
