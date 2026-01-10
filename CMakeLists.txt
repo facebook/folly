@@ -70,6 +70,20 @@ option(BUILD_SHARED_LIBS
   a stable ABI."
   OFF
 )
+option(PYTHON_EXTENSIONS
+  "Build Python Bindings for Folly, requires Cython and (BUILD_SHARED_LIBS=ON)"
+  OFF
+)
+# Python extensions require shared libraries for proper symbol resolution
+if (PYTHON_EXTENSIONS)
+  set(BUILD_SHARED_LIBS ON CACHE BOOL
+    "Forced ON because PYTHON_EXTENSIONS requires shared libraries" FORCE)
+endif()
+set(PYTHON_PACKAGE_INSTALL_DIR "" CACHE STRING
+  "Installation directory for folly Python packages. \
+  If empty, CMAKE_INSTALL_PREFIX will be used. \
+  No effect if PYTHON_EXTENSIONS=OFF."
+)
 # Mark BUILD_SHARED_LIBS as an "advanced" option, since enabling it
 # is generally discouraged.
 mark_as_advanced(BUILD_SHARED_LIBS)
@@ -477,16 +491,6 @@ target_compile_definitions(folly_base
 )
 
 set(FOLLY_INSTALL_TARGETS folly folly_deps)
-
-option(PYTHON_EXTENSIONS
-  "Build Python Bindings for Folly, requires Cython and (BUILD_SHARED_LIBS=ON)"
-  OFF
-)
-set(PYTHON_PACKAGE_INSTALL_DIR "" CACHE STRING
-  "Installation directory for folly Python packages. \
-  If empty, CMAKE_INSTALL_PREFIX will be used. \
-  No effect if PYTHON_EXTENSIONS=OFF."
-)
 
 
 add_library(folly
