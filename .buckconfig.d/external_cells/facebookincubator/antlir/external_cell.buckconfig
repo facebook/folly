@@ -1,0 +1,18 @@
+[cells]
+gh_facebookincubator_antlir = gh_facebookincubator_antlir
+gh_facebookincubator_antlir_generated = generated
+
+[cell_aliases]
+generated = gh_facebookincubator_antlir_generated
+
+[external_cells]
+gh_facebookincubator_antlir = git
+gh_facebookincubator_antlir_generated = git
+
+[external_cell_gh_facebookincubator_antlir]
+git_origin = https://github.com/ben--/antlir.git
+commit_hash = e81a223fd851230b4e3141784565a95abaffdf11
+
+[external_cell_gh_facebookincubator_antlir_generated]
+git_origin = https://github.com/ben--/antlir.git
+commit_hash = e81a223fd851230b4e3141784565a95abaffdf11

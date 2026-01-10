@@ -725,7 +725,6 @@ fbcode_target(
         "DEFAULT": None,
         "ovr_config//os:windows": "shared",
     }),
-    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":import",
     ],
@@ -791,11 +790,10 @@ fbcode_target(
     srcs = ["iobuf.cpp"],
     headers = [
         "iobuf.h",
-        # @fb-only[end= ]: ":iobuf__iobuf_api.h",
+        ":iobuf__iobuf_api.h",
     ],
     # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
     modular_headers = False,
-    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":import",
     ],
@@ -973,9 +971,7 @@ fbcode_target(
         "DEFAULT": [],
         # These make it so linking libpython is optional
         "ovr_config//os:macos": [
-            "-Xlinker",
             "-undefined",
-            "-Xlinker",
             "dynamic_lookup",
         ],
     }),
@@ -1002,9 +998,7 @@ non_fbcode_target(
         "DEFAULT": [],
         # These make it so linking libpython is optional
         "ovr_config//os:macos": [
-            "-Xlinker",
             "-undefined",
-            "-Xlinker",
             "dynamic_lookup",
         ],
     }),

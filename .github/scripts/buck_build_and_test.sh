@@ -14,7 +14,7 @@
 # limitations under the License.
 
 TARGETS_FILE=$(mktemp)
-./buck2 targets //... | grep -F -v -f .github/scripts/bad_targets | grep -v test >"$TARGETS_FILE"
+./buck2 ctargets //... | sed 's/ ([^)]*)$//' | grep -F -v -f .github/scripts/bad_targets | grep -v test >"$TARGETS_FILE"
 
 ./buck2 build @"$TARGETS_FILE"
 # ./buck2 test @"$TARGETS_FILE"
