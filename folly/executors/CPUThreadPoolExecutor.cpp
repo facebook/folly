@@ -221,7 +221,7 @@ void CPUThreadPoolExecutor::add(
     Func func, std::chrono::milliseconds expiration, Func expireCallback) {
   CPUTask task(std::move(func), expiration, std::move(expireCallback), 0);
   addImpl(
-      [this](auto&& task) { return taskQueue_->add(std::move(task)); },
+      [this](auto&& t) { return taskQueue_->add(std::move(t)); },
       std::move(task));
 }
 
@@ -238,9 +238,9 @@ void CPUThreadPoolExecutor::add(
   CPUTask task(
       std::move(func), expiration, std::move(expireCallback), priority);
   addImpl(
-      [this](auto&& task) {
-        auto pri = task.priority();
-        return taskQueue_->addWithPriority(std::move(task), pri);
+      [this](auto&& t) {
+        auto pri = t.priority();
+        return taskQueue_->addWithPriority(std::move(t), pri);
       },
       std::move(task));
 }
