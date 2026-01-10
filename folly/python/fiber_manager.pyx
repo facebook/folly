@@ -70,7 +70,7 @@ cdef class FiberManager:
         self.cManager.reset()
 
 
-cdef cFiberManager* get_fiber_manager_impl(const cFiberManagerOptions& opts):
+cdef cFiberManager* get_fiber_manager_impl(const cFiberManagerOptions& opts) noexcept:
     global last_loop, last_manager
 
     loop = asyncio.get_event_loop()
