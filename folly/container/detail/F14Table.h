@@ -2559,9 +2559,9 @@ class F14Table : public Policy {
     auto origSize = size();
     auto origCapacity = bucket_count();
     if (willReset) {
-      this->beforeReset(origSize, origCapacity);
+      this->beforeReset(static_cast<std::size_t>(origSize), origCapacity);
     } else {
-      this->beforeClear(origSize, origCapacity);
+      this->beforeClear(static_cast<std::size_t>(origSize), origCapacity);
     }
 
     if (!empty()) {
@@ -2604,9 +2604,10 @@ class F14Table : public Policy {
       chunks_ = Chunk::getSomeEmptyInstance();
       sizeAndChunkShiftAndPackedBegin_.setChunkCount(1);
 
-      this->afterReset(origSize, origCapacity, rawAllocation, rawSize);
+      this->afterReset(
+          static_cast<std::size_t>(origSize), origCapacity, rawAllocation, rawSize);
     } else {
-      this->afterClear(origSize, origCapacity);
+      this->afterClear(static_cast<std::size_t>(origSize), origCapacity);
     }
   }
 
