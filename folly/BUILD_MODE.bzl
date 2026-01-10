@@ -24,7 +24,7 @@ _extra_clang_flags = [
     "-Wimplicit-fallthrough",
     "-Wmismatched-tags",
     "-Wmissing-braces",
-    "-Wno-missing-noreturn",  # until C++23 / P2173R1 - attributes on lambdas
+    "-Wno-missing-noreturn",  # Disabled for LLVM-21 migration; tracked in T251075049
     "-Wshadow",
     "-Wshift-sign-overflow",
     "-Wsometimes-uninitialized",
