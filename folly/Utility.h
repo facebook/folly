@@ -555,7 +555,7 @@ struct to_signed_fn {
     // be implementation-defined behavior and that is typically to be avoided;
     // the following code optimized into the same thing, though
     constexpr auto m = static_cast<T>(std::numeric_limits<S>::max());
-    return m < t ? -static_cast<S>(~t) + S{-1} : static_cast<S>(t);
+    return static_cast<S>(m < t ? -static_cast<S>(~t) + S{-1} : t);
   }
 };
 inline constexpr to_signed_fn to_signed{};
