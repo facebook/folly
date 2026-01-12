@@ -491,8 +491,7 @@ class ManifestParser(object):
                 )
 
         raise KeyError(
-            "project %s has no fetcher configuration or system packages matching %s"
-            % (self.name, ctx)
+            f"project {self.name} has no fetcher configuration or system packages matching {ctx} - have you run `getdeps.py install-system-deps --recursive`?"
         )
 
     def create_fetcher(self, build_options, loader, ctx):
