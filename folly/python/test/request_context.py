@@ -15,13 +15,11 @@
 import asyncio
 import itertools
 import random
-
 from contextvars import copy_context
 from functools import partial
 from unittest import IsolatedAsyncioTestCase
 
 import folly.python.test.request_context_helper as frc_helper
-
 from folly import request_context
 
 

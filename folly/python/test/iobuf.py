@@ -21,7 +21,6 @@ import sys
 import unittest
 
 from folly.iobuf import IOBuf, WritableIOBuf
-
 from folly.python.test.iobuf_helper import (
     get_empty_chain,
     get_empty_writable_chain,
