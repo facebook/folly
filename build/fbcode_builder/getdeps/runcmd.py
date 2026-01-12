@@ -9,7 +9,6 @@ import os
 import select
 import subprocess
 import sys
-
 from shlex import quote as shellquote
 
 from .envfuncs import Env

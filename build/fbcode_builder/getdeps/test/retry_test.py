@@ -10,9 +10,7 @@ import unittest
 from unittest.mock import call, MagicMock, patch
 
 from ..buildopts import BuildOptions
-
 from ..errors import TransientFailure
-
 from ..fetcher import ArchiveFetcher
 from ..manifest import ManifestParser
 
