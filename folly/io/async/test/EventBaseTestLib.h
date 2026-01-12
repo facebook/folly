@@ -1450,7 +1450,7 @@ TYPED_TEST_P(EventBaseTest, RunInThread) {
     threads.emplace_back([i, &data] {
       for (int n = 0; n < data.opsPerThread; ++n) {
         RunInThreadArg* arg = new RunInThreadArg(&data, i, n);
-        data.evb.runInEventBaseThread(runInThreadTestFunc, arg);
+        data.evb.runInEventBaseThread(std::bind(runInThreadTestFunc, arg));
         usleep(10);
       }
     });

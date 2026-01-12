@@ -639,25 +639,6 @@ class EventBase
    *
    * @param fn  The function to run.  The function must not throw any
    *     exceptions.
-   * @param arg An argument to pass to the function.
-   */
-  template <typename T>
-  void runInEventBaseThread(void (*fn)(T*), T* arg) noexcept;
-
-  /**
-   * Run the specified function in the EventBase's thread
-   *
-   * This version of runInEventBaseThread() takes a folly::Function object.
-   * Note that this may be less efficient than the version that takes a plain
-   * function pointer and void* argument, if moving the function is expensive
-   * (e.g., if it wraps a lambda which captures some values with expensive move
-   * constructors).
-   *
-   * If the loop is terminated (and never later restarted) before it has a
-   * chance to run the requested function, the function will be run upon the
-   * EventBase's destruction.
-   *
-   * The function must not throw any exceptions.
    */
   void runInEventBaseThread(Func fn) noexcept;
 
@@ -683,36 +664,10 @@ class EventBase
    *
    * @param fn  The function to run.  The function must not throw any
    *     exceptions.
-   * @param arg An argument to pass to the function.
-   */
-  template <typename T>
-  void runInEventBaseThreadAlwaysEnqueue(void (*fn)(T*), T* arg) noexcept;
-
-  /**
-   * Run the specified function in the EventBase's thread
-   *
-   * This version of runInEventBaseThreadAlwaysEnqueue() takes a folly::Function
-   * object. Note that this may be less efficient than the version that takes a
-   * plain function pointer and void* argument, if moving the function is
-   * expensive (e.g., if it wraps a lambda which captures some values with
-   * expensive move constructors).
-   *
-   * If the loop is terminated (and never later restarted) before it has a
-   * chance to run the requested function, the function will be run upon the
-   * EventBase's destruction.
-   *
-   * The function must not throw any exceptions.
    */
   void runInEventBaseThreadAlwaysEnqueue(Func fn) noexcept;
 
   /*
-   * Like runInEventBaseThread, but the caller waits for the callback to be
-   * executed.
-   */
-  template <typename T>
-  void runInEventBaseThreadAndWait(void (*fn)(T*), T* arg) noexcept;
-
-  /**
    * Like runInEventBaseThread, but the caller waits for the callback to be
    * executed.
    */
@@ -722,22 +677,7 @@ class EventBase
    * Like runInEventBaseThreadAndWait, except if the caller is already in the
    * event base thread, the functor is simply run inline.
    */
-  template <typename T>
-  void runImmediatelyOrRunInEventBaseThreadAndWait(
-      void (*fn)(T*), T* arg) noexcept;
-
-  /**
-   * Like runInEventBaseThreadAndWait, except if the caller is already in the
-   * event base thread, the functor is simply run inline.
-   */
   void runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) noexcept;
-
-  /**
-   * Like runInEventBaseThread, but runs function immediately instead of at the
-   * end of the loop when called from the eventbase thread.
-   */
-  template <typename T>
-  void runImmediatelyOrRunInEventBaseThread(void (*fn)(T*), T* arg) noexcept;
 
   /**
    * Like runInEventBaseThread, but runs function immediately instead of at the
@@ -1150,33 +1090,5 @@ class EventBase
 
   std::unique_ptr<ThreadIdCollector> threadIdCollector_;
 };
-
-template <typename T>
-void EventBase::runInEventBaseThread(void (*fn)(T*), T* arg) noexcept {
-  return runInEventBaseThread([=] { fn(arg); });
-}
-
-template <typename T>
-void EventBase::runInEventBaseThreadAlwaysEnqueue(
-    void (*fn)(T*), T* arg) noexcept {
-  return runInEventBaseThreadAlwaysEnqueue([=] { fn(arg); });
-}
-
-template <typename T>
-void EventBase::runInEventBaseThreadAndWait(void (*fn)(T*), T* arg) noexcept {
-  return runInEventBaseThreadAndWait([=] { fn(arg); });
-}
-
-template <typename T>
-void EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(
-    void (*fn)(T*), T* arg) noexcept {
-  return runImmediatelyOrRunInEventBaseThreadAndWait([=] { fn(arg); });
-}
-
-template <typename T>
-void EventBase::runImmediatelyOrRunInEventBaseThread(
-    void (*fn)(T*), T* arg) noexcept {
-  return runImmediatelyOrRunInEventBaseThread([=] { fn(arg); });
-}
 
 } // namespace folly
