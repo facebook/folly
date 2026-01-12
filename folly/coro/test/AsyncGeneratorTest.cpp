@@ -665,7 +665,7 @@ TEST(AsyncGenerator, CoResultProxyExample) {
   }());
 }
 
-TEST(AsyncGeneraor, CoAwaitTry) {
+TEST(AsyncGenerator, CoAwaitTry) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto gen = []() -> folly::coro::AsyncGenerator<std::string> {
       co_yield "foo";
@@ -686,7 +686,7 @@ TEST(AsyncGeneraor, CoAwaitTry) {
   }());
 }
 
-TEST(AsyncGeneraor, CoAwaitValueOrError) {
+TEST(AsyncGenerator, CoAwaitValueOrError) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto gen = []() -> folly::coro::AsyncGenerator<std::string> {
       co_yield "foo";

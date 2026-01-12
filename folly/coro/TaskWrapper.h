@@ -75,8 +75,8 @@
 ///
 /// ### How to implement a wrapper
 ///
-/// First, read the WARNINGs above. Then, follow one of the "Tiny" examples
-/// in `TaskWrapperTest.cpp`. The important things are:
+/// First, read the WARNING sections above. Then, follow one of the "Tiny"
+/// examples in `TaskWrapperTest.cpp`. The important things are:
 ///   - Actually read the "object slicing" warning above!
 ///   - In most cases, you'll need to both implement a task, and customize its
 ///     `TaskWithExecutorT`.  If you leave that as `coro::TaskWithExecutor`,

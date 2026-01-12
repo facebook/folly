@@ -696,7 +696,7 @@ TEST(Coro, CoThrow) {
       folly::coro::blockingWait([]() -> folly::coro::Task<int> {
         co_yield folly::coro::co_error(ExpectedException());
         ADD_FAILURE() << "unreachable";
-        // Intential lack of co_return statement to check
+        // Intentional lack of co_return statement to check
         // that compiler treats code after co_yield co_error()
         // as unreachable.
       }()),

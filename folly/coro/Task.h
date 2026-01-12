@@ -727,7 +727,7 @@ class FOLLY_CORO_TASK_ATTRS Task {
   /// Specify the executor that this task should execute on:
   ///   co_withExecutor(executor, std::move(task))
   //
-  /// @param executor An Executor::KeepAlive object, which can be implicity
+  /// @param executor An Executor::KeepAlive object, which can be implicitly
   /// constructed from Executor*
   /// @returns a new TaskWithExecutor object, which represents the existing Task
   /// bound to an executor

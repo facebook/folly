@@ -143,8 +143,8 @@ class AsyncScope {
   /**
    * Asynchronously cleanup all started tasks.
    *
-   * If you have previuosly called add() then you must call cleanup()
-   * and wait for the retuned future to complete before the AsyncScope
+   * If you have previously called add() then you must call cleanup()
+   * and wait for the returned future to complete before the AsyncScope
    * object destructs.
    */
   SemiFuture<Unit> cleanup() noexcept;

@@ -133,7 +133,7 @@ TEST(CoroGTestHelpers, CoReturnExplicitCopyTest) {
   EXPECT_EQ(ret, "abc");
 }
 
-TEST(CoroGTestHelpers, CoReturnWthImplicitConversionTest) {
+TEST(CoroGTestHelpers, CoReturnWithImplicitConversionTest) {
   MockFoo mock;
 
   EXPECT_CALL(mock, getString()).WillRepeatedly(CoReturn("abc"));
