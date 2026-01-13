@@ -210,6 +210,7 @@ non_fbcode_target(
     name = "must_use_immediately",
     raw_headers = ["MustUseImmediately.h"],
     exported_deps = [
+        ":safe_alias_fwd",
         "//xplat/folly:utility",
         "//xplat/folly/detail:tuple",
     ],
@@ -601,6 +602,7 @@ fbcode_target(
     name = "must_use_immediately",
     headers = ["MustUseImmediately.h"],
     exported_deps = [
+        ":safe_alias_fwd",
         "//folly:utility",
         "//folly/detail:tuple",
     ],

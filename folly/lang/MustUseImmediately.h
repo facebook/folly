@@ -19,6 +19,7 @@
 #include <type_traits>
 
 #include <folly/Utility.h>
+#include <folly/lang/SafeAlias-fwd.h>
 
 #if FOLLY_CPLUSPLUS >= 202002L
 #include <folly/detail/tuple.h>
@@ -326,6 +327,9 @@ struct must_use_immediately_crtp {
   must_use_immediately_crtp(const must_use_immediately_crtp&) = delete;
   must_use_immediately_crtp& operator=(const must_use_immediately_crtp&) =
       delete;
+
+  template <safe_alias>
+  using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 };
 
 // BEST FOR TYPICAL USAGE when inheriting `public must_use_immediately_crtp<>`.
@@ -427,6 +431,11 @@ class wrap_must_use_immediately_t
   // `false_type` for movable `Inner`).
   using typename must_use_immediately_crtp<
       wrap_must_use_immediately_t<Inner>>::folly_must_use_immediately_t;
+
+  // Same disambiguation for `folly_private_safe_alias_t`. Must-use-immediately
+  // types are unsafe since they contain references with unknown lifetimes.
+  template <safe_alias>
+  using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 
   // See the top-of-file docblock before defining your own `unsafe_mover`.
   template <
