@@ -22,7 +22,6 @@
 #include <sstream>
 #include <type_traits>
 
-#include <boost/algorithm/string.hpp>
 #include <glog/logging.h>
 
 #include <folly/Conv.h>
@@ -396,7 +395,7 @@ struct Input {
   }
 
   bool consume(StringPiece str) {
-    if (boost::starts_with(range_, str)) {
+    if (range_.startsWith(str)) {
       range_.advance(str.size());
       storeCurrent();
       return true;

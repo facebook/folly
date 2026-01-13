@@ -43,7 +43,6 @@ fb_dirsync_cpp_library(
         "//folly/lang:exception",
     ],
     external_deps = [
-        ("boost", None, "boost_algorithm"),
         "glog",
     ],
     exported_external_deps = [
@@ -104,7 +103,6 @@ fb_dirsync_cpp_library(
         "//folly/json:dynamic",
     ],
     external_deps = [
-        ("boost", None, "boost_algorithm"),
         ("boost", None, "boost_regex"),
     ],
 )

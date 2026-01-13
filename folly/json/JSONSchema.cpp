@@ -16,7 +16,6 @@
 
 #include <folly/json/JSONSchema.h>
 
-#include <boost/algorithm/string/replace.hpp>
 #include <boost/regex.hpp>
 
 #include <folly/CPortability.h>
@@ -32,6 +31,14 @@ namespace folly {
 namespace jsonschema {
 
 namespace {
+
+void replaceAll(std::string& s, StringPiece from, StringPiece to) {
+  size_t pos = 0;
+  while ((pos = s.find(from.data(), pos, from.size())) != std::string::npos) {
+    s.replace(pos, from.size(), to.data(), to.size());
+    pos += to.size();
+  }
+}
 
 /**
  * We throw this exception when schema validation fails.
@@ -683,8 +690,8 @@ void SchemaValidator::loadSchema(
       const auto* s = &context.schema; // First part is '#'
       for (size_t i = 1; s && i < parts.size(); ++i) {
         // Per the standard, we must replace ~1 with / and then ~0 with ~
-        boost::replace_all(parts[i], "~1", "/");
-        boost::replace_all(parts[i], "~0", "~");
+        replaceAll(parts[i], "~1", "/");
+        replaceAll(parts[i], "~0", "~");
         if (s->isObject()) {
           s = s->get_ptr(parts[i]);
           continue;
