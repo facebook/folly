@@ -151,7 +151,7 @@ cdef extern from "folly/python/request_context.h":
     )
 
 
-cdef int _watcher(PyContextEvent event, PyObject* pycontext):
+cdef int _watcher(PyContextEvent event, PyObject* pycontext) noexcept:
     cdef shared_ptr[RequestContext] ctx
 
     if pycontext is NULL or event != PyContextEvent.Py_CONTEXT_SWITCHED:

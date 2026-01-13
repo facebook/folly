@@ -1,0 +1,14 @@
+[package]
+name = "iobuf_sys"
+version = "0.1.0"
+edition = "2024"
+
+# [lib]
+# Cargo automatically uses OUT_DIR/lib.rs when build.rs exists and writes to it
+
+[dependencies]
+cxx = "1.0"
+
+[build-dependencies]
+bindgen = "0.72"
+pkg-config = "0.3"
