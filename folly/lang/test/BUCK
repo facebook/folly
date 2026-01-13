@@ -314,6 +314,16 @@ non_fbcode_target(
         "//xplat/folly/lang:vector_traits",
     ],
 )
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_test,
+    name = "bit_fields_test",
+    srcs = ["BitFieldsTest.cpp"],
+    deps = [
+        "fbsource//xplat/folly/portability:gtest",
+        "//xplat/folly/lang:bit_fields",
+    ],
+)
 # !!!! fbcode/folly/lang/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
 fbcode_target(
@@ -386,6 +396,16 @@ fbcode_target(
     ],
     external_deps = [
         "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "bit_fields_test",
+    srcs = ["BitFieldsTest.cpp"],
+    deps = [
+        "//folly/lang:bit_fields",
+        "//folly/portability:gtest",
     ],
 )
 

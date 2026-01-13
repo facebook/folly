@@ -53,7 +53,7 @@ struct AtomicStructRaw<3> {
 /// type <= 8 bytes.
 template <typename T, template <typename> class Atom = std::atomic>
 class AtomicStruct {
- private:
+ protected:
   using Raw = _t<detail::AtomicStructRaw<constexpr_log2_ceil(sizeof(T))>>;
 
   static_assert(alignof(T) <= alignof(Raw), "underlying type is under-aligned");
