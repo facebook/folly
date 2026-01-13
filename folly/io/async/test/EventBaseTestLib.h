@@ -32,6 +32,7 @@
 #include <folly/portability/Stdlib.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/system/ThreadId.h>
 #include <folly/system/ThreadName.h>
 
@@ -2913,6 +2914,126 @@ TYPED_TEST_P(EventBaseTest, LoopCallbackTimeslice) {
   EXPECT_EQ(numCbsRun[1], expectedNumCbsRun[1]);
 }
 
+TYPED_TEST_P(EventBaseTest, RunInEventBaseThreadAlwaysEnqueueNoContextSwap) {
+  // Test that runInEventBaseThreadAlwaysEnqueue with RequestContext
+  // * invokes the callback with the specified RequestContext
+  // * does not swap contexts in the current thread (no onSet/onUnset calls)
+
+  // Custom RequestData that tracks onSet/onUnset calls
+  class TrackingRequestData : public RequestData {
+   public:
+    bool hasCallback() override { return true; }
+
+    void onSet() override { ++onSetCount; }
+
+    void onUnset() override { ++onUnsetCount; }
+
+    relaxed_atomic<size_t> onSetCount{0};
+    relaxed_atomic<size_t> onUnsetCount{0};
+  };
+
+  auto evbPtr = this->makeEventBase();
+
+  // Create a custom RequestContext with tracking data
+  auto customCtx = std::make_shared<RequestContext>();
+  auto trackingData = std::make_unique<TrackingRequestData>();
+  auto* trackingDataPtr = trackingData.get();
+  RequestToken token("test_token");
+  customCtx->setContextData(token, std::move(trackingData));
+
+  // Reset counters after initial setup
+  trackingDataPtr->onSetCount = 0;
+  trackingDataPtr->onUnsetCount = 0;
+
+  bool callbackRan{false};
+
+  // First baseline: RequestContextScopeGuard triggers onSet/onUnset
+  std::thread t1([&] {
+    {
+      RequestContextScopeGuard guard(customCtx);
+      EXPECT_EQ(1, trackingDataPtr->onSetCount) << "sanity";
+      EXPECT_EQ(0, trackingDataPtr->onUnsetCount) << "sanity";
+      EXPECT_EQ(customCtx.get(), RequestContext::get());
+    }
+
+    EXPECT_EQ(1, trackingDataPtr->onSetCount) << "sanity";
+    EXPECT_EQ(1, trackingDataPtr->onUnsetCount) << "sanity";
+    EXPECT_NE(customCtx.get(), RequestContext::get());
+  });
+  t1.join();
+  evbPtr->loopOnce();
+  EXPECT_EQ(1, trackingDataPtr->onSetCount);
+  EXPECT_EQ(1, trackingDataPtr->onUnsetCount);
+
+  // Reset counters for the next baseline check
+  trackingDataPtr->onSetCount = 0;
+  trackingDataPtr->onUnsetCount = 0;
+
+  // Second baseline: verify that the regular runInEventBaseThreadAlwaysEnqueue
+  // (without RC parameter) DOES swap contexts when it captures the current RC
+  std::thread t2([&] {
+    // Set the custom context in this thread
+    RequestContextScopeGuard guard(customCtx);
+
+    EXPECT_EQ(1, trackingDataPtr->onSetCount) << "sanity";
+    EXPECT_EQ(0, trackingDataPtr->onUnsetCount) << "sanity";
+    EXPECT_EQ(customCtx.get(), RequestContext::get());
+
+    // The regular overload captures the current context, which may trigger
+    // onSet/onUnset when capturing
+    evbPtr->runInEventBaseThreadAlwaysEnqueue([&] {
+      callbackRan = true;
+      EXPECT_EQ(2, trackingDataPtr->onSetCount) << "sanity";
+      EXPECT_EQ(1, trackingDataPtr->onUnsetCount) << "sanity";
+      EXPECT_EQ(customCtx.get(), RequestContext::get());
+    });
+
+    EXPECT_EQ(1, trackingDataPtr->onSetCount) << "sanity";
+    EXPECT_EQ(0, trackingDataPtr->onUnsetCount) << "sanity";
+    EXPECT_EQ(customCtx.get(), RequestContext::get());
+
+    // Note: The regular version may or may not swap context in the calling
+    // thread depending on implementation details, but we're establishing
+    // that our tracking mechanism can detect context operations
+  });
+  t2.join();
+
+  // Run the event loop to clear any pending callbacks
+  callbackRan = false;
+  evbPtr->loopOnce();
+  EXPECT_TRUE(callbackRan) << "sanity";
+  EXPECT_EQ(2, trackingDataPtr->onSetCount);
+  EXPECT_EQ(2, trackingDataPtr->onUnsetCount);
+
+  // Reset counters for the main test
+  trackingDataPtr->onSetCount = 0;
+  trackingDataPtr->onUnsetCount = 0;
+
+  // Now test runInEventBaseThreadAlwaysEnqueue with explicit RC parameter
+  // Call runInEventBaseThreadAlwaysEnqueue from a different thread
+  std::thread t([&] {
+    // This should NOT trigger onSet/onUnset in the current thread
+    evbPtr->runInEventBaseThreadAlwaysEnqueue(copy(customCtx), [&, customCtx] {
+      callbackRan = true;
+      EXPECT_EQ(1, trackingDataPtr->onSetCount) << "sanity";
+      EXPECT_EQ(0, trackingDataPtr->onUnsetCount) << "sanity";
+      EXPECT_EQ(customCtx.get(), RequestContext::get());
+    });
+
+    EXPECT_EQ(0, trackingDataPtr->onSetCount) << "sanity";
+    EXPECT_EQ(0, trackingDataPtr->onUnsetCount) << "sanity";
+    EXPECT_NE(customCtx.get(), RequestContext::get());
+  });
+  t.join();
+
+  // Run the event loop to execute the callback
+  callbackRan = false;
+  evbPtr->loopOnce();
+  EXPECT_TRUE(callbackRan) << "sanity";
+  EXPECT_EQ(1, trackingDataPtr->onSetCount);
+  EXPECT_EQ(1, trackingDataPtr->onUnsetCount);
+}
+
 struct BackendProviderBase {
   static bool isIoUringBackend() { return false; }
 };
@@ -2996,7 +3117,8 @@ REGISTER_TYPED_TEST_SUITE_P(
     InternalExternalCallbackOrderTest,
     PidCheck,
     EventBaseExecutionObserver,
-    LoopCallbackTimeslice);
+    LoopCallbackTimeslice,
+    RunInEventBaseThreadAlwaysEnqueueNoContextSwap);
 
 } // namespace test
 } // namespace folly

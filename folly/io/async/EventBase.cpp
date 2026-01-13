@@ -952,6 +952,21 @@ void EventBase::runInEventBaseThreadAlwaysEnqueue(Func fn) noexcept {
   queue_->putMessage(std::move(fn));
 }
 
+void EventBase::runInEventBaseThreadAlwaysEnqueue(
+    std::shared_ptr<RequestContext>&& ctx, Func fn) noexcept {
+  // Send the message.
+  // It will be received by the FunctionRunner in the EventBase's thread.
+
+  // We try not to schedule nullptr callbacks
+  if (!fn) {
+    LOG(DFATAL) << "EventBase " << this
+                << ": Scheduling nullptr callbacks is not allowed";
+    return;
+  }
+
+  queue_->putMessage(std::move(ctx), std::move(fn));
+}
+
 void EventBase::runInEventBaseThreadAndWait(Func fn) noexcept {
   if (inRunningEventBaseThread()) {
     LOG(DFATAL) << "EventBase " << this << ": Waiting in the event loop is not "

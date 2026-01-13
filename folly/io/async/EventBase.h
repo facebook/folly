@@ -667,6 +667,15 @@ class EventBase
    */
   void runInEventBaseThreadAlwaysEnqueue(Func fn) noexcept;
 
+  /**
+   * Run the specified function in the EventBase's thread
+   *
+   * This version takes a folly::Function and a RequestContext which will be in
+   * scope when the Function is invoked.
+   */
+  void runInEventBaseThreadAlwaysEnqueue(
+      std::shared_ptr<RequestContext>&& ctx, Func fn) noexcept;
+
   /*
    * Like runInEventBaseThread, but the caller waits for the callback to be
    * executed.
