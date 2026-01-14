@@ -103,10 +103,10 @@ class [[nodiscard]] Unexpected final {
   /**
    * Observers
    */
-  Error& error() & { return error_; }
-  const Error& error() const& { return error_; }
-  Error&& error() && { return std::move(error_); }
-  const Error&& error() const&& { return std::move(error_); }
+  Error& error() & noexcept { return error_; }
+  const Error& error() const& noexcept { return error_; }
+  Error&& error() && noexcept { return std::move(error_); }
+  const Error&& error() const&& noexcept { return std::move(error_); }
 
  private:
   Error error_;

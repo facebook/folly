@@ -71,6 +71,25 @@ struct NoDefault {
   char a, b, c;
 };
 
+// clang-format off
+static_assert(
+    std::is_nothrow_constructible_v<
+        Expected<int, int>,
+        Unexpected<int>&&>);
+static_assert(
+    std::is_nothrow_constructible_v<
+        Expected<int, int>,
+        Unexpected<int> const&>);
+static_assert(
+    std::is_nothrow_constructible_v<
+        Expected<int, int>,
+        Expected<int, int>&&>);
+static_assert(
+    std::is_nothrow_constructible_v<
+        Expected<int, int>,
+        Expected<int, int> const&>);
+// clang-format on
+
 TEST(Expected, NoDefault) {
   static_assert(std::is_default_constructible<Expected<NoDefault, int>>::value);
   Expected<NoDefault, int> x{std::in_place, 42, 42};
