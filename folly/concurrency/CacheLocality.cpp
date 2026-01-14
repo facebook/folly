@@ -582,7 +582,18 @@ class SimpleAllocator {
   // To support array aggregate initialization without an implicit constructor.
   struct Ctor {};
 
-  SimpleAllocator(Ctor, size_t sz) : sz_(sz) {}
+  SimpleAllocator(Ctor, size_t sz) : sz_(sz) {
+    static_assert(
+        sizeof(void*) <= 64,
+        "SimpleAllocator assumes sizeof(void*) fits in maximum size class");
+    if (sz_ < sizeof(void*)) {
+      folly::throw_exception<std::invalid_argument>(fmt::format(
+          "SimpleAllocator size {} is too small (minimum: {})",
+          sz_,
+          sizeof(void*)));
+    }
+  }
+
   ~SimpleAllocator() {
     std::lock_guard g(m_);
     for (auto& block : blocks_) {

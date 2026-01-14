@@ -424,6 +424,9 @@ class LLCAccessSpreader {
  * AccessSpreader can allocate memory in smaller-than cacheline increments, and
  * be assured that it won't cause more false sharing than it otherwise would.
  *
+ * Allocations smaller than sizeof(void*) (typically 8 bytes) are automatically
+ * rounded up to ensure correct internal bookkeeping.
+ *
  * Note that allocation and deallocation takes a per-size-class lock.
  *
  * Memory allocated with coreMalloc() must be freed with coreFree().
