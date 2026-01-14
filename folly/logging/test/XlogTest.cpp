@@ -151,6 +151,27 @@ TEST_F(XlogTest, xlogIf) {
   XLOGF_IF(DBG1, true, "plain format string");
   ASSERT_EQ(1, messages.size());
   messages.clear();
+
+  // If the log is not enabled (false condition or below current level) the
+  // message expression should not be evaluated.
+  bool called = false;
+  const auto call = [&] {
+    called = true;
+    return "called";
+  };
+
+  XLOG_IF(INFO, false) << call();
+  EXPECT_FALSE(called);
+  XLOGF_IF(INFO, false, "{}", call());
+  EXPECT_FALSE(called);
+
+  XLOG(DBG2) << call();
+  EXPECT_FALSE(called);
+  XLOGF(DBG2, "{}", call());
+  EXPECT_FALSE(called);
+
+  XLOG(INFO) << call();
+  EXPECT_TRUE(called);
 }
 
 TEST_F(XlogTest, xlog) {
