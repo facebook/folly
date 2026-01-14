@@ -21,7 +21,7 @@
 #include <type_traits>
 #include <vector>
 
-// On MSVC an incorrect <version> header get's picked up
+// On MSVC an incorrect <version> header gets picked up
 #if !defined(_MSC_VER) && __has_include(<version>)
 #include <version>
 #endif
@@ -243,24 +243,32 @@ struct MakeUnsafeStringSetLargerSize {
 
 #elif defined(_MSC_VER)
 
+#if defined(_ANNOTATE_STRING) || !defined(_DISABLE_STRING_ANNOTATION)
+#ifdef __SANITIZE_ADDRESS__
+#define _INSERT_STRING_ANNOTATION
+#elif defined(__clang__)
+#if __has_feature(address_sanitizer)
+#define _INSERT_STRING_ANNOTATION
+#endif
+#endif
+#endif
+
 template <typename Tag, typename T, typename A, A Ptr_Eos>
 struct MakeUnsafeStringSetLargerSize {
   friend void unsafeStringSetLargerSizeImpl(
       std::basic_string<T>& s, std::size_t n) {
+#if _MSC_VER >= 1938 && defined(_INSERT_STRING_ANNOTATION)
+    const std::size_t n0 = s.size();
+#endif
     (s.*Ptr_Eos)(n);
+#if _MSC_VER >= 1938 && defined(_INSERT_STRING_ANNOTATION)
+    if (_Asan_string_should_annotate && s.capacity() > std::string().capacity())
+      __sanitizer_annotate_contiguous_container(&s[0], &s[0] + s.capacity() + 1,
+          &s[0] + n0 + 1, &s[0] + n + 1);
+#endif
   }
 };
 
-#if _MSC_VER < 1939
-#define FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(TYPE)          \
-  template void std::basic_string<TYPE>::_Eos(std::size_t);     \
-  template struct folly::detail::MakeUnsafeStringSetLargerSize< \
-      FollyMemoryDetailTranslationUnitTag,                      \
-      TYPE,                                                     \
-      void (std::basic_string<TYPE>::*)(std::size_t),           \
-      &std::basic_string<TYPE>::_Eos>;                          \
-  FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
-#else
 #define FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(TYPE)          \
   template struct folly::detail::MakeUnsafeStringSetLargerSize< \
       FollyMemoryDetailTranslationUnitTag,                      \
@@ -268,7 +276,6 @@ struct MakeUnsafeStringSetLargerSize {
       void (std::basic_string<TYPE>::*)(std::size_t),           \
       &std::basic_string<TYPE>::_Eos>;                          \
   FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
-#endif // _MSC_VER < 1939
 #else
 #warning \
     "No implementation for resizeWithoutInitialization of std::basic_string"
@@ -399,6 +406,16 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
 
 #elif defined(_MSC_VER)
 
+#if defined(_ANNOTATE_VECTOR) || !defined(_DISABLE_VECTOR_ANNOTATION)
+#ifdef __SANITIZE_ADDRESS__
+#define _INSERT_VECTOR_ANNOTATION
+#elif defined(__clang__)
+#if __has_feature(address_sanitizer)
+#define _INSERT_VECTOR_ANNOTATION
+#endif
+#endif
+#endif
+
 template <
     typename Tag,
     typename T,
@@ -411,7 +428,13 @@ template <
 struct MakeUnsafeVectorSetLargerSize : std::vector<T> {
   friend void unsafeVectorSetLargerSizeImpl(std::vector<T>& v, std::size_t n) {
     // v._Mypair._Myval2._Mylast += (n - v.size());
-    ((v.*Ptr_Mypair).*Ptr_Myval2).*Ptr_Mylast += (n - v.size());
+    const std::size_t n0 = v.size();
+    ((v.*Ptr_Mypair).*Ptr_Myval2).*Ptr_Mylast += (n - n0);
+#if _MSC_VER >= 1930 && defined(_INSERT_VECTOR_ANNOTATION)
+    if (_Asan_vector_should_annotate)
+      __sanitizer_annotate_contiguous_container(&v[0], &v[0] + v.capacity(),
+          &v[0] + n0, &v[0] + n);
+#endif
   }
 };
 
@@ -434,6 +457,11 @@ struct MakeUnsafeVectorSetLargerSize : std::vector<T> {
 
 } // namespace detail
 } // namespace folly
+
+#if defined(_MSC_VER)
+#undef _INSERT_STRING_ANNOTATION
+#undef _INSERT_VECTOR_ANNOTATION
+#endif
 
 #if defined(FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT)
 FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(char)
