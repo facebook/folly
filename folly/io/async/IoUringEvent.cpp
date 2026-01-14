@@ -81,7 +81,7 @@ void IoUringEvent::handlerReady(uint16_t events) noexcept {
   } else if (eventFd_) {
     if (!edgeTriggered_) {
       uint64_t val;
-      fileops::read(eventFd_->fd(), &val, sizeof(val));
+      std::ignore = fileops::read(eventFd_->fd(), &val, sizeof(val));
     }
     backend_.loopPoll();
 
