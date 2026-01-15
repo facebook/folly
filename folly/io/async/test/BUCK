@@ -1943,6 +1943,7 @@ fbcode_target(
     name = "io_benchmark",
     srcs = ["IOBenchmark.cpp"],
     headers = [],
+    target_compatible_with = ["ovr_config//os:linux"],
     deps = [
         "//folly:benchmark",
         "//folly:file_util",

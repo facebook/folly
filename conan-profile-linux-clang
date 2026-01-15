@@ -1,0 +1,14 @@
+[settings]
+os=Linux
+compiler=clang
+compiler.version=18
+compiler.libcxx=libc++
+compiler.cppstd=20
+build_type=Release
+# libunwind is a C library with clang ARM64 inline asm issues
+libunwind/*:compiler=gcc
+libunwind/*:compiler.version=13
+
+[conf]
+tools.build:compiler_executables={"c": "clang", "cpp": "clang++"}
+libunwind/*:tools.build:compiler_executables={"c": "gcc", "cpp": "g++"}
