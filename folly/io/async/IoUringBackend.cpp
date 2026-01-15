@@ -110,7 +110,7 @@ void SignalRegistry::notify(int sig) {
     int fd = notifyFd_.load();
     if (fd >= 0) {
       uint8_t sigNum = static_cast<uint8_t>(sig);
-      fileops::write(fd, &sigNum, 1);
+      std::ignore = fileops::write(fd, &sigNum, 1);
     }
   }
 }
