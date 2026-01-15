@@ -90,6 +90,28 @@ fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "errc_rich_error",
+    srcs = ["errc_rich_error.cpp"],
+    raw_headers = ["errc_rich_error.h"],
+    exported_deps = [
+        ":coded_rich_error",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "errc_rich_error",
+    srcs = ["errc_rich_error.cpp"],
+    headers = ["errc_rich_error.h"],
+    exported_deps = [
+        ":coded_rich_error",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "gtest_helpers",
     raw_headers = ["gtest_helpers.h"],
     exported_deps = [
