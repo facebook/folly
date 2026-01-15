@@ -260,8 +260,8 @@ class AsyncIoUringSocketTest
       public AsyncSocket::ConnectCallback {
  public:
   static IoUringBackend::Options ioOptions(TestParams const& p) {
-    auto options =
-        IoUringBackend::Options{}.setUseRegisteredFds(p.registerFd ? 64 : 0);
+    IoUringBackend::Options options;
+    options.setUseRegisteredFds(p.registerFd ? 64 : 0);
     if (p.manySmallBuffers) {
       options.setInitialProvidedBuffers(1024, 2000);
     } else {
@@ -273,7 +273,7 @@ class AsyncIoUringSocketTest
 
   EventBase::Options ioUringEbOptions() {
     return EventBase::Options{}.setBackendFactory(
-        [p = GetParam()]() -> std::unique_ptr<EventBaseBackendBase> {
+        [p = GetParam()]() mutable -> std::unique_ptr<EventBaseBackendBase> {
           return std::make_unique<IoUringBackend>(ioOptions(p));
         });
   }
@@ -1006,14 +1006,13 @@ TEST(AsyncIoUringSocketTest, RemoveNonBlockFlag) {
         fdPromise.setValue(fd);
       });
 
-  auto options =
-      IoUringBackend::Options{}
-          .setUseRegisteredFds(64)
-          .setInitialProvidedBuffers(64, 8)
-          .setDeferTaskRun(true);
+  auto options = IoUringBackend::Options{};
+  options.setUseRegisteredFds(64)
+      .setInitialProvidedBuffers(64, 8)
+      .setDeferTaskRun(true);
   EventBase evb{EventBase::Options{}.setBackendFactory(
       [&options]() -> std::unique_ptr<EventBaseBackendBase> {
-        return std::make_unique<IoUringBackend>(options);
+        return std::make_unique<IoUringBackend>(std::move(options));
       })};
 
   std::shared_ptr<AsyncServerSocket> serverSocket(

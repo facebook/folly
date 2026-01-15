@@ -23,7 +23,7 @@ TEST(IoUringBackendSetupTest, SetupPollNoGroup) {
   IoUringBackend::Options options;
   options.setFlags(IoUringBackend::Options::Flags::POLL_SQ);
 
-  IoUringBackend io(options);
+  IoUringBackend io(std::move(options));
 
   EXPECT_TRUE(io.params().flags & IORING_SETUP_CQSIZE);
   EXPECT_TRUE(io.params().flags & IORING_SETUP_SQPOLL);
@@ -32,13 +32,16 @@ TEST(IoUringBackendSetupTest, SetupPollNoGroup) {
 }
 
 TEST(IoUringBackendSetupTest, SetupPollWithGroup) {
-  IoUringBackend::Options options;
-  options.setFlags(IoUringBackend::Options::Flags::POLL_SQ)
-      .setSQGroupName("test group")
-      .setSQGroupNumThreads(1);
+  auto makeOptions = []() {
+    IoUringBackend::Options options;
+    options.setFlags(IoUringBackend::Options::Flags::POLL_SQ)
+        .setSQGroupName("test group")
+        .setSQGroupNumThreads(1);
+    return options;
+  };
 
-  IoUringBackend io1(options);
-  IoUringBackend io2(options);
+  IoUringBackend io1(makeOptions());
+  IoUringBackend io2(makeOptions());
 
   // We set up one thread for the group, so the first call should be normal...
   EXPECT_TRUE(io1.params().flags & IORING_SETUP_SQPOLL);
@@ -53,16 +56,19 @@ TEST(IoUringBackendSetupTest, SetupPollWithGroup) {
 }
 
 TEST(IoUringBackendSetupTest, SetupPollWithGroupAndCpu) {
-  IoUringBackend::Options options;
-  options.setFlags(IoUringBackend::Options::Flags::POLL_SQ)
-      .setSQGroupName("test group")
-      .setSQGroupNumThreads(2)
-      .setSQCpu(1)
-      .setSQCpu(0);
+  auto makeOptions = []() {
+    IoUringBackend::Options options;
+    options.setFlags(IoUringBackend::Options::Flags::POLL_SQ)
+        .setSQGroupName("test group")
+        .setSQGroupNumThreads(2)
+        .setSQCpu(1)
+        .setSQCpu(0);
+    return options;
+  };
 
-  IoUringBackend io1(options);
-  IoUringBackend io2(options);
-  IoUringBackend io3(options);
+  IoUringBackend io1(makeOptions());
+  IoUringBackend io2(makeOptions());
+  IoUringBackend io3(makeOptions());
 
   // The first call should create a thread with CPU affinity set.
   EXPECT_TRUE(io1.params().flags & IORING_SETUP_SQPOLL);

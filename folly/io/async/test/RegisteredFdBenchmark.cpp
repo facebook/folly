@@ -100,7 +100,7 @@ class BackendEventBase : public EventBase {
         .setMaxSubmit(256)
         .setMaxGet(128)
         .setUseRegisteredFds(useRegisteredFds);
-    return std::make_unique<IoUringBackend>(options);
+    return std::make_unique<IoUringBackend>(std::move(options));
   }
 };
 

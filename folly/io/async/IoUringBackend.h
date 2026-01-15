@@ -80,6 +80,11 @@ class IoUringBackend : public EventBaseBackendBase {
     };
 
     Options() = default;
+    Options(const Options&) = delete;
+    Options& operator=(const Options&) = delete;
+    Options(Options&&) = default;
+    Options& operator=(Options&&) = default;
+    ~Options() = default;
 
     Options& setCapacity(size_t v) {
       capacity = v;

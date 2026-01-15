@@ -169,8 +169,10 @@ class EventFD : public folly::EventHandler {
 std::unique_ptr<folly::EventBase> getEventBase(
     folly::PollIoBackend::Options opts) {
   try {
-    auto factory = [opts] {
-      return std::make_unique<folly::IoUringBackend>(opts);
+    auto optsPtr =
+        std::make_shared<folly::PollIoBackend::Options>(std::move(opts));
+    auto factory = [optsPtr]() mutable {
+      return std::make_unique<folly::IoUringBackend>(std::move(*optsPtr));
     };
     return std::make_unique<folly::EventBase>(
         folly::EventBase::Options().setBackendFactory(std::move(factory)));
@@ -188,7 +190,7 @@ std::unique_ptr<folly::EventBase> getEventBase() {
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
       .setUseRegisteredFds(0);
-  return getEventBase(options);
+  return getEventBase(std::move(options));
 }
 
 void testEventFD(bool overflow, bool persist) {
@@ -204,7 +206,7 @@ void testEventFD(bool overflow, bool persist) {
   options.setCapacity(kBackendCapacity)
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kNumEventFds * 2);
-  auto evbPtr = getEventBase(options);
+  auto evbPtr = getEventBase(std::move(options));
   SKIP_IF(!evbPtr) << "Backend not available";
 
   std::vector<std::unique_ptr<EventFD>> eventsVec;
@@ -234,7 +236,7 @@ void testInvalidFd(size_t numTotal, size_t numValid, size_t numInvalid) {
 
   folly::PollIoBackend::Options options;
   options.setCapacity(kBackendCapacity).setMaxSubmit(kBackendMaxSubmit);
-  auto evbPtr = getEventBase(options);
+  auto evbPtr = getEventBase(std::move(options));
   SKIP_IF(!evbPtr) << "Backend not available";
 
   std::vector<std::unique_ptr<EventFD>> eventsVec;
@@ -262,7 +264,7 @@ TEST(IoUringBackend, FailCreateNoRetry) {
     folly::IoUringBackend::Options options;
     options.setCapacity(256 * 1024);
     options.setMinCapacity(0);
-    folly::IoUringBackend backend(options);
+    folly::IoUringBackend backend(std::move(options));
   } catch (const folly::IoUringBackend::NotAvailable&) {
     bSuccess = false;
   }
@@ -276,7 +278,7 @@ TEST(IoUringBackend, SuccessCreateRetry) {
     options.setCapacity(256 * 1024);
     options.setMinCapacity(16);
     options.setMaxSubmit(8);
-    folly::IoUringBackend backend(options);
+    folly::IoUringBackend backend(std::move(options));
   } catch (const folly::IoUringBackend::NotAvailable&) {
     bSuccess = false;
   }
@@ -796,15 +798,22 @@ TEST(IoUringBackend, RegisteredFds) {
   std::unique_ptr<folly::IoUringBackend> backendNoReg;
 
   try {
-    folly::PollIoBackend::Options options;
-    options.setCapacity(kBackendCapacity)
+    folly::PollIoBackend::Options optionsReg;
+    optionsReg.setCapacity(kBackendCapacity)
         .setMaxSubmit(kBackendMaxSubmit)
         .setMaxGet(kBackendMaxGet)
         .setUseRegisteredFds(kBackendCapacity);
 
-    backendReg = std::make_unique<folly::IoUringBackend>(options);
-    options.setUseRegisteredFds(0);
-    backendNoReg = std::make_unique<folly::IoUringBackend>(options);
+    backendReg = std::make_unique<folly::IoUringBackend>(std::move(optionsReg));
+
+    folly::PollIoBackend::Options optionsNoReg;
+    optionsNoReg.setCapacity(kBackendCapacity)
+        .setMaxSubmit(kBackendMaxSubmit)
+        .setMaxGet(kBackendMaxGet)
+        .setUseRegisteredFds(0);
+
+    backendNoReg =
+        std::make_unique<folly::IoUringBackend>(std::move(optionsNoReg));
   } catch (const folly::IoUringBackend::NotAvailable&) {
   }
 
@@ -856,7 +865,7 @@ TEST(IoUringBackend, FileReadWrite) {
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
       .setUseRegisteredFds(0);
-  auto evbPtr = getEventBase(options);
+  auto evbPtr = getEventBase(std::move(options));
   SKIP_IF(!evbPtr) << "Backend not available";
 
   static constexpr size_t kNumBlocks = 512;
@@ -923,7 +932,7 @@ TEST(IoUringBackend, FileReadvWritev) {
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
       .setUseRegisteredFds(0);
-  auto evbPtr = getEventBase(options);
+  auto evbPtr = getEventBase(std::move(options));
   SKIP_IF(!evbPtr) << "Backend not available";
 
   static constexpr size_t kNumBlocks = 512;
@@ -1018,7 +1027,7 @@ TEST(IoUringBackend, FileReadMany) {
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
       .setUseRegisteredFds(0);
-  auto evbPtr = getEventBase(options);
+  auto evbPtr = getEventBase(std::move(options));
   SKIP_IF(!evbPtr) << "Backend not available";
 
   static constexpr size_t kNumBlocks = 8 * 1024;
@@ -1081,7 +1090,7 @@ TEST(IoUringBackend, FileWriteMany) {
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
       .setUseRegisteredFds(0);
-  auto evbPtr = getEventBase(options);
+  auto evbPtr = getEventBase(std::move(options));
   SKIP_IF(!evbPtr) << "Backend not available";
 
   static constexpr size_t kNumBlocks = 8 * 1024;
@@ -1167,7 +1176,7 @@ TEST(IoUringBackend, SendmsgRecvmsg) {
       .setMaxSubmit(kBackendMaxSubmit)
       .setMaxGet(kBackendMaxGet)
       .setUseRegisteredFds(0);
-  auto evbPtr = getEventBase(options);
+  auto evbPtr = getEventBase(std::move(options));
   SKIP_IF(!evbPtr) << "Backend not available";
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
@@ -1263,8 +1272,9 @@ TEST(IoUringBackend, ProvidedBuffers) {
   std::unique_ptr<folly::IoUringBackend> backend;
   try {
     /* 2 buffers of size 2 */
-    backend = std::make_unique<folly::IoUringBackend>(
-        folly::IoUringBackend::Options{}.setInitialProvidedBuffers(2, 2));
+    folly::IoUringBackend::Options options;
+    options.setInitialProvidedBuffers(2, 2);
+    backend = std::make_unique<folly::IoUringBackend>(std::move(options));
   } catch (folly::IoUringBackend::NotAvailable const&) {
   }
   SKIP_IF(!backend) << "Backend not available";
@@ -1354,10 +1364,9 @@ TEST(IoUringBackend, ProvidedBufferRingMultiple) {
   auto evbPtr = getEventBase();
   std::unique_ptr<folly::IoUringBackend> backend;
   try {
-    backend = std::make_unique<folly::IoUringBackend>(
-        folly::IoUringBackend::Options{}
-            .setInitialProvidedBuffers(2, 2)
-            .setProvidedBufRings(2));
+    folly::IoUringBackend::Options options;
+    options.setInitialProvidedBuffers(2, 2).setProvidedBufRings(2);
+    backend = std::make_unique<folly::IoUringBackend>(std::move(options));
   } catch (folly::IoUringBackend::NotAvailable const&) {
   }
   SKIP_IF(!backend) << "Backend not available";
@@ -1382,9 +1391,9 @@ TEST(IoUringBackend, ProvidedBufferRing) {
     std::vector<std::unique_ptr<folly::IOBuf>> bufs;
     std::unique_ptr<folly::IoUringBackend> backend;
     try {
-      backend = std::make_unique<folly::IoUringBackend>(
-          folly::IoUringBackend::Options{}.setInitialProvidedBuffers(
-              1024, kBuffs));
+      folly::IoUringBackend::Options options;
+      options.setInitialProvidedBuffers(1024, kBuffs);
+      backend = std::make_unique<folly::IoUringBackend>(std::move(options));
     } catch (folly::IoUringBackend::NotAvailable const&) {
       return;
     }
@@ -1408,9 +1417,9 @@ TEST(IoUringBackend, BigProvidedBufferRing) {
 
   std::unique_ptr<folly::IoUringBackend> backend;
   try {
-    backend = std::make_unique<folly::IoUringBackend>(
-        folly::IoUringBackend::Options{}.setInitialProvidedBuffers(
-            kSize, kBuffs));
+    folly::IoUringBackend::Options options;
+    options.setInitialProvidedBuffers(kSize, kBuffs);
+    backend = std::make_unique<folly::IoUringBackend>(std::move(options));
   } catch (folly::IoUringBackend::NotAvailable const&) {
     return;
   }
@@ -1429,10 +1438,11 @@ TEST(IoUringBackend, IncrementalBuffers) {
   std::unique_ptr<folly::IoUringBackend> backend;
   try {
     /* 2 buffers of size 32 bytes with incremental buffers enabled */
-    backend = std::make_unique<folly::IoUringBackend>(
-        folly::IoUringBackend::Options{}
-            .setInitialProvidedBuffers(32, 2) // 32 bytes per buffer, 2 buffers
-            .setEnableIncrementalBuffers(true));
+    folly::IoUringBackend::Options options;
+    options
+        .setInitialProvidedBuffers(32, 2) // 32 bytes per buffer, 2 buffers
+        .setEnableIncrementalBuffers(true);
+    backend = std::make_unique<folly::IoUringBackend>(std::move(options));
   } catch (folly::IoUringBackend::NotAvailable const&) {
   }
   SKIP_IF(!backend);
@@ -1680,10 +1690,11 @@ TEST(IoUringBackend, IncrementalBuffersEnobufTracking) {
   std::unique_ptr<folly::IoUringBackend> backend;
   try {
     /* 2 buffers of size 32 bytes with incremental buffers enabled */
-    backend = std::make_unique<folly::IoUringBackend>(
-        folly::IoUringBackend::Options{}
-            .setInitialProvidedBuffers(32, 2) // 32 bytes per buffer, 2 buffers
-            .setEnableIncrementalBuffers(true));
+    folly::IoUringBackend::Options options;
+    options
+        .setInitialProvidedBuffers(32, 2) // 32 bytes per buffer, 2 buffers
+        .setEnableIncrementalBuffers(true);
+    backend = std::make_unique<folly::IoUringBackend>(std::move(options));
   } catch (folly::IoUringBackend::NotAvailable const&) {
   }
   SKIP_IF(!backend);
@@ -1891,9 +1902,9 @@ TEST(IoUringBackend, ReceiveBundleTest) {
   auto evbPtr = getEventBase();
   std::unique_ptr<folly::IoUringBackend> backend;
   try {
-    backend = std::make_unique<folly::IoUringBackend>(
-        folly::IoUringBackend::Options{}.setInitialProvidedBuffers(
-            MSG_SIZE, 64));
+    folly::IoUringBackend::Options options;
+    options.setInitialProvidedBuffers(MSG_SIZE, 64);
+    backend = std::make_unique<folly::IoUringBackend>(std::move(options));
   } catch (folly::IoUringBackend::NotAvailable const&) {
   }
   SKIP_IF(!backend) << "Backend not available";
@@ -2046,8 +2057,9 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
   auto evbPtr = getEventBase();
   std::unique_ptr<folly::IoUringBackend> backend;
   try {
-    backend = std::make_unique<folly::IoUringBackend>(
-        folly::IoUringBackend::Options{}.setInitialProvidedBuffers(100, 5));
+    folly::IoUringBackend::Options options;
+    options.setInitialProvidedBuffers(100, 5);
+    backend = std::make_unique<folly::IoUringBackend>(std::move(options));
   } catch (folly::IoUringBackend::NotAvailable const&) {
   }
   SKIP_IF(!backend) << "Backend not available";
@@ -2164,8 +2176,9 @@ TEST(IoUringBackend, DeferTaskRun) {
 
   std::unique_ptr<folly::IoUringBackend> backend;
   std::thread([&]() {
-    backend = std::make_unique<folly::IoUringBackend>(
-        folly::IoUringBackend::Options().setDeferTaskRun(true));
+    folly::IoUringBackend::Options options;
+    options.setDeferTaskRun(true);
+    backend = std::make_unique<folly::IoUringBackend>(std::move(options));
     backend->submitNow(*new N(doneA));
     backend->loopPoll();
     maybeLeaks = new N(doneB);
@@ -2196,7 +2209,7 @@ struct IoUringBackendProvider : IoUringBackendProviderBase {
           .setMaxGet(kMaxGet)
           .setUseRegisteredFds(0);
 
-      return std::make_unique<folly::IoUringBackend>(options);
+      return std::make_unique<folly::IoUringBackend>(std::move(options));
     } catch (const IoUringBackend::NotAvailable&) {
       return nullptr;
     }
@@ -2211,7 +2224,7 @@ struct IoUringRegFdBackendProvider : IoUringBackendProviderBase {
           .setMaxSubmit(kMaxSubmit)
           .setMaxGet(kMaxGet)
           .setUseRegisteredFds(kCapacity);
-      return std::make_unique<folly::IoUringBackend>(options);
+      return std::make_unique<folly::IoUringBackend>(std::move(options));
     } catch (const IoUringBackend::NotAvailable&) {
       return nullptr;
     }
@@ -2228,7 +2241,7 @@ struct IoUringPollCQBackendProvider : IoUringBackendProviderBase {
           .setMaxGet(kMaxGet)
           .setUseRegisteredFds(0)
           .setFlags(folly::PollIoBackend::Options::Flags::POLL_CQ);
-      return std::make_unique<folly::IoUringBackend>(options);
+      return std::make_unique<folly::IoUringBackend>(std::move(options));
     } catch (const IoUringBackend::NotAvailable&) {
       return nullptr;
     }
@@ -2247,7 +2260,7 @@ struct IoUringPollSQCQBackendProvider : IoUringBackendProviderBase {
           .setFlags(
               folly::PollIoBackend::Options::Flags::POLL_SQ |
               folly::PollIoBackend::Options::Flags::POLL_CQ);
-      return std::make_unique<folly::IoUringBackend>(options);
+      return std::make_unique<folly::IoUringBackend>(std::move(options));
     } catch (const IoUringBackend::NotAvailable&) {
       return nullptr;
     }

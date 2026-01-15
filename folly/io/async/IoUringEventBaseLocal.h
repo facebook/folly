@@ -27,9 +27,7 @@ namespace folly {
 class IoUringEventBaseLocal {
  public:
   static void attach(
-      EventBase* evb,
-      IoUringBackend::Options const& options,
-      bool use_eventfd = true);
+      EventBase* evb, IoUringBackend::Options options, bool use_eventfd = true);
   static IoUringBackend* try_get(EventBase* evb);
 };
 

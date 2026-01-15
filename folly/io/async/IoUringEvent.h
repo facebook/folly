@@ -30,7 +30,7 @@ class IoUringEvent : public EventHandler, public EventBase::LoopCallback {
  public:
   IoUringEvent(
       folly::EventBase* eventBase,
-      IoUringBackend::Options const& o,
+      IoUringBackend::Options o,
       bool use_event_fd = true);
   ~IoUringEvent() override;
 

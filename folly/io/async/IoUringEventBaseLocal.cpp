@@ -50,7 +50,7 @@ IoUringBackend* IoUringEventBaseLocal::try_get(EventBase* evb) {
 }
 
 void IoUringEventBaseLocal::attach(
-    EventBase* evb, IoUringBackend::Options const& options, bool use_eventfd) {
+    EventBase* evb, IoUringBackend::Options options, bool use_eventfd) {
   evb->dcheckIsInEventBaseThread();
 
   // We tie into event base callbacks which need to be cleaned up earlier than
@@ -66,7 +66,8 @@ void IoUringEventBaseLocal::attach(
         "this event base already has a local io_uring attached");
   }
   local->emplace(
-      *evb, std::make_unique<IoUringEvent>(evb, options, use_eventfd));
+      *evb,
+      std::make_unique<IoUringEvent>(evb, std::move(options), use_eventfd));
 }
 
 } // namespace folly

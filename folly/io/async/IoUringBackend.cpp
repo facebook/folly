@@ -523,9 +523,9 @@ void IoUringBackend::processSignalReadIoSqe(
 }
 
 IoUringBackend::IoUringBackend(Options options)
-    : options_(options),
-      numEntries_(options.capacity),
-      fdRegistry_(ioRing_, options.registeredFds) {
+    : options_(std::move(options)),
+      numEntries_(options_.capacity),
+      fdRegistry_(ioRing_, options_.registeredFds) {
   // create the timer fd
   timerFd_ = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
   if (timerFd_ < 0) {
@@ -539,7 +539,7 @@ IoUringBackend::IoUringBackend(Options options)
   ::memset(&params_, 0, sizeof(params_));
 
   params_.flags |= IORING_SETUP_CQSIZE;
-  params_.cq_entries = options.capacity;
+  params_.cq_entries = options_.capacity;
 
 #if FOLLY_IO_URING_UP_TO_DATE
   if (options_.taskRunCoop) {
@@ -562,13 +562,14 @@ IoUringBackend::IoUringBackend(Options options)
     params_.flags |= IORING_SETUP_COOP_TASKRUN;
     params_.flags |= IORING_SETUP_SUBMIT_ALL;
 
-    napiId_ = options_.resolveNapiId(options.zcRxIfindex, options.zcRxQueueId);
+    napiId_ =
+        options_.resolveNapiId(options_.zcRxIfindex, options_.zcRxQueueId);
   }
 
   // poll SQ options
-  if (options.flags & Options::Flags::POLL_SQ) {
+  if (options_.flags & Options::Flags::POLL_SQ) {
     params_.flags |= IORING_SETUP_SQPOLL;
-    params_.sq_thread_idle = options.sqIdle.count();
+    params_.sq_thread_idle = options_.sqIdle.count();
   }
 
   SQGroupInfoRegistry::FDCreateFunc func = [&](struct io_uring_params& params) {
@@ -578,16 +579,17 @@ IoUringBackend::IoUringBackend(Options options)
           options_.sqeSize > 0 ? options_.sqeSize : 2 * options_.maxSubmit;
       int ret = ::io_uring_queue_init_params(sqeSize, &ioRing_, &params);
       if (ret) {
-        options.capacity /= 2;
-        if (options.minCapacity && (options.capacity >= options.minCapacity)) {
+        options_.capacity /= 2;
+        if (options_.minCapacity &&
+            (options_.capacity >= options_.minCapacity)) {
           LOG(INFO)
               << "io_uring_queue_init_params(" << 2 * options_.maxSubmit << ","
               << params.cq_entries << ") " << "failed errno = " << errno
               << ":\"" << folly::errnoStr(errno) << "\" " << this
-              << " retrying with capacity = " << options.capacity;
+              << " retrying with capacity = " << options_.capacity;
 
-          params_.cq_entries = options.capacity;
-          numEntries_ = options.capacity;
+          params_.cq_entries = options_.capacity;
+          numEntries_ = options_.capacity;
         } else {
           LOG(ERROR) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
                      << "," << params.cq_entries << ") " << "failed ret = "
@@ -612,7 +614,7 @@ IoUringBackend::IoUringBackend(Options options)
       options_.sqGroupNumThreads,
       func,
       params_,
-      options.sqCpus);
+      options_.sqCpus);
 
   if (!options_.sqGroupName.empty()) {
     LOG(INFO) << "Adding to SQ poll group \"" << options_.sqGroupName
@@ -730,7 +732,7 @@ bool IoUringBackend::isAvailable() {
     try {
       Options options;
       options.setCapacity(1024);
-      IoUringBackend backend(options);
+      IoUringBackend backend(std::move(options));
     } catch (const NotAvailable&) {
       sAvailable = false;
     }
@@ -1988,7 +1990,8 @@ static bool doKernelSupportsRecvmsgMultishot() {
 
     std::unique_ptr<S> s;
     IoUringBackend io(
-        IoUringBackend::Options().setInitialProvidedBuffers(1024, 1));
+        std::move(
+            IoUringBackend::Options().setInitialProvidedBuffers(1024, 1)));
     if (!io.bufferProvider()) {
       return false;
     }
