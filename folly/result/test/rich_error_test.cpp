@@ -17,8 +17,10 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/result/rich_error.h>
+#include <folly/result/rich_error_code.h>
 #include <folly/result/rich_exception_ptr.h>
 #include <folly/result/test/common.h>
+#include <folly/result/test/rich_error_codes.h>
 
 #include <stdexcept>
 
@@ -86,6 +88,7 @@ TEST(RichErrorTest, basics) {
   auto checkNoOpAPIs = [](auto& err) {
     EXPECT_TRUE(nullptr == err.next_error_for_enriched_message());
     EXPECT_TRUE(nullptr == err.underlying_error());
+    EXPECT_TRUE(std::nullopt == get_rich_error_code<A1>(err));
   };
   { // `partial_message()`, but no location.
     struct MyErr : rich_error_base {
@@ -128,6 +131,29 @@ TEST(RichErrorTest, basics) {
       "ErrWithLoc @ " + fmt::format("{}", err),
       fmt::format("{}", rich_error<ErrWithLoc>{}));
   }
+}
+
+// Real programs use `coded_rich_error`, `errc_rich_error`, etc.  So, those
+// tests have a lot more detail.
+TEST(RichErrorTest, fmtAndOstreamWithCode) {
+  struct ErrWithCode : rich_error_base {
+    C1 code_;
+    ErrWithCode() : code_{C1::ONE_C1} {}
+    constexpr C1 code() const { return code_; }
+    using folly_rich_error_codes_t = rich_error_bases_and_own_codes<
+        ErrWithCode,
+        tag_t<>,
+        &ErrWithCode::code>;
+    constexpr void retrieve_code(rich_error_code_query& c) const override {
+      return folly_rich_error_codes_t::retrieve_code(*this, c);
+    }
+    using folly_get_exception_hint_types = rich_error_hints<ErrWithCode>;
+  };
+  rich_error<ErrWithCode> err;
+  EXPECT_TRUE(std::nullopt == get_rich_error_code<A1>(err));
+  EXPECT_TRUE(C1::ONE_C1 == get_rich_error_code<C1>(err));
+  checkFormatOfErrAndRep<ErrWithCode, rich_error_base, std::exception>(
+      err, "ErrWithCode - folly::C1=101");
 }
 
 } // namespace folly

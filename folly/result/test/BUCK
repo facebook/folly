@@ -120,6 +120,8 @@ fbcode_target(
         "//folly/portability:gtest",
         "//folly/result:rich_error",
         "//folly/result:rich_error_base",
+        "//folly/result:rich_error_code",
+        "//folly/result/test:rich_error_codes",
     ],
 )
 
