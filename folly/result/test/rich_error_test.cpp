@@ -153,7 +153,7 @@ TEST(RichErrorTest, formatNullRichPtr) {
     rich_exception_ptr rep{std::logic_error{"bad"}};
     auto null_ptr = get_exception<Query>(rep);
     EXPECT_FALSE(null_ptr);
-    EXPECT_EQ(nullptr, null_ptr.raw_ptr());
+    EXPECT_EQ(nullptr, null_ptr.get());
     checkFormat(null_ptr, "\\[nullptr folly::rich_ptr_to_underlying_error\\]");
   };
   // Specialization 1: formattable non-rich error

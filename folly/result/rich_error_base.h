@@ -308,7 +308,7 @@ class rich_ptr_to_underlying_error {
   // Immovable for now, since the primary use-case is just:
   //   if (auto ex = get_exception<Ex>(rich_eptr)) { /*...*/ }
   // Escape hatch ideas:
-  //   - `Ex* raw_ptr()` below
+  //   - `Ex* get()` below
   //   - to delegate formatting to helper func, pass by `auto&`
   //
   // Future: Relax this if you have a compelling reason.  Some redundant
@@ -324,7 +324,7 @@ class rich_ptr_to_underlying_error {
 
   constexpr Ex& operator*() const { return *raw_ptr_; }
   constexpr Ex* operator->() const { return raw_ptr_; }
-  constexpr Ex* raw_ptr() const { return raw_ptr_; }
+  constexpr Ex* get() const { return raw_ptr_; }
 
   // Conversion to raw pointer lossy.  Make it explicit to avoid accidentally
   // shedding rich error formatting context -- propagation notes, source

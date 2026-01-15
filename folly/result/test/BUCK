@@ -54,6 +54,16 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
+    name = "rich_exception_ptr_check_get",
+    headers = ["rich_exception_ptr_check_get.h"],
+    exported_deps = [
+        ":rich_exception_ptr_common",
+        "//folly/result:rich_error",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
     name = "rich_exception_ptr_common",
     headers = ["rich_exception_ptr_common.h"],
     exported_deps = [
@@ -79,6 +89,16 @@ fbcode_target(
         ":rich_exception_ptr_common",
         "//folly/portability:gtest",
         "//folly/result:rich_error",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "rich_exception_ptr_owned_test",
+    srcs = ["rich_exception_ptr_owned_test.cpp"],
+    deps = [
+        ":rich_exception_ptr_check_get",
+        "//folly/portability:gtest",
     ],
 )
 
