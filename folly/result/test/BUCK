@@ -28,6 +28,20 @@ fbcode_target(
     ],
 )
 
+# Runs as a test by default, pass --benchmark=1 to run as benchmark.
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "result_coro_bench",
+    srcs = ["result_coro_bench.cpp"],
+    deps = [
+        ":common",
+        "//folly:benchmark",
+        "//folly:portability",
+        "//folly/lang:keep",
+        "//folly/result:coro",
+    ],
+)
+
 fbcode_target(
     _kind = cpp_unittest,
     name = "result_test",
@@ -94,6 +108,17 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
+    name = "rich_exception_ptr_misc_test",
+    srcs = ["rich_exception_ptr_misc_test.cpp"],
+    deps = [
+        ":rich_exception_ptr_check_get",
+        "//folly:operation_cancelled",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
     name = "rich_exception_ptr_owned_test",
     srcs = ["rich_exception_ptr_owned_test.cpp"],
     deps = [
@@ -104,35 +129,21 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
-    name = "try_test",
-    srcs = ["try_test.cpp"],
-    deps = [
-        "//folly/portability:gtest",
-        "//folly/result:try",
-    ],
-)
-
-# Runs as a test by default, pass --benchmark=1 to run as benchmark.
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "result_coro_bench",
-    srcs = ["result_coro_bench.cpp"],
-    deps = [
-        ":common",
-        "//folly:benchmark",
-        "//folly:portability",
-        "//folly/lang:keep",
-        "//folly/result:coro",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
     name = "rich_msg_test",
     srcs = ["rich_msg_test.cpp"],
     deps = [
         "//folly/portability:gtest",
         "//folly/result:rich_msg",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "try_test",
+    srcs = ["try_test.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/result:try",
     ],
 )
 
