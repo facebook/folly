@@ -20,10 +20,19 @@ namespace symbolizer {
 template <class Fn>
 const ElfPhdr* ElfFile::iterateProgramHeaders(Fn fn) const
     noexcept(is_nothrow_invocable_v<Fn&, ElfPhdr const&>) {
-  // there exist ELF binaries which execute correctly, but have invalid internal
-  // offset(s) to program/section headers; most probably due to invalid
-  // stripping of symbols
-  if (elfHeader().e_phoff + sizeof(ElfPhdr) >= length_) {
+  // Validate that all program headers fit within the mapped file bounds.
+  // There exist malformed ELF binaries with invalid header counts/offsets,
+  // which can cause SIGBUS when iterating past the valid mapped memory
+  // region. This code must handle malformed binaries without crashing.
+  size_t headersSize;
+  size_t headersEnd;
+  if (!folly::checked_mul(
+          &headersSize,
+          static_cast<size_t>(elfHeader().e_phnum),
+          sizeof(ElfPhdr)) ||
+      !folly::checked_add(
+          &headersEnd, static_cast<size_t>(elfHeader().e_phoff), headersSize) ||
+      headersEnd > length_) {
     return nullptr;
   }
 
@@ -39,10 +48,21 @@ const ElfPhdr* ElfFile::iterateProgramHeaders(Fn fn) const
 template <class Fn>
 const ElfShdr* ElfFile::iterateSections(Fn fn) const
     noexcept(is_nothrow_invocable_v<Fn&, ElfShdr const&>) {
-  // there exist ELF binaries which execute correctly, but have invalid internal
-  // offset(s) to program/section headers; most probably due to invalid
-  // stripping of symbols
-  if (elfHeader().e_shoff + sizeof(ElfShdr) >= length_) {
+  // Validate that all section headers fit within the mapped file bounds.
+  // There exist malformed ELF binaries with invalid header counts/offsets,
+  // which can cause SIGBUS when iterating past the valid mapped memory
+  // region. This code must handle malformed binaries without crashing.
+  size_t sectionsSize;
+  size_t sectionsEnd;
+  if (!folly::checked_mul(
+          &sectionsSize,
+          static_cast<size_t>(elfHeader().e_shnum),
+          sizeof(ElfShdr)) ||
+      !folly::checked_add(
+          &sectionsEnd,
+          static_cast<size_t>(elfHeader().e_shoff),
+          sectionsSize) ||
+      sectionsEnd > length_) {
     return nullptr;
   }
 
