@@ -70,6 +70,19 @@ fbcode_target(
     ],
 )
 
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "nestable_coded_rich_error_test",
+    srcs = ["nestable_coded_rich_error_test.cpp"],
+    deps = [
+        ":common",
+        ":rich_error_codes",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/result:nestable_coded_rich_error",
+    ],
+)
+
 # Runs as a test by default, pass --benchmark=1 to run as benchmark.
 fbcode_target(
     _kind = cpp_unittest,
