@@ -132,8 +132,14 @@ BENCHMARK(catching_result_func_error, iters) {
 
 } // namespace folly
 
-#endif // FOLLY_HAS_RESULT
-
 int main(int argc, char** argv) {
   return folly::benchmarkMain(argc, argv);
 }
+
+#else // FOLLY_HAS_RESULT
+
+int main() {
+  return -1;
+}
+
+#endif // FOLLY_HAS_RESULT
