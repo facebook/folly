@@ -68,6 +68,35 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
+    name = "rich_error_code_test",
+    srcs = ["rich_error_code_test.cpp"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":common",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/portability:gtest",
+        "//folly/result:immortal_rich_error",
+        "//folly/result:rich_error",
+        "//folly/result:rich_error_code",
+        "//folly/result/test:rich_error_codes",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "rich_error_codes",
+    headers = ["rich_error_codes.h"],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:traits",
+        "//folly/result:rich_error",
+        "//folly/result:rich_error_code",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
     name = "rich_error_test",
     srcs = ["rich_error_test.cpp"],
     deps = [

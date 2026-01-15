@@ -741,7 +741,32 @@ inline constexpr get_exception_fn<Ex> get_exception{};
 template <typename Ex = std::exception>
 inline constexpr get_mutable_exception_fn<Ex> get_mutable_exception{};
 
+class rich_error_base;
+class rich_error_code_query;
+
 namespace detail {
+
+// The template declaration in `rich_error_code.h` explains this setup, where
+// neither of the headers includes the other.
+//
+// CRITICALLY IMPORTANT: Do not add or change specializations of this template
+// without reading the corresponding docblock in `rich_error_code.h`, which
+// explains the ODR risk inherent in this setup, and why it is currently safe.
+template <typename T, typename /*SFINAE*/>
+struct get_rich_error_code_traits;
+template <typename T>
+struct get_rich_error_code_traits<
+    T,
+    std::enable_if_t<
+        !std::is_same_v<T, std::exception_ptr> &&
+        !std::is_base_of_v<rich_error_base, T>>> {
+  static constexpr void retrieve_code(
+      const T& container, rich_error_code_query& query) {
+    if (auto ex = folly::get_exception<folly::rich_error_base>(container)) {
+      ex->retrieve_code(query);
+    }
+  }
+};
 
 // The libc++ and cpplib implementations do not have a move constructor or a
 // move-assignment operator. To avoid refcount operations, we must improvise.
