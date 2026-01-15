@@ -47,11 +47,13 @@ std::ostream& operator<<(std::ostream& os, const rich_error_base& e) {
 void rich_error_base::format_to(fmt::appender& out) const {
   auto msg = partial_message();
   fmt::format_to(out, "{}", msg);
+  auto fmt_codes = all_codes_for_fmt(msg[0] ? " - " : "");
+  fmt::format_to(out, "{}", fmt_codes);
   auto sl = source_location();
   // See `rich_error_base::source_location()` for the rationale
   if (sl.file_name() != folly::source_location{}.file_name()) {
     // Omit the separator if the previous steps had no output.
-    if (msg[0]) {
+    if (msg[0] || fmt_codes.saw_code_) {
       fmt::format_to(out, " @ ");
     }
     fmt::format_to(out, "{}:{}", sl.file_name(), sl.line());
