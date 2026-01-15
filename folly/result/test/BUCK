@@ -115,6 +115,7 @@ fbcode_target(
     deps = [
         ":rich_exception_ptr_common",
         "//folly/portability:gtest",
+        "//folly/result:immortal_rich_error",
         "//folly/result:rich_error",
     ],
 )

@@ -18,6 +18,7 @@
 #include <folly/result/test/rich_exception_ptr_common.h>
 
 #include <folly/portability/GTest.h>
+#include <folly/result/immortal_rich_error.h>
 
 // Tests for fundamental operations: copy, move, assignment, equality.
 // `checkEptrRoundtrip` covers conversion to/from `std::exception_ptr`.
@@ -65,6 +66,7 @@ auto allRepVariants() {
   auto empty = REP{};
   auto RichErr1 = REP{rich_error<RichErr>{}};
   auto logic_err = REP{std::runtime_error{"test"}};
+  auto immortal = immortal_rich_error_t<REP, RichErr>{}.ptr();
   auto nothrow_oc = REP{StubNothrowOperationCancelled{}};
   // NOTE: Two strings are equal iff the REPs should be equal.
   return std::vector<std::pair<std::string, REP>>{
@@ -86,6 +88,13 @@ auto allRepVariants() {
       // Owned non-rich errors don't behave any differently.
       {"owned_logic_error", logic_err},
       {"owned_logic_error", checkEptrRoundtrip<REP>(logic_err)},
+
+      {"immortal_richerr", immortal},
+      // All immortals with the same args have the same object pointer.
+      {"immortal_richerr", immortal_rich_error_t<REP, RichErr>{}.ptr()},
+      // Round-tripping an immortal makes an "owned" pointer to its mutable
+      // singleton. BUT -- the comparison is smart and makes it compare equal.
+      {"immortal_richerr", checkEptrRoundtrip<REP>(immortal)},
 
       {"nothrow_oc", nothrow_oc},
       // This is an "owned" eptr, but it is logically equal to nothrow OC
