@@ -17,6 +17,20 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_unittest,
+    name = "coded_rich_error_test",
+    srcs = ["coded_rich_error_test.cpp"],
+    deps = [
+        ":common",
+        ":rich_error_codes",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/result:coded_rich_error",
+        "//folly/result:immortal_rich_error",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_library,
     name = "common",
     headers = ["common.h"],
