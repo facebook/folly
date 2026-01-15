@@ -32,10 +32,9 @@ class immortal_rich_error_t;
 
 namespace detail {
 
-// The "STUB_" prefix goes away when we integrate with `result.h`.
 // These are in `detail` since they're opt-build fallbacks for a debug-fatal.
-struct STUB_bad_result_access_error : public std::exception {};
-struct STUB_empty_result_error : public std::exception {};
+struct bad_result_access_error : public std::exception {};
+struct empty_result_error : public std::exception {};
 
 // Stub types that will be replaced by integrations with other folly/ types.
 //
@@ -316,14 +315,14 @@ class rich_exception_ptr_impl : private B {
         throw StubUsingUninitializedTry{};
       } else { // Match `result::value_or_throw()` behavior
         B::debug_assert("Cannot `throw_exception` on empty `Try`", false);
-        throw STUB_empty_result_error{};
+        throw empty_result_error{};
       }
     } else if (B::SMALL_VALUE_eq == bits) {
       if constexpr (PartOfTryImpl) {
         throw StubTryException{}; // Match `Try::exception()` behavior
       } else { // Match `result::non_value()` behavior
         B::debug_assert("Cannot `throw_exception` in value state", false);
-        throw STUB_bad_result_access_error{};
+        throw bad_result_access_error{};
       }
     }
     // Else: the above bit tests are intended to exhaustively cover all allowed

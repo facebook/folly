@@ -66,9 +66,9 @@ void checkEmptyTryToExceptionPtr(REP& rep) {
     EXPECT_DEATH({ REP{rep}.to_exception_ptr_slow(); }, re);
   } else {
     auto eptr1 = std::as_const(rep).to_exception_ptr_slow();
-    EXPECT_TRUE(get_exception<STUB_bad_result_access_error>(eptr1));
+    EXPECT_TRUE(get_exception<bad_result_access_error>(eptr1));
     auto eptr2 = REP{rep}.to_exception_ptr_slow();
-    EXPECT_TRUE(get_exception<STUB_bad_result_access_error>(eptr2));
+    EXPECT_TRUE(get_exception<bad_result_access_error>(eptr2));
   }
 
   // For `Try`, alway throw
@@ -88,7 +88,7 @@ void checkEmptyTry() {
     EXPECT_DEATH(
         { rep.throw_exception(); }, "Cannot `throw_exception` on empty `Try`");
   } else {
-    EXPECT_THROW(rep.throw_exception(), STUB_empty_result_error);
+    EXPECT_THROW(rep.throw_exception(), empty_result_error);
   }
   EXPECT_THROW( // For `Try`, always throws
       rep.throw_exception(try_rich_exception_ptr_private_t{}),
@@ -102,7 +102,7 @@ void checkEmptyTry() {
       std::exception,
       rich_error_base,
       StubUsingUninitializedTry,
-      STUB_empty_result_error>(rep);
+      empty_result_error>(rep);
 }
 
 TEST(RichExceptionPtr, emptyTry) {

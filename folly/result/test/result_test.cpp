@@ -23,6 +23,11 @@
 
 namespace folly {
 
+// Smoke test to ensure we use packed `rich_exception_ptr` on 64-bit Linux.
+static_assert(
+    sizeof(non_value_result) == sizeof(void*) || !kIsLinux ||
+    sizeof(void*) != 8);
+
 class MyError : public std::runtime_error {
   using std::runtime_error::runtime_error;
 };
@@ -627,7 +632,7 @@ TEST(Result, BadEmptyStateString) {
 FOLLY_PUSH_WARNING
 FOLLY_CLANG_DISABLE_WARNING("-Wunneeded-internal-declaration")
 bool is_bad_result_access(const non_value_result& nvr) {
-  return get_exception<detail::bad_result_access_error>(nvr);
+  return bool{get_exception<detail::bad_result_access_error>(nvr)};
 }
 FOLLY_POP_WARNING
 
@@ -942,6 +947,29 @@ TEST(Result, catch_all_returns_value) {
     return result_catch_all([]() -> uint8_t { return 129; });
   };
   ASSERT_EQ(129, fn().value_or_throw());
+}
+
+// Even though `non_value_result` is a `rich_exception_ptr`, the latter can
+// still be used as a value type.
+TEST(Result, of_rich_exception_ptr) {
+  result<rich_exception_ptr> rVal{rich_exception_ptr{MyError{"rep"}}};
+  EXPECT_TRUE(rVal.has_value());
+  EXPECT_STREQ("rep", get_exception<MyError>(rVal.value_or_throw())->what());
+
+  result<rich_exception_ptr> rErr{non_value_result{MyError{"err"}}};
+  EXPECT_FALSE(rErr.has_value());
+  EXPECT_STREQ("err", get_exception<MyError>(rErr)->what());
+}
+
+// This was more interesting when `non_value_result` wrapped `exception_wrapper`
+TEST(Result, of_exception_wrapper) {
+  result<exception_wrapper> rVal{make_exception_wrapper<MyError>("ew")};
+  EXPECT_TRUE(rVal.has_value());
+  EXPECT_EQ("folly::MyError: ew", rVal.value_or_throw().what());
+
+  result<exception_wrapper> rErr{non_value_result{MyError{"err"}}};
+  EXPECT_FALSE(rErr.has_value());
+  EXPECT_STREQ("err", get_exception<MyError>(rErr)->what());
 }
 
 } // namespace folly

@@ -37,7 +37,7 @@ const non_value_result& dfatal_get_bad_result_access_error() {
   return *r;
 }
 
-void fatal_if_exception_ptr_invalid(const std::exception_ptr& eptr) {
+void fatal_if_eptr_empty_or_stopped(const std::exception_ptr& eptr) {
   if (!eptr) {
     LOG(FATAL) << "`result` may not contain an empty `std::exception_ptr`";
   }

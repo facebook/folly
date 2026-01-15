@@ -219,6 +219,7 @@ non_fbcode_target(
     ],
     exported_deps = [
         "fbsource//xplat/folly/portability:gtest_prod",
+        ":rich_error_base",
         "//xplat/folly:exception_wrapper",
         "//xplat/folly:expected",
         "//xplat/folly:operation_cancelled",
@@ -237,6 +238,7 @@ fbcode_target(
         "//folly:indestructible",
     ],
     exported_deps = [
+        ":rich_error_base",
         "//folly:exception_wrapper",
         "//folly:expected",
         "//folly:operation_cancelled",

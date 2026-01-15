@@ -19,9 +19,11 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Expected.h>
 #include <folly/OperationCancelled.h>
+#include <folly/Portability.h> // FOLLY_HAS_RESULT
 #include <folly/lang/Align.h> // for `hardware_constructive_interference_size`
 #include <folly/lang/RValueReferenceWrapper.h>
 #include <folly/portability/GTestProd.h>
+#include <folly/result/rich_exception_ptr.h>
 
 /// Read the full docs in `result.md`!
 ///
@@ -129,12 +131,12 @@ namespace detail {
 //     erroneously (see `coro/Retry.h`).  So, even as we work to reduce
 //     reliance on this in anticipation of C++26 "stopped" semantics, for
 //     the foreseeable future it will "sort of work".
-void fatal_if_exception_ptr_invalid(const std::exception_ptr&);
-inline void dfatal_if_exception_ptr_invalid(const std::exception_ptr& eptr) {
-  // This code path could be hot in production code, so there's no branch or
-  // logging in opt builds.
+void fatal_if_eptr_empty_or_stopped(const std::exception_ptr&);
+inline void dfatal_if_eptr_empty_or_stopped(const std::exception_ptr& eptr) {
+  // This can be hot in production code (usage similar to `co_awaitTry`).  So,
+  // we choose to omit `if (RTTI-test-for-stopped) { log(); }` from opt builds.
   if constexpr (kIsDebug) {
-    fatal_if_exception_ptr_invalid(eptr);
+    fatal_if_eptr_empty_or_stopped(eptr);
   }
 }
 
@@ -148,40 +150,44 @@ struct result_private_t {};
 struct stopped_result_t {};
 inline constexpr stopped_result_t stopped_result;
 
-// NB: Copying `non_value_result` is ~25ns due to `std::exception_ptr` atomics.
+template <typename, typename, auto...>
+class immortal_rich_error_t;
+
+// NB: Copying `non_value_result` is ~7ns due to `std::exception_ptr` atomics.
 // Unlike `result`, it is implicitly copyable, because:
 //   - Common usage involves only rvalues, so the risk of perf bugs is low.
 //   - `folly::Expected` assumes that the error type is copyable, and it's
 //     too convenient an implementation not to use.
 class [[nodiscard]] non_value_result {
  private:
-  exception_wrapper ew_;
+  rich_exception_ptr rep_;
 
-  non_value_result(std::in_place_t, exception_wrapper ew)
-      : ew_(std::move(ew)) {}
+  non_value_result(std::in_place_t, std::exception_ptr&& eptr) noexcept
+      : rep_{rich_exception_ptr::from_exception_ptr_slow(std::move(eptr))} {}
 
-  template <typename Ex, typename EW>
-  static Ex* get_exception_impl(EW& ew) {
-    return folly::get_exception<Ex>(ew);
+  template <typename Ex, typename REP>
+  static Ex* get_exception_impl(REP& rep) {
+    return folly::get_exception<Ex>(rep);
   }
 
  public:
   /// Future: Fine to make implicit if a good use-case arises.
-  explicit non_value_result(stopped_result_t)
-      : ew_(make_exception_wrapper<OperationCancelled>()) {}
+  explicit non_value_result(stopped_result_t) : rep_{OperationCancelled{}} {}
   non_value_result& operator=(stopped_result_t) {
-    ew_ = make_exception_wrapper<OperationCancelled>();
+    rep_ = rich_exception_ptr{OperationCancelled{}};
     return *this;
   }
 
   /// Use this ctor to report errors from `result` coroutines & functions:
   ///   co_await non_value_result{YourError{...}};
   ///
+  /// Hot error paths should consider the `immortal_rich_error_t` ctor instead.
+  ///
   /// Design note: We do NOT want most users to construct `non_value_result`
   /// from type-erased `std::exception_ptr` or `folly::exception_wrapper`,
   /// because that would block RTTI-avoidance optimizations for `result` code.
   explicit non_value_result(std::derived_from<std::exception> auto ex)
-      : ew_(std::in_place, std::move(ex)) {
+      : rep_(std::move(ex)) {
     static_assert(
         !std::is_same_v<decltype(ex), OperationCancelled>,
         // The reasons for this are discussed in `folly/OperationCancelled.h`.
@@ -189,29 +195,66 @@ class [[nodiscard]] non_value_result {
         "your `result` or `non_value_result` via `stopped_result`");
   }
 
-  bool has_stopped() const { return ew_.get_exception<OperationCancelled>(); }
+  /// Immortal rich errors are MUCH cheaper to instantiate than dynamic
+  /// exceptions.  This does NOT allocate a `std::exception_ptr` or perform
+  /// atomic refcount ops.
+  ///
+  /// Usage for a `YourErr` taking a single `rich_msg` constructor argument:
+  ///    non_value_result{immortal_error<YourErr, "msg"_litv>}
+  ///
+  /// PS These are also usable in `constexpr` code, although the current header
+  /// will need some more `contexpr` annotation to take advantage of this.
+  template <typename T, auto... Args>
+  explicit non_value_result(
+      const immortal_rich_error_t<rich_exception_ptr, T, Args...>& err)
+      : rep_{err.ptr()} {}
+
+  bool has_stopped() const {
+    return bool{::folly::get_exception<OperationCancelled>(rep_)};
+  }
 
   // Implement the `folly::get_exception<Ex>(res)` protocol
   template <typename Ex>
-  const Ex* get_exception(get_exception_tag_t) const noexcept {
+  rich_ptr_to_underlying_error<const Ex> get_exception(
+      get_exception_tag_t) const noexcept {
     static_assert( // Note: `OperationCancelled` is final
         !std::is_same_v<const OperationCancelled, const Ex>,
         "Test results for cancellation via `has_stopped()`");
-    return folly::get_exception<Ex>(ew_);
+    return folly::get_exception<Ex>(rep_);
   }
   template <typename Ex>
-  Ex* get_mutable_exception(get_exception_tag_t) noexcept {
+  rich_ptr_to_underlying_error<Ex> get_mutable_exception(
+      get_exception_tag_t) noexcept {
     static_assert( // Note: `OperationCancelled` is final
         !std::is_same_v<const OperationCancelled, const Ex>,
         "Test results for cancellation via `has_stopped()`");
-    return folly::get_mutable_exception<Ex>(ew_);
+    return folly::get_mutable_exception<Ex>(rep_);
   }
 
-  // AVOID. Throw-catch costs upwards of 1usec.
-  [[noreturn]] void throw_exception() const {
-    detail::dfatal_if_exception_ptr_invalid(ew_.exception_ptr());
-    ew_.throw_exception();
-  }
+  // AVOID -- throwing costs upwards of 1usec.
+  //
+  // NB: Throwing empty eptr currently terminates even in non-debug builds,
+  // following `exception_wrapper`.  Our `dfatal_if_eptr_empty_or_stopped`
+  // checks are intended to make such problems less likely, but ...  if
+  // production reliability issues trace back to this decision, it could be
+  // made to throw a private sigil instead.
+  //
+  // While user code should not intentionally rethrow `OperationCancelled` on
+  // this path, we do NOT dfatal on rethrowing `OperationCancelled` here, in
+  // contrast to `to_exception_ptr_slow()`. The motivation is:
+  //
+  //   - `result` is intended to become the next internal representation
+  //     for `folly::coro` task results.
+  //
+  //   - `value_or_throw()` is the only reasonable bridge from coro code into
+  //     non-coro code (see `blocking_wait`, `SemiFuture` conversions, etc).
+  //     On exiting coro / result code, there is no real alternative to
+  //     propagating cancellation as an exception.
+  //
+  //   - Internally, `value_or_throw()` uses `throw_exception()`.  And it would
+  //     be incoherent for one, but not the other, to be OK rethrowing
+  //     `OperationCancelled`.
+  [[noreturn]] void throw_exception() const { rep_.throw_exception(); }
 
   /// AVOID.  Use `non_value_result(YourException{...})` if at all possible.
   /// Add a `std::in_place_type_t<Ex>` constructor if needed.
@@ -220,12 +263,12 @@ class [[nodiscard]] non_value_result {
   /// for `result`-first code:
   ///   - It is a debug-fatal invariant violation to pass in an `exception_ptr`
   ///     that is empty or has `OperationCancelled`.
-  ///     See the `dfatal_if_exception_ptr_invalid` doc.
+  ///     See the `dfatal_if_eptr_empty_or_stopped` doc.
   ///   - Not knowing the static exception type blocks optimizations that can
   ///     otherwise help avoid RTTI on error paths.
   static non_value_result from_exception_ptr_slow(std::exception_ptr eptr) {
-    detail::dfatal_if_exception_ptr_invalid(eptr);
-    return non_value_result{std::in_place, exception_wrapper{std::move(eptr)}};
+    detail::dfatal_if_eptr_empty_or_stopped(eptr);
+    return non_value_result{std::in_place, std::move(eptr)};
   }
 
   /// AVOID. Use `folly::get_exception<Ex>(r)` to check for specific exceptions.
@@ -236,8 +279,9 @@ class [[nodiscard]] non_value_result {
   ///
   /// See `from_exception_ptr_slow` for the downsides and the rationale.
   std::exception_ptr to_exception_ptr_slow() && {
-    detail::dfatal_if_exception_ptr_invalid(ew_.exception_ptr());
-    return std::move(ew_).exception_ptr();
+    auto eptr = std::move(rep_).to_exception_ptr_slow();
+    detail::dfatal_if_eptr_empty_or_stopped(eptr);
+    return detail::extract_exception_ptr(std::move(eptr));
   }
 
   /// AVOID.  Most code should use `result` coros, which catch most exceptions
@@ -245,13 +289,12 @@ class [[nodiscard]] non_value_result {
   static non_value_result from_current_exception() {
     // Something was already thrown, and the user likely wants a result, so
     // it's appropriate to accept even `OperationCancelled` here.
-    return non_value_result::make_legacy_error_or_cancellation_slow(
-        detail::result_private_t{}, exception_wrapper{current_exception()});
+    return {std::in_place, current_exception()};
   }
 
   friend inline bool operator==(
       const non_value_result& lhs, const non_value_result& rhs) {
-    return lhs.ew_ == rhs.ew_;
+    return lhs.rep_ == rhs.rep_;
   }
 
   // DO NOT USE these "legacy" functions outside of `folly` internals. Instead:
@@ -269,13 +312,33 @@ class [[nodiscard]] non_value_result {
   // eagerly eagerly testing whether it contains `OperationCancelled`.
   static non_value_result make_legacy_error_or_cancellation_slow(
       detail::result_private_t, exception_wrapper ew) {
-    return {std::in_place, std::move(ew)};
+    return {std::in_place, std::move(ew).exception_ptr()};
   }
   exception_wrapper get_legacy_error_or_cancellation_slow(
       detail::result_private_t) && {
-    return std::move(ew_);
+    return exception_wrapper{std::move(rep_).to_exception_ptr_slow()};
+  }
+
+  // IMPORTANT: We do NOT want to provide general by-reference access to the
+  // `rich_exception_ptr` because that would e.g. put in jeopardy our ability
+  // to do `future_enrich_in_place.md`.
+  //
+  // In particular, it is an invariant violation to call `release_...` and
+  // use the resulting reference for anything other than:
+  //   - moving out the value (if you need a copy, add an explicit
+  //     `copy_rich_exception_ptr`)
+  //   - doing nothing (i.e. deciding NOT to move the value)
+  // You are not to call `const` or mutable accessors on the resulting REP.  If
+  // you need some such form of access, you should likely extend this API.
+  rich_exception_ptr&& release_rich_exception_ptr() && {
+    return std::move(rep_);
   }
 };
+static_assert(
+    detail::rich_exception_ptr_packed_storage::is_supported
+        ? sizeof(non_value_result) == sizeof(std::exception_ptr)
+        : sizeof(non_value_result) ==
+            sizeof(std::exception_ptr) + sizeof(void*));
 
 template <typename T = void>
 class result;
@@ -287,12 +350,6 @@ struct result_promise_return;
 template <typename, typename = void>
 struct result_promise;
 struct result_await_suspender;
-
-// These errors are `detail` because they are only exposed on invariant
-// violations in opt builds -- they are NOT part of the public API.
-struct bad_result_access_error : public std::exception {};
-// Future: Remove this one when we can use never-empty `std::expected`.
-struct empty_result_error : public std::exception {};
 
 // Future: To mitigate the risk of `bad_alloc` at runtime, these singletons
 // should be eagerly instantiated at program start.  One way is to have a
@@ -530,18 +587,20 @@ class result_crtp {
 
   // Implement the `folly::get_exception<Ex>(res)` protocol
   template <typename Ex>
-  Ex* get_mutable_exception(get_exception_tag_t) noexcept {
+  rich_ptr_to_underlying_error<const Ex> get_exception(
+      get_exception_tag_t) const noexcept {
     if (!exp_.hasError()) {
-      return nullptr;
-    }
-    return folly::get_mutable_exception<Ex>(exp_.error());
-  }
-  template <typename Ex>
-  const Ex* get_exception(get_exception_tag_t) const noexcept {
-    if (!exp_.hasError()) {
-      return nullptr;
+      return rich_ptr_to_underlying_error<const Ex>{nullptr};
     }
     return folly::get_exception<Ex>(exp_.error());
+  }
+  template <typename Ex>
+  rich_ptr_to_underlying_error<Ex> get_mutable_exception(
+      get_exception_tag_t) noexcept {
+    if (!exp_.hasError()) {
+      return rich_ptr_to_underlying_error<Ex>{nullptr};
+    }
+    return folly::get_mutable_exception<Ex>(exp_.error());
   }
 };
 

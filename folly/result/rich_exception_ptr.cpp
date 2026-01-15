@@ -27,7 +27,7 @@ const std::exception_ptr& bad_result_access_singleton() {
     std::exception_ptr value;
     Storage()
         : value{make_exception_ptr_with(
-              std::in_place_type<STUB_bad_result_access_error>)} {}
+              std::in_place_type<bad_result_access_error>)} {}
     ~Storage() {}
   };
 
