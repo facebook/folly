@@ -28,6 +28,19 @@ fbcode_target(
     ],
 )
 
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "immortal_rich_error_test",
+    srcs = ["immortal_rich_error_test.cpp"],
+    deps = [
+        ":common",
+        "//folly/portability:gtest",
+        "//folly/result:immortal_rich_error",
+        "//folly/result:rich_error",
+        "//folly/result:rich_msg",
+    ],
+)
+
 # Runs as a test by default, pass --benchmark=1 to run as benchmark.
 fbcode_target(
     _kind = cpp_unittest,

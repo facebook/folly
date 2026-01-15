@@ -112,6 +112,30 @@ fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "immortal_rich_error",
+    raw_headers = ["immortal_rich_error.h"],
+    exported_deps = [
+        ":rich_error_base",
+        "//xplat/folly/result/detail:ptr_immortal_exception_storage",
+        "//xplat/folly/result/detail:rich_error_common",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "immortal_rich_error",
+    headers = ["immortal_rich_error.h"],
+    exported_deps = [
+        ":rich_error_base",
+        "//folly/result/detail:ptr_immortal_exception_storage",
+        "//folly/result/detail:rich_error_common",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "result",
     srcs = ["result.cpp"],
     raw_headers = ["result.h"],
