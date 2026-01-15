@@ -79,6 +79,21 @@ fbcode_target(
     ],
 )
 
+# Runs as a test by default, pass --benchmark=1 to run as benchmark.
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "rich_exception_ptr_bench",
+    srcs = ["rich_exception_ptr_bench.cpp"],
+    deps = [
+        ":common",
+        "//folly:benchmark",
+        "//folly:exception_wrapper",
+        "//folly/result:immortal_rich_error",
+        "//folly/result:rich_error",
+        "//folly/result:rich_error_base",
+    ],
+)
+
 fbcode_target(
     _kind = cpp_library,
     name = "rich_exception_ptr_check_get",
