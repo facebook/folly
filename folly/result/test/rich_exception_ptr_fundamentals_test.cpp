@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/result/enrich_non_value.h>
 #include <folly/result/rich_error.h>
 #include <folly/result/test/rich_exception_ptr_common.h>
 
@@ -35,6 +36,26 @@ namespace folly::detail {
 //  - by checking some core invariants in `checkEptrRoundtrip`.
 template <typename REP>
 REP checkEptrRoundtrip(const auto& original_src) {
+  // Non-aliasing check -- bugs in REP could cause mutations in copies to
+  // affect `original_src`.  To detect that, serialize some of its state.
+  //
+  // We don't serialize the raw pointers from  any `get_exception<>()` query,
+  // since for immortals these pointers will differ after a round-trip.
+  //
+  // Future: It'd be nice to format `get_rich_error()` and
+  // `get_exception<std:exception>()`, but there's currently no rendering
+  // modifier to omit the enrichment, whereas this comparison should be
+  // transparent to enrichment.  Also format the REP itself, when available.
+  auto serialize = [](const auto& rep) {
+    auto rex = get_rich_error(rep).get();
+    return std::tuple{
+        rex ? fmt::format("{}", rex->all_codes_for_fmt()) : std::string{},
+        rex ? rex->partial_message() : "",
+        rex ? rex->source_location().line() : source_location{}.line(),
+        rep.to_exception_ptr_slow(),
+        rep == REP{}};
+  };
+  auto original_serialized = serialize(original_src);
   try_rich_exception_ptr_private_t priv;
   { // Copy conversion
     REP src{original_src};
@@ -44,6 +65,7 @@ REP checkEptrRoundtrip(const auto& original_src) {
     EXPECT_EQ( // `Try` flavor
         src, REP::from_exception_ptr_slow(src.to_exception_ptr_slow(priv)));
     EXPECT_EQ(original_src, src); // src unchanged after copy
+    EXPECT_EQ(original_serialized, serialize(src));
   }
 
   auto checkMoveConversion = [&](auto... args) {
@@ -52,33 +74,24 @@ REP checkEptrRoundtrip(const auto& original_src) {
         std::move(src).to_exception_ptr_slow(args...));
     EXPECT_EQ(original_src, dst);
     EXPECT_EQ(rich_exception_ptr{}, src); // NOLINT(bugprone-use-after-move)
+    EXPECT_EQ(original_serialized, serialize(dst));
   };
   checkMoveConversion(); // `result` flavor
   checkMoveConversion(priv); // `Try` flavor
 
+  EXPECT_EQ(original_serialized, serialize(original_src));
+
   return REP::from_exception_ptr_slow(original_src.to_exception_ptr_slow());
 }
 
-// Helps test copy/move construction, assignment, and equality.
-// Indirectly (via `checkEptrRoundtrip`) tests `std::exception_ptr` conversion.
 template <typename REP>
-auto allRepVariants() {
-  auto empty = REP{};
+auto allEnrichableRepVariants() {
   auto RichErr1 = REP{rich_error<RichErr>{}};
   auto logic_err = REP{std::runtime_error{"test"}};
   auto immortal = immortal_rich_error_t<REP, RichErr>{}.ptr();
   auto nothrow_oc = REP{StubNothrowOperationCancelled{}};
   // NOTE: Two strings are equal iff the REPs should be equal.
   return std::vector<std::pair<std::string, REP>>{
-      {"empty_try", REP{make_empty_try_t{}}},
-
-      {"empty", empty},
-      // NB: This looks "owned", but ... it is not currently possible to make
-      // an "owned" REP with an empty `std::exception_ptr`. This ctor
-      // explicitly maps `eptr{}` to be the same bit-state as `REP{}`.
-      {"empty", REP::from_exception_ptr_slow(std::exception_ptr{})},
-      {"empty", checkEptrRoundtrip<REP>(empty)},
-
       {"owned_richerr1", RichErr1},
       {"owned_richerr1", checkEptrRoundtrip<REP>(RichErr1)},
 
@@ -98,7 +111,57 @@ auto allRepVariants() {
 
       {"nothrow_oc", nothrow_oc},
       // This is an "owned" eptr, but it is logically equal to nothrow OC
-      {"nothrow_oc", checkEptrRoundtrip<REP>(nothrow_oc)}};
+      {"nothrow_oc", checkEptrRoundtrip<REP>(nothrow_oc)},
+  };
+}
+
+// Helps test copy/move construction, assignment, and equality.
+// Indirectly (via `checkEptrRoundtrip`) tests `std::exception_ptr` conversion.
+template <typename REP>
+auto allRepVariants() {
+  auto reps = allEnrichableRepVariants<REP>();
+  // Enrich the whole test matrix: for each base variant, add enriched versions.
+  // Enriched errors wrap an underlying error with additional context.
+  // The inner type must be `rich_exception_ptr` as required by
+  // `underlying_error()`.`
+  if constexpr (std::is_same_v<rich_exception_ptr, REP>) {
+    auto repsToEnrich = reps;
+    for (auto& [key, rep] : repsToEnrich) {
+      auto enriched = REP{
+          rich_error<enriched_non_value>{std::move(rep), rich_msg{"enriched"}}};
+      // Same key, since enrichment is transparent
+      reps.emplace_back(key, enriched);
+      reps.emplace_back(key, checkEptrRoundtrip<REP>(enriched));
+    }
+  } else { // rich_exception_ptr != REP
+    auto repsToEnrich = allEnrichableRepVariants<rich_exception_ptr>();
+    for (auto& [key, rep] : repsToEnrich) {
+      auto enriched = REP{
+          rich_error<enriched_non_value>{std::move(rep), rich_msg{"enriched"}}};
+      // Different key -- although enrichment is transparent, the different
+      // types `rich_exception_ptr != REP` guarantee these won't compare equal.
+      reps.emplace_back("enriched_" + key, enriched);
+      reps.emplace_back("enriched_" + key, checkEptrRoundtrip<REP>(enriched));
+    }
+  }
+  // Avoid enriching empty-eptr -- `enriched_non_value` currently has a
+  // debug-assert against this usage.  If we change our mind, then move
+  // empty-eptr into `allEnrichableRepVariants` to add coverage.
+  {
+    auto empty = REP{};
+    reps.emplace_back("empty", empty);
+    // NB: This looks "owned", but ... it is not currently possible to make
+    // an "owned" REP with an empty `std::exception_ptr`. This ctor
+    // explicitly maps `eptr{}` to be the same bit-state as `REP{}`.
+    reps.emplace_back(
+        "empty", REP::from_exception_ptr_slow(std::exception_ptr{}));
+    reps.emplace_back("empty", checkEptrRoundtrip<REP>(empty));
+  }
+  // Aoid `checkEptrRoundtrip` on empty-try -- it doesn't support
+  // `to_exception_ptr_slow` (by design).  We could test enriching empty-try
+  // (as in the loops above), but that should never be used, so omit it.
+  reps.emplace_back("empty_try", REP{make_empty_try_t{}});
+  return reps;
 }
 
 template <typename REP>
@@ -137,8 +200,8 @@ void checkAllAssignments() {
   const auto reps = allRepVariants<REP>();
   for (size_t i = 0; i < reps.size(); ++i) {
     for (size_t j = 0; j < reps.size(); ++j) {
-      const auto& [_, original_src] = reps[i];
-      const auto& [__, original_dst] = reps[j];
+      const auto& [unused1, original_src] = reps[i];
+      const auto& [unused2, original_dst] = reps[j];
       // Moved-from is empty, except for "empty try".
       auto checkMovedOut = [&](auto& rep) {
         if (REP{make_empty_try_t{}} == original_src) {
