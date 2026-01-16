@@ -29,6 +29,15 @@
 #include <iterator>
 #include <fmt/core.h>
 
+// Old `fmt` isn't actually supported, but ... it needs to build :(
+#if FMT_VERSION < 80000
+namespace fmt {
+using appender = std::back_insert_iterator<fmt::internal::buffer<char>>;
+template <typename T>
+struct is_formattable;
+} // namespace fmt
+#endif
+
 #if FOLLY_HAS_RESULT
 
 namespace folly {
@@ -200,12 +209,12 @@ class rich_error_base {
     const char* pre_separator_;
     bool saw_code_{false}; // formatted at least one code?
     constexpr fmt_all_codes_t(
-        const rich_error_base& e [[clang::lifetimebound]],
+        const rich_error_base& e [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]],
         const char* pre_separator)
         : error_ref_(e), pre_separator_(pre_separator) {}
   };
   fmt_all_codes_t all_codes_for_fmt(const char* pre_separator = "") const
-      [[clang::lifetimebound]] {
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return fmt_all_codes_t{*this, pre_separator};
   }
 
