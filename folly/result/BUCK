@@ -90,6 +90,35 @@ fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "enrich_non_value",
+    srcs = ["enrich_non_value.cpp"],
+    raw_headers = ["enrich_non_value.h"],
+    exported_deps = [
+        ":result",
+        ":rich_error",
+        "//xplat/folly/lang:safe_assert",
+        "//xplat/folly/result:rich_msg",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "enrich_non_value",
+    srcs = ["enrich_non_value.cpp"],
+    headers = ["enrich_non_value.h"],
+    exported_deps = [
+        ":result",
+        ":rich_error",
+        "//folly:portability",
+        "//folly/lang:safe_assert",
+        "//folly/result:rich_msg",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "errc_rich_error",
     srcs = ["errc_rich_error.cpp"],
     raw_headers = ["errc_rich_error.h"],

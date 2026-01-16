@@ -44,6 +44,20 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
+    name = "enrich_non_value_test",
+    srcs = ["enrich_non_value_test.cpp"],
+    deps = [
+        ":common",
+        ":rich_error_codes",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/result:coded_rich_error",
+        "//folly/result:enrich_non_value",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
     name = "errc_rich_error_test",
     srcs = ["errc_rich_error_test.cpp"],
     deps = [
