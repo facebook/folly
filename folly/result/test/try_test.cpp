@@ -24,7 +24,9 @@ namespace folly {
 struct ThrowingMove {
   ThrowingMove(const ThrowingMove&) = default;
   ThrowingMove& operator=(const ThrowingMove&) = default;
+  // NOLINTNEXTLINE(performance-noexcept-move-constructor)
   ThrowingMove(ThrowingMove&&) {}
+  // NOLINTNEXTLINE(performance-noexcept-move-constructor)
   ThrowingMove& operator=(ThrowingMove&&) { return *this; }
 };
 struct NothrowMove {};

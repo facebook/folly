@@ -384,11 +384,11 @@ struct rich_exception_ptr_small_value_aligned_wrapped_pointer {
   static_assert(sizeof(T) == sizeof(uintptr_t));
   static_assert(alignof(T) >= alignof(uintptr_t));
   static uintptr_t to_mangled_uintptr(T& t) {
-    return *reinterpret_cast<uintptr_t*>(&t);
+    return *std::launder(reinterpret_cast<uintptr_t*>(&t));
   }
   static uintptr_t unmangle_uintptr(uintptr_t n) { return n; }
   static T& aligned_unmangled_as_ref(uintptr_t* n) {
-    return *reinterpret_cast<T*>(n);
+    return *std::launder(reinterpret_cast<T*>(n));
   }
 };
 
@@ -427,9 +427,9 @@ struct rich_exception_ptr_small_value_traits<std::unique_ptr<T>>
 template <typename T>
 // Future: We would be fine with any "bitwise-relocatable" type.  That is, if
 // we `memcpy` the `sizeof(T)` bytes from its current location to another
-// `alignas(alignof(T))` location, then we can safely treat the destination
-// bytes as the new location of the object, as-if it was move-constructed in
-// the new location, and the old moved-out object was destructed.  Compare:
+// `alignas(T)` location, then we can safely treat the destination bytes as the
+// new location of the object, as-if it was move-constructed in the new
+// location, and the old moved-out object was destructed.  Compare:
 //   - `std::unique_ptr<T>` is bitwise-relocatable since the type's internal
 //     validity in no way depends on its address.
 //   - `std::list<T>` may NOT be bitwise-relocatable, since it is often

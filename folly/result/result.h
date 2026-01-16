@@ -464,7 +464,7 @@ class result_crtp {
   /// plumbing for function-result-or-error, and
   ///   - Copying `T` is almost always a performance bug in this setting, but
   ///     see the below carve-out for "cheap-to-copy `T`".
-  ///   - Copying `std::exception_ptr` also has atomic costs (~25ns).
+  ///   - Copying `std::exception_ptr` also has atomic costs (~7s).
   ///
   /// ## Copies are restricted when `T` is a reference
   ///
@@ -476,12 +476,18 @@ class result_crtp {
   ///   - from `result<V&>&`, since you already have mutable access
   ///   - from `const result<const V&>&`, since the inner `const` is not
   ///     lost during the copy.
-  Derived copy() {
+  Derived copy()
+    requires(
+        !std::is_rvalue_reference_v<T> &&
+        (std::is_void_v<T> || std::is_copy_constructible_v<T>))
+  {
     return Derived{private_copy_t{}, static_cast<const Derived&>(*this)};
   }
   Derived copy() const
     requires(
-        !std::is_reference_v<T> || std::is_const_v<std::remove_reference_t<T>>)
+        (!std::is_reference_v<T> ||
+         std::is_const_v<std::remove_reference_t<T>>) &&
+        (std::is_void_v<T> || std::is_copy_constructible_v<T>))
   {
     return Derived{private_copy_t{}, static_cast<const Derived&>(*this)};
   }
@@ -551,7 +557,7 @@ class result_crtp {
   ///   - Calling `non_value()` when `has_value() == true` -- UB in
   ///     `std::expected`
   /// With folly-internal optimizations (see `extract_exception_ptr`), moving
-  /// `std::exception_ptr` takes 0.5ns, vs ~25ns for a copy.
+  /// `std::exception_ptr` takes 0.5ns, vs ~7ns for a copy.
   ///
   /// If there is a good use-case for mutating the non-value state inside
   /// `result`, we could offer `set_non_value()` with different semantics.
@@ -710,7 +716,7 @@ result final : public detail::result_crtp<result<T>, T> {
   /// The test `simpleConversion` shows why this was made implicit.
   ///
   /// In hot code, prefer to convert from an rvalue (move conversion), because
-  /// that avoids the ~25ns atomic overhead of copying the `std::exception_ptr`.
+  /// that avoids the ~7ns atomic overhead of copying the `std::exception_ptr`.
   template <class Arg, typename ResultT = std::remove_cvref_t<Arg>>
     requires(
         !std::is_same_v<ResultT, result> && // Not a move/copy ctor

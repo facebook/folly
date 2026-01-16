@@ -105,13 +105,19 @@ class value_only_result_crtp {
   value_only_result_crtp& operator=(value_only_result_crtp&&) = default;
 
   /// Explicit `.copy()` method instead of a standard copy constructor.
-  Derived copy() {
+  Derived copy()
+    requires(
+        !std::is_rvalue_reference_v<T> &&
+        (std::is_void_v<T> || std::is_copy_constructible_v<T>))
+  {
     return Derived{private_copy_t{}, static_cast<const Derived&>(*this)};
   }
   // The `const`-safety constraints are explained on `result::copy`.
   Derived copy() const
     requires(
-        !std::is_reference_v<T> || std::is_const_v<std::remove_reference_t<T>>)
+        (!std::is_reference_v<T> ||
+         std::is_const_v<std::remove_reference_t<T>>) &&
+        (std::is_void_v<T> || std::is_copy_constructible_v<T>))
   {
     return Derived{private_copy_t{}, static_cast<const Derived&>(*this)};
   }

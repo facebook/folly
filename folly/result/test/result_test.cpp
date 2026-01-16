@@ -23,6 +23,32 @@
 
 namespace folly {
 
+// If you came here, you probably want `result` to have `->` or `*` operators,
+// or `.value()`, just like `folly::Try` or `std::expected`.  This comment will
+// try to dissuade you.
+//
+// Instead, prefer to use `co_await or_unwind()`.  You could even add a macro
+// to your `.cpp` files for brevity:
+//
+//   #define OR_UNWIND(...) (co_await or_unwind(__VA_ARGS__))
+//
+// So, why NOT have throwing operators?  Many teams that use `result` use it
+// because they systematically want to avoid throwing, either for reasons of
+// `throw` performance, or for explicitness, or because of the safety problems
+// with throwing in async code (un-awaited work may lead to use-after-free).
+//
+// In all of those applications, adding a throwing dereference operator is very
+// counterproductive, since it hides the throw site.
+template <typename T>
+constexpr bool gettingValueDoesNotImplicitlyThrow() {
+  return !requires(T t) { *t; } && //
+      !requires(T t) { t.operator->(); } && //
+      !requires(T t) { t.value(); };
+}
+static_assert(gettingValueDoesNotImplicitlyThrow<result<int>>());
+static_assert(gettingValueDoesNotImplicitlyThrow<result<void>>());
+static_assert(gettingValueDoesNotImplicitlyThrow<result<void*>>());
+
 // Smoke test to ensure we use packed `rich_exception_ptr` on 64-bit Linux.
 static_assert(
     sizeof(non_value_result) == sizeof(void*) || !kIsLinux ||
@@ -636,7 +662,7 @@ bool is_bad_result_access(const non_value_result& nvr) {
 }
 FOLLY_POP_WARNING
 
-const char* bad_access_re =
+[[maybe_unused]] const char* const bad_access_re =
     "Used `non_value\\(\\)` accessor for `folly::result` in value";
 
 TEST(Result, accessValue) {

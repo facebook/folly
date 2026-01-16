@@ -199,6 +199,32 @@ BENCHMARK(folly_current_exception_dependent, iters) {
   }
 }
 
+// Compare the next two -- the first create & last destroy of an eptr are
+// costly due to heap alloc & free.  However, working on copies of an existing
+// eptr is cheaper since that only involves atomic refcount ops.
+
+BENCHMARK(std_exception_ptr_create_and_free, iters) {
+  folly::BenchmarkSuspender braces;
+  braces.dismissing([&] {
+    while (iters--) {
+      auto const ptr =
+          folly::make_exception_ptr_with(std::in_place_type<std::exception>);
+      folly::compiler_must_not_elide(ptr);
+    }
+  });
+}
+
+BENCHMARK(std_exception_ptr_copy_and_destroy, iters) {
+  folly::BenchmarkSuspender braces;
+  auto const ptr = std::make_exception_ptr(std::exception());
+  braces.dismissing([&] {
+    while (iters--) {
+      auto copy = ptr;
+      folly::compiler_must_not_elide(copy);
+    }
+  });
+}
+
 BENCHMARK(get_object_fail, iters) {
   folly::BenchmarkSuspender braces;
   bool result = false;

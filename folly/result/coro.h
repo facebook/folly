@@ -68,8 +68,8 @@
 /// ## Avoid accidental copies
 ///
 /// Note that if you merely wrote `or_unwind(res)` above, you would be
-/// unnecessarily copying the value OR the error (25ns), so mind your
-/// move hygiene in hot code.
+/// unnecessarily copying the value OR the error (7ns), so mind your move
+/// hygiene in hot code.
 ///
 /// ## What about cancellation / `has_stopped()`?
 ///

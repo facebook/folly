@@ -407,7 +407,7 @@ Most of the time, you will await a prvalue, i.e. `co_await or_unwind(resFn())`.
 For `result<Val>`, you get `Val&&`, and for `result<Ref>` you get `Ref`.
 
 This default is good for hot error paths -- when the thing in `or_unwind()` is
-an rvalue, `exception_ptr`s are propagated by move (~1ns), not by copy (~25ns).
+an rvalue, `exception_ptr`s are propagated by move (~1ns), not by copy (~7ns).
 
 With value `result<Val> res`, you can:
   - `co_await or_unwind(std::move(res))`: Returns `Val&&`, or moves to
