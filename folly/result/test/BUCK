@@ -42,6 +42,19 @@ fbcode_target(
     ],
 )
 
+# Runs as a test by default, pass --benchmark=1 to run as benchmark.
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "enrich_non_value_bench",
+    srcs = ["enrich_non_value_bench.cpp"],
+    deps = [
+        ":common",
+        "//folly:benchmark",
+        "//folly/result:enrich_non_value",
+        "//folly/result:immortal_rich_error",
+    ],
+)
+
 fbcode_target(
     _kind = cpp_unittest,
     name = "enrich_non_value_test",
