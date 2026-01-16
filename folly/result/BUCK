@@ -196,6 +196,7 @@ non_fbcode_target(
         "//xplat/folly/coro:coroutine",
         "//xplat/folly/coro:error",
         "//xplat/folly/lang:must_use_immediately",
+        "//xplat/folly/result/detail:result_promise",
     ],
 )
 
@@ -208,6 +209,7 @@ fbcode_target(
         "//folly/coro:coroutine",
         "//folly/coro:error",
         "//folly/lang:must_use_immediately",
+        "//folly/result/detail:result_promise",
     ],
 )
 

@@ -50,6 +50,28 @@ fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "result_promise",
+    raw_headers = ["result_promise.h"],
+    exported_deps = [
+        "//xplat/folly/coro:coroutine",
+        "//xplat/folly/result:result",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "result_promise",
+    headers = ["result_promise.h"],
+    exported_deps = [
+        "//folly/coro:coroutine",
+        "//folly/result:result",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "rich_error_common",
     raw_headers = ["rich_error_common.h"],
     exported_deps = [
