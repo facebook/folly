@@ -16,6 +16,7 @@
 
 #include <folly/result/immortal_rich_error.h>
 
+#include <folly/result/enrich_non_value.h>
 #include <folly/result/rich_error.h>
 #include <folly/result/rich_msg.h>
 #include <folly/result/test/common.h>
@@ -27,6 +28,8 @@
 namespace folly::detail {
 
 using namespace folly::string_literals;
+
+const auto test_file_name = source_location::current().file_name();
 
 struct MyErr : rich_error_base {
   using folly_get_exception_hint_types = rich_error_hints<MyErr>;
@@ -211,6 +214,19 @@ TEST(ImmortalRichErrorTest, copyMoveAndAccess) {
     EXPECT_EQ(mutStdEx, get_mutable_exception<std::exception>(rep3));
     EXPECT_EQ(mutLeafEx, get_mutable_exception<rich_error<MyErr>>(rep3));
   }
+}
+
+TEST(ImmortalRichErrorTest, formatEnriched) {
+  auto rep = immortal_rich_error<MyErr>.ptr();
+  EXPECT_EQ("default MyErr", fmt::format("{}", get_rich_error(rep)));
+
+  auto err_line = source_location::current().line() + 1;
+  rich_error<detail::enriched_non_value> err{std::move(rep), rich_msg{"msg"}};
+
+  checkFormatOfErrAndRep<MyErr, rich_error_base, std::exception>(
+      err,
+      fmt::format(
+          "default MyErr \\[via\\] msg @ {}:{}", test_file_name, err_line));
 }
 
 struct ConstErrWithNext : rich_error_base {

@@ -91,6 +91,7 @@ fbcode_target(
     deps = [
         ":common",
         "//folly/portability:gtest",
+        "//folly/result:enrich_non_value",
         "//folly/result:immortal_rich_error",
         "//folly/result:rich_error",
         "//folly/result:rich_msg",
