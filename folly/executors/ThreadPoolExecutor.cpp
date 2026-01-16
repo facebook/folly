@@ -219,6 +219,11 @@ void ThreadPoolExecutor::setNumThreads(size_t numThreads) {
       minthreads = numThreads;
       minThreads_.store(numThreads, std::memory_order_relaxed);
     }
+    // threadsCanTimeout_ can only transition from false to true if maxThreads_
+    // is increased (in which case minThreads_ will stay the same). So even if
+    // the current threads cannot timeout until the next wakeup, all the new
+    // threads can timeout, thus we can get down to minThreads_ active threads.
+    threadsCanTimeout_.store(minthreads != numThreads);
     if (active > numThreads) {
       numThreadsToJoin = active - numThreads;
       assert(numThreadsToJoin <= active - minthreads);

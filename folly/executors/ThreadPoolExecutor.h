@@ -401,6 +401,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   std::atomic<size_t> maxThreads_{0};
   std::atomic<size_t> minThreads_{0};
   std::atomic<size_t> activeThreads_{0};
+  std::atomic<bool> threadsCanTimeout_{true};
 
   std::atomic<size_t> threadsToJoin_{0};
   std::atomic<std::chrono::milliseconds> threadTimeout_;

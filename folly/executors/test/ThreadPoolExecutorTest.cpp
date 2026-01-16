@@ -651,6 +651,31 @@ TEST(ThreadPoolExecutorTest, NoThreadPriorityInheritance) {
   exe.join();
 }
 
+namespace {
+
+template <class T>
+class NoTimeoutBlockingQueue : public UnboundedBlockingQueue<T> {
+ public:
+  folly::Optional<T> try_take_for(std::chrono::milliseconds time) override {
+    ADD_FAILURE() << "try_take_for() should not be called";
+    return UnboundedBlockingQueue<T>::try_take_for(time);
+  }
+};
+
+} // namespace
+
+TEST(ThreadPoolExecutorTest, NoTimeoutInNonDynamicPool) {
+  constexpr size_t kNumThreads = 16;
+  // If minThreads == maxThreads, only non-timeout take() should be used on the
+  // queue.
+  CPUThreadPoolExecutor exe{
+      std::make_pair(kNumThreads, kNumThreads),
+      std::make_unique<
+          NoTimeoutBlockingQueue<CPUThreadPoolExecutor::CPUTask>>()};
+  exe.add([] {});
+  exe.join();
+}
+
 TEST(PriorityThreadFactoryTest, ThreadPriority) {
   errno = 0;
   auto currentPriority = getpriority(PRIO_PROCESS, 0);
