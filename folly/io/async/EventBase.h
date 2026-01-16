@@ -1047,6 +1047,10 @@ class EventBase
       LoopCallbackList& currentCallbacks,
       const LoopCallbacksDeadline& deadline);
 
+  // Helper to add a callback to the appropriate list (runOnceCallbacks_ or
+  // loopCallbacks_) and break out of epoll_wait if needed.
+  void addLoopCallback(LoopCallback& callback, bool thisIteration);
+
   // executes any callbacks queued by runInLoop(); returns false if none found
   bool runLoopCallbacks();
 
