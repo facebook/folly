@@ -550,8 +550,8 @@ class rich_exception_ptr_impl : private B {
   rich_exception_ptr_impl(force_slow_rtti_t, std::exception_ptr&& e) {
     assign_owned_eptr_and_bits(
         std::move(e),
-        bits_t{
-            B::OWNS_EXCEPTION_PTR_and | B::owned_eptr_UNKNOWN_TYPE_masked_eq});
+        static_cast<bits_t>(
+            B::OWNS_EXCEPTION_PTR_and | B::owned_eptr_UNKNOWN_TYPE_masked_eq));
   }
 
   template <typename, typename, auto...>
@@ -616,12 +616,13 @@ class rich_exception_ptr_impl : private B {
   template <std::derived_from<std::exception> Ex>
   explicit rich_exception_ptr_impl(Ex ex) {
     using bits_t = typename B::bits_t; // MSVC thinks `B::BIT_NAME` is private
-    constexpr bits_t bits{[]() {
+    constexpr bits_t bits{[]() -> bits_t {
       if constexpr (std::derived_from<Ex, rich_error_base>) {
         // Redundant with `rich_error.h` asserts, hence no manual test.
         static_assert(detail::has_offset0_base<Ex, rich_error_base>);
-        return bits_t::OWNS_EXCEPTION_PTR_and |
-            bits_t::IS_RICH_ERROR_BASE_masked_eq;
+        return static_cast<bits_t>(
+            bits_t::OWNS_EXCEPTION_PTR_and |
+            bits_t::IS_RICH_ERROR_BASE_masked_eq);
       } else if constexpr (std::derived_from<Ex, OperationCancelled>) {
         // We only want the throwing version here, since nothrow OC uses a
         // different ctor, and a non-owned copy of a leaky singleton.  This
@@ -632,11 +633,13 @@ class rich_exception_ptr_impl : private B {
             // FIXME: This one will go away:
             std::is_same_v<const Ex, const OperationCancelled> ||
             std::is_same_v<const Ex, const StubThrownOperationCancelled>);
-        return bits_t::OWNS_EXCEPTION_PTR_and |
-            bits_t::IS_OPERATION_CANCELLED_masked_eq;
+        return static_cast<bits_t>(
+            bits_t::OWNS_EXCEPTION_PTR_and |
+            bits_t::IS_OPERATION_CANCELLED_masked_eq);
       } else {
-        return bits_t::OWNS_EXCEPTION_PTR_and |
-            bits_t::owned_eptr_KNOWN_NON_FAST_PATH_TYPE_masked_eq;
+        return static_cast<bits_t>(
+            bits_t::OWNS_EXCEPTION_PTR_and |
+            bits_t::owned_eptr_KNOWN_NON_FAST_PATH_TYPE_masked_eq);
       }
     }()};
     assign_owned_eptr_and_bits(

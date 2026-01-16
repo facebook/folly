@@ -323,9 +323,9 @@ class rich_exception_ptr_packed_storage
       // Consteval code paths cannot get bit-level access to pointers, so we
       // must assume 0.  `rich_exception_ptr_separate_storage::get_bits` and
       // `rich_exception_ptr_packed_storage::apply_bits...` assert this.
-      return bits_t{0};
+      return static_cast<bits_t>(0);
     }
-    return bits_t{data_.uintptr_ & 0x7};
+    return static_cast<bits_t>(data_.uintptr_ & 0x7);
   }
 
   // CAREFUL: Lacks a bits `debug_assert` because its 2 callsites have one.
