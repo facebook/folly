@@ -188,6 +188,7 @@ fbcode_target(
         ":common",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
+        "//folly/result:enrich_non_value",
         "//folly/result:rich_error",
         "//folly/result:rich_error_base",
         "//folly/result:rich_error_code",

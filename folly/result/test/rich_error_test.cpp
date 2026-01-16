@@ -16,6 +16,7 @@
 
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/result/enrich_non_value.h>
 #include <folly/result/rich_error.h>
 #include <folly/result/rich_error_code.h>
 #include <folly/result/rich_exception_ptr.h>
@@ -156,6 +157,93 @@ TEST(RichErrorTest, fmtAndOstreamWithCode) {
       err, "ErrWithCode - folly::C1=101");
 }
 
+// This is a mini-test of `rich_ptr_to_underlying_error` rich formatting.
+// It stacks 2 enrichment wrappers to distinguish "next" from "underlying".
+// `enrich_non_value_test.cpp` covers this in much more detail.
+TEST(RichErrorTest, fmtAndOstreamEnrichNonRichError) {
+  using WrapErr = rich_error<detail::enriched_non_value>;
+
+  rich_exception_ptr inner{std::logic_error{"inner"}};
+  auto err_line1 = source_location::current().line() + 1;
+  rich_exception_ptr middle{WrapErr{std::move(inner), rich_msg{"middle"}}};
+  auto err_line2 = source_location::current().line() + 1;
+  WrapErr outer{std::move(middle), rich_msg{"outer"}};
+
+  // Check the wrapper's `rich_error_base` API -- NOT user-visible without
+  // `get_outer_exception` once the wrapper is in `rich_exception_ptr`.
+  EXPECT_STREQ("outer", outer.partial_message());
+  EXPECT_EQ(err_line2, outer.source_location().line());
+  EXPECT_TRUE(nullptr != outer.next_error_for_enriched_message());
+  EXPECT_NE((void*)&outer, outer.next_error_for_enriched_message());
+  EXPECT_TRUE(nullptr != outer.underlying_error());
+  EXPECT_NE((void*)&outer, outer.underlying_error());
+  EXPECT_NE(
+      (void*)outer.underlying_error(), outer.next_error_for_enriched_message());
+  EXPECT_TRUE(std::nullopt == get_rich_error_code<A1>(outer));
+
+  // The error is usefully formattable.  Packing it into `rich_exception_ptr`
+  // and querying it returns a quack-a-like of `logic_error*` with the same
+  // formatting.  But, the bare exception isn't formattable.
+  checkFormatOfErrAndRep<std::logic_error, std::exception>(
+      outer,
+      fmt::format(
+          "std::logic_error: inner \\[via\\] "
+          "outer @ {}:{} \\[after\\] middle @ {}:{}",
+          test_file_name,
+          err_line2,
+          test_file_name,
+          err_line1));
+
+  rich_exception_ptr rep{std::move(outer)};
+  // The wrapper is transparent, so `rep` cannot query `rich_error_base`,
+  EXPECT_TRUE(nullptr == get_rich_error(rep));
+
+  auto ex = get_exception<std::logic_error>(rep); // Quacks like `logic_error*`
+  EXPECT_STREQ("inner", ex->what());
+  static_assert(std::is_same_v<const std::logic_error&, decltype(*ex)>);
+  static_assert(
+      std::is_same_v<
+          rich_ptr_to_underlying_error<const std::logic_error>,
+          decltype(ex)>);
+}
+
+// What makes this test special is that:
+//   - the outer rich error is underlying (no `enrich_non_value` wrapping), and
+//   - it has a `next_error_for_enriched_message()`.
+// (1) We end up with a `rich_ptr` whose `raw_ptr_` and `top_rich_error_` are
+//     both the same rich error.  To avoid duplicate output, the formatter
+//     needs to handle this specially.
+// (2) This is also a minimal test for errors with `std::nested_exception`-like
+//     behavior (real example in `nestable_coded_rich_error.h`).
+TEST(RichErrorBaseFormatTest, unwrappedUnderlyingErrorHasNext) {
+  struct ErrWithNext : rich_error_base {
+    const char* msg_;
+    rich_exception_ptr next_;
+
+    explicit ErrWithNext(const char* msg) : msg_{msg} {}
+    explicit ErrWithNext(const char* msg, rich_exception_ptr next)
+        : msg_{msg}, next_{std::move(next)} {}
+
+    const char* partial_message() const noexcept override { return msg_; }
+    const rich_exception_ptr* next_error_for_enriched_message()
+        const noexcept override {
+      return next_ != rich_exception_ptr{} ? &next_ : nullptr;
+    }
+
+    using folly_get_exception_hint_types = rich_error_hints<ErrWithNext>;
+  };
+
+  rich_error<ErrWithNext> err{
+      "Err2", // new underlying
+      rich_exception_ptr{rich_error<detail::enriched_non_value>{
+          rich_exception_ptr{rich_error<ErrWithNext>{"Err1"}}, // old underlying
+          rich_msg{"msg"}}}}; // enrichment around old
+  checkFormatOfErrAndRep<ErrWithNext, rich_error_base, std::exception>(
+      err,
+      fmt::format(
+          "Err2 \\[after\\] Err1 \\[via\\] msg @ {}:[0-9]+", test_file_name));
+}
+
 } // namespace folly
 
 // rich_ptr even knows to format underlying errors that are not rich
@@ -173,6 +261,28 @@ struct fmt::formatter<FormattableNonRich> {
 };
 
 namespace folly {
+
+// When an error is formattable and not `rich_error_base`, we first format that
+// error AND then append the rich error context (like enrichment wrappers).
+TEST(RichErrorTest, formattableExFormatter) {
+  rich_error<detail::enriched_non_value> err{
+      rich_exception_ptr{FormattableNonRich{}}, rich_msg{"msg"}};
+  // No custom format "(my ...)", since the underlying error is type-erased
+  checkFormatOfErrAndRep<std::exception>(
+      err, // This underlying is NOT rich!
+      fmt::format(
+          "FormattableNonRich: FormattableNonRich::what \\[via\\] "
+          "msg @ {}:[0-9]+",
+          test_file_name));
+
+  rich_exception_ptr rep{std::move(err)};
+  // Uses the custom format since we query a formattable type.
+  checkFormat(
+      get_exception<FormattableNonRich>(rep),
+      fmt::format(
+          "\\(my FormattableNonRich::what\\) \\[via\\] msg @ {}:[0-9]+",
+          test_file_name));
+}
 
 TEST(RichErrorTest, formatNullRichPtr) {
   auto check_null_rich_ptr = []<typename Query>(tag_t<Query>) {
