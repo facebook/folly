@@ -1237,3 +1237,26 @@ TEST(CoreAllocator, Basic) {
   }
   mems.clear();
 }
+
+TEST(CoreAllocator, MinimumAllocationSize) {
+  // coreMalloc should handle sizes smaller than sizeof(void*) by rounding up
+  constexpr size_t kNumStripes = 32;
+
+  // Test that small allocations (< 8 bytes) work correctly
+  // The Allocator class should round these up to 8 bytes
+  auto res1 = coreMalloc(1, kNumStripes, 0);
+  EXPECT_NE(nullptr, res1);
+  memset(res1, 0xFF, 1); // Should not crash
+  coreFree(res1);
+
+  auto res4 = coreMalloc(4, kNumStripes, 0);
+  EXPECT_NE(nullptr, res4);
+  memset(res4, 0xFF, 4); // Should not crash
+  coreFree(res4);
+
+  // Verify that 8-byte allocation works (minimum valid size)
+  auto res8 = coreMalloc(8, kNumStripes, 0);
+  EXPECT_NE(nullptr, res8);
+  memset(res8, 0xFF, 8);
+  coreFree(res8);
+}
