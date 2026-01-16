@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/result/enrich_non_value.h>
 #include <folly/result/rich_error.h>
 #include <folly/result/test/rich_exception_ptr_common.h>
 
@@ -138,8 +139,37 @@ void checkGetExceptionForRichErr(auto rep) {
 // Note that only the enrichment wrapper is the template parameter `REP`. The
 // inner type is `rich_exception_ptr`, as required by `underlying_error()`.
 template <typename REP, bool PointersAreSame = true>
-void checkGetExceptionForEnrichedRichErr(rich_exception_ptr) {
-  // STUB: Populated in a later diff.
+void checkGetExceptionForEnrichedRichErr(rich_exception_ptr rep) {
+  REP rep_wrapped{
+      rich_error<detail::enriched_non_value>{copy(rep), rich_msg{"msg"}}};
+  checkGetException<
+      GetExceptionResult{.isHit = false},
+      std::logic_error,
+      // Enrichment is transparent, so these 2 miss
+      detail::enriched_non_value,
+      rich_error<detail::enriched_non_value>>(rep_wrapped);
+  // Querying the underlying error should hit, with `top_rich_error_` set
+  checkGetException<
+      GetExceptionResult{
+          .isHit = true,
+          .hitHasTopRichError = true,
+          .constAndMutPointersAreSame = PointersAreSame},
+      std::exception,
+      RichErr,
+      rich_error<RichErr>>(rep_wrapped);
+  // `get_outer_exception` sees enrichment wrapper, not the underlying error
+  checkGetOuterException<
+      GetExceptionResult{.isHit = false},
+      RichErr,
+      rich_error<RichErr>>(rep_wrapped);
+  // `PointersAreSame` does not apply here, since we're accessing an "owned"
+  // outer error, not the immortal.
+  checkGetOuterException<
+      GetExceptionResult{.isHit = true},
+      std::exception,
+      rich_error_base,
+      detail::enriched_non_value,
+      rich_error<detail::enriched_non_value>>(rep_wrapped);
 }
 
 } // namespace folly::detail

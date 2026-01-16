@@ -52,6 +52,35 @@ void checkAccessException() {
         std::exception,
         std::logic_error>(rep);
   }
+  { // Non-rich error with enrichment wrapper
+    REP rep{rich_error<detail::enriched_non_value>{
+        // We cannot use `REP` for the inner error, since `underlying_error()`
+        // is always `rich_exception_ptr`.
+        rich_exception_ptr{std::logic_error{"test"}},
+        rich_msg{"msg"}}};
+    // Enrichment is transparent -- e.g. `get_exception<rich_error_base>` misses
+    checkGetException<
+        GetExceptionResult{.isHit = false},
+        rich_error_base,
+        RichErr,
+        detail::enriched_non_value,
+        rich_error<detail::enriched_non_value>>(rep);
+    // `get_exception<underlying error>` should hit, with `top_rich_error_` set
+    checkGetException<
+        GetExceptionResult{.isHit = true, .hitHasTopRichError = true},
+        std::exception,
+        std::logic_error>(rep);
+    // `get_outer_exception` sees enrichment wrapper, not the underlying error
+    checkGetOuterException<
+        GetExceptionResult{.isHit = false},
+        std::logic_error>(rep);
+    checkGetOuterException<
+        GetExceptionResult{.isHit = true},
+        std::exception,
+        rich_error_base,
+        detail::enriched_non_value,
+        rich_error<detail::enriched_non_value>>(rep);
+  }
 }
 
 TEST(RichExceptionPtrOwned, accessException) {

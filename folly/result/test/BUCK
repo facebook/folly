@@ -217,6 +217,7 @@ fbcode_target(
     headers = ["rich_exception_ptr_check_get.h"],
     exported_deps = [
         ":rich_exception_ptr_common",
+        "//folly/result:enrich_non_value",
         "//folly/result:rich_error",
     ],
 )
