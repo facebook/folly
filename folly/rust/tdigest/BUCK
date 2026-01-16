@@ -29,7 +29,7 @@ fbcode_target(
     src_includes = ["tdigest.rs"],
     deps = [
         "fbsource//third-party/rust:cxx",
-        "fbsource//third-party/rust:rand_08",
+        "fbsource//third-party/rust:rand",
     ],
 )
 
