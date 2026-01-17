@@ -199,7 +199,6 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "^${FOLLY_DIR_REGEX_ESCAPED}/(.*/)?tool/"
     "^${FOLLY_DIR_REGEX_ESCAPED}/facebook/"
     "^${FOLLY_DIR_REGEX_ESCAPED}/rust/"
-    "^${FOLLY_DIR_REGEX_ESCAPED}/ext/buck2/"
     "Benchmark.cpp$"
     "Test.cpp$"
 )
@@ -1031,7 +1030,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES shared_from_this_ptr_test.cpp
       TEST memory_thread_cached_arena_test WINDOWS_DISABLED
         SOURCES ThreadCachedArenaTest.cpp
-      TEST memory_mallctl_helper_test SOURCES MallctlHelperTest.cpp
       TEST memory_uninitialized_memory_hacks_test
         SOURCES UninitializedMemoryHacksTest.cpp
 
@@ -1262,6 +1260,18 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST json_json_schema_test SOURCES JSONSchemaTest.cpp
   )
 
+  if (FOLLY_USE_JEMALLOC)
+    folly_define_tests(
+      DIRECTORY memory/test/
+        TEST memory_mallctl_helper_test SOURCES MallctlHelperTest.cpp
+    )
+    find_library(FOLLY_JEMALLOC_LIB jemalloc)
+    if (FOLLY_JEMALLOC_LIB)
+      target_link_libraries(fbstring_test PRIVATE ${FOLLY_JEMALLOC_LIB})
+      target_link_libraries(memory_mallctl_helper_test PRIVATE ${FOLLY_JEMALLOC_LIB})
+    endif()
+  endif()
+
   if (${LIBSODIUM_FOUND})
     folly_define_tests(
       DIRECTORY crypto/test/
@@ -1287,10 +1297,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     add_library(singleton_thread_local_overload
       SHARED ${FOLLY_DIR}/test/SingletonThreadLocalTestOverload.cpp)
     apply_folly_compile_options_to_target(singleton_thread_local_overload)
-    set_target_properties(singleton_thread_local_overload PROPERTIES
-      PREFIX ""
-      LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/folly/test
-    )
+    set_target_properties(singleton_thread_local_overload PROPERTIES PREFIX "")
     target_link_libraries(singleton_thread_local_overload PRIVATE folly)
     folly_define_tests(
       DIRECTORY test/
