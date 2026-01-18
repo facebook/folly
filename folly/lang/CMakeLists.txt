@@ -1,0 +1,366 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME access
+  HEADERS
+    Access.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+)
+
+folly_add_library(
+  NAME align
+  HEADERS
+    Align.h
+  EXPORTED_DEPS
+    folly_portability
+    folly_traits
+)
+
+folly_add_library(
+  NAME aligned
+  HEADERS
+    Aligned.h
+  EXPORTED_DEPS
+    folly_lang_align
+    folly_utility
+)
+
+folly_add_library(
+  NAME assume
+  HEADERS
+    Assume.h
+  EXPORTED_DEPS
+    folly_lang_hint
+    folly_portability
+)
+
+folly_add_library(
+  NAME badge
+  HEADERS
+    Badge.h
+  EXPORTED_DEPS
+    folly_traits
+)
+
+folly_add_library(
+  NAME bits
+  HEADERS
+    Bits.h
+  EXPORTED_DEPS
+    folly_constexpr_math
+    folly_lang_assume
+    folly_lang_c_string
+    folly_portability
+    folly_portability_builtins
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME bits_class
+  HEADERS
+    BitsClass.h
+  EXPORTED_DEPS
+    folly_lang_bits
+    folly_portability
+    folly_range
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME builtin
+  HEADERS
+    Builtin.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME c_array
+  HEADERS
+    CArray.h
+)
+
+folly_add_library(
+  NAME c_string
+  SRCS
+    CString.cpp
+  HEADERS
+    CString.h
+  DEPS
+    folly_functional_invoke
+  EXPORTED_DEPS
+    folly_c_portability
+)
+
+folly_add_library(
+  NAME cast
+  HEADERS
+    Cast.h
+  EXPORTED_DEPS
+    folly_lang_safe_assert
+    folly_portability
+    folly_traits
+)
+
+folly_add_library(
+  NAME checked_math
+  HEADERS
+    CheckedMath.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_likely
+)
+
+folly_add_library(
+  NAME customization_point
+  HEADERS
+    CustomizationPoint.h
+  EXPORTED_DEPS
+    folly_lang_static_const
+    folly_portability
+)
+
+folly_add_library(
+  NAME exception
+  SRCS
+    Exception.cpp
+  HEADERS
+    Exception.h
+  DEPS
+    folly_lang_align
+    folly_lang_new
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_cpp_attributes
+    folly_lang_assume
+    folly_lang_safe_assert
+    folly_lang_thunk
+    folly_lang_type_info
+    folly_likely
+    folly_portability
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME extern
+  HEADERS
+    Extern.h
+)
+
+folly_add_library(
+  NAME keep
+  HEADERS
+    Keep.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_cpp_attributes
+)
+
+folly_add_library(
+  NAME hint
+  HEADERS
+    Hint-inl.h
+    Hint.h
+  EXPORTED_DEPS
+    folly_lang_safe_assert
+    folly_portability
+    folly_traits
+)
+
+folly_add_library(
+  NAME must_use_immediately
+  HEADERS
+    MustUseImmediately.h
+  EXPORTED_DEPS
+    folly_detail_tuple
+    folly_lang_safe_alias_fwd
+    folly_utility
+)
+
+folly_add_library(
+  NAME new
+  HEADERS
+    New.h
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_functional_invoke
+    folly_portability
+)
+
+folly_add_library(
+  NAME ordering
+  HEADERS
+    Ordering.h
+  EXPORTED_DEPS
+    folly_lang_exception
+)
+
+folly_add_library(
+  NAME pretty
+  HEADERS
+    Pretty.h
+  EXPORTED_DEPS
+    folly_lang_c_array
+    folly_portability
+)
+
+folly_add_library(
+  NAME propagate_const
+  HEADERS
+    PropagateConst.h
+  EXPORTED_DEPS
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME rvalue_reference_wrapper
+  HEADERS
+    RValueReferenceWrapper.h
+)
+
+folly_add_library(
+  NAME safe_alias
+  HEADERS
+    SafeAlias.h
+  EXPORTED_DEPS
+    folly_lang_safe_alias_fwd
+    folly_traits
+)
+
+folly_add_library(
+  NAME safe_alias_fwd
+  HEADERS
+    SafeAlias-fwd.h
+)
+
+folly_add_library(
+  NAME safe_assert
+  SRCS
+    SafeAssert.cpp
+  HEADERS
+    SafeAssert.h
+  DEPS
+    folly_detail_file_util_detail
+    folly_lang_to_ascii
+    folly_portability_sys_types
+    folly_portability_windows
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_lang_c_array
+    folly_portability
+    folly_preprocessor
+)
+
+folly_add_library(
+  NAME safe_closure
+  HEADERS
+    SafeClosure.h
+  EXPORTED_DEPS
+    folly_detail_tuple
+    folly_lang_bind_as_argument
+    folly_lang_bind_bind
+    folly_lang_bind_to_storage
+    folly_lang_safe_alias
+)
+
+folly_add_library(
+  NAME static_const
+  HEADERS
+    StaticConst.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME strong
+  HEADERS
+    Strong.h
+  EXPORTED_DEPS
+    folly_traits
+)
+
+folly_add_library(
+  NAME cstring_view
+  HEADERS
+    cstring_view.h
+  EXPORTED_DEPS
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME switch
+  HEADERS
+    Switch.h
+  EXPORTED_DEPS
+    folly_c_portability
+)
+
+folly_add_library(
+  NAME thunk
+  HEADERS
+    Thunk.h
+  EXPORTED_DEPS
+    folly_lang_new
+    folly_utility
+)
+
+folly_add_library(
+  NAME to_ascii
+  SRCS
+    ToAscii.cpp
+  HEADERS
+    ToAscii.h
+  EXPORTED_DEPS
+    folly_constexpr_math
+    folly_lang_align
+    folly_lang_c_array
+    folly_likely
+    folly_portability
+    folly_portability_builtins
+    folly_utility
+)
+
+folly_add_library(
+  NAME type_info
+  HEADERS
+    TypeInfo.h
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_portability
+)
+
+folly_add_library(
+  NAME uncaught_exceptions
+  SRCS
+    UncaughtExceptions.cpp
+  HEADERS
+    UncaughtExceptions.h
+  EXPORTED_DEPS
+    folly_lang_exception
+)
+
+folly_add_library(
+  NAME vector_traits
+  HEADERS
+    VectorTraits.h
+)
+
+add_subdirectory(bind)

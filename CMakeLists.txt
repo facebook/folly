@@ -55,6 +55,10 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(${PACKAGE_NAME} CXX C ASM)
 
+# Set for FetchContent to skip find_package(folly)
+set(folly_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
+  CACHE INTERNAL "folly source directory")
+
 set(INCLUDE_INSTALL_DIR include CACHE STRING
     "The subdirectory where header files should be installed")
 set(LIB_INSTALL_DIR lib CACHE STRING
@@ -179,18 +183,9 @@ set_property(
   "FOLLY_XLOG_STRIP_PREFIXES=\"${CMAKE_SOURCE_DIR}:${CMAKE_BINARY_DIR}\""
 )
 
-# We currently build the main libfolly library by finding all sources
-# and header files.  We then exclude specific files below.
-#
-# In the future it would perhaps be nicer to explicitly list the files we want
-# to include, and to move the source lists in to separate per-subdirectory
-# CMakeLists.txt files.
-auto_sources(files "*.cpp" "RECURSE" "${FOLLY_DIR}")
+# Collect headers for installation (still needed for install step)
 auto_sources(hfiles "*.h" "RECURSE" "${FOLLY_DIR}")
-
-# Exclude tests, benchmarks, and other standalone utility executables from the
-# library sources.  Test sources are listed separately below.
-REMOVE_MATCHES_FROM_LISTS(files hfiles
+REMOVE_MATCHES_FROM_LISTS(hfiles
   MATCHES
     "^${FOLLY_DIR_REGEX_ESCAPED}/build/"
     "^${FOLLY_DIR_REGEX_ESCAPED}/docs/examples/"
@@ -200,42 +195,8 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "^${FOLLY_DIR_REGEX_ESCAPED}/facebook/"
     "^${FOLLY_DIR_REGEX_ESCAPED}/rust/"
     "^${FOLLY_DIR_REGEX_ESCAPED}/ext/buck2/"
-    "Benchmark.cpp$"
-    "Test.cpp$"
 )
-
-# Exclude exception tracer, which is necessary to statically link libstdc++
-if (${FOLLY_NO_EXCEPTION_TRACER})
-  REMOVE_MATCHES_FROM_LISTS(files hfiles
-    MATCHES
-      "^${FOLLY_DIR_REGEX_ESCAPED}/debugging/exception_tracer/"
-  )
-endif()
-
-list(REMOVE_ITEM files
-  ${FOLLY_DIR}/python/AsyncioExecutor.cpp
-  ${FOLLY_DIR}/python/error.cpp
-  ${FOLLY_DIR}/python/executor.cpp
-  ${FOLLY_DIR}/python/fibers.cpp
-  ${FOLLY_DIR}/python/GILAwareManualExecutor.cpp
-  ${FOLLY_DIR}/python/iobuf.cpp
-  ${FOLLY_DIR}/python/iobuf_ext.cpp
-  ${FOLLY_DIR}/python/ProactorExecutor.cpp
-)
-list(REMOVE_ITEM hfiles
-  ${FOLLY_DIR}/python/fibers.h
-  ${FOLLY_DIR}/python/GILAwareManualExecutor.h
-  ${FOLLY_DIR}/python/iobuf_ext.h
-  ${FOLLY_DIR}/python/ProactorExecutor.h
-)
-
-# Explicitly include utility library code from inside
-# test subdirs
-list(APPEND files
-  ${FOLLY_DIR}/io/async/test/ScopedBoundPort.cpp
-  ${FOLLY_DIR}/io/async/test/SocketPair.cpp
-  ${FOLLY_DIR}/io/async/test/TimeUtil.cpp
-)
+# Add test utility headers that are part of public API
 list(APPEND hfiles
   ${FOLLY_DIR}/container/test/F14TestUtil.h
   ${FOLLY_DIR}/container/test/TrackingTypes.h
@@ -263,208 +224,6 @@ list(APPEND hfiles
   ${FOLLY_DIR}/test/TestUtils.h
 )
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  check_cxx_compiler_flag(-fcoroutines COMPILER_HAS_F_COROUTINES)
-  if (COMPILER_HAS_F_COROUTINES)
-    message(
-      STATUS
-      "GCC has support for C++ coroutines, setting flag for Folly build."
-    )
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fcoroutines>)
-  else()
-    message(
-      STATUS
-      "GCC does not have support for C++ coroutines, "
-      "disabling Folly coroutine support."
-    )
-  endif()
-endif()
-
-# base64 SIMD files compilation
-if (NOT(${IS_X86_64_ARCH}))
-  message(
-    STATUS
-    "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
-    "skipping building SSE4.2 version of base64"
-  )
-  list(REMOVE_ITEM files ${FOLLY_DIR}/detail/base64_detail/Base64_SSE4_2.cpp)
-else()
-  message(
-    STATUS
-    "arch ${CMAKE_LIBRARY_ARCHITECTURE} matches x86_64, "
-    "building SSE4.2 version of base64"
-  )
-  # MSVC does not have a way to enable just sse4.2, only avx.
-  # If we don't pass the flag, everything will still work but no warnings
-  if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    set_source_files_properties(
-      ${FOLLY_DIR}/detail/base64_detail/Base64_SSE4_2.cpp
-      PROPERTIES
-      COMPILE_FLAGS
-        -msse4.2
-    )
-  endif()
-endif()
-
-if (${LIBSODIUM_FOUND})
-  if (NOT(${IS_X86_64_ARCH}))
-    message(
-      STATUS
-      "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
-      "skipping setting SSE2/AVX2 compile flags for LtHash SIMD code"
-    )
-  else()
-    message(
-      STATUS
-      "arch ${CMAKE_LIBRARY_ARCHITECTURE} matches x86_64, "
-      "setting SSE2/AVX2 compile flags for LtHash SIMD code"
-    )
-    set_source_files_properties(
-      ${FOLLY_DIR}/crypto/detail/MathOperation_AVX2.cpp
-      PROPERTIES
-      COMPILE_FLAGS
-      -mavx -mavx2 -msse2
-    )
-    set_source_files_properties(
-      ${FOLLY_DIR}/crypto/detail/MathOperation_Simple.cpp
-      PROPERTIES
-      COMPILE_FLAGS
-      -mno-avx -mno-avx2 -mno-sse2
-    )
-    set_source_files_properties(
-      ${FOLLY_DIR}/crypto/detail/MathOperation_SSE2.cpp
-      PROPERTIES
-      COMPILE_FLAGS
-      -mno-avx -mno-avx2 -msse2
-    )
-  endif()
-else()
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/crypto/Blake2xb.cpp
-    ${FOLLY_DIR}/crypto/detail/MathOperation_AVX2.cpp
-    ${FOLLY_DIR}/crypto/detail/MathOperation_Simple.cpp
-    ${FOLLY_DIR}/crypto/detail/MathOperation_SSE2.cpp
-    ${FOLLY_DIR}/crypto/LtHash.cpp
-  )
-  list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/crypto/Blake2xb.h
-    ${FOLLY_DIR}/crypto/detail/LtHashInternal.h
-    ${FOLLY_DIR}/crypto/LtHash-inl.h
-    ${FOLLY_DIR}/crypto/LtHash.h
-  )
-endif()
-if (NOT ${LIBGFLAGS_FOUND})
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/cli/NestedCommandLineApp.cpp
-    ${FOLLY_DIR}/cli/ProgramOptions.cpp
-  )
-  list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/cli/NestedCommandLineApp.h
-    ${FOLLY_DIR}/cli/ProgramOptions.h
-  )
-endif()
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/Subprocess.cpp
-  )
-endif()
-
-set(PCLMUL_FILES
-  ${FOLLY_DIR}/external/fast-crc32/avx512_crc32c_v8s3x4.cpp
-  ${FOLLY_DIR}/external/fast-crc32/sse_crc32c_v8s3x3.cpp
-  ${FOLLY_DIR}/hash/detail/ChecksumDetail.cpp
-  ${FOLLY_DIR}/hash/detail/Crc32CombineDetail.cpp
-  ${FOLLY_DIR}/hash/detail/Crc32cDetail.cpp
-)
-check_cxx_compiler_flag(-mpclmul COMPILER_HAS_M_PCLMUL)
-if (COMPILER_HAS_M_PCLMUL)
-  message(
-    STATUS
-    "compiler has flag pclmul, setting compile flag for ${PCLMUL_FILES}"
-  )
-  set_source_files_properties(
-    ${PCLMUL_FILES}
-    PROPERTIES
-    COMPILE_OPTIONS
-    -mpclmul
-  )
-else()
-  message(
-    STATUS
-    "compiler does not have flag pclmul, skipping setting compile flags for ${PCLMUL_FILES}"
-  )
-endif()
-
-if (IS_X86_64_ARCH AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  message(
-    STATUS
-    "arch ${CMAKE_LIBRARY_ARCHITECTURE} matches x86_64, "
-    "setting AVX512 compile flags for crc32c SIMD code"
-  )
-  set_property(
-    SOURCE
-    ${FOLLY_DIR}/external/fast-crc32/avx512_crc32c_v8s3x4.cpp
-    APPEND PROPERTY COMPILE_OPTIONS
-    "-mavx512f" "-mavx512vl"
-  )
-else()
-  # Windows doesn't nead the extra flags.
-  message(
-    STATUS
-    "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
-    "skipping setting AVX512 compile flags for crc32c SIMD code"
-  )
-endif()
-
-list(APPEND folly_base_files
-  ${files} ${hfiles}
-)
-
-if (IS_X86_64_ARCH AND NOT MSVC)
-  set_property(
-    SOURCE
-    ${FOLLY_DIR}/memcpy.S
-    APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp"
-  )
-  list(APPEND folly_base_files
-    ${FOLLY_DIR}/memcpy.S
-  )
-endif()
-
-set(ARM_AOR_ASM_FILES
-  ${FOLLY_DIR}/external/aor/memcpy-advsimd.S
-  ${FOLLY_DIR}/external/aor/memcpy-armv8.S
-  ${FOLLY_DIR}/external/aor/memcpy_sve.S
-  ${FOLLY_DIR}/external/aor/memset-advsimd.S
-  ${FOLLY_DIR}/external/aor/memcpy-mops.S
-  ${FOLLY_DIR}/external/aor/memmove-mops.S
-  ${FOLLY_DIR}/external/aor/memset-mops.S
-)
-if (IS_AARCH64_ARCH)
-  foreach (AOR_FILE IN LISTS ARM_AOR_ASM_FILES)
-    set_property(
-      SOURCE
-      ${AOR_FILE}
-      APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp"
-    )
-    list(APPEND folly_base_files
-      ${AOR_FILE}
-    )
-  endforeach()
-endif()
-
-add_library(folly_base OBJECT
-  ${folly_base_files}
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
-)
-if (BUILD_SHARED_LIBS)
-  set_property(TARGET folly_base PROPERTY POSITION_INDEPENDENT_CODE ON)
-endif()
-auto_source_group(folly ${FOLLY_DIR} ${files} ${hfiles})
-apply_folly_compile_options_to_target(folly_base)
-# Add the generated files to the correct source group.
-source_group("folly" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h)
-
 # Generate pkg-config variables from folly_deps before we add our own
 # build/install-time include directory generator expressions
 include(GenPkgConfig)
@@ -481,26 +240,33 @@ target_include_directories(folly_deps
     $<INSTALL_INTERFACE:include>
 )
 
-target_include_directories(folly_base
-  PUBLIC
-    $<TARGET_PROPERTY:folly_deps,INTERFACE_INCLUDE_DIRECTORIES>
-)
-target_compile_definitions(folly_base
-  PUBLIC
-    $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
-)
+# =============================================================================
+# Build granular libraries from subdirectory CMakeLists.txt files
+# Sources are compiled ONCE via OBJECT libraries, then reused for both
+# granular .a files and the monolithic libfolly.a
+# =============================================================================
+
+# Check for architecture-specific compiler flags needed by subdirectories
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag(-mpclmul COMPILER_HAS_M_PCLMUL)
+
+# GCC coroutines support
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  check_cxx_compiler_flag(-fcoroutines COMPILER_HAS_F_COROUTINES)
+  if (COMPILER_HAS_F_COROUTINES)
+    message(STATUS "GCC has C++ coroutines support, enabling for Folly.")
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fcoroutines>)
+  else()
+    message(STATUS "GCC lacks C++ coroutines, disabling Folly coroutines.")
+  endif()
+endif()
+
+add_subdirectory(folly)
+
+# Create monolithic folly library from all component OBJECT libraries
+folly_create_monolithic_library()
 
 set(FOLLY_INSTALL_TARGETS folly folly_deps)
-
-
-add_library(folly
-  $<TARGET_OBJECTS:folly_base>
-)
-set_property(TARGET folly PROPERTY VERSION ${PACKAGE_VERSION})
-apply_folly_compile_options_to_target(folly)
-target_compile_features(folly INTERFACE cxx_generic_lambdas)
-
-target_link_libraries(folly PUBLIC folly_deps)
 
 # Test utilities exported for use by downstream projects
 add_library(folly_test_util
@@ -525,6 +291,7 @@ install(TARGETS ${FOLLY_INSTALL_TARGETS}
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION ${LIB_INSTALL_DIR}
   ARCHIVE DESTINATION ${LIB_INSTALL_DIR})
+
 auto_install_files(folly ${FOLLY_DIR}
   ${hfiles}
 )
@@ -1171,12 +938,12 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST lazy_test SOURCES LazyTest.cpp
       TEST locks_test SOURCES SpinLockTest.cpp
       TEST math_test SOURCES MathTest.cpp
-      BENCHMARK memcpy_benchmark SOURCES MemcpyBenchmark.cpp
+      BENCHMARK memcpy_benchmark WINDOWS_DISABLED SOURCES MemcpyBenchmark.cpp
       TEST memcpy_test SOURCES MemcpyTest.cpp
       TEST memory_idler_test SOURCES MemoryIdlerTest.cpp
       TEST memory_test WINDOWS_DISABLED
         SOURCES MemoryTest.cpp
-      BENCHMARK memset_benchmark SOURCES MemsetBenchmark.cpp
+      BENCHMARK memset_benchmark WINDOWS_DISABLED SOURCES MemsetBenchmark.cpp
       TEST move_wrapper_test SOURCES MoveWrapperTest.cpp
       TEST mpmc_pipeline_test SOURCES MPMCPipelineTest.cpp
       TEST mpmc_queue_test SLOW
@@ -1298,5 +1065,3 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     )
   endif()
 endif()
-
-add_subdirectory(folly)

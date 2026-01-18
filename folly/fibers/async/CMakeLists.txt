@@ -1,0 +1,120 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME wait_utils
+  HEADERS
+    WaitUtils.h
+  EXPORTED_DEPS
+    folly_fibers_async_core
+    folly_fibers_async_fiber_manager
+    folly_fibers_core
+    folly_fibers_fiber_manager_map
+)
+
+folly_add_library(
+  NAME core
+  SRCS
+    Async.cpp
+  HEADERS
+    Async.h
+  DEPS
+    folly_fibers_core
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_lang_customization_point
+    folly_traits
+    folly_unit
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME collect
+  HEADERS
+    Collect-inl.h
+    Collect.h
+  EXPORTED_DEPS
+    folly_fibers_async_baton
+    folly_fibers_async_core
+    folly_fibers_async_fiber_manager
+    folly_fibers_async_future
+    folly_fibers_core_manager
+    folly_fibers_when_n
+    folly_functional_invoke
+    folly_traits
+    folly_try
+)
+
+folly_add_library(
+  NAME baton
+  HEADERS
+    Baton.h
+  EXPORTED_DEPS
+    folly_fibers_async_core
+    folly_fibers_core
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME fiber_manager
+  HEADERS
+    FiberManager.h
+  EXPORTED_DEPS
+    folly_fibers_async_core
+    folly_fibers_core_manager
+)
+
+folly_add_library(
+  NAME future
+  HEADERS
+    Future.h
+  EXPORTED_DEPS
+    folly_fibers_async_core
+    folly_futures_core
+)
+
+folly_add_library(
+  NAME promise
+  HEADERS
+    Promise.h
+  EXPORTED_DEPS
+    folly_fibers_async_core
+    folly_fibers_core_manager
+    folly_fibers_traits
+)
+
+folly_add_library(
+  NAME task
+  HEADERS
+    Task.h
+  EXPORTED_DEPS
+    folly_coro_blocking_wait
+    folly_coro_task
+    folly_fibers_async_core
+)
+
+folly_add_library(
+  NAME stack_tracing
+  HEADERS
+    AsyncStack.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_fibers_async_core
+    folly_scope_guard
+    folly_tracing_async_stack
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)

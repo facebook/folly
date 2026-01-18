@@ -1,0 +1,188 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME dwarf
+  SRCS
+    Dwarf.cpp
+    DwarfImpl.cpp
+    DwarfLineNumberVM.cpp
+    DwarfSection.cpp
+    DwarfUtil.cpp
+  HEADERS
+    Dwarf.h
+    DwarfImpl.h
+    DwarfLineNumberVM.h
+    DwarfSection.h
+    DwarfUtil.h
+  DEPS
+    folly_lang_safe_assert
+    folly_optional
+    folly_portability_config
+    folly_portability_unistd
+  EXPORTED_DEPS
+    folly_debugging_symbolizer_elf
+    folly_debugging_symbolizer_elf_cache
+    folly_debugging_symbolizer_symbolized_frame
+    folly_function
+    folly_portability_provide_libdwarf
+    folly_range
+)
+
+folly_add_library(
+  NAME elf
+  SRCS
+    Elf.cpp
+  HEADERS
+    Elf-inl.h
+    Elf.h
+  DEPS
+    folly_exception
+    folly_lang_c_string
+    folly_portability_sys_mman
+    folly_portability_unistd
+    folly_scope_guard
+  EXPORTED_DEPS
+    folly_container_span
+    folly_conv
+    folly_lang_safe_assert
+    folly_likely
+    folly_portability_config
+    folly_range
+)
+
+folly_add_library(
+  NAME symbolized_frame
+  SRCS
+    SymbolizedFrame.cpp
+  HEADERS
+    SymbolizedFrame.h
+  EXPORTED_DEPS
+    folly_range
+)
+
+folly_add_library(
+  NAME line_reader
+  SRCS
+    LineReader.cpp
+  HEADERS
+    LineReader.h
+  DEPS
+    folly_file_util
+  EXPORTED_DEPS
+    folly_range
+)
+
+folly_add_library(
+  NAME stack_trace
+  SRCS
+    StackTrace.cpp
+  HEADERS
+    StackTrace.h
+  DEPS
+    folly_portability
+    folly_portability_config
+    folly_portability_libunwind
+    folly_tracing_async_stack
+  EXPORTED_DEPS
+    folly_portability_sys_types
+)
+
+folly_add_library(
+  NAME elf_cache
+  SRCS
+    ElfCache.cpp
+  HEADERS
+    ElfCache.h
+  DEPS
+    folly_portability_sys_mman
+    folly_scope_guard
+  EXPORTED_DEPS
+    folly_debugging_symbolizer_elf
+    folly_hash_hash
+    folly_memory_reentrant_allocator
+    folly_optional
+    folly_portability_config
+    folly_range
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME symbolize_printer
+  SRCS
+    SymbolizePrinter.cpp
+  HEADERS
+    SymbolizePrinter.h
+  DEPS
+    folly_demangle
+    folly_file_util
+    folly_io_iobuf
+    folly_lang_to_ascii
+    folly_scope_guard
+  EXPORTED_DEPS
+    folly_debugging_symbolizer_symbolized_frame
+    folly_fbstring
+    folly_range
+)
+
+folly_add_library(
+  NAME symbolizer
+  SRCS
+    Symbolizer.cpp
+  HEADERS
+    Symbolizer.h
+  DEPS
+    folly_container_evicting_cache_map
+    folly_debugging_symbolizer_detail_debug
+    folly_debugging_symbolizer_elf
+    folly_file_util
+    folly_lang_safe_assert
+    folly_lang_to_ascii
+    folly_memory
+    folly_memory_sanitize_address
+    folly_portability_sys_mman
+    folly_scope_guard
+    folly_synchronized
+    folly_tracing_async_stack
+  EXPORTED_DEPS
+    folly_debugging_symbolizer_dwarf
+    folly_debugging_symbolizer_elf_cache
+    folly_debugging_symbolizer_stack_trace
+    folly_debugging_symbolizer_symbolize_printer
+    folly_debugging_symbolizer_symbolized_frame
+    folly_fbstring
+    folly_io_iobuf
+    folly_optional
+    folly_portability_config
+    folly_portability_unistd
+    folly_range
+    folly_string
+)
+
+folly_add_library(
+  NAME signal_handler
+  SRCS
+    SignalHandler.cpp
+  HEADERS
+    SignalHandler.h
+  DEPS
+    folly_debugging_symbolizer_symbolizer
+    folly_lang_to_ascii
+    folly_portability_sys_syscall
+    folly_portability_unistd
+    folly_scope_guard
+)
+
+add_subdirectory(detail)

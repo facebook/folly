@@ -1,0 +1,41 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# cli targets require gflags
+if (LIBGFLAGS_FOUND OR gflags_FOUND)
+
+folly_add_library(
+  NAME program_options
+  SRCS
+    NestedCommandLineApp.cpp
+    ProgramOptions.cpp
+  HEADERS
+    NestedCommandLineApp.h
+    ProgramOptions.h
+  DEPS
+    folly_conv
+    folly_experimental_io_fs_util
+    folly_file_util
+    folly_format
+    folly_portability
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_optional
+    folly_portability_gflags
+    folly_string
+  EXTERNAL_DEPS
+    Boost::program_options
+)
+
+endif() # LIBGFLAGS_FOUND OR gflags_FOUND

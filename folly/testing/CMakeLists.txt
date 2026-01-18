@@ -1,0 +1,33 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME test_util
+  SRCS
+    TestUtil.cpp
+  HEADERS
+    TestUtil.h
+  DEPS
+    folly_exception
+    folly_ext_test_ext
+    folly_file
+    folly_file_util
+    folly_memory
+    folly_portability_fcntl
+    folly_string
+  EXPORTED_DEPS
+    folly_experimental_io_fs_util
+    folly_range
+    folly_scope_guard
+)

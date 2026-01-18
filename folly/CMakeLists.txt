@@ -12,196 +12,1438 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+folly_add_library(
+  NAME memory
+  HEADERS
+    Memory.h
+  EXPORTED_DEPS
+    folly_constexpr_math
+    folly_functional_invoke
+    folly_lang_align
+    folly_lang_exception
+    folly_lang_thunk
+    folly_likely
+    folly_memory_malloc
+    folly_portability
+    folly_portability_config
+    folly_portability_constexpr
+    folly_portability_malloc
+    folly_traits
+    folly_utility
+)
 
-add_library(
-    follybenchmark
+folly_add_library(
+  NAME observer_container
+  HEADERS
+    ObserverContainer.h
+  EXPORTED_DEPS
+    folly_constructor_callback_list
+    folly_function
+    folly_io_async_destructor_check
+    folly_lang_switch
+    folly_optional
+    folly_scope_guard
+    folly_small_vector
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME operation_cancelled
+  HEADERS
+    OperationCancelled.h
+)
+
+folly_add_library(
+  NAME optional
+  HEADERS
+    Optional.h
+  EXPORTED_DEPS
+    folly_coro_coroutine
+    folly_hash_traits
+    folly_lang_exception
+    folly_portability
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME benchmark_util
+  EXCLUDE_FROM_MONOLITH
+  SRCS
+    BenchmarkUtil.cpp
+  HEADERS
+    BenchmarkUtil.h
+  DEPS
+    folly_lang_align
+    folly_portability_sched
+    folly_portability_windows
+    folly_system_arch_x86
+  EXPORTED_DEPS
+    folly_lang_hint
+    folly_portability
+)
+
+folly_add_library(
+  NAME scope_guard
+  SRCS
+    ScopeGuard.cpp
+  HEADERS
+    ScopeGuard.h
+  EXPORTED_DEPS
+    folly_lang_exception
+    folly_lang_uncaught_exceptions
+    folly_portability
+    folly_preprocessor
+    folly_utility
+)
+
+folly_add_library(
+  NAME thread_local
+  HEADERS
+    ThreadLocal.h
+  EXPORTED_DEPS
+    folly_detail_thread_local_detail
+    folly_likely
+    folly_portability
+    folly_scope_guard
+    folly_shared_mutex
+)
+
+folly_add_library(
+  NAME range
+  HEADERS
+    Range.h
+  EXPORTED_DEPS
+    folly_cpu_id
+    folly_detail_range_common
+    folly_detail_range_simd
+    folly_hash_spooky_hash_v2
+    folly_lang_c_string
+    folly_lang_exception
+    folly_likely
+    folly_portability
+    folly_portability_constexpr
+    folly_traits
+)
+
+folly_add_library(
+  NAME fbstring
+  HEADERS
+    FBString.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_cpp_attributes
+    folly_hash_hash
+    folly_lang_assume
+    folly_lang_checked_math
+    folly_lang_exception
+    folly_likely
+    folly_memory_malloc
+    folly_portability
+    folly_traits
+)
+
+folly_add_library(
+  NAME format
+  SRCS
+    Format.cpp
+  HEADERS
+    Format-inl.h
+    Format.h
+    FormatArg.h
+  DEPS
+    folly_constexpr_math
+    folly_container_array
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_conv
+    folly_exception
+    folly_format_traits
+    folly_lang_exception
+    folly_lang_to_ascii
+    folly_likely
+    folly_map_util
+    folly_portability
+    folly_portability_windows
+    folly_range
+    folly_string
+    folly_traits
+)
+
+folly_add_library(
+  NAME string
+  SRCS
+    String.cpp
+  HEADERS
+    String-inl.h
+    String.h
+  DEPS
+    folly_container_array
+  EXPORTED_DEPS
+    folly_container_reserve
+    folly_conv
+    folly_cpp_attributes
+    folly_detail_simple_simd_string_utils
+    folly_detail_split_string_simd
+    folly_exception_string
+    folly_optional
+    folly_portability
+    folly_range
+    folly_scope_guard
+    folly_traits
+    folly_unit
+)
+
+folly_add_library(
+  NAME bits
+  HEADERS
+    Bits.h
+  EXPORTED_DEPS
+    folly_lang_bits
+)
+
+folly_add_library(
+  NAME hash
+  HEADERS
+    Hash.h
+  EXPORTED_DEPS
+    folly_hash_hash
+)
+
+folly_add_library(
+  NAME cpu_id
+  HEADERS
+    CpuId.h
+  EXPORTED_DEPS
+    folly_portability
+    folly_system_arch_x86
+)
+
+folly_add_library(
+  NAME cpp_attributes
+  HEADERS
+    CppAttributes.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME likely
+  HEADERS
+    Likely.h
+  EXPORTED_DEPS
+    folly_lang_builtin
+)
+
+folly_add_library(
+  NAME unit
+  HEADERS
+    Unit.h
+)
+
+folly_add_library(
+  NAME c_portability
+  HEADERS
+    CPortability.h
+  EXPORTED_DEPS
+    folly_portability_config
+)
+
+folly_add_library(
+  NAME preprocessor
+  HEADERS
+    Preprocessor.h
+  EXPORTED_DEPS
+    folly_c_portability
+)
+
+folly_add_library(
+  NAME portability
+  HEADERS
+    Portability.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_portability_config
+)
+
+folly_add_library(
+  NAME traits
+  HEADERS
+    Traits.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME utility
+  HEADERS
+    Utility.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_portability
+    folly_traits
+)
+
+folly_add_library(
+  NAME function
+  HEADERS
+    Function.h
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_functional_invoke
+    folly_lang_align
+    folly_lang_exception
+    folly_lang_new
+    folly_portability
+    folly_traits
+)
+
+folly_add_library(
+  NAME chrono
+  HEADERS
+    Chrono.h
+  EXPORTED_DEPS
+    folly_lang_exception
+    folly_portability
+    folly_portability_time
+)
+
+folly_add_library(
+  NAME demangle
+  SRCS
+    Demangle.cpp
+  HEADERS
+    Demangle.h
+  DEPS
+    folly_c_portability
+    folly_functional_invoke
+    folly_lang_c_string
+    folly_utility
+  EXPORTED_DEPS
+    folly_fbstring
+    folly_portability_config
+)
+
+folly_add_library(
+  NAME exception
+  HEADERS
+    Exception.h
+  EXPORTED_DEPS
+    folly_conv
+    folly_fbstring
+    folly_likely
+    folly_portability
+    folly_portability_sys_types
+)
+
+folly_add_library(
+  NAME expected
+  HEADERS
+    Expected.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_coro_coroutine
+    folly_cpp_attributes
+    folly_lang_exception
+    folly_lang_hint
+    folly_likely
+    folly_portability
+    folly_preprocessor
+    folly_traits
+    folly_unit
+    folly_utility
+)
+
+folly_add_library(
+  NAME varint
+  HEADERS
+    Varint.h
+  EXPORTED_DEPS
+    folly_conv
+    folly_expected
+    folly_likely
+    folly_portability
+    folly_range
+)
+
+folly_add_library(
+  NAME concurrent_bit_set
+  HEADERS
+    ConcurrentBitSet.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME atomic_hash_array
+  HEADERS
+    AtomicHashArray-inl.h
+    AtomicHashArray.h
+  EXPORTED_DEPS
+    folly_detail_atomic_hash_utils
+    folly_detail_iterators
+    folly_hash_hash
+    folly_lang_bits
+    folly_lang_exception
+    folly_thread_cached_int
+    folly_utility
+)
+
+folly_add_library(
+  NAME atomic_hash_map
+  HEADERS
+    AtomicHashMap-inl.h
+    AtomicHashMap.h
+  EXPORTED_DEPS
+    folly_atomic_hash_array
+    folly_c_portability
+    folly_container_foreach
+    folly_detail_atomic_hash_utils
+    folly_detail_iterators
+    folly_hash_hash
+    folly_likely
+    folly_thread_cached_int
+)
+
+folly_add_library(
+  NAME atomic_linked_list
+  HEADERS
+    AtomicIntrusiveLinkedList.h
+    AtomicLinkedList.h
+  EXPORTED_DEPS
+    folly_memory
+)
+
+folly_add_library(
+  NAME atomic_unordered_map
+  HEADERS
+    AtomicUnorderedMap.h
+  EXPORTED_DEPS
+    folly_conv
+    folly_detail_atomic_unordered_map_utils
+    folly_lang_bits
+    folly_likely
+    folly_portability_sys_mman
+    folly_portability_unistd
+    folly_random
+    folly_scope_guard
+    folly_traits
+)
+
+folly_add_library(
+  NAME base64
+  HEADERS
+    base64.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_detail_base64_detail_base64_api
+    folly_detail_base64_detail_base64_common
+    folly_lang_exception
+    folly_memory_uninitialized_memory_hacks
+    folly_portability
+)
+
+folly_add_library(
+  NAME benchmark
+  TARGET_NAME follybenchmark
+  EXCLUDE_FROM_MONOLITH
+  SRCS
     Benchmark.cpp
+  HEADERS
+    Benchmark.h
+  DEPS
+    folly_detail_perf_scoped
+    folly_file_util
+    folly_json_dynamic
+    folly_map_util
+    folly_overload
+    folly_string
+  EXPORTED_DEPS
+    folly_benchmark_util
+    folly_functional_invoke
+    folly_lang_hint
+    folly_portability
+    folly_portability_gflags
+    folly_preprocessor
+    folly_range
+    folly_scope_guard
+    folly_traits
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+    Boost::headers
 )
-set_property(TARGET follybenchmark PROPERTY VERSION ${PACKAGE_VERSION})
-target_compile_definitions(follybenchmark PRIVATE BOOST_NO_AUTO_PTR)
-target_link_libraries(follybenchmark PUBLIC folly)
-apply_folly_compile_options_to_target(follybenchmark)
-install(
-  TARGETS follybenchmark
-  EXPORT folly
-  RUNTIME DESTINATION ${BIN_INSTALL_DIR}
-  LIBRARY DESTINATION ${LIB_INSTALL_DIR}
-  ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
+
+folly_add_library(
+  NAME cancellation_token
+  SRCS
+    CancellationToken.cpp
+  HEADERS
+    CancellationToken-inl.h
+    CancellationToken.h
+  DEPS
+    folly_lang_new
+    folly_optional
+    folly_portability_memory
+    folly_scope_guard
+    folly_synchronization_detail_sleeper
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_function
+    folly_operation_cancelled
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
-add_subdirectory(debugging/exception_tracer)
-add_subdirectory(logging/example)
+folly_add_library(
+  NAME clock_gettime_wrappers
+  SRCS
+    ClockGettimeWrappers.cpp
+  HEADERS
+    ClockGettimeWrappers.h
+  DEPS
+    folly_likely
+  EXPORTED_DEPS
+    folly_portability_time
+)
 
-if (PYTHON_EXTENSIONS)
-  # Create tree of symbolic links in structure required for successful
-  # compliation by Cython.
-  #   - must be in path named same as extension
+folly_add_library(
+  NAME concurrent_lazy
+  HEADERS
+    ConcurrentLazy.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_synchronization_delayed_init
+)
 
-  set(_cybld "${CMAKE_CURRENT_BINARY_DIR}/cybld")
+folly_add_library(
+  NAME concurrent_skip_list
+  HEADERS
+    ConcurrentSkipList-inl.h
+    ConcurrentSkipList.h
+  EXPORTED_DEPS
+    folly_constexpr_math
+    folly_detail_iterators
+    folly_likely
+    folly_memory
+    folly_synchronization_micro_spin_lock
+    folly_thread_local
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+    Boost::headers
+)
 
-  add_custom_target(create_binding_symlink ALL)
-  file(GLOB BindingFiles
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/executor.pyx"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf.pyx"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf_ext.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/ProactorExecutor.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pxd"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.h"
+folly_add_library(
+  NAME config
+  HEADERS
+    folly-config.h
+)
+
+folly_add_library(
+  NAME constexpr_math
+  HEADERS
+    ConstexprMath.h
+  EXPORTED_DEPS
+    folly_lang_checked_math
+    folly_portability
+    folly_portability_constexpr
+)
+
+folly_add_library(
+  NAME constructor_callback_list
+  HEADERS
+    ConstructorCallbackList.h
+  EXPORTED_DEPS
+    folly_detail_static_singleton_manager
+    folly_format
+    folly_function
+    folly_shared_mutex
+)
+
+folly_add_library(
+  NAME conv
+  SRCS
+    Conv.cpp
+  HEADERS
+    Conv.h
+  DEPS
+    folly_lang_safe_assert
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_demangle
+    folly_expected
+    folly_fbstring
+    folly_lang_exception
+    folly_lang_pretty
+    folly_lang_to_ascii
+    folly_likely
+    folly_portability
+    folly_portability_math
+    folly_range
+    folly_traits
+    folly_unit
+    folly_utility
+)
+
+folly_add_library(
+  NAME default_keep_alive_executor
+  HEADERS
+    DefaultKeepAliveExecutor.h
+  EXPORTED_DEPS
+    folly_executor
+    folly_executors_sequenced_executor
+    folly_synchronization_baton
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME discriminated_ptr
+  HEADERS
+    DiscriminatedPtr.h
+  EXPORTED_DEPS
+    folly_detail_discriminated_ptr_detail
+    folly_likely
+    folly_portability
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME dynamic
+  HEADERS
+    DynamicConverter.h
+    dynamic-inl.h
+    dynamic.h
+    json.h
+  EXPORTED_DEPS
+    folly_json_dynamic
+)
+
+folly_add_library(
+  NAME exception_string
+  SRCS
+    ExceptionString.cpp
+  HEADERS
+    ExceptionString.h
+  DEPS
+    folly_demangle
+    folly_lang_exception
+    folly_lang_type_info
+  EXPORTED_DEPS
+    folly_fbstring
+)
+
+folly_add_library(
+  NAME exception_wrapper
+  SRCS
+    ExceptionWrapper.cpp
+  HEADERS
+    ExceptionWrapper-inl.h
+    ExceptionWrapper.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_cpp_attributes
+    folly_demangle
+    folly_exception_string
+    folly_fbstring
+    folly_functional_traits
+    folly_lang_assume
+    folly_lang_exception
+    folly_portability
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME executor
+  SRCS
+    Executor.cpp
+  HEADERS
+    Executor.h
+  DEPS
+    folly_exception_string
+    folly_portability
+  EXPORTED_DEPS
+    folly_function
+    folly_lang_exception
+    folly_optional
+    folly_range
+    folly_utility
+)
+
+folly_add_library(
+  NAME fbvector
+  HEADERS
+    FBVector.h
+  EXPORTED_DEPS
+    folly_container_fbvector
+)
+
+folly_add_library(
+  NAME file
+  SRCS
+    File.cpp
+  HEADERS
+    File.h
+  DEPS
+    folly_exception
+    folly_file_util
+    folly_portability_fmt_compile
+    folly_portability_sys_file
+    folly_scope_guard
+  EXPORTED_DEPS
+    folly_exception_wrapper
+    folly_expected
+    folly_file_util
+    folly_portability
+    folly_portability_fcntl
+    folly_portability_unistd
+    folly_range
+)
+
+folly_add_library(
+  NAME file_util
+  SRCS
+    FileUtil.cpp
+  HEADERS
+    FileUtil.h
+  DEPS
+    folly_detail_file_util_detail
+    folly_detail_file_util_vector_detail
+    folly_net_net_ops
+    folly_portability_sockets
+    folly_portability_stdlib
+    folly_portability_sys_file
+    folly_portability_sys_stat
+  EXPORTED_DEPS
+    folly_net_network_socket
+    folly_portability
+    folly_portability_fcntl
+    folly_portability_sys_uio
+    folly_portability_unistd
+    folly_range
+    folly_scope_guard
+)
+
+folly_add_library(
+  NAME fingerprint
+  SRCS
+    Fingerprint.cpp
+  HEADERS
+    Fingerprint.h
+  DEPS
+    folly_detail_fingerprint_polynomial
+    folly_portability
+  EXPORTED_DEPS
+    folly_range
+)
+
+folly_add_library(
+  NAME fixed_string
+  HEADERS
+    FixedString.h
+  EXPORTED_DEPS
+    folly_constexpr_math
+    folly_lang_exception
+    folly_lang_ordering
+    folly_portability
+    folly_portability_constexpr
+    folly_range
+    folly_utility
+)
+
+folly_add_library(
+  NAME fmt_utility
+  SRCS
+    FmtUtility.cpp
+  HEADERS
+    FmtUtility.h
+  DEPS
+    folly_range
+    folly_ssl_openssl_hash
+    folly_string
+  EXPORTED_DEPS
+    folly_cpp_attributes
+)
+
+folly_add_library(
+  NAME format_traits
+  HEADERS
+    FormatTraits.h
+)
+
+folly_add_library(
+  NAME group_varint
+  SRCS
+    GroupVarint.cpp
+  HEADERS
+    GroupVarint.h
+  DEPS
+    folly_container_array
+  EXPORTED_DEPS
+    folly_detail_group_varint_detail
+    folly_lang_bits
+    folly_portability
+    folly_portability_builtins
+    folly_range
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME indestructible
+  HEADERS
+    Indestructible.h
+  EXPORTED_DEPS
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME indexed_mem_pool
+  HEADERS
+    IndexedMemPool.h
+  EXPORTED_DEPS
+    folly_concurrency_cache_locality
+    folly_portability
+    folly_portability_sys_mman
+    folly_portability_unistd
+    folly_synchronization_atomic_struct
+)
+
+folly_add_library(
+  NAME intrusive_list
+  HEADERS
+    IntrusiveList.h
+  EXPORTED_DEPS
+    folly_container_intrusive_list
+)
+
+folly_add_library(
+  NAME json
+  EXPORTED_DEPS
+    folly_dynamic
+)
+
+folly_add_library(
+  NAME json_pointer
+  HEADERS
+    json_pointer.h
+  EXPORTED_DEPS
+    folly_json_json_pointer
+)
+
+folly_add_library(
+  NAME json_patch
+  HEADERS
+    json_patch.h
+  EXPORTED_DEPS
+    folly_json_json_patch
+)
+
+folly_add_library(
+  NAME lazy
+  HEADERS
+    Lazy.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_optional
+)
+
+folly_add_library(
+  NAME glog
+  HEADERS
+    GLog.h
+  EXPORTED_DEPS
+    folly_likely
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME map_util
+  HEADERS
+    MapUtil.h
+  EXPORTED_DEPS
+    folly_container_map_util
+)
+
+folly_add_library(
+  NAME math
+  HEADERS
+    Math.h
+)
+
+folly_add_library(
+  NAME memset-impl
+  SRCS
+    FollyMemset.cpp
+)
+
+folly_add_library(
+  NAME memset
+  HEADERS
+    FollyMemset.h
+  EXPORTED_DEPS
+    folly_memset-impl
+)
+
+folly_add_library(
+  NAME memset-use
+  EXCLUDE_FROM_MONOLITH
+  SRCS
+    FollyMemset.cpp
+)
+
+folly_add_library(
+  NAME memcpy-impl
+  SRCS
+    FollyMemcpy.cpp
+)
+
+folly_add_library(
+  NAME memcpy
+  HEADERS
+    FollyMemcpy.h
+  EXPORTED_DEPS
+    folly_memcpy-impl
+)
+
+folly_add_library(
+  NAME memcpy-use
+  EXCLUDE_FROM_MONOLITH
+  SRCS
+    FollyMemcpy.cpp
+)
+
+# x86 assembly memcpy implementation (not supported on MSVC)
+if (IS_X86_64_ARCH AND NOT MSVC)
+  folly_add_library(
+    NAME memcpy_x86
+    SRCS
+      memcpy.S
   )
-  file(MAKE_DIRECTORY "${_cybld}/folly/")
-  file(MAKE_DIRECTORY "${_cybld}/folly/python/")
-  # Create __init__.py for folly package (required for Python to recognize it as a package)
-  file(WRITE "${_cybld}/folly/__init__.py" "# Auto-generated by CMake\n")
-
-  foreach(_src ${BindingFiles})
-    get_filename_component(_target_file "${_src}" NAME)
-
-    message(
-      STATUS
-      "Linking ${_src} "
-      "to ${_cybld}/folly/${_target_file}"
-    )
-    add_custom_command(TARGET create_binding_symlink PRE_BUILD
-      COMMAND
-        ${CMAKE_COMMAND} -E create_symlink
-        "${_src}"
-        "${_cybld}/folly/${_target_file}"
-    )
-  endforeach()
-
-  # Tell setup.py where to find includes and libfolly.so
-  set(prop "$<TARGET_PROPERTY:folly_base,INCLUDE_DIRECTORIES>")
-  set(incs "$<$<BOOL:${prop}>:-I$<JOIN:${prop},:>>")
-  set(glog_lib "${GLOG_LIBRARY}")
-  cmake_path(REMOVE_FILENAME glog_lib)
-  set(libs "-L${CMAKE_CURRENT_BINARY_DIR}:${CMAKE_BINARY_DIR}:${glog_lib}")
-
-  # Generate API headers only (no linking)
-  add_custom_command(
-    OUTPUT ${_cybld}/folly/iobuf_api.h
-    COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py --api-only
-    DEPENDS create_binding_symlink
-    WORKING_DIRECTORY ${_cybld}
+  set_property(
+    TARGET folly_memcpy_x86_obj
+    APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp"
   )
+endif()
 
-  add_custom_target(folly_python_api_headers ALL
-    DEPENDS ${_cybld}/folly/iobuf_api.h
+folly_add_library(
+  NAME micro_lock
+  SRCS
+    MicroLock.cpp
+  HEADERS
+    MicroLock.h
+  DEPS
+    folly_portability_asm
+  EXPORTED_DEPS
+    folly_optional
+    folly_portability
+    folly_synchronization_atomic_notification
+    folly_synchronization_atomic_ref
+    folly_utility
+)
+
+folly_add_library(
+  NAME micro_spin_lock
+  HEADERS
+    MicroSpinLock.h
+  EXPORTED_DEPS
+    folly_synchronization_micro_spin_lock
+)
+
+folly_add_library(
+  NAME move_wrapper
+  HEADERS
+    MoveWrapper.h
+)
+
+folly_add_library(
+  NAME mpmc_pipeline
+  HEADERS
+    MPMCPipeline.h
+  EXPORTED_DEPS
+    folly_detail_mpmc_pipeline_detail
+    folly_portability
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME mpmc_queue
+  HEADERS
+    MPMCQueue.h
+  EXPORTED_DEPS
+    folly_concurrency_cache_locality
+    folly_detail_turn_sequencer
+    folly_lang_exception
+    folly_portability_unistd
+    folly_traits
+)
+
+folly_add_library(
+  NAME network_address
+  SRCS
+    IPAddress.cpp
+    IPAddressV4.cpp
+    IPAddressV6.cpp
+    MacAddress.cpp
+    SocketAddress.cpp
+  HEADERS
+    IPAddress.h
+    IPAddressException.h
+    IPAddressV4.h
+    IPAddressV6.h
+    MacAddress.h
+    SocketAddress.h
+  DEPS
+    folly_detail_ip_address_source
+    folly_exception
+    folly_format
+    folly_net_net_ops
+    folly_scope_guard
+    folly_small_vector
+    folly_string
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_constexpr_math
+    folly_conv
+    folly_detail_ip_address
+    folly_expected
+    folly_fbstring
+    folly_hash_hash
+    folly_lang_bits
+    folly_lang_exception
+    folly_net_network_socket
+    folly_optional
+    folly_portability
+    folly_portability_config
+    folly_portability_sockets
+    folly_range
+    folly_unit
+)
+
+folly_add_library(
+  NAME replaceable
+  HEADERS
+    Replaceable.h
+  EXPORTED_DEPS
+    folly_portability
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME overload
+  HEADERS
+    Overload.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_portability
+    folly_traits
+)
+
+folly_add_library(
+  NAME packed_sync_ptr
+  HEADERS
+    PackedSyncPtr.h
+  EXPORTED_DEPS
+    folly_portability
+    folly_synchronization_small_locks
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME padded
+  HEADERS
+    Padded.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_portability
+    folly_portability_sys_types
+    folly_traits
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME poly
+  HEADERS
+    Poly-inl.h
+    Poly.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_cpp_attributes
+    folly_detail_poly_detail
+    folly_detail_typelist
+    folly_lang_assume
+    folly_poly_exception
+    folly_traits
+)
+
+folly_add_library(
+  NAME poly_exception
+  HEADERS
+    PolyException.h
+  EXPORTED_DEPS
+    folly_c_portability
+)
+
+folly_add_library(
+  NAME producer_consumer_queue
+  HEADERS
+    ProducerConsumerQueue.h
+  EXPORTED_DEPS
+    folly_concurrency_cache_locality
+)
+
+folly_add_library(
+  NAME random
+  SRCS
+    Random.cpp
+  HEADERS
+    Random-inl.h
+    Random.h
+  DEPS
+    folly_cpp_attributes
+    folly_detail_file_util_detail
+    folly_portability_config
+    folly_portability_sys_time
+    folly_portability_unistd
+    folly_singleton_thread_local
+    folly_synchronization_relaxed_atomic
+    folly_thread_local
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_lang_bits
+    folly_portability
+    folly_random_xoshiro256pp
+    folly_traits
+)
+
+folly_add_library(
+  NAME rw_spin_lock
+  HEADERS
+    RWSpinLock.h
+  EXPORTED_DEPS
+    folly_synchronization_rw_spin_lock
+)
+
+folly_add_library(
+  NAME shared_mutex
+  SRCS
+    SharedMutex.cpp
+  HEADERS
+    SharedMutex.h
+  DEPS
+    folly_indestructible
+    folly_lang_exception
+    folly_portability_sys_resource
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_chrono_hardware
+    folly_concurrency_cache_locality
+    folly_cpp_attributes
+    folly_detail_futex
+    folly_likely
+    folly_portability_asm
+    folly_synchronization_lock
+    folly_synchronization_relaxed_atomic
+    folly_synchronization_sanitize_thread
+    folly_system_thread_id
+)
+
+folly_add_library(
+  NAME singleton
+  SRCS
+    Singleton.cpp
+  HEADERS
+    Singleton-inl.h
+    Singleton.h
+  DEPS
+    folly_demangle
+    folly_experimental_symbolizer_symbolizer
+    folly_lang_safe_assert
+    folly_portability_config
+    folly_portability_fmt_compile
+    folly_scope_guard
+    folly_system_at_fork
+  EXPORTED_DEPS
+    folly_cancellation_token
+    folly_concurrency_core_cached_shared_ptr
+    folly_concurrency_memory_read_mostly_shared_ptr
+    folly_detail_singleton
+    folly_detail_static_singleton_manager
+    folly_exception
+    folly_executor
+    folly_hash_hash
+    folly_lang_exception
+    folly_memory
+    folly_memory_sanitize_leak
+    folly_synchronization_baton
+    folly_synchronized
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME singleton_thread_local
+  SRCS
+    SingletonThreadLocal.cpp
+  HEADERS
+    SingletonThreadLocal.h
+  EXPORTED_DEPS
+    folly_detail_iterators
+    folly_detail_singleton
+    folly_detail_unique_instance
+    folly_functional_invoke
+    folly_lang_hint
+    folly_scope_guard
+    folly_thread_local
+)
+
+folly_add_library(
+  NAME small_vector
+  HEADERS
+    small_vector.h
+  EXPORTED_DEPS
+    folly_container_small_vector
+)
+
+folly_add_library(
+  NAME sorted_vector_types
+  HEADERS
+    sorted_vector_types.h
+  EXPORTED_DEPS
+    folly_container_sorted_vector_types
+)
+
+folly_add_library(
+  NAME spin_lock
+  HEADERS
+    SpinLock.h
+  EXPORTED_DEPS
+    folly_portability
+    folly_synchronization_small_locks
+)
+
+folly_add_library(
+  NAME stop_watch
+  HEADERS
+    stop_watch.h
+  EXPORTED_DEPS
+    folly_chrono
+    folly_portability_time
+    folly_utility
+)
+
+# subprocess is not supported on Windows
+if(NOT WIN32)
+  folly_add_library(
+    NAME subprocess
+    SRCS
+      Subprocess.cpp
+    HEADERS
+      Subprocess.h
+    DEPS
+      folly_conv
+      folly_lang_assume
+      folly_logging_logging
+      folly_portability_dirent
+      folly_portability_fcntl
+      folly_portability_sockets
+      folly_portability_stdlib
+      folly_portability_sys_syscall
+      folly_portability_unistd
+      folly_scope_guard
+      folly_string
+      folly_system_at_fork
+      folly_system_shell
+    EXPORTED_DEPS
+      folly_container_span
+      folly_exception
+      folly_file
+      folly_file_util
+      folly_function
+      folly_gen_string
+      folly_io_iobuf
+      folly_map_util
+      folly_optional
+      folly_portability
+      folly_portability_sys_resource
+      folly_range
+    EXTERNAL_DEPS
+      Boost::headers
   )
+endif()
 
-  add_custom_command(
-    OUTPUT ${_cybld}/folly/python/iobuf_api.h
-    COMMAND
-      ${CMAKE_COMMAND} -E create_symlink
-      "${_cybld}/folly/iobuf_api.h"
-      "${_cybld}/folly/python/iobuf_api.h"
-    DEPENDS ${_cybld}/folly/iobuf_api.h
-  )
+folly_add_library(
+  NAME synchronized
+  HEADERS
+    Synchronized.h
+  EXPORTED_DEPS
+    folly_container_foreach
+    folly_function
+    folly_functional_apply_tuple
+    folly_likely
+    folly_preprocessor
+    folly_shared_mutex
+    folly_synchronization_lock
+    folly_traits
+    folly_utility
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
 
-  add_custom_target(create_post_binding_symlink ALL
-    DEPENDS ${_cybld}/folly/python/iobuf_api.h
-  )
+folly_add_library(
+  NAME synchronized_ptr
+  HEADERS
+    SynchronizedPtr.h
+  EXPORTED_DEPS
+    folly_synchronized
+)
 
-  add_library(
-    folly_python_cpp
-      python/AsyncioExecutor.cpp
-      python/error.cpp
-      python/executor.cpp
-      python/iobuf.cpp
-  )
+folly_add_library(
+  NAME thread_cached_int
+  HEADERS
+    ThreadCachedInt.h
+  EXPORTED_DEPS
+    folly_likely
+    folly_thread_local
+)
 
-  target_include_directories(folly_python_cpp PRIVATE ${Python3_INCLUDE_DIRS})
-  target_link_libraries(folly_python_cpp PRIVATE Python3::Python)
-  add_dependencies(folly_python_cpp folly create_post_binding_symlink)
-  set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
-  target_compile_definitions(folly_python_cpp PRIVATE BOOST_NO_AUTO_PTR)
-  target_include_directories(folly_python_cpp PRIVATE "${_cybld}")
-  target_link_libraries(folly_python_cpp PUBLIC folly)
-  apply_folly_compile_options_to_target(folly_python_cpp)
+folly_add_library(
+  NAME timeout_queue
+  SRCS
+    TimeoutQueue.cpp
+  HEADERS
+    TimeoutQueue.h
+  EXTERNAL_DEPS
+    Boost::headers
+)
 
-  # Build Python extensions after C++ library is ready
-  add_custom_target(folly_python_bindings ALL
-    DEPENDS folly_python_cpp folly_python_api_headers
-    WORKING_DIRECTORY ${_cybld}
-  )
+folly_add_library(
+  NAME token_bucket
+  HEADERS
+    TokenBucket.h
+  EXPORTED_DEPS
+    folly_concurrency_cache_locality
+    folly_constexpr_math
+    folly_likely
+    folly_optional
+)
 
-  add_custom_command(TARGET folly_python_bindings POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E env
-      "CFLAGS=${CMAKE_C_FLAGS}"
-      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
-      "CC=${CMAKE_C_COMPILER}"
-      "CXX=${CMAKE_CXX_COMPILER}"
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
-      build_ext -f ${incs} ${libs}
-    WORKING_DIRECTORY ${_cybld}
-  )
+folly_add_library(
+  NAME try
+  SRCS
+    Try.cpp
+  HEADERS
+    Try-inl.h
+    Try.h
+  EXPORTED_DEPS
+    folly_exception_wrapper
+    folly_functional_invoke
+    folly_lang_exception
+    folly_likely
+    folly_memory
+    folly_portability
+    folly_unit
+    folly_utility
+)
 
-  install(
-    TARGETS folly_python_cpp
-    EXPORT folly
-    DESTINATION ${LIB_INSTALL_DIR}
-  )
-  install(
-    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DESTINATION ${INCLUDE_INSTALL_DIR}
-    FILES_MATCHING
-      PATTERN "*.h"
-  )
-  # Install .pxd files for downstream Cython code that imports folly
-  # (e.g., thrift uses "from folly.iobuf cimport IOBuf").
-  # Flatten python/ subdirectory to match Cython's import structure:
-  # folly/python/iobuf.pxd -> include/folly/iobuf.pxd
-  install(
-    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/
-    DESTINATION ${INCLUDE_INSTALL_DIR}/folly/
-    FILES_MATCHING
-      PATTERN "*.pxd"
-  )
+folly_add_library(
+  NAME unicode
+  SRCS
+    Unicode.cpp
+  HEADERS
+    Unicode.h
+  DEPS
+    folly_conv
+  EXPORTED_DEPS
+    folly_lang_exception
+)
 
-  add_custom_command(TARGET folly_python_bindings
-    COMMAND ${CMAKE_COMMAND} -E env
-      "CFLAGS=${CMAKE_C_FLAGS}"
-      "CXXFLAGS=${CMAKE_CXX_FLAGS}"
-      "CC=${CMAKE_C_COMPILER}"
-      "CXX=${CMAKE_CXX_COMPILER}"
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
-      bdist_wheel
-    WORKING_DIRECTORY ${_cybld}
-  )
+folly_add_library(
+  NAME uri
+  SRCS
+    Uri.cpp
+  HEADERS
+    Uri-inl.h
+    Uri.h
+  EXPORTED_DEPS
+    folly_conv
+    folly_expected
+    folly_hash_hash
+    folly_string
+)
 
-  install(
-    FILES
-      ${_cybld}/folly/iobuf_api.h
-    DESTINATION ${INCLUDE_INSTALL_DIR}/folly/python
-    COMPONENT dev
-  )
+folly_add_library(
+  NAME utf8_string
+  HEADERS
+    UTF8String.h
+  EXPORTED_DEPS
+    folly_range
+  EXTERNAL_DEPS
+    Boost::regex
+)
 
-  # Install Folly Python bindings. getdeps.py does not allow sufficient
-  # control of CMAKE_INSTALL_PREFIX, so PYTHON_PACKAGE_INSTALL_DIR can
-  # be used to control the installation location of Python packages.
-  set(INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
-  if (NOT ${PYTHON_PACKAGE_INSTALL_DIR} STREQUAL "")
-    set(INSTALL_DIR ${PYTHON_PACKAGE_INSTALL_DIR})
-  endif()
+folly_add_library(
+  NAME virtual_executor
+  HEADERS
+    VirtualExecutor.h
+  EXPORTED_DEPS
+    folly_executors_virtual_executor
+)
 
-  # Install the wheel built by bdist_wheel above.
-  # Using pip install on the wheel instead of setup.py install because:
-  # - setup.py install creates eggs (zip archives) which don't work reliably
-  #   in custom install directories that don't support .pth files
-  # - pip install extracts files directly to site-packages/folly/, creating
-  #   a proper directory structure that Python can import normally
-  # --no-deps: folly has no Python dependencies
-  install(CODE "
-    file(GLOB _folly_wheel \"${_cybld}/dist/folly-*.whl\")
-    if(_folly_wheel)
-      execute_process(
-        COMMAND python3 -m pip install \${_folly_wheel}
-          --prefix ${INSTALL_DIR}
-          --no-deps
-          --force-reinstall
-        COMMAND_ECHO STDOUT
-      )
-    else()
-      message(FATAL_ERROR \"No folly wheel found in ${_cybld}/dist/\")
-    endif()
-  ")
-endif ()
+folly_add_library(
+  NAME maybe_managed_ptr
+  HEADERS
+    MaybeManagedPtr.h
+)
+
+add_subdirectory(algorithm)
+add_subdirectory(channels)
+add_subdirectory(chrono)
+add_subdirectory(cli)
+add_subdirectory(codec)
+add_subdirectory(compression)
+add_subdirectory(concurrency)
+add_subdirectory(container)
+add_subdirectory(coro)
+add_subdirectory(crypto)
+add_subdirectory(debugging)
+add_subdirectory(detail)
+add_subdirectory(executors)
+add_subdirectory(experimental)
+add_subdirectory(ext)
+add_subdirectory(external)
+add_subdirectory(fibers)
+add_subdirectory(functional)
+add_subdirectory(futures)
+add_subdirectory(gen)
+add_subdirectory(hash)
+add_subdirectory(init)
+add_subdirectory(io)
+add_subdirectory(json)
+add_subdirectory(lang)
+add_subdirectory(logging)
+add_subdirectory(memory)
+add_subdirectory(net)
+add_subdirectory(observer)
+add_subdirectory(poly)
+add_subdirectory(portability)
+add_subdirectory(random)
+add_subdirectory(result)
+add_subdirectory(settings)
+add_subdirectory(ssl)
+add_subdirectory(stats)
+add_subdirectory(synchronization)
+add_subdirectory(system)
+add_subdirectory(testing)
+add_subdirectory(tracing)
+
+# Resolve deferred dependencies now that all targets exist
+folly_resolve_deferred_dependencies()

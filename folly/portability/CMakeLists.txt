@@ -1,0 +1,438 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME asm
+  HEADERS
+    Asm.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME atomic
+  HEADERS
+    Atomic.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME builtins
+  SRCS
+    Builtins.cpp
+  HEADERS
+    Builtins.h
+  DEPS
+    folly_portability_windows
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME config
+  HEADERS
+    Config.h
+  EXPORTED_DEPS
+    folly_config
+)
+
+folly_add_library(
+  NAME constexpr
+  HEADERS
+    Constexpr.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_portability
+)
+
+folly_add_library(
+  NAME dirent
+  SRCS
+    Dirent.cpp
+  HEADERS
+    Dirent.h
+  DEPS
+    folly_portability_windows
+)
+
+folly_add_library(
+  NAME event
+  HEADERS
+    Event.h
+  EXPORTED_DEPS
+    folly_net_detail_socket_file_descriptor_map
+    folly_portability_fcntl
+    folly_portability_windows
+)
+
+folly_add_library(
+  NAME fcntl
+  SRCS
+    Fcntl.cpp
+  HEADERS
+    Fcntl.h
+  DEPS
+    folly_portability_sockets
+    folly_portability_sys_stat
+  EXPORTED_DEPS
+    folly_portability
+    folly_portability_windows
+)
+
+folly_add_library(
+  NAME filesystem
+  SRCS
+    Filesystem.cpp
+  HEADERS
+    Filesystem.h
+)
+
+folly_add_library(
+  NAME fmt_compile
+  HEADERS
+    FmtCompile.h
+)
+
+folly_add_library(
+  NAME gflags
+  SRCS
+    GFlags.cpp
+  HEADERS
+    GFlags.h
+  EXPORTED_DEPS
+    folly_portability_config
+  EXTERNAL_DEPS
+    ${GFLAGS_LIBRARIES}
+)
+
+folly_add_library(
+  NAME gmock
+  HEADERS
+    GMock.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME gtest
+  HEADERS
+    GTest.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME gtest_prod
+  HEADERS
+    GTestProd.h
+)
+
+folly_add_library(
+  NAME iovec
+  HEADERS
+    IOVec.h
+)
+
+folly_add_library(
+  NAME libgen
+  SRCS
+    Libgen.cpp
+  HEADERS
+    Libgen.h
+)
+
+folly_add_library(
+  NAME libunwind
+  HEADERS
+    Libunwind.h
+  EXPORTED_DEPS
+    folly_portability_provide_libunwind
+)
+
+folly_add_library(
+  NAME malloc
+  SRCS
+    Malloc.cpp
+  HEADERS
+    Malloc.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_portability_config
+)
+
+folly_add_library(
+  NAME math
+  HEADERS
+    Math.h
+)
+
+folly_add_library(
+  NAME memory
+  HEADERS
+    Memory.h
+  EXPORTED_DEPS
+    folly_memory
+)
+
+folly_add_library(
+  NAME openat2
+  SRCS
+    openat2.c
+  HEADERS
+    openat2.h
+  EXPORTED_DEPS
+    folly_config
+)
+
+folly_add_library(
+  NAME openssl
+  SRCS
+    OpenSSL.cpp
+  HEADERS
+    OpenSSL.h
+  EXPORTED_DEPS
+    folly_portability
+    folly_portability_windows
+  EXTERNAL_DEPS
+    ${OPENSSL_LIBRARIES}
+)
+
+folly_add_library(
+  NAME sched
+  SRCS
+    Sched.cpp
+  HEADERS
+    Sched.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME pthread
+  SRCS
+    PThread.cpp
+  HEADERS
+    PThread.h
+  DEPS
+    folly_lang_assume
+  EXPORTED_DEPS
+    folly_portability
+    folly_portability_config
+    folly_portability_sched
+    folly_portability_time
+    folly_portability_windows
+)
+
+folly_add_library(
+  NAME sockets
+  SRCS
+    Sockets.cpp
+  HEADERS
+    Sockets.h
+  DEPS
+    folly_net_detail_socket_file_descriptor_map
+    folly_net_network_socket
+    folly_scope_guard
+  EXPORTED_DEPS
+    folly_net_net_ops
+    folly_portability
+)
+
+folly_add_library(
+  NAME source_location
+  HEADERS
+    SourceLocation.h
+)
+
+folly_add_library(
+  NAME stdio
+  SRCS
+    Stdio.cpp
+  HEADERS
+    Stdio.h
+  DEPS
+    folly_portability_unistd
+    folly_scope_guard
+)
+
+folly_add_library(
+  NAME stdlib
+  SRCS
+    Stdlib.cpp
+  HEADERS
+    Stdlib.h
+  DEPS
+    folly_portability_fcntl
+    folly_portability_sys_stat
+    folly_portability_windows
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_portability_config
+)
+
+folly_add_library(
+  NAME string
+  SRCS
+    String.cpp
+  HEADERS
+    String.h
+  EXPORTED_DEPS
+    folly_portability_config
+)
+
+folly_add_library(
+  NAME sys_file
+  SRCS
+    SysFile.cpp
+  HEADERS
+    SysFile.h
+  DEPS
+    folly_c_portability
+    folly_portability_windows
+)
+
+folly_add_library(
+  NAME sys_membarrier
+  SRCS
+    SysMembarrier.cpp
+  HEADERS
+    SysMembarrier.h
+  DEPS
+    folly_portability
+    folly_portability_sys_syscall
+)
+
+folly_add_library(
+  NAME sys_mman
+  SRCS
+    SysMman.cpp
+  HEADERS
+    SysMman.h
+  DEPS
+    folly_portability
+    folly_portability_windows
+)
+
+folly_add_library(
+  NAME sys_resource
+  SRCS
+    SysResource.cpp
+  HEADERS
+    SysResource.h
+  DEPS
+    folly_portability_windows
+  EXPORTED_DEPS
+    folly_portability_sys_time
+)
+
+folly_add_library(
+  NAME sys_stat
+  SRCS
+    SysStat.cpp
+  HEADERS
+    SysStat.h
+  DEPS
+    folly_portability_windows
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_portability_sys_types
+)
+
+folly_add_library(
+  NAME sys_syscall
+  HEADERS
+    SysSyscall.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_portability
+)
+
+folly_add_library(
+  NAME sys_time
+  SRCS
+    SysTime.cpp
+  HEADERS
+    SysTime.h
+  EXPORTED_DEPS
+    folly_portability_windows
+)
+
+folly_add_library(
+  NAME sys_types
+  HEADERS
+    SysTypes.h
+)
+
+folly_add_library(
+  NAME sys_uio
+  SRCS
+    SysUio.cpp
+  HEADERS
+    SysUio.h
+  DEPS
+    folly_portability_sockets
+    folly_portability_sys_file
+    folly_portability_unistd
+    folly_scope_guard
+  EXPORTED_DEPS
+    folly_portability_config
+    folly_portability_iovec
+    folly_portability_sys_types
+)
+
+folly_add_library(
+  NAME syslog
+  HEADERS
+    Syslog.h
+)
+
+folly_add_library(
+  NAME time
+  SRCS
+    Time.cpp
+  HEADERS
+    Time.h
+  DEPS
+    folly_c_portability
+    folly_likely
+    folly_portability_windows
+    folly_utility
+  EXPORTED_DEPS
+    folly_portability_config
+)
+
+folly_add_library(
+  NAME unistd
+  SRCS
+    Unistd.cpp
+  HEADERS
+    Unistd.h
+  DEPS
+    folly_net_detail_socket_file_descriptor_map
+    folly_portability_sockets
+    folly_portability_windows
+    folly_scope_guard
+  EXPORTED_DEPS
+    folly_portability
+    folly_portability_sys_types
+)
+
+folly_add_library(
+  NAME windows
+  HEADERS
+    Windows.h
+)
+
+add_subdirectory(provide)

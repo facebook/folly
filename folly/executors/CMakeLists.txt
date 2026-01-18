@@ -1,0 +1,491 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME executors
+  EXPORTED_DEPS
+    folly_executors_async
+    folly_executors_cpu_thread_pool_executor
+    folly_executors_fiber_io_executor
+    folly_executors_future_executor
+    folly_executors_global_executor
+    folly_executors_io_executor
+    folly_executors_io_object_cache
+    folly_executors_io_thread_pool_executor
+    folly_executors_serial_executor
+    folly_executors_task_queue_blocking_queue
+    folly_executors_task_queue_lifo_sem_mpmc_queue
+    folly_executors_task_queue_priority_lifo_sem_mpmc_queue
+    folly_executors_task_queue_unbounded_blocking_queue
+    folly_executors_thread_factory_named_thread_factory
+    folly_executors_thread_factory_priority_thread_factory
+    folly_executors_thread_factory_thread_factory
+    folly_executors_thread_pool_executor
+    folly_executors_threaded_executor
+)
+
+folly_add_library(
+  NAME async
+  HEADERS
+    Async.h
+  EXPORTED_DEPS
+    folly_executors_global_executor
+    folly_futures_core
+)
+
+folly_add_library(
+  NAME codel
+  SRCS
+    Codel.cpp
+  HEADERS
+    Codel.h
+  DEPS
+    folly_portability_gflags
+)
+
+folly_add_library(
+  NAME cpu_thread_pool_executor
+  SRCS
+    CPUThreadPoolExecutor.cpp
+  HEADERS
+    CPUThreadPoolExecutor.h
+  DEPS
+    folly_executor
+    folly_executors_task_queue_priority_lifo_sem_mpmc_queue
+    folly_executors_task_queue_priority_unbounded_blocking_queue
+    folly_executors_task_queue_unbounded_blocking_queue
+    folly_memory
+    folly_optional
+    folly_portability_gflags
+    folly_synchronization_throttled_lifo_sem
+  EXPORTED_DEPS
+    folly_executors_queue_observer
+    folly_executors_thread_pool_executor
+)
+
+folly_add_library(
+  NAME drivable_executor
+  HEADERS
+    DrivableExecutor.h
+  EXPORTED_DEPS
+    folly_executor
+)
+
+folly_add_library(
+  NAME edf_thread_pool_executor
+  SRCS
+    EDFThreadPoolExecutor.cpp
+  HEADERS
+    EDFThreadPoolExecutor.h
+  DEPS
+    folly_concurrency_process_local_unique_id
+    folly_portability_gflags
+    folly_synchronization_lifo_sem
+    folly_synchronization_throttled_lifo_sem
+    folly_tracing_static_tracepoint
+  EXPORTED_DEPS
+    folly_executors_soft_real_time_executor
+    folly_executors_thread_pool_executor
+)
+
+folly_add_library(
+  NAME fiber_io_executor
+  HEADERS
+    FiberIOExecutor.h
+  EXPORTED_DEPS
+    folly_executors_io_executor
+    folly_fibers_fiber_manager_map
+)
+
+folly_add_library(
+  NAME future_executor
+  HEADERS
+    FutureExecutor.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_futures_core
+)
+
+folly_add_library(
+  NAME global_executor
+  SRCS
+    GlobalExecutor.cpp
+  HEADERS
+    GlobalExecutor.h
+  DEPS
+    folly_detail_async_trace
+    folly_executors_cpu_thread_pool_executor
+    folly_executors_inline_executor
+    folly_executors_io_thread_pool_executor
+    folly_function
+    folly_shared_mutex
+    folly_singleton
+    folly_system_hardware_concurrency
+  EXPORTED_DEPS
+    folly_executor
+    folly_executors_io_executor
+    folly_portability_gflags
+)
+
+folly_add_library(
+  NAME global_thread_pool_list
+  SRCS
+    GlobalThreadPoolList.cpp
+  HEADERS
+    GlobalThreadPoolList.h
+  DEPS
+    folly_cpp_attributes
+    folly_system_thread_id
+  EXPORTED_DEPS
+    folly_indestructible
+    folly_synchronized
+    folly_thread_local
+)
+
+folly_add_library(
+  NAME inline_executor
+  SRCS
+    InlineExecutor.cpp
+  HEADERS
+    InlineExecutor.h
+  DEPS
+    folly_indestructible
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_cpp_attributes
+    folly_executor
+)
+
+folly_add_library(
+  NAME manual_executor
+  SRCS
+    ManualExecutor.cpp
+  HEADERS
+    ManualExecutor.h
+  EXPORTED_DEPS
+    folly_executors_drivable_executor
+    folly_executors_scheduled_executor
+    folly_executors_sequenced_executor
+    folly_synchronization_lifo_sem
+)
+
+folly_add_library(
+  NAME io_executor
+  HEADERS
+    IOExecutor.h
+  EXPORTED_DEPS
+    folly_executor
+)
+
+folly_add_library(
+  NAME io_object_cache
+  HEADERS
+    IOObjectCache.h
+  EXPORTED_DEPS
+    folly_executors_global_executor
+    folly_io_async_async_base
+    folly_thread_local
+)
+
+folly_add_library(
+  NAME io_thread_pool_executor
+  SRCS
+    IOThreadPoolExecutor.cpp
+  HEADERS
+    IOThreadPoolExecutor.h
+  DEPS
+    folly_detail_memory_idler
+    folly_portability_gflags
+  EXPORTED_DEPS
+    folly_executors_io_executor
+    folly_executors_queue_observer
+    folly_executors_thread_pool_executor
+    folly_io_async_event_base_manager
+    folly_portability
+    folly_synchronization_relaxed_atomic
+)
+
+folly_add_library(
+  NAME soft_real_time_executor
+  SRCS
+    SoftRealTimeExecutor.cpp
+  HEADERS
+    SoftRealTimeExecutor.h
+  EXPORTED_DEPS
+    folly_executor
+)
+
+folly_add_library(
+  NAME scheduled_executor
+  HEADERS
+    ScheduledExecutor.h
+  EXPORTED_DEPS
+    folly_executor
+    folly_lang_exception
+)
+
+folly_add_library(
+  NAME serial_executor
+  HEADERS
+    SerialExecutor-inl.h
+    SerialExecutor.h
+  EXPORTED_DEPS
+    folly_exception_string
+    folly_executors_global_executor
+    folly_executors_serialized_executor
+    folly_io_async_request_context
+    folly_scope_guard
+    folly_synchronization_distributed_mutex
+    folly_synchronization_relaxed_atomic
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME sequenced_executor
+  HEADERS
+    SequencedExecutor.h
+  EXPORTED_DEPS
+    folly_executor
+)
+
+folly_add_library(
+  NAME serialized_executor
+  HEADERS
+    SerializedExecutor.h
+  EXPORTED_DEPS
+    folly_executors_sequenced_executor
+)
+
+folly_add_library(
+  NAME strand_executor
+  SRCS
+    StrandExecutor.cpp
+  HEADERS
+    StrandExecutor.h
+  DEPS
+    folly_exception_string
+    folly_executors_global_executor
+  EXPORTED_DEPS
+    folly_concurrency_unbounded_queue
+    folly_executors_serialized_executor
+    folly_io_async_request_context
+    folly_optional
+)
+
+folly_add_library(
+  NAME thread_pool_executor
+  SRCS
+    ThreadPoolExecutor.cpp
+  HEADERS
+    ThreadPoolExecutor.h
+  DEPS
+    folly_concurrency_process_local_unique_id
+    folly_portability_pthread
+    folly_synchronization_asymmetric_thread_fence
+    folly_tracing_static_tracepoint
+  EXPORTED_DEPS
+    folly_default_keep_alive_executor
+    folly_executors_global_thread_pool_list
+    folly_executors_task_queue_lifo_sem_mpmc_queue
+    folly_executors_thread_factory_named_thread_factory
+    folly_io_async_request_context
+    folly_memory
+    folly_portability_gflags
+    folly_shared_mutex
+    folly_synchronization_atomic_struct
+    folly_synchronization_baton
+    folly_synchronization_relaxed_atomic
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME threaded_executor
+  SRCS
+    ThreadedExecutor.cpp
+  HEADERS
+    ThreadedExecutor.h
+  DEPS
+    folly_executors_thread_factory_named_thread_factory
+    folly_scope_guard
+    folly_system_thread_name
+  EXPORTED_DEPS
+    folly_concurrency_unbounded_queue
+    folly_container_f14_hash
+    folly_executor
+    folly_executors_thread_factory_thread_factory
+)
+
+folly_add_library(
+  NAME timed_drivable_executor
+  SRCS
+    TimedDrivableExecutor.cpp
+  HEADERS
+    TimedDrivableExecutor.h
+  EXPORTED_DEPS
+    folly_concurrency_unbounded_queue
+    folly_executors_drivable_executor
+)
+
+folly_add_library(
+  NAME timekeeper_scheduled_executor
+  SRCS
+    TimekeeperScheduledExecutor.cpp
+  HEADERS
+    TimekeeperScheduledExecutor.h
+  EXPORTED_DEPS
+    folly_executors_scheduled_executor
+    folly_futures_core
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME queued_immediate_executor
+  SRCS
+    QueuedImmediateExecutor.cpp
+  HEADERS
+    QueuedImmediateExecutor.h
+  DEPS
+    folly_indestructible
+    folly_scope_guard
+  EXPORTED_DEPS
+    folly_executor
+    folly_executors_inline_executor
+    folly_io_async_request_context
+    folly_thread_local
+)
+
+folly_add_library(
+  NAME executor_with_priority
+  SRCS
+    ExecutorWithPriority.cpp
+  HEADERS
+    ExecutorWithPriority-inl.h
+    ExecutorWithPriority.h
+  EXPORTED_DEPS
+    folly_executor
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME metered_executor
+  HEADERS
+    MeteredExecutor-inl.h
+    MeteredExecutor.h
+  EXPORTED_DEPS
+    folly_concurrency_unbounded_queue
+    folly_default_keep_alive_executor
+    folly_executors_queue_observer
+    folly_io_async_async_base
+)
+
+folly_add_library(
+  NAME io_thread_pool_deadlock_detector_observer
+  SRCS
+    IOThreadPoolDeadlockDetectorObserver.cpp
+  HEADERS
+    IOThreadPoolDeadlockDetectorObserver.h
+  EXPORTED_DEPS
+    folly_concurrency_deadlock_detector
+    folly_executors_io_thread_pool_executor
+    folly_executors_thread_pool_executor
+    folly_singleton
+)
+
+folly_add_library(
+  NAME queue_observer
+  SRCS
+    QueueObserver.cpp
+  HEADERS
+    QueueObserver.h
+  EXPORTED_DEPS
+    folly_function
+    folly_portability
+    folly_portability_sys_types
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME virtual_executor
+  HEADERS
+    VirtualExecutor.h
+  EXPORTED_DEPS
+    folly_default_keep_alive_executor
+)
+
+folly_add_library(
+  NAME function_scheduler
+  SRCS
+    FunctionScheduler.cpp
+  HEADERS
+    FunctionScheduler.h
+  DEPS
+    folly_conv
+    folly_random
+    folly_string
+    folly_system_thread_name
+  EXPORTED_DEPS
+    folly_container_f14_hash
+    folly_container_intrusive_heap
+    folly_function
+    folly_hash_hash
+    folly_range
+)
+
+folly_add_library(
+  NAME threaded_repeating_function_runner
+  SRCS
+    ThreadedRepeatingFunctionRunner.cpp
+  HEADERS
+    ThreadedRepeatingFunctionRunner.h
+  DEPS
+    folly_system_thread_name
+  EXPORTED_DEPS
+    folly_function
+)
+
+folly_add_library(
+  NAME execution_observer
+  SRCS
+    ExecutionObserver.cpp
+  HEADERS
+    ExecutionObserver.h
+  DEPS
+    folly_tracing_static_tracepoint
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME striped_edf_thread_pool_executor
+  SRCS
+    StripedEDFThreadPoolExecutor.cpp
+  HEADERS
+    StripedEDFThreadPoolExecutor.h
+  DEPS
+    folly_concurrency_cache_locality
+    folly_container_intrusive_heap
+    folly_synchronization_distributed_mutex
+    folly_synchronization_striped_throttled_lifo_sem
+  EXPORTED_DEPS
+    folly_executors_cpu_thread_pool_executor
+    folly_executors_soft_real_time_executor
+    folly_synchronization_throttled_lifo_sem
+)
+
+add_subdirectory(task_queue)
+add_subdirectory(thread_factory)

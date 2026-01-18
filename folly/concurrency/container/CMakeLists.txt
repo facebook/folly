@@ -1,0 +1,79 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME atomic_grow_array
+  HEADERS
+    atomic_grow_array.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_constexpr_math
+    folly_container_span
+    folly_lang_align
+    folly_lang_bits
+    folly_lang_new
+    folly_likely
+    folly_scope_guard
+)
+
+folly_add_library(
+  NAME relaxed_concurrent_priority_queue
+  HEADERS
+    RelaxedConcurrentPriorityQueue.h
+  EXPORTED_DEPS
+    folly_detail_futex
+    folly_lang_align
+    folly_random
+    folly_spin_lock
+    folly_synchronization_detail_spin
+    folly_synchronization_hazptr
+    folly_synchronization_wait_options
+    folly_thread_local
+)
+
+folly_add_library(
+  NAME lock_free_ring_buffer
+  HEADERS
+    LockFreeRingBuffer.h
+  EXPORTED_DEPS
+    folly_detail_turn_sequencer
+    folly_portability
+    folly_portability_unistd
+    folly_synchronization_sanitize_thread
+    folly_traits
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME flat_combining_priority_queue
+  HEADERS
+    FlatCombiningPriorityQueue.h
+  EXPORTED_DEPS
+    folly_detail_futex
+    folly_optional
+    folly_synchronization_flat_combining
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME single_writer_fixed_hash_map
+  HEADERS
+    SingleWriterFixedHashMap.h
+  EXPORTED_DEPS
+    folly_lang_bits
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)

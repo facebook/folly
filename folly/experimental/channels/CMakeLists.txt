@@ -1,0 +1,147 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME channel
+  HEADERS
+    Channel-fwd.h
+    Channel-inl.h
+    Channel.h
+  EXPORTED_DEPS
+    folly_channels_channel
+)
+
+folly_add_library(
+  NAME channel_callback_handle
+  HEADERS
+    ChannelCallbackHandle.h
+  EXPORTED_DEPS
+    folly_channels_channel_callback_handle
+)
+
+folly_add_library(
+  NAME channel_processor
+  HEADERS
+    ChannelProcessor-inl.h
+    ChannelProcessor.h
+  EXPORTED_DEPS
+    folly_channels_channel_processor
+)
+
+folly_add_library(
+  NAME consume_channel
+  HEADERS
+    ConsumeChannel-inl.h
+    ConsumeChannel.h
+  EXPORTED_DEPS
+    folly_channels_consume_channel
+)
+
+folly_add_library(
+  NAME fanout_channel
+  HEADERS
+    FanoutChannel-inl.h
+    FanoutChannel.h
+  EXPORTED_DEPS
+    folly_channels_fanout_channel
+)
+
+folly_add_library(
+  NAME fanout_sender
+  HEADERS
+    FanoutSender-inl.h
+    FanoutSender.h
+  EXPORTED_DEPS
+    folly_channels_fanout_sender
+)
+
+folly_add_library(
+  NAME merge
+  HEADERS
+    Merge-inl.h
+    Merge.h
+  EXPORTED_DEPS
+    folly_channels_merge
+)
+
+folly_add_library(
+  NAME merge_channel
+  HEADERS
+    MergeChannel-inl.h
+    MergeChannel.h
+  EXPORTED_DEPS
+    folly_channels_merge_channel
+)
+
+folly_add_library(
+  NAME multiplex_channel
+  HEADERS
+    MultiplexChannel-inl.h
+    MultiplexChannel.h
+  EXPORTED_DEPS
+    folly_channels_multiplex_channel
+)
+
+folly_add_library(
+  NAME on_closed_exception
+  HEADERS
+    OnClosedException.h
+  EXPORTED_DEPS
+    folly_channels_on_closed_exception
+)
+
+folly_add_library(
+  NAME producer
+  HEADERS
+    Producer-inl.h
+    Producer.h
+  EXPORTED_DEPS
+    folly_channels_producer
+)
+
+folly_add_library(
+  NAME proxy_channel
+  HEADERS
+    ProxyChannel-inl.h
+    ProxyChannel.h
+  EXPORTED_DEPS
+    folly_channels_proxy_channel
+)
+
+folly_add_library(
+  NAME rate_limiter
+  HEADERS
+    RateLimiter.h
+  EXPORTED_DEPS
+    folly_channels_rate_limiter
+)
+
+folly_add_library(
+  NAME max_concurrent_rate_limiter
+  HEADERS
+    MaxConcurrentRateLimiter.h
+  EXPORTED_DEPS
+    folly_channels_max_concurrent_rate_limiter
+)
+
+folly_add_library(
+  NAME transform
+  HEADERS
+    Transform-inl.h
+    Transform.h
+  EXPORTED_DEPS
+    folly_channels_transform
+)
+
+add_subdirectory(detail)

@@ -1,0 +1,146 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME async_base
+  HEADERS
+    AsyncBase.h
+  EXPORTED_DEPS
+    folly_io_async_async_base_class
+)
+
+folly_add_library(
+  NAME async_io
+  HEADERS
+    AsyncIO.h
+  EXPORTED_DEPS
+    folly_io_async_async_io
+)
+
+folly_add_library(
+  NAME liburing
+  HEADERS
+    Liburing.h
+  EXPORTED_DEPS
+    folly_io_async_liburing
+)
+
+folly_add_library(
+  NAME async_io_uring_socket
+  HEADERS
+    AsyncIoUringSocket.h
+    AsyncIoUringSocketFactory.h
+  EXPORTED_DEPS
+    folly_io_async_async_io_uring_socket
+)
+
+folly_add_library(
+  NAME simple_async_io
+  HEADERS
+    SimpleAsyncIO.h
+  EXPORTED_DEPS
+    folly_io_async_simple_async_io
+)
+
+folly_add_library(
+  NAME epoll
+  HEADERS
+    Epoll.h
+  EXPORTED_DEPS
+    folly_io_async_epoll
+)
+
+folly_add_library(
+  NAME epoll_backend
+  HEADERS
+    Epoll.h
+    EpollBackend.h
+  EXPORTED_DEPS
+    folly_io_async_epoll_backend
+)
+
+folly_add_library(
+  NAME event_base_poller
+  HEADERS
+    EventBasePoller.h
+  EXPORTED_DEPS
+    folly_io_async_event_base_poller
+)
+
+folly_add_library(
+  NAME mux_io_thread_pool_executor
+  HEADERS
+    MuxIOThreadPoolExecutor.h
+  EXPORTED_DEPS
+    folly_io_async_mux_io_thread_pool_executor
+)
+
+folly_add_library(
+  NAME io_uring
+  HEADERS
+    IoUring.h
+  EXPORTED_DEPS
+    folly_io_async_io_uring
+)
+
+folly_add_library(
+  NAME io_uring_backend
+  HEADERS
+    IoUringBackend.h
+    IoUringBase.h
+  EXPORTED_DEPS
+    folly_io_async_io_uring_backend
+    folly_io_async_io_uring_provided_buffer_ring
+)
+
+folly_add_library(
+  NAME io_uring_provided_buffer_ring
+  HEADERS
+    IoUringBase.h
+    IoUringProvidedBufferRing.h
+  EXPORTED_DEPS
+    folly_io_async_io_uring_provided_buffer_ring
+)
+
+folly_add_library(
+  NAME io_uring_event
+  HEADERS
+    IoUringEvent.h
+  EXPORTED_DEPS
+    folly_io_async_io_uring_event
+)
+
+folly_add_library(
+  NAME io_uring_event_base_local
+  HEADERS
+    IoUringEventBaseLocal.h
+  EXPORTED_DEPS
+    folly_io_async_io_uring_event_base_local
+)
+
+folly_add_library(
+  NAME fs_util
+  HEADERS
+    FsUtil.h
+  EXPORTED_DEPS
+    folly_io_fs_util
+)
+
+folly_add_library(
+  NAME huge_pages
+  HEADERS
+    HugePages.h
+  EXPORTED_DEPS
+    folly_io_huge_pages
+)

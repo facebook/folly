@@ -1,0 +1,66 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME apply_tuple
+  HEADERS
+    ApplyTuple.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME invoke
+  HEADERS
+    Invoke.h
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_lang_customization_point
+    folly_portability
+    folly_preprocessor
+    folly_traits
+    folly_utility
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME partial
+  HEADERS
+    Partial.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_utility
+)
+
+folly_add_library(
+  NAME protocol
+  HEADERS
+    protocol.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_functional_traits
+    folly_portability
+    folly_traits
+)
+
+folly_add_library(
+  NAME traits
+  HEADERS
+    traits.h
+  EXPORTED_DEPS
+    folly_traits
+)

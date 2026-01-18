@@ -1,0 +1,63 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME transport_callback_base
+  HEADERS
+    TransportCallbackBase.h
+  EXPORTED_DEPS
+    folly_coro_baton
+    folly_coro_task
+    folly_io_async_async_transport
+    folly_io_async_ssl_ssl_errors
+    folly_portability
+)
+
+folly_add_library(
+  NAME transport_callbacks
+  HEADERS
+    TransportCallbacks.h
+  EXPORTED_DEPS
+    folly_coro_task
+    folly_io_async_async_socket
+    folly_io_async_async_socket_exception
+    folly_io_coro_transport_callback_base
+    folly_io_iobuf
+    folly_network_address
+    folly_range
+)
+
+folly_add_library(
+  NAME socket
+  SRCS
+    ServerSocket.cpp
+    Transport.cpp
+  HEADERS
+    ServerSocket.h
+    Transport.h
+  DEPS
+    folly_coro_baton
+    folly_io_coro_transport_callbacks
+    folly_portability
+  EXPORTED_DEPS
+    folly_coro_task
+    folly_exception_wrapper
+    folly_expected
+    folly_io_async_async_socket
+    folly_io_async_async_socket_exception
+    folly_io_async_server_socket
+    folly_io_iobuf
+    folly_network_address
+    folly_range
+)

@@ -1,0 +1,58 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME bind
+  HEADERS
+    Bind.h
+  EXPORTED_DEPS
+    folly_detail_tuple
+    folly_utility
+)
+
+folly_add_library(
+  NAME named
+  HEADERS
+    Named.h
+  EXPORTED_DEPS
+    folly_lang_bind_bind
+    folly_traits
+)
+
+folly_add_library(
+  NAME named_to_storage
+  HEADERS
+    NamedToStorage.h
+  EXPORTED_DEPS
+    folly_lang_bind_named
+    folly_lang_bind_to_storage
+)
+
+folly_add_library(
+  NAME to_storage
+  HEADERS
+    ToStorage.h
+  EXPORTED_DEPS
+    folly_lang_bind_bind
+    folly_utility
+)
+
+folly_add_library(
+  NAME as_argument
+  HEADERS
+    AsArgument.h
+  EXPORTED_DEPS
+    folly_lang_bind_bind
+    folly_utility
+)

@@ -1,0 +1,806 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME async_base_fwd
+  HEADERS
+    HHWheelTimer-fwd.h
+)
+
+folly_add_library(
+  NAME async_base
+  SRCS
+    AsyncTimeout.cpp
+    EventBase.cpp
+    EventBaseBackendBase.cpp
+    EventBaseLocal.cpp
+    EventHandler.cpp
+    HHWheelTimer.cpp
+    TimeoutManager.cpp
+    VirtualEventBase.cpp
+  HEADERS
+    AsyncTimeout.h
+    AtomicNotificationQueue-inl.h
+    AtomicNotificationQueue.h
+    EventBase.h
+    EventBaseAtomicNotificationQueue-inl.h
+    EventBaseAtomicNotificationQueue.h
+    EventBaseBackendBase.h
+    EventBaseLocal.h
+    EventHandler.h
+    HHWheelTimer.h
+    NotificationQueue.h
+    TimeoutManager.h
+    VirtualEventBase.h
+  DEPS
+    folly_chrono
+    folly_container_bit_iterator
+    folly_lang_assume
+    folly_lang_bits
+    folly_string
+    folly_synchronization_event_count
+    folly_system_thread_id
+    folly_system_thread_name
+  EXPORTED_DEPS
+    folly_container_f14_hash
+    folly_exception
+    folly_exception_string
+    folly_executor
+    folly_executors_drivable_executor
+    folly_executors_execution_observer
+    folly_executors_io_executor
+    folly_executors_queue_observer
+    folly_executors_scheduled_executor
+    folly_executors_sequenced_executor
+    folly_file_util
+    folly_function
+    folly_io_async_async_base_fwd
+    folly_io_async_delayed_destruction
+    folly_io_async_event_util
+    folly_io_async_request_context
+    folly_io_iobuf
+    folly_lang_align
+    folly_lang_thunk
+    folly_likely
+    folly_memory
+    folly_net_net_ops
+    folly_net_network_socket
+    folly_optional
+    folly_portability
+    folly_portability_config
+    folly_portability_event
+    folly_portability_fcntl
+    folly_portability_iovec
+    folly_portability_sockets
+    folly_portability_unistd
+    folly_scope_guard
+    folly_spin_lock
+    folly_synchronization_baton
+    folly_synchronization_call_once
+    folly_synchronized
+    folly_system_pid
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+    Boost::headers
+)
+
+folly_add_library(
+  NAME async_pipe
+  SRCS
+    AsyncPipe.cpp
+  HEADERS
+    AsyncPipe.h
+  DEPS
+    folly_detail_file_util_detail
+    folly_file_util
+    folly_io_async_async_socket_exception
+    folly_utility
+  EXPORTED_DEPS
+    folly_io_async_async_base
+    folly_io_async_async_transport
+    folly_io_async_delayed_destruction
+    folly_io_iobuf
+)
+
+folly_add_library(
+  NAME async_signal_handler
+  SRCS
+    AsyncSignalHandler.cpp
+  HEADERS
+    AsyncSignalHandler.h
+  DEPS
+    folly_conv
+  EXPORTED_DEPS
+    folly_io_async_async_base
+    folly_portability_event
+)
+
+folly_add_library(
+  NAME async_socket_transport
+  SRCS
+    AsyncSocketTransport.cpp
+  HEADERS
+    AsyncSocketTransport.h
+  EXPORTED_DEPS
+    folly_io_async_async_socket_exception
+    folly_io_async_async_transport
+    folly_io_iobuf
+    folly_io_socket_option_map
+    folly_net_network_socket
+    folly_network_address
+)
+
+folly_add_library(
+  NAME async_socket
+  SRCS
+    AsyncSocket.cpp
+  HEADERS
+    AsyncSocket.h
+  DEPS
+    folly_exception
+    folly_lang_checked_math
+    folly_portability
+    folly_portability_fcntl
+    folly_portability_sys_mman
+    folly_portability_sys_uio
+    folly_portability_unistd
+    folly_string
+  EXPORTED_DEPS
+    folly_constructor_callback_list
+    folly_detail_socket_fast_open
+    folly_io_async_async_base
+    folly_io_async_async_socket_exception
+    folly_io_async_async_socket_transport
+    folly_io_async_async_transport
+    folly_io_async_delayed_destruction
+    folly_io_async_observer_async_socket_observer_container
+    folly_io_iobuf
+    folly_io_shutdown_socket_set
+    folly_io_socket_option_map
+    folly_net_net_ops_dispatcher
+    folly_net_tcpinfo
+    folly_net_tcpinfo_dispatcher
+    folly_network_address
+    folly_optional
+    folly_portability_sockets
+    folly_small_vector
+)
+
+folly_add_library(
+  NAME async_socket_base
+  HEADERS
+    AsyncSocketBase.h
+  EXPORTED_DEPS
+    folly_io_async_async_base
+    folly_network_address
+)
+
+folly_add_library(
+  NAME async_socket_exception
+  SRCS
+    AsyncSocketException.cpp
+  HEADERS
+    AsyncSocketException.h
+  DEPS
+    folly_format
+    folly_string
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_range
+)
+
+folly_add_library(
+  NAME async_ssl_socket
+  SRCS
+    AsyncSSLSocket.cpp
+  HEADERS
+    AsyncSSLSocket.h
+  DEPS
+    folly_format
+    folly_indestructible
+    folly_io_async_ssl_basic_transport_certificate
+    folly_network_address
+    folly_spin_lock
+  EXPORTED_DEPS
+    folly_io_async_async_base
+    folly_io_async_async_pipe
+    folly_io_async_async_socket
+    folly_io_async_certificate_identity_verifier
+    folly_io_async_ssl_context
+    folly_io_async_ssl_openssl_utils
+    folly_io_async_ssl_ssl_errors
+    folly_io_async_ssl_tls_definitions
+    folly_io_iobuf
+    folly_io_socket_option_map
+    folly_lang_bits
+    folly_optional
+    folly_portability_openssl
+    folly_portability_sockets
+    folly_ssl_openssl_ptr_types
+    folly_ssl_ssl_session
+    folly_ssl_ssl_session_manager
+    folly_string
+)
+
+folly_add_library(
+  NAME async_transport
+  HEADERS
+    AsyncTransport.h
+  EXPORTED_DEPS
+    folly_io_async_async_base
+    folly_io_async_async_socket_base
+    folly_io_async_async_transport_certificate
+    folly_io_async_delayed_destruction
+    folly_io_async_write_flags
+    folly_io_iobuf
+    folly_optional
+    folly_portability_openssl
+    folly_portability_sys_uio
+    folly_ssl_openssl_ptr_types
+)
+
+folly_add_library(
+  NAME async_transport_certificate
+  HEADERS
+    AsyncTransportCertificate.h
+)
+
+folly_add_library(
+  NAME certificate_identity_verifier
+  HEADERS
+    CertificateIdentityVerifier.h
+  EXPORTED_DEPS
+    folly_io_async_async_transport_certificate
+    folly_portability_openssl
+)
+
+folly_add_library(
+  NAME async_udp_server_socket
+  HEADERS
+    AsyncUDPServerSocket.h
+  EXPORTED_DEPS
+    folly_io_async_async_base
+    folly_io_async_async_udp_socket
+    folly_io_iobuf
+    folly_memory
+)
+
+folly_add_library(
+  NAME async_udp_socket
+  SRCS
+    AsyncUDPSocket.cpp
+  HEADERS
+    AsyncUDPSocket.h
+  DEPS
+    folly_likely
+    folly_portability_fcntl
+    folly_portability_sockets
+    folly_portability_unistd
+    folly_small_vector
+    folly_utility
+  EXPORTED_DEPS
+    folly_function
+    folly_io_async_async_base
+    folly_io_async_async_socket_base
+    folly_io_async_async_socket_exception
+    folly_io_iobuf
+    folly_io_socket_option_map
+    folly_net_net_ops
+    folly_net_net_ops_dispatcher
+    folly_net_network_socket
+    folly_network_address
+    folly_scope_guard
+)
+
+folly_add_library(
+  NAME decorated_async_transport_wrapper
+  HEADERS
+    DecoratedAsyncTransportWrapper.h
+    WriteChainAsyncTransportWrapper.h
+  EXPORTED_DEPS
+    folly_io_async_async_transport
+    folly_io_iobuf
+)
+
+folly_add_library(
+  NAME delayed_destruction
+  SRCS
+    DelayedDestruction.cpp
+  HEADERS
+    DelayedDestruction.h
+    DelayedDestructionBase.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME destructor_check
+  HEADERS
+    DestructorCheck.h
+)
+
+folly_add_library(
+  NAME event_base_manager
+  SRCS
+    EventBaseManager.cpp
+  HEADERS
+    EventBaseManager.h
+  EXPORTED_DEPS
+    folly_io_async_async_base
+    folly_optional
+    folly_thread_local
+)
+
+folly_add_library(
+  NAME event_base_thread
+  SRCS
+    EventBaseThread.cpp
+  HEADERS
+    EventBaseThread.h
+  DEPS
+    folly_io_async_scoped_event_base_thread
+  EXPORTED_DEPS
+    folly_io_async_async_base
+    folly_range
+)
+
+folly_add_library(
+  NAME event_util
+  HEADERS
+    EventUtil.h
+  EXPORTED_DEPS
+    folly_portability_event
+)
+
+folly_add_library(
+  NAME request_context
+  SRCS
+    Request.cpp
+  HEADERS
+    Request.h
+  DEPS
+    folly_concurrency_container_single_writer_fixed_hash_map
+    folly_glog
+    folly_tracing_static_tracepoint
+  EXPORTED_DEPS
+    folly_concurrency_process_local_unique_id
+    folly_container_f14_hash
+    folly_detail_iterators
+    folly_shared_mutex
+    folly_singleton_thread_local
+    folly_synchronization_hazptr
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME scoped_event_base_thread
+  SRCS
+    ScopedEventBaseThread.cpp
+  HEADERS
+    ScopedEventBaseThread.h
+  DEPS
+    folly_function
+    folly_io_async_event_base_manager
+    folly_range
+    folly_system_thread_name
+  EXPORTED_DEPS
+    folly_io_async_async_base
+    folly_synchronization_baton
+)
+
+folly_add_library(
+  NAME terminate_cancellation_token
+  SRCS
+    TerminateCancellationToken.cpp
+  HEADERS
+    TerminateCancellationToken.h
+  DEPS
+    folly_io_async_async_signal_handler
+    folly_io_async_scoped_event_base_thread
+    folly_singleton
+  EXPORTED_DEPS
+    folly_cancellation_token
+)
+
+folly_add_library(
+  NAME server_socket
+  SRCS
+    AsyncServerSocket.cpp
+  HEADERS
+    AsyncServerSocket.h
+  DEPS
+    folly_detail_socket_fast_open
+    folly_file_util
+    folly_glog
+    folly_portability
+    folly_portability_fcntl
+    folly_portability_unistd
+  EXPORTED_DEPS
+    folly_exception_wrapper
+    folly_io_async_async_base
+    folly_io_async_async_socket_base
+    folly_io_async_delayed_destruction
+    folly_io_shutdown_socket_set
+    folly_net_net_ops
+    folly_net_network_socket
+    folly_network_address
+    folly_observer_observer
+    folly_portability_sockets
+    folly_string
+)
+
+folly_add_library(
+  NAME ssl_context
+  SRCS
+    SSLContext.cpp
+  HEADERS
+    SSLContext.h
+  DEPS
+    folly_format
+    folly_memory
+    folly_random
+    folly_shared_mutex
+    folly_ssl_openssl_ticket_handler
+    folly_ssl_password_collector
+    folly_ssl_ssl_session_manager
+  EXPORTED_DEPS
+    folly_container_access
+    folly_function
+    folly_io_async_ssl_openssl_utils
+    folly_portability
+    folly_portability_openssl
+    folly_range
+    folly_ssl_openssl_ptr_types
+    folly_string
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME ssl_options
+  SRCS
+    SSLOptions.cpp
+  HEADERS
+    SSLOptions.h
+  DEPS
+    folly_format
+  EXPORTED_DEPS
+    folly_container_array
+    folly_io_async_ssl_context
+)
+
+folly_add_library(
+  NAME password_in_file
+  SRCS
+    PasswordInFile.cpp
+  HEADERS
+    PasswordInFile.h
+  DEPS
+    folly_file_util
+    folly_portability_openssl
+  EXPORTED_DEPS
+    folly_ssl_password_collector
+)
+
+folly_add_library(
+  NAME write_flags
+  HEADERS
+    WriteFlags.h
+)
+
+folly_add_library(
+  NAME timerfd
+  SRCS
+    STTimerFDTimeoutManager.cpp
+    TimerFD.cpp
+    TimerFDTimeoutManager.cpp
+  HEADERS
+    STTimerFDTimeoutManager.h
+    TimerFD.h
+    TimerFDTimeoutManager.h
+  DEPS
+    folly_file_util
+    folly_io_async_event_util
+  EXPORTED_DEPS
+    folly_io_async_async_base
+    folly_io_async_delayed_destruction
+)
+
+folly_add_library(
+  NAME async_base_class
+  SRCS
+    AsyncBase.cpp
+  HEADERS
+    AsyncBase.h
+  DEPS
+    folly_exception
+    folly_format
+    folly_portability_filesystem
+    folly_portability_unistd
+  EXPORTED_DEPS
+    folly_function
+    folly_portability
+    folly_portability_sys_uio
+    folly_range
+)
+
+folly_add_library(
+  NAME async_io
+  SRCS
+    AsyncIO.cpp
+  HEADERS
+    AsyncIO.h
+  DEPS
+    folly_exception
+    folly_likely
+    folly_portability_unistd
+    folly_small_vector
+    folly_string
+  EXPORTED_DEPS
+    folly_experimental_io_async_base
+)
+
+folly_add_library(
+  NAME async_io_uring_socket
+  SRCS
+    AsyncIoUringSocket.cpp
+  HEADERS
+    AsyncIoUringSocket.h
+    AsyncIoUringSocketFactory.h
+  DEPS
+    folly_conv
+    folly_detail_socket_fast_open
+    folly_io_async_io_uring_event_base_local
+    folly_io_async_io_uring_provided_buffer_ring
+    folly_memory_malloc
+    folly_portability_sys_uio
+  EXPORTED_DEPS
+    folly_futures_core
+    folly_io_async_async_base
+    folly_io_async_async_socket
+    folly_io_async_async_socket_exception
+    folly_io_async_async_transport
+    folly_io_async_delayed_destruction
+    folly_io_async_io_uring_backend
+    folly_io_async_liburing
+    folly_io_iobuf
+    folly_io_socket_option_map
+    folly_net_net_ops_dispatcher
+    folly_network_address
+    folly_optional
+    folly_portability_sockets
+    folly_small_vector
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME simple_async_io
+  SRCS
+    SimpleAsyncIO.cpp
+  HEADERS
+    SimpleAsyncIO.h
+  DEPS
+    folly_coro_baton
+    folly_experimental_io_async_io
+    folly_io_async_io_uring
+    folly_io_async_liburing
+    folly_portability_sockets
+    folly_string
+  EXPORTED_DEPS
+    folly_coro_task
+    folly_executors_global_executor
+    folly_experimental_io_async_base
+    folly_io_async_async_base
+    folly_io_async_scoped_event_base_thread
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME epoll
+  HEADERS
+    Epoll.h
+)
+
+folly_add_library(
+  NAME epoll_backend
+  SRCS
+    EpollBackend.cpp
+  HEADERS
+    Epoll.h
+    EpollBackend.h
+  DEPS
+    folly_file_util
+    folly_intrusive_list
+    folly_map_util
+    folly_string
+  EXPORTED_DEPS
+    folly_container_intrusive_heap
+    folly_io_async_async_base
+)
+
+folly_add_library(
+  NAME event_base_poller
+  SRCS
+    EventBasePoller.cpp
+  HEADERS
+    EventBasePoller.h
+  DEPS
+    folly_experimental_io_epoll
+    folly_file_util
+    folly_io_async_liburing
+    folly_lang_align
+    folly_portability_gflags
+    folly_string
+    folly_synchronization_baton
+    folly_system_thread_name
+  EXPORTED_DEPS
+    folly_function
+    folly_range
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME mux_io_thread_pool_executor
+  SRCS
+    MuxIOThreadPoolExecutor.cpp
+  HEADERS
+    MuxIOThreadPoolExecutor.h
+  DEPS
+    folly_container_enumerate
+    folly_experimental_io_epoll_backend
+    folly_lang_align
+    folly_synchronization_latch
+  EXPORTED_DEPS
+    folly_concurrency_unbounded_queue
+    folly_executors_io_thread_pool_executor
+    folly_executors_queue_observer
+    folly_experimental_io_event_base_poller
+    folly_io_async_event_base_manager
+    folly_portability
+    folly_synchronization_baton
+    folly_synchronization_relaxed_atomic
+    folly_synchronization_throttled_lifo_sem
+    folly_synchronization_wait_options
+)
+
+folly_add_library(
+  NAME io_uring
+  SRCS
+    IoUring.cpp
+  HEADERS
+    IoUring.h
+  DEPS
+    folly_exception
+    folly_portability_unistd
+    folly_string
+  EXPORTED_DEPS
+    folly_io_async_async_base_class
+    folly_io_async_liburing
+    folly_shared_mutex
+)
+
+folly_add_library(
+  NAME io_uring_backend
+  SRCS
+    IoUringBackend.cpp
+  HEADERS
+    IoUringBackend.h
+    IoUringBase.h
+  DEPS
+    folly_container_f14_hash
+    folly_demangle
+    folly_file_util
+    folly_glog
+    folly_lang_bits
+    folly_likely
+    folly_portability_gflags
+    folly_portability_sockets
+    folly_portability_sys_mman
+    folly_portability_sys_syscall
+    folly_spin_lock
+    folly_string
+    folly_synchronization_call_once
+    folly_tracing_static_tracepoint
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_conv
+    folly_cpp_attributes
+    folly_exception_string
+    folly_function
+    folly_io_async_async_base
+    folly_io_async_delayed_destruction
+    folly_io_async_io_uring_provided_buffer_ring
+    folly_io_async_io_uring_zero_copy_buffer_pool
+    folly_io_async_liburing
+    folly_io_iobuf
+    folly_network_address
+    folly_optional
+    folly_portability_asm
+    folly_range
+    folly_small_vector
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+    Boost::headers
+)
+
+folly_add_library(
+  NAME io_uring_provided_buffer_ring
+  SRCS
+    IoUringProvidedBufferRing.cpp
+  HEADERS
+    IoUringBase.h
+    IoUringProvidedBufferRing.h
+  DEPS
+    folly_conv
+    folly_lang_align
+    folly_portability_sys_mman
+    folly_string
+  EXPORTED_DEPS
+    folly_io_async_delayed_destruction
+    folly_io_async_liburing
+    folly_io_iobuf
+    folly_synchronization_distributed_mutex
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME io_uring_zero_copy_buffer_pool
+  SRCS
+    IoUringZeroCopyBufferPool.cpp
+  HEADERS
+    IoUringZeroCopyBufferPool.h
+  DEPS
+    folly_conv
+    folly_lang_align
+    folly_portability_sys_mman
+    folly_string
+    folly_synchronization_distributed_mutex
+  EXPORTED_DEPS
+    folly_io_async_liburing
+    folly_io_iobuf
+)
+
+folly_add_library(
+  NAME io_uring_event
+  SRCS
+    IoUringEvent.cpp
+  HEADERS
+    IoUringEvent.h
+  EXPORTED_DEPS
+    folly_file
+    folly_io_async_async_base
+    folly_io_async_io_uring_backend
+    folly_io_async_liburing
+)
+
+folly_add_library(
+  NAME io_uring_event_base_local
+  SRCS
+    IoUringEventBaseLocal.cpp
+  HEADERS
+    IoUringEventBaseLocal.h
+  DEPS
+    folly_io_async_io_uring_event
+    folly_singleton
+  EXPORTED_DEPS
+    folly_io_async_async_base
+    folly_io_async_io_uring_backend
+    folly_io_async_liburing
+)
+
+add_subdirectory(fdsock)
+add_subdirectory(observer)
+add_subdirectory(ssl)

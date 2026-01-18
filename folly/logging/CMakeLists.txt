@@ -1,0 +1,209 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME logging
+  SRCS
+    AsyncFileWriter.cpp
+    AsyncLogWriter.cpp
+    CustomLogFormatter.cpp
+    FileWriterFactory.cpp
+    GlogStyleFormatter.cpp
+    ImmediateFileWriter.cpp
+    LogCategory.cpp
+    LogCategoryConfig.cpp
+    LogConfig.cpp
+    LogMessage.cpp
+    LogStream.cpp
+    LogStreamProcessor.cpp
+    Logger.cpp
+    LoggerDB.cpp
+    ObjectToString.cpp
+    StandardLogHandler.cpp
+    StandardLogHandlerFactory.cpp
+    StreamHandlerFactory.cpp
+    xlog.cpp
+  HEADERS
+    AsyncFileWriter.h
+    AsyncLogWriter.h
+    CustomLogFormatter.h
+    FileWriterFactory.h
+    GlogStyleFormatter.h
+    ImmediateFileWriter.h
+    LogCategory.h
+    LogCategoryConfig.h
+    LogConfig.h
+    LogFormatter.h
+    LogMessage.h
+    LogStream.h
+    LogStreamProcessor.h
+    LogWriter.h
+    Logger.h
+    LoggerDB.h
+    ObjectToString.h
+    StandardLogHandler.h
+    StandardLogHandlerFactory.h
+    StreamHandlerFactory.h
+    xlog.h
+  DEPS
+    folly_constexpr_math
+    folly_demangle
+    folly_exception
+    folly_file_util
+    folly_format
+    folly_map_util
+    folly_portability_fcntl
+    folly_portability_pthread
+    folly_portability_time
+    folly_portability_unistd
+    folly_string
+    folly_system_at_fork
+    folly_system_thread_id
+    folly_system_thread_name
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_conv
+    folly_cpp_attributes
+    folly_detail_static_singleton_manager
+    folly_exception_string
+    folly_file
+    folly_lang_exception
+    folly_lang_type_info
+    folly_likely
+    folly_logging_log_handler
+    folly_logging_log_level
+    folly_logging_log_name
+    folly_logging_rate_limiter
+    folly_optional
+    folly_portability
+    folly_range
+    folly_scope_guard
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME init
+  SRCS
+    Init.cpp
+    LogConfigParser.cpp
+  HEADERS
+    Init.h
+    LogConfigParser.h
+  DEPS
+    folly_conv
+    folly_json_dynamic
+    folly_lang_safe_assert
+    folly_logging_log_name
+    folly_string
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_logging_init_weak
+    folly_logging_logging
+    folly_range
+)
+
+folly_add_library(
+  NAME init_weak
+  SRCS
+    InitWeak.cpp
+  DEPS
+    folly_c_portability
+)
+
+folly_add_library(
+  NAME file_handler_factory
+  SRCS
+    FileHandlerFactory.cpp
+  HEADERS
+    FileHandlerFactory.h
+  DEPS
+    folly_logging_logging
+  EXPORTED_DEPS
+    folly_logging_log_handler
+)
+
+folly_add_library(
+  NAME log_handler
+  SRCS
+    LogHandlerConfig.cpp
+  HEADERS
+    LogHandler.h
+    LogHandlerConfig.h
+    LogHandlerFactory.h
+  DEPS
+    folly_lang_safe_assert
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_logging_log_level
+    folly_optional
+    folly_range
+)
+
+folly_add_library(
+  NAME log_level
+  SRCS
+    LogLevel.cpp
+  HEADERS
+    LogLevel.h
+  DEPS
+    folly_conv
+  EXPORTED_DEPS
+    folly_portability
+    folly_range
+)
+
+folly_add_library(
+  NAME log_name
+  SRCS
+    LogName.cpp
+  HEADERS
+    LogName.h
+  EXPORTED_DEPS
+    folly_range
+)
+
+folly_add_library(
+  NAME rate_limiter
+  SRCS
+    RateLimiter.cpp
+  HEADERS
+    RateLimiter.h
+  EXPORTED_DEPS
+    folly_chrono
+)
+
+folly_add_library(
+  NAME glog_bridge
+  SRCS
+    BridgeFromGoogleLogging.cpp
+  HEADERS
+    BridgeFromGoogleLogging.h
+  DEPS
+    folly_logging_logging
+    folly_utility
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME auto_timer
+  HEADERS
+    AutoTimer.h
+  EXPORTED_DEPS
+    folly_conv
+    folly_optional
+    folly_string
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)

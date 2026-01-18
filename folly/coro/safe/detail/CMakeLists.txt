@@ -1,0 +1,42 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME async_closure
+  HEADERS
+    AsyncClosure.h
+  EXPORTED_DEPS
+    folly_coro_noexcept
+    folly_coro_safe_detail_bind_async_closure
+    folly_coro_safe_safe_task
+    folly_detail_tuple
+)
+
+folly_add_library(
+  NAME bind_async_closure
+  HEADERS
+    BindAsyncClosure.h
+  EXPORTED_DEPS
+    folly_coro_safe_bind_captures
+    folly_coro_safe_captures
+    folly_lang_bind_named
+    folly_lang_bind_named_to_storage
+    folly_lang_safe_alias
+)
+
+folly_add_library(
+  NAME define_movable_deep_const_lref_copyable
+  HEADERS
+    DefineMovableDeepConstLrefCopyable.h
+)

@@ -1,0 +1,110 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME base
+  HEADERS
+    Base-inl.h
+    Base.h
+  EXPORTED_DEPS
+    folly_container_access
+    folly_container_f14_hash
+    folly_conv
+    folly_function
+    folly_functional_invoke
+    folly_gen_core
+    folly_optional
+    folly_portability
+    folly_range
+    folly_utility
+)
+
+folly_add_library(
+  NAME combine
+  HEADERS
+    Combine-inl.h
+    Combine.h
+  EXPORTED_DEPS
+    folly_gen_base
+)
+
+folly_add_library(
+  NAME core
+  HEADERS
+    Core-inl.h
+    Core.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME file
+  HEADERS
+    File-inl.h
+    File.h
+  EXPORTED_DEPS
+    folly_exception
+    folly_file
+    folly_gen_base
+    folly_gen_string
+    folly_io_iobuf
+)
+
+folly_add_library(
+  NAME parallel
+  HEADERS
+    Parallel-inl.h
+    Parallel.h
+  EXPORTED_DEPS
+    folly_gen_base
+    folly_mpmc_queue
+    folly_scope_guard
+    folly_synchronization_event_count
+)
+
+folly_add_library(
+  NAME parallel_map
+  HEADERS
+    ParallelMap-inl.h
+    ParallelMap.h
+  EXPORTED_DEPS
+    folly_expected
+    folly_functional_invoke
+    folly_gen_core
+    folly_mpmc_pipeline
+    folly_synchronization_event_count
+    folly_system_hardware_concurrency
+)
+
+folly_add_library(
+  NAME string
+  HEADERS
+    String-inl.h
+    String.h
+  EXPORTED_DEPS
+    folly_conv
+    folly_gen_base
+    folly_io_iobuf
+    folly_portability
+    folly_range
+    folly_string
+)
+
+folly_add_library(
+  NAME istream
+  HEADERS
+    IStream.h
+  EXPORTED_DEPS
+    folly_gen_core
+)

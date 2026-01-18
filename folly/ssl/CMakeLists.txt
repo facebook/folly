@@ -1,0 +1,118 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME openssl_ptr_types
+  HEADERS
+    OpenSSLPtrTypes.h
+  EXPORTED_DEPS
+    folly_memory
+    folly_portability_openssl
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME openssl_hash
+  SRCS
+    OpenSSLHash.cpp
+  HEADERS
+    OpenSSLHash.h
+  DEPS
+    folly_format
+  EXPORTED_DEPS
+    folly_exception
+    folly_io_iobuf
+    folly_portability_openssl
+    folly_range
+    folly_ssl_openssl_ptr_types
+)
+
+folly_add_library(
+  NAME openssl_cert_utils
+  SRCS
+    OpenSSLCertUtils.cpp
+  HEADERS
+    OpenSSLCertUtils.h
+  DEPS
+    folly_file_util
+    folly_scope_guard
+    folly_string
+  EXPORTED_DEPS
+    folly_io_iobuf
+    folly_optional
+    folly_portability_openssl
+    folly_ssl_openssl_ptr_types
+)
+
+folly_add_library(
+  NAME openssl_version_finder
+  HEADERS
+    OpenSSLVersionFinder.h
+  EXPORTED_DEPS
+    folly_portability_openssl
+)
+
+folly_add_library(
+  NAME openssl_ticket_handler
+  HEADERS
+    OpenSSLTicketHandler.h
+  EXPORTED_DEPS
+    folly_portability_openssl
+)
+
+folly_add_library(
+  NAME ssl_session
+  HEADERS
+    SSLSession.h
+)
+
+folly_add_library(
+  NAME ssl_session_manager
+  SRCS
+    SSLSessionManager.cpp
+  HEADERS
+    SSLSessionManager.h
+  DEPS
+    folly_overload
+    folly_ssl_detail_openssl_session
+  EXPORTED_DEPS
+    folly_portability_openssl
+    folly_ssl_openssl_ptr_types
+    folly_ssl_ssl_session
+)
+
+folly_add_library(
+  NAME password_collector
+  SRCS
+    PasswordCollector.cpp
+  HEADERS
+    PasswordCollector.h
+)
+
+folly_add_library(
+  NAME openssl_key_utils
+  SRCS
+    OpenSSLKeyUtils.cpp
+  HEADERS
+    OpenSSLKeyUtils.h
+  DEPS
+    folly_portability_openssl
+    folly_ssl_password_collector
+  EXPORTED_DEPS
+    folly_range
+    folly_ssl_openssl_ptr_types
+)
+
+add_subdirectory(detail)

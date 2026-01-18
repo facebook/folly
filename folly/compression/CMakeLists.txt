@@ -1,0 +1,123 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME compression
+  SRCS
+    Compression.cpp
+    Zlib.cpp
+    Zstd.cpp
+  HEADERS
+    Compression.h
+    Utils.h
+    Zlib.h
+    Zstd.h
+  DEPS
+    folly_compression_compression_context_pool_singletons
+    folly_conv
+    folly_portability_windows
+    folly_random
+    folly_scope_guard
+    folly_utility
+    folly_varint
+  EXPORTED_DEPS
+    folly_io_iobuf
+    folly_lang_bits
+    folly_memory
+    folly_optional
+    folly_portability
+    folly_range
+)
+
+folly_add_library(
+  NAME compression_context_pool
+  HEADERS
+    CompressionContextPool.h
+    CompressionCoreLocalContextPool.h
+  EXPORTED_DEPS
+    folly_concurrency_cache_locality
+    folly_memory
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME compression_context_pool_singletons
+  SRCS
+    CompressionContextPoolSingletons.cpp
+  HEADERS
+    CompressionContextPoolSingletons.h
+  DEPS
+    folly_memory_jemalloc_huge_page_allocator
+    folly_memory_malloc
+    folly_portability
+    folly_system_hardware_concurrency
+  EXPORTED_DEPS
+    folly_compression_compression_context_pool
+    folly_portability_config
+    folly_portability_gflags
+)
+
+folly_add_library(
+  NAME quotient_multiset
+  SRCS
+    QuotientMultiSet.cpp
+  HEADERS
+    QuotientMultiSet-inl.h
+    QuotientMultiSet.h
+  DEPS
+    folly_math
+  EXPORTED_DEPS
+    folly_compression_instructions
+    folly_compression_select64
+    folly_format
+    folly_io_iobuf
+    folly_lang_bits
+    folly_lang_bits_class
+    folly_lang_safe_assert
+    folly_portability
+    folly_range
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME instructions
+  HEADERS
+    Instructions.h
+  EXPORTED_DEPS
+    folly_cpu_id
+    folly_lang_assume
+    folly_portability
+    folly_portability_builtins
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME select64
+  SRCS
+    Select64.cpp
+  HEADERS
+    Select64.h
+  DEPS
+    folly_constexpr_math
+    folly_utility
+  EXPORTED_DEPS
+    folly_compression_instructions
+    folly_portability
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+add_subdirectory(elias_fano)

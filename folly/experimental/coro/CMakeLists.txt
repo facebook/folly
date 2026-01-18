@@ -1,0 +1,420 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME async_generator
+  HEADERS
+    AsyncGenerator.h
+  EXPORTED_DEPS
+    folly_coro_async_generator
+)
+
+folly_add_library(
+  NAME async_pipe
+  HEADERS
+    AsyncPipe.h
+  EXPORTED_DEPS
+    folly_coro_async_pipe
+)
+
+folly_add_library(
+  NAME async_scope
+  HEADERS
+    AsyncScope.h
+  EXPORTED_DEPS
+    folly_coro_async_scope
+)
+
+folly_add_library(
+  NAME async_stack
+  HEADERS
+    AsyncStack.h
+  EXPORTED_DEPS
+    folly_coro_async_stack
+)
+
+folly_add_library(
+  NAME baton
+  HEADERS
+    Baton.h
+  EXPORTED_DEPS
+    folly_coro_baton
+)
+
+folly_add_library(
+  NAME blocking_wait
+  HEADERS
+    BlockingWait.h
+  EXPORTED_DEPS
+    folly_coro_blocking_wait
+)
+
+folly_add_library(
+  NAME collect
+  HEADERS
+    Collect-inl.h
+    Collect.h
+  EXPORTED_DEPS
+    folly_coro_collect
+)
+
+folly_add_library(
+  NAME concat
+  HEADERS
+    Concat-inl.h
+    Concat.h
+  EXPORTED_DEPS
+    folly_coro_concat
+)
+
+folly_add_library(
+  NAME coroutine
+  HEADERS
+    Coroutine.h
+  EXPORTED_DEPS
+    folly_coro_coroutine
+)
+
+folly_add_library(
+  NAME current_executor
+  HEADERS
+    CurrentExecutor.h
+  EXPORTED_DEPS
+    folly_coro_current_executor
+)
+
+folly_add_library(
+  NAME detach_on_cancel
+  HEADERS
+    DetachOnCancel.h
+  EXPORTED_DEPS
+    folly_coro_detach_on_cancel
+)
+
+folly_add_library(
+  NAME detail_barrier
+  HEADERS
+    detail/Barrier.h
+  EXPORTED_DEPS
+    folly_coro_detail_barrier
+)
+
+folly_add_library(
+  NAME detail_barrier_task
+  HEADERS
+    detail/BarrierTask.h
+  EXPORTED_DEPS
+    folly_coro_detail_barrier_task
+)
+
+folly_add_library(
+  NAME detail_current_async_frame
+  HEADERS
+    detail/CurrentAsyncFrame.h
+  EXPORTED_DEPS
+    folly_coro_detail_current_async_frame
+)
+
+folly_add_library(
+  NAME detail_helpers
+  HEADERS
+    detail/Helpers.h
+  EXPORTED_DEPS
+    folly_coro_detail_helpers
+)
+
+folly_add_library(
+  NAME detail_malloc
+  HEADERS
+    detail/Malloc.h
+  EXPORTED_DEPS
+    folly_coro_detail_malloc
+)
+
+folly_add_library(
+  NAME detail_manual_lifetime
+  HEADERS
+    detail/ManualLifetime.h
+  EXPORTED_DEPS
+    folly_coro_detail_manual_lifetime
+)
+
+folly_add_library(
+  NAME detail_traits
+  HEADERS
+    detail/Traits.h
+  EXPORTED_DEPS
+    folly_coro_detail_traits
+)
+
+folly_add_library(
+  NAME filter
+  HEADERS
+    Filter-inl.h
+    Filter.h
+  EXPORTED_DEPS
+    folly_coro_filter
+)
+
+folly_add_library(
+  NAME future_util
+  HEADERS
+    FutureUtil.h
+  EXPORTED_DEPS
+    folly_coro_future_util
+)
+
+folly_add_library(
+  NAME generator
+  HEADERS
+    Generator.h
+  EXPORTED_DEPS
+    folly_coro_generator
+)
+
+folly_add_library(
+  NAME gmock_helpers
+  HEADERS
+    GmockHelpers.h
+  EXPORTED_DEPS
+    folly_coro_gmock_helpers
+)
+
+folly_add_library(
+  NAME gtest_helpers
+  HEADERS
+    GtestHelpers.h
+  EXPORTED_DEPS
+    folly_coro_gtest_helpers
+)
+
+folly_add_library(
+  NAME inline_task
+  HEADERS
+    detail/InlineTask.h
+  EXPORTED_DEPS
+    folly_coro_inline_task
+)
+
+folly_add_library(
+  NAME invoke
+  HEADERS
+    Invoke.h
+  EXPORTED_DEPS
+    folly_coro_invoke
+)
+
+folly_add_library(
+  NAME merge
+  HEADERS
+    Merge-inl.h
+    Merge.h
+  EXPORTED_DEPS
+    folly_coro_merge
+)
+
+folly_add_library(
+  NAME mutex
+  HEADERS
+    Mutex.h
+  EXPORTED_DEPS
+    folly_coro_mutex
+)
+
+folly_add_library(
+  NAME promise
+  HEADERS
+    Promise.h
+  EXPORTED_DEPS
+    folly_coro_promise
+)
+
+folly_add_library(
+  NAME result
+  HEADERS
+    Result.h
+  EXPORTED_DEPS
+    folly_coro_result
+)
+
+folly_add_library(
+  NAME retry
+  HEADERS
+    Retry.h
+  EXPORTED_DEPS
+    folly_coro_retry
+)
+
+folly_add_library(
+  NAME rust_adaptors
+  HEADERS
+    RustAdaptors.h
+  EXPORTED_DEPS
+    folly_coro_rust_adaptors
+)
+
+folly_add_library(
+  NAME scope_exit
+  HEADERS
+    ScopeExit.h
+  EXPORTED_DEPS
+    folly_coro_scope_exit
+)
+
+folly_add_library(
+  NAME shared_lock
+  HEADERS
+    SharedLock.h
+  EXPORTED_DEPS
+    folly_coro_shared_lock
+)
+
+folly_add_library(
+  NAME shared_mutex
+  HEADERS
+    SharedMutex.h
+  EXPORTED_DEPS
+    folly_coro_shared_mutex
+)
+
+folly_add_library(
+  NAME sleep
+  HEADERS
+    Sleep-inl.h
+    Sleep.h
+  EXPORTED_DEPS
+    folly_coro_sleep
+)
+
+folly_add_library(
+  NAME small_unbounded_queue
+  HEADERS
+    SmallUnboundedQueue.h
+  EXPORTED_DEPS
+    folly_coro_small_unbounded_queue
+)
+
+folly_add_library(
+  NAME task
+  HEADERS
+    Task.h
+  EXPORTED_DEPS
+    folly_coro_task
+)
+
+folly_add_library(
+  NAME timed_wait
+  HEADERS
+    TimedWait.h
+  EXPORTED_DEPS
+    folly_coro_timed_wait
+)
+
+folly_add_library(
+  NAME timeout
+  HEADERS
+    Timeout-inl.h
+    Timeout.h
+  EXPORTED_DEPS
+    folly_coro_timeout
+)
+
+folly_add_library(
+  NAME traits
+  HEADERS
+    Traits.h
+  EXPORTED_DEPS
+    folly_coro_traits
+)
+
+folly_add_library(
+  NAME transform
+  HEADERS
+    Transform-inl.h
+    Transform.h
+  EXPORTED_DEPS
+    folly_coro_transform
+)
+
+folly_add_library(
+  NAME unbounded_queue
+  HEADERS
+    UnboundedQueue.h
+  EXPORTED_DEPS
+    folly_coro_unbounded_queue
+)
+
+folly_add_library(
+  NAME via_if_async
+  HEADERS
+    ViaIfAsync.h
+  EXPORTED_DEPS
+    folly_coro_via_if_async
+)
+
+folly_add_library(
+  NAME with_async_stack
+  HEADERS
+    WithAsyncStack.h
+  EXPORTED_DEPS
+    folly_coro_with_async_stack
+)
+
+folly_add_library(
+  NAME with_cancellation
+  HEADERS
+    WithCancellation.h
+  EXPORTED_DEPS
+    folly_coro_with_cancellation
+)
+
+folly_add_library(
+  NAME bounded_queue
+  HEADERS
+    BoundedQueue.h
+  EXPORTED_DEPS
+    folly_coro_bounded_queue
+)
+
+folly_add_library(
+  NAME shared_promise
+  HEADERS
+    SharedPromise.h
+  EXPORTED_DEPS
+    folly_coro_shared_promise
+)
+
+folly_add_library(
+  NAME cleanup
+  HEADERS
+    Cleanup.h
+  EXPORTED_DEPS
+    folly_coro_cleanup
+)
+
+folly_add_library(
+  NAME auto_cleanup_fwd
+  HEADERS
+    AutoCleanup-fwd.h
+  EXPORTED_DEPS
+    folly_coro_auto_cleanup_fwd
+)
+
+folly_add_library(
+  NAME auto_cleanup
+  HEADERS
+    AutoCleanup.h
+  EXPORTED_DEPS
+    folly_coro_auto_cleanup
+)

@@ -1,0 +1,143 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME dynamic
+  SRCS
+    dynamic.cpp
+    json.cpp
+  HEADERS
+    DynamicConverter.h
+    dynamic-inl.h
+    dynamic.h
+    json.h
+  DEPS
+    folly_container_enumerate
+    folly_hash_hash
+    folly_lang_assume
+    folly_lang_bits
+    folly_portability_constexpr
+    folly_unicode
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_container_access
+    folly_container_f14_hash
+    folly_conv
+    folly_detail_iterators
+    folly_expected
+    folly_format
+    folly_function
+    folly_json_pointer
+    folly_lang_exception
+    folly_likely
+    folly_optional
+    folly_portability
+    folly_range
+    folly_traits
+    folly_utility
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME json_pointer
+  SRCS
+    json_pointer.cpp
+  HEADERS
+    json_pointer.h
+  DEPS
+    folly_string
+  EXPORTED_DEPS
+    folly_expected
+    folly_range
+)
+
+folly_add_library(
+  NAME json_patch
+  SRCS
+    json_patch.cpp
+  HEADERS
+    json_patch.h
+  DEPS
+    folly_container_enumerate
+  EXPORTED_DEPS
+    folly_expected
+    folly_json_dynamic
+    folly_json_pointer
+    folly_optional
+)
+
+folly_add_library(
+  NAME json_schema
+  SRCS
+    JSONSchema.cpp
+  HEADERS
+    JSONSchema.h
+  DEPS
+    folly_c_portability
+    folly_conv
+    folly_memory
+    folly_optional
+    folly_portability_math
+    folly_singleton
+    folly_string
+  EXPORTED_DEPS
+    folly_exception_wrapper
+    folly_json_dynamic
+    folly_range
+)
+
+folly_add_library(
+  NAME dynamic_parser
+  SRCS
+    DynamicParser.cpp
+  HEADERS
+    DynamicParser-inl.h
+    DynamicParser.h
+  DEPS
+    folly_optional
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_conv
+    folly_json
+    folly_json_dynamic
+    folly_scope_guard
+    folly_traits
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME json_mock_util
+  HEADERS
+    JsonMockUtil.h
+  EXPORTED_DEPS
+    folly_portability_gmock
+)
+
+folly_add_library(
+  NAME json_test_util
+  SRCS
+    JsonTestUtil.cpp
+  HEADERS
+    JsonTestUtil.h
+  DEPS
+    folly_conv
+    folly_lang_assume
+  EXPORTED_DEPS
+    folly_json_dynamic
+    folly_range
+)
+
+add_subdirectory(bser)

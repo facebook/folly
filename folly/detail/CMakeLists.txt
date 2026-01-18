@@ -1,0 +1,420 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME async_trace
+  SRCS
+    AsyncTrace.cpp
+  HEADERS
+    AsyncTrace.h
+  EXPORTED_DEPS
+    folly_optional
+)
+
+folly_add_library(
+  NAME atomic_hash_utils
+  HEADERS
+    AtomicHashUtils.h
+  EXPORTED_DEPS
+    folly_portability_asm
+)
+
+folly_add_library(
+  NAME atomic_unordered_map_utils
+  HEADERS
+    AtomicUnorderedMapUtils.h
+  EXPORTED_DEPS
+    folly_exception
+    folly_portability_sys_mman
+    folly_portability_unistd
+)
+
+folly_add_library(
+  NAME discriminated_ptr_detail
+  HEADERS
+    DiscriminatedPtrDetail.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+)
+
+folly_add_library(
+  NAME file_util_detail
+  SRCS
+    FileUtilDetail.cpp
+  HEADERS
+    FileUtilDetail.h
+  DEPS
+    folly_portability_config
+  EXPORTED_DEPS
+    folly_portability_sys_types
+)
+
+folly_add_library(
+  NAME file_util_vector_detail
+  HEADERS
+    FileUtilVectorDetail.h
+  EXPORTED_DEPS
+    folly_detail_file_util_detail
+    folly_portability_sys_uio
+    folly_portability_unistd
+)
+
+folly_add_library(
+  NAME fingerprint_polynomial
+  HEADERS
+    FingerprintPolynomial.h
+)
+
+folly_add_library(
+  NAME futex
+  SRCS
+    Futex.cpp
+  HEADERS
+    Futex-inl.h
+    Futex.h
+  DEPS
+    folly_hash_hash
+    folly_portability_sys_syscall
+    folly_scope_guard
+  EXPORTED_DEPS
+    folly_synchronization_parking_lot
+)
+
+folly_add_library(
+  NAME group_varint_detail
+  HEADERS
+    GroupVarintDetail.h
+)
+
+folly_add_library(
+  NAME ip_address
+  SRCS
+    IPAddress.cpp
+  HEADERS
+    IPAddress.h
+  DEPS
+    folly_portability_fmt_compile
+  EXPORTED_DEPS
+    folly_portability_sockets
+)
+
+folly_add_library(
+  NAME ip_address_source
+  HEADERS
+    IPAddressSource.h
+  EXPORTED_DEPS
+    folly_detail_ip_address
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME iterators
+  HEADERS
+    Iterators.h
+)
+
+folly_add_library(
+  NAME memory_idler
+  SRCS
+    MemoryIdler.cpp
+  HEADERS
+    MemoryIdler.h
+  DEPS
+    folly_concurrency_cache_locality
+    folly_glog
+    folly_memory_mallctl_helper
+    folly_memory_malloc
+    folly_portability
+    folly_portability_gflags
+    folly_portability_pthread
+    folly_portability_sys_mman
+    folly_portability_unistd
+    folly_scope_guard
+    folly_system_pid
+  EXPORTED_DEPS
+    folly_detail_futex
+    folly_hash_hash
+    folly_synchronization_atomic_struct
+    folly_system_thread_id
+)
+
+folly_add_library(
+  NAME perf_scoped
+  SRCS
+    PerfScoped.cpp
+  HEADERS
+    PerfScoped.h
+  DEPS
+    folly_conv
+    folly_system_pid
+    folly_testing_test_util
+)
+
+folly_add_library(
+  NAME mpmc_pipeline_detail
+  HEADERS
+    MPMCPipelineDetail.h
+  EXPORTED_DEPS
+    folly_mpmc_queue
+)
+
+folly_add_library(
+  NAME poly_detail
+  HEADERS
+    PolyDetail.h
+  EXPORTED_DEPS
+    folly_detail_typelist
+    folly_functional_invoke
+    folly_lang_exception
+    folly_lang_static_const
+    folly_poly_exception
+    folly_portability
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME range_common
+  SRCS
+    RangeCommon.cpp
+  HEADERS
+    RangeCommon.h
+  DEPS
+    folly_container_sparse_byte_set
+  EXPORTED_DEPS
+    folly_likely
+)
+
+folly_add_library(
+  NAME range_simd
+  SRCS
+    RangeSimd.cpp
+  HEADERS
+    RangeSimd.h
+  DEPS
+    folly_detail_range_sse42
+    folly_external_nvidia_detail_range_sve2
+    folly_portability
+  EXPORTED_DEPS
+    folly_detail_range_common
+)
+
+folly_add_library(
+  NAME range_sse42
+  SRCS
+    RangeSse42.cpp
+  HEADERS
+    RangeSse42.h
+  DEPS
+    folly_detail_sse
+    folly_likely
+    folly_portability
+  EXPORTED_DEPS
+    folly_detail_range_common
+)
+
+folly_add_library(
+  NAME singleton
+  HEADERS
+    Singleton.h
+  EXPORTED_DEPS
+    folly_traits
+)
+
+folly_add_library(
+  NAME slow_fingerprint
+  HEADERS
+    SlowFingerprint.h
+  EXPORTED_DEPS
+    folly_detail_fingerprint_polynomial
+    folly_fingerprint
+    folly_range
+)
+
+folly_add_library(
+  NAME sse
+  SRCS
+    Sse.cpp
+  HEADERS
+    Sse.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME simple_simd_string_utils
+  SRCS
+    SimpleSimdStringUtils.cpp
+  HEADERS
+    SimpleSimdStringUtils.h
+    SimpleSimdStringUtilsImpl.h
+  EXPORTED_DEPS
+    folly_algorithm_simd_detail_simd_any_of
+    folly_algorithm_simd_detail_simd_platform
+    folly_range
+)
+
+folly_add_library(
+  NAME split_string_simd
+  HEADERS
+    SplitStringSimd.h
+    SplitStringSimdImpl.h
+  EXPORTED_DEPS
+    folly_algorithm_simd_detail_simd_for_each
+    folly_algorithm_simd_detail_simd_platform
+    folly_algorithm_simd_ignore
+    folly_algorithm_simd_movemask
+    folly_lang_bits
+    folly_portability
+    folly_range
+)
+
+folly_add_library(
+  NAME socket_fast_open
+  SRCS
+    SocketFastOpen.cpp
+  HEADERS
+    SocketFastOpen.h
+  EXPORTED_DEPS
+    folly_net_network_socket
+    folly_portability_sockets
+)
+
+folly_add_library(
+  NAME static_singleton_manager
+  SRCS
+    StaticSingletonManager.cpp
+  HEADERS
+    StaticSingletonManager.h
+  DEPS
+    folly_memory_reentrant_allocator
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_detail_singleton
+    folly_indestructible
+    folly_lang_thunk
+    folly_lang_type_info
+    folly_likely
+    folly_utility
+)
+
+folly_add_library(
+  NAME thread_local_detail
+  SRCS
+    ThreadLocalDetail.cpp
+  HEADERS
+    ThreadLocalDetail.h
+  DEPS
+    folly_constexpr_math
+    folly_detail_thread_local_globals
+    folly_hash_murmur_hash
+    folly_lang_hint
+    folly_memory_sanitize_leak
+    folly_random_hash
+    folly_synchronization_call_once
+    folly_utility
+  EXPORTED_DEPS
+    folly_concurrency_container_atomic_grow_array
+    folly_container_foreach
+    folly_detail_static_singleton_manager
+    folly_detail_unique_instance
+    folly_exception
+    folly_function
+    folly_lang_exception
+    folly_map_util
+    folly_memory_malloc
+    folly_portability
+    folly_portability_pthread
+    folly_scope_guard
+    folly_shared_mutex
+    folly_synchronization_micro_spin_lock
+    folly_synchronization_relaxed_atomic
+    folly_synchronized
+    folly_system_at_fork
+    folly_system_thread_id
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME thread_local_globals
+  SRCS
+    thread_local_globals.cpp
+  HEADERS
+    thread_local_globals.h
+  DEPS
+    folly_detail_static_singleton_manager
+    folly_lang_exception
+    folly_portability_pthread
+)
+
+folly_add_library(
+  NAME turn_sequencer
+  HEADERS
+    TurnSequencer.h
+  EXPORTED_DEPS
+    folly_chrono_hardware
+    folly_detail_futex
+    folly_portability
+    folly_portability_asm
+    folly_portability_unistd
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME typelist
+  HEADERS
+    TypeList.h
+  EXPORTED_DEPS
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME unique_instance
+  SRCS
+    UniqueInstance.cpp
+  HEADERS
+    UniqueInstance.h
+  DEPS
+    folly_demangle
+    folly_lang_exception
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_detail_static_singleton_manager
+)
+
+folly_add_library(
+  NAME traponavx512
+  SRCS
+    TrapOnAvx512.cpp
+  HEADERS
+    TrapOnAvx512.h
+  DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME tuple
+  HEADERS
+    tuple.h
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_lang_safe_alias_fwd
+    folly_traits
+)
+
+add_subdirectory(base64_detail)

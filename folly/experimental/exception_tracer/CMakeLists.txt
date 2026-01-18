@@ -1,0 +1,81 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME exception_abi
+  HEADERS
+    ExceptionAbi.h
+  EXPORTED_DEPS
+    folly_debugging_exception_tracer_exception_abi
+)
+
+folly_add_library(
+  NAME exception_counter
+  HEADERS
+    ExceptionCounterLib.h
+  EXPORTED_DEPS
+    folly_debugging_exception_tracer_exception_counter
+)
+
+folly_add_library(
+  NAME exception_tracer
+  EXPORTED_DEPS
+    folly_debugging_exception_tracer_exception_tracer
+)
+
+folly_add_library(
+  NAME exception_tracer_base
+  HEADERS
+    ExceptionTracer.h
+  EXPORTED_DEPS
+    folly_debugging_exception_tracer_exception_tracer_base
+)
+
+folly_add_library(
+  NAME exception_tracer_callbacks
+  HEADERS
+    ExceptionTracerLib.h
+  EXPORTED_DEPS
+    folly_debugging_exception_tracer_exception_tracer_callbacks
+)
+
+folly_add_library(
+  NAME stacktrace
+  HEADERS
+    StackTrace.h
+  EXPORTED_DEPS
+    folly_debugging_exception_tracer_stacktrace
+)
+
+folly_add_library(
+  NAME smart_exception_tracer_singleton
+  HEADERS
+    SmartExceptionTracerSingleton.h
+  EXPORTED_DEPS
+    folly_debugging_exception_tracer_smart_exception_tracer_singleton
+)
+
+folly_add_library(
+  NAME smart_exception_stack_trace_hooks
+  DEPS
+    folly_debugging_exception_tracer_smart_exception_stack_trace_hooks
+)
+
+folly_add_library(
+  NAME smart_exception_tracer
+  HEADERS
+    SmartExceptionTracer.h
+  EXPORTED_DEPS
+    folly_debugging_exception_tracer_smart_exception_tracer
+)

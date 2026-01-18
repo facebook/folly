@@ -1,0 +1,144 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME at_fork
+  SRCS
+    AtFork.cpp
+  HEADERS
+    AtFork.h
+  DEPS
+    folly_lang_exception
+    folly_portability_pthread
+    folly_scope_guard
+    folly_synchronization_sanitize_thread
+  EXPORTED_DEPS
+    folly_function
+    folly_portability_sys_types
+)
+
+folly_add_library(
+  NAME aux_vector
+  HEADERS
+    AuxVector.h
+  EXPORTED_DEPS
+    folly_portability
+    folly_preprocessor
+)
+
+folly_add_library(
+  NAME env_util
+  SRCS
+    EnvUtil.cpp
+  HEADERS
+    EnvUtil.h
+  DEPS
+    folly_portability_stdlib
+    folly_portability_unistd
+    folly_string
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_memory
+)
+
+folly_add_library(
+  NAME hardware_concurrency
+  SRCS
+    HardwareConcurrency.cpp
+  HEADERS
+    HardwareConcurrency.h
+  DEPS
+    folly_lang_safe_assert
+    folly_portability_sched
+    folly_utility
+)
+
+folly_add_library(
+  NAME memory_mapping
+  SRCS
+    MemoryMapping.cpp
+  HEADERS
+    MemoryMapping.h
+  DEPS
+    folly_experimental_io_huge_pages
+    folly_portability
+    folly_portability_gflags
+    folly_portability_sys_mman
+    folly_portability_sys_syscall
+  EXPORTED_DEPS
+    folly_file
+    folly_portability_unistd
+    folly_range
+)
+
+folly_add_library(
+  NAME pid
+  SRCS
+    Pid.cpp
+  HEADERS
+    Pid.h
+  DEPS
+    folly_portability_unistd
+    folly_system_at_fork
+  EXPORTED_DEPS
+    folly_portability_sys_types
+)
+
+folly_add_library(
+  NAME shell
+  SRCS
+    Shell.cpp
+  HEADERS
+    Shell.h
+  EXPORTED_DEPS
+    folly_conv
+    folly_format
+    folly_range
+)
+
+folly_add_library(
+  NAME thread_id
+  SRCS
+    ThreadId.cpp
+  HEADERS
+    ThreadId.h
+  DEPS
+    folly_likely
+    folly_portability_pthread
+    folly_portability_sys_syscall
+    folly_portability_unistd
+    folly_portability_windows
+    folly_synchronization_relaxed_atomic
+    folly_system_at_fork
+)
+
+folly_add_library(
+  NAME thread_name
+  SRCS
+    ThreadName.cpp
+  HEADERS
+    ThreadName.h
+  DEPS
+    folly_portability
+    folly_portability_windows
+    folly_scope_guard
+    folly_traits
+  EXPORTED_DEPS
+    folly_optional
+    folly_portability_config
+    folly_portability_pthread
+    folly_range
+)
+
+add_subdirectory(arch)

@@ -1,0 +1,328 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME add_tasks
+  HEADERS
+    AddTasks-inl.h
+    AddTasks.h
+  EXPORTED_DEPS
+    folly_fibers_core
+    folly_optional
+    folly_try
+)
+
+folly_add_library(
+  NAME atomic_batch_dispatcher
+  HEADERS
+    AtomicBatchDispatcher-inl.h
+    AtomicBatchDispatcher.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_fibers_detail_atomic_batch_dispatcher
+    folly_function
+    folly_futures_core
+    folly_optional
+)
+
+folly_add_library(
+  NAME batch_dispatcher
+  HEADERS
+    BatchDispatcher.h
+  EXPORTED_DEPS
+    folly_function
+    folly_futures_core
+)
+
+folly_add_library(
+  NAME boost_context_compatibility
+  HEADERS
+    BoostContextCompatibility.h
+  EXPORTED_DEPS
+    folly_function
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+    Boost::context
+)
+
+folly_add_library(
+  NAME core
+  SRCS
+    Baton.cpp
+    Fiber.cpp
+    FiberManager.cpp
+  HEADERS
+    Baton-inl.h
+    Baton.h
+    Fiber-inl.h
+    Fiber.h
+    FiberManagerInternal-inl.h
+    FiberManagerInternal.h
+    Promise-inl.h
+    Promise.h
+  DEPS
+    folly_constexpr_math
+    folly_detail_memory_idler
+    folly_memory_sanitize_address
+    folly_portability_asm
+    folly_portability_config
+    folly_portability_sys_syscall
+    folly_portability_unistd
+    folly_singleton_thread_local
+    folly_synchronization_sanitize_thread
+  EXPORTED_DEPS
+    folly_atomic_linked_list
+    folly_c_portability
+    folly_coro_coroutine
+    folly_detail_async_trace
+    folly_detail_futex
+    folly_executor
+    folly_executors_execution_observer
+    folly_fibers_boost_context_compatibility
+    folly_fibers_guard_page_allocator
+    folly_fibers_loop_controller
+    folly_fibers_traits
+    folly_function
+    folly_functional_invoke
+    folly_intrusive_list
+    folly_io_async_async_base
+    folly_io_async_request_context
+    folly_lang_thunk
+    folly_likely
+    folly_memory
+    folly_optional
+    folly_portability
+    folly_portability_pthread
+    folly_scope_guard
+    folly_tracing_async_stack
+    folly_try
+)
+
+folly_add_library(
+  NAME core_manager
+  HEADERS
+    FiberManager-inl.h
+    FiberManager.h
+  EXPORTED_DEPS
+    folly_fibers_core
+    folly_functional_invoke
+    folly_futures_core
+)
+
+folly_add_library(
+  NAME event_base_loop_controller
+  HEADERS
+    EventBaseLoopController-inl.h
+    EventBaseLoopController.h
+  EXPORTED_DEPS
+    folly_cancellation_token
+    folly_fibers_core
+    folly_fibers_executor_based_loop_controller
+    folly_io_async_async_base
+    folly_memory
+)
+
+folly_add_library(
+  NAME executor_loop_controller
+  HEADERS
+    ExecutorLoopController-inl.h
+    ExecutorLoopController.h
+  EXPORTED_DEPS
+    folly_executor
+    folly_fibers_core
+    folly_fibers_executor_based_loop_controller
+    folly_futures_core
+    folly_scope_guard
+)
+
+folly_add_library(
+  NAME fiber_manager_map
+  HEADERS
+    FiberManagerMap-inl.h
+    FiberManagerMap.h
+  EXPORTED_DEPS
+    folly_container_f14_hash
+    folly_fibers_core
+    folly_fibers_event_base_loop_controller
+    folly_function
+    folly_io_async_async_base
+    folly_scope_guard
+    folly_singleton_thread_local
+    folly_synchronization_relaxed_atomic
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME fibers
+  EXPORTED_DEPS
+    folly_fibers_add_tasks
+    folly_fibers_atomic_batch_dispatcher
+    folly_fibers_batch_dispatcher
+    folly_fibers_batch_semaphore
+    folly_fibers_boost_context_compatibility
+    folly_fibers_core
+    folly_fibers_core_manager
+    folly_fibers_event_base_loop_controller
+    folly_fibers_fiber_manager_map
+    folly_fibers_for_each
+    folly_fibers_generic_baton
+    folly_fibers_guard_page_allocator
+    folly_fibers_loop_controller
+    folly_fibers_semaphore
+    folly_fibers_semaphore_base
+    folly_fibers_simple_loop_controller
+    folly_fibers_timed_mutex
+    folly_fibers_traits
+    folly_fibers_when_n
+)
+
+folly_add_library(
+  NAME for_each
+  HEADERS
+    ForEach-inl.h
+    ForEach.h
+  EXPORTED_DEPS
+    folly_fibers_core
+    folly_functional_invoke
+)
+
+folly_add_library(
+  NAME generic_baton
+  HEADERS
+    GenericBaton.h
+  EXPORTED_DEPS
+    folly_fibers_core
+    folly_synchronization_baton
+)
+
+folly_add_library(
+  NAME guard_page_allocator
+  SRCS
+    GuardPageAllocator.cpp
+  HEADERS
+    GuardPageAllocator.h
+  DEPS
+    folly_portability_sys_mman
+    folly_portability_unistd
+    folly_singleton
+    folly_spin_lock
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME loop_controller
+  HEADERS
+    LoopController.h
+  EXPORTED_DEPS
+    folly_io_async_async_base_fwd
+)
+
+folly_add_library(
+  NAME executor_based_loop_controller
+  HEADERS
+    ExecutorBasedLoopController.h
+  EXPORTED_DEPS
+    folly_executor
+    folly_fibers_loop_controller
+)
+
+folly_add_library(
+  NAME semaphore
+  SRCS
+    Semaphore.cpp
+  HEADERS
+    Semaphore.h
+  EXPORTED_DEPS
+    folly_coro_task
+    folly_coro_timeout
+    folly_fibers_core
+    folly_futures_core
+    folly_intrusive_list
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME batch_semaphore
+  SRCS
+    BatchSemaphore.cpp
+  HEADERS
+    BatchSemaphore.h
+  EXPORTED_DEPS
+    folly_fibers_semaphore_base
+)
+
+folly_add_library(
+  NAME semaphore_base
+  SRCS
+    SemaphoreBase.cpp
+  HEADERS
+    SemaphoreBase.h
+  EXPORTED_DEPS
+    folly_coro_task
+    folly_fibers_core
+    folly_futures_core
+    folly_intrusive_list
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME simple_loop_controller
+  SRCS
+    SimpleLoopController.cpp
+  HEADERS
+    SimpleLoopController.h
+  DEPS
+    folly_io_async_async_base
+  EXPORTED_DEPS
+    folly_fibers_core_manager
+    folly_fibers_loop_controller
+    folly_function
+    folly_likely
+)
+
+folly_add_library(
+  NAME timed_mutex
+  HEADERS
+    CallOnce.h
+    TimedMutex-inl.h
+    TimedMutex.h
+  EXPORTED_DEPS
+    folly_fibers_generic_baton
+    folly_intrusive_list
+    folly_portability
+    folly_spin_lock
+    folly_synchronization_call_once
+    folly_synchronization_detail_sleeper
+)
+
+folly_add_library(
+  NAME traits
+  HEADERS
+    traits.h
+)
+
+folly_add_library(
+  NAME when_n
+  HEADERS
+    WhenN-inl.h
+    WhenN.h
+  EXPORTED_DEPS
+    folly_fibers_core
+    folly_fibers_for_each
+    folly_functional_invoke
+    folly_optional
+)
+
+add_subdirectory(async)
+add_subdirectory(detail)

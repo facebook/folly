@@ -17,6 +17,7 @@
 #include <folly/synchronization/Hazptr.h>
 
 #include <atomic>
+#include <numeric>
 #include <random>
 #include <vector>
 

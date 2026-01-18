@@ -1,0 +1,103 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME settings
+  SRCS
+    Settings.cpp
+  HEADERS
+    Settings.h
+    detail/SettingsImpl.h
+  DEPS
+    folly_synchronized
+  EXPORTED_DEPS
+    folly_concurrency_singleton_relaxed_counter
+    folly_container_f14_hash
+    folly_container_map_util
+    folly_conv
+    folly_cpp_attributes
+    folly_function
+    folly_lang_aligned
+    folly_likely
+    folly_observer_observer
+    folly_observer_simple_observable
+    folly_optional
+    folly_portability
+    folly_settings_immutables
+    folly_settings_types
+    folly_shared_mutex
+    folly_synchronization_delayed_init
+    folly_synchronization_relaxed_atomic
+    folly_thread_local
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME types
+  SRCS
+    Types.cpp
+  EXPORTED_DEPS
+    folly_conv
+    folly_expected
+    folly_unit
+    folly_utility
+)
+
+folly_add_library(
+  NAME immutables
+  SRCS
+    Immutables.cpp
+  DEPS
+    folly_indestructible
+    folly_synchronized
+  EXPORTED_DEPS
+    folly_container_f14_hash
+)
+
+folly_add_library(
+  NAME command_line_parser
+  SRCS
+    CommandLineParser.cpp
+  HEADERS
+    CommandLineParser.h
+  DEPS
+    folly_exception_string
+    folly_function
+    folly_logging_logging
+    folly_string
+  EXPORTED_DEPS
+    folly_settings_settings
+    folly_settings_settings_accessor_proxy
+)
+
+folly_add_library(
+  NAME settings_accessor_proxy
+  SRCS
+    SettingsAccessorProxy.cpp
+  HEADERS
+    SettingsAccessorProxy.h
+  EXPORTED_DEPS
+    folly_settings_settings
+)
+
+folly_add_library(
+  NAME observer
+  HEADERS
+    Observer.h
+  EXPORTED_DEPS
+    folly_observer_observer
+    folly_observer_simple_observable
+    folly_settings_settings
+)

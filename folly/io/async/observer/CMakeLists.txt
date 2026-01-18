@@ -1,0 +1,33 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME async_socket_observer_interface
+  HEADERS
+    AsyncSocketObserverInterface.h
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_glog
+    folly_io_async_write_flags
+    folly_optional
+)
+
+folly_add_library(
+  NAME async_socket_observer_container
+  HEADERS
+    AsyncSocketObserverContainer.h
+  EXPORTED_DEPS
+    folly_io_async_observer_async_socket_observer_interface
+    folly_observer_container
+)

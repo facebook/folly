@@ -1,0 +1,55 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME event_count
+  HEADERS
+    EventCount.h
+  EXPORTED_DEPS
+    folly_synchronization_event_count
+)
+
+folly_add_library(
+  NAME flat_combining_priority_queue
+  HEADERS
+    FlatCombiningPriorityQueue.h
+  EXPORTED_DEPS
+    folly_concurrency_container_flat_combining_priority_queue
+)
+
+folly_add_library(
+  NAME function_scheduler
+  HEADERS
+    FunctionScheduler.h
+  EXPORTED_DEPS
+    folly_executors_function_scheduler
+)
+
+folly_add_library(
+  NAME threaded_repeating_function_runner
+  HEADERS
+    ThreadedRepeatingFunctionRunner.h
+  EXPORTED_DEPS
+    folly_executors_threaded_repeating_function_runner
+)
+
+add_subdirectory(channels)
+add_subdirectory(coro)
+add_subdirectory(crypto)
+add_subdirectory(exception_tracer)
+add_subdirectory(flat_combining)
+add_subdirectory(io)
+add_subdirectory(observer)
+add_subdirectory(settings)
+add_subdirectory(symbolizer)

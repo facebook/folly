@@ -1,0 +1,83 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME net_ops
+  SRCS
+    NetOps.cpp
+  HEADERS
+    NetOps.h
+  DEPS
+    folly_c_portability
+    folly_net_detail_socket_file_descriptor_map
+    folly_scope_guard
+    folly_utility
+  EXPORTED_DEPS
+    folly_net_network_socket
+    folly_portability
+    folly_portability_iovec
+    folly_portability_sys_types
+    folly_portability_time
+    folly_portability_windows
+)
+
+folly_add_library(
+  NAME net_ops_dispatcher
+  SRCS
+    NetOpsDispatcher.cpp
+  HEADERS
+    NetOpsDispatcher.h
+  EXPORTED_DEPS
+    folly_net_net_ops
+)
+
+folly_add_library(
+  NAME network_socket
+  HEADERS
+    NetworkSocket.h
+  EXPORTED_DEPS
+    folly_net_detail_socket_file_descriptor_map
+    folly_portability_windows
+)
+
+folly_add_library(
+  NAME tcpinfo
+  SRCS
+    TcpInfo.cpp
+  HEADERS
+    TcpInfo.h
+    TcpInfoTypes.h
+  DEPS
+    folly_portability_sockets
+  EXPORTED_DEPS
+    folly_expected
+    folly_net_net_ops_dispatcher
+    folly_net_network_socket
+    folly_optional
+    folly_string
+)
+
+folly_add_library(
+  NAME tcpinfo_dispatcher
+  SRCS
+    TcpInfoDispatcher.cpp
+  HEADERS
+    TcpInfoDispatcher.h
+  EXPORTED_DEPS
+    folly_expected
+    folly_net_net_ops_dispatcher
+    folly_net_tcpinfo
+)
+
+add_subdirectory(detail)

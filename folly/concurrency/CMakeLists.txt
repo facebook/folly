@@ -1,0 +1,167 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME cache_locality
+  SRCS
+    CacheLocality.cpp
+  HEADERS
+    CacheLocality.h
+  DEPS
+    folly_container_reserve
+    folly_hash_hash
+    folly_indestructible
+    folly_lang_exception
+    folly_memory
+    folly_portability_fcntl
+    folly_portability_fmt_compile
+    folly_portability_unistd
+    folly_scope_guard
+    folly_system_thread_id
+  EXPORTED_DEPS
+    folly_lang_align
+    folly_likely
+    folly_portability
+    folly_synchronization_atomic_ref
+)
+
+folly_add_library(
+  NAME atomic_shared_ptr
+  HEADERS
+    AtomicSharedPtr.h
+    detail/AtomicSharedPtr-detail.h
+  EXPORTED_DEPS
+    folly_lang_safe_assert
+    folly_memory_sanitize_leak
+    folly_packed_sync_ptr
+    folly_synchronization_atomic_struct
+    folly_synchronization_atomic_util
+    folly_synchronization_detail_atomic_utils
+)
+
+folly_add_library(
+  NAME core_cached_shared_ptr
+  HEADERS
+    CoreCachedSharedPtr.h
+  EXPORTED_DEPS
+    folly_concurrency_cache_locality
+    folly_cpp_attributes
+    folly_portability
+    folly_synchronization_hazptr
+    folly_unit
+)
+
+folly_add_library(
+  NAME concurrent_hash_map
+  HEADERS
+    ConcurrentHashMap.h
+    detail/ConcurrentHashMap-detail.h
+  EXPORTED_DEPS
+    folly_container_detail_f14_mask
+    folly_container_heterogeneous_access
+    folly_lang_exception
+    folly_optional
+    folly_scope_guard
+    folly_synchronization_hazptr
+)
+
+folly_add_library(
+  NAME dynamic_bounded_queue
+  HEADERS
+    DynamicBoundedQueue.h
+  EXPORTED_DEPS
+    folly_concurrency_cache_locality
+    folly_concurrency_unbounded_queue
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME priority_unbounded_queue_set
+  HEADERS
+    PriorityUnboundedQueueSet.h
+  EXPORTED_DEPS
+    folly_concurrency_unbounded_queue
+    folly_lang_align
+    folly_memory
+)
+
+folly_add_library(
+  NAME unbounded_queue
+  HEADERS
+    UnboundedQueue.h
+  EXPORTED_DEPS
+    folly_concurrency_cache_locality
+    folly_constexpr_math
+    folly_lang_align
+    folly_optional
+    folly_synchronization_detail_spin
+    folly_synchronization_hazptr
+    folly_synchronization_saturating_semaphore
+    folly_synchronization_wait_options
+    folly_traits
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME deadlock_detector
+  SRCS
+    DeadlockDetector.cpp
+  HEADERS
+    DeadlockDetector.h
+  EXPORTED_DEPS
+    folly_executor
+    folly_executors_queue_observer
+)
+
+folly_add_library(
+  NAME thread_cached_synchronized
+  HEADERS
+    ThreadCachedSynchronized.h
+  EXPORTED_DEPS
+    folly_lang_access
+    folly_shared_mutex
+    folly_synchronization_lock
+    folly_synchronization_relaxed_atomic
+    folly_thread_local
+    folly_utility
+)
+
+folly_add_library(
+  NAME process_local_unique_id
+  SRCS
+    ProcessLocalUniqueId.cpp
+  DEPS
+    folly_likely
+    folly_synchronization_relaxed_atomic
+)
+
+folly_add_library(
+  NAME singleton_relaxed_counter
+  HEADERS
+    SingletonRelaxedCounter.h
+  EXPORTED_DEPS
+    folly_detail_static_singleton_manager
+    folly_detail_thread_local_globals
+    folly_lang_safe_assert
+    folly_likely
+    folly_portability
+    folly_synchronization_atomic_ref
+    folly_synchronized
+    folly_utility
+)
+
+add_subdirectory(container)
+add_subdirectory(memory)

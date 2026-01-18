@@ -1,0 +1,124 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# crypto targets require libsodium
+if (LIBSODIUM_FOUND)
+
+folly_add_library(
+  NAME blake2xb
+  SRCS
+    Blake2xb.cpp
+  HEADERS
+    Blake2xb.h
+  DEPS
+    folly_lang_bits
+  EXPORTED_DEPS
+    folly_range
+  EXTERNAL_DEPS
+    ${LIBSODIUM_LIBRARIES}
+)
+target_include_directories(folly_crypto_blake2xb_obj
+  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
+target_include_directories(folly_crypto_blake2xb
+  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
+
+folly_add_library(
+  NAME lt_hash
+  SRCS
+    LtHash.cpp
+  HEADERS
+    LtHash-inl.h
+    LtHash.h
+  DEPS
+    folly_cpu_id
+    folly_memory
+  EXPORTED_DEPS
+    folly_crypto_blake2xb
+    folly_crypto_detail_lt_hash_internal
+    folly_crypto_detail_math_operation_avx2_disable
+    folly_crypto_detail_math_operation_simple
+    folly_crypto_detail_math_operation_sse2_disable
+    folly_io_iobuf
+    folly_lang_bits
+    folly_optional
+    folly_range
+  EXTERNAL_DEPS
+    ${LIBSODIUM_LIBRARIES}
+)
+target_include_directories(folly_crypto_lt_hash_obj
+  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
+target_include_directories(folly_crypto_lt_hash
+  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
+
+folly_add_library(
+  NAME lt_hash_sse2
+  EXCLUDE_FROM_MONOLITH
+  SRCS
+    LtHash.cpp
+  HEADERS
+    LtHash-inl.h
+    LtHash.h
+  DEPS
+    folly_cpu_id
+    folly_memory
+  EXPORTED_DEPS
+    folly_crypto_blake2xb
+    folly_crypto_detail_lt_hash_internal
+    folly_crypto_detail_math_operation_avx2_disable
+    folly_crypto_detail_math_operation_simple
+    folly_crypto_detail_math_operation_sse2
+    folly_io_iobuf
+    folly_lang_bits
+    folly_optional
+    folly_range
+  EXTERNAL_DEPS
+    ${LIBSODIUM_LIBRARIES}
+)
+target_include_directories(folly_crypto_lt_hash_sse2_obj
+  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
+target_include_directories(folly_crypto_lt_hash_sse2
+  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
+
+folly_add_library(
+  NAME lt_hash_avx2
+  EXCLUDE_FROM_MONOLITH
+  SRCS
+    LtHash.cpp
+  HEADERS
+    LtHash-inl.h
+    LtHash.h
+  DEPS
+    folly_cpu_id
+    folly_memory
+  EXPORTED_DEPS
+    folly_crypto_blake2xb
+    folly_crypto_detail_lt_hash_internal
+    folly_crypto_detail_math_operation_avx2
+    folly_crypto_detail_math_operation_simple
+    folly_crypto_detail_math_operation_sse2
+    folly_io_iobuf
+    folly_lang_bits
+    folly_optional
+    folly_range
+  EXTERNAL_DEPS
+    ${LIBSODIUM_LIBRARIES}
+)
+target_include_directories(folly_crypto_lt_hash_avx2_obj
+  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
+target_include_directories(folly_crypto_lt_hash_avx2
+  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
+
+add_subdirectory(detail)
+
+endif() # LIBSODIUM_FOUND

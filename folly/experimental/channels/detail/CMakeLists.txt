@@ -1,0 +1,61 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME atomic_queue
+  HEADERS
+    AtomicQueue.h
+  EXPORTED_DEPS
+    folly_channels_detail_atomic_queue
+)
+
+folly_add_library(
+  NAME channel_bridge
+  HEADERS
+    ChannelBridge.h
+  EXPORTED_DEPS
+    folly_channels_detail_channel_bridge
+)
+
+folly_add_library(
+  NAME intrusive_ptr
+  HEADERS
+    IntrusivePtr.h
+  EXPORTED_DEPS
+    folly_channels_detail_intrusive_ptr
+)
+
+folly_add_library(
+  NAME multiplexer_traits
+  HEADERS
+    MultiplexerTraits.h
+  EXPORTED_DEPS
+    folly_channels_detail_multiplexer_traits
+)
+
+folly_add_library(
+  NAME pointer_variant
+  HEADERS
+    PointerVariant.h
+  EXPORTED_DEPS
+    folly_channels_detail_pointer_variant
+)
+
+folly_add_library(
+  NAME utility
+  HEADERS
+    Utility.h
+  EXPORTED_DEPS
+    folly_channels_detail_utility
+)

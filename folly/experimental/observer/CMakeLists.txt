@@ -1,0 +1,76 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME observable
+  HEADERS
+    Observable-inl.h
+    Observable.h
+  EXPORTED_DEPS
+    folly_observer_observable
+)
+
+folly_add_library(
+  NAME observer
+  HEADERS
+    Observer-inl.h
+    Observer-pre.h
+    Observer.h
+  EXPORTED_DEPS
+    folly_observer_observer
+)
+
+folly_add_library(
+  NAME hazptr_observer
+  HEADERS
+    HazptrObserver.h
+  EXPORTED_DEPS
+    folly_observer_hazptr_observer
+)
+
+folly_add_library(
+  NAME read_mostly_tl_observer
+  HEADERS
+    ReadMostlyTLObserver.h
+  EXPORTED_DEPS
+    folly_observer_read_mostly_tl_observer
+)
+
+folly_add_library(
+  NAME core_cached_observer
+  HEADERS
+    CoreCachedObserver.h
+  EXPORTED_DEPS
+    folly_observer_core_cached_observer
+)
+
+folly_add_library(
+  NAME simple_observable
+  HEADERS
+    SimpleObservable-inl.h
+    SimpleObservable.h
+  EXPORTED_DEPS
+    folly_observer_simple_observable
+)
+
+folly_add_library(
+  NAME with_jitter
+  HEADERS
+    WithJitter-inl.h
+    WithJitter.h
+  EXPORTED_DEPS
+    folly_observer_with_jitter
+)
+
+add_subdirectory(detail)

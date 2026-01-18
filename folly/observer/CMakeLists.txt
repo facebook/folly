@@ -1,0 +1,101 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME observable
+  HEADERS
+    Observable-inl.h
+    Observable.h
+  EXPORTED_DEPS
+    folly_function
+    folly_observer_observer
+    folly_synchronization_baton
+)
+
+folly_add_library(
+  NAME observer
+  HEADERS
+    Observer-inl.h
+    Observer-pre.h
+    Observer.h
+  EXPORTED_DEPS
+    folly_experimental_observer_detail_observer_manager
+    folly_functional_invoke
+    folly_shared_mutex
+    folly_synchronized
+    folly_thread_local
+)
+
+folly_add_library(
+  NAME hazptr_observer
+  HEADERS
+    HazptrObserver.h
+  EXPORTED_DEPS
+    folly_experimental_observer_detail_observer_manager
+    folly_observer_observer
+    folly_synchronization_hazptr
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME read_mostly_tl_observer
+  HEADERS
+    ReadMostlyTLObserver.h
+  EXPORTED_DEPS
+    folly_concurrency_memory_read_mostly_shared_ptr
+    folly_experimental_observer_detail_observer_manager
+    folly_observer_observer
+)
+
+folly_add_library(
+  NAME core_cached_observer
+  HEADERS
+    CoreCachedObserver.h
+  EXPORTED_DEPS
+    folly_concurrency_core_cached_shared_ptr
+    folly_experimental_observer_detail_observer_manager
+    folly_observer_observer
+)
+
+folly_add_library(
+  NAME simple_observable
+  HEADERS
+    SimpleObservable-inl.h
+    SimpleObservable.h
+  EXPORTED_DEPS
+    folly_function
+    folly_observer_observable
+    folly_observer_observer
+    folly_synchronization_delayed_init
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME with_jitter
+  HEADERS
+    WithJitter-inl.h
+    WithJitter.h
+  EXPORTED_DEPS
+    folly_default_keep_alive_executor
+    folly_executors_global_executor
+    folly_futures_core
+    folly_observer_observable
+    folly_observer_observer
+    folly_random
+    folly_synchronized
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+add_subdirectory(detail)

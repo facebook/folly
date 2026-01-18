@@ -1,0 +1,117 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME bit_iterator_detail
+  HEADERS
+    BitIteratorDetail.h
+  EXPORTED_DEPS
+    folly_portability_sys_types
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME f14_intrinsics_availability
+  HEADERS
+    F14IntrinsicsAvailability.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME f14_defaults
+  HEADERS
+    F14Defaults.h
+  EXPORTED_DEPS
+    folly_container_heterogeneous_access_fwd
+)
+
+folly_add_library(
+  NAME f14_hash_detail
+  SRCS
+    F14Table.cpp
+  HEADERS
+    F14MapFallback.h
+    F14Policy.h
+    F14SetFallback.h
+    F14Table.h
+  EXPORTED_DEPS
+    folly_bits
+    folly_constexpr_math
+    folly_container_detail_f14_defaults
+    folly_container_detail_f14_intrinsics_availability
+    folly_container_detail_f14_mask
+    folly_container_detail_util
+    folly_container_heterogeneous_access
+    folly_functional_invoke
+    folly_hash_hash
+    folly_lang_align
+    folly_lang_assume
+    folly_lang_exception
+    folly_lang_pretty
+    folly_lang_safe_assert
+    folly_likely
+    folly_memory
+    folly_memory_malloc
+    folly_optional
+    folly_portability
+    folly_portability_builtins
+    folly_scope_guard
+    folly_traits
+    folly_unit
+)
+
+folly_add_library(
+  NAME f14_mask
+  HEADERS
+    F14Mask.h
+  EXPORTED_DEPS
+    folly_bits
+    folly_constexpr_math
+    folly_container_detail_f14_intrinsics_availability
+    folly_lang_assume
+    folly_lang_safe_assert
+    folly_likely
+    folly_portability
+)
+
+folly_add_library(
+  NAME tape_detail
+  HEADERS
+    tape_detail.h
+  EXPORTED_DEPS
+    folly_container_iterator
+    folly_container_range_traits
+    folly_lang_hint
+    folly_memory_uninitialized_memory_hacks
+    folly_portability
+    folly_range
+)
+
+folly_add_library(
+  NAME util
+  HEADERS
+    Util.h
+  EXPORTED_DEPS
+    folly_container_iterator
+    folly_functional_apply_tuple
+    folly_traits
+)
+
+folly_add_library(
+  NAME bool_wrapper
+  HEADERS
+    BoolWrapper.h
+)

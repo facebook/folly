@@ -1,0 +1,368 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME access
+  HEADERS
+    Access.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+)
+
+folly_add_library(
+  NAME array
+  HEADERS
+    Array.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME bit_iterator
+  HEADERS
+    BitIterator.h
+  EXPORTED_DEPS
+    folly_container_detail_bit_iterator_detail
+    folly_lang_bits
+    folly_portability
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME iterator
+  HEADERS
+    Iterator.h
+  EXPORTED_DEPS
+    folly_container_access
+    folly_functional_invoke
+    folly_lang_rvalue_reference_wrapper
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME enumerate
+  HEADERS
+    Enumerate.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_portability_sys_types
+)
+
+folly_add_library(
+  NAME evicting_cache_map
+  HEADERS
+    EvictingCacheMap.h
+  EXPORTED_DEPS
+    folly_container_f14_hash
+    folly_container_heterogeneous_access
+    folly_lang_exception
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME f14_hash
+  HEADERS
+    F14Map.h
+    F14Set.h
+  EXPORTED_DEPS
+    folly_container_detail_f14_hash_detail
+    folly_container_detail_util
+    folly_container_f14_hash_fwd
+    folly_container_iterator
+    folly_container_view
+    folly_lang_exception
+    folly_lang_safe_assert
+    folly_portability
+    folly_range
+    folly_traits
+)
+
+folly_add_library(
+  NAME f14_hash_fwd
+  HEADERS
+    F14Map-fwd.h
+    F14Set-fwd.h
+  EXPORTED_DEPS
+    folly_container_detail_f14_defaults
+    folly_memory_memory_resource
+)
+
+folly_add_library(
+  NAME heap_vector_types
+  HEADERS
+    heap_vector_types.h
+  EXPORTED_DEPS
+    folly_container_iterator
+    folly_functional_invoke
+    folly_lang_exception
+    folly_memory_memory_resource
+    folly_portability_builtins
+    folly_range
+    folly_scope_guard
+    folly_small_vector
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME foreach
+  HEADERS
+    Foreach-inl.h
+    Foreach.h
+  EXPORTED_DEPS
+    folly_container_access
+    folly_functional_invoke
+    folly_portability
+    folly_preprocessor
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME heterogeneous_access_fwd
+  HEADERS
+    HeterogeneousAccess-fwd.h
+)
+
+folly_add_library(
+  NAME heterogeneous_access
+  HEADERS
+    HeterogeneousAccess.h
+  EXPORTED_DEPS
+    folly_container_heterogeneous_access_fwd
+    folly_hash_detail_random_seed
+    folly_hash_hash
+    folly_hash_rapidhash
+    folly_range
+    folly_traits
+)
+
+folly_add_library(
+  NAME merge
+  HEADERS
+    Merge.h
+)
+
+folly_add_library(
+  NAME range_traits
+  HEADERS
+    range_traits.h
+  EXPORTED_DEPS
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME regex_match_cache
+  SRCS
+    RegexMatchCache.cpp
+  HEADERS
+    RegexMatchCache.h
+  DEPS
+    folly_map_util
+    folly_portability_windows
+    folly_string
+    folly_synchronization_atomic_util
+  EXPORTED_DEPS
+    folly_chrono
+    folly_container_f14_hash
+    folly_container_reserve
+    folly_function
+    folly_hash_unique_hash_key
+    folly_lang_bits
+)
+
+folly_add_library(
+  NAME span
+  HEADERS
+    span.h
+  EXPORTED_DEPS
+    folly_container_access
+    folly_container_iterator
+    folly_cpp_attributes
+    folly_functional_invoke
+    folly_portability
+    folly_portability_constexpr
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME sparse_byte_set
+  HEADERS
+    SparseByteSet.h
+  EXPORTED_DEPS
+    folly_c_portability
+)
+
+folly_add_library(
+  NAME tape
+  HEADERS
+    tape.h
+  EXPORTED_DEPS
+    folly_container_detail_tape_detail
+    folly_container_iterator
+    folly_memory_uninitialized_memory_hacks
+    folly_portability
+    folly_range
+)
+
+folly_add_library(
+  NAME view
+  HEADERS
+    View.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_lang_customization_point
+    folly_portability
+)
+
+folly_add_library(
+  NAME weighted_evicting_cache_map
+  HEADERS
+    WeightedEvictingCacheMap.h
+  EXPORTED_DEPS
+    folly_container_evicting_cache_map
+)
+
+folly_add_library(
+  NAME intrusive_heap
+  HEADERS
+    IntrusiveHeap.h
+  EXPORTED_DEPS
+    folly_lang_builtin
+    folly_portability
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+    Boost::headers
+)
+
+folly_add_library(
+  NAME reserve
+  HEADERS
+    Reserve.h
+  EXPORTED_DEPS
+    folly_lang_exception
+    folly_likely
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME sorted_vector_types
+  HEADERS
+    sorted_vector_types.h
+  EXPORTED_DEPS
+    folly_lang_access
+    folly_lang_exception
+    folly_memory_memory_resource
+    folly_scope_guard
+    folly_small_vector
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME std_bitset
+  HEADERS
+    StdBitset.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_portability
+)
+
+folly_add_library(
+  NAME fbvector
+  HEADERS
+    FBVector.h
+  EXPORTED_DEPS
+    folly_format_traits
+    folly_lang_checked_math
+    folly_lang_exception
+    folly_lang_hint
+    folly_likely
+    folly_memory_malloc
+    folly_scope_guard
+    folly_traits
+)
+
+folly_add_library(
+  NAME intrusive_list
+  HEADERS
+    IntrusiveList.h
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME map_util
+  HEADERS
+    MapUtil.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_optional
+    folly_range
+)
+
+folly_add_library(
+  NAME small_vector
+  HEADERS
+    small_vector.h
+  EXPORTED_DEPS
+    folly_constexpr_math
+    folly_format_traits
+    folly_functional_invoke
+    folly_hash_hash
+    folly_lang_align
+    folly_lang_assume
+    folly_lang_checked_math
+    folly_lang_exception
+    folly_likely
+    folly_memory_malloc
+    folly_memory_sanitize_leak
+    folly_portability
+    folly_portability_malloc
+    folly_scope_guard
+    folly_traits
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME vector_bool
+  HEADERS
+    vector_bool.h
+  EXPORTED_DEPS
+    folly_container_detail_bool_wrapper
+    folly_memory_memory_resource
+)
+
+folly_add_library(
+  NAME collection_util
+  HEADERS
+    CollectionUtil.h
+)
+
+folly_add_library(
+  NAME irange
+  HEADERS
+    irange.h
+)
+
+add_subdirectory(detail)

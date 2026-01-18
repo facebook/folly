@@ -1,0 +1,167 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME iobuf
+  SRCS
+    Cursor.cpp
+    IOBuf.cpp
+    IOBufIovecBuilder.cpp
+    IOBufQueue.cpp
+  HEADERS
+    Cursor-inl.h
+    Cursor.h
+    IOBuf.h
+    IOBufIovecBuilder.h
+    IOBufQueue.h
+  DEPS
+    folly_conv
+    folly_hash_spooky_hash_v2
+    folly_lang_align
+    folly_lang_hint
+    folly_memory_sanitize_address
+    folly_portability_iovec
+  EXPORTED_DEPS
+    folly_container_span
+    folly_detail_iterators
+    folly_fbstring
+    folly_fbvector
+    folly_function
+    folly_lang_bits
+    folly_lang_checked_math
+    folly_lang_exception
+    folly_lang_ordering
+    folly_likely
+    folly_memory
+    folly_memory_malloc
+    folly_memory_memory_resource
+    folly_portability
+    folly_portability_sys_uio
+    folly_range
+    folly_scope_guard
+    folly_synchronization_micro_spin_lock
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME global_shutdown_socket_set
+  SRCS
+    GlobalShutdownSocketSet.cpp
+  HEADERS
+    GlobalShutdownSocketSet.h
+  DEPS
+    folly_singleton
+  EXPORTED_DEPS
+    folly_concurrency_memory_read_mostly_shared_ptr
+    folly_io_shutdown_socket_set
+)
+
+folly_add_library(
+  NAME record_io
+  SRCS
+    RecordIO.cpp
+  HEADERS
+    RecordIO-inl.h
+    RecordIO.h
+  DEPS
+    folly_exception
+    folly_file_util
+    folly_memory
+    folly_portability_unistd
+    folly_string
+  EXPORTED_DEPS
+    folly_detail_iterators
+    folly_file
+    folly_hash_spooky_hash_v2
+    folly_io_iobuf
+    folly_range
+    folly_system_memory_mapping
+)
+
+folly_add_library(
+  NAME shutdown_socket_set
+  SRCS
+    ShutdownSocketSet.cpp
+  HEADERS
+    ShutdownSocketSet.h
+  DEPS
+    folly_file_util
+    folly_net_net_ops
+    folly_portability_sockets
+  EXPORTED_DEPS
+    folly_file
+    folly_net_network_socket
+    folly_synchronization_relaxed_atomic
+)
+
+folly_add_library(
+  NAME typed_io_buf
+  HEADERS
+    TypedIOBuf.h
+  EXPORTED_DEPS
+    folly_io_iobuf
+    folly_memory_malloc
+)
+
+folly_add_library(
+  NAME socket_option_map
+  SRCS
+    SocketOptionMap.cpp
+    SocketOptionValue.cpp
+  HEADERS
+    SocketOptionMap.h
+    SocketOptionValue.h
+  EXPORTED_DEPS
+    folly_net_network_socket
+    folly_portability_sockets
+)
+
+folly_add_library(
+  NAME huge_pages
+  SRCS
+    HugePages.cpp
+  HEADERS
+    HugePages.h
+  DEPS
+    folly_conv
+    folly_format
+    folly_gen_base
+    folly_gen_file
+    folly_gen_string
+    folly_portability_windows
+    folly_string
+  EXPORTED_DEPS
+    folly_experimental_io_fs_util
+    folly_portability_unistd
+    folly_range
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME fs_util
+  SRCS
+    FsUtil.cpp
+  HEADERS
+    FsUtil.h
+  DEPS
+    folly_exception
+    folly_portability_windows
+  EXTERNAL_DEPS
+    Boost::filesystem
+)
+
+add_subdirectory(async)
+add_subdirectory(coro)

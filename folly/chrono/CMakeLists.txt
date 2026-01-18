@@ -1,0 +1,40 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME clock
+  HEADERS
+    Clock.h
+)
+
+folly_add_library(
+  NAME conv
+  HEADERS
+    Conv.h
+  EXPORTED_DEPS
+    folly_constexpr_math
+    folly_conv
+    folly_expected
+    folly_portability_sys_time
+    folly_portability_sys_types
+    folly_utility
+)
+
+folly_add_library(
+  NAME hardware
+  HEADERS
+    Hardware.h
+  EXPORTED_DEPS
+    folly_portability
+)

@@ -1,0 +1,206 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME channel
+  HEADERS
+    Channel-fwd.h
+    Channel-inl.h
+    Channel.h
+  EXPORTED_DEPS
+    folly_cancellation_token
+    folly_coro_coroutine
+    folly_experimental_channels_detail_channel_bridge
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME channel_callback_handle
+  HEADERS
+    ChannelCallbackHandle.h
+  EXPORTED_DEPS
+    folly_channels_channel
+    folly_intrusive_list
+    folly_scope_guard
+)
+
+folly_add_library(
+  NAME channel_processor
+  HEADERS
+    ChannelProcessor-inl.h
+    ChannelProcessor.h
+  EXPORTED_DEPS
+    folly_channels_consume_channel
+    folly_channels_merge_channel
+    folly_channels_rate_limiter
+    folly_channels_transform
+    folly_executor
+    folly_executors_serial_executor
+    folly_experimental_channels_detail_intrusive_ptr
+)
+
+folly_add_library(
+  NAME consume_channel
+  HEADERS
+    ConsumeChannel-inl.h
+    ConsumeChannel.h
+  EXPORTED_DEPS
+    folly_channels_channel
+    folly_channels_channel_callback_handle
+    folly_coro_task
+    folly_executor
+    folly_executors_sequenced_executor
+    folly_experimental_channels_detail_utility
+    folly_format
+    folly_intrusive_list
+    folly_scope_guard
+)
+
+folly_add_library(
+  NAME fanout_channel
+  HEADERS
+    FanoutChannel-inl.h
+    FanoutChannel.h
+  EXPORTED_DEPS
+    folly_channels_channel
+    folly_channels_fanout_sender
+    folly_container_f14_hash
+    folly_executors_sequenced_executor
+    folly_experimental_channels_detail_utility
+)
+
+folly_add_library(
+  NAME fanout_sender
+  HEADERS
+    FanoutSender-inl.h
+    FanoutSender.h
+  EXPORTED_DEPS
+    folly_channels_channel
+    folly_container_f14_hash
+    folly_executors_sequenced_executor
+    folly_experimental_channels_detail_pointer_variant
+    folly_experimental_channels_detail_utility
+)
+
+folly_add_library(
+  NAME merge
+  HEADERS
+    Merge-inl.h
+    Merge.h
+  EXPORTED_DEPS
+    folly_channels_channel
+    folly_container_f14_hash
+    folly_executors_sequenced_executor
+    folly_experimental_channels_detail_utility
+)
+
+folly_add_library(
+  NAME merge_channel
+  HEADERS
+    MergeChannel-inl.h
+    MergeChannel.h
+  EXPORTED_DEPS
+    folly_channels_channel
+    folly_container_f14_hash
+    folly_executors_sequenced_executor
+    folly_experimental_channels_detail_utility
+)
+
+folly_add_library(
+  NAME multiplex_channel
+  HEADERS
+    MultiplexChannel-inl.h
+    MultiplexChannel.h
+  EXPORTED_DEPS
+    folly_channels_channel
+    folly_channels_fanout_sender
+    folly_channels_on_closed_exception
+    folly_channels_rate_limiter
+    folly_container_f14_hash
+    folly_coro_future_util
+    folly_coro_mutex
+    folly_coro_promise
+    folly_coro_task
+    folly_executors_sequenced_executor
+    folly_experimental_channels_detail_multiplexer_traits
+    folly_experimental_channels_detail_utility
+)
+
+folly_add_library(
+  NAME on_closed_exception
+  HEADERS
+    OnClosedException.h
+)
+
+folly_add_library(
+  NAME producer
+  HEADERS
+    Producer-inl.h
+    Producer.h
+  EXPORTED_DEPS
+    folly_cancellation_token
+    folly_channels_channel
+    folly_channels_channel_callback_handle
+    folly_channels_consume_channel
+    folly_coro_task
+    folly_executors_sequenced_executor
+)
+
+folly_add_library(
+  NAME proxy_channel
+  HEADERS
+    ProxyChannel-inl.h
+    ProxyChannel.h
+  EXPORTED_DEPS
+    folly_channels_channel
+    folly_executors_sequenced_executor
+    folly_experimental_channels_detail_utility
+)
+
+folly_add_library(
+  NAME rate_limiter
+  HEADERS
+    RateLimiter.h
+  EXPORTED_DEPS
+    folly_executors_sequenced_executor
+    folly_function
+)
+
+folly_add_library(
+  NAME max_concurrent_rate_limiter
+  SRCS
+    MaxConcurrentRateLimiter.cpp
+  EXPORTED_DEPS
+    folly_channels_rate_limiter
+    folly_concurrency_unbounded_queue
+    folly_executors_sequenced_executor
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME transform
+  HEADERS
+    Transform-inl.h
+    Transform.h
+  EXPORTED_DEPS
+    folly_channels_channel
+    folly_channels_on_closed_exception
+    folly_channels_rate_limiter
+    folly_coro_async_generator
+    folly_coro_task
+    folly_executors_sequenced_executor
+    folly_experimental_channels_detail_utility
+)
+
+add_subdirectory(detail)

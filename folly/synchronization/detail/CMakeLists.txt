@@ -1,0 +1,78 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME atomic_utils
+  HEADERS
+    AtomicUtils.h
+  EXPORTED_DEPS
+    folly_lang_assume
+)
+
+folly_add_library(
+  NAME hazptr_utils
+  HEADERS
+    HazptrUtils.h
+  EXPORTED_DEPS
+    folly_portability
+    folly_synchronization_detail_sleeper
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME rcu-detail
+  HEADERS
+    ThreadCachedLists.h
+    ThreadCachedReaders.h
+    ThreadCachedTag.h
+  EXPORTED_DEPS
+    folly_function
+    folly_synchronization_asymmetric_thread_fence
+    folly_synchronization_relaxed_atomic
+    folly_synchronized
+    folly_thread_local
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME sleeper
+  SRCS
+    Sleeper.cpp
+  HEADERS
+    Sleeper.h
+  EXPORTED_DEPS
+    folly_portability_asm
+)
+
+folly_add_library(
+  NAME spin
+  HEADERS
+    Spin.h
+  EXPORTED_DEPS
+    folly_portability_asm
+    folly_synchronization_wait_options
+)
+
+folly_add_library(
+  NAME inline_function_ref
+  HEADERS
+    InlineFunctionRef.h
+  EXPORTED_DEPS
+    folly_function
+    folly_functional_invoke
+    folly_traits
+    folly_utility
+)

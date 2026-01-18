@@ -1,0 +1,31 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME hex
+  HEADERS
+    hex.h
+  EXPORTED_DEPS
+    folly_lang_align
+    folly_lang_assume
+)
+
+folly_add_library(
+  NAME uuid
+  HEADERS
+    Uuid.h
+  EXPORTED_DEPS
+    folly_memory_uninitialized_memory_hacks
+    folly_portability
+)

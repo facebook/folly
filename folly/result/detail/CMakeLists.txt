@@ -1,0 +1,61 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME immortal_exception_storage
+  HEADERS
+    immortal_exception_storage.h
+  EXPORTED_DEPS
+    folly_lang_exception
+    folly_result_rich_error_fwd
+)
+
+folly_add_library(
+  NAME ptr_immortal_exception_storage
+  HEADERS
+    ptr_immortal_exception_storage.h
+  EXPORTED_DEPS
+    folly_lang_safe_assert
+    folly_result_rich_error_base
+)
+
+folly_add_library(
+  NAME result_promise
+  HEADERS
+    result_promise.h
+  EXPORTED_DEPS
+    folly_coro_coroutine
+    folly_result_result
+)
+
+folly_add_library(
+  NAME rich_error_common
+  HEADERS
+    rich_error_common.h
+  EXPORTED_DEPS
+    folly_lang_pretty
+    folly_result_rich_error_base
+    folly_traits
+)
+
+folly_add_library(
+  NAME rich_exception_ptr_storage
+  SRCS
+    rich_exception_ptr_storage.cpp
+  HEADERS
+    rich_exception_ptr_storage.h
+  EXPORTED_DEPS
+    folly_portability
+    folly_result_detail_immortal_exception_storage
+)

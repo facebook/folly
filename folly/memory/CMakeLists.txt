@@ -1,0 +1,174 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+folly_add_library(
+  NAME arena
+  HEADERS
+    Arena-inl.h
+    Arena.h
+  EXPORTED_DEPS
+    folly_conv
+    folly_lang_align
+    folly_lang_checked_math
+    folly_lang_exception
+    folly_lang_safe_assert
+    folly_likely
+    folly_memory
+    folly_memory_malloc
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME mallctl_helper
+  SRCS
+    MallctlHelper.cpp
+  HEADERS
+    MallctlHelper.h
+  DEPS
+    folly_format
+    folly_lang_exception
+    folly_string
+  EXPORTED_DEPS
+    folly_memory_malloc
+)
+
+folly_add_library(
+  NAME malloc
+  SRCS
+    Malloc.cpp
+  HEADERS
+    Malloc.h
+  EXPORTED_DEPS
+    folly_lang_exception
+    folly_memory_detail_malloc_impl
+    folly_portability
+    folly_portability_malloc
+)
+
+folly_add_library(
+  NAME memory_resource
+  HEADERS
+    MemoryResource.h
+)
+
+folly_add_library(
+  NAME not_null
+  HEADERS
+    not_null-inl.h
+    not_null.h
+  EXPORTED_DEPS
+    folly_lang_exception
+    folly_memory
+    folly_portability
+    folly_traits
+)
+
+folly_add_library(
+  NAME reentrant_allocator
+  SRCS
+    ReentrantAllocator.cpp
+  HEADERS
+    ReentrantAllocator.h
+  DEPS
+    folly_lang_bits
+    folly_lang_safe_assert
+    folly_portability_sys_mman
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME sanitize_address
+  SRCS
+    SanitizeAddress.cpp
+  HEADERS
+    SanitizeAddress.h
+  DEPS
+    folly_lang_extern
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME sanitize_leak
+  SRCS
+    SanitizeLeak.cpp
+  HEADERS
+    SanitizeLeak.h
+  DEPS
+    folly_lang_extern
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME shared_from_this_ptr
+  HEADERS
+    shared_from_this_ptr.h
+  EXPORTED_DEPS
+    folly_traits
+)
+
+folly_add_library(
+  NAME thread_cached_arena
+  SRCS
+    ThreadCachedArena.cpp
+  HEADERS
+    ThreadCachedArena.h
+  EXPORTED_DEPS
+    folly_likely
+    folly_memory_arena
+    folly_synchronized
+    folly_thread_local
+)
+
+folly_add_library(
+  NAME uninitialized_memory_hacks
+  HEADERS
+    UninitializedMemoryHacks.h
+)
+
+folly_add_library(
+  NAME jemalloc_nodump_allocator
+  SRCS
+    JemallocNodumpAllocator.cpp
+  HEADERS
+    JemallocNodumpAllocator.h
+  DEPS
+    folly_conv
+    folly_string
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_portability_config
+    folly_portability_malloc
+    folly_portability_sys_mman
+)
+
+folly_add_library(
+  NAME jemalloc_huge_page_allocator
+  SRCS
+    JemallocHugePageAllocator.cpp
+  HEADERS
+    JemallocHugePageAllocator.h
+  DEPS
+    folly_c_portability
+    folly_memory_malloc
+    folly_portability_malloc
+    folly_portability_string
+    folly_portability_sys_mman
+    folly_portability_sys_types
+)
+
+add_subdirectory(detail)
