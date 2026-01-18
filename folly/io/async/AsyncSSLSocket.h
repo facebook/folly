@@ -883,6 +883,8 @@ class AsyncSSLSocket : public AsyncSocket {
 
   const char* getNegotiatedGroup() const;
 
+  void ensureSSL();
+
  private:
   /**
    * Handle the return from invoking SSL_accept
@@ -979,6 +981,8 @@ class AsyncSSLSocket : public AsyncSocket {
   void startSSLConnect();
 
   static void sslInfoCallback(const SSL* ssl, int where, int ret);
+
+  void createSSL();
 
   // Whether the current write to the socket should use MSG_MORE.
   bool corkCurrentWrite_{false};

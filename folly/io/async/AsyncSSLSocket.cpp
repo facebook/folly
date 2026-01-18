@@ -903,17 +903,7 @@ void AsyncSSLSocket::sslConn(
   sslState_ = STATE_CONNECTING;
   handshakeCallback_ = callback;
 
-  try {
-    ssl_.reset(ctx_->createSSL());
-  } catch (std::exception& e) {
-    sslState_ = STATE_ERROR;
-    static const Indestructible<AsyncSocketException> ex(
-        AsyncSocketException::INTERNAL_ERROR,
-        "error calling SSLContext::createSSL()");
-    LOG(ERROR) << "AsyncSSLSocket::sslConn(this=" << this << ", fd=" << fd_
-               << "): " << e.what();
-    return failHandshake(__func__, *ex);
-  }
+  createSSL();
 
   if (!encodedAlpn_.empty()) {
     int result = SSL_set_alpn_protos(
@@ -926,21 +916,6 @@ void AsyncSSLSocket::sslConn(
           "error setting SSL alpn protos");
       return failHandshake(__func__, *ex);
     }
-  }
-
-  if (!setupSSLBio()) {
-    sslState_ = STATE_ERROR;
-    static const Indestructible<AsyncSocketException> ex(
-        AsyncSocketException::INTERNAL_ERROR, "error creating SSL bio");
-    return failHandshake(__func__, *ex);
-  }
-
-  if (!applyVerificationOptions(ssl_)) {
-    sslState_ = STATE_ERROR;
-    static const Indestructible<AsyncSocketException> ex(
-        AsyncSocketException::INTERNAL_ERROR,
-        "error applying the SSL verification options");
-    return failHandshake(__func__, *ex);
   }
 
   // AsyncSSLSocket will leak memory if zero copy if left enabled after
@@ -956,7 +931,6 @@ void AsyncSSLSocket::sslConn(
     SSL_set_tlsext_host_name(ssl_.get(), tlsextHostname_.c_str());
   }
 
-  SSL_set_ex_data(ssl_.get(), getSSLExDataIndex(), this);
   sslSessionManager_.attachToSSL(ssl_.get());
 
   handshakeConnectTimeout_ = timeout;
@@ -1238,34 +1212,7 @@ void AsyncSSLSocket::handleAccept() noexcept {
   assert(state_ == StateEnum::ESTABLISHED && sslState_ == STATE_ACCEPTING);
   if (!ssl_) {
     /* lazily create the SSL structure */
-    try {
-      ssl_.reset(ctx_->createSSL());
-    } catch (std::exception& e) {
-      sslState_ = STATE_ERROR;
-      static const Indestructible<AsyncSocketException> ex(
-          AsyncSocketException::INTERNAL_ERROR,
-          "error calling SSLContext::createSSL()");
-      LOG(ERROR) << "AsyncSSLSocket::handleAccept(this=" << this
-                 << ", fd=" << fd_ << "): " << e.what();
-      return failHandshake(__func__, *ex);
-    }
-
-    if (!setupSSLBio()) {
-      sslState_ = STATE_ERROR;
-      static const Indestructible<AsyncSocketException> ex(
-          AsyncSocketException::INTERNAL_ERROR, "error creating write bio");
-      return failHandshake(__func__, *ex);
-    }
-
-    SSL_set_ex_data(ssl_.get(), getSSLExDataIndex(), this);
-
-    if (!applyVerificationOptions(ssl_)) {
-      sslState_ = STATE_ERROR;
-      static const Indestructible<AsyncSocketException> ex(
-          AsyncSocketException::INTERNAL_ERROR,
-          "error applying the SSL verification options");
-      return failHandshake(__func__, *ex);
-    }
+    createSSL();
   }
 
   if (server_ && parseClientHello_) {
@@ -2368,6 +2315,43 @@ const std::vector<std::string>& AsyncSSLSocket::getClientAlpns() const {
     return emptyAlpns;
   } else {
     return clientHelloInfo_->clientAlpns_;
+  }
+}
+
+void AsyncSSLSocket::createSSL() {
+  try {
+    ssl_.reset(ctx_->createSSL());
+  } catch (std::exception& e) {
+    sslState_ = STATE_ERROR;
+    static const Indestructible<AsyncSocketException> ex(
+        AsyncSocketException::INTERNAL_ERROR,
+        "error calling SSLContext::createSSL()");
+    LOG(ERROR) << "AsyncSSLSocket::createSSL(this=" << this << ", fd=" << fd_
+               << "): " << e.what();
+    return failHandshake(__func__, *ex);
+  }
+
+  if (!setupSSLBio()) {
+    sslState_ = STATE_ERROR;
+    static const Indestructible<AsyncSocketException> ex(
+        AsyncSocketException::INTERNAL_ERROR, "error creating SSL bio");
+    return failHandshake(__func__, *ex);
+  }
+
+  SSL_set_ex_data(ssl_.get(), getSSLExDataIndex(), this);
+
+  if (!applyVerificationOptions(ssl_)) {
+    sslState_ = STATE_ERROR;
+    static const Indestructible<AsyncSocketException> ex(
+        AsyncSocketException::INTERNAL_ERROR,
+        "error applying the SSL verification options");
+    return failHandshake(__func__, *ex);
+  }
+}
+
+void AsyncSSLSocket::ensureSSL() {
+  if (!ssl_) {
+    return createSSL();
   }
 }
 
