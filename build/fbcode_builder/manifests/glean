@@ -29,13 +29,15 @@ re2
 builder = make
 
 [make.build_args]
+setup-folly
+setup-folly-version
 cabal-update
 all
 glean-hie
 glass
 glean-clang
 EXTRA_GHC_OPTS=-j4 +RTS -A32m -n4m -RTS
-CABAL_CONFIG_FLAGS=-f-hack-tests -f-typescript-tests -f-python-tests -f-dotnet-tests -f-go-tests -f-rust-tests -f-java-lsif-tests -f-flow-tests
+CABAL_CONFIG_FLAGS=-f-hack-tests -f-typescript-tests -f-python-tests -f-dotnet-tests -f-go-tests -f-rust-tests -f-java-lsif-tests -f-flow-tests -f-bundled-folly
 
 [make.install_args]
 install
@@ -43,4 +45,4 @@ install
 [make.test_args]
 test
 EXTRA_GHC_OPTS=-j4 +RTS -A32m -n4m -RTS
-CABAL_CONFIG_FLAGS=-f-hack-tests -f-typescript-tests -f-python-tests -f-dotnet-tests -f-go-tests -f-rust-tests -f-java-lsif-tests -f-flow-tests
+CABAL_CONFIG_FLAGS=-f-hack-tests -f-typescript-tests -f-python-tests -f-dotnet-tests -f-go-tests -f-rust-tests -f-java-lsif-tests -f-flow-tests -f-bundled-folly
