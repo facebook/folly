@@ -199,7 +199,8 @@ class unique_hash_key {
       std::size_t E,
       std::enable_if_t<is_span_compatible_v<T, E>, int> = 0>
   explicit operator span<T const, E>() const noexcept {
-    return {reinterpret_cast<T const*>(data_.data()), E};
+    constexpr auto count = E == dynamic_extent ? data_size / sizeof(T) : E;
+    return span<T const, E>{reinterpret_cast<T const*>(data_.data()), count};
   }
 
   friend auto operator==(self const& a, self const& b) noexcept {

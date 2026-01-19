@@ -40,6 +40,13 @@ TYPED_TEST_P(UniqueHashKeyTest, Example) {
   EXPECT_NE(key0, key1);
   EXPECT_NE(key1, key0);
 
+  auto const key0_sp16 = std::span<uint16_t const>(key0);
+  auto const key1_sp16 = std::span<uint16_t const>(key1);
+  EXPECT_TRUE(std::ranges::equal(key0_sp16, key0_sp16));
+  EXPECT_TRUE(std::ranges::equal(key1_sp16, key1_sp16));
+  EXPECT_FALSE(std::ranges::equal(key0_sp16, key1_sp16));
+  EXPECT_FALSE(std::ranges::equal(key1_sp16, key0_sp16));
+
   Map map;
   map[key0] = 3;
   map[key1] = 4;
