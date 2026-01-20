@@ -220,4 +220,56 @@ CO_TEST(CoroGTestHelpers, CoInvokeMemberFunction) {
   EXPECT_EQ(co_await mock.getStringArg(""), "foo");
 }
 
+TEST(CoroGTestHelpers, CoThrowsMatcherBasic) {
+  EXPECT_THAT(
+      []() -> folly::coro::Task<void> {
+        throw std::runtime_error("test error message");
+        co_return;
+      }(),
+      CoThrows<std::runtime_error>());
+}
+
+TEST(CoroGTestHelpers, CoThrowsMatcherWithExceptionMatcher) {
+  EXPECT_THAT(
+      []() -> folly::coro::Task<int> {
+        throw std::runtime_error("specific error");
+        co_return 42;
+      }(),
+      CoThrows<std::runtime_error>(
+          Property(&std::runtime_error::what, HasSubstr("specific"))));
+}
+
+TEST(CoroGTestHelpers, CoThrowsMessageMatcher) {
+  EXPECT_THAT(
+      []() -> folly::coro::Task<void> {
+        throw std::runtime_error("database connection failed");
+        co_return;
+      }(),
+      CoThrowsMessage<std::runtime_error>(HasSubstr("connection failed")));
+}
+
+TEST(CoroGTestHelpers, CoThrowsMessageMatcherExactMatch) {
+  EXPECT_THAT(
+      []() -> folly::coro::Task<std::string> {
+        throw std::invalid_argument("invalid input");
+        co_return "never reached";
+      }(),
+      CoThrowsMessage<std::invalid_argument>(Eq("invalid input")));
+}
+
+TEST(CoroGTestHelpers, CoThrowsNoExceptionFails) {
+  EXPECT_THAT(
+      []() -> folly::coro::Task<void> { co_return; }(),
+      Not(CoThrows<std::runtime_error>()));
+}
+
+TEST(CoroGTestHelpers, CoThrowsWrongExceptionTypeFails) {
+  EXPECT_THAT(
+      []() -> folly::coro::Task<void> {
+        throw std::logic_error("wrong type");
+        co_return;
+      }(),
+      Not(CoThrows<std::runtime_error>()));
+}
+
 #endif // FOLLY_HAS_COROUTINES

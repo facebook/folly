@@ -19,6 +19,7 @@
 #include <atomic>
 #include <type_traits>
 
+#include <folly/coro/BlockingWait.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Result.h>
@@ -109,6 +110,58 @@ auto CoInvokeWithoutArgs(Class* obj_ptr, MethodPtr method_ptr) {
 }
 
 namespace detail {
+
+// Matcher implementation that wraps a Task and delegates to an inner matcher
+// (typically ::testing::Throws or ::testing::ThrowsMessage).
+// This allows CoThrows/CoThrowsMessage to reuse GMock's exception matchers.
+template <typename InnerMatcher>
+class CoroExceptionMatcherImpl {
+ public:
+  explicit CoroExceptionMatcherImpl(InnerMatcher inner_matcher)
+      : inner_matcher_(std::move(inner_matcher)),
+        // Convert the inner matcher to a concrete Matcher type so we can
+        // use its DescribeTo/DescribeNegationTo methods.
+        callable_matcher_(inner_matcher_) {}
+
+  void DescribeTo(std::ostream* os) const { callable_matcher_.DescribeTo(os); }
+
+  void DescribeNegationTo(std::ostream* os) const {
+    callable_matcher_.DescribeNegationTo(os);
+  }
+
+  template <typename T>
+  bool MatchAndExplain(T&& x, ::testing::MatchResultListener* listener) const {
+    // Task is move-only. GoogleTest passes values as const T&, but we need
+    // to move the Task into blockingWait. We use const_cast to enable the
+    // move. This is safe because each matcher instance is used only once.
+    using MutableT = std::remove_const_t<std::remove_reference_t<T>>;
+    auto& mutableX = const_cast<MutableT&>(x);
+
+    // Wrap the task in a shared_ptr so the callable can be const-invoked
+    // (GMock's Throws matcher requires the callable to be const-invocable).
+    auto taskHolder =
+        std::make_shared<std::optional<MutableT>>(std::move(mutableX));
+
+    std::function<void()> callable = [taskHolder]() {
+      if (!taskHolder->has_value()) {
+        throw std::logic_error("Task already consumed");
+      }
+      auto task = std::move(taskHolder->value());
+      taskHolder->reset();
+      blockingWait(std::move(task));
+    };
+
+    // Delegate to the inner matcher (Throws/ThrowsMessage).
+    // GMock's Throws matchers expect a callable, which they invoke to check
+    // for exceptions.
+    return callable_matcher_.MatchAndExplain(callable, listener);
+  }
+
+ private:
+  InnerMatcher inner_matcher_;
+  ::testing::Matcher<std::function<void()>> callable_matcher_;
+};
+
 template <typename Fn>
 auto makeCoAction(Fn&& fn) {
   static_assert(
@@ -243,6 +296,63 @@ auto CoThrow(Ex&& e) {
   return detail::makeCoAction([ex = std::forward<Ex>(e)]() -> Task<T> {
     co_yield co_error(ex);
   });
+}
+
+// CoThrows()
+// CoThrows(exceptionMatcher)
+// CoThrowsMessage(messageMatcher)
+//
+// These matchers accept a folly::coro::Task and verify that when awaited,
+// it throws an exception with the given type and properties.
+//
+// Examples:
+//
+//   EXPECT_THAT(
+//       []() -> folly::coro::Task<void> {
+//         throw std::runtime_error("message");
+//         co_return;
+//       }(),
+//       CoThrows<std::runtime_error>());
+//
+//   EXPECT_THAT(
+//       []() -> folly::coro::Task<void> {
+//         throw std::runtime_error("message");
+//         co_return;
+//       }(),
+//       CoThrowsMessage<std::runtime_error>(HasSubstr("message")));
+//
+//   EXPECT_THAT(
+//       []() -> folly::coro::Task<void> {
+//         throw std::runtime_error("message");
+//         co_return;
+//       }(),
+//       CoThrows<std::runtime_error>(
+//           Property(&std::runtime_error::what, HasSubstr("message"))));
+
+template <typename Err>
+auto CoThrows() {
+  return ::testing::MakePolymorphicMatcher(
+      detail::CoroExceptionMatcherImpl<decltype(::testing::Throws<Err>())>(
+          ::testing::Throws<Err>()));
+}
+
+template <typename Err, typename ExceptionMatcher>
+auto CoThrows(const ExceptionMatcher& exception_matcher) {
+  return ::testing::MakePolymorphicMatcher(
+      detail::CoroExceptionMatcherImpl<decltype(::testing::Throws<Err>(
+          exception_matcher))>(::testing::Throws<Err>(exception_matcher)));
+}
+
+template <typename Err, typename MessageMatcher>
+auto CoThrowsMessage(MessageMatcher&& message_matcher) {
+  static_assert(
+      std::is_base_of_v<std::exception, Err>,
+      "expected an std::exception-derived type");
+  return ::testing::MakePolymorphicMatcher(
+      detail::CoroExceptionMatcherImpl<decltype(::testing::ThrowsMessage<Err>(
+          std::forward<MessageMatcher>(message_matcher)))>(
+          ::testing::ThrowsMessage<Err>(
+              std::forward<MessageMatcher>(message_matcher))));
 }
 
 } // namespace gmock_helpers
