@@ -34,6 +34,7 @@ folly_add_library(
 
 folly_add_library(
   NAME memcpy_aarch64-use
+  EXCLUDE_FROM_MONOLITH
   SRCS
     memcpy-advsimd.S
     memcpy-armv8.S
@@ -57,6 +58,7 @@ folly_add_library(
 
 folly_add_library(
   NAME memset_aarch64-use
+  EXCLUDE_FROM_MONOLITH
   SRCS
     memset-advsimd.S
     memset-mops.S
