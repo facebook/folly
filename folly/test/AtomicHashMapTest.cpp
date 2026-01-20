@@ -258,8 +258,8 @@ TEST(Ahm, iterator) {
 
   bool success = true;
   size_t count = 0;
-  FOR_EACH (it, *m) {
-    success &= (it->second == genVal(it->first));
+  for (const auto& [key, value] : *m) {
+    success &= (value == genVal(key));
     ++count;
   }
   EXPECT_TRUE(success);
