@@ -2380,6 +2380,12 @@ void AsyncSocket::attachEventBase(EventBase* eventBase) {
 
   eventBase_ = eventBase;
   if (useIoUring_) {
+    if (eventFlags_ & EventHandler::READ) {
+      CHECK(iouRecvHandle_ != nullptr);
+      CHECK(readCallback_ != nullptr);
+      iouRecvHandle_ = IoUringRecvHandle::clone(
+          eventBase, fd_, addr_, this, std::move(iouRecvHandle_));
+    }
     if (iouSendHandle_) {
       iouSendHandle_ =
           IoUringSendHandle::clone(eventBase, std::move(iouSendHandle_));
@@ -2422,6 +2428,10 @@ void AsyncSocket::detachEventBase() {
   eventBase_ = nullptr;
 
   if (useIoUring_) {
+    if (iouRecvHandle_) {
+      iouRecvHandle_->detachEventBase();
+    }
+
     if (iouSendHandle_) {
       iouSendHandle_->update(EventHandler::NONE);
       iouSendHandle_->detachEventBase();

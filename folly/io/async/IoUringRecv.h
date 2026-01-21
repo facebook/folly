@@ -55,12 +55,20 @@ class IoUringRecvHandle : public DelayedDestruction {
       const SocketAddress& addr,
       IoUringRecvCallback* callback);
 
+  static UniquePtr clone(
+      EventBase* evb,
+      NetworkSocket fd,
+      const SocketAddress& addr,
+      IoUringRecvCallback* callback,
+      UniquePtr old);
+
   bool update(uint16_t eventFlags);
   void submit(size_t maxSize);
 
   bool hasQueuedData();
   std::unique_ptr<IOBuf> getQueuedData();
 
+  void detachEventBase();
   void cancel();
 
  private:
@@ -69,6 +77,17 @@ class IoUringRecvHandle : public DelayedDestruction {
       NetworkSocket fd,
       const SocketAddress& addr,
       IoUringRecvCallback* callback);
+
+  explicit IoUringRecvHandle(
+      EventBase* evb,
+      IoUringBackend* backend,
+      NetworkSocket fd,
+      const SocketAddress& addr,
+      IoUringRecvCallback* callback,
+      UniquePtr other);
+
+  void setPendingRead(EventBase* evb, PendingRead&& future);
+  void processPendingRead();
 
   class RecvRequest;
   void onRecvComplete(std::unique_ptr<IOBuf> data);
@@ -82,6 +101,7 @@ class IoUringRecvHandle : public DelayedDestruction {
 
   std::unique_ptr<IOBuf> queuedReceivedData_;
   bool readEnabled_{false};
+  PendingReadMaybe pendingRead_{folly::none};
 };
 
 } // namespace folly

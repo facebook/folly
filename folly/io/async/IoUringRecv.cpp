@@ -25,6 +25,41 @@ namespace folly {
 
 #if FOLLY_HAS_LIBURING
 
+namespace {
+/*
+ * DetachedReadCallback
+ */
+
+class DetachedReadCallback : public IoUringRecvCallback {
+ public:
+  void recvSuccess(std::unique_ptr<IOBuf> data) override {
+    if (!data_) {
+      data_ = std::move(data);
+    } else {
+      data_->appendToChain(std::move(data));
+    }
+  }
+
+  void recvEOF() noexcept override { done(); }
+  void recvErr(
+      int /*err*/,
+      std::unique_ptr<const AsyncSocketException> /*exception*/) noexcept
+      override {
+    done();
+  }
+
+  void done() {
+    promise.setValue(std::move(data_));
+    delete this;
+  }
+
+  Promise<std::unique_ptr<IOBuf>> promise;
+
+ private:
+  std::unique_ptr<IOBuf> data_;
+};
+} // namespace
+
 /*
  * RecvRequest
  */
@@ -182,8 +217,26 @@ IoUringRecvHandle::UniquePtr IoUringRecvHandle::create(
     return nullptr;
   }
 
-  auto handle = UniquePtr(new IoUringRecvHandle(backend, fd, addr, callback));
-  return handle;
+  return UniquePtr(new IoUringRecvHandle(backend, fd, addr, callback));
+}
+
+IoUringRecvHandle::UniquePtr IoUringRecvHandle::clone(
+    EventBase* evb,
+    NetworkSocket fd,
+    const SocketAddress& addr,
+    IoUringRecvCallback* callback,
+    UniquePtr other) {
+  auto* backend = dynamic_cast<IoUringBackend*>(evb->getBackend());
+  if (!backend) {
+    return nullptr;
+  }
+
+  if (!backend->zcBufferPool() && !backend->hasBufferProvider()) {
+    return nullptr;
+  }
+
+  return UniquePtr(new IoUringRecvHandle(
+      evb, backend, fd, addr, callback, std::move(other)));
 }
 
 IoUringRecvHandle::IoUringRecvHandle(
@@ -196,6 +249,23 @@ IoUringRecvHandle::IoUringRecvHandle(
       request_(
           RecvRequest::UniquePtr(new RecvRequest(backend, fd, addr, this))) {}
 
+IoUringRecvHandle::IoUringRecvHandle(
+    EventBase* evb,
+    IoUringBackend* backend,
+    NetworkSocket fd,
+    const SocketAddress& addr,
+    IoUringRecvCallback* callback,
+    UniquePtr other)
+    : backend_(backend),
+      recvCallback_(callback),
+      request_(
+          RecvRequest::UniquePtr(new RecvRequest(backend, fd, addr, this))),
+      queuedReceivedData_(std::move(other->queuedReceivedData_)) {
+  if (other->pendingRead_.has_value()) {
+    setPendingRead(evb, std::move(*other->pendingRead_));
+  }
+}
+
 bool IoUringRecvHandle::update(uint16_t eventFlags) {
   if (!readEnabled_ && eventFlags & EventHandler::READ) {
     CHECK(!readEnabled_);
@@ -203,6 +273,10 @@ bool IoUringRecvHandle::update(uint16_t eventFlags) {
   } else if (readEnabled_ && !(eventFlags & EventHandler::READ)) {
     CHECK(readEnabled_);
     readEnabled_ = false;
+  }
+
+  if (pendingRead_) {
+    processPendingRead();
   }
 
   return true;
@@ -214,6 +288,13 @@ void IoUringRecvHandle::submit(size_t maxSize) {
   // Some ReadCallbacks have a small peeking getReadBuffer() size, intended to
   // peek a few bytes in the socket. For these, issue a non-multishot recv.
   request_->setRecvLen(maxSize < kSmallRecvSize ? maxSize : 0);
+  if (pendingRead_) {
+    if (!pendingRead_->isReady()) {
+      return;
+    }
+    processPendingRead();
+  }
+
   if (!request_->inFlight()) {
     backend_->submitSoon(*request_);
   }
@@ -225,6 +306,44 @@ bool IoUringRecvHandle::hasQueuedData() {
 
 std::unique_ptr<IOBuf> IoUringRecvHandle::getQueuedData() {
   return std::move(queuedReceivedData_);
+}
+
+void IoUringRecvHandle::detachEventBase() {
+  CHECK_NE(backend_, nullptr);
+
+  if (request_->inFlight()) {
+    auto* drc = new DetachedReadCallback();
+    auto thisPendingRead = drc->promise.getSemiFuture();
+
+    if (pendingRead_) {
+      pendingRead_ =
+          std::move(*pendingRead_)
+              .deferValue([currRead = std::move(thisPendingRead)](
+                              std::unique_ptr<IOBuf>&& prevData) mutable {
+                return std::move(currRead).deferValue(
+                    [data = std::move(prevData)](
+                        std::unique_ptr<IOBuf>&& currData) mutable {
+                      if (!data) {
+                        return std::move(currData);
+                      }
+                      if (currData) {
+                        data->appendToChain(std::move(currData));
+                      }
+                      return std::move(data);
+                    });
+              });
+    } else {
+      pendingRead_ = std::move(thisPendingRead);
+    }
+
+    backend_->cancel(request_.release());
+    recvCallback_ = drc;
+  } else {
+    request_.reset();
+    recvCallback_ = nullptr;
+  }
+
+  backend_ = nullptr;
 }
 
 void IoUringRecvHandle::cancel() {
@@ -239,6 +358,44 @@ void IoUringRecvHandle::cancel() {
   return;
 }
 
+void IoUringRecvHandle::setPendingRead(EventBase* evb, PendingRead&& prevRead) {
+  pendingRead_ = std::move(prevRead).via(evb).thenValue(
+      [this, evb, dg = DestructorGuard(this)](auto&& prevData) {
+        if (backend_) {
+          evb->add([this, dg = DestructorGuard(this)] {
+            processPendingRead();
+          });
+        }
+        return std::move(prevData);
+      });
+}
+
+void IoUringRecvHandle::processPendingRead() {
+  if (!pendingRead_.has_value() || !backend_) {
+    return;
+  }
+
+  DestructorGuard dg(this);
+  if (pendingRead_->isReady()) {
+    auto data = std::move(*pendingRead_).get();
+    pendingRead_.reset();
+
+    if (!queuedReceivedData_) {
+      queuedReceivedData_ = std::move(data);
+    } else {
+      queuedReceivedData_->appendToChain(std::move(data));
+    }
+
+    if (readEnabled_) {
+      recvCallback_->recvSuccess(std::move(queuedReceivedData_));
+    }
+
+    if (backend_ && readEnabled_ && !request_->inFlight()) {
+      backend_->submitSoon(*request_);
+    }
+  }
+}
+
 void IoUringRecvHandle::onRecvComplete(std::unique_ptr<IOBuf> data) {
   DestructorGuard dg(this);
   if (backend_ == nullptr) {
@@ -251,6 +408,7 @@ void IoUringRecvHandle::onRecvComplete(std::unique_ptr<IOBuf> data) {
   }
 
   if (readEnabled_) {
+    CHECK(!queuedReceivedData_);
     recvCallback_->recvSuccess(std::move(data));
   } else {
     if (!queuedReceivedData_) {
@@ -298,6 +456,15 @@ IoUringRecvHandle::UniquePtr IoUringRecvHandle::create(
   folly::terminate_with<std::runtime_error>("io_uring not supported");
 }
 
+IoUringRecvHandle::UniquePtr IoUringRecvHandle::clone(
+    EventBase* /*evb*/,
+    NetworkSocket /*fd*/,
+    const SocketAddress& /*addr*/,
+    IoUringRecvCallback* /*callback*/,
+    IoUringRecvHandle::UniquePtr /*old*/) {
+  folly::terminate_with<std::runtime_error>("io_uring not supported");
+}
+
 IoUringRecvHandle::IoUringRecvHandle(
     IoUringBackend* /*backend*/,
     NetworkSocket /*fd*/,
@@ -308,6 +475,22 @@ IoUringRecvHandle::IoUringRecvHandle(
   (void)request_;
   (void)queuedReceivedData_;
   (void)readEnabled_;
+  (void)pendingRead_;
+}
+
+IoUringRecvHandle::IoUringRecvHandle(
+    EventBase* /*evb*/,
+    IoUringBackend* /*backend*/,
+    NetworkSocket /*fd*/,
+    const SocketAddress& /*addr*/,
+    IoUringRecvCallback* /*callback*/,
+    UniquePtr /*other*/) {
+  (void)backend_;
+  (void)recvCallback_;
+  (void)request_;
+  (void)queuedReceivedData_;
+  (void)readEnabled_;
+  (void)pendingRead_;
 }
 
 bool IoUringRecvHandle::update(uint16_t /*eventFlags*/) {
@@ -326,7 +509,20 @@ std::unique_ptr<IOBuf> IoUringRecvHandle::getQueuedData() {
   folly::terminate_with<std::runtime_error>("io_uring not supported");
 }
 
+void IoUringRecvHandle::detachEventBase() {
+  folly::terminate_with<std::runtime_error>("io_uring not supported");
+}
+
 void IoUringRecvHandle::cancel() {
+  folly::terminate_with<std::runtime_error>("io_uring not supported");
+}
+
+void IoUringRecvHandle::setPendingRead(
+    EventBase* /*evb*/, PendingRead&& /*future*/) {
+  folly::terminate_with<std::runtime_error>("io_uring not supported");
+}
+
+void IoUringRecvHandle::processPendingRead() {
   folly::terminate_with<std::runtime_error>("io_uring not supported");
 }
 
