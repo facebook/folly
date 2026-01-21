@@ -395,7 +395,6 @@ class result_crtp {
 
   friend struct result_promise<T>;
   friend struct result_promise_return<T>;
-  friend struct result_non_value_awaitable; // `await_suspend` uses `exp_`
   template <typename, typename>
   friend class result_or_unwind_crtp; // `await_suspend` uses `exp_`
 

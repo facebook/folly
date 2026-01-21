@@ -187,44 +187,6 @@ class or_unwind<non_value_result> final
 };
 or_unwind(stopped_result_t) -> or_unwind<non_value_result>;
 
-//
-// NOTE: We may remove support for `co_await non_value_result{...}` and
-// `co_await stopped_result`, instead requiring `or_unwind`.
-//
-
-namespace detail {
-
-struct result_non_value_awaitable {
-  non_value_result non_value_;
-
-  constexpr std::false_type await_ready() const noexcept { return {}; }
-  [[noreturn]] void await_resume() {
-    compiler_may_unsafely_assume_unreachable();
-  }
-  template <typename U>
-  FOLLY_ALWAYS_INLINE void await_suspend(result_promise_handle<U> h) {
-    auto& v = *h.promise().value_;
-    expected_detail::ExpectedHelper::assume_empty(v.exp_);
-    v.exp_ = Unexpected{std::move(non_value_)};
-    h.destroy();
-  }
-};
-} // namespace detail
-
-/// co_await stopped_result
-inline auto /* implicit */ operator co_await(stopped_result_t s) {
-  return detail::result_non_value_awaitable{.non_value_ = non_value_result{s}};
-}
-
-/// co_await non_value_result{SomeError{...}}
-/// co_await std::move(res).non_value()
-///
-/// Pass-by-&& to discourage accidental copies of `std::exception_ptr`.  If you
-/// get a compile error, use `res.copy()`.
-inline auto /* implicit */ operator co_await(non_value_result&& nvr) {
-  return detail::result_non_value_awaitable{.non_value_ = std::move(nvr)};
-}
-
 } // namespace folly
 
 #endif // FOLLY_HAS_RESULT

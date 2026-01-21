@@ -100,7 +100,7 @@ TEST(Result, resultOfVoid) {
       if (!fail) {
         co_return;
       }
-      co_await non_value_result{MyError{"failed"}};
+      co_await or_unwind(non_value_result{MyError{"failed"}});
     };
     EXPECT_TRUE(voidResFn(false).has_value());
     auto r = voidResFn(true);
@@ -182,7 +182,7 @@ TEST(Result, storeAndGetStoppedResult) {
 
 TEST(Result, awaitStoppedResult) {
   auto innerFn = []() -> result<> {
-    co_await stopped_result;
+    co_await or_unwind(stopped_result);
     LOG(FATAL) << "not reached";
   };
   auto outerFn = [&]() -> result<> {
@@ -253,7 +253,7 @@ TEST(Result, fromNonValue) {
   nvr = non_value_result{MyError{"nein"}};
   {
     auto r = [&nvr]() -> result<> {
-      co_await std::move(nvr); // await
+      co_await or_unwind(std::move(nvr)); // await
       LOG(FATAL) << "not reached";
     }();
     EXPECT_EQ(std::string("nein"), get_exception<MyError>(r)->what());
@@ -893,7 +893,9 @@ RESULT_CO_TEST(Result, awaitRef) {
 
 TEST(Result, awaitError) {
   for (auto& r :
-       {[]() -> result<> { co_await non_value_result{MyError{"eep"}}; }(),
+       {[]() -> result<> {
+          co_await or_unwind(non_value_result{MyError{"eep"}});
+        }(),
         []() -> result<> {
           co_await or_unwind(result<int>{non_value_result{MyError{"eep"}}});
         }()}) {
