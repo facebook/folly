@@ -70,6 +70,7 @@ class WriteCallback
   void releaseIOBuf(std::unique_ptr<folly::IOBuf> ioBuf) noexcept override {
     numIoBufCount += ioBuf->countChainElements();
     numIoBufBytes += ioBuf->computeChainDataLength();
+    releaseIOBufCallbackCalled = true;
   }
 
   StateEnum state;
@@ -81,6 +82,7 @@ class WriteCallback
   VoidCallback errorCallback;
   ReleaseIOBufCallback* releaseIOBufCallback;
   size_t writeStartingInvocations{0};
+  bool releaseIOBufCallbackCalled{false};
 };
 
 class ReadCallback : public folly::AsyncTransport::ReadCallback {
@@ -108,7 +110,26 @@ class ReadCallback : public folly::AsyncTransport::ReadCallback {
 
   void readDataAvailable(size_t len) noexcept override {
     currentBuffer.length = len;
-    buffers.push_back(currentBuffer);
+    buffers.push_back(std::move(currentBuffer));
+    currentBuffer.reset();
+    if (dataAvailableCallback) {
+      dataAvailableCallback();
+    }
+  }
+
+  size_t maxBufferSize() const override { return maxBufferSz; }
+  bool isBufferMovable() noexcept override { return true; }
+  void readBufferAvailable(std::unique_ptr<IOBuf> readBuf) noexcept override {
+    if (currentBuffer.buffer && currentBuffer.length > 0) {
+      buffers.push_back(std::move(currentBuffer));
+    }
+    currentBuffer.reset();
+
+    auto coalesced = readBuf->cloneCoalesced();
+    currentBuffer.buffer = (char*)coalesced->writableData();
+    currentBuffer.length = coalesced->length();
+    currentBuffer.ioBuf = std::move(coalesced);
+    buffers.push_back(std::move(currentBuffer));
     currentBuffer.reset();
     if (dataAvailableCallback) {
       dataAvailableCallback();
@@ -153,14 +174,42 @@ class ReadCallback : public folly::AsyncTransport::ReadCallback {
     return ret;
   }
 
+  void coalesce() {
+    if (buffers.empty()) {
+      return;
+    }
+
+    std::unique_ptr<IOBuf> coalesced;
+
+    for (auto& buf : buffers) {
+      if (!buf.ioBuf) {
+        return;
+      }
+
+      if (!coalesced) {
+        coalesced = std::move(buf.ioBuf);
+      } else {
+        coalesced->appendToChain(std::move(buf.ioBuf));
+      }
+    }
+    buffers.clear();
+    coalesced->coalesce();
+    buffers.emplace_back(std::move(coalesced));
+  }
+
   class Buffer {
    public:
     Buffer() : buffer(nullptr), length(0) {}
     Buffer(char* buf, size_t len) : buffer(buf), length(len) {}
+    explicit Buffer(std::unique_ptr<IOBuf> ioBuf)
+        : buffer((char*)ioBuf->writableData()),
+          length(ioBuf->length()),
+          ioBuf(std::move(ioBuf)) {}
 
     void reset() {
       buffer = nullptr;
       length = 0;
+      ioBuf.reset();
     }
     void allocate(size_t len) {
       assert(buffer == nullptr);
@@ -168,12 +217,15 @@ class ReadCallback : public folly::AsyncTransport::ReadCallback {
       this->length = len;
     }
     void free() {
-      ::free(buffer);
+      if (!ioBuf) {
+        ::free(buffer);
+      }
       reset();
     }
 
     char* buffer;
     size_t length;
+    std::unique_ptr<IOBuf> ioBuf;
   };
 
   StateEnum state;
@@ -252,6 +304,15 @@ class ReadvCallback : public folly::AsyncTransport::ReadCallback {
       buf_ = std::move(tmp);
     } else {
       buf_->prependChain(std::move(tmp));
+    }
+  }
+
+  bool isBufferMovable() noexcept override { return true; }
+  void readBufferAvailable(std::unique_ptr<IOBuf> readBuf) noexcept override {
+    if (!buf_) {
+      buf_ = std::move(readBuf);
+    } else {
+      buf_->appendToChain(std::move(readBuf));
     }
   }
 
@@ -385,6 +446,15 @@ class ZeroCopyReadCallback : public folly::AsyncTransport::ReadCallback {
       data_ = std::move(ioBuf);
     } else {
       data_->prependChain(std::move(ioBuf));
+    }
+  }
+
+  bool isBufferMovable() noexcept override { return true; }
+  void readBufferAvailable(std::unique_ptr<IOBuf> readBuf) noexcept override {
+    if (!data_) {
+      data_ = std::move(readBuf);
+    } else {
+      data_->prependChain(std::move(readBuf));
     }
   }
 
