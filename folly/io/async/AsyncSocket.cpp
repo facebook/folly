@@ -2379,6 +2379,13 @@ void AsyncSocket::attachEventBase(EventBase* eventBase) {
   eventBase->dcheckIsInEventBaseThread();
 
   eventBase_ = eventBase;
+  if (useIoUring_) {
+    if (iouSendHandle_) {
+      iouSendHandle_ =
+          IoUringSendHandle::clone(eventBase, std::move(iouSendHandle_));
+    }
+  }
+
   ioHandler_.attachEventBase(eventBase);
 
   updateEventRegistration();
@@ -2413,6 +2420,13 @@ void AsyncSocket::detachEventBase() {
   EventBase* existingEvb = eventBase_;
 
   eventBase_ = nullptr;
+
+  if (useIoUring_) {
+    if (iouSendHandle_) {
+      iouSendHandle_->update(EventHandler::NONE);
+      iouSendHandle_->detachEventBase();
+    }
+  }
 
   ioHandler_.unregisterHandler();
 

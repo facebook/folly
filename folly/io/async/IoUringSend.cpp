@@ -50,26 +50,20 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
       size_t bytesWritten,
       std::unique_ptr<IOBuf> data,
       WriteFlags flags,
-      NetworkSocket fd,
-      IoUringSendHandle* handle)
+      NetworkSocket fd)
       : IoSqeBase(IoSqeBase::Type::Write),
         callback_(callback),
-        releaseIOBufCallback_(
-            callback ? callback->getReleaseIOBufCallback() : nullptr),
         iovRemaining_(iovCount),
         bytesWritten_(bytesWritten),
         data_(std::move(data)),
         flags_(flags),
-        fd_(fd),
-        handle_(handle),
-        handleGuard_(handle) {
+        fd_(fd) {
     if (data_) {
       CHECK_EQ(data_->countChainElements(), iovCount);
     }
     memcpy(iov_, iov, sizeof(struct iovec) * iovCount);
     msg_.msg_iov = iov_;
     msg_.msg_iovlen = std::min<size_t>(iovRemaining_, kIovMax);
-    setEventBase(handle_->evb_);
 
     iov_->iov_base =
         reinterpret_cast<uint8_t*>(iov_->iov_base) + partialWritten;
@@ -78,20 +72,57 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
 
   void destroy() {
     if (!cancelled() && handle_) {
-      handle_->onReleaseIOBuf(std::move(data_), releaseIOBufCallback_);
+      handle_->onReleaseIOBuf(
+          std::move(data_), callback_->getReleaseIOBufCallback());
     }
     this->~SendRequest();
     free(this);
   }
 
+  void setHandle(IoUringSendHandle* handle) {
+    handle_ = handle;
+    handleGuard_ = DestructorGuard(handle);
+  }
   SendRequest* getNext() { return next_; }
   void append(SendRequest* request) { next_ = request; }
   AsyncWriter::WriteCallback* getCallback() { return callback_; }
   size_t getTotalBytesWritten() { return bytesWritten_; }
 
-  void releaseIOBuf() {
+  void releaseIOBuf(IoUringSendHandle* handle) {
     CHECK(!cancelled());
-    handle_->onReleaseIOBuf(std::move(data_), releaseIOBufCallback_);
+    handle->onReleaseIOBuf(
+        std::move(data_), callback_->getReleaseIOBufCallback());
+  }
+
+  folly::SemiFuture<int> detachEventBase() {
+    handle_ = nullptr;
+    setEventBase(nullptr);
+
+    auto [promise, future] = makePromiseContract<int>();
+    detachedSignal_ = [p = std::move(promise)](int res) mutable {
+      p.setValue(res);
+    };
+    return std::move(future);
+  }
+
+  SendRequest* clone(IoUringSendHandle* newHandle) {
+    CHECK(handle_ == nullptr);
+    void* buf = alloc(msg_.msg_iovlen);
+    auto clone = new (buf) SendRequest(
+        callback_,
+        msg_.msg_iov,
+        msg_.msg_iovlen,
+        0,
+        bytesWritten_,
+        std::move(data_),
+        flags_,
+        fd_);
+    clone->append(next_);
+    if (inFlight()) {
+      clone->internalMarkInflight(true);
+      clone->setHandle(newHandle);
+    }
+    return clone;
   }
 
   /*
@@ -104,6 +135,11 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
 
   void callback(const struct io_uring_cqe* cqe) noexcept override {
     auto res = cqe->res;
+
+    if (!handle_) {
+      detachedSignal_(res);
+      return;
+    }
 
     if (cancelled()) {
       return;
@@ -161,7 +197,8 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
       // There is a 1:1 relationship between IOBufs and iovecs.
       if (data_) {
         auto next = data_->pop();
-        handle_->onReleaseIOBuf(std::move(data_), releaseIOBufCallback_);
+        handle_->onReleaseIOBuf(
+            std::move(data_), callback_->getReleaseIOBufCallback());
         data_ = std::move(next);
       }
     }
@@ -170,17 +207,17 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   }
 
   AsyncWriter::WriteCallback* callback_;
-  AsyncWriter::ReleaseIOBufCallback* releaseIOBufCallback_;
   size_t iovRemaining_;
   size_t bytesWritten_;
   std::unique_ptr<IOBuf> data_;
   WriteFlags flags_;
   NetworkSocket fd_;
-  IoUringSendHandle* handle_;
-  DestructorGuard handleGuard_;
 
+  IoUringSendHandle* handle_{nullptr};
+  DestructorGuard handleGuard_{nullptr};
   SendRequest* next_{nullptr};
   struct msghdr msg_{};
+  folly::Function<void(int)> detachedSignal_;
 
   struct iovec iov_[];
 };
@@ -202,6 +239,16 @@ IoUringSendHandle::UniquePtr IoUringSendHandle::create(
   return UniquePtr(new IoUringSendHandle(evb, backend, fd, addr, callback));
 }
 
+IoUringSendHandle::UniquePtr IoUringSendHandle::clone(
+    EventBase* evb, IoUringSendHandle::UniquePtr other) {
+  auto* backend = dynamic_cast<IoUringBackend*>(evb->getBackend());
+  if (!backend) {
+    return nullptr;
+  }
+
+  return UniquePtr(new IoUringSendHandle(evb, backend, std::move(other)));
+}
+
 IoUringSendHandle::IoUringSendHandle(
     EventBase* evb,
     IoUringBackend* backend,
@@ -213,6 +260,50 @@ IoUringSendHandle::IoUringSendHandle(
       fd_(fd),
       addr_(addr),
       sendCallback_(callback) {}
+
+IoUringSendHandle::IoUringSendHandle(
+    EventBase* evb, IoUringBackend* backend, IoUringSendHandle::UniquePtr other)
+    : evb_(evb),
+      backend_(backend),
+      fd_(other->fd_),
+      addr_(other->addr_),
+      sendCallback_(other->sendCallback_) {
+  if (!other->empty()) {
+    auto* oldReq = other->requestHead_;
+    auto* newReq = oldReq->clone(this);
+    requestHead_ = newReq;
+    requestTail_ = newReq->getNext() == nullptr ? newReq : other->requestTail_;
+
+    if (other->detachedFuture_.has_value()) {
+      CHECK(oldReq->inFlight());
+      CHECK(newReq->inFlight());
+      std::move(*other->detachedFuture_)
+          .via(evb)
+          .thenValue([oldReq, newReq, evb](int res) {
+            // The result res is from detachSignal_ in the previous request
+            oldReq->destroy();
+            struct io_uring_cqe cqe{};
+            cqe.res = res;
+            evb->bumpHandlingTime();
+            if (newReq->cancelled()) {
+              newReq->callbackCancelled(&cqe);
+            } else {
+              newReq->callback(&cqe);
+            }
+          });
+    }
+  }
+}
+
+void IoUringSendHandle::detachEventBase() {
+  CHECK(!sendEnabled_);
+  evb_ = nullptr;
+  backend_ = nullptr;
+
+  if (requestHead_ && requestHead_->inFlight()) {
+    detachedFuture_ = requestHead_->detachEventBase();
+  }
+}
 
 bool IoUringSendHandle::update(uint16_t eventFlags) {
   if (!sendEnabled_ && (eventFlags & EventHandler::WRITE)) {
@@ -243,8 +334,8 @@ void IoUringSendHandle::write(
       bytesWritten,
       std::move(data),
       flags,
-      fd_,
-      this);
+      fd_);
+  req->setEventBase(evb_);
 
   if (requestTail_ == nullptr) {
     CHECK(requestHead_ == nullptr);
@@ -263,10 +354,8 @@ void IoUringSendHandle::failWrite(const AsyncSocketException& ex) {
     auto* callback = req->getCallback();
     auto bytesWritten = req->getTotalBytesWritten();
 
+    req->releaseIOBuf(this);
     if (req->inFlight()) {
-      // AsyncSocket may be gone by the time the cancelled callback runs, so
-      // release the IOBuf now.
-      req->releaseIOBuf();
       backend_->cancel(req);
     } else {
       req->destroy();
@@ -286,6 +375,7 @@ void IoUringSendHandle::failAllWrites(const AsyncSocketException& ex) {
 
 void IoUringSendHandle::trySubmit() {
   if (sendEnabled_ && requestHead_ && !requestHead_->inFlight()) {
+    requestHead_->setHandle(this);
     backend_->submitSoon(*requestHead_);
   }
 }
@@ -353,6 +443,31 @@ IoUringSendHandle::IoUringSendHandle(
   (void)requestHead_;
   (void)requestTail_;
   (void)sendEnabled_;
+  (void)detachedFuture_;
+}
+
+IoUringSendHandle::UniquePtr IoUringSendHandle::clone(
+    EventBase* /*evb*/, IoUringSendHandle::UniquePtr /*other*/) {
+  folly::terminate_with<std::runtime_error>("io_uring not supported");
+}
+
+IoUringSendHandle::IoUringSendHandle(
+    EventBase* /*evb*/,
+    IoUringBackend* /*backend*/,
+    IoUringSendHandle::UniquePtr /*other*/) {
+  (void)evb_;
+  (void)backend_;
+  (void)fd_;
+  (void)addr_;
+  (void)sendCallback_;
+  (void)requestHead_;
+  (void)requestTail_;
+  (void)sendEnabled_;
+  (void)detachedFuture_;
+}
+
+void IoUringSendHandle::detachEventBase() {
+  folly::terminate_with<std::runtime_error>("io_uring not supported");
 }
 
 bool IoUringSendHandle::update(uint16_t /*eventFlags*/) {

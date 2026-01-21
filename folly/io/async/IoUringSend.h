@@ -49,6 +49,9 @@ class IoUringSendHandle : public DelayedDestruction {
       const SocketAddress& addr,
       IoUringSendCallback* callback);
 
+  static UniquePtr clone(EventBase* evb, IoUringSendHandle::UniquePtr other);
+  void detachEventBase();
+
   bool update(uint16_t eventFlags);
   void write(
       AsyncWriter::WriteCallback* callback,
@@ -72,6 +75,9 @@ class IoUringSendHandle : public DelayedDestruction {
       const SocketAddress& addr,
       IoUringSendCallback* callback);
 
+  explicit IoUringSendHandle(
+      EventBase* evb, IoUringBackend* backend, UniquePtr other);
+
   void trySubmit();
 
   class SendRequest;
@@ -92,6 +98,7 @@ class IoUringSendHandle : public DelayedDestruction {
   SendRequest* requestTail_{nullptr};
 
   bool sendEnabled_{false};
+  Optional<SemiFuture<int>> detachedFuture_;
 };
 
 } // namespace folly

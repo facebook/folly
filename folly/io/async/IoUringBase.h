@@ -64,13 +64,13 @@ struct IoSqeBase
   // This is used if you want to prepare this sqe for reuse, but will manage the
   // lifetime. For example for zerocopy send, you might want to reuse the sqe
   // but still have a notification inbound.
-  void prepareForReuse() { internalUnmarkInflight(); }
+  void prepareForReuse() { internalMarkInflight(false); }
+  void internalMarkInflight(bool val) { inFlight_ = val; }
 
  private:
   friend class IoUringBackend;
   void internalSubmit(struct io_uring_sqe* sqe) noexcept;
   void internalCallback(const io_uring_cqe* cqe) noexcept;
-  void internalUnmarkInflight() { inFlight_ = false; }
 
   bool inFlight_ = false;
   bool cancelled_ = false;
