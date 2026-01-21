@@ -21,6 +21,9 @@
 
 /// See `value_only_result.h` for why this type exists.
 /// See `coro.h` for the `or_unwind` docs`.
+///
+/// WARNING: `auto&& ref = co_await or_unwind(rvalueFn())` dangles; search
+/// `result.md` for "LLVM issue #177023".  Safe: `auto val = ...`
 
 #if FOLLY_HAS_RESULT
 
@@ -28,30 +31,48 @@ namespace folly {
 
 // Making these `final` makes `unsafe_mover` simpler due to no slicing risk.
 
+// `co_await or_unwind(valueOnlyResFn())` returns rvalue reference
 template <typename T>
 class or_unwind<value_only_result<T>&&> final
-    : public detail::or_unwind_base<value_only_result<T>&&> {
-  using detail::or_unwind_base<value_only_result<T>&&>::or_unwind_base;
+    : public detail::result_or_unwind<value_only_result<T>&&> {
+  using detail::result_or_unwind<value_only_result<T>&&>::result_or_unwind;
 };
 template <typename T>
 or_unwind(value_only_result<T>&&) -> or_unwind<value_only_result<T>&&>;
 
+// `co_await or_unwind(res)` returns lvalue reference
 template <typename T>
 class or_unwind<value_only_result<T>&> final
-    : public detail::or_unwind_base<value_only_result<T>&> {
-  using detail::or_unwind_base<value_only_result<T>&>::or_unwind_base;
+    : public detail::result_or_unwind<value_only_result<T>&> {
+  using detail::result_or_unwind<value_only_result<T>&>::result_or_unwind;
 };
 template <typename T>
 or_unwind(value_only_result<T>&) -> or_unwind<value_only_result<T>&>;
 
+// `co_await or_unwind(std::as_const(res))` returns lvalue reference to const
 template <typename T>
 class or_unwind<const value_only_result<T>&> final
-    : public detail::or_unwind_base<const value_only_result<T>&> {
-  using detail::or_unwind_base<const value_only_result<T>&>::or_unwind_base;
+    : public detail::result_or_unwind<const value_only_result<T>&> {
+  using detail::result_or_unwind<const value_only_result<T>&>::result_or_unwind;
 };
 template <typename T>
 or_unwind(const value_only_result<T>&)
     -> or_unwind<const value_only_result<T>&>;
+
+/// `or_unwind_owning(r)` takes ownership of `r`, while `co_await` returns it.
+///
+/// Moves the result into the awaitable, unlike `or_unwind` which holds a ref:
+///   auto my_unwind() { return or_unwind_owning{value_only_result<T>{...}}; }
+/// With `or_unwind`, this would have been a use-after-stack error.
+template <typename T>
+class or_unwind_owning<value_only_result<T>> final
+    : public detail::result_or_unwind_owning<value_only_result<T>> {
+  using detail::result_or_unwind_owning<
+      value_only_result<T>>::result_or_unwind_owning;
+};
+template <typename T>
+or_unwind_owning(value_only_result<T>)
+    -> or_unwind_owning<value_only_result<T>>;
 
 } // namespace folly
 

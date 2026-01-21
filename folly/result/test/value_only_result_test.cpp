@@ -19,6 +19,8 @@
 #include <folly/result/gtest_helpers.h>
 #include <folly/result/value_only_result_coro.h>
 
+// IMPORTANT: Changes here should PROBABLY be mirrored back to `result_test.cpp`
+
 #if FOLLY_HAS_RESULT
 
 namespace folly {

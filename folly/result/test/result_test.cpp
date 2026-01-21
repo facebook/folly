@@ -21,6 +21,12 @@
 
 #if FOLLY_HAS_RESULT
 
+// IMPORTANT: Changes here should PROBABLY be mirrored to
+// `value_only_result_test.cpp`.
+
+// This tests `result.h` -- `coro.h` is tested incidentally.  A full test
+// matrix for `or_unwind` combinations is covered by `or_unwind_test.cpp`
+
 namespace folly {
 
 // If you came here, you probably want `result` to have `->` or `*` operators,

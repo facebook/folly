@@ -97,6 +97,7 @@ folly_add_library(
     folly_coro_coroutine
     folly_coro_error
     folly_lang_must_use_immediately
+    folly_result_detail_result_or_unwind
     folly_result_detail_result_promise
     folly_result_result
 )

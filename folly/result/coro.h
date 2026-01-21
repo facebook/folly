@@ -20,6 +20,7 @@
 #include <folly/coro/Coroutine.h> // delete with clang-15 support
 #include <folly/coro/Error.h>
 #include <folly/lang/MustUseImmediately.h>
+#include <folly/result/detail/result_or_unwind.h>
 #include <folly/result/detail/result_promise.h>
 #include <folly/result/result.h>
 
@@ -33,11 +34,15 @@
 ///
 /// Recommended pre-read: `result.h` docblock and/or `docs/result.md`.
 ///
-/// Use `or_unwind` to "await" short-circuiting types (currently, just `result`)
-/// from `result` coroutines OR from `folly::coro` async task coroutines:
+/// Use `or_unwind` to unwrap short-circuiting types from synchronous `result`
+/// coroutines OR from `folly::coro` async task coroutines:
 ///
 ///   result<int> getN();
 ///   int n = co_await or_unwind(getN());
+///
+/// Supported types: `result<T>`, `value_only_result<T>`, `non_value_result`.
+/// Reference variants (`&`, `const&`, `&&`) bind to the argument; use
+/// `or_unwind_owning` when you need to store or return the awaitable.
 ///
 /// If you JUST need a task to cheaply propagate exceptions to its parent,
 /// avoiding rethrowing, then you have a more concise option:
@@ -72,6 +77,13 @@
 /// unnecessarily copying the value OR the error (7ns), so mind your move
 /// hygiene in hot code.
 ///
+/// ## Avoid dangling references with `or_unwind(rvalue)`
+///
+/// WARNING: `auto&& ref = co_await or_unwind(resFn())` dangles! `or_unwind`
+/// stores a reference to its argument, so when `resFn()` returns a temporary,
+/// it dies after the full expression. Use `auto val = ...` (store by value),
+/// or `or_unwind_owning`. Search `result.md` for "LLVM issue #177023" for more.
+///
 /// ## What about cancellation / `has_stopped()`?
 ///
 /// `co_await or_unwind(resFn())` only extracts the value, and unwinds to the
@@ -84,214 +96,135 @@
 /// distinction is critical.  For example, one must not hold non-coro mutexes
 /// across async suspend points.
 ///
-/// ## Future: Extensions to non-`result` types
+/// ## Future: Extensions to `Try`?
 ///
-/// The current implementation is `result`-only.  If you have a need, it might
-/// be fine to specialize it for `Try`.  Just be mindful of its two warts:
-/// empty state and empty `exception_wrapper`.
+/// It might be fine to specialize `or_unwind` for `Try`.  Just be mindful of
+/// its two warts: empty state and empty `exception_wrapper`.
+
+// NOTE: This short-circuiting coroutine implementation was modeled on
+// `folly/Expected.h`.  Port compiler fixes or optimizations across both.
 
 namespace folly {
 
-template <typename>
-class or_unwind;
+// NB: Making these `final` makes `unsafe_mover` simpler due to no slicing risk.
 
-class Executor;
-template <typename>
-class ExecutorKeepAlive;
+/// `co_await or_unwind(resFn())` returns a reference into `res`.
+template <typename T>
+class or_unwind<result<T>&&> final
+    : public detail::result_or_unwind<result<T>&&> {
+  using detail::result_or_unwind<result<T>&&>::result_or_unwind;
+};
+template <typename T>
+or_unwind(result<T>&&) -> or_unwind<result<T>&&>;
 
-namespace coro::detail {
-struct WithAsyncStackFunction;
-class TaskPromisePrivate;
-} // namespace coro::detail
+/// `co_await or_unwind(res)` returns a reference into `res`.
+template <typename T>
+class or_unwind<result<T>&> final
+    : public detail::result_or_unwind<result<T>&> {
+  using detail::result_or_unwind<result<T>&>::result_or_unwind;
+};
+template <typename T>
+or_unwind(result<T>&) -> or_unwind<result<T>&>;
+
+/// `co_await or_unwind(std::as_const(res))` returns a reference into `res`.
+template <typename T>
+class or_unwind<const result<T>&> final
+    : public detail::result_or_unwind<const result<T>&> {
+  using detail::result_or_unwind<const result<T>&>::result_or_unwind;
+};
+template <typename T>
+or_unwind(const result<T>&) -> or_unwind<const result<T>&>;
+
+/// `co_await or_unwind_owning(res)` takes ownership of `res`.
+///
+/// Use when you need the awaitable to own the result (e.g., when returning
+/// from a helper function that composes awaitables).
+template <typename T>
+class or_unwind_owning<result<T>> final
+    : public detail::result_or_unwind_owning<result<T>> {
+  using detail::result_or_unwind_owning<result<T>>::result_or_unwind_owning;
+};
+template <typename T>
+or_unwind_owning(result<T>) -> or_unwind_owning<result<T>>;
+
+/// `co_await or_unwind(non_value_result{...})` propagates the error right away.
+///
+/// IMPORTANT: Unlike `result<T>`, there's no lvalue `or_unwind(nvr&)` variant.
+/// If adding one, and add a test akin to the `result<T>` lvalue mutation check
+/// in `forEachOrUnwindVariant`.
+template <>
+class or_unwind<non_value_result&&> final
+    : public detail::result_or_unwind<non_value_result&&> {
+  using detail::result_or_unwind<non_value_result&&>::result_or_unwind;
+};
+or_unwind(non_value_result&&) -> or_unwind<non_value_result&&>;
+
+/// co_await or_unwind_owning(non_value_result{...})
+/// co_await or_unwind_owning(stopped_result)
+/// co_await or_unwind(stopped_result)
+///
+/// Owning awaitable for `non_value_result`. Unlike the reference variant,
+/// this can be returned from functions or stored before awaiting.
+template <>
+class or_unwind_owning<non_value_result> final
+    : public detail::result_or_unwind_owning<non_value_result> {
+  using detail::result_or_unwind_owning<
+      non_value_result>::result_or_unwind_owning;
+};
+or_unwind_owning(non_value_result) -> or_unwind_owning<non_value_result>;
+or_unwind_owning(stopped_result_t) -> or_unwind_owning<non_value_result>;
+
+// `or_unwind(stopped_result)` must create an owning variant since
+// `stopped_result_t` is a tag type, not a reference we can store.
+//
+// Implementation edge case: Yes, `or_unwind<non_value_result>` is owning,
+// despite the lack of `_owning` in the name.  This works out because
+// `result_or_unwind_base` selects the storage base using the inner type.
+template <>
+class or_unwind<non_value_result> final
+    : public detail::result_or_unwind<non_value_result> {
+  using detail::result_or_unwind<non_value_result>::result_or_unwind;
+};
+or_unwind(stopped_result_t) -> or_unwind<non_value_result>;
+
+//
+// NOTE: We may remove support for `co_await non_value_result{...}` and
+// `co_await stopped_result`, instead requiring `or_unwind`.
+//
 
 namespace detail {
 
-// This is separate to let future https://fburl.com/result-generator-impl reuse
-// the awaitables below.
-struct result_await_suspender {
-  // Future: check if all these `FOLLY_ALWAYS_INLINE`s aren't a pessimization.
-  template <typename T, typename U>
-  FOLLY_ALWAYS_INLINE void operator()(T&& t, result_promise_handle<U> handle) {
-    auto& v = *handle.promise().value_;
-    expected_detail::ExpectedHelper::assume_empty(v.exp_);
-    // `T` can be `non_value_result&&`, or one of a few `result<T>` refs.
-    if constexpr (std::is_same_v<non_value_result, std::remove_cvref_t<T>>) {
-      v.exp_ = Unexpected{std::forward<T>(t)};
-    } else {
-      v.exp_ = Unexpected{std::forward<T>(t).non_value()};
-    }
-    // Abort the rest of the coroutine. resume() is not going to be called
-    handle.destroy();
-  }
-};
-
-template <typename Derived, typename ResultRef>
-class or_unwind_crtp
-    : public ext::must_use_immediately_crtp<
-          or_unwind_crtp<Derived, ResultRef>> {
- protected:
-  ResultRef resultRef_;
-
- public:
-  explicit or_unwind_crtp(
-      ResultRef&& rr [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]) noexcept
-      : resultRef_(static_cast<ResultRef&&>(rr)) {
-    // not `noexcept` otherwise, have to update `my_mover` below
-    static_assert(std::is_reference_v<ResultRef>);
-  }
-
-  bool await_ready() const noexcept { return resultRef_.has_value(); }
-
-  auto await_resume() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]
-  -> decltype(FOLLY_DECLVAL(ResultRef&&).value_or_throw()) {
-    return static_cast<ResultRef&&>(resultRef_).value_or_throw();
-  }
-
-  // When awaited from a `result<U>` coro:
-  template <typename U>
-  void await_suspend(detail::result_promise_handle<U> awaitingCoro) {
-    // There is no `value_only_result::non_value()`
-    if constexpr (requires {
-                    static_cast<ResultRef&&>(resultRef_).non_value();
-                  }) {
-      auto& v = *awaitingCoro.promise().value_;
-      expected_detail::ExpectedHelper::assume_empty(v.exp_);
-      // We can't move the error out of mutable l-value references to `result`,
-      // because the user isn't counting on `co_await or_unwind(m)` to mutate
-      // the `result`.  For example, `m` might not be a local, and could
-      // outlive the current coro.
-      v.exp_ = Unexpected{static_cast<ResultRef&&>(resultRef_).non_value()};
-      awaitingCoro.destroy();
-    }
-  }
-
-  // When awaited from a `coro::some_task<U>` coro -- covered in
-  // `await_result_from_task_test.cpp`.
-  //
-  // Why only task-like coroutines?  While `AsyncGenerator` also supports
-  // `co_yield co_error`, the behavior doesn't abort the generator, which would
-  // probably be surprising.  Support for short-circuiting a generator via
-  // `co_await or_unwind()` wouldn't be hard to add, though.
-  template <typename Promise>
-    requires requires(Promise promise, coro::detail::TaskPromisePrivate priv) {
-      // Pick `Task` and all `TaskWrapper`s, but not `AsyncGenerator`.
-      promise.continuationRef(priv);
-    }
-  auto await_suspend(std::coroutine_handle<Promise> awaitingCoro) noexcept {
-    // We have to use the legacy API because (1) `folly::coro` internals still
-    // model cancellation as an exception, (2) to use `co_cancelled` here we'd
-    // have to check `resultRef_` for `OperationCancelled` which can cost
-    // 50-100ns+.
-    auto awaiter = awaitingCoro.promise().yield_value(
-        coro::co_error(
-            // This `copy` is here because
-            // `get_legacy_error_or_cancellation_slow` lacks a `const`-qualified
-            // overload.
-            ::folly::copy(static_cast<ResultRef&&>(resultRef_).non_value())
-                .get_legacy_error_or_cancellation_slow(result_private_t{})));
-    return awaiter.await_suspend(awaitingCoro);
-  }
-
-  friend auto co_viaIfAsync(
-      const ExecutorKeepAlive<Executor>&, Derived r) noexcept {
-    return must_use_immediately_unsafe_mover(std::move(r))();
-  }
-
-  // Conventionally, the first arg would be `cpo_t<co_withAsyncStack>`, but
-  // that cannot be forward-declared.
-  friend auto tag_invoke(
-      const coro::detail::WithAsyncStackFunction&, Derived&& r) noexcept {
-    return must_use_immediately_unsafe_mover(std::move(r))();
-  }
-
- private:
-  struct my_mover {
-   private:
-    ResultRef resultRef_;
-
-   public:
-    explicit my_mover(ResultRef&& rr) noexcept
-        : resultRef_(static_cast<ResultRef&&>(rr)) {}
-    Derived operator()() && noexcept {
-      return Derived{static_cast<ResultRef&&>(resultRef_)};
-    }
-  };
-
- public:
-  static my_mover unsafe_mover( // no slicing risk, `or_unwind` is `final`
-      ext::must_use_immediately_private_t,
-      Derived&& me) noexcept {
-    return my_mover{static_cast<ResultRef&&>(me.resultRef_)};
-  }
-};
-
-template <typename ResultRef>
-using or_unwind_base = or_unwind_crtp<or_unwind<ResultRef>, ResultRef>;
-
-// There's no `result` in the name as a hint to lift this to a shared header as
-// soon as another usecase arises.
-template <typename AwaitSuspender>
-struct non_value_awaitable {
+struct result_non_value_awaitable {
   non_value_result non_value_;
 
   constexpr std::false_type await_ready() const noexcept { return {}; }
   [[noreturn]] void await_resume() {
     compiler_may_unsafely_assume_unreachable();
   }
-  FOLLY_ALWAYS_INLINE void await_suspend(auto h) {
-    AwaitSuspender()(std::move(non_value_), h);
+  template <typename U>
+  FOLLY_ALWAYS_INLINE void await_suspend(result_promise_handle<U> h) {
+    auto& v = *h.promise().value_;
+    expected_detail::ExpectedHelper::assume_empty(v.exp_);
+    v.exp_ = Unexpected{std::move(non_value_)};
+    h.destroy();
   }
 };
-
 } // namespace detail
 
-// co_await stopped_result
+/// co_await stopped_result
 inline auto /* implicit */ operator co_await(stopped_result_t s) {
-  return detail::non_value_awaitable<detail::result_await_suspender>{
-      .non_value_ = non_value_result{s}};
+  return detail::result_non_value_awaitable{.non_value_ = non_value_result{s}};
 }
 
-// co_await non_value_result{SomeError{...}}
-// co_await std::move(res).non_value()
-//
-// Pass-by-&& to discourage accidental copies of `std::exception_ptr`, if you
-// get a compile error, use `res.copy()`.
+/// co_await non_value_result{SomeError{...}}
+/// co_await std::move(res).non_value()
+///
+/// Pass-by-&& to discourage accidental copies of `std::exception_ptr`.  If you
+/// get a compile error, use `res.copy()`.
 inline auto /* implicit */ operator co_await(non_value_result&& nvr) {
-  return detail::non_value_awaitable<detail::result_await_suspender>{
-      .non_value_ = std::move(nvr)};
+  return detail::result_non_value_awaitable{.non_value_ = std::move(nvr)};
 }
 
-// Making these `final` makes `unsafe_mover` simpler due to no slicing risk.
-
-// co_await or_unwind(resFn())
-template <typename T>
-class or_unwind<result<T>&&> final
-    : public detail::or_unwind_base<result<T>&&> {
-  using detail::or_unwind_base<result<T>&&>::or_unwind_base;
-};
-template <typename T>
-or_unwind(result<T>&&) -> or_unwind<result<T>&&>;
-
-// co_await or_unwind(res)
-template <typename T>
-class or_unwind<result<T>&> final : public detail::or_unwind_base<result<T>&> {
-  using detail::or_unwind_base<result<T>&>::or_unwind_base;
-};
-template <typename T>
-or_unwind(result<T>&) -> or_unwind<result<T>&>;
-
-// co_await or_unwind(std::as_const(res))
-template <typename T>
-class or_unwind<const result<T>&> final
-    : public detail::or_unwind_base<const result<T>&> {
-  using detail::or_unwind_base<const result<T>&>::or_unwind_base;
-};
-template <typename T>
-or_unwind(const result<T>&) -> or_unwind<const result<T>&>;
-
-// This short-circuiting coroutine implementation was modeled on
-// `folly/Expected.h`. Please try to port any compiler fixes or
-// optimizations across both.
 } // namespace folly
 
 #endif // FOLLY_HAS_RESULT

@@ -72,6 +72,34 @@ fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "result_or_unwind",
+    raw_headers = ["result_or_unwind.h"],
+    exported_deps = [
+        ":result_promise",
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly/coro:error",
+        "//xplat/folly/lang:must_use_immediately",
+        "//xplat/folly/result:result",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "result_or_unwind",
+    headers = ["result_or_unwind.h"],
+    exported_deps = [
+        ":result_promise",
+        "//folly:cpp_attributes",
+        "//folly/coro:error",
+        "//folly/lang:must_use_immediately",
+        "//folly/result:result",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "rich_error_common",
     raw_headers = ["rich_error_common.h"],
     exported_deps = [

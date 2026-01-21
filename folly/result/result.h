@@ -80,6 +80,8 @@
 ///           * `co_await or_unwind(folly::copy(res))`
 ///       - `co_await or_unwind(res) -> T&`. Copies `exception_ptr` on error.
 ///       - `co_await or_unwind(std::as_const(res)) -> const T&`
+///       WARNING: `auto&& ref = co_await or_unwind(rvalueFn())` dangles; search
+///       `result.md` for "LLVM issue #177023".  Safe: `auto val = ...`
 ///       - `co_await stopped_result` or `non_value_result{YourErr{}}` to
 ///         end the coroutine with an error without throwing.
 ///     * In `folly::coro` coroutines:
@@ -393,9 +395,9 @@ class result_crtp {
 
   friend struct result_promise<T>;
   friend struct result_promise_return<T>;
-  friend struct result_await_suspender;
+  friend struct result_non_value_awaitable; // `await_suspend` uses `exp_`
   template <typename, typename>
-  friend class or_unwind_crtp; // `await_suspend` uses `exp_`
+  friend class result_or_unwind_crtp; // `await_suspend` uses `exp_`
 
   friend inline bool operator==(const result_crtp& a, const result_crtp& b) {
     // FIXME: This logic is meant to follow `std::expected`, so once that's in

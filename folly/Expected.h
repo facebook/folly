@@ -1589,6 +1589,8 @@ bool operator>(const Value& other, const Expected<Value, Error>&) = delete;
 
 // Enable the use of folly::Expected with `co_await`
 // Inspired by https://github.com/toby-allsopp/coroutine_monad
+//
+// NOTE: Please port applicable improvements to `folly/result/coro.h`.
 #if FOLLY_HAS_COROUTINES
 #include <folly/coro/Coroutine.h>
 
