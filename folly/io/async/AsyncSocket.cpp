@@ -148,9 +148,15 @@ using ZeroCopyMMapMemStore = ZeroCopyMMapMemStoreReal;
 using ZeroCopyMMapMemStore = ZeroCopyMMapMemStoreFallback;
 #endif
 
+#if FOLLY_HAS_LIBURING
+bool checkIoUringBackend(folly::EventBase* evb) {
+  return dynamic_cast<folly::IoUringBackend*>(evb->getBackend()) != nullptr;
+}
+#else
 bool checkIoUringBackend(folly::EventBase*) {
   return false;
 }
+#endif
 } // namespace
 
 #if FOLLY_HAVE_VLA

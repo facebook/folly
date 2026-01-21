@@ -283,6 +283,12 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setNativeAsyncSocketSupport(bool v) {
+      nativeAsyncSocketSupport = v;
+
+      return *this;
+    }
+
     ssize_t sqeSize{-1};
 
     size_t capacity{256};
@@ -329,6 +335,8 @@ class IoUringBackend : public EventBaseBackendBase {
     // Incremental Buffers
     bool enableIncrementalBuffers{false};
     bool useHugePages{false};
+
+    bool nativeAsyncSocketSupport{false};
   };
 
   explicit IoUringBackend(Options options);
@@ -343,6 +351,7 @@ class IoUringBackend : public EventBaseBackendBase {
   bool useReqBatching() const {
     return options_.timeout.count() > 0 && options_.batchSize > 0;
   }
+  bool supportAsyncSocket() { return options_.nativeAsyncSocketSupport; }
 
   int computeSrcPortForQueueId(
       const folly::IPAddress& destAddr, uint16_t destPort);

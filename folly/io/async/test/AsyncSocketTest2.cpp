@@ -31,6 +31,7 @@
 #include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/IoUringBackend.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
 #include <folly/io/async/test/MockAsyncSocketLegacyObserver.h>
@@ -204,14 +205,95 @@ class DelayedWrite : public AsyncTimeout {
   bool lastWrite_;
 };
 
+enum class BackendType {
+  DEFAULT,
+  IO_URING,
+};
+
+enum class TFOState {
+  DISABLED,
+  ENABLED,
+};
+
+std::vector<BackendType> getBackendTestingValues() {
+  std::vector<BackendType> vals;
+  vals.emplace_back(BackendType::DEFAULT);
+  vals.emplace_back(BackendType::IO_URING);
+  return vals;
+}
+
+using ConnectTestParam = std::tuple<BackendType, TFOState>;
+std::vector<ConnectTestParam> getBackendTFOTestingValues() {
+  std::vector<ConnectTestParam> vals;
+  vals.emplace_back(BackendType::DEFAULT, TFOState::DISABLED);
+  vals.emplace_back(BackendType::IO_URING, TFOState::DISABLED);
+
+#if FOLLY_ALLOW_TFO
+  vals.emplace_back(BackendType::DEFAULT, TFOState::ENABLED);
+  vals.emplace_back(BackendType::IO_URING, TFOState::ENABLED);
+#endif
+  return vals;
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // constructor related tests
 ///////////////////////////////////////////////////////////////////////////
 
+class AsyncSocketTest : public ::testing::TestWithParam<BackendType> {
+ protected:
+  void SetUp() override {
+    if (GetParam() == BackendType::IO_URING) {
+      try {
+        evb_ =
+            std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
+                []() -> std::unique_ptr<EventBaseBackendBase> {
+                  IoUringBackend::Options options;
+                  options.setInitialProvidedBuffers(2048, 2000);
+                  options.setNativeAsyncSocketSupport(true);
+                  return std::make_unique<IoUringBackend>(std::move(options));
+                }));
+      } catch (IoUringBackend::NotAvailable const&) {
+        GTEST_SKIP() << "IoUringBackend not available";
+      }
+    } else {
+      evb_ = std::make_unique<EventBase>();
+    }
+  }
+
+  EventBase& getEventBase() { return *evb_; }
+
+  std::unique_ptr<EventBase> makeEventBase() {
+    if (GetParam() == BackendType::IO_URING) {
+      return std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
+          []() -> std::unique_ptr<EventBaseBackendBase> {
+            IoUringBackend::Options options;
+            options.setInitialProvidedBuffers(2048, 2000);
+            options.setNativeAsyncSocketSupport(true);
+            return std::make_unique<IoUringBackend>(std::move(options));
+          }));
+    } else {
+      return std::make_unique<EventBase>();
+    }
+  }
+
+ private:
+  std::unique_ptr<EventBase> evb_;
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    AsyncSocketTests,
+    AsyncSocketTest,
+    ::testing::ValuesIn(getBackendTestingValues()),
+    [](const ::testing::TestParamInfo<BackendType>& info) {
+      return info.param == BackendType::IO_URING
+          ? "IoUringBackend"
+          : "DefaultBackend";
+    });
+
 /**
  * Test constructing with an existing fd.
  */
-TEST(AsyncSocketTest, ConstructWithFd) {
+TEST_P(AsyncSocketTest, ConstructWithFd) {
   // construct a pair of unix sockets
   NetworkSocket fds[2];
   {
@@ -224,7 +306,7 @@ TEST(AsyncSocketTest, ConstructWithFd) {
   ASSERT_NE(cfd, NetworkSocket());
 
   // instantiate AsyncSocket w/o any connectionEstablishTimestamp
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb, cfd));
 
   // should be no connect timestamps
@@ -240,7 +322,7 @@ TEST(AsyncSocketTest, ConstructWithFd) {
 /**
  * Test constructing with an existing fd, passing a connection establish ts.
  */
-TEST(AsyncSocketTest, ConstructWithFdAndTimestamp) {
+TEST_P(AsyncSocketTest, ConstructWithFdAndTimestamp) {
   // construct a pair of unix sockets
   NetworkSocket fds[2];
   {
@@ -254,7 +336,7 @@ TEST(AsyncSocketTest, ConstructWithFdAndTimestamp) {
 
   // instantiate AsyncSocket w/ a connectionEstablishTimestamp
   const auto connectionEstablishTime = std::chrono::steady_clock::now();
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(
       new AsyncSocket(&evb, cfd, 0, nullptr, connectionEstablishTime));
 
@@ -273,7 +355,7 @@ TEST(AsyncSocketTest, ConstructWithFdAndTimestamp) {
 /**
  * Test constructing with an existing fd, then moving.
  */
-TEST(AsyncSocketTest, ConstructWithFdThenMove) {
+TEST_P(AsyncSocketTest, ConstructWithFdThenMove) {
   // construct a pair of unix sockets
   NetworkSocket fds[2];
   {
@@ -286,7 +368,7 @@ TEST(AsyncSocketTest, ConstructWithFdThenMove) {
   ASSERT_NE(cfd, NetworkSocket());
 
   // instantiate AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb, cfd));
 
   // should be no connect timestamps
@@ -314,7 +396,7 @@ TEST(AsyncSocketTest, ConstructWithFdThenMove) {
 /**
  * Test constructing with an existing fd, then moving.
  */
-TEST(AsyncSocketTest, ConstructWithFdAndTimestampThenMove) {
+TEST_P(AsyncSocketTest, ConstructWithFdAndTimestampThenMove) {
   // construct a pair of unix sockets
   NetworkSocket fds[2];
   {
@@ -328,7 +410,7 @@ TEST(AsyncSocketTest, ConstructWithFdAndTimestampThenMove) {
 
   // instantiate AsyncSocket w/ a connectionEstablishTimestamp
   const auto connectionEstablishTime = std::chrono::steady_clock::now();
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(
       new AsyncSocket(&evb, cfd, 0, nullptr, connectionEstablishTime));
 
@@ -362,15 +444,60 @@ TEST(AsyncSocketTest, ConstructWithFdAndTimestampThenMove) {
 // connect() tests
 ///////////////////////////////////////////////////////////////////////////
 
+class AsyncSocketConnectTFOTest
+    : public ::testing::TestWithParam<ConnectTestParam> {
+ protected:
+  void SetUp() override {
+    if (std::get<0>(GetParam()) == BackendType::IO_URING) {
+      try {
+        evb_ =
+            std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
+                []() -> std::unique_ptr<EventBaseBackendBase> {
+                  IoUringBackend::Options options;
+                  options.setInitialProvidedBuffers(2048, 2000);
+                  options.setNativeAsyncSocketSupport(true);
+                  return std::make_unique<IoUringBackend>(std::move(options));
+                }));
+      } catch (IoUringBackend::NotAvailable const&) {
+        GTEST_SKIP() << "IoUringBackend not available";
+      }
+    } else {
+      evb_ = std::make_unique<EventBase>();
+    }
+  }
+
+  EventBase& getEventBase() { return *evb_; }
+
+  BackendType getBackendType() const { return std::get<0>(GetParam()); }
+  TFOState getTFOState() const { return std::get<1>(GetParam()); }
+
+ private:
+  std::unique_ptr<EventBase> evb_;
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    ConnectTFOTests,
+    AsyncSocketConnectTFOTest,
+    ::testing::ValuesIn(getBackendTFOTestingValues()),
+    [](const ::testing::TestParamInfo<ConnectTestParam>& info) {
+      std::string name = std::get<0>(info.param) == BackendType::IO_URING
+          ? "IoUringBackend"
+          : "DefaultBackend";
+      name += std::get<1>(info.param) == TFOState::ENABLED
+          ? "_TFOEnabled"
+          : "_TFODisabled";
+      return name;
+    });
+
 /**
  * Test connecting to a server
  */
-TEST(AsyncSocketTest, Connect) {
+TEST_P(AsyncSocketTest, Connect) {
   // Start listening on a local port
   TestServer server;
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_EQ(
       std::chrono::steady_clock::time_point(), socket->getConnectStartTime());
@@ -402,12 +529,12 @@ TEST(AsyncSocketTest, Connect) {
 /**
  * Test connecting to a server, then move the socket.¸
  */
-TEST(AsyncSocketTest, ConnectThenMove) {
+TEST_P(AsyncSocketTest, ConnectThenMove) {
   // Start listening on a local port
   TestServer server;
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_EQ(
       std::chrono::steady_clock::time_point(), socket->getConnectStartTime());
@@ -450,8 +577,8 @@ TEST(AsyncSocketTest, ConnectThenMove) {
 /**
  * Test connecting to a server that isn't listening.
  */
-TEST(AsyncSocketTest, ConnectRefused) {
-  EventBase evb;
+TEST_P(AsyncSocketTest, ConnectRefused) {
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_EQ(
       std::chrono::steady_clock::time_point(), socket->getConnectStartTime());
@@ -484,8 +611,8 @@ TEST(AsyncSocketTest, ConnectRefused) {
 /**
  * Test connection timeout
  */
-TEST(AsyncSocketTest, ConnectTimeout) {
-  EventBase evb;
+TEST_P(AsyncSocketTest, ConnectTimeout) {
+  EventBase& evb = getEventBase();
 
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
 
@@ -537,16 +664,32 @@ TEST(AsyncSocketTest, ConnectTimeout) {
   EXPECT_EQ(socket->getConnectTimeout(), std::chrono::milliseconds(1));
 }
 
-class AsyncSocketToSTest : public ::testing::Test {
+class AsyncSocketToSTest : public ::testing::TestWithParam<BackendType> {
  protected:
   using MockDispatcher = ::testing::NiceMock<netops::test::MockDispatcher>;
   using TestObserver = MockAsyncSocketLegacyLifecycleObserverForByteEvents;
   using ByteEventType = AsyncSocket::ByteEvent::Type;
 
   void SetUp() override {
+    if (GetParam() == BackendType::IO_URING) {
+      try {
+        evb =
+            std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
+                []() -> std::unique_ptr<EventBaseBackendBase> {
+                  IoUringBackend::Options options;
+                  options.setNativeAsyncSocketSupport(true);
+                  return std::make_unique<IoUringBackend>(std::move(options));
+                }));
+      } catch (IoUringBackend::NotAvailable const&) {
+        GTEST_SKIP() << "IoUringBackend not available";
+      }
+    } else {
+      evb = std::make_unique<EventBase>();
+    }
+
     netOpsDispatcher = std::make_shared<MockDispatcher>();
     netOpsDispatcher->forwardToDefaultImpl();
-    socket = AsyncSocket::newSocket(&evb);
+    socket = AsyncSocket::newSocket(evb.get());
     socket->setOverrideNetOpsDispatcher(netOpsDispatcher);
     v6Addr = SocketAddress(
         SocketAddressTestHelper::kGooglePublicDnsAAddrIPv6, 65535);
@@ -568,7 +711,7 @@ class AsyncSocketToSTest : public ::testing::Test {
         .Times(0);
   }
 
-  EventBase evb;
+  std::unique_ptr<EventBase> evb;
   std::shared_ptr<AsyncSocket> socket;
   std::shared_ptr<MockDispatcher> netOpsDispatcher;
 
@@ -576,7 +719,17 @@ class AsyncSocketToSTest : public ::testing::Test {
   SocketAddress v4Addr;
 };
 
-TEST_F(AsyncSocketToSTest, SetTosOrTrafficClassBeforeConnect) {
+INSTANTIATE_TEST_SUITE_P(
+    ConnectToSTests,
+    AsyncSocketToSTest,
+    ::testing::ValuesIn(getBackendTestingValues()),
+    [](const ::testing::TestParamInfo<BackendType>& info) {
+      return info.param == BackendType::IO_URING
+          ? "IoUringBackend"
+          : "DefaultBackend";
+    });
+
+TEST_P(AsyncSocketToSTest, SetTosOrTrafficClassBeforeConnect) {
   setupDefaultReturn();
   int tos = 1;
   socket->setTosOrTrafficClass(tos);
@@ -587,7 +740,7 @@ TEST_F(AsyncSocketToSTest, SetTosOrTrafficClassBeforeConnect) {
   socket->connect(nullptr, v6Addr, 1000);
 }
 
-TEST_F(AsyncSocketToSTest, SetTosOrTrafficClassAfterConnect) {
+TEST_P(AsyncSocketToSTest, SetTosOrTrafficClassAfterConnect) {
   setupDefaultReturn();
   int tos = 1;
   expectNoCallsToTOS();
@@ -599,7 +752,7 @@ TEST_F(AsyncSocketToSTest, SetTosOrTrafficClassAfterConnect) {
   socket->setTosOrTrafficClass(tos);
 }
 
-TEST_F(AsyncSocketToSTest, SetTosOrTrafficClassIPV4) {
+TEST_P(AsyncSocketToSTest, SetTosOrTrafficClassIPV4) {
   setupDefaultReturn();
   int tos = 1;
   socket->setTosOrTrafficClass(tos);
@@ -610,7 +763,7 @@ TEST_F(AsyncSocketToSTest, SetTosOrTrafficClassIPV4) {
   socket->connect(nullptr, v4Addr, 1000);
 }
 
-TEST_F(AsyncSocketToSTest, SetTosOrTrafficClassError) {
+TEST_P(AsyncSocketToSTest, SetTosOrTrafficClassError) {
   setupDefaultReturn();
   int tos = 1;
   socket->setTosOrTrafficClass(tos);
@@ -623,40 +776,18 @@ TEST_F(AsyncSocketToSTest, SetTosOrTrafficClassError) {
   EXPECT_EQ(ccb.state, StateEnum::STATE_FAILED);
 }
 
-enum class TFOState {
-  DISABLED,
-  ENABLED,
-};
-
-class AsyncSocketConnectTest : public ::testing::TestWithParam<TFOState> {};
-
-std::vector<TFOState> getTestingValues() {
-  std::vector<TFOState> vals;
-  vals.emplace_back(TFOState::DISABLED);
-
-#if FOLLY_ALLOW_TFO
-  vals.emplace_back(TFOState::ENABLED);
-#endif
-  return vals;
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    ConnectTests,
-    AsyncSocketConnectTest,
-    ::testing::ValuesIn(getTestingValues()));
-
 /**
  * Test writing immediately after connecting, without waiting for connect
  * to finish.
  */
-TEST_P(AsyncSocketConnectTest, ConnectAndWrite) {
+TEST_P(AsyncSocketConnectTFOTest, ConnectAndWrite) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
 
-  if (GetParam() == TFOState::ENABLED) {
+  if (getTFOState() == TFOState::ENABLED) {
     socket->enableTFO();
   }
 
@@ -691,13 +822,13 @@ TEST_P(AsyncSocketConnectTest, ConnectAndWrite) {
 /**
  * Test connecting using a nullptr connect callback.
  */
-TEST_P(AsyncSocketConnectTest, ConnectNullCallback) {
+TEST_P(AsyncSocketConnectTFOTest, ConnectNullCallback) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
-  if (GetParam() == TFOState::ENABLED) {
+  if (getTFOState() == TFOState::ENABLED) {
     socket->enableTFO();
   }
 
@@ -728,13 +859,13 @@ TEST_P(AsyncSocketConnectTest, ConnectNullCallback) {
  *
  * This exercises the STATE_CONNECTING_CLOSING code.
  */
-TEST_P(AsyncSocketConnectTest, ConnectWriteAndClose) {
+TEST_P(AsyncSocketConnectTFOTest, ConnectWriteAndClose) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
-  if (GetParam() == TFOState::ENABLED) {
+  if (getTFOState() == TFOState::ENABLED) {
     socket->enableTFO();
   }
   ConnCallback ccb;
@@ -755,7 +886,6 @@ TEST_P(AsyncSocketConnectTest, ConnectWriteAndClose) {
 
   ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
   ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
-
   // Make sure the server got a connection and received the data
   server.verifyConnection(buf, sizeof(buf));
 
@@ -766,11 +896,11 @@ TEST_P(AsyncSocketConnectTest, ConnectWriteAndClose) {
 /**
  * Test calling close() immediately after connect()
  */
-TEST(AsyncSocketTest, ConnectAndClose) {
+TEST_P(AsyncSocketTest, ConnectAndClose) {
   TestServer server;
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
@@ -800,11 +930,11 @@ TEST(AsyncSocketTest, ConnectAndClose) {
  *
  * This should be identical to the normal close behavior.
  */
-TEST(AsyncSocketTest, ConnectAndCloseNow) {
+TEST_P(AsyncSocketTest, ConnectAndCloseNow) {
   TestServer server;
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
@@ -835,11 +965,11 @@ TEST(AsyncSocketTest, ConnectAndCloseNow) {
  *
  * This should abort the pending write.
  */
-TEST(AsyncSocketTest, ConnectWriteAndCloseNow) {
+TEST_P(AsyncSocketTest, ConnectWriteAndCloseNow) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
@@ -874,13 +1004,13 @@ TEST(AsyncSocketTest, ConnectWriteAndCloseNow) {
 /**
  * Test installing a read callback immediately, before connect() finishes.
  */
-TEST_P(AsyncSocketConnectTest, ConnectAndRead) {
+TEST_P(AsyncSocketConnectTFOTest, ConnectAndRead) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
-  if (GetParam() == TFOState::ENABLED) {
+  if (getTFOState() == TFOState::ENABLED) {
     socket->enableTFO();
   }
 
@@ -890,7 +1020,7 @@ TEST_P(AsyncSocketConnectTest, ConnectAndRead) {
   ReadCallback rcb;
   socket->setReadCB(&rcb);
 
-  if (GetParam() == TFOState::ENABLED) {
+  if (getTFOState() == TFOState::ENABLED) {
     // Trigger a connection
     socket->writeChain(nullptr, IOBuf::copyBuffer("hey"));
   }
@@ -916,7 +1046,7 @@ TEST_P(AsyncSocketConnectTest, ConnectAndRead) {
   ASSERT_FALSE(socket->isClosedByPeer());
 }
 
-TEST_P(AsyncSocketConnectTest, ConnectAndReadZC) {
+TEST_P(AsyncSocketConnectTFOTest, ConnectAndReadZC) {
   TestServer server;
 
   // connect()
@@ -926,7 +1056,7 @@ TEST_P(AsyncSocketConnectTest, ConnectAndReadZC) {
   });
   EventBase evb(std::move(opt));
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
-  if (GetParam() == TFOState::ENABLED) {
+  if (getTFOState() == TFOState::ENABLED) {
     socket->enableTFO();
   }
   auto backend = dynamic_cast<TestEventBaseBackend*>(evb.getBackend());
@@ -937,7 +1067,7 @@ TEST_P(AsyncSocketConnectTest, ConnectAndReadZC) {
   ReadCallback rcb;
   rcb.setReadMode(AsyncReader::ReadCallback::ReadMode::ReadZC);
   socket->setReadCB(&rcb);
-  if (GetParam() == TFOState::ENABLED) {
+  if (getTFOState() == TFOState::ENABLED) {
     // Trigger a connection
     socket->writeChain(nullptr, IOBuf::copyBuffer("hey"));
   }
@@ -972,13 +1102,13 @@ TEST_P(AsyncSocketConnectTest, ConnectAndReadZC) {
   ASSERT_FALSE(socket->isClosedByPeer());
 }
 
-TEST_P(AsyncSocketConnectTest, ConnectAndReadv) {
+TEST_P(AsyncSocketConnectTFOTest, ConnectAndReadv) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
-  if (GetParam() == TFOState::ENABLED) {
+  if (getTFOState() == TFOState::ENABLED) {
     socket->enableTFO();
   }
 
@@ -992,7 +1122,7 @@ TEST_P(AsyncSocketConnectTest, ConnectAndReadv) {
   ReadvCallback rcb(kBuffSize, kLen);
   socket->setReadCB(&rcb);
 
-  if (GetParam() == TFOState::ENABLED) {
+  if (getTFOState() == TFOState::ENABLED) {
     // Trigger a connection
     socket->writeChain(nullptr, IOBuf::copyBuffer("hey"));
   }
@@ -1016,13 +1146,17 @@ TEST_P(AsyncSocketConnectTest, ConnectAndReadv) {
   ASSERT_FALSE(socket->isClosedByPeer());
 }
 
-TEST_P(AsyncSocketConnectTest, ConnectAndZeroCopyRead) {
+TEST_P(AsyncSocketConnectTFOTest, ConnectAndZeroCopyRead) {
+  if (getTFOState() == TFOState::ENABLED && folly::kIsArchAArch64) {
+    GTEST_SKIP() << "TFO and ZC Read has different alignments";
+  }
+
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
-  if (GetParam() == TFOState::ENABLED) {
+  if (getTFOState() == TFOState::ENABLED) {
     socket->enableTFO();
   }
 
@@ -1043,7 +1177,7 @@ TEST_P(AsyncSocketConnectTest, ConnectAndZeroCopyRead) {
   ZeroCopyReadCallback rcb(memStore.get(), kBuffSize);
   socket->setReadCB(&rcb);
 
-  if (GetParam() == TFOState::ENABLED) {
+  if (getTFOState() == TFOState::ENABLED) {
     // Trigger a connection
     socket->writeChain(nullptr, IOBuf::copyBuffer("hey"));
   }
@@ -1078,11 +1212,11 @@ TEST_P(AsyncSocketConnectTest, ConnectAndZeroCopyRead) {
  * Test installing a read callback and then closing immediately before the
  * connect attempt finishes.
  */
-TEST(AsyncSocketTest, ConnectReadAndClose) {
+TEST_P(AsyncSocketTest, ConnectReadAndClose) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
@@ -1116,13 +1250,13 @@ TEST(AsyncSocketTest, ConnectReadAndClose) {
  * Test both writing and installing a read callback immediately,
  * before connect() finishes.
  */
-TEST_P(AsyncSocketConnectTest, ConnectWriteAndRead) {
+TEST_P(AsyncSocketConnectTFOTest, ConnectWriteAndRead) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
-  if (GetParam() == TFOState::ENABLED) {
+  if (getTFOState() == TFOState::ENABLED) {
     socket->enableTFO();
   }
   ConnCallback ccb;
@@ -1180,11 +1314,11 @@ TEST_P(AsyncSocketConnectTest, ConnectWriteAndRead) {
  * Test writing to the socket then shutting down writes before the connect
  * attempt finishes.
  */
-TEST(AsyncSocketTest, ConnectWriteAndShutdownWrite) {
+TEST_P(AsyncSocketTest, ConnectWriteAndShutdownWrite) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
@@ -1268,11 +1402,11 @@ TEST(AsyncSocketTest, ConnectWriteAndShutdownWrite) {
  * Test reading, writing, and shutting down writes before the connect attempt
  * finishes.
  */
-TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWrite) {
+TEST_P(AsyncSocketTest, ConnectReadWriteAndShutdownWrite) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
@@ -1356,11 +1490,11 @@ TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWrite) {
  * Test reading, writing, and calling shutdownWriteNow() before the
  * connect attempt finishes.
  */
-TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWriteNow) {
+TEST_P(AsyncSocketTest, ConnectReadWriteAndShutdownWriteNow) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
@@ -1591,11 +1725,11 @@ TEST(AsyncSocketTest, ConnectCallbackWrite) {
 /**
  * Test writing using a nullptr callback
  */
-TEST(AsyncSocketTest, WriteNullCallback) {
+TEST_P(AsyncSocketTest, WriteNullCallback) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket =
       AsyncSocket::newSocket(&evb, server.getAddress(), 30);
   evb.loop(); // loop until the socket is connected
@@ -1618,11 +1752,11 @@ TEST(AsyncSocketTest, WriteNullCallback) {
 /**
  * Test writing with a send timeout
  */
-TEST(AsyncSocketTest, WriteTimeout) {
+TEST_P(AsyncSocketTest, WriteTimeout) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket =
       AsyncSocket::newSocket(&evb, server.getAddress(), 30);
   evb.loop(); // loop until the socket is connected
@@ -1676,8 +1810,8 @@ TEST(AsyncSocketTest, WriteTimeout) {
  *
  * Value returned should be empty; no failure should occur.
  */
-TEST(AsyncSocketTest, GetAddressesNoFd) {
-  EventBase evb;
+TEST_P(AsyncSocketTest, GetAddressesNoFd) {
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::newSocket(&evb);
 
   {
@@ -1696,8 +1830,8 @@ TEST(AsyncSocketTest, GetAddressesNoFd) {
 /**
  * Test getting local and peer addresses after connecting.
  */
-TEST(AsyncSocketTest, GetAddressesAfterConnectGetwhileopenandonclose) {
-  EventBase evb;
+TEST_P(AsyncSocketTest, GetAddressesAfterConnectGetwhileopenandonclose) {
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::newSocket(&evb);
 
   // Start listening on a local port
@@ -1752,8 +1886,8 @@ TEST(AsyncSocketTest, GetAddressesAfterConnectGetwhileopenandonclose) {
  *
  * Only peer address is available under these conditions.
  */
-TEST(AsyncSocketTest, GetAddressesAfterConnectGetonlyafterclose) {
-  EventBase evb;
+TEST_P(AsyncSocketTest, GetAddressesAfterConnectGetonlyafterclose) {
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::newSocket(&evb);
 
   // Start listening on a local port
@@ -1789,8 +1923,11 @@ TEST(AsyncSocketTest, GetAddressesAfterConnectGetonlyafterclose) {
 /**
  * Test getting local and peer addresses after connecting.
  */
-TEST(AsyncSocketTest, GetAddressesAfterInitFromFdGetoninitandonclose) {
-  EventBase evb;
+TEST_P(AsyncSocketTest, GetAddressesAfterInitFromFdGetoninitandonclose) {
+  if (GetParam() == BackendType::IO_URING) {
+    GTEST_SKIP() << "io_uring does not support detachNetworkSocket()";
+  }
+  EventBase& evb = getEventBase();
 
   // Start listening on a local port
   TestServer server;
@@ -1843,11 +1980,11 @@ TEST(AsyncSocketTest, GetAddressesAfterInitFromFdGetoninitandonclose) {
 /**
  * Test writing to a socket that the remote endpoint has closed
  */
-TEST(AsyncSocketTest, WritePipeError) {
+TEST_P(AsyncSocketTest, WritePipeError) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket =
       AsyncSocket::newSocket(&evb, server.getAddress(), 30);
   socket->setSendTimeout(1000);
@@ -1871,12 +2008,19 @@ TEST(AsyncSocketTest, WritePipeError) {
   // so that we could check for EPIPE
   ASSERT_EQ(wcb.state, STATE_FAILED);
   ASSERT_EQ(wcb.exception.getType(), AsyncSocketException::INTERNAL_ERROR);
-  ASSERT_THAT(
-      wcb.exception.what(),
-      MatchesRegex(
-          kIsMobile
-              ? "AsyncSocketException: writev\\(\\) failed \\(peer=.+\\), type = Internal error, errno = .+ \\(Broken pipe\\)"
-              : "AsyncSocketException: writev\\(\\) failed \\(peer=.+, local=.+\\), type = Internal error, errno = .+ \\(Broken pipe\\)"));
+  if (GetParam() == BackendType::DEFAULT) {
+    ASSERT_THAT(
+        wcb.exception.what(),
+        MatchesRegex(
+            kIsMobile
+                ? "AsyncSocketException: writev\\(\\) failed \\(peer=.+\\), type = Internal error, errno = .+ \\(Broken pipe\\)"
+                : "AsyncSocketException: writev\\(\\) failed \\(peer=.+, local=.+\\), type = Internal error, errno = .+ \\(Broken pipe\\)"));
+  } else {
+    ASSERT_THAT(
+        wcb.exception.what(),
+        MatchesRegex(
+            "AsyncSocketException: async sendmsg\\(\\) failed \\(peer=.+\\), type = Internal error, errno = .+ \\(Broken pipe\\)"));
+  }
   ASSERT_FALSE(socket->isClosedBySelf());
   ASSERT_FALSE(socket->isClosedByPeer());
 }
@@ -1884,11 +2028,11 @@ TEST(AsyncSocketTest, WritePipeError) {
 /**
  * Test writing to a socket that has its read side closed
  */
-TEST(AsyncSocketTest, WriteAfterReadEOF) {
+TEST_P(AsyncSocketTest, WriteAfterReadEOF) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket =
       AsyncSocket::newSocket(&evb, server.getAddress(), 30);
   evb.loop(); // loop until the socket is connected
@@ -1922,7 +2066,7 @@ TEST(AsyncSocketTest, WriteAfterReadEOF) {
 /**
  * Test that bytes written is correctly computed in case of write failure
  */
-TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
+TEST_P(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
   // Send and receive buffer sizes for the sockets.
   // Note that Linux will double this value to allow space for bookkeeping
   // overhead.
@@ -1939,7 +2083,7 @@ TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
 
   // The current thread will be used by the receiver - use a separate thread
   // for the sender.
-  EventBase senderEvb;
+  EventBase& senderEvb = getEventBase();
   std::thread senderThread([&]() { senderEvb.loopForever(); });
 
   ConnCallback ccb;
@@ -2004,11 +2148,11 @@ TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
 /**
  * Test writing a mix of simple buffers and IOBufs
  */
-TEST(AsyncSocketTest, WriteIOBuf) {
+TEST_P(AsyncSocketTest, WriteIOBuf) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
@@ -2066,6 +2210,7 @@ TEST(AsyncSocketTest, WriteIOBuf) {
 
   // Make sure the reader got the right data in the right order
   ASSERT_EQ(rcb.state, STATE_SUCCEEDED);
+  rcb.coalesce();
   ASSERT_EQ(rcb.buffers.size(), 1);
   ASSERT_EQ(
       rcb.buffers[0].length,
@@ -2091,11 +2236,11 @@ TEST(AsyncSocketTest, WriteIOBuf) {
   ASSERT_FALSE(socket->isClosedByPeer());
 }
 
-TEST(AsyncSocketTest, WriteIOBufCorked) {
+TEST_P(AsyncSocketTest, WriteIOBufCorked) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
@@ -2155,11 +2300,11 @@ TEST(AsyncSocketTest, WriteIOBufCorked) {
 /**
  * Test performing a zero-length write
  */
-TEST(AsyncSocketTest, ZeroLengthWrite) {
+TEST_P(AsyncSocketTest, ZeroLengthWrite) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket =
       AsyncSocket::newSocket(&evb, server.getAddress(), 30);
   evb.loop(); // loop until the socket is connected
@@ -2196,11 +2341,11 @@ TEST(AsyncSocketTest, ZeroLengthWrite) {
   ASSERT_FALSE(socket->isClosedByPeer());
 }
 
-TEST(AsyncSocketTest, ZeroLengthWritev) {
+TEST_P(AsyncSocketTest, ZeroLengthWritev) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket =
       AsyncSocket::newSocket(&evb, server.getAddress(), 30);
   evb.loop(); // loop until the socket is connected
@@ -2245,11 +2390,11 @@ TEST(AsyncSocketTest, ZeroLengthWritev) {
 /**
  * Test calling close() with pending writes when the socket is already closing.
  */
-TEST(AsyncSocketTest, ClosePendingWritesWhileClosing) {
+TEST_P(AsyncSocketTest, ClosePendingWritesWhileClosing) {
   TestServer server;
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
@@ -2433,8 +2578,8 @@ TEST(AsyncSocket, ConnectReadUninstallRead) {
 /**
  * Make sure accepted sockets have O_NONBLOCK and TCP_NODELAY set
  */
-TEST(AsyncSocketTest, ServerAcceptOptions) {
-  EventBase eventBase;
+TEST_P(AsyncSocketTest, ServerAcceptOptions) {
+  EventBase& eventBase = getEventBase();
 
   // Create a server socket
   std::shared_ptr<AsyncServerSocket> serverSocket(
@@ -2624,9 +2769,9 @@ TEST(AsyncSocketTest, NapiDispatch) {
 /**
  * Test AsyncServerSocket::removeAcceptCallback()
  */
-TEST(AsyncSocketTest, RemoveAcceptCallback) {
+TEST_P(AsyncSocketTest, RemoveAcceptCallback) {
   // Create a new AsyncServerSocket
-  EventBase eventBase;
+  EventBase& eventBase = getEventBase();
   std::shared_ptr<AsyncServerSocket> serverSocket(
       AsyncServerSocket::newSocket(&eventBase));
   serverSocket->bind(0);
@@ -2767,9 +2912,9 @@ TEST(AsyncSocketTest, RemoveAcceptCallback) {
 /**
  * Test AsyncServerSocket::removeAcceptCallback()
  */
-TEST(AsyncSocketTest, OtherThreadAcceptCallback) {
+TEST_P(AsyncSocketTest, OtherThreadAcceptCallback) {
   // Create a new AsyncServerSocket
-  EventBase eventBase;
+  EventBase& eventBase = getEventBase();
   std::shared_ptr<AsyncServerSocket> serverSocket(
       AsyncServerSocket::newSocket(&eventBase));
   serverSocket->bind(0);
@@ -2867,18 +3012,19 @@ void serverSocketSanityTest(
  * it would shutdown(writes) on the socket, but it would
  * never be close()'d, and the socket would leak
  */
-TEST(AsyncSocketTest, DestroyCloseTest) {
+TEST_P(AsyncSocketTest, DestroyCloseTest) {
   TestServer server;
 
   // connect()
-  EventBase clientEB;
-  EventBase serverEB;
-  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&clientEB);
+  auto clientEB = makeEventBase();
+  auto serverEB = makeEventBase();
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(clientEB.get());
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
 
   // Accept the connection
-  std::shared_ptr<AsyncSocket> acceptedSocket = server.acceptAsync(&serverEB);
+  std::shared_ptr<AsyncSocket> acceptedSocket =
+      server.acceptAsync(serverEB.get());
   ReadCallback rcb;
   acceptedSocket->setReadCB(&rcb);
 
@@ -2907,8 +3053,8 @@ TEST(AsyncSocketTest, DestroyCloseTest) {
 /**
  * Test AsyncServerSocket::useExistingSocket()
  */
-TEST(AsyncSocketTest, ServerExistingSocket) {
-  EventBase eventBase;
+TEST_P(AsyncSocketTest, ServerExistingSocket) {
+  EventBase& eventBase = getEventBase();
 
   // Test creating a socket, and letting AsyncServerSocket bind and listen
   {
@@ -3000,8 +3146,8 @@ TEST(AsyncSocketTest, ServerExistingSocket) {
   }
 }
 
-TEST(AsyncSocketTest, UnixDomainSocketTest) {
-  EventBase eventBase;
+TEST_P(AsyncSocketTest, UnixDomainSocketTest) {
+  EventBase& eventBase = getEventBase();
 
   // Create a server socket
   std::shared_ptr<AsyncServerSocket> serverSocket(
@@ -3130,8 +3276,8 @@ TEST(AsyncSocketTest, VsockSocketPortAny) {
 }
 #endif
 
-TEST(AsyncSocketTest, ConnectionEventCallbackDefault) {
-  EventBase eventBase;
+TEST_P(AsyncSocketTest, ConnectionEventCallbackDefault) {
+  EventBase& eventBase = getEventBase();
   TestConnectionEventCallback connectionEventCallback;
 
   // Create a server socket
@@ -3173,8 +3319,8 @@ TEST(AsyncSocketTest, ConnectionEventCallbackDefault) {
   ASSERT_EQ(connectionEventCallback.getBackoffError(), 0);
 }
 
-TEST(AsyncSocketTest, CallbackInPrimaryEventBase) {
-  EventBase eventBase;
+TEST_P(AsyncSocketTest, CallbackInPrimaryEventBase) {
+  EventBase& eventBase = getEventBase();
   TestConnectionEventCallback connectionEventCallback;
 
   // Create a server socket
@@ -3226,8 +3372,8 @@ TEST(AsyncSocketTest, CallbackInPrimaryEventBase) {
   ASSERT_EQ(connectionEventCallback.getBackoffError(), 0);
 }
 
-TEST(AsyncSocketTest, CallbackInSecondaryEventBase) {
-  EventBase eventBase;
+TEST_P(AsyncSocketTest, CallbackInSecondaryEventBase) {
+  EventBase& eventBase = getEventBase();
   TestConnectionEventCallback connectionEventCallback;
 
   // Create a server socket
@@ -3283,8 +3429,8 @@ TEST(AsyncSocketTest, CallbackInSecondaryEventBase) {
 /**
  * Test AsyncServerSocket::getNumPendingMessagesInQueue()
  */
-TEST(AsyncSocketTest, NumPendingMessagesInQueue) {
-  EventBase eventBase;
+TEST_P(AsyncSocketTest, NumPendingMessagesInQueue) {
+  EventBase& eventBase = getEventBase();
 
   // Counter of how many connections have been accepted
   int count = 0;
@@ -3332,10 +3478,10 @@ TEST(AsyncSocketTest, NumPendingMessagesInQueue) {
 /**
  * Test AsyncTransport::BufferCallback
  */
-TEST(AsyncSocketTest, BufferTest) {
+TEST_P(AsyncSocketTest, BufferTest) {
   TestServer server(false, 1024 * 1024);
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   SocketOptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
@@ -3365,10 +3511,10 @@ TEST(AsyncSocketTest, BufferTest) {
   t1.join();
 }
 
-TEST(AsyncSocketTest, BufferTestChain) {
+TEST_P(AsyncSocketTest, BufferTestChain) {
   TestServer server(false, 1024 * 1024);
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   SocketOptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
@@ -3409,10 +3555,10 @@ TEST(AsyncSocketTest, BufferTestChain) {
   t1.join();
 }
 
-TEST(AsyncSocketTest, BufferCallbackKill) {
+TEST_P(AsyncSocketTest, BufferCallbackKill) {
   TestServer server(false, 1024 * 1024);
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   SocketOptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
@@ -3445,8 +3591,40 @@ TEST(AsyncSocketTest, BufferCallbackKill) {
   t1.join();
 }
 
+TEST_P(AsyncSocketTest, BufferCallbackKillWithIOBuf) {
+  TestServer server(false, 1024 * 1024);
+
+  EventBase& evb = getEventBase();
+  SocketOptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30, option);
+  evb.loopOnce();
+
+  char buf[100 * 1024];
+  memset(buf, 'c', sizeof(buf));
+  BufferCallback bcb(socket.get(), sizeof(buf));
+  socket->setBufferCallback(&bcb);
+  WriteCallback wcb(true);
+  wcb.successCallback = [&] {
+    ASSERT_TRUE(socket.unique());
+    socket.reset();
+  };
+
+  socket->writeChain(
+      &wcb, folly::IOBuf::wrapBuffer(buf, sizeof(buf)), WriteFlags::NONE);
+
+  std::thread t1([&]() { server.verifyConnection(buf, sizeof(buf)); });
+
+  evb.loop();
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+
+  t1.join();
+  ASSERT_TRUE(wcb.releaseIOBufCallbackCalled);
+}
+
 #if FOLLY_ALLOW_TFO
-TEST(AsyncSocketTest, ConnectTFO) {
+TEST_P(AsyncSocketTest, ConnectTFO) {
   if (!folly::test::isTFOAvailable()) {
     GTEST_SKIP() << "TFO not supported.";
   }
@@ -3455,7 +3633,7 @@ TEST(AsyncSocketTest, ConnectTFO) {
   TestServer server(true);
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   socket->enableTFO();
   ConnCallback cb;
@@ -3500,7 +3678,7 @@ TEST(AsyncSocketTest, ConnectTFO) {
   EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceeded());
 }
 
-TEST(AsyncSocketTest, ConnectTFOSupplyEarlyReadCB) {
+TEST_P(AsyncSocketTest, ConnectTFOSupplyEarlyReadCB) {
   if (!folly::test::isTFOAvailable()) {
     GTEST_SKIP() << "TFO not supported.";
   }
@@ -3509,7 +3687,7 @@ TEST(AsyncSocketTest, ConnectTFOSupplyEarlyReadCB) {
   TestServer server(true);
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   socket->enableTFO();
   ConnCallback cb;
@@ -3557,8 +3735,8 @@ TEST(AsyncSocketTest, ConnectTFOSupplyEarlyReadCB) {
 /**
  * Test connecting to a server that isn't listening
  */
-TEST(AsyncSocketTest, ConnectRefusedImmediatelyTFO) {
-  EventBase evb;
+TEST_P(AsyncSocketTest, ConnectRefusedImmediatelyTFO) {
+  EventBase& evb = getEventBase();
 
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
 
@@ -3596,11 +3774,11 @@ TEST(AsyncSocketTest, ConnectRefusedImmediatelyTFO) {
 /**
  * Test calling closeNow() immediately after connecting.
  */
-TEST(AsyncSocketTest, ConnectWriteAndCloseNowTFO) {
+TEST_P(AsyncSocketTest, ConnectWriteAndCloseNowTFO) {
   TestServer server(true);
 
   // connect()
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   socket->enableTFO();
 
@@ -3626,11 +3804,11 @@ TEST(AsyncSocketTest, ConnectWriteAndCloseNowTFO) {
 /**
  * Test calling close() immediately after connect()
  */
-TEST(AsyncSocketTest, ConnectAndCloseTFO) {
+TEST_P(AsyncSocketTest, ConnectAndCloseTFO) {
   TestServer server(true);
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   socket->enableTFO();
 
@@ -3661,11 +3839,11 @@ class MockAsyncTFOSocket : public AsyncSocket {
       (NetworkSocket fd, struct msghdr* msg, int msg_flags));
 };
 
-TEST(AsyncSocketTest, TestTFOUnsupported) {
+TEST_P(AsyncSocketTest, TestTFOUnsupported) {
   TestServer server(true);
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = MockAsyncTFOSocket::UniquePtr(new MockAsyncTFOSocket(&evb));
   socket->enableTFO();
 
@@ -3710,8 +3888,8 @@ TEST(AsyncSocketTest, TestTFOUnsupported) {
   EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceeded());
 }
 
-TEST(AsyncSocketTest, ConnectRefusedDelayedTFO) {
-  EventBase evb;
+TEST_P(AsyncSocketTest, ConnectRefusedDelayedTFO) {
+  EventBase& evb = getEventBase();
 
   auto socket = MockAsyncTFOSocket::UniquePtr(new MockAsyncTFOSocket(&evb));
   socket->enableTFO();
@@ -3755,7 +3933,7 @@ TEST(AsyncSocketTest, ConnectRefusedDelayedTFO) {
   EXPECT_TRUE(socket->getTFOAttempted());
 }
 
-TEST(AsyncSocketTest, TestTFOUnsupportedTimeout) {
+TEST_P(AsyncSocketTest, TestTFOUnsupportedTimeout) {
   // Try connecting to server that won't respond.
   //
   // This depends somewhat on the network where this test is run.
@@ -3770,7 +3948,7 @@ TEST(AsyncSocketTest, TestTFOUnsupportedTimeout) {
   SocketAddress addr(host, 65535);
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = MockAsyncTFOSocket::UniquePtr(new MockAsyncTFOSocket(&evb));
   socket->enableTFO();
 
@@ -3792,11 +3970,11 @@ TEST(AsyncSocketTest, TestTFOUnsupportedTimeout) {
   EXPECT_EQ(STATE_FAILED, write.state);
 }
 
-TEST(AsyncSocketTest, TestTFOFallbackToConnect) {
+TEST_P(AsyncSocketTest, TestTFOFallbackToConnect) {
   TestServer server(true);
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = MockAsyncTFOSocket::UniquePtr(new MockAsyncTFOSocket(&evb));
   socket->enableTFO();
 
@@ -3845,7 +4023,7 @@ TEST(AsyncSocketTest, TestTFOFallbackToConnect) {
   EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
 }
 
-TEST(AsyncSocketTest, TestTFOFallbackTimeout) {
+TEST_P(AsyncSocketTest, TestTFOFallbackTimeout) {
   // Try connecting to server that won't respond.
   //
   // This depends somewhat on the network where this test is run.
@@ -3860,7 +4038,7 @@ TEST(AsyncSocketTest, TestTFOFallbackTimeout) {
   SocketAddress addr(host, 65535);
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = MockAsyncTFOSocket::UniquePtr(new MockAsyncTFOSocket(&evb));
   socket->enableTFO();
 
@@ -3886,11 +4064,11 @@ TEST(AsyncSocketTest, TestTFOFallbackTimeout) {
   EXPECT_EQ(STATE_FAILED, write.state);
 }
 
-TEST(AsyncSocketTest, TestTFOEagain) {
+TEST_P(AsyncSocketTest, TestTFOEagain) {
   TestServer server(true);
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = MockAsyncTFOSocket::UniquePtr(new MockAsyncTFOSocket(&evb));
   socket->enableTFO();
 
@@ -3910,7 +4088,7 @@ TEST(AsyncSocketTest, TestTFOEagain) {
 
 // Sending a large amount of data in the first write which will
 // definitely not fit into MSS.
-TEST(AsyncSocketTest, ConnectTFOWithBigData) {
+TEST_P(AsyncSocketTest, ConnectTFOWithBigData) {
   if (!folly::test::isTFOAvailable()) {
     GTEST_SKIP() << "TFO not supported.";
   }
@@ -3919,7 +4097,7 @@ TEST(AsyncSocketTest, ConnectTFOWithBigData) {
   TestServer server(true);
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   socket->enableTFO();
   ConnCallback cb;
@@ -3974,9 +4152,9 @@ class MockEvbChangeCallback : public AsyncSocket::EvbChangeCallback {
   MOCK_METHOD(void, evbDetached, (AsyncSocket*));
 };
 
-TEST(AsyncSocketTest, EvbCallbacks) {
+TEST_P(AsyncSocketTest, EvbCallbacks) {
   auto cb = std::make_unique<MockEvbChangeCallback>();
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
 
   InSequence seq;
@@ -3988,12 +4166,12 @@ TEST(AsyncSocketTest, EvbCallbacks) {
   socket->attachEventBase(&evb);
 }
 
-TEST(AsyncSocketTest, TestEvbDetachWtRegisteredIOHandlers) {
+TEST_P(AsyncSocketTest, TestEvbDetachWtRegisteredIOHandlers) {
   // Start listening on a local port
   TestServer server;
 
   // Connect using a AsyncSocket
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback cb;
   socket->connect(&cb, server.getAddress(), 30);
@@ -4021,12 +4199,15 @@ TEST(AsyncSocketTest, TestEvbDetachWtRegisteredIOHandlers) {
   socket->close();
 }
 
-TEST(AsyncSocketTest, TestEvbDetachThenClose) {
+TEST_P(AsyncSocketTest, TestEvbDetachThenClose) {
+  if (GetParam() == BackendType::IO_URING) {
+    GTEST_SKIP() << "io_uring does not support detachNetworkSocket()";
+  }
   // Start listening on a local port
   TestServer server;
 
   // Connect an AsyncSocket to the server
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::newSocket(&evb);
   ConnCallback cb;
   socket->connect(&cb, server.getAddress(), 30);
@@ -4053,10 +4234,10 @@ TEST(AsyncSocketTest, TestEvbDetachThenClose) {
   socket.reset();
 }
 
-TEST(AsyncSocket, BytesWrittenWithMove) {
+TEST_P(AsyncSocketTest, BytesWrittenWithMove) {
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket1 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   ConnCallback ccb;
   socket1->connect(&ccb, server.getAddress(), 30);
@@ -4066,7 +4247,7 @@ TEST(AsyncSocket, BytesWrittenWithMove) {
   std::vector<uint8_t> wbuf(128, 'a');
   WriteCallback wcb;
   socket1->write(&wcb, wbuf.data(), wbuf.size());
-  evb.loopOnce();
+  evb.loop();
   ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
   EXPECT_EQ(wbuf.size(), socket1->getRawBytesWritten());
   EXPECT_EQ(wbuf.size(), socket1->getAppBytesWritten());
@@ -4078,6 +4259,7 @@ TEST(AsyncSocket, BytesWrittenWithMove) {
 
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
 struct AsyncSocketErrMessageCallbackTestParams {
+  BackendType backendType{BackendType::DEFAULT};
   folly::Optional<int> resetCallbackAfter;
   folly::Optional<int> closeSocketAfter;
   int gotTimestampExpected{0};
@@ -4293,6 +4475,25 @@ TEST_P(AsyncSocketErrMessageCallbackTest, ErrMessageCallback) {
       errMsgCB.exception_.getType(), folly::AsyncSocketException::UNKNOWN);
   ASSERT_EQ(errMsgCB.gotByteSeq_, testParams.gotByteSeqExpected);
   ASSERT_EQ(errMsgCB.gotTimestamp_, testParams.gotTimestampExpected);
+}
+
+TEST(
+    AsyncSocketErrMessageCallbackTest, SetErrMessageCBFailsWithIoUringBackend) {
+  std::unique_ptr<EventBase> evb;
+  try {
+    evb = std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
+        []() -> std::unique_ptr<EventBaseBackendBase> {
+          IoUringBackend::Options options;
+          options.setNativeAsyncSocketSupport(true);
+          return std::make_unique<IoUringBackend>(std::move(options));
+        }));
+  } catch (IoUringBackend::NotAvailable const&) {
+    GTEST_SKIP() << "IoUringBackend not available";
+  }
+
+  auto socket = AsyncSocket::newSocket(evb.get());
+  TestErrMessageCallback errMsgCB;
+  EXPECT_DEATH(socket->setErrMessageCB(&errMsgCB), ".*");
 }
 
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
@@ -8178,6 +8379,32 @@ TEST_F(
   clientConn.netOpsVerifyAndClearExpectations();
 }
 
+TEST_F(AsyncSocketByteEventTest, EnableByteEventsThrowsWithIoUringBackend) {
+  std::unique_ptr<EventBase> evb;
+  try {
+    evb = std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
+        []() -> std::unique_ptr<EventBaseBackendBase> {
+          IoUringBackend::Options options;
+          options.setNativeAsyncSocketSupport(true);
+          return std::make_unique<IoUringBackend>(std::move(options));
+        }));
+  } catch (IoUringBackend::NotAvailable const&) {
+    GTEST_SKIP() << "IoUringBackend not available";
+  }
+
+  auto socket = AsyncSocket::newSocket(evb.get());
+  ConnCallback ccb;
+  socket->connect(&ccb, server_->getAddress(), 30);
+  evb->loop();
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+
+  auto observer = attachObserver(socket.get(), true /* enableByteEvents */);
+  EXPECT_EQ(0, observer->byteEventsEnabledCalled);
+  EXPECT_EQ(1, observer->byteEventsUnavailableCalled);
+  EXPECT_TRUE(observer->byteEventsUnavailableCalledEx.has_value());
+  socket.reset();
+}
+
 class AsyncSocketByteEventRawOffsetTest
     : public AsyncSocketByteEventTest,
       public testing::WithParamInterface<size_t> {
@@ -9125,10 +9352,10 @@ TEST(AsyncSocket, LifecycleCtorCallback) {
   Mock::VerifyAndClearExpectations(lifecycleCB.get());
 }
 
-TEST(AsyncSocket, LifecycleObserverDetachAndAttachEvb) {
+TEST_P(AsyncSocketTest, LifecycleObserverDetachAndAttachEvb) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
-  EventBase evb;
-  EventBase evb2;
+  EventBase& evb = getEventBase();
+  auto evb2 = makeEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
@@ -9141,13 +9368,13 @@ TEST(AsyncSocket, LifecycleObserverDetachAndAttachEvb) {
   EXPECT_EQ(nullptr, socket->getEventBase());
   Mock::VerifyAndClearExpectations(cb.get());
 
-  EXPECT_CALL(*cb, evbAttachMock(socket.get(), &evb2));
-  socket->attachEventBase(&evb2);
-  EXPECT_EQ(&evb2, socket->getEventBase());
+  EXPECT_CALL(*cb, evbAttachMock(socket.get(), evb2.get()));
+  socket->attachEventBase(evb2.get());
+  EXPECT_EQ(evb2.get(), socket->getEventBase());
   Mock::VerifyAndClearExpectations(cb.get());
 
   // detach the new evb2 and re-attach the old evb.
-  EXPECT_CALL(*cb, evbDetachMock(socket.get(), &evb2));
+  EXPECT_CALL(*cb, evbDetachMock(socket.get(), evb2.get()));
   socket->detachEventBase();
   EXPECT_EQ(nullptr, socket->getEventBase());
   Mock::VerifyAndClearExpectations(cb.get());
@@ -9163,11 +9390,11 @@ TEST(AsyncSocket, LifecycleObserverDetachAndAttachEvb) {
   Mock::VerifyAndClearExpectations(cb.get());
 }
 
-TEST(AsyncSocket, LifecycleObserverAttachThenDestroySocket) {
+TEST_P(AsyncSocketTest, LifecycleObserverAttachThenDestroySocket) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
@@ -9188,12 +9415,12 @@ TEST(AsyncSocket, LifecycleObserverAttachThenDestroySocket) {
   Mock::VerifyAndClearExpectations(cb.get());
 }
 
-TEST(AsyncSocket, LifecycleObserverAttachThenConnectError) {
+TEST_P(AsyncSocketTest, LifecycleObserverAttachThenConnectError) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   // port =1 is unreachble on localhost
   folly::SocketAddress unreachable{"::1", 1};
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
@@ -9215,12 +9442,12 @@ TEST(AsyncSocket, LifecycleObserverAttachThenConnectError) {
   Mock::VerifyAndClearExpectations(cb.get());
 }
 
-TEST(AsyncSocket, LifecycleObserverMultipleAttachThenDestroySocket) {
+TEST_P(AsyncSocketTest, LifecycleObserverMultipleAttachThenDestroySocket) {
   auto cb1 = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   auto cb2 = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_CALL(*cb1, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb1.get());
@@ -9257,8 +9484,8 @@ TEST(AsyncSocket, LifecycleObserverMultipleAttachThenDestroySocket) {
   Mock::VerifyAndClearExpectations(cb2.get());
 }
 
-TEST(AsyncSocket, LifecycleObserverAttachRemove) {
-  EventBase evb;
+TEST_P(AsyncSocketTest, LifecycleObserverAttachRemove) {
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
 
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
@@ -9273,8 +9500,8 @@ TEST(AsyncSocket, LifecycleObserverAttachRemove) {
   Mock::VerifyAndClearExpectations(cb.get());
 }
 
-TEST(AsyncSocket, LifecycleObserverAttachRemoveMultiple) {
-  EventBase evb;
+TEST_P(AsyncSocketTest, LifecycleObserverAttachRemoveMultiple) {
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
 
   auto cb1 = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
@@ -9302,8 +9529,8 @@ TEST(AsyncSocket, LifecycleObserverAttachRemoveMultiple) {
   EXPECT_THAT(socket->getLifecycleObservers(), IsEmpty());
 }
 
-TEST(AsyncSocket, LifecycleObserverAttachRemoveMultipleReverse) {
-  EventBase evb;
+TEST_P(AsyncSocketTest, LifecycleObserverAttachRemoveMultipleReverse) {
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
 
   auto cb1 = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
@@ -9331,19 +9558,19 @@ TEST(AsyncSocket, LifecycleObserverAttachRemoveMultipleReverse) {
   EXPECT_THAT(socket->getLifecycleObservers(), IsEmpty());
 }
 
-TEST(AsyncSocket, LifecycleObserverRemoveMissing) {
+TEST_P(AsyncSocketTest, LifecycleObserverRemoveMissing) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_FALSE(socket->removeLifecycleObserver(cb.get()));
 }
 
-TEST(AsyncSocket, LifecycleObserverMultipleAttachThenRemove) {
+TEST_P(AsyncSocketTest, LifecycleObserverMultipleAttachThenRemove) {
   auto cb1 = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   auto cb2 = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_CALL(*cb1, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb1.get());
@@ -9372,11 +9599,14 @@ TEST(AsyncSocket, LifecycleObserverMultipleAttachThenRemove) {
   Mock::VerifyAndClearExpectations(cb2.get());
 }
 
-TEST(AsyncSocket, LifecycleObserverDetach) {
+TEST_P(AsyncSocketTest, LifecycleObserverDetach) {
+  if (GetParam() == BackendType::IO_URING) {
+    GTEST_SKIP() << "io_uring does not support detachNetworkSocket()";
+  }
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket1 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_CALL(*cb, observerAttachMock(socket1.get()));
   socket1->addLifecycleObserver(cb.get());
@@ -9402,11 +9632,11 @@ TEST(AsyncSocket, LifecycleObserverDetach) {
   EXPECT_CALL(*cb, destroyMock(socket1.get()));
 }
 
-TEST(AsyncSocket, LifecycleObserverMoveResubscribe) {
+TEST_P(AsyncSocketTest, LifecycleObserverMoveResubscribe) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket1 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_CALL(*cb, observerAttachMock(socket1.get()));
   socket1->addLifecycleObserver(cb.get());
@@ -9450,11 +9680,11 @@ TEST(AsyncSocket, LifecycleObserverMoveResubscribe) {
   socket2 = nullptr;
 }
 
-TEST(AsyncSocket, LifecycleObserverMoveDoNotResubscribe) {
+TEST_P(AsyncSocketTest, LifecycleObserverMoveDoNotResubscribe) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   auto socket1 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_CALL(*cb, observerAttachMock(socket1.get()));
   socket1->addLifecycleObserver(cb.get());
@@ -9483,11 +9713,11 @@ TEST(AsyncSocket, LifecycleObserverMoveDoNotResubscribe) {
   EXPECT_EQ(socket2.get(), socket2PtrCapturedMoved);
 }
 
-TEST(AsyncSocket, LifecycleObserverDetachCallbackImmediately) {
+TEST_P(AsyncSocketTest, LifecycleObserverDetachCallbackImmediately) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
@@ -9504,11 +9734,11 @@ TEST(AsyncSocket, LifecycleObserverDetachCallbackImmediately) {
   evb.loop();
 }
 
-TEST(AsyncSocket, LifecycleObserverDetachCallbackAfterConnect) {
+TEST_P(AsyncSocketTest, LifecycleObserverDetachCallbackAfterConnect) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
@@ -9526,11 +9756,11 @@ TEST(AsyncSocket, LifecycleObserverDetachCallbackAfterConnect) {
   Mock::VerifyAndClearExpectations(cb.get());
 }
 
-TEST(AsyncSocket, LifecycleObserverDetachCallbackAfterClose) {
+TEST_P(AsyncSocketTest, LifecycleObserverDetachCallbackAfterClose) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
@@ -9552,11 +9782,11 @@ TEST(AsyncSocket, LifecycleObserverDetachCallbackAfterClose) {
   Mock::VerifyAndClearExpectations(cb.get());
 }
 
-TEST(AsyncSocket, LifecycleObserverDetachCallbackcloseDuringDestroy) {
+TEST_P(AsyncSocketTest, LifecycleObserverDetachCallbackcloseDuringDestroy) {
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   EXPECT_CALL(*cb, observerAttachMock(socket.get()));
   socket->addLifecycleObserver(cb.get());
@@ -9579,10 +9809,10 @@ TEST(AsyncSocket, LifecycleObserverDetachCallbackcloseDuringDestroy) {
   Mock::VerifyAndClearExpectations(cb.get());
 }
 
-TEST(AsyncSocket, PreReceivedData) {
+TEST_P(AsyncSocketTest, PreReceivedData) {
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
@@ -9604,6 +9834,7 @@ TEST(AsyncSocket, PreReceivedData) {
     if (readCallback.dataRead() == 5) {
       readCallback.verifyData("hello", 5);
       acceptedSocket->setReadCB(nullptr);
+      acceptedSocket.reset();
     }
   };
 
@@ -9612,10 +9843,10 @@ TEST(AsyncSocket, PreReceivedData) {
   evb.loop();
 }
 
-TEST(AsyncSocket, PreReceivedDataOnly) {
+TEST_P(AsyncSocketTest, PreReceivedDataOnly) {
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
@@ -9635,6 +9866,7 @@ TEST(AsyncSocket, PreReceivedDataOnly) {
   readCallback.dataAvailableCallback = [&]() {
     readCallback.verifyData("hello", 5);
     acceptedSocket->setReadCB(nullptr);
+    acceptedSocket.reset();
   };
 
   acceptedSocket->setReadCB(&peekCallback);
@@ -9642,10 +9874,10 @@ TEST(AsyncSocket, PreReceivedDataOnly) {
   evb.loop();
 }
 
-TEST(AsyncSocket, PreReceivedDataPartial) {
+TEST_P(AsyncSocketTest, PreReceivedDataPartial) {
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
@@ -9669,6 +9901,7 @@ TEST(AsyncSocket, PreReceivedDataPartial) {
   normalReadCallback.dataAvailableCallback = [&]() {
     normalReadCallback.verifyData("lo", 2);
     acceptedSocket->setReadCB(nullptr);
+    acceptedSocket.reset();
   };
 
   acceptedSocket->setReadCB(&peekCallback);
@@ -9676,10 +9909,10 @@ TEST(AsyncSocket, PreReceivedDataPartial) {
   evb.loop();
 }
 
-TEST(AsyncSocket, PreReceivedDataTakeover) {
+TEST_P(AsyncSocketTest, PreReceivedDataTakeover) {
   TestServer server;
 
-  EventBase evb;
+  EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   socket->connect(nullptr, server.getAddress(), 30);
   evb.loop();
@@ -10073,8 +10306,8 @@ TEST(AsyncSocketTest, UnixDomainSocketErrMessageCB) {
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
 }
 
-TEST(AsyncSocketTest, V6TosReflectTest) {
-  EventBase eventBase;
+TEST_P(AsyncSocketTest, V6TosReflectTest) {
+  EventBase& eventBase = getEventBase();
 
   // Create a server socket
   std::shared_ptr<AsyncServerSocket> serverSocket(
@@ -10158,8 +10391,8 @@ TEST(AsyncSocketTest, V6TosReflectTest) {
   ASSERT_EQ(reuseAddrVal, 1 /* configured through preConnect*/);
 }
 
-TEST(AsyncSocketTest, V4TosReflectTest) {
-  EventBase eventBase;
+TEST_P(AsyncSocketTest, V4TosReflectTest) {
+  EventBase& eventBase = getEventBase();
 
   // Create a server socket
   std::shared_ptr<AsyncServerSocket> serverSocket(
@@ -10218,8 +10451,8 @@ TEST(AsyncSocketTest, V4TosReflectTest) {
   ASSERT_EQ(value, 0x2c);
 }
 
-TEST(AsyncSocketTest, V6AcceptedTosTest) {
-  EventBase eventBase;
+TEST_P(AsyncSocketTest, V6AcceptedTosTest) {
+  EventBase& eventBase = getEventBase();
 
   // This test verifies if the ListenerTos set on a socket is
   // propagated properly to accepted socket connections
@@ -10282,8 +10515,8 @@ TEST(AsyncSocketTest, V6AcceptedTosTest) {
   ASSERT_EQ(value, 0x74);
 }
 
-TEST(AsyncSocketTest, V4AcceptedTosTest) {
-  EventBase eventBase;
+TEST_P(AsyncSocketTest, V4AcceptedTosTest) {
+  EventBase& eventBase = getEventBase();
 
   // This test verifies if the ListenerTos set on a socket is
   // propagated properly to accepted socket connections
