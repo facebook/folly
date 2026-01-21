@@ -697,22 +697,6 @@ void testTryLock(Func func) {
     EXPECT_EQ(unlocked, 0);
   }
 }
-
-class MutexTrack {
- public:
-  static int gOrder;
-
-  void lock_shared() {}
-  void unlock_shared() {}
-  void lock() { order = MutexTrack::gOrder++; }
-  void unlock() {
-    order = -1;
-    --gOrder;
-  }
-
-  int order{-1};
-};
-int MutexTrack::gOrder{0};
 } // namespace
 
 TEST_F(SynchronizedLockTest, TestTryLock) {
