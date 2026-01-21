@@ -147,6 +147,10 @@ int Dispatcher::set_socket_non_blocking(NetworkSocket s) {
   return folly::netops::set_socket_non_blocking(s);
 }
 
+int Dispatcher::set_socket_blocking(NetworkSocket s) {
+  return folly::netops::set_socket_blocking(s);
+}
+
 int Dispatcher::set_socket_close_on_exec(NetworkSocket s) {
   return folly::netops::set_socket_close_on_exec(s);
 }

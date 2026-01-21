@@ -1097,6 +1097,14 @@ void AsyncSocket::connect(
   assert(iouConnectHandle_ == nullptr);
   if (state_ != StateEnum::FAST_OPEN) {
     state_ = StateEnum::ESTABLISHED;
+    if (useIoUring_ && netops_->set_socket_blocking(fd_)) {
+      auto errnoCopy = errno;
+      AsyncSocketException tex(
+          AsyncSocketException::INTERNAL_ERROR,
+          withAddr("failed to restore socket in blocking mode"),
+          errnoCopy);
+      return failConnect(__func__, tex);
+    }
   }
   invokeConnectSuccess();
 }
@@ -1388,6 +1396,7 @@ AsyncSocket::ReadCallback* AsyncSocket::getReadCallback() const {
 }
 
 bool AsyncSocket::setZeroCopy(bool enable) {
+  CHECK(!useIoUring_ || !enable);
   if (msgErrQueueSupported) {
     zeroCopyVal_ = enable;
 
@@ -3691,6 +3700,14 @@ void AsyncSocket::handleConnect() noexcept {
 
   // Move into STATE_ESTABLISHED
   state_ = StateEnum::ESTABLISHED;
+  if (useIoUring_ && netops_->set_socket_blocking(fd_)) {
+    auto errnoCopy = errno;
+    AsyncSocketException tex(
+        AsyncSocketException::INTERNAL_ERROR,
+        withAddr("failed to restore socket in blocking mode"),
+        errnoCopy);
+    return failConnect(__func__, tex);
+  }
 
   // If SHUT_WRITE_PENDING is set and we don't have any write requests to
   // perform, immediately shutdown the write half of the socket.
@@ -3972,6 +3989,15 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
     if (totalWritten >= 0) {
       tfoInfo_.finished = true;
       state_ = StateEnum::ESTABLISHED;
+      if (useIoUring_ && netops_->set_socket_blocking(fd_)) {
+        auto errnoCopy = errno;
+        AsyncSocketException ex(
+            AsyncSocketException::INTERNAL_ERROR,
+            withAddr("failed to restore socket in blocking mode"),
+            errnoCopy);
+        return WriteResult(
+            WRITE_ERROR, std::make_unique<AsyncSocketException>(ex));
+      }
       // We schedule this asynchronously so that we don't end up
       // invoking initial read or write while a write is in progress.
       scheduleInitialReadWrite();
@@ -4006,6 +4032,15 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
           // connect succeeded immediately
           // Treat this like no data was written.
           state_ = StateEnum::ESTABLISHED;
+          if (useIoUring_ && netops_->set_socket_blocking(fd_)) {
+            auto errnoCopy = errno;
+            AsyncSocketException ex(
+                AsyncSocketException::INTERNAL_ERROR,
+                withAddr("failed to restore socket in blocking mode"),
+                errnoCopy);
+            return WriteResult(
+                WRITE_ERROR, std::make_unique<AsyncSocketException>(ex));
+          }
           scheduleInitialReadWrite();
         }
         // If there was no exception during connections,

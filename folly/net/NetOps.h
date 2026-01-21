@@ -355,6 +355,7 @@ int socketpair(int domain, int type, int protocol, NetworkSocket sv[2]);
 // And now we diverge from the Posix way of doing things and just do things
 // our own way.
 int set_socket_non_blocking(NetworkSocket s);
+int set_socket_blocking(NetworkSocket s);
 int set_socket_close_on_exec(NetworkSocket s);
 
 #ifdef _WIN32

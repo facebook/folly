@@ -84,6 +84,7 @@ class Dispatcher {
       int domain, int type, int protocol, NetworkSocket sv[2]);
 
   virtual int set_socket_non_blocking(NetworkSocket s);
+  virtual int set_socket_blocking(NetworkSocket s);
   virtual int set_socket_close_on_exec(NetworkSocket s);
 
  protected:

@@ -776,6 +776,21 @@ int set_socket_non_blocking(NetworkSocket s) {
 #endif
 }
 
+int set_socket_blocking(NetworkSocket s) {
+#ifdef _WIN32
+  u_long nonBlockingEnabled = 0;
+  return ioctlsocket(s.data, FIONBIO, &nonBlockingEnabled);
+#elif defined(__EMSCRIPTEN__)
+  throw std::logic_error("Not implemented!");
+#else
+  int flags = fcntl(s.data, F_GETFL, 0);
+  if (flags == -1) {
+    return -1;
+  }
+  return fcntl(s.data, F_SETFL, flags & ~O_NONBLOCK);
+#endif
+}
+
 int set_socket_close_on_exec(NetworkSocket s) {
 #ifdef _WIN32
   if (SetHandleInformation((HANDLE)s.data, HANDLE_FLAG_INHERIT, 0)) {
