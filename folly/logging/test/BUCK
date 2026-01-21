@@ -344,10 +344,10 @@ fbcode_target(
         "//folly/logging:log_handler",
         "//folly/logging:logging",
         "//folly/portability:gflags",
+        "//folly/synchronization/test:barrier",
     ],
     external_deps = [
         ("boost", None, "boost_preprocessor"),
-        ("boost", None, "boost_thread"),
     ],
 )
 

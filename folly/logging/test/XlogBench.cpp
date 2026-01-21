@@ -20,7 +20,7 @@
 #include <thread>
 
 #include <boost/preprocessor/repetition/repeat.hpp>
-#include <boost/thread/barrier.hpp>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <folly/Benchmark.h>
 #include <folly/init/Init.h>
@@ -60,7 +60,7 @@ template <typename XlogEvery>
 void runXlogEveryNBench(size_t iters, XlogEvery func) {
   BenchmarkSuspender braces;
 
-  boost::barrier barrier(1 + FLAGS_num_threads);
+  folly::test::Barrier barrier(1 + FLAGS_num_threads);
 
   std::vector<std::thread> threads(FLAGS_num_threads);
 

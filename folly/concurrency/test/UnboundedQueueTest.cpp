@@ -22,8 +22,8 @@
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
-#include <boost/thread/barrier.hpp>
 #include <glog/logging.h>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <atomic>
 #include <iomanip>
@@ -248,7 +248,7 @@ inline uint64_t run_once(
     const ProdFunc& prodFn,
     const ConsFunc& consFn,
     const EndFunc& endFn) {
-  boost::barrier barrier(1 + nprod + ncons);
+  folly::test::Barrier barrier(1 + nprod + ncons);
 
   /* producers */
   std::vector<std::thread> prodThr(nprod);

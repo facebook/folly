@@ -16,7 +16,7 @@
 
 #include <numeric>
 
-#include <boost/thread/barrier.hpp>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/Random.h>
@@ -694,7 +694,7 @@ TEST(Collect, parallel) {
   auto f = collect(fs);
 
   std::vector<std::thread> ts;
-  boost::barrier barrier(ps.size() + 1);
+  folly::test::Barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
@@ -723,7 +723,7 @@ TEST(Collect, parallelWithError) {
   auto f = collect(fs);
 
   std::vector<std::thread> ts;
-  boost::barrier barrier(ps.size() + 1);
+  folly::test::Barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
@@ -754,7 +754,7 @@ TEST(Collect, allParallel) {
   auto f = collectAll(fs);
 
   std::vector<std::thread> ts;
-  boost::barrier barrier(ps.size() + 1);
+  folly::test::Barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
@@ -784,7 +784,7 @@ TEST(Collect, allParallelWithError) {
   auto f = collectAll(fs);
 
   std::vector<std::thread> ts;
-  boost::barrier barrier(ps.size() + 1);
+  folly::test::Barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
@@ -862,7 +862,7 @@ TEST(Collect, collectNParallel) {
       });
 
   std::vector<std::thread> ts;
-  boost::barrier barrier(ps.size() + 1);
+  folly::test::Barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();

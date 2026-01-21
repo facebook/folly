@@ -1583,10 +1583,8 @@ fbcode_target(
         "//folly/io/async:request_context",
         "//folly/portability:gtest",
         "//folly/synchronization:relaxed_atomic",
+        "//folly/synchronization/test:barrier",
         "//folly/system:thread_name",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
     ],
 )
 
