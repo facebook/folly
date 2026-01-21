@@ -623,7 +623,7 @@ void test_bad_empty_result(auto bad) {
         (void)bad.non_value(), "`folly::result` had an empty underlying");
   }
   if constexpr (!kIsDebug) {
-    EXPECT_THROW(bad.value_or_throw(), detail::empty_result_error);
+    EXPECT_THROW((void)bad.value_or_throw(), detail::empty_result_error);
   } else {
     EXPECT_DEATH(
         (void)bad.value_or_throw(), "`folly::result` had an empty underlying");
