@@ -17,6 +17,8 @@ an entry should amortize to a few nanoseconds (today's V0 implementation has a
 See `enrich_non_value.h` for the full API:
 
 ```cpp
+co_await or_unwind_rich(resultFn(), "in {} due to {}", place, reason);
+// ... syntax sugar for:
 co_await or_unwind(enrich_non_value(
     resultFn(), "in {} due to {}", place, reason));
 ```

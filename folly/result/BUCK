@@ -243,6 +243,28 @@ fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
+    name = "or_unwind_rich",
+    raw_headers = ["or_unwind_rich.h"],
+    exported_deps = [
+        ":coro",
+        ":enrich_non_value",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "or_unwind_rich",
+    headers = ["or_unwind_rich.h"],
+    exported_deps = [
+        ":coro",
+        ":enrich_non_value",
+    ],
+)
+
+### this line is a hint for source control merge
+
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
     name = "result",
     srcs = ["result.cpp"],
     raw_headers = ["result.h"],

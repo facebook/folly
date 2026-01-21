@@ -101,6 +101,17 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
+    name = "or_unwind_rich_test",
+    srcs = ["or_unwind_rich_test.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/result:gtest_helpers",
+        "//folly/result:or_unwind_rich",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
     name = "or_unwind_test",
     srcs = ["or_unwind_test.cpp"],
     deps = [

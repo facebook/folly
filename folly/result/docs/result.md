@@ -72,7 +72,9 @@ than thrown exceptions, and more flexible than error codes:
     and does not implicitly convert to `T`.  You **have** to unpack it.
   - The standard pattern for accessing the value is `co_await
     or_unwind(resultFn())`, which also **visibly and efficiently** propagates
-    unhandled exceptions (and cancellation) to the caller.
+    unhandled exceptions (and cancellation) to the caller.  For error
+    enrichment with source location tracking, use `co_await or_unwind_rich(
+    resultFn(), "context {}", arg)` instead.
   - Handling specific exceptions via `if (auto ex = get_exception<Ex>(res))` is
     as clear as `try-catch`, and lacks the many gotchas of the
     exception-unwinding context.
@@ -390,7 +392,7 @@ If `const` didn't propagate inside `result<T&>`, then `logResult` could
 accidentally mutate `v`, even though the signature looks like it shouldn't.
 
 In rare scenarios, `const`-propagation may not be what you want.  Your
-work-around is to store `result<V*>` or `result<std::reference_wrapper<V>>`.
+workaround is to store `result<V*>` or `result<std::reference_wrapper<V>>`.
 One example is a read-locked map that references thread-safe values:
 
 ```cpp

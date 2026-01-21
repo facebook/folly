@@ -113,6 +113,15 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME or_unwind_rich
+  HEADERS
+    or_unwind_rich.h
+  EXPORTED_DEPS
+    folly_result_coro
+    folly_result_enrich_non_value
+)
+
+folly_add_library(
   NAME result
   SRCS
     result.cpp
