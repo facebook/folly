@@ -266,6 +266,17 @@ add_subdirectory(folly)
 # Create monolithic folly library from all component OBJECT libraries
 folly_create_monolithic_library()
 
+# Resolve deferred dependencies (must be after monolithic library is created)
+folly_resolve_deferred_dependencies()
+
+# Define FOLLY_CERTS_DIR for the granular test_util target
+# This points to the SSL test certificates used by TestSSLServer and related tests
+if(TARGET folly_testing_test_util)
+  target_compile_definitions(folly_testing_test_util INTERFACE
+    FOLLY_CERTS_DIR="${FOLLY_DIR}/io/async/test/certs"
+  )
+endif()
+
 set(FOLLY_INSTALL_TARGETS folly folly_deps)
 
 # Test utilities exported for use by downstream projects

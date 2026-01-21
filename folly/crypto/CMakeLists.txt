@@ -27,11 +27,9 @@ folly_add_library(
     folly_range
   EXTERNAL_DEPS
     ${LIBSODIUM_LIBRARIES}
+  EXTERNAL_INCLUDE_DIRS
+    ${LIBSODIUM_INCLUDE_DIRS}
 )
-target_include_directories(folly_crypto_blake2xb_obj
-  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
-target_include_directories(folly_crypto_blake2xb
-  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
 
 folly_add_library(
   NAME lt_hash
@@ -55,11 +53,9 @@ folly_add_library(
     folly_range
   EXTERNAL_DEPS
     ${LIBSODIUM_LIBRARIES}
+  EXTERNAL_INCLUDE_DIRS
+    ${LIBSODIUM_INCLUDE_DIRS}
 )
-target_include_directories(folly_crypto_lt_hash_obj
-  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
-target_include_directories(folly_crypto_lt_hash
-  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
 
 folly_add_library(
   NAME lt_hash_sse2
@@ -84,11 +80,9 @@ folly_add_library(
     folly_range
   EXTERNAL_DEPS
     ${LIBSODIUM_LIBRARIES}
+  EXTERNAL_INCLUDE_DIRS
+    ${LIBSODIUM_INCLUDE_DIRS}
 )
-target_include_directories(folly_crypto_lt_hash_sse2_obj
-  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
-target_include_directories(folly_crypto_lt_hash_sse2
-  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
 
 folly_add_library(
   NAME lt_hash_avx2
@@ -113,11 +107,9 @@ folly_add_library(
     folly_range
   EXTERNAL_DEPS
     ${LIBSODIUM_LIBRARIES}
+  EXTERNAL_INCLUDE_DIRS
+    ${LIBSODIUM_INCLUDE_DIRS}
 )
-target_include_directories(folly_crypto_lt_hash_avx2_obj
-  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
-target_include_directories(folly_crypto_lt_hash_avx2
-  PUBLIC ${LIBSODIUM_INCLUDE_DIRS})
 
 add_subdirectory(detail)
 

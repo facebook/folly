@@ -349,6 +349,13 @@ define_property(GLOBAL PROPERTY FOLLY_DEFERRED_DEPS
 )
 set_property(GLOBAL PROPERTY FOLLY_DEFERRED_DEPS "")
 
+# Track INTERFACE targets that need to link to monolithic folly (for shared builds)
+define_property(GLOBAL PROPERTY FOLLY_GRANULAR_INTERFACE_TARGETS
+  BRIEF_DOCS "List of granular INTERFACE targets for shared builds"
+  FULL_DOCS "These targets will be linked to the monolithic folly library"
+)
+set_property(GLOBAL PROPERTY FOLLY_GRANULAR_INTERFACE_TARGETS "")
+
 # Helper to add a folly library target
 # Creates:
 #   1. OBJECT library (${name}_obj) - for composition into monolithic target
@@ -363,6 +370,7 @@ set_property(GLOBAL PROPERTY FOLLY_DEFERRED_DEPS "")
 #     DEPS folly_lang_bits          # Private dependencies (internal folly targets)
 #     EXPORTED_DEPS folly_range     # Public dependencies (propagated to users)
 #     EXTERNAL_DEPS ${LIBSODIUM_LIBRARIES}  # External library dependencies
+#     EXTERNAL_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIRS}  # External include directories
 #     COMPILE_OPTIONS -mpclmul      # Optional compile options for source files
 #     EXCLUDE_FROM_MONOLITH         # Don't include in monolithic folly library
 #   )
@@ -371,7 +379,7 @@ function(folly_add_library)
     FOLLY_LIB
     "AUTO_SOURCES;EXCLUDE_FROM_MONOLITH"            # Options
     "NAME;TARGET_NAME"                              # Single-value args
-    "SRCS;HEADERS;DEPS;EXPORTED_DEPS;EXTERNAL_DEPS;COMPILE_OPTIONS"  # Multi-value args
+    "SRCS;HEADERS;DEPS;EXPORTED_DEPS;EXTERNAL_DEPS;EXTERNAL_INCLUDE_DIRS;COMPILE_OPTIONS"  # Multi-value args
     ${ARGN}
   )
 
@@ -455,19 +463,29 @@ function(folly_add_library)
     )
   endif()
 
-  # Defer internal folly dependencies until all targets are created
-  if(FOLLY_LIB_EXPORTED_DEPS)
-    # Join deps with comma, store as "target|PUBLIC|dep1,dep2,..."
-    list(JOIN FOLLY_LIB_EXPORTED_DEPS "," _deps_str)
-    set_property(GLOBAL APPEND PROPERTY FOLLY_DEFERRED_DEPS
-      "${_obj_target}|PUBLIC|${_deps_str}"
+  # Add external include directories (e.g., libsodium include dirs)
+  if(FOLLY_LIB_EXTERNAL_INCLUDE_DIRS)
+    target_include_directories(${_obj_target}
+      PUBLIC ${FOLLY_LIB_EXTERNAL_INCLUDE_DIRS}
     )
   endif()
-  if(FOLLY_LIB_DEPS)
-    list(JOIN FOLLY_LIB_DEPS "," _deps_str)
-    set_property(GLOBAL APPEND PROPERTY FOLLY_DEFERRED_DEPS
-      "${_obj_target}|PRIVATE|${_deps_str}"
-    )
+
+  # Defer internal folly dependencies until all targets are created
+  # (Only for static builds - for shared builds, OBJECT targets are bundled into monolithic folly)
+  if(NOT BUILD_SHARED_LIBS)
+    if(FOLLY_LIB_EXPORTED_DEPS)
+      # Join deps with comma, store as "target|PUBLIC|dep1,dep2,..."
+      list(JOIN FOLLY_LIB_EXPORTED_DEPS "," _deps_str)
+      set_property(GLOBAL APPEND PROPERTY FOLLY_DEFERRED_DEPS
+        "${_obj_target}|PUBLIC|${_deps_str}"
+      )
+    endif()
+    if(FOLLY_LIB_DEPS)
+      list(JOIN FOLLY_LIB_DEPS "," _deps_str)
+      set_property(GLOBAL APPEND PROPERTY FOLLY_DEFERRED_DEPS
+        "${_obj_target}|PRIVATE|${_deps_str}"
+      )
+    endif()
   endif()
 
   # Track OBJECT target for monolithic aggregation (unless excluded)
@@ -475,53 +493,146 @@ function(folly_add_library)
     set_property(GLOBAL APPEND PROPERTY FOLLY_COMPONENT_TARGETS ${_obj_target})
   endif()
 
-  # 2. Create STATIC library (individual .a file for granular linking)
-  add_library(${_target_name} STATIC $<TARGET_OBJECTS:${_obj_target}>)
-  set_property(TARGET ${_target_name} PROPERTY VERSION ${PACKAGE_VERSION})
+  # 2. Create the granular library target
+  if(BUILD_SHARED_LIBS AND NOT FOLLY_LIB_EXCLUDE_FROM_MONOLITH)
+    # For shared builds: create INTERFACE library that will link to monolithic folly
+    # This avoids duplicating symbols between granular and monolithic libraries
+    add_library(${_target_name} INTERFACE)
 
-  target_include_directories(${_target_name}
-    PUBLIC
-      $<BUILD_INTERFACE:${TOP_DIR}>
-      $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
-      $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>
-  )
-
-  # Link external dependencies on STATIC library
-  # Internal folly deps are deferred (see above)
-  target_link_libraries(${_target_name}
-    PUBLIC folly_deps
-  )
-
-  # Link external dependencies (e.g., libsodium, openssl) directly
-  if(FOLLY_LIB_EXTERNAL_DEPS)
-    target_link_libraries(${_target_name}
-      PUBLIC ${FOLLY_LIB_EXTERNAL_DEPS}
+    target_include_directories(${_target_name}
+      INTERFACE
+        $<BUILD_INTERFACE:${TOP_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
+        $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>
     )
-  endif()
 
-  # Defer internal folly dependencies for STATIC library too
-  if(FOLLY_LIB_EXPORTED_DEPS)
-    list(JOIN FOLLY_LIB_EXPORTED_DEPS "," _deps_str)
+    # Add external include directories for INTERFACE target
+    if(FOLLY_LIB_EXTERNAL_INCLUDE_DIRS)
+      target_include_directories(${_target_name}
+        INTERFACE ${FOLLY_LIB_EXTERNAL_INCLUDE_DIRS}
+      )
+    endif()
+
+    # Track this target to link to folly after monolithic library is created
+    set_property(GLOBAL APPEND PROPERTY FOLLY_GRANULAR_INTERFACE_TARGETS ${_target_name})
+
+    # Install the INTERFACE library
+    install(
+      TARGETS ${_target_name}
+      EXPORT folly
+    )
+  elseif(BUILD_SHARED_LIBS AND FOLLY_LIB_EXCLUDE_FROM_MONOLITH)
+    # For excluded targets in shared builds: create SHARED library with actual code
+    # These are NOT in the monolithic folly, so they need their own implementation
+    add_library(${_target_name} SHARED $<TARGET_OBJECTS:${_obj_target}>)
+    set_property(TARGET ${_target_name} PROPERTY VERSION ${PACKAGE_VERSION})
+
+    target_include_directories(${_target_name}
+      PUBLIC
+        $<BUILD_INTERFACE:${TOP_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
+        $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>
+    )
+
+    # Link to folly_deps (external dependencies)
+    target_link_libraries(${_target_name}
+      PUBLIC folly_deps
+    )
+
+    # Link external dependencies
+    if(FOLLY_LIB_EXTERNAL_DEPS)
+      target_link_libraries(${_target_name}
+        PUBLIC ${FOLLY_LIB_EXTERNAL_DEPS}
+      )
+    endif()
+
+    # Add external include directories
+    if(FOLLY_LIB_EXTERNAL_INCLUDE_DIRS)
+      target_include_directories(${_target_name}
+        PUBLIC ${FOLLY_LIB_EXTERNAL_INCLUDE_DIRS}
+      )
+    endif()
+
+    # Defer linking to folly (created later by folly_create_monolithic_library)
+    # Also defer internal folly dependencies
+    set(_all_deps "folly")
+    if(FOLLY_LIB_EXPORTED_DEPS)
+      list(APPEND _all_deps ${FOLLY_LIB_EXPORTED_DEPS})
+    endif()
+    list(JOIN _all_deps "," _deps_str)
     set_property(GLOBAL APPEND PROPERTY FOLLY_DEFERRED_DEPS
       "${_target_name}|PUBLIC|${_deps_str}"
     )
-  endif()
-  if(FOLLY_LIB_DEPS)
-    list(JOIN FOLLY_LIB_DEPS "," _deps_str)
-    set_property(GLOBAL APPEND PROPERTY FOLLY_DEFERRED_DEPS
-      "${_target_name}|PRIVATE|${_deps_str}"
+    if(FOLLY_LIB_DEPS)
+      list(JOIN FOLLY_LIB_DEPS "," _deps_str)
+      set_property(GLOBAL APPEND PROPERTY FOLLY_DEFERRED_DEPS
+        "${_target_name}|PRIVATE|${_deps_str}"
+      )
+    endif()
+
+    # Install the SHARED library
+    install(
+      TARGETS ${_target_name}
+      EXPORT folly
+      LIBRARY DESTINATION ${LIB_INSTALL_DIR}
+      ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
+    )
+  else()
+    # For static builds: create STATIC library (individual .a file for granular linking)
+    add_library(${_target_name} STATIC $<TARGET_OBJECTS:${_obj_target}>)
+    set_property(TARGET ${_target_name} PROPERTY VERSION ${PACKAGE_VERSION})
+
+    target_include_directories(${_target_name}
+      PUBLIC
+        $<BUILD_INTERFACE:${TOP_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
+        $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>
+    )
+
+    # Link external dependencies on STATIC library
+    # Internal folly deps are deferred (see above)
+    target_link_libraries(${_target_name}
+      PUBLIC folly_deps
+    )
+
+    # Link external dependencies (e.g., libsodium, openssl) directly
+    if(FOLLY_LIB_EXTERNAL_DEPS)
+      target_link_libraries(${_target_name}
+        PUBLIC ${FOLLY_LIB_EXTERNAL_DEPS}
+      )
+    endif()
+
+    # Add external include directories for STATIC target
+    if(FOLLY_LIB_EXTERNAL_INCLUDE_DIRS)
+      target_include_directories(${_target_name}
+        PUBLIC ${FOLLY_LIB_EXTERNAL_INCLUDE_DIRS}
+      )
+    endif()
+
+    # Defer internal folly dependencies for STATIC library too
+    if(FOLLY_LIB_EXPORTED_DEPS)
+      list(JOIN FOLLY_LIB_EXPORTED_DEPS "," _deps_str)
+      set_property(GLOBAL APPEND PROPERTY FOLLY_DEFERRED_DEPS
+        "${_target_name}|PUBLIC|${_deps_str}"
+      )
+    endif()
+    if(FOLLY_LIB_DEPS)
+      list(JOIN FOLLY_LIB_DEPS "," _deps_str)
+      set_property(GLOBAL APPEND PROPERTY FOLLY_DEFERRED_DEPS
+        "${_target_name}|PRIVATE|${_deps_str}"
+      )
+    endif()
+
+    # Install the STATIC library
+    install(
+      TARGETS ${_target_name}
+      EXPORT folly
+      LIBRARY DESTINATION ${LIB_INSTALL_DIR}
+      ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
     )
   endif()
 
-  # Install the STATIC library
-  install(
-    TARGETS ${_target_name}
-    EXPORT folly
-    LIBRARY DESTINATION ${LIB_INSTALL_DIR}
-    ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
-  )
-
-  # Create alias for the STATIC library
+  # Create alias for the library
   add_library(Folly::${_target_name} ALIAS ${_target_name})
 endfunction()
 
@@ -594,4 +705,14 @@ function(folly_create_monolithic_library)
 
   # Create alias for consistency
   add_library(Folly::folly ALIAS folly)
+
+  # For shared builds: link all granular INTERFACE targets to the monolithic library
+  if(BUILD_SHARED_LIBS)
+    # CMP0079: target_link_libraries allows use with targets in other directories
+    cmake_policy(SET CMP0079 NEW)
+    get_property(_interface_targets GLOBAL PROPERTY FOLLY_GRANULAR_INTERFACE_TARGETS)
+    foreach(_target IN LISTS _interface_targets)
+      target_link_libraries(${_target} INTERFACE folly)
+    endforeach()
+  endif()
 endfunction()
