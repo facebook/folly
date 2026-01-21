@@ -332,6 +332,96 @@ CO_TEST(NowTaskTest, to_now_task) {
   EXPECT_EQ(5, co_await to_now_task(std::move(t)));
 }
 
+// Test `as_unsafe()` escape hatch for `now_task` and `now_task_with_executor`.
+// These methods are marked deprecated, intended use is only for future->coro
+// migrations.
+FOLLY_PUSH_WARNING
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+
+CO_TEST(NowTaskTest, asUnsafe) {
+  static_assert(
+      std::is_same_v<
+          Task<int>,
+          decltype(std::declval<now_task<int>>().as_unsafe())>);
+
+  // Passing by value is safe here
+  // @lint-ignore CLANGTIDY facebook-hte-Deprecated
+  EXPECT_EQ(1337, co_await demoNowTask(37).as_unsafe());
+}
+
+CO_TEST(NowTaskTest, asUnsafeWithExecutor) {
+  auto exec = co_await co_current_executor;
+  static_assert(
+      std::is_same_v<
+          TaskWithExecutor<int>,
+          decltype(std::declval<now_task_with_executor<int>>().as_unsafe())>);
+
+  // Passing by value is safe here
+  // @lint-ignore CLANGTIDY facebook-hte-Deprecated
+  EXPECT_EQ(1337, co_await co_withExecutor(exec, demoNowTask(37)).as_unsafe());
+}
+
+// Recommended migration patterns when using `now_task` with `SemiFuture`.
+// See `folly/coro/safe/docs/AsUnsafe.md` for full documentation.
+now_task<int> processData(const int& x) {
+  // Force suspension, trigger potential lifetime issues with caller's stack
+  co_await folly::coro::co_reschedule_on_current_executor;
+  co_return 1300 + x;
+}
+
+// Pattern 1 (Preferred): Use `co_invoke` to allocate argument copies.
+folly::SemiFuture<int> processDataCoInvoke(const int& x) {
+  // co_invoke makes decay-copies of arguments into a new coro frame,
+  // guaranteeing lifetime for the duration of `processData`
+
+  // @lint-ignore CLANGTIDY facebook-folly-coro-return-captures-local-var
+  return folly::coro::co_invoke(
+             [](auto&&... args) {
+               // @lint-ignore CLANGTIDY facebook-hte-Deprecated
+               return processData(std::forward<decltype(args)>(args)...)
+                   .as_unsafe();
+             },
+             x)
+      .semi();
+}
+
+// Pattern 2: Use `deferValue` to extend heap-allocated data lifetime.
+folly::SemiFuture<int> processDataDefer(const int& x) {
+  // `make_unique` makes a copy onto the heap, but this would normally be
+  // destroyed at the return of `processDataDefer`.
+  // In order to guarantee lifetime for the duration of `processData` we must
+  // move the underlying data into the `deferValue` lambda
+  auto dataPtr = std::make_unique<int>(x);
+
+  // workaround for `facebook-hte-MoveEvaluationOrder`
+  auto rawPtr = dataPtr.get();
+
+  // @lint-ignore CLANGTIDY facebook-hte-Deprecated
+  // @lint-ignore CLANGTIDY facebook-folly-coro-temporary-by-ref
+  return processData(*rawPtr).as_unsafe().semi().deferValue(
+      [dataPtr = std::move(dataPtr)](int result) { return result; });
+}
+
+TEST(NowTaskTest, asUnsafeSemiFutureWithCoInvokeGuard) {
+  // Good hygiene is to `.get()` futures derived from `now_task` on the
+  // same line that creates them. Here, we intentionally use multi-line to
+  // demonstrate that the future became self-contained despite
+  // the by-ref args in `processData`.
+
+  auto future = processDataCoInvoke(37);
+  auto result = std::move(future).get();
+  EXPECT_EQ(result, 1337);
+}
+
+TEST(NowTaskTest, asUnsafeSemiFutureWithDeferGuard) {
+  // Bad code hygiene, refer to `asUnsafeSemiFutureWithCoInvokeGuard`
+  auto future = processDataDefer(37);
+  auto result = std::move(future).get();
+  EXPECT_EQ(result, 1337);
+}
+
+FOLLY_POP_WARNING
+
 } // namespace folly::coro
 
 #endif

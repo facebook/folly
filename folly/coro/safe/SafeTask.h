@@ -391,7 +391,8 @@ class [[nodiscard]] safe_task_with_executor final
       "older futures-based code, or other places not yet compatible with "
       "true structured concurrency patterns. Beware, the full `Task` API "
       "abounds with footguns like `start()` and `semi()` -- including UB, "
-      "leaks, and lost errors.")]]
+      "leaks, and lost errors. See `folly/coro/safe/docs/AsUnsafe.md` for "
+      " safe migration patterns.")]]
   TaskWithExecutor<T> as_unsafe() && {
     return std::move(*this).unwrapTaskWithExecutor();
   }
@@ -428,7 +429,8 @@ class FOLLY_CORO_TASK_ATTRS safe_task final
       "older futures-based code, or other places not yet compatible with "
       "true structured concurrency patterns. Beware, the full `Task` API "
       "abounds with footguns like `start()` and `semi()` -- including UB, "
-      "leaks, and lost errors.")]]
+      "leaks, and lost errors. See `folly/coro/safe/docs/AsUnsafe.md` for "
+      " safe migration patterns.")]]
   Task<T> as_unsafe() && {
     return std::move(*this).unwrapTask();
   }

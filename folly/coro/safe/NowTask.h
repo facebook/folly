@@ -90,6 +90,17 @@ now_task_with_executor final : public detail::now_task_with_executor_base<T> {
 
   template <safe_alias, typename>
   friend class BackgroundTask; // for `unwrapTaskWithExecutor`, remove later
+ public:
+  [[deprecated(
+      "`as_unsafe()` is provided as an escape hatch for interoperating with "
+      "older futures-based code, or other places not yet compatible with "
+      "true structured concurrency patterns. Beware, the full `Task` API "
+      "abounds with footguns like `start()` and `semi()` -- including UB, "
+      "leaks, and lost errors. See `folly/coro/safe/docs/AsUnsafe.md` for "
+      " safe migration patterns.")]]
+  TaskWithExecutor<T> as_unsafe() && {
+    return std::move(*this).unwrapTaskWithExecutor();
+  }
 };
 
 namespace detail {
@@ -125,6 +136,18 @@ class FOLLY_CORO_TASK_ATTRS now_task final : public detail::now_task_base<T> {
   friend auto to_now_task(safe_task<S, U>);
   template <typename U> // can construct & `unwrapTask`
   friend auto to_now_task(now_task<U>);
+
+ public:
+  [[deprecated(
+      "`as_unsafe()` is provided as an escape hatch for interoperating with "
+      "older futures-based code, or other places not yet compatible with "
+      "true structured concurrency patterns. Beware, the full `Task` API "
+      "abounds with footguns like `start()` and `semi()` -- including UB, "
+      "leaks, and lost errors. See `folly/coro/safe/docs/AsUnsafe.md` for "
+      " safe migration patterns.")]]
+  Task<T> as_unsafe() && {
+    return std::move(*this).unwrapTask();
+  }
 };
 
 // NB: `to_now_task(safe_task)` is in `SafeTask.h` to avoid circular deps.
