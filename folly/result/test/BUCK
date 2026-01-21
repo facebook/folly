@@ -1,11 +1,9 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "coded_rich_error_test",
     srcs = ["coded_rich_error_test.cpp"],
     deps = [
@@ -18,8 +16,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "common",
     headers = ["common.h"],
     exported_deps = [
@@ -30,9 +27,7 @@ fbcode_target(
     ],
 )
 
-# Runs as a test by default, pass --benchmark=1 to run as benchmark.
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "enrich_non_value_bench",
     srcs = ["enrich_non_value_bench.cpp"],
     deps = [
@@ -43,8 +38,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "enrich_non_value_test",
     srcs = ["enrich_non_value_test.cpp"],
     deps = [
@@ -57,8 +51,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "errc_rich_error_test",
     srcs = ["errc_rich_error_test.cpp"],
     deps = [
@@ -72,8 +65,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "immortal_rich_error_test",
     srcs = ["immortal_rich_error_test.cpp"],
     deps = [
@@ -86,8 +78,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "nestable_coded_rich_error_test",
     srcs = ["nestable_coded_rich_error_test.cpp"],
     deps = [
@@ -99,8 +90,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "or_unwind_rich_test",
     srcs = ["or_unwind_rich_test.cpp"],
     deps = [
@@ -110,8 +100,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "or_unwind_test",
     srcs = ["or_unwind_test.cpp"],
     deps = [
@@ -128,9 +117,7 @@ fbcode_target(
     ],
 )
 
-# Runs as a test by default, pass --benchmark=1 to run as benchmark.
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "result_coro_bench",
     srcs = ["result_coro_bench.cpp"],
     deps = [
@@ -142,20 +129,17 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "result_test",
     srcs = ["result_test.cpp"],
     deps = [
-        "fbsource//third-party/googletest:gtest",
         "//folly/coro:traits",
+        "//folly/portability:gtest",
         "//folly/result:gtest_helpers",
     ],
 )
 
-# Runs as a test by default, pass --benchmark=1 to run as benchmark.
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rich_error_code_bench",
     srcs = ["rich_error_code_bench.cpp"],
     deps = [
@@ -168,25 +152,23 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rich_error_code_test",
     srcs = ["rich_error_code_test.cpp"],
     deps = [
         "fbsource//third-party/fmt:fmt",
         ":common",
+        ":rich_error_codes",
         "//folly:traits",
         "//folly:utility",
         "//folly/portability:gtest",
         "//folly/result:immortal_rich_error",
         "//folly/result:rich_error",
         "//folly/result:rich_error_code",
-        "//folly/result/test:rich_error_codes",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "rich_error_codes",
     headers = ["rich_error_codes.h"],
     exported_deps = [
@@ -197,25 +179,22 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rich_error_test",
     srcs = ["rich_error_test.cpp"],
     deps = [
         ":common",
+        ":rich_error_codes",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/result:enrich_non_value",
         "//folly/result:rich_error",
         "//folly/result:rich_error_base",
         "//folly/result:rich_error_code",
-        "//folly/result/test:rich_error_codes",
     ],
 )
 
-# Runs as a test by default, pass --benchmark=1 to run as benchmark.
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rich_exception_ptr_bench",
     srcs = ["rich_exception_ptr_bench.cpp"],
     deps = [
@@ -228,8 +207,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "rich_exception_ptr_check_get",
     headers = ["rich_exception_ptr_check_get.h"],
     exported_deps = [
@@ -239,8 +217,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "rich_exception_ptr_common",
     headers = ["rich_exception_ptr_common.h"],
     exported_deps = [
@@ -249,8 +226,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rich_exception_ptr_constexpr_test",
     srcs = ["rich_exception_ptr_constexpr.cpp"],
     deps = [
@@ -258,8 +234,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rich_exception_ptr_fundamentals_test",
     srcs = ["rich_exception_ptr_fundamentals_test.cpp"],
     deps = [
@@ -271,8 +246,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rich_exception_ptr_immortal_test",
     srcs = ["rich_exception_ptr_immortal_test.cpp"],
     deps = [
@@ -282,8 +256,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rich_exception_ptr_misc_test",
     srcs = ["rich_exception_ptr_misc_test.cpp"],
     deps = [
@@ -293,8 +266,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rich_exception_ptr_owned_test",
     srcs = ["rich_exception_ptr_owned_test.cpp"],
     deps = [
@@ -303,8 +275,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rich_msg_test",
     srcs = ["rich_msg_test.cpp"],
     deps = [
@@ -313,8 +284,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "try_test",
     srcs = ["try_test.cpp"],
     deps = [
@@ -323,12 +293,11 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "value_only_result_test",
     srcs = ["value_only_result_test.cpp"],
     deps = [
-        "fbsource//third-party/googletest:gtest",
+        "//folly/portability:gtest",
         "//folly/result:gtest_helpers",
         "//folly/result:value_only_result",
     ],
