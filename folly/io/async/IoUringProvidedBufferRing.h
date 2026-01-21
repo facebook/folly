@@ -67,6 +67,7 @@ class IoUringProvidedBufferRing {
 
   std::unique_ptr<IOBuf> getIoBuf(
       uint16_t startBufId, size_t totalLength, bool hasMore) noexcept;
+  std::unique_ptr<IOBuf> getIoBuf(const struct io_uring_cqe* cqe) noexcept;
 
   uint32_t count() const noexcept { return bufferCount_; }
   bool available() const noexcept {

@@ -166,6 +166,7 @@ folly_add_library(
     folly_io_async_async_transport
     folly_io_async_delayed_destruction
     folly_io_async_io_uring_connect
+    folly_io_async_io_uring_recv
     folly_io_async_io_uring_send
     folly_io_async_observer_async_socket_observer_container
     folly_io_iobuf
@@ -202,6 +203,24 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME io_uring_recv
+  SRCS
+    IoUringRecv.cpp
+  HEADERS
+    IoUringRecv.h
+  DEPS
+    folly_io_async_async_base
+    folly_io_async_async_socket_exception
+  EXPORTED_DEPS
+    folly_futures_core
+    folly_io_async_async_transport
+    folly_io_async_delayed_destruction
+    folly_io_async_io_uring_backend
+    folly_net_network_socket
+    folly_network_address
+)
+
+folly_add_library(
   NAME io_uring_send
   SRCS
     IoUringSend.cpp
@@ -209,7 +228,6 @@ folly_add_library(
     IoUringSend.h
   DEPS
     folly_io_async_async_base
-    folly_lang_exception
   EXPORTED_DEPS
     folly_futures_core
     folly_io_async_async_transport

@@ -1344,6 +1344,11 @@ void AsyncSocket::setReadCB(ReadCallback* callback) {
       uint16_t oldFlags = eventFlags_;
       if (readCallback_) {
         eventFlags_ |= EventHandler::READ;
+        if (useIoUring_ && !iouRecvHandle_) {
+          iouRecvHandle_ =
+              IoUringRecvHandle::create(eventBase_, fd_, addr_, this);
+          CHECK(iouRecvHandle_);
+        }
       } else {
         eventFlags_ &= ~EventHandler::READ;
       }
@@ -2108,6 +2113,11 @@ void AsyncSocket::closeNow() {
   DestructorGuard dg(this);
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
+  }
+
+  if (iouRecvHandle_) {
+    iouRecvHandle_->cancel();
+    iouRecvHandle_.reset();
   }
 
   switch (state_) {
@@ -3388,33 +3398,14 @@ AsyncSocket::ReadCode AsyncSocket::processNormalRead() {
     // No more data to read right now.
     return ReadCode::READ_DONE;
   } else if (bytesRead == READ_ERROR) {
-    readErr_ = READ_ERROR;
-    if (readResult.exception) {
-      return failRead(__func__, *readResult.exception);
-    }
     auto errnoCopy = errno;
-    AsyncSocketException ex(
-        AsyncSocketException::INTERNAL_ERROR,
-        withAddr("recv() failed"),
-        errnoCopy);
-    return failRead(__func__, ex);
+    recvErr(errnoCopy, std::move(readResult.exception));
+    return AsyncSocket::ReadCode::READ_DONE;
   } else if (bytesRead == READ_ASYNC) {
     return ReadCode::READ_DONE;
   } else {
     assert(bytesRead == READ_EOF);
-    readErr_ = READ_EOF;
-    // EOF
-    shutdownFlags_ |= SHUT_READ;
-    if (!updateEventRegistration(0, EventHandler::READ)) {
-      // we've already been moved into STATE_ERROR
-      assert(state_ == StateEnum::ERROR);
-      assert(readCallback_ == nullptr);
-      return ReadCode::READ_DONE;
-    }
-
-    ReadCallback* callback = readCallback_;
-    readCallback_ = nullptr;
-    callback->readEOF();
+    recvEOF();
     return ReadCode::READ_DONE;
   }
 }
@@ -3557,8 +3548,27 @@ void AsyncSocket::checkForImmediateRead() noexcept {
   //
   // The exception to this is if we have pre-received data. In that case there
   // is definitely data available immediately.
+  EventBase* originalEventBase = eventBase_;
   if (preReceivedData_ && !preReceivedData_->empty()) {
-    handleRead();
+    // Even with io_uring requiring ReadCallbacks to take IOBufs via
+    // readBufferAvailable, if the ReadCallback is a small (peeking) read, go
+    // through the normal handleRead() path with
+    // getReadBuffer()/readBufferAvailable().
+    if (iouRecvHandle_ &&
+        readCallback_->maxBufferSize() >= IoUringRecvHandle::kSmallRecvSize) {
+      readCallback_->readBufferAvailable(std::move(preReceivedData_));
+    } else {
+      handleRead();
+    }
+  }
+
+  if (iouRecvHandle_ && readCallback_ && eventBase_ == originalEventBase &&
+      iouRecvHandle_->hasQueuedData()) {
+    readCallback_->readBufferAvailable(iouRecvHandle_->getQueuedData());
+  }
+
+  if (iouRecvHandle_ && readCallback_ && eventBase_ == originalEventBase) {
+    iouRecvHandle_->submit(readCallback_->maxBufferSize());
   }
 }
 
@@ -3573,6 +3583,10 @@ void AsyncSocket::handleInitialReadWrite() noexcept {
   if (readCallback_ && !(eventFlags_ & EventHandler::READ)) {
     assert(state_ == StateEnum::ESTABLISHED);
     assert((shutdownFlags_ & SHUT_READ) == 0);
+    if (useIoUring_ && !iouRecvHandle_) {
+      iouRecvHandle_ = IoUringRecvHandle::create(eventBase_, fd_, addr_, this);
+      CHECK(iouRecvHandle_);
+    }
     if (!updateEventRegistration(EventHandler::READ, 0)) {
       assert(state_ == StateEnum::ERROR);
       return;
@@ -4064,6 +4078,9 @@ bool AsyncSocket::updateEventRegistration() {
     if (iouSendHandle_) {
       iouSendHandle_->update(eventFlags_);
     }
+    if (iouRecvHandle_) {
+      iouRecvHandle_->update(eventFlags_);
+    }
     return true;
   }
 
@@ -4122,6 +4139,9 @@ void AsyncSocket::startFail() {
     eventFlags_ = EventHandler::NONE;
     if (iouSendHandle_) {
       iouSendHandle_->update(eventFlags_);
+    }
+    if (iouRecvHandle_) {
+      iouRecvHandle_->update(eventFlags_);
     }
     ioHandler_.unregisterHandler();
   }
@@ -4694,6 +4714,54 @@ void AsyncSocket::sendErr(int err) {
       withAddr("async sendmsg() failed"),
       err);
   failWrite(__func__, ex);
+}
+
+void AsyncSocket::recvSuccess(std::unique_ptr<IOBuf> buf) {
+  DestructorGuard dg(this);
+  DCHECK(readAncillaryDataCallback_ == nullptr);
+  CHECK(readCallback_);
+
+  if (preReceivedData_ && !preReceivedData_->empty()) {
+    preReceivedData_->appendToChain(std::move(buf));
+    auto bytes = preReceivedData_->computeChainDataLength();
+    readCallback_->readBufferAvailable(std::move(preReceivedData_));
+    appBytesReceived_ += bytes;
+    return;
+  }
+
+  auto bytes = buf->computeChainDataLength();
+  readCallback_->readBufferAvailable(std::move(buf));
+  appBytesReceived_ += bytes;
+}
+
+void AsyncSocket::recvEOF() noexcept {
+  DestructorGuard dg(this);
+  readErr_ = READ_EOF;
+  // EOF
+  shutdownFlags_ |= SHUT_READ;
+  if (!updateEventRegistration(0, EventHandler::READ)) {
+    // we've already been moved into STATE_ERROR
+    assert(state_ == StateEnum::ERROR);
+    assert(readCallback_ == nullptr);
+    return;
+  }
+
+  ReadCallback* callback = readCallback_;
+  readCallback_ = nullptr;
+  callback->readEOF();
+}
+
+void AsyncSocket::recvErr(
+    int err, std::unique_ptr<const AsyncSocketException> exception) noexcept {
+  DestructorGuard dg(this);
+  readErr_ = READ_ERROR;
+  if (exception) {
+    failRead(__func__, *exception);
+    return;
+  }
+  AsyncSocketException ex(
+      AsyncSocketException::INTERNAL_ERROR, withAddr("recv() failed"), err);
+  failRead(__func__, ex);
 }
 
 std::ostream& operator<<(

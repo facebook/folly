@@ -291,6 +291,14 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
   return head;
 }
 
+std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
+    const struct io_uring_cqe* cqe) noexcept {
+  auto bid = cqe->flags >> IORING_CQE_BUFFER_SHIFT;
+  auto res = cqe->res;
+  bool hasMore = (cqe->flags & IORING_CQE_F_BUF_MORE) != 0;
+  return getIoBuf(bid, res, hasMore);
+}
+
 void IoUringProvidedBufferRing::initialRegister() {
   struct io_uring_buf_reg reg{};
   memset(&reg, 0, sizeof(reg));

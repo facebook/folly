@@ -37,6 +37,7 @@
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/IoUringConnect.h>
+#include <folly/io/async/IoUringRecv.h>
 #include <folly/io/async/IoUringSend.h>
 #include <folly/io/async/observer/AsyncSocketObserverContainer.h>
 #include <folly/net/NetOpsDispatcher.h>
@@ -102,6 +103,7 @@ namespace folly {
 class AsyncSocket
     : public AsyncSocketTransport,
       public IoUringSendCallback,
+      public IoUringRecvCallback,
       public IoUringConnectCallback {
  public:
   using UniquePtr = std::unique_ptr<AsyncSocket, Destructor>;
@@ -1930,6 +1932,15 @@ class AsyncSocket
   void sendDone(size_t bytesWritten = 0) override;
   void sendErr(int err) override;
 
+  /*
+   * IoUringRecvCallback
+   */
+  void recvSuccess(std::unique_ptr<IOBuf> data) override;
+  void recvEOF() noexcept override;
+  void recvErr(
+      int err,
+      std::unique_ptr<const AsyncSocketException> exception) noexcept override;
+
   AsyncWriter::ZeroCopyEnableFunc zeroCopyEnableFunc_;
 
   // a folly::IOBuf can be used in multiple partial requests
@@ -2054,6 +2065,8 @@ class AsyncSocket
   bool useIoUring_{false};
   IoUringConnectHandle::UniquePtr iouConnectHandle_;
   IoUringSendHandle::UniquePtr iouSendHandle_;
+  IoUringRecvHandle::UniquePtr iouRecvHandle_;
+
   netops::DispatcherContainer netops_;
 
   folly::TcpInfoDispatcherContainer tcpInfoDispatcher_;
