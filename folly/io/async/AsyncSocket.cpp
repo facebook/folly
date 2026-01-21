@@ -1206,6 +1206,7 @@ void AsyncSocket::setSendTimeout(uint32_t milliseconds) {
 }
 
 void AsyncSocket::setErrMessageCB(ErrMessageCallback* callback) {
+  CHECK(!useIoUring_);
   VLOG(6) << "AsyncSocket::setErrMessageCB() this=" << this << ", fd=" << fd_
           << ", callback=" << callback << ", state=" << state_;
 
@@ -1275,6 +1276,7 @@ AsyncSocket::ErrMessageCallback* AsyncSocket::getErrMessageCallback() const {
 }
 
 void AsyncSocket::setReadAncillaryDataCB(ReadAncillaryDataCallback* callback) {
+  CHECK(!useIoUring_);
   VLOG(6) << "AsyncSocket::setReadAncillaryDataCB() this=" << this << ", fd="
           << fd_ << ", callback=" << callback << ", state=" << state_;
 
@@ -1627,6 +1629,14 @@ void AsyncSocket::enableByteEvents() {
 
   try {
 #if FOLLY_HAVE_SO_TIMESTAMPING
+    if (useIoUring_) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_SUPPORTED,
+          withAddr(
+              "failed to enable byte events: "
+              "EVB is using io_uring"));
+    }
+
     // make sure we have a connected IP socket that supports error queues
     // (Unix sockets do not support error queues)
     if (NetworkSocket() == fd_ || !good()) {
