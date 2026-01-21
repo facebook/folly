@@ -545,6 +545,7 @@ class AsyncSocketToSTest : public ::testing::Test {
 
   void SetUp() override {
     netOpsDispatcher = std::make_shared<MockDispatcher>();
+    netOpsDispatcher->forwardToDefaultImpl();
     socket = AsyncSocket::newSocket(&evb);
     socket->setOverrideNetOpsDispatcher(netOpsDispatcher);
     v6Addr = SocketAddress(
