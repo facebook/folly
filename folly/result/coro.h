@@ -98,8 +98,9 @@
 ///
 /// ## Future: Extensions to `Try`?
 ///
-/// It might be fine to specialize `or_unwind` for `Try`.  Just be mindful of
-/// its two warts: empty state and empty `exception_wrapper`.
+/// While, per `design_notes.md`, new code will benefit from using `result` over
+/// `Try`, it might be fine to specialize `or_unwind` for `Try`.  Just be
+/// mindful of its two warts: empty state and empty `exception_wrapper`.
 
 // NOTE: This short-circuiting coroutine implementation was modeled on
 // `folly/Expected.h`.  Port compiler fixes or optimizations across both.

@@ -32,7 +32,7 @@ more usable:
   - `result` uses `std::exception_ptr` (with some folly-specific enhancements)
     to efficiently transport all exception types, which avoids the user-facing
     complexity of distinguishing `outcome::result` (`error_code` only) and
-    `outcome::outcome` (code OR exception).
+    `outcome::outcome` (code OR exception) -- more in `design_notes.md`.
 
   - `result` needs no macros, and has a much easier-to-learn API.
 
@@ -187,7 +187,8 @@ In bullets, `result<T>`:
 
   - Is move-only, unlike `Expected` and `Try`. The benefit is that the `result`
     plumbing tax stays low, avoiding both user data copies, and
-    `std::exception_ptr` atomic ops.
+    `std::exception_ptr` atomic ops. If you need to add copyability, check out
+    `design_notes.md` to do it right.
       * For usability, copy conversion from cheap types (like `int`) is allowed.
       * Explicit `res.copy()` is rarely needed, since `return` and `co_return`
         are "implicit move contexts".
@@ -389,7 +390,8 @@ logResult(result<V&>{std::ref(v)});
 ```
 
 If `const` didn't propagate inside `result<T&>`, then `logResult` could
-accidentally mutate `v`, even though the signature looks like it shouldn't.
+accidentally mutate `v`, even though the signature looks like it shouldn't --
+`design_notes.md` discusses this in-depth.
 
 In rare scenarios, `const`-propagation may not be what you want.  Your
 workaround is to store `result<V*>` or `result<std::reference_wrapper<V>>`.

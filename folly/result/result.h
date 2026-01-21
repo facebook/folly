@@ -467,6 +467,8 @@ class result_crtp {
   ///     see the below carve-out for "cheap-to-copy `T`".
   ///   - Copying `std::exception_ptr` also has atomic costs (~7s).
   ///
+  /// Future: We may later make `result` copyable, see `docs/design_notes.md`.
+  ///
   /// ## Copies are restricted when `T` is a reference
   ///
   /// `const result<V&>` only gives access to `const V&`, for reasons discussed
@@ -763,7 +765,7 @@ result final : public detail::result_crtp<result<T>, T> {
   /// wrapper inside `this`.  Assign a ref-wrapper to the `result` to do that.
 
   /// Lvalue result-ref propagate `const`: `const result<T&>` -> `const T&`.
-  /// See a discussion of the trade-offs in `docs/result.md`.
+  /// See a discussion of the trade-offs in `docs/result.md` & `design_notes.md`
   [[nodiscard]] like_t<const int&, T> value_or_throw() const&
     requires std::is_lvalue_reference_v<T>
   {
