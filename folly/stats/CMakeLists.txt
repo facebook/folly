@@ -98,6 +98,8 @@ folly_add_library(
   EXPORTED_DEPS
     folly_range
     folly_utility
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

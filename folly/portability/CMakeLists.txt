@@ -233,6 +233,9 @@ folly_add_library(
     folly_portability_sched
     folly_portability_time
     folly_portability_windows
+  EXTERNAL_DEPS
+    Boost::headers
+    Boost::thread
 )
 
 folly_add_library(

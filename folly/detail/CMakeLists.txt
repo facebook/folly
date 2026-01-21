@@ -160,6 +160,8 @@ folly_add_library(
     folly_conv
     folly_system_pid
     folly_testing_test_util
+  EXTERNAL_DEPS
+    Boost::regex
 )
 
 folly_add_library(

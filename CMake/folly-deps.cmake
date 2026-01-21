@@ -35,15 +35,23 @@ else()
 endif()
 set(Boost_USE_STATIC_LIBS "${FOLLY_BOOST_LINK_STATIC}")
 
-find_package(Boost 1.69.0 REQUIRED
-  COMPONENTS
+# Note: We find these components so the CMake targets exist, but we don't
+# link them globally. Targets that need specific Boost libraries should
+# add them to their EXTERNAL_DEPS (e.g., Boost::regex, Boost::context).
+# Boost::thread is needed by Windows pthread compatibility layer.
+set(FOLLY_BOOST_COMPONENTS
     context
     filesystem
     program_options
     regex
     thread
 )
-list(APPEND FOLLY_LINK_LIBRARIES ${Boost_LIBRARIES})
+find_package(Boost 1.69.0 REQUIRED
+  COMPONENTS
+    ${FOLLY_BOOST_COMPONENTS}
+)
+# Only add include directories globally, not libraries
+# Per-target Boost dependencies are specified via EXTERNAL_DEPS
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIRS})
 
 find_package(DoubleConversion MODULE REQUIRED)

@@ -34,6 +34,8 @@ folly_add_library(
     folly_likely
     folly_portability
     folly_synchronization_atomic_ref
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

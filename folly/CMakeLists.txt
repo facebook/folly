@@ -193,6 +193,8 @@ folly_add_library(
     folly_scope_guard
     folly_traits
     folly_unit
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -472,6 +474,7 @@ folly_add_library(
   EXTERNAL_DEPS
     ${GLOG_LIBRARIES}
     Boost::headers
+    Boost::regex
 )
 
 folly_add_library(
@@ -670,6 +673,8 @@ folly_add_library(
     folly_optional
     folly_range
     folly_utility
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -700,6 +705,8 @@ folly_add_library(
     folly_portability_fcntl
     folly_portability_unistd
     folly_range
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -1023,6 +1030,8 @@ folly_add_library(
     folly_portability_sockets
     folly_range
     folly_unit
+  EXTERNAL_DEPS
+    Boost::headers
 )
 
 folly_add_library(
@@ -1122,6 +1131,8 @@ folly_add_library(
     folly_portability
     folly_random_xoshiro256pp
     folly_traits
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -1378,6 +1389,8 @@ folly_add_library(
     folly_expected
     folly_hash_hash
     folly_string
+  EXTERNAL_DEPS
+    Boost::regex
 )
 
 folly_add_library(

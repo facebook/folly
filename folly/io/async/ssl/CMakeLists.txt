@@ -55,6 +55,8 @@ folly_add_library(
     folly_range
     folly_ssl_openssl_ptr_types
     folly_ssl_ssl_session
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
