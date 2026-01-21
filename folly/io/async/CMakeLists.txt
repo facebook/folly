@@ -149,6 +149,7 @@ folly_add_library(
     AsyncSocket.h
   DEPS
     folly_exception
+    folly_io_async_io_uring_backend
     folly_lang_checked_math
     folly_portability
     folly_portability_fcntl
@@ -164,6 +165,7 @@ folly_add_library(
     folly_io_async_async_socket_transport
     folly_io_async_async_transport
     folly_io_async_delayed_destruction
+    folly_io_async_io_uring_connect
     folly_io_async_observer_async_socket_observer_container
     folly_io_iobuf
     folly_io_shutdown_socket_set
@@ -184,6 +186,18 @@ folly_add_library(
   EXPORTED_DEPS
     folly_io_async_async_base
     folly_network_address
+)
+
+folly_add_library(
+  NAME io_uring_connect
+  SRCS
+    IoUringConnect.cpp
+  HEADERS
+    IoUringConnect.h
+  EXPORTED_DEPS
+    folly_io_async_async_base
+    folly_io_async_io_uring_backend
+    folly_net_network_socket
 )
 
 folly_add_library(

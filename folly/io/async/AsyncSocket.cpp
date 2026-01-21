@@ -32,6 +32,7 @@
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/io/SocketOptionMap.h>
+#include <folly/io/async/IoUringBackend.h>
 #include <folly/lang/CheckedMath.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
@@ -146,6 +147,10 @@ using ZeroCopyMMapMemStore = ZeroCopyMMapMemStoreReal;
 #else
 using ZeroCopyMMapMemStore = ZeroCopyMMapMemStoreFallback;
 #endif
+
+bool checkIoUringBackend(folly::EventBase*) {
+  return false;
+}
 } // namespace
 
 #if FOLLY_HAVE_VLA
@@ -776,6 +781,7 @@ AsyncSocket::AsyncSocket(AsyncSocket::UniquePtr oldAsyncSocket)
 void AsyncSocket::init() {
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
+    useIoUring_ = checkIoUringBackend(eventBase_);
   }
   eventFlags_ = EventHandler::NONE;
   sendTimeout_ = 0;
@@ -1078,6 +1084,7 @@ void AsyncSocket::connect(
   assert(errMessageCallback_ == nullptr);
   assert(readCallback_ == nullptr);
   assert(writeReqHead_ == nullptr);
+  assert(iouConnectHandle_ == nullptr);
   if (state_ != StateEnum::FAST_OPEN) {
     state_ = StateEnum::ESTABLISHED;
   }
@@ -1089,8 +1096,13 @@ int AsyncSocket::socketConnect(const struct sockaddr* saddr, socklen_t len) {
   if (rv < 0) {
     auto errnoCopy = errno;
     if (errnoCopy == EINPROGRESS) {
-      scheduleConnectTimeout();
-      registerForConnectEvents();
+      if (!useIoUring_) {
+        scheduleConnectTimeout();
+        registerForConnectEvents();
+      } else {
+        iouConnectHandle_ = IoUringConnectHandle::create(
+            eventBase_, fd_, this, connectTimeout_);
+      }
     } else {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
@@ -2097,6 +2109,13 @@ void AsyncSocket::closeNow() {
       }
 
       invokeConnectErr(getSocketClosedLocallyEx());
+      if (iouConnectHandle_) {
+        if (iouConnectHandle_->cancel()) {
+          iouConnectHandle_.release();
+        } else {
+          iouConnectHandle_.reset();
+        }
+      }
 
       failAllWrites(getSocketClosedLocallyEx());
 
@@ -3629,13 +3648,15 @@ void AsyncSocket::handleConnect() noexcept {
   // finishes
   assert((shutdownFlags_ & SHUT_WRITE) == 0);
 
-  // In case we had a connect timeout, cancel the timeout
-  writeTimeout_.cancelTimeout();
-  // We don't use a persistent registration when waiting on a connect event,
-  // so we have been automatically unregistered now.  Update eventFlags_ to
-  // reflect reality.
-  assert(eventFlags_ == EventHandler::WRITE);
-  eventFlags_ = EventHandler::NONE;
+  if (!useIoUring_) {
+    // In case we had a connect timeout, cancel the timeout
+    writeTimeout_.cancelTimeout();
+    // We don't use a persistent registration when waiting on a connect event,
+    // so we have been automatically unregistered now.  Update eventFlags_ to
+    // reflect reality.
+    assert(eventFlags_ == EventHandler::WRITE);
+    eventFlags_ = EventHandler::NONE;
+  }
 
   // Call getsockopt() to check if the connect succeeded
   int error;
@@ -3953,8 +3974,13 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
       // cookie.
       state_ = StateEnum::CONNECTING;
       try {
-        scheduleConnectTimeout();
-        registerForConnectEvents();
+        if (!useIoUring_) {
+          scheduleConnectTimeout();
+          registerForConnectEvents();
+        } else {
+          iouConnectHandle_ = IoUringConnectHandle::create(
+              eventBase_, fd_, this, connectTimeout_);
+        }
       } catch (const AsyncSocketException& ex) {
         return WriteResult(
             WRITE_ERROR, std::make_unique<AsyncSocketException>(ex));
@@ -4562,6 +4588,22 @@ void AsyncSocket::setTosOrTrafficClass(int tosOrTrafficClass) {
 
 void AsyncSocket::setBufferCallback(BufferCallback* cb) {
   bufferCallback_ = cb;
+}
+
+void AsyncSocket::connectSuccess() {
+  DestructorGuard dg(this);
+  iouConnectHandle_.reset();
+  handleConnect();
+}
+
+void AsyncSocket::connectTimeout() {
+  DestructorGuard dg(this);
+  if (iouConnectHandle_->cancel()) {
+    iouConnectHandle_.release();
+  } else {
+    iouConnectHandle_.reset();
+  }
+  timeoutExpired();
 }
 
 std::ostream& operator<<(

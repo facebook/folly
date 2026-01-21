@@ -36,6 +36,7 @@
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/io/async/IoUringConnect.h>
 #include <folly/io/async/observer/AsyncSocketObserverContainer.h>
 #include <folly/net/NetOpsDispatcher.h>
 #include <folly/net/TcpInfo.h>
@@ -97,7 +98,7 @@ namespace folly {
 #define SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS 10
 #endif
 
-class AsyncSocket : public AsyncSocketTransport {
+class AsyncSocket : public AsyncSocketTransport, public IoUringConnectCallback {
  public:
   using UniquePtr = std::unique_ptr<AsyncSocket, Destructor>;
   using ByteEvent = AsyncSocketObserverInterface::ByteEvent;
@@ -1910,6 +1911,12 @@ class AsyncSocket : public AsyncSocketTransport {
    */
   virtual void enableByteEvents();
 
+  /*
+   * IoUringConnectCallback
+   */
+  void connectSuccess() override;
+  void connectTimeout() override;
+
   AsyncWriter::ZeroCopyEnableFunc zeroCopyEnableFunc_;
 
   // a folly::IOBuf can be used in multiple partial requests
@@ -2031,6 +2038,8 @@ class AsyncSocket : public AsyncSocketTransport {
 
   bool closeOnFailedWrite_{true};
 
+  bool useIoUring_{false};
+  IoUringConnectHandle::UniquePtr iouConnectHandle_;
   netops::DispatcherContainer netops_;
 
   folly::TcpInfoDispatcherContainer tcpInfoDispatcher_;
