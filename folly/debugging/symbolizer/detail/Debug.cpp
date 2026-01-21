@@ -22,10 +22,6 @@
 #include <dlfcn.h>
 #endif
 
-#if FOLLY_HAVE_ELF
-#include <link.h>
-#endif
-
 #if defined(__APPLE__) && !TARGET_OS_OSX
 #define FOLLY_DETAIL_HAS_R_DEBUG 0
 #elif !defined(__linux__) || !FOLLY_HAVE_ELF || !FOLLY_HAVE_DWARF
