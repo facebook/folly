@@ -796,6 +796,10 @@ void AsyncSocket::init() {
   appBytesReceived_ = 0;
   totalAppBytesScheduledForWrite_ = 0;
   sendMsgParamCallback_ = &defaultSendMsgParamsCallback;
+  if (useIoUring_ && state_ == StateEnum::ESTABLISHED) {
+    assert(iouSendHandle_ == nullptr);
+    iouSendHandle_ = IoUringSendHandle::create(eventBase_, fd_, addr_, this);
+  }
 }
 
 AsyncSocket::~AsyncSocket() {
@@ -1053,6 +1057,12 @@ void AsyncSocket::connect(
     // Perform the connect()
     address.getAddress(&addrStorage);
 
+    assert(eventBase_ != nullptr);
+    if (useIoUring_ && !iouSendHandle_) {
+      iouSendHandle_ =
+          IoUringSendHandle::create(eventBase_, fd_, address, this);
+    }
+
     if (tfoInfo_.enabled) {
       state_ = StateEnum::FAST_OPEN;
       tfoInfo_.attempted = true;
@@ -1083,7 +1093,7 @@ void AsyncSocket::connect(
   VLOG(8) << "AsyncSocket::connect succeeded immediately; this=" << this;
   assert(errMessageCallback_ == nullptr);
   assert(readCallback_ == nullptr);
-  assert(writeReqHead_ == nullptr);
+  assert(!hasPendingWrites());
   assert(iouConnectHandle_ == nullptr);
   if (state_ != StateEnum::FAST_OPEN) {
     state_ = StateEnum::ESTABLISHED;
@@ -1893,10 +1903,11 @@ void AsyncSocket::writeImpl(
   bool mustRegister = false;
   if ((state_ == StateEnum::ESTABLISHED || state_ == StateEnum::FAST_OPEN) &&
       !connecting()) {
-    if (writeReqHead_ == nullptr) {
+    if (!hasPendingWrites()) {
       // If we are established and there are no other writes pending,
       // we can attempt to perform the write immediately.
       assert(writeReqTail_ == nullptr);
+      assert(iouSendHandle_ ? iouSendHandle_->empty() : true);
       assert((eventFlags_ & EventHandler::WRITE) == 0);
 
       callbackWithState.notifyOnWrite();
@@ -1952,32 +1963,52 @@ void AsyncSocket::writeImpl(
     return invalidState(callback);
   }
 
-  // Create a new WriteRequest to add to the queue
-  WriteRequest* req;
-  try {
-    req = BytesWriteRequest::newRequest(
-        this,
-        callbackWithState,
+  if (!useIoUring_) {
+    // Create a new WriteRequest to add to the queue
+    WriteRequest* req;
+    try {
+      req = BytesWriteRequest::newRequest(
+          this,
+          callbackWithState,
+          vec + countWritten,
+          uint32_t(count - countWritten),
+          partialWritten,
+          uint32_t(bytesWritten),
+          std::move(ioBuf),
+          flags);
+    } catch (const std::exception& ex) {
+      // we mainly expect to catch std::bad_alloc here
+      AsyncSocketException tex(
+          AsyncSocketException::INTERNAL_ERROR,
+          withAddr(string("failed to append new WriteRequest: ") + ex.what()));
+      return failWrite(__func__, callback, size_t(bytesWritten), tex);
+    }
+    req->consume();
+    if (writeReqTail_ == nullptr) {
+      assert(writeReqHead_ == nullptr);
+      writeReqHead_ = writeReqTail_ = req;
+    } else {
+      writeReqTail_->append(req);
+      writeReqTail_ = req;
+    }
+  } else {
+    auto cb = callback ? callback->getReleaseIOBufCallback() : nullptr;
+    if (ioBuf) {
+      for (uint32_t i = countWritten; i != 0; --i) {
+        assert(ioBuf);
+        auto next = ioBuf->pop();
+        releaseIOBuf(std::move(ioBuf), cb);
+        ioBuf = std::move(next);
+      }
+    }
+    iouSendHandle_->write(
+        callback,
         vec + countWritten,
-        uint32_t(count - countWritten),
+        count - countWritten,
         partialWritten,
-        uint32_t(bytesWritten),
+        bytesWritten,
         std::move(ioBuf),
         flags);
-  } catch (const std::exception& ex) {
-    // we mainly expect to catch std::bad_alloc here
-    AsyncSocketException tex(
-        AsyncSocketException::INTERNAL_ERROR,
-        withAddr(string("failed to append new WriteRequest: ") + ex.what()));
-    return failWrite(__func__, callback, size_t(bytesWritten), tex);
-  }
-  req->consume();
-  if (writeReqTail_ == nullptr) {
-    assert(writeReqHead_ == nullptr);
-    writeReqHead_ = writeReqTail_ = req;
-  } else {
-    writeReqTail_->append(req);
-    writeReqTail_ = req;
   }
 
   if (bufferCallback_) {
@@ -2034,7 +2065,7 @@ void AsyncSocket::close() {
   //
   // We only need to drain pending writes if we are still in STATE_CONNECTING
   // or STATE_ESTABLISHED
-  if ((writeReqHead_ == nullptr) ||
+  if ((!hasPendingWrites()) ||
       !(state_ == StateEnum::CONNECTING || state_ == StateEnum::ESTABLISHED)) {
     closeNow();
     return;
@@ -2139,7 +2170,7 @@ void AsyncSocket::closeNow() {
       assert(eventFlags_ == EventHandler::NONE);
       assert(connectCallback_ == nullptr);
       assert(readCallback_ == nullptr);
-      assert(writeReqHead_ == nullptr);
+      assert(!hasPendingWrites());
       shutdownFlags_ |= (SHUT_READ | SHUT_WRITE);
       state_ = StateEnum::CLOSED;
       return;
@@ -2171,7 +2202,7 @@ void AsyncSocket::shutdownWrite() {
 
   // If there are no pending writes, shutdownWrite() is identical to
   // shutdownWriteNow().
-  if (writeReqHead_ == nullptr) {
+  if (!hasPendingWrites()) {
     shutdownWriteNow();
     return;
   }
@@ -3490,53 +3521,7 @@ void AsyncSocket::handleWrite() noexcept {
 
       if (writeReqHead_ == nullptr) {
         writeReqTail_ = nullptr;
-        // This is the last write request.
-        // Unregister for write events and cancel the send timer
-        // before we invoke the callback.  We have to update the state
-        // properly before calling the callback, since it may want to detach
-        // us from the EventBase.
-        if (eventFlags_ & EventHandler::WRITE) {
-          if (!updateEventRegistration(0, EventHandler::WRITE)) {
-            assert(state_ == StateEnum::ERROR);
-            return;
-          }
-          // Stop the send timeout
-          writeTimeout_.cancelTimeout();
-        }
-        assert(!writeTimeout_.isScheduled());
-
-        // If SHUT_WRITE_PENDING is set, we should shutdown the socket after
-        // we finish sending the last write request.
-        //
-        // We have to do this before invoking writeSuccess(), since
-        // writeSuccess() may detach us from our EventBase.
-        if (shutdownFlags_ & SHUT_WRITE_PENDING) {
-          assert(connectCallback_ == nullptr);
-          shutdownFlags_ |= SHUT_WRITE;
-
-          if (shutdownFlags_ & SHUT_READ) {
-            // Reads have already been shutdown.  Fully close the socket and
-            // move to STATE_CLOSED.
-            //
-            // Note: This code currently moves us to STATE_CLOSED even if
-            // close() hasn't ever been called.  This can occur if we have
-            // received EOF from the peer and shutdownWrite() has been called
-            // locally.  Should we bother staying in STATE_ESTABLISHED in this
-            // case, until close() is actually called?  I can't think of a
-            // reason why we would need to do so.  No other operations besides
-            // calling close() or destroying the socket can be performed at
-            // this point.
-            assert(readCallback_ == nullptr);
-            state_ = StateEnum::CLOSED;
-            if (fd_ != NetworkSocket()) {
-              ioHandler_.changeHandlerFD(NetworkSocket());
-              doClose();
-            }
-          } else {
-            // Reads are still enabled, so we are only doing a half-shutdown
-            netops_->shutdown(fd_, SHUT_WR);
-          }
-        }
+        sendDone();
       }
 
       // Invoke the callback
@@ -3549,34 +3534,9 @@ void AsyncSocket::handleWrite() noexcept {
     } else {
       // Partial write.
       writeReqHead_->consume();
-      if (bufferCallback_) {
-        bufferCallback_->onEgressBuffered();
-      }
-      // Stop after a partial write; it's highly likely that a subsequent
-      // write attempt will just return EAGAIN.
-      //
-      // Ensure that we are registered for write events.
-      if ((eventFlags_ & EventHandler::WRITE) == 0) {
-        if (!updateEventRegistration(EventHandler::WRITE, 0)) {
-          assert(state_ == StateEnum::ERROR);
-          return;
-        }
-      }
-
-      // Reschedule the send timeout, since we have made some write progress.
-      if (sendTimeout_ > 0) {
-        if (!writeTimeout_.scheduleTimeout(sendTimeout_)) {
-          AsyncSocketException ex(
-              AsyncSocketException::INTERNAL_ERROR,
-              withAddr("failed to reschedule write timeout"));
-          return failWrite(__func__, ex);
-        }
-      }
+      sendPartial();
       return;
     }
-  }
-  if (!writeReqHead_ && bufferCallback_) {
-    bufferCallback_->onEgressBufferCleared();
   }
 }
 
@@ -3633,10 +3593,20 @@ void AsyncSocket::handleInitialReadWrite() noexcept {
   if (writeReqHead_ && !(eventFlags_ & EventHandler::WRITE)) {
     // Call handleWrite() to perform write processing.
     handleWrite();
+  } else if (iouSendHandle_ && !iouSendHandle_->empty()) {
+    updateEventRegistration(EventHandler::WRITE, 0);
   } else if (writeReqHead_ == nullptr) {
     // Unregister for write event.
     updateEventRegistration(0, EventHandler::WRITE);
   }
+}
+
+bool AsyncSocket::hasPendingWrites() noexcept {
+  if (useIoUring_) {
+    return iouSendHandle_ && !iouSendHandle_->empty();
+  }
+
+  return writeReqHead_ != nullptr;
 }
 
 void AsyncSocket::handleConnect() noexcept {
@@ -3686,7 +3656,7 @@ void AsyncSocket::handleConnect() noexcept {
 
   // If SHUT_WRITE_PENDING is set and we don't have any write requests to
   // perform, immediately shutdown the write half of the socket.
-  if ((shutdownFlags_ & SHUT_WRITE_PENDING) && writeReqHead_ == nullptr) {
+  if ((shutdownFlags_ & SHUT_WRITE_PENDING) && !hasPendingWrites()) {
     // SHUT_READ shouldn't be set.  If close() is called on the socket while
     // we are still connecting we just abort the connect rather than waiting
     // for it to complete.
@@ -4090,6 +4060,13 @@ bool AsyncSocket::updateEventRegistration() {
   VLOG(5) << "AsyncSocket::updateEventRegistration(this=" << this
           << ", fd=" << fd_ << ", evb=" << eventBase_ << ", state=" << state_
           << ", events=" << std::hex << eventFlags_;
+  if (useIoUring_) {
+    if (iouSendHandle_) {
+      iouSendHandle_->update(eventFlags_);
+    }
+    return true;
+  }
+
   if (eventFlags_ == EventHandler::NONE) {
     if (ioHandler_.isHandlerRegistered()) {
       DCHECK(eventBase_ != nullptr);
@@ -4143,6 +4120,9 @@ void AsyncSocket::startFail() {
 
   if (eventFlags_ != EventHandler::NONE) {
     eventFlags_ = EventHandler::NONE;
+    if (iouSendHandle_) {
+      iouSendHandle_->update(eventFlags_);
+    }
     ioHandler_.unregisterHandler();
   }
   writeTimeout_.cancelTimeout();
@@ -4239,6 +4219,11 @@ void AsyncSocket::failWrite(const char* fn, const AsyncSocketException& ex) {
           << "): failed while writing in " << fn << "(): " << ex.what();
   startFail();
 
+  if (iouSendHandle_) {
+    assert(writeReqHead_ == nullptr);
+    iouSendHandle_->failWrite(ex);
+  }
+
   // Only invoke the first write callback, since the error occurred while
   // writing this request.  Let any other pending write callbacks be invoked
   // in finishFail().
@@ -4280,6 +4265,11 @@ void AsyncSocket::failWrite(
 }
 
 void AsyncSocket::failAllWrites(const AsyncSocketException& ex) {
+  if (iouSendHandle_) {
+    assert(writeReqHead_ == nullptr);
+    assert(iouSendHandle_ != nullptr);
+    iouSendHandle_->failAllWrites(ex);
+  }
   // Invoke writeError() on all write callbacks.
   // This is used when writes are forcibly shutdown with write requests
   // pending, or when an error occurs with writes pending.
@@ -4604,6 +4594,106 @@ void AsyncSocket::connectTimeout() {
     iouConnectHandle_.reset();
   }
   timeoutExpired();
+}
+
+void AsyncSocket::sendPartial(size_t bytesWritten) {
+  DestructorGuard dg(this);
+  // Only non-zero for io_uring.
+  appBytesWritten_ += bytesWritten;
+  rawBytesWritten_ += bytesWritten;
+
+  if (bufferCallback_) {
+    bufferCallback_->onEgressBuffered();
+  }
+  // Stop after a partial write; it's highly likely that a subsequent
+  // write attempt will just return EAGAIN.
+  //
+  // Ensure that we are registered for write events.
+  if (!useIoUring_ && (eventFlags_ & EventHandler::WRITE) == 0) {
+    if (!updateEventRegistration(EventHandler::WRITE, 0)) {
+      assert(state_ == StateEnum::ERROR);
+      return;
+    }
+  }
+
+  // Reschedule the send timeout, since we have made some write progress.
+  if (sendTimeout_ > 0) {
+    if (!writeTimeout_.scheduleTimeout(sendTimeout_)) {
+      AsyncSocketException ex(
+          AsyncSocketException::INTERNAL_ERROR,
+          withAddr("failed to reschedule write timeout"));
+      return failWrite(__func__, ex);
+    }
+  }
+  return;
+}
+
+void AsyncSocket::sendDone(size_t bytesWritten) {
+  DestructorGuard dg(this);
+  // Only non-zero for io_uring.
+  appBytesWritten_ += bytesWritten;
+  rawBytesWritten_ += bytesWritten;
+
+  // This is the last write request.
+  // Unregister for write events and cancel the send timer
+  // before we invoke the callback.  We have to update the state
+  // properly before calling the callback, since it may want to detach
+  // us from the EventBase.
+  if (eventFlags_ & EventHandler::WRITE) {
+    if (!updateEventRegistration(0, EventHandler::WRITE)) {
+      assert(state_ == StateEnum::ERROR);
+      return;
+    }
+    // Stop the send timeout
+    writeTimeout_.cancelTimeout();
+  }
+  assert(!writeTimeout_.isScheduled());
+
+  // If SHUT_WRITE_PENDING is set, we should shutdown the socket after
+  // we finish sending the last write request.
+  //
+  // We have to do this before invoking writeSuccess(), since
+  // writeSuccess() may detach us from our EventBase.
+  if (shutdownFlags_ & SHUT_WRITE_PENDING) {
+    assert(connectCallback_ == nullptr);
+    shutdownFlags_ |= SHUT_WRITE;
+
+    if (shutdownFlags_ & SHUT_READ) {
+      // Reads have already been shutdown.  Fully close the socket and
+      // move to STATE_CLOSED.
+      //
+      // Note: This code currently moves us to STATE_CLOSED even if
+      // close() hasn't ever been called.  This can occur if we have
+      // received EOF from the peer and shutdownWrite() has been called
+      // locally.  Should we bother staying in STATE_ESTABLISHED in this
+      // case, until close() is actually called?  I can't think of a
+      // reason why we would need to do so.  No other operations besides
+      // calling close() or destroying the socket can be performed at
+      // this point.
+      assert(readCallback_ == nullptr);
+      state_ = StateEnum::CLOSED;
+      if (fd_ != NetworkSocket()) {
+        ioHandler_.changeHandlerFD(NetworkSocket());
+        doClose();
+      }
+    } else {
+      // Reads are still enabled, so we are only doing a half-shutdown
+      netops_->shutdown(fd_, SHUT_WR);
+    }
+  }
+
+  if (!hasPendingWrites() && bufferCallback_) {
+    bufferCallback_->onEgressBufferCleared();
+  }
+}
+
+void AsyncSocket::sendErr(int err) {
+  DestructorGuard dg(this);
+  AsyncSocketException ex(
+      AsyncSocketException::INTERNAL_ERROR,
+      withAddr("async sendmsg() failed"),
+      err);
+  failWrite(__func__, ex);
 }
 
 std::ostream& operator<<(

@@ -37,6 +37,7 @@
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/IoUringConnect.h>
+#include <folly/io/async/IoUringSend.h>
 #include <folly/io/async/observer/AsyncSocketObserverContainer.h>
 #include <folly/net/NetOpsDispatcher.h>
 #include <folly/net/TcpInfo.h>
@@ -98,7 +99,10 @@ namespace folly {
 #define SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS 10
 #endif
 
-class AsyncSocket : public AsyncSocketTransport, public IoUringConnectCallback {
+class AsyncSocket
+    : public AsyncSocketTransport,
+      public IoUringSendCallback,
+      public IoUringConnectCallback {
  public:
   using UniquePtr = std::unique_ptr<AsyncSocket, Destructor>;
   using ByteEvent = AsyncSocketObserverInterface::ByteEvent;
@@ -1697,6 +1701,7 @@ class AsyncSocket : public AsyncSocketTransport, public IoUringConnectCallback {
   virtual void handleWrite() noexcept;
   virtual void handleConnect() noexcept;
   void timeoutExpired() noexcept;
+  bool hasPendingWrites() noexcept;
 
   /**
    * Handler for when the file descriptor is attached to the AsyncSocket.
@@ -1885,8 +1890,9 @@ class AsyncSocket : public AsyncSocketTransport, public IoUringConnectCallback {
 
   void drainZeroCopyQueue();
 
-  virtual void releaseIOBuf(
-      std::unique_ptr<folly::IOBuf> buf, ReleaseIOBufCallback* callback);
+  void releaseIOBuf(
+      std::unique_ptr<folly::IOBuf> buf,
+      ReleaseIOBufCallback* callback) override;
 
   ReadCode processZeroCopyRead();
   ReadCode processNormalRead();
@@ -1916,6 +1922,13 @@ class AsyncSocket : public AsyncSocketTransport, public IoUringConnectCallback {
    */
   void connectSuccess() override;
   void connectTimeout() override;
+
+  /*
+   * IoUringSendCallback
+   */
+  void sendPartial(size_t bytesWritten = 0) override;
+  void sendDone(size_t bytesWritten = 0) override;
+  void sendErr(int err) override;
 
   AsyncWriter::ZeroCopyEnableFunc zeroCopyEnableFunc_;
 
@@ -2040,6 +2053,7 @@ class AsyncSocket : public AsyncSocketTransport, public IoUringConnectCallback {
 
   bool useIoUring_{false};
   IoUringConnectHandle::UniquePtr iouConnectHandle_;
+  IoUringSendHandle::UniquePtr iouSendHandle_;
   netops::DispatcherContainer netops_;
 
   folly::TcpInfoDispatcherContainer tcpInfoDispatcher_;
