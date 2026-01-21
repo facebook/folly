@@ -6,18 +6,6 @@ oncall("fbcode_entropy_wardens_folly")
 
 fbcode_target(
     _kind = cpp_unittest,
-    name = "await_result_from_task_test",
-    srcs = ["await_result_from_task_test.cpp"],
-    deps = [
-        "//folly/coro:gtest_helpers",
-        "//folly/coro:value_or_error",
-        "//folly/coro/safe:now_task",
-        "//folly/result:coro",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
     name = "coded_rich_error_test",
     srcs = ["coded_rich_error_test.cpp"],
     deps = [
@@ -108,6 +96,24 @@ fbcode_target(
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/result:nestable_coded_rich_error",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "or_unwind_test",
+    srcs = ["or_unwind_test.cpp"],
+    deps = [
+        "//folly:utility",
+        "//folly/coro:async_generator",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:value_or_error",
+        "//folly/coro/safe:now_task",
+        "//folly/lang:must_use_immediately",
+        "//folly/lang:rvalue_reference_wrapper",
+        "//folly/portability:gtest",
+        "//folly/result:coro",
+        "//folly/result:value_only_result",
     ],
 )
 
