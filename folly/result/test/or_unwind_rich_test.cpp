@@ -54,7 +54,7 @@ TEST(OrUnwindRich, error) {
     [&]() -> result<> {
       result<int> r{non_value_result{std::logic_error{"err1"}}};
       err_line = std::source_location::current().line() + 1;
-      co_await or_unwind_rich(std::move(r), "ctx1");
+      (void)co_await or_unwind_rich(std::move(r), "ctx1");
     }(),
     expectedMsg("err1 [via] ctx1"));
 
@@ -70,7 +70,7 @@ TEST(OrUnwindRich, error) {
     [&]() -> result<> {
       result<int> r{non_value_result{std::logic_error{"err3"}}};
       err_line = std::source_location::current().line() + 1;
-      co_await or_unwind_rich(std::move(r), "x={} y={}", 10, 20);
+      (void)co_await or_unwind_rich(std::move(r), "x={} y={}", 10, 20);
     }(),
     expectedMsg("err3 [via] x=10 y=20"));
 }

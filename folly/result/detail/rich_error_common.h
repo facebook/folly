@@ -100,7 +100,7 @@ inline constexpr bool static_assert_is_valid_rich_error_type(const ActualEx*) {
       detail::has_offset0_base<ActualEx, rich_error_base>,
       "When inheriting from `rich_error_base`, that type (or its derived type) "
       "must be first in the inheritance list.");
-  // Did the user type correctly use `rich_error_hints`?
+  // Did the user-provided type correctly use `rich_error_hints`?
   //
   // Future: If you have a strong case for NOT hinting a base error class in
   // its own definition, add a bypass for the "each type must hint at least

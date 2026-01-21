@@ -129,8 +129,8 @@ class value_only_result_crtp {
   // conversion" from `result.h`.  That's because it seems very unlikely that
   // types would have implicit `U1` -> `value_only_result<U2>` conversions.
 
-  bool has_value() const { return true; }
-  bool has_stopped() const { return false; }
+  [[nodiscard]] bool has_value() const { return true; }
+  [[nodiscard]] bool has_stopped() const { return false; }
 
   // Only provide `==` since less/greater doesn't make sense for `result`.
   bool operator==(const value_only_result_crtp&) const = default;
@@ -207,45 +207,45 @@ class [[nodiscard]]
   /// Retrieve non-reference `T` -- `value_or_throw` is a synonym of
   /// `value_only`
 
-  const T& value_or_throw() const& noexcept
+  [[nodiscard]] const T& value_or_throw() const& noexcept
     requires(!std::is_reference_v<T>)
   {
     return this->value_;
   }
-  const T& value_only() const& noexcept
-    requires(!std::is_reference_v<T>)
-  {
-    return this->value_;
-  }
-
-  T& value_or_throw() & noexcept
-    requires(!std::is_reference_v<T>)
-  {
-    return this->value_;
-  }
-  T& value_only() & noexcept
+  [[nodiscard]] const T& value_only() const& noexcept
     requires(!std::is_reference_v<T>)
   {
     return this->value_;
   }
 
-  const T&& value_or_throw() const&& noexcept
+  [[nodiscard]] T& value_or_throw() & noexcept
+    requires(!std::is_reference_v<T>)
+  {
+    return this->value_;
+  }
+  [[nodiscard]] T& value_only() & noexcept
+    requires(!std::is_reference_v<T>)
+  {
+    return this->value_;
+  }
+
+  [[nodiscard]] const T&& value_or_throw() const&& noexcept
     requires(!std::is_reference_v<T>)
   {
     return std::move(this->value_);
   }
-  const T&& value_only() const&& noexcept
+  [[nodiscard]] const T&& value_only() const&& noexcept
     requires(!std::is_reference_v<T>)
   {
     return std::move(this->value_);
   }
 
-  T&& value_or_throw() && noexcept
+  [[nodiscard]] T&& value_or_throw() && noexcept
     requires(!std::is_reference_v<T>)
   {
     return std::move(this->value_);
   }
-  T&& value_only() && noexcept
+  [[nodiscard]] T&& value_only() && noexcept
     requires(!std::is_reference_v<T>)
   {
     return std::move(this->value_);
@@ -259,35 +259,35 @@ class [[nodiscard]]
   /// Lvalue result-ref propagate `const`: `const result<T&>` -> `const T&`.
   /// See a discussion of the trade-offs in `docs/result.md`.
 
-  like_t<const int&, T> value_or_throw() const& noexcept
+  [[nodiscard]] like_t<const int&, T> value_or_throw() const& noexcept
     requires std::is_lvalue_reference_v<T>
   {
     return std::as_const(this->value_.get());
   }
-  like_t<const int&, T> value_only() const& noexcept
+  [[nodiscard]] like_t<const int&, T> value_only() const& noexcept
     requires std::is_lvalue_reference_v<T>
   {
     return std::as_const(this->value_.get());
   }
 
-  T value_or_throw() & noexcept
+  [[nodiscard]] T value_or_throw() & noexcept
     requires std::is_lvalue_reference_v<T>
   {
     return this->value_.get();
   }
 
-  T value_only() & noexcept
+  [[nodiscard]] T value_only() & noexcept
     requires std::is_lvalue_reference_v<T>
   {
     return this->value_.get();
   }
 
-  T value_only() && noexcept
+  [[nodiscard]] T value_only() && noexcept
     requires std::is_lvalue_reference_v<T>
   {
     return this->value_.get();
   }
-  T value_or_throw() && noexcept
+  [[nodiscard]] T value_or_throw() && noexcept
     requires std::is_lvalue_reference_v<T>
   {
     return this->value_.get();
@@ -296,12 +296,12 @@ class [[nodiscard]]
   // R-value refs follow `folly::rvalue_reference_wrapper`.  They model
   // single-use references, and thus require `&&` qualification.
 
-  T value_or_throw() && noexcept
+  [[nodiscard]] T value_or_throw() && noexcept
     requires std::is_rvalue_reference_v<T>
   {
     return std::move(this->value_).get();
   }
-  T value_only() && noexcept
+  [[nodiscard]] T value_only() && noexcept
     requires std::is_rvalue_reference_v<T>
   {
     return std::move(this->value_).get();

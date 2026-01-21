@@ -732,18 +732,18 @@ class rich_exception_ptr_impl : private B {
   ///     leaves `this` in a moved-out, empty eptr state.
   ///
   /// Precondition: Contains an exception, or empty eptr (debug-fatal otherwise)
-  std::exception_ptr to_exception_ptr_slow() const& {
+  [[nodiscard]] std::exception_ptr to_exception_ptr_slow() const& {
     return to_exception_ptr_copy</*PartOfTryImpl=*/false>();
   }
-  std::exception_ptr to_exception_ptr_slow() && {
+  [[nodiscard]] std::exception_ptr to_exception_ptr_slow() && {
     return to_exception_ptr_move</*PartOfTryImpl=*/false>();
   }
   // PRIVATE TO `Try`: `to_exception_ptr_slow()` with edge case differences.
-  std::exception_ptr to_exception_ptr_slow(
+  [[nodiscard]] std::exception_ptr to_exception_ptr_slow(
       try_rich_exception_ptr_private_t) const& {
     return to_exception_ptr_copy</*PartOfTryImpl=*/true>();
   }
-  std::exception_ptr to_exception_ptr_slow(
+  [[nodiscard]] std::exception_ptr to_exception_ptr_slow(
       try_rich_exception_ptr_private_t) && {
     return to_exception_ptr_move</*PartOfTryImpl=*/true>();
   }
@@ -1082,7 +1082,8 @@ using rich_exception_ptr_base = rich_exception_ptr_impl<
 /// While generally aligned to `exception_wrapper`, this API is much smaller.
 /// Notably, the ONLY way to test `rich_exception_ptr` for the presence of the
 /// exception type `Ex` is via `folly::get_exception<Ex>(rich_eptr)`.
-class rich_exception_ptr final : public detail::rich_exception_ptr_base {
+class [[nodiscard]]
+rich_exception_ptr final : public detail::rich_exception_ptr_base {
   using detail::rich_exception_ptr_base::rich_exception_ptr_base;
 };
 

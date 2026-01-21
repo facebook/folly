@@ -88,7 +88,8 @@ class result_or_unwind_ref_base
       StorageRef&& r [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]) noexcept
       : storage_(static_cast<StorageRef&&>(r)) {}
 
-  decltype(auto) await_resume() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+  [[nodiscard]] decltype(auto) await_resume() noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     if constexpr (kIsNonValueResult) {
       // `await_ready()` is false, the coro gets destroyed in `await_suspend()`
       compiler_may_unsafely_assume_unreachable();
@@ -134,7 +135,7 @@ class result_or_unwind_value_base {
     requires kIsNonValueResult
       : storage_(s) {}
 
-  decltype(auto) await_resume() noexcept {
+  [[nodiscard]] decltype(auto) await_resume() noexcept {
     if constexpr (kIsNonValueResult) {
       // `await_ready()` is false, the coro gets destroyed in `await_suspend()`
       compiler_may_unsafely_assume_unreachable();
@@ -169,7 +170,7 @@ class result_or_unwind_crtp : public result_or_unwind_base<Derived, Storage> {
   using Base::await_resume;
   using Base::Base;
 
-  bool await_ready() const noexcept {
+  [[nodiscard]] bool await_ready() const noexcept {
     if constexpr (Base::kIsNonValueResult) {
       return false;
     } else {

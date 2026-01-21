@@ -33,7 +33,7 @@ namespace folly {
 
 // `co_await or_unwind(valueOnlyResFn())` returns rvalue reference
 template <typename T>
-class or_unwind<value_only_result<T>&&> final
+class [[nodiscard]] or_unwind<value_only_result<T>&&> final
     : public detail::result_or_unwind<value_only_result<T>&&> {
   using detail::result_or_unwind<value_only_result<T>&&>::result_or_unwind;
 };
@@ -42,7 +42,7 @@ or_unwind(value_only_result<T>&&) -> or_unwind<value_only_result<T>&&>;
 
 // `co_await or_unwind(res)` returns lvalue reference
 template <typename T>
-class or_unwind<value_only_result<T>&> final
+class [[nodiscard]] or_unwind<value_only_result<T>&> final
     : public detail::result_or_unwind<value_only_result<T>&> {
   using detail::result_or_unwind<value_only_result<T>&>::result_or_unwind;
 };
@@ -51,7 +51,7 @@ or_unwind(value_only_result<T>&) -> or_unwind<value_only_result<T>&>;
 
 // `co_await or_unwind(std::as_const(res))` returns lvalue reference to const
 template <typename T>
-class or_unwind<const value_only_result<T>&> final
+class [[nodiscard]] or_unwind<const value_only_result<T>&> final
     : public detail::result_or_unwind<const value_only_result<T>&> {
   using detail::result_or_unwind<const value_only_result<T>&>::result_or_unwind;
 };
@@ -65,7 +65,7 @@ or_unwind(const value_only_result<T>&)
 ///   auto my_unwind() { return or_unwind_owning{value_only_result<T>{...}}; }
 /// With `or_unwind`, this would have been a use-after-stack error.
 template <typename T>
-class or_unwind_owning<value_only_result<T>> final
+class [[nodiscard]] or_unwind_owning<value_only_result<T>> final
     : public detail::result_or_unwind_owning<value_only_result<T>> {
   using detail::result_or_unwind_owning<
       value_only_result<T>>::result_or_unwind_owning;

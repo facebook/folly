@@ -211,7 +211,7 @@ class [[nodiscard]] non_value_result {
       const immortal_rich_error_t<rich_exception_ptr, T, Args...>& err)
       : rep_{err.ptr()} {}
 
-  bool has_stopped() const {
+  [[nodiscard]] bool has_stopped() const {
     return bool{::folly::get_exception<OperationCancelled>(rep_)};
   }
 
@@ -280,7 +280,7 @@ class [[nodiscard]] non_value_result {
   /// INVARIANT: Ensure `!has_stopped()`, or you will see a debug-fatal.
   ///
   /// See `from_exception_ptr_slow` for the downsides and the rationale.
-  std::exception_ptr to_exception_ptr_slow() && {
+  [[nodiscard]] std::exception_ptr to_exception_ptr_slow() && {
     auto eptr = std::move(rep_).to_exception_ptr_slow();
     detail::dfatal_if_eptr_empty_or_stopped(eptr);
     return detail::extract_exception_ptr(std::move(eptr));
@@ -538,7 +538,7 @@ class result_crtp {
 
   /***************** Accessors for `T` `void` and non-`void` ******************/
 
-  bool has_value() const { return exp_.hasValue(); }
+  [[nodiscard]] bool has_value() const { return exp_.hasValue(); }
   // Also see `has_stopped()` below!
 
   /// Non-value access should be used SPARINGLY!
@@ -585,7 +585,9 @@ class result_crtp {
   }
 
   // Syntax sugar to minimize the chances that end-users need `non_value()`.
-  bool has_stopped() const { return !has_value() && non_value().has_stopped(); }
+  [[nodiscard]] bool has_stopped() const {
+    return !has_value() && non_value().has_stopped();
+  }
 
   /********************************* Protocols ********************************/
 
@@ -730,25 +732,25 @@ result final : public detail::result_crtp<result<T>, T> {
   }
 
   /// Retrieve non-reference `T`
-  const T& value_or_throw() const&
+  [[nodiscard]] const T& value_or_throw() const&
     requires(!std::is_reference_v<T>)
   {
     this->throw_if_no_value();
     return *this->exp_;
   }
-  T& value_or_throw() &
+  [[nodiscard]] T& value_or_throw() &
     requires(!std::is_reference_v<T>)
   {
     this->throw_if_no_value();
     return *this->exp_;
   }
-  const T&& value_or_throw() const&&
+  [[nodiscard]] const T&& value_or_throw() const&&
     requires(!std::is_reference_v<T>)
   {
     this->throw_if_no_value();
     return *std::move(this->exp_);
   }
-  T&& value_or_throw() &&
+  [[nodiscard]] T&& value_or_throw() &&
     requires(!std::is_reference_v<T>)
   {
     this->throw_if_no_value();
@@ -762,19 +764,19 @@ result final : public detail::result_crtp<result<T>, T> {
 
   /// Lvalue result-ref propagate `const`: `const result<T&>` -> `const T&`.
   /// See a discussion of the trade-offs in `docs/result.md`.
-  like_t<const int&, T> value_or_throw() const&
+  [[nodiscard]] like_t<const int&, T> value_or_throw() const&
     requires std::is_lvalue_reference_v<T>
   {
     this->throw_if_no_value();
     return std::as_const(this->exp_->get());
   }
-  T value_or_throw() &
+  [[nodiscard]] T value_or_throw() &
     requires std::is_lvalue_reference_v<T>
   {
     this->throw_if_no_value();
     return this->exp_->get();
   }
-  T value_or_throw() &&
+  [[nodiscard]] T value_or_throw() &&
     requires std::is_lvalue_reference_v<T>
   {
     this->throw_if_no_value();
@@ -783,7 +785,7 @@ result final : public detail::result_crtp<result<T>, T> {
 
   // R-value refs follow `folly::rvalue_reference_wrapper`.  They model
   // single-use references, and thus require `&&` qualification.
-  T value_or_throw() &&
+  [[nodiscard]] T value_or_throw() &&
     requires std::is_rvalue_reference_v<T>
   {
     this->throw_if_no_value();

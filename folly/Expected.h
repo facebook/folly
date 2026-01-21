@@ -1633,12 +1633,8 @@ struct PromiseBase {
   PromiseBase(PromiseBase const&) = delete;
   void operator=(PromiseBase const&) = delete;
 
-  [[nodiscard]] coro::suspend_never initial_suspend() const noexcept {
-    return {};
-  }
-  [[nodiscard]] coro::suspend_never final_suspend() const noexcept {
-    return {};
-  }
+  coro::suspend_never initial_suspend() const noexcept { return {}; }
+  coro::suspend_never final_suspend() const noexcept { return {}; }
   [[noreturn]] void unhandled_exception() {
     // Technically, throwing from unhandled_exception is underspecified:
     // https://github.com/GorNishanov/CoroutineWording/issues/17

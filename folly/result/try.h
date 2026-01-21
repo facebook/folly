@@ -33,7 +33,7 @@ namespace folly {
 
 // NB: If `T` is a reference type, this will fail with a `Try` static assert.
 template <typename T>
-Try<T> result_to_try(result<T> r) noexcept(
+[[nodiscard]] Try<T> result_to_try(result<T> r) noexcept(
     std::is_nothrow_move_constructible_v<T>) {
   if (r.has_value()) {
     if constexpr (std::is_void_v<T>) {

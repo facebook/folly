@@ -110,7 +110,7 @@ class immortal_rich_error_t final {
   constexpr static REP ptr_{&immortal_, &storage_};
 
  public:
-  constexpr static const REP& ptr() {
+  [[nodiscard]] constexpr static const REP& ptr() {
     // Has a manual test, but the build doesn't get this far.
     detail::static_assert_is_valid_rich_error_type<UserBase>(&immortal_);
     return ptr_;

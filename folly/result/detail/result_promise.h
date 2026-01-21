@@ -72,10 +72,8 @@ struct result_promise_base {
   void operator=(result_promise_base&&) = delete;
   ~result_promise_base() = default;
 
-  [[nodiscard]] std::suspend_never initial_suspend() const noexcept {
-    return {};
-  }
-  [[nodiscard]] std::suspend_never final_suspend() const noexcept { return {}; }
+  std::suspend_never initial_suspend() const noexcept { return {}; }
+  std::suspend_never final_suspend() const noexcept { return {}; }
   void unhandled_exception() noexcept {
     *value_ = non_value_result::from_current_exception();
   }

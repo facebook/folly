@@ -151,7 +151,7 @@ TEST(Result, storeAndGetStoppedResult) {
     // Using `exception_ptr`-like accessors when `has_stopped()` is debug-fatal
     if (kIsDebug) {
       EXPECT_DEATH(
-          { std::move(r).non_value().to_exception_ptr_slow(); }, deathRe);
+          { (void)std::move(r).non_value().to_exception_ptr_slow(); }, deathRe);
     } else {
       auto ew = std::move(r).non_value().to_exception_ptr_slow();
       EXPECT_TRUE(get_exception<OperationCancelled>(ew));
@@ -626,7 +626,7 @@ void test_bad_empty_result(auto bad) {
     EXPECT_THROW(bad.value_or_throw(), detail::empty_result_error);
   } else {
     EXPECT_DEATH(
-        bad.value_or_throw(), "`folly::result` had an empty underlying");
+        (void)bad.value_or_throw(), "`folly::result` had an empty underlying");
   }
   // not default-constructible:
   decltype(bad) valRes{typename decltype(bad)::value_type{}};
@@ -639,7 +639,7 @@ void test_bad_empty_result(auto bad) {
   EXPECT_TRUE(errRes != bad);
   EXPECT_TRUE(bad == bad);
   auto awaitsBad = [&]() -> result<> {
-    co_await or_unwind(std::as_const(bad));
+    (void)co_await or_unwind(std::as_const(bad));
   };
   if constexpr (!kIsDebug) {
     auto res = awaitsBad();
@@ -808,9 +808,9 @@ TEST(Result, accessError) {
   std::string msg2{"buh-bye"};
   EXPECT_EQ(msg2, get_exception<MyError>(r)->what());
 
-  EXPECT_THROW(r.value_or_throw(), MyError);
-  EXPECT_THROW(std::as_const(r).value_or_throw(), MyError);
-  EXPECT_THROW(std::move(r).value_or_throw(), MyError);
+  EXPECT_THROW((void)r.value_or_throw(), MyError);
+  EXPECT_THROW((void)std::as_const(r).value_or_throw(), MyError);
+  EXPECT_THROW((void)std::move(r).value_or_throw(), MyError);
 
   // `r` is moved out, so let's store a new error.
   r = non_value_result{MyError{"farewell"}};
@@ -897,7 +897,8 @@ TEST(Result, awaitError) {
           co_await or_unwind(non_value_result{MyError{"eep"}});
         }(),
         []() -> result<> {
-          co_await or_unwind(result<int>{non_value_result{MyError{"eep"}}});
+          (void)co_await or_unwind(
+              result<int>{non_value_result{MyError{"eep"}}});
         }()}) {
     EXPECT_EQ(std::string("eep"), get_exception<MyError>(r)->what());
   }
@@ -906,7 +907,7 @@ TEST(Result, awaitError) {
 TEST(Result, awaitRefError) {
   auto resultErrFn = []() -> result<> {
     result<std::unique_ptr<int>> resultErr{non_value_result{MyError{"e"}}};
-    co_await or_unwind(std::as_const(resultErr));
+    (void)co_await or_unwind(std::as_const(resultErr));
   };
   auto res = resultErrFn();
   EXPECT_TRUE(get_exception<MyError>(res));

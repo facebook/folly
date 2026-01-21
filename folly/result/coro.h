@@ -110,7 +110,7 @@ namespace folly {
 
 /// `co_await or_unwind(resFn())` returns a reference into `res`.
 template <typename T>
-class or_unwind<result<T>&&> final
+class [[nodiscard]] or_unwind<result<T>&&> final
     : public detail::result_or_unwind<result<T>&&> {
   using detail::result_or_unwind<result<T>&&>::result_or_unwind;
 };
@@ -119,7 +119,7 @@ or_unwind(result<T>&&) -> or_unwind<result<T>&&>;
 
 /// `co_await or_unwind(res)` returns a reference into `res`.
 template <typename T>
-class or_unwind<result<T>&> final
+class [[nodiscard]] or_unwind<result<T>&> final
     : public detail::result_or_unwind<result<T>&> {
   using detail::result_or_unwind<result<T>&>::result_or_unwind;
 };
@@ -128,7 +128,7 @@ or_unwind(result<T>&) -> or_unwind<result<T>&>;
 
 /// `co_await or_unwind(std::as_const(res))` returns a reference into `res`.
 template <typename T>
-class or_unwind<const result<T>&> final
+class [[nodiscard]] or_unwind<const result<T>&> final
     : public detail::result_or_unwind<const result<T>&> {
   using detail::result_or_unwind<const result<T>&>::result_or_unwind;
 };
@@ -140,7 +140,7 @@ or_unwind(const result<T>&) -> or_unwind<const result<T>&>;
 /// Use when you need the awaitable to own the result (e.g., when returning
 /// from a helper function that composes awaitables).
 template <typename T>
-class or_unwind_owning<result<T>> final
+class [[nodiscard]] or_unwind_owning<result<T>> final
     : public detail::result_or_unwind_owning<result<T>> {
   using detail::result_or_unwind_owning<result<T>>::result_or_unwind_owning;
 };
@@ -153,7 +153,7 @@ or_unwind_owning(result<T>) -> or_unwind_owning<result<T>>;
 /// If adding one, and add a test akin to the `result<T>` lvalue mutation check
 /// in `forEachOrUnwindVariant`.
 template <>
-class or_unwind<non_value_result&&> final
+class [[nodiscard]] or_unwind<non_value_result&&> final
     : public detail::result_or_unwind<non_value_result&&> {
   using detail::result_or_unwind<non_value_result&&>::result_or_unwind;
 };
@@ -166,7 +166,7 @@ or_unwind(non_value_result&&) -> or_unwind<non_value_result&&>;
 /// Owning awaitable for `non_value_result`. Unlike the reference variant,
 /// this can be returned from functions or stored before awaiting.
 template <>
-class or_unwind_owning<non_value_result> final
+class [[nodiscard]] or_unwind_owning<non_value_result> final
     : public detail::result_or_unwind_owning<non_value_result> {
   using detail::result_or_unwind_owning<
       non_value_result>::result_or_unwind_owning;
@@ -181,7 +181,7 @@ or_unwind_owning(stopped_result_t) -> or_unwind_owning<non_value_result>;
 // despite the lack of `_owning` in the name.  This works out because
 // `result_or_unwind_base` selects the storage base using the inner type.
 template <>
-class or_unwind<non_value_result> final
+class [[nodiscard]] or_unwind<non_value_result> final
     : public detail::result_or_unwind<non_value_result> {
   using detail::result_or_unwind<non_value_result>::result_or_unwind;
 };

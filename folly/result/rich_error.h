@@ -45,7 +45,7 @@ inline constexpr get_exception_fn<rich_error_base> get_rich_error{};
 
 // See: docs/rich_error.md
 template <typename UserBase> // must derive from `rich_error_base`
-class rich_error final
+class [[nodiscard]] rich_error final
     : public detail::rich_error_with_partial_message<UserBase>,
       public std::exception {
  private:

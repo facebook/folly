@@ -226,7 +226,7 @@ void testNonValue(MakeNonValue makeNonValue, Verify verify) {
   forEachOrUnwindVariant<InResult>(
       makeNonValue, [&](tag_t<InResult>, auto&& awaitable) {
         auto out = InResult::run([&]() -> InResult::Coro<void> {
-          co_await must_use_immediately_unsafe_mover(
+          (void)co_await must_use_immediately_unsafe_mover(
               static_cast<decltype(awaitable)>(awaitable))();
         });
         verify(out);
@@ -234,7 +234,7 @@ void testNonValue(MakeNonValue makeNonValue, Verify verify) {
   forEachOrUnwindVariant<InTask>(
       makeNonValue, [&](tag_t<InTask>, auto&& awaitable) {
         auto out = InTask::run([&]() -> InTask::Coro<void> {
-          co_await must_use_immediately_unsafe_mover(
+          (void)co_await must_use_immediately_unsafe_mover(
               static_cast<decltype(awaitable)>(awaitable))();
         });
         verify(out);

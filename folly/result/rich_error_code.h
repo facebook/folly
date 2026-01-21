@@ -389,7 +389,7 @@ template <typename Code>
 class get_rich_error_code_fn {
  public:
   template <typename T>
-  constexpr std::optional<Code> operator()(const T& t) const {
+  [[nodiscard]] constexpr std::optional<Code> operator()(const T& t) const {
     // Per `retrieve_code`, `mangled_code_` is uninitialized for reserved UUIDs!
     //
     // This was a `requires` clause, but some GCC versions have a bug where
