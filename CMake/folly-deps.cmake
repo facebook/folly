@@ -44,8 +44,11 @@ set(FOLLY_BOOST_COMPONENTS
     filesystem
     program_options
     regex
-    thread
 )
+if(WIN32)
+  list(APPEND FOLLY_BOOST_COMPONENTS thread)
+endif()
+
 find_package(Boost 1.69.0 REQUIRED
   COMPONENTS
     ${FOLLY_BOOST_COMPONENTS}
