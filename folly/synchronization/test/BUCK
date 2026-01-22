@@ -72,10 +72,10 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "barrier",
     headers = ["Barrier.h"],
+    xplat_impl = folly_xplat_library,
 )
 
 fbcode_target(

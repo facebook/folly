@@ -28,8 +28,8 @@
 #include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/system/ThreadName.h>
 
-#include <boost/thread/barrier.hpp>
 #include <fmt/format.h>
+#include <folly/synchronization/test/Barrier.h>
 
 using namespace folly;
 
@@ -584,7 +584,7 @@ TEST_F(RequestContextTest, AccessAllThreadsDestructionGuard) {
   constexpr auto kNumThreads = 128;
 
   std::vector<std::thread> threads{kNumThreads};
-  boost::barrier barrier{kNumThreads + 1};
+  folly::test::Barrier barrier{kNumThreads + 1};
 
   std::atomic<std::size_t> count{0};
   for (auto& thread : threads) {

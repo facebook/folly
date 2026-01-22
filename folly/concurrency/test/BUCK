@@ -230,9 +230,9 @@ fbcode_target(
         "//folly/lang:keep",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
+        "//folly/synchronization/test:barrier",
     ],
     external_deps = [
-        ("boost", None, "boost_thread"),
         "glog",
     ],
 )
@@ -282,6 +282,7 @@ fbcode_target(
         "//folly/init:init",
         "//folly/lang:keep",
         "//folly/portability:gflags",
+        "//folly/synchronization/test:barrier",
     ],
     external_deps = [
         ("boost", None, "boost_thread"),
@@ -298,6 +299,7 @@ fbcode_target(
         "//folly:thread_local",
         "//folly/concurrency:singleton_relaxed_counter",
         "//folly/portability:gtest",
+        "//folly/synchronization/test:barrier",
     ],
     external_deps = [
         ("boost", None, "boost_thread"),

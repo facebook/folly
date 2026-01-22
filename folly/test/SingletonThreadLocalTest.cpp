@@ -22,7 +22,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include <boost/thread/barrier.hpp>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <folly/SingletonThreadLocal.h>
 #include <folly/String.h>
@@ -187,7 +187,7 @@ TEST(SingletonThreadLocalTest, AccessAllThreads) {
   };
   using STL = SingletonThreadLocal<Obj, Tag>;
   constexpr size_t n_threads = 4;
-  boost::barrier barrier{n_threads + 1};
+  folly::test::Barrier barrier{n_threads + 1};
   std::vector<std::thread> threads{n_threads};
 
   // setup

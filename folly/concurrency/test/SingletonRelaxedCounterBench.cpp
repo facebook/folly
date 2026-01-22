@@ -19,7 +19,7 @@
 #include <cstddef>
 #include <thread>
 
-#include <boost/thread/barrier.hpp>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <folly/Benchmark.h>
 #include <folly/init/Init.h>
@@ -52,7 +52,7 @@ namespace folly {
 BENCHMARK(MultiThreadPerformance, iters) {
   BenchmarkSuspender braces;
 
-  boost::barrier barrier(1 + FLAGS_num_threads);
+  folly::test::Barrier barrier(1 + FLAGS_num_threads);
 
   std::vector<std::thread> threads(FLAGS_num_threads);
 

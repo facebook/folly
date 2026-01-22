@@ -19,7 +19,7 @@
 #include <chrono>
 #include <thread>
 
-#include <boost/thread/barrier.hpp>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <folly/Benchmark.h>
 #include <folly/Range.h>
@@ -59,7 +59,7 @@ unsigned int append(unsigned int iters, size_t bufSize, size_t nThreads) {
   iters = 1000000;
   auto buffer = std::make_shared<DigestBuilder<FreeDigest>>(bufSize, 100);
 
-  auto barrier = std::make_shared<boost::barrier>(nThreads + 1);
+  auto barrier = std::make_shared<folly::test::Barrier>(nThreads + 1);
 
   std::vector<std::thread> threads;
   threads.reserve(nThreads);

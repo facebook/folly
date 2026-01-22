@@ -638,9 +638,9 @@ non_fbcode_target(
     raw_headers = ["RequestContextHelper.h"],
     deps = [
         "fbsource//xplat/folly/portability:gtest",
-        "//third-party/boost:boost_thread",
         "//xplat/folly:memory",
         "//xplat/folly/io/async:async_base",
+        "//xplat/folly/synchronization/test:barrier",
         "//xplat/folly/system:thread_name",
     ],
     exported_deps = ["//xplat/folly/io/async:request_context"],
@@ -1583,10 +1583,8 @@ fbcode_target(
         "//folly/io/async:request_context",
         "//folly/portability:gtest",
         "//folly/synchronization:relaxed_atomic",
+        "//folly/synchronization/test:barrier",
         "//folly/system:thread_name",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
     ],
 )
 

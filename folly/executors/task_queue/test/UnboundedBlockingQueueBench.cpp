@@ -21,8 +21,8 @@
 #include <thread>
 #include <vector>
 
-#include <boost/thread/barrier.hpp>
 #include <glog/logging.h>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <folly/Benchmark.h>
 #include <folly/init/Init.h>
@@ -56,7 +56,7 @@ BENCHMARK(drain_full_queue, iters) {
   std::vector<size_t> counts(nthreads);
   std::vector<std::thread> threads(nthreads);
 
-  boost::barrier barrier(1 + nthreads);
+  folly::test::Barrier barrier(1 + nthreads);
 
   for (auto i = 0u; i < nthreads; ++i) {
     threads[i] = std::thread([&, i] {
