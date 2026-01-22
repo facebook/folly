@@ -687,6 +687,7 @@ class BuildCmd(ProjectCmdBase):
                 )
 
                 extra_b2_args = args.extra_b2_args or []
+                cmake_targets = args.cmake_target or ["install"]
 
                 if sources_changed or reconfigure or not os.path.exists(built_marker):
                     if os.path.exists(built_marker):
@@ -715,7 +716,7 @@ class BuildCmd(ProjectCmdBase):
                         dep_manifests,
                         final_install_prefix=loader.get_project_install_prefix(m),
                         extra_cmake_defines=extra_cmake_defines,
-                        cmake_target=args.cmake_target if m == manifest else "install",
+                        cmake_targets=(cmake_targets if m == manifest else ["install"]),
                         extra_b2_args=extra_b2_args,
                     )
                     builder.build(reconfigure=reconfigure)
@@ -726,7 +727,7 @@ class BuildCmd(ProjectCmdBase):
                     # for the project to run with different cmake_targets to trigger
                     # cmake
                     has_built_marker = False
-                    if not (m == manifest and args.cmake_target != "install"):
+                    if not (m == manifest and "install" not in cmake_targets):
                         with open(built_marker, "w") as f:
                             f.write(project_hash)
                             has_built_marker = True
@@ -860,8 +861,9 @@ class BuildCmd(ProjectCmdBase):
         )
         parser.add_argument(
             "--cmake-target",
-            help=("Target for cmake build."),
-            default="install",
+            help=("Repeatable argument that specifies targets for cmake build."),
+            default=[],
+            action="append",
         )
         parser.add_argument(
             "--extra-b2-args",

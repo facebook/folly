@@ -524,7 +524,7 @@ class ManifestParser(object):
         dep_manifests,
         final_install_prefix=None,
         extra_cmake_defines=None,
-        cmake_target=None,
+        cmake_targets=None,
         extra_b2_args=None,
     ):
         builder = self.get_builder_name(ctx)
@@ -621,7 +621,7 @@ class ManifestParser(object):
                 defines,
                 final_install_prefix,
                 extra_cmake_defines,
-                cmake_target,
+                cmake_targets,
             )
 
         if builder == "python-wheel":

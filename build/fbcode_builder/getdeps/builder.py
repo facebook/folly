@@ -685,7 +685,7 @@ if __name__ == "__main__":
         defines,
         final_install_prefix=None,
         extra_cmake_defines=None,
-        cmake_target="install",
+        cmake_targets=None,
     ) -> None:
         super(CMakeBuilder, self).__init__(
             loader,
@@ -701,7 +701,7 @@ if __name__ == "__main__":
         self.defines = defines or {}
         if extra_cmake_defines:
             self.defines.update(extra_cmake_defines)
-        self.cmake_target = cmake_target
+        self.cmake_targets = cmake_targets or ["install"]
 
         if build_opts.is_windows():
             try:
@@ -897,12 +897,9 @@ if __name__ == "__main__":
             self._check_cmd([cmake, self.src_dir] + define_args, env=env)
 
         self._check_cmd(
-            [
-                cmake,
-                "--build",
-                self.build_dir,
-                "--target",
-                self.cmake_target,
+            [cmake, "--build", self.build_dir, "--target"]
+            + self.cmake_targets
+            + [
                 "--config",
                 self.build_opts.build_type,
                 "-j",
