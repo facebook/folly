@@ -37,6 +37,12 @@ FOLLY_GFLAGS_DEFINE_bool(
     true,
     "CPUThreadPoolExecutor will use ThrottledLifoSem by default");
 
+FOLLY_GFLAGS_DEFINE_bool(
+    folly_cputhreadpoolexecutor_always_dequeue_with_timeout,
+    false,
+    "Always use BlockingQueue::try_take_for() even when the pool cannot be "
+    "scaled down. Only for testing purposes");
+
 namespace folly {
 
 const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
@@ -306,7 +312,9 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
     threadIdCollector_->removeTid(folly::getOSThreadID());
   });
   while (true) {
-    auto task = threadsCanTimeout_.load(std::memory_order_relaxed)
+    auto task =
+        (threadsCanTimeout_.load(std::memory_order_relaxed) ||
+         FLAGS_folly_cputhreadpoolexecutor_always_dequeue_with_timeout)
         ? taskQueue_->try_take_for(
               threadTimeout_.load(std::memory_order_relaxed))
         : taskQueue_->take();
