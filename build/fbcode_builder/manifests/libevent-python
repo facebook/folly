@@ -1,0 +1,43 @@
+[manifest]
+name = libevent-python
+
+# NOTE: System packages (debs, rpms) removed because they don't include
+# LibeventConfig.cmake which is required by find_package(Libevent REQUIRED CONFIG).
+# Building from source ensures CMake config files are present.
+
+[homebrew]
+libevent
+
+[pps]
+libevent
+
+# Note that the CMakeLists.txt file is present only in
+# git repo and not in the release tarball, so take care
+# to use the github generated source tarball rather than
+# the explicitly uploaded source tarball
+[download]
+url = https://github.com/libevent/libevent/releases/download/release-2.1.12-stable/libevent-2.1.12-stable.tar.gz
+sha256 = 92e6de1be9ec176428fd2367677e61ceffc2ee1cb119035037a27d346b0403bb
+
+[build]
+builder = cmake
+subdir = libevent-2.1.12-stable
+
+[build.not(os=linux)]
+builder = nop
+
+[cmake.defines]
+EVENT__DISABLE_TESTS = ON
+EVENT__DISABLE_BENCHMARK = ON
+EVENT__DISABLE_SAMPLES = ON
+EVENT__DISABLE_REGRESS = ON
+CMAKE_POSITION_INDEPENDENT_CODE=ON
+
+[cmake.defines.shared_libs=on]
+EVENT__BUILD_SHARED_LIBRARIES = ON
+
+[cmake.defines.os=windows]
+EVENT__LIBRARY_TYPE = STATIC
+
+[dependencies.not(any(os=linux, os=freebsd))]
+openssl

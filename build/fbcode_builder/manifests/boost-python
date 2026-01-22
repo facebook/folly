@@ -1,0 +1,118 @@
+[manifest]
+name = boost-python
+
+[download.not(os=windows)]
+url = https://archives.boost.io/release/1.83.0/source/boost_1_83_0.tar.gz
+sha256 = c0685b68dd44cc46574cce86c4e17c0f611b15e195be9848dfd0769a0a207628
+
+[download.os=windows]
+url = https://archives.boost.io/release/1.83.0/source/boost_1_83_0.zip
+sha256 = c86bd9d9eef795b4b0d3802279419fde5221922805b073b9bd822edecb1ca28e
+
+[preinstalled.env]
+# Here we list the acceptable versions that cmake needs a hint to find
+BOOST_ROOT_1_69_0
+BOOST_ROOT_1_83_0
+
+[homebrew]
+boost
+# Boost cmake detection on homebrew adds this as requirement: https://github.com/Homebrew/homebrew-core/issues/67427#issuecomment-754187345
+icu4c
+
+[pps]
+boost
+
+[rpms.all(distro=centos_stream,distro_vers=8)]
+boost169
+boost169-math
+boost169-test
+boost169-fiber
+boost169-graph
+boost169-log
+boost169-openmpi
+boost169-timer
+boost169-chrono
+boost169-locale
+boost169-thread
+boost169-atomic
+boost169-random
+boost169-static
+boost169-contract
+boost169-date-time
+boost169-iostreams
+boost169-container
+boost169-coroutine
+boost169-filesystem
+boost169-system
+boost169-stacktrace
+boost169-regex
+boost169-devel
+boost169-context
+boost169-python3-devel
+boost169-type_erasure
+boost169-wave
+boost169-python3
+boost169-serialization
+boost169-program-options
+
+[rpms.distro=fedora]
+boost-devel
+boost-static
+
+[build]
+builder = boost
+job_weight_mib = 512
+patchfile = boost_1_83_0.patch
+
+[build.not(os=linux)]
+builder = nop
+
+[b2.args]
+--with-atomic
+--with-chrono
+--with-container
+--with-context
+--with-contract
+--with-coroutine
+--with-date_time
+--with-exception
+--with-fiber
+--with-filesystem
+--with-graph
+--with-graph_parallel
+--with-iostreams
+--with-locale
+--with-log
+--with-math
+--with-mpi
+--with-program_options
+--with-python
+--with-random
+--with-regex
+--with-serialization
+--with-stacktrace
+--with-system
+--with-test
+--with-thread
+--with-timer
+--with-type_erasure
+
+[bootstrap.args.os=darwin]
+# Not really gcc, but CI puts a broken clang in the PATH, and saying gcc
+# here selects the correct one from Xcode.
+--with-toolset=gcc
+
+[b2.args.os=linux]
+# RHEL hardened gcc is not compatible with PCH
+# https://bugzilla.redhat.com/show_bug.cgi?id=1806545
+pch=off
+# Python extensions need -fPIC for static library linking into shared objects
+cxxflags="-fPIC"
+
+[b2.args.os=darwin]
+toolset=clang
+# Since Xcode 15.3 std::piecewise_construct is only visible in C++17 and later modes
+cxxflags="-DBOOST_UNORDERED_HAVE_PIECEWISE_CONSTRUCT=0"
+
+[b2.args.all(os=windows,fb=on)]
+toolset=msvc-14.3

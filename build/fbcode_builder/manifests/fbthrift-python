@@ -1,0 +1,60 @@
+[manifest]
+name = fbthrift-python
+fbsource_path = xplat/thrift
+shipit_project = fbthrift
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/fbthrift.git
+
+[cargo]
+cargo_config_file =  source/thrift/lib/rust/.cargo/config.toml
+
+[crate.pathmap]
+fbthrift = thrift/lib/rust
+
+[build]
+builder = cmake
+job_weight_mib = 2048
+
+[build.not(os=linux)]
+builder = nop
+
+[cmake.defines.all(not(os=windows),test=on)]
+enable_tests=ON
+
+[cmake.defines.any(os=windows,test=off)]
+enable_tests=OFF
+
+[cmake.defines.os=linux]
+thrift_python=ON
+enable_tests=ON
+
+[dependencies]
+fizz-python
+fmt-python
+folly-python
+googletest
+libsodium
+wangle-python
+zstd-python
+mvfst-python
+xxhash
+# Thrift also depends on openssl but since the latter requires a platform-
+# specific configuration we rely on the folly manifest to provide this
+# dependency to avoid duplication.
+
+[dependencies.os=linux]
+libaio
+libevent-python
+proxygen-python
+
+[shipit.pathmap]
+xplat/thrift/public_tld = .
+xplat/thrift = thrift
+
+[shipit.strip]
+^xplat/thrift/thrift-config\.h$
+^xplat/thrift/perf/canary.py$
+^xplat/thrift/perf/loadtest.py$
+^xplat/thrift/.castle/.*

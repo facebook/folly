@@ -1,0 +1,34 @@
+[manifest]
+name = wangle-python
+fbsource_path = fbcode/wangle
+shipit_project = wangle
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/wangle.git
+
+[build]
+builder = cmake
+subdir = wangle
+
+[build.not(os=linux)]
+builder = nop
+
+[cmake.defines.test=on]
+BUILD_TESTS=ON
+
+[cmake.defines.test=off]
+BUILD_TESTS=OFF
+
+[cmake.defines.os=linux]
+CMAKE_POSITION_INDEPENDENT_CODE = ON
+BUILD_SHARED_LIBS = ON
+
+[dependencies]
+folly-python
+googletest
+fizz-python
+
+[shipit.pathmap]
+fbcode/wangle/public_tld = .
+fbcode/wangle = wangle

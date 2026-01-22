@@ -1,0 +1,45 @@
+[manifest]
+name = fizz-python
+fbsource_path = fbcode/fizz
+shipit_project = fizz
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebookincubator/fizz.git
+
+[build]
+builder = cmake
+subdir = fizz
+
+[build.not(os=linux)]
+builder = nop
+
+[cmake.defines]
+BUILD_EXAMPLES = OFF
+
+[cmake.defines.os=linux]
+CMAKE_POSITION_INDEPENDENT_CODE = ON
+BUILD_SHARED_LIBS = ON
+
+[cmake.defines.test=on]
+BUILD_TESTS = ON
+
+[cmake.defines.all(os=windows, test=on)]
+BUILD_TESTS = OFF
+
+[cmake.defines.test=off]
+BUILD_TESTS = OFF
+
+[dependencies]
+folly-python
+liboqs
+libsodium
+zlib-python
+zstd-python
+
+[dependencies.all(test=on, not(os=windows))]
+googletest
+
+[shipit.pathmap]
+fbcode/fizz/public_tld = .
+fbcode/fizz = fizz

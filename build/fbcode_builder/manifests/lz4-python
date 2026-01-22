@@ -1,0 +1,31 @@
+[manifest]
+name = lz4-python
+
+[homebrew]
+lz4
+
+[rpms]
+lz4-devel
+# centos 8 and centos_stream 9 are missing this rpm
+[rpms.not(any(all(distro=centos,distro_vers=8),all(distro=centos_stream,distro_vers=9)))]
+lz4-static
+
+[debs]
+liblz4-dev
+
+[pps]
+lz4
+
+[download]
+url = https://github.com/lz4/lz4/releases/download/v1.10.0/lz4-1.10.0.tar.gz
+sha256 = 537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b
+
+[build]
+builder = cmake
+subdir = lz4-1.10.0/build/cmake
+
+[build.not(os=linux)]
+builder = nop
+
+[cmake.defines]
+CMAKE_POSITION_INDEPENDENT_CODE=ON

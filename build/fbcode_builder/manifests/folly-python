@@ -1,0 +1,84 @@
+[manifest]
+name = folly-python
+fbsource_path = fbcode/folly
+shipit_project = folly
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/folly.git
+
+[build]
+builder = cmake
+job_weight_mib = 1024
+
+[build.not(os=linux)]
+builder = nop
+
+[dependencies]
+gflags
+glog
+googletest
+boost-python
+libdwarf-python
+libevent-python
+libsodium
+double-conversion-python
+fast_float
+fmt-python
+lz4-python
+snappy
+zstd-python
+# no openssl or zlib in the linux case, why?
+# these are usually installed on the system
+# and are the easiest system deps to pull in.
+# In the future we want to be able to express
+# that a system dep is sufficient in the manifest
+# for eg: openssl and zlib, but for now we don't
+# have it.
+
+# macOS doesn't expose the openssl api so we need
+# to build our own.
+[dependencies.os=darwin]
+openssl
+
+# Windows has neither openssl nor zlib, so we get
+# to provide both
+[dependencies.os=windows]
+openssl
+zlib
+
+[dependencies.os=linux]
+libaio
+libiberty-python
+libunwind
+
+# xz depends on autoconf which does not build on
+# Windows
+[dependencies.not(os=windows)]
+xz
+
+[shipit.pathmap]
+fbcode/folly/public_tld = .
+fbcode/folly = folly
+
+[shipit.strip]
+^fbcode/folly/folly-config\.h$
+^fbcode/folly/public_tld/build/facebook_.*
+
+[cmake.defines.os=linux]
+PYTHON_EXTENSIONS=ON
+BUILD_SHARED_LIBS=ON
+
+[cmake.defines.not(os=windows)]
+BOOST_LINK_STATIC=ON
+
+[cmake.defines.os=freebsd]
+LIBDWARF_FOUND=NO
+
+[cmake.defines.test=on]
+BUILD_TESTS=ON
+BUILD_BENCHMARKS=OFF
+
+[cmake.defines.test=off]
+BUILD_TESTS=OFF
+BUILD_BENCHMARKS=OFF

@@ -1,0 +1,26 @@
+[manifest]
+name = fmt-python
+
+[download]
+url = https://github.com/fmtlib/fmt/archive/refs/tags/12.1.0.tar.gz
+sha256 = ea7de4299689e12b6dddd392f9896f08fb0777ac7168897a244a6d6085043fea
+
+[build]
+builder = cmake
+subdir = fmt-12.1.0
+
+[build.not(os=linux)]
+builder = nop
+
+[cmake.defines]
+FMT_TEST = OFF
+FMT_DOC = OFF
+# Build as shared library so Python extensions can find fmt symbols at runtime
+# (fmt uses -fvisibility=hidden, so static linking leaves symbols unexported)
+BUILD_SHARED_LIBS = ON
+
+[homebrew]
+fmt
+
+[rpms.distro=fedora]
+fmt-devel

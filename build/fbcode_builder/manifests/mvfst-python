@@ -1,0 +1,39 @@
+[manifest]
+name = mvfst-python
+fbsource_path = fbcode/quic
+shipit_project = mvfst
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/mvfst.git
+
+[build]
+builder = cmake
+subdir = .
+
+[build.not(os=linux)]
+builder = nop
+
+[cmake.defines.test=on]
+BUILD_TESTS = ON
+
+[cmake.defines.all(os=windows, test=on)]
+BUILD_TESTS = OFF
+
+[cmake.defines.test=off]
+BUILD_TESTS = OFF
+
+[cmake.defines.os=linux]
+CMAKE_POSITION_INDEPENDENT_CODE = ON
+BUILD_SHARED_LIBS = ON
+
+[dependencies]
+folly-python
+fizz-python
+
+[dependencies.all(test=on, not(os=windows))]
+googletest
+
+[shipit.pathmap]
+fbcode/quic/public_root = .
+fbcode/quic = quic

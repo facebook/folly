@@ -1,0 +1,45 @@
+[manifest]
+name = proxygen-python
+fbsource_path = fbcode/proxygen
+shipit_project = proxygen
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/proxygen.git
+
+[build]
+builder = cmake
+subdir = .
+job_weight_mib = 3072
+
+[build.not(os=linux)]
+builder = nop
+
+[cmake.defines.test=on]
+BUILD_TESTS = ON
+
+[cmake.defines.test=off]
+BUILD_TESTS = OFF
+
+[cmake.defines]
+BUILD_SAMPLES = OFF
+
+[cmake.defines.os=linux]
+CMAKE_POSITION_INDEPENDENT_CODE = ON
+BUILD_SHARED_LIBS = ON
+
+[dependencies]
+zlib-python
+gperf
+folly-python
+fizz-python
+wangle-python
+mvfst-python
+c-ares
+
+[dependencies.test=on]
+googletest
+
+[shipit.pathmap]
+fbcode/proxygen/public_tld = .
+fbcode/proxygen = proxygen
