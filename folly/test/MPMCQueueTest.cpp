@@ -926,7 +926,10 @@ static void lc_step(int lineno, int what = NOTHING, int what2 = NOTHING) {
   lc_snap();
 }
 
+template <typename R>
 struct Lifecycle {
+  using IsRelocatable = R;
+
   bool constructed;
 
   Lifecycle() noexcept : constructed(true) { ++lc_counts[DEFAULT_CONSTRUCTOR]; }
@@ -962,13 +965,14 @@ struct Lifecycle {
   }
 };
 
+template <typename R>
 void runPerfectForwardingTest() {
   lc_snap();
   EXPECT_EQ(lc_outstanding(), 0);
 
   {
     // Non-dynamic only. False positive for dynamic.
-    MPMCQueue<Lifecycle, std::atomic> queue(50);
+    MPMCQueue<Lifecycle<R>, std::atomic> queue(50);
     LIFECYCLE_STEP(NOTHING);
 
     for (int pass = 0; pass < 10; ++pass) {
@@ -980,7 +984,7 @@ void runPerfectForwardingTest() {
         LIFECYCLE_STEP(TWO_ARG_CONSTRUCTOR);
 
         {
-          Lifecycle src;
+          Lifecycle<R> src;
           LIFECYCLE_STEP(DEFAULT_CONSTRUCTOR);
           queue.blockingWrite(std::move(src));
           LIFECYCLE_STEP(MOVE_CONSTRUCTOR);
@@ -988,7 +992,7 @@ void runPerfectForwardingTest() {
         LIFECYCLE_STEP(DESTRUCTOR);
 
         {
-          Lifecycle src;
+          Lifecycle<R> src;
           LIFECYCLE_STEP(DEFAULT_CONSTRUCTOR);
           queue.blockingWrite(src);
           LIFECYCLE_STEP(COPY_CONSTRUCTOR);
@@ -1005,11 +1009,16 @@ void runPerfectForwardingTest() {
 
       for (int i = 0; i < 50; ++i) {
         {
-          Lifecycle node;
+          Lifecycle<R> node;
           LIFECYCLE_STEP(DEFAULT_CONSTRUCTOR);
 
           queue.blockingRead(node);
-          LIFECYCLE_STEP(DESTRUCTOR, MOVE_OPERATOR);
+          if (R::value) {
+            // relocatable, moved via memcpy
+            LIFECYCLE_STEP(DESTRUCTOR);
+          } else {
+            LIFECYCLE_STEP(DESTRUCTOR, MOVE_OPERATOR);
+          }
         }
         LIFECYCLE_STEP(DESTRUCTOR);
       }
@@ -1019,7 +1028,7 @@ void runPerfectForwardingTest() {
 
     // put one element back before destruction
     {
-      Lifecycle src(3, "three");
+      Lifecycle<R> src(3, "three");
       LIFECYCLE_STEP(TWO_ARG_CONSTRUCTOR);
       queue.write(std::move(src));
       LIFECYCLE_STEP(MOVE_CONSTRUCTOR);
@@ -1032,7 +1041,11 @@ void runPerfectForwardingTest() {
 }
 
 TEST(MPMCQueue, perfectForwarding) {
-  runPerfectForwardingTest();
+  runPerfectForwardingTest<std::false_type>();
+}
+
+TEST(MPMCQueue, perfectForwardingRelocatable) {
+  runPerfectForwardingTest<std::true_type>();
 }
 
 template <bool Dynamic = false>
@@ -1041,14 +1054,15 @@ void run_queue_moving() {
   EXPECT_EQ(lc_outstanding(), 0);
 
   {
-    MPMCQueue<Lifecycle, std::atomic, Dynamic> a(50);
+    MPMCQueue<Lifecycle<std::false_type>, std::atomic, Dynamic> a(50);
     LIFECYCLE_STEP(NOTHING);
 
     a.blockingWrite();
     LIFECYCLE_STEP(DEFAULT_CONSTRUCTOR);
 
     // move constructor
-    MPMCQueue<Lifecycle, std::atomic, Dynamic> b = std::move(a);
+    MPMCQueue<Lifecycle<std::false_type>, std::atomic, Dynamic> b =
+        std::move(a);
     LIFECYCLE_STEP(NOTHING);
     EXPECT_EQ(a.capacity(), 0);
     EXPECT_EQ(a.size(), 0);
@@ -1059,7 +1073,7 @@ void run_queue_moving() {
     LIFECYCLE_STEP(DEFAULT_CONSTRUCTOR);
 
     // move operator
-    MPMCQueue<Lifecycle, std::atomic, Dynamic> c;
+    MPMCQueue<Lifecycle<std::false_type>, std::atomic, Dynamic> c;
     LIFECYCLE_STEP(NOTHING);
     c = std::move(b);
     LIFECYCLE_STEP(NOTHING);
@@ -1067,14 +1081,14 @@ void run_queue_moving() {
     EXPECT_EQ(c.size(), 2);
 
     {
-      Lifecycle dst;
+      Lifecycle<std::false_type> dst;
       LIFECYCLE_STEP(DEFAULT_CONSTRUCTOR);
       c.blockingRead(dst);
       LIFECYCLE_STEP(DESTRUCTOR, MOVE_OPERATOR);
 
       {
         // swap
-        MPMCQueue<Lifecycle, std::atomic, Dynamic> d(10);
+        MPMCQueue<Lifecycle<std::false_type>, std::atomic, Dynamic> d(10);
         LIFECYCLE_STEP(NOTHING);
         std::swap(c, d);
         LIFECYCLE_STEP(NOTHING);
