@@ -808,12 +808,12 @@ void timerUserDataFreeFunction(void* v) {
 
 void IoUringBackend::addTimerEvent(
     Event& event, const struct timeval* timeout) {
-  auto getTimerExpireTime = [](const auto& timeout) {
+  auto getTimerExpireTime = [](const auto& timeout2) {
     using namespace std::chrono;
     auto now = steady_clock::now();
 
-    auto us = duration_cast<microseconds>(seconds(timeout.tv_sec)) +
-        microseconds(timeout.tv_usec);
+    auto us = duration_cast<microseconds>(seconds(timeout2.tv_sec)) +
+        microseconds(timeout2.tv_usec);
     return now + us;
   };
 
