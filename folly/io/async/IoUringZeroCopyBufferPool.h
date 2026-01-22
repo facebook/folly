@@ -21,7 +21,12 @@
 #include <folly/io/async/Liburing.h>
 
 #if FOLLY_HAS_LIBURING
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wnested-anon-types")
+FOLLY_CLANG_DISABLE_WARNING("-Wzero-length-array")
+FOLLY_GCC_DISABLE_WARNING("-Wshadow")
 #include <liburing.h> // @manual
+FOLLY_POP_WARNING
 
 namespace folly {
 
