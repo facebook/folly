@@ -54,6 +54,7 @@ fbcode/fboss = fboss
 ^fbcode/fboss/github/docs/.*
 ^fbcode/fboss/oss/.*
 ^fbcode/fboss/github/.github/.*
+^fbcode/fboss/github/fboss-image/.*
 ^fbcode/fboss/github/.pre-commit-config.yaml
 ^fbcode/fboss/github/requirements-dev.txt
 
