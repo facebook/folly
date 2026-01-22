@@ -315,6 +315,16 @@ class ManifestLoader(object):
 
         manifest.update_hash(hasher, ctx)
 
+        # If a patchfile is specified, include its contents in the hash
+        patchfile = manifest.get("build", "patchfile", ctx=ctx)
+        if patchfile:
+            patchfile_path = os.path.join(
+                self.build_opts.fbcode_builder_dir, "patches", patchfile
+            )
+            if os.path.exists(patchfile_path):
+                with open(patchfile_path, "rb") as f:
+                    hasher.update(f.read())
+
         dep_list = manifest.get_dependencies(ctx)
         for dep in dep_list:
             dep_manifest = self.load_manifest(dep)
