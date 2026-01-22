@@ -705,8 +705,11 @@ class CommutativeWrapperAwaitable {
   template <
       typename T2 = T,
       std::enable_if_t<!folly::ext::must_use_immediately_v<T2>, int> = 0,
-      typename Result = decltype(folly::coro::co_withCancellation(
-          FOLLY_DECLVAL(const folly::CancellationToken&), FOLLY_DECLVAL(T2&&)))>
+      // "WART:" in `WithCancellation.h` explains the remove-reference
+      typename Result =
+          std::remove_reference_t<decltype(folly::coro::co_withCancellation(
+              FOLLY_DECLVAL(const folly::CancellationToken&),
+              FOLLY_DECLVAL(T2&&)))>>
   friend Derived<Result> co_withCancellation(
       const folly::CancellationToken& cancelToken, Derived<T>&& awaitable) {
     return Derived<Result>{
@@ -721,7 +724,7 @@ class CommutativeWrapperAwaitable {
       typename Result = decltype(folly::coro::co_withCancellation(
           FOLLY_DECLVAL(const folly::CancellationToken&), FOLLY_DECLVAL(T2)))>
   friend Derived<Result> co_withCancellation(
-      const folly::CancellationToken& cancelToken, Derived<T>&& awaitable) {
+      const folly::CancellationToken& cancelToken, Derived<T> awaitable) {
     return Derived<Result>{
         std::in_place, [&]() -> decltype(auto) {
           return folly::coro::co_withCancellation(
@@ -730,8 +733,8 @@ class CommutativeWrapperAwaitable {
                   std::move(awaitable.inner_))());
         }};
   }
-  // These overloads exist to avoid unnecessarily copying `cancelToken`, which
-  // has atomic refcount costs.
+  // These `CancellationToken&&` overloads exist to avoid unnecessarily copying
+  // `cancelToken`, which has atomic refcount costs.
   //  - Taking it by-value would force unnecessary token copies for underlying
   //    awaitables that ignore the token.
   //  - If we merged the overloads into a single template, overload resolution
@@ -740,8 +743,10 @@ class CommutativeWrapperAwaitable {
   template <
       typename T2 = T,
       std::enable_if_t<!folly::ext::must_use_immediately_v<T2>, int> = 0,
-      typename Result = decltype(folly::coro::co_withCancellation(
-          FOLLY_DECLVAL(folly::CancellationToken&&), FOLLY_DECLVAL(T2&&)))>
+      // "WART:" in `WithCancellation.h` explains the remove-reference
+      typename Result =
+          std::remove_reference_t<decltype(folly::coro::co_withCancellation(
+              FOLLY_DECLVAL(folly::CancellationToken&&), FOLLY_DECLVAL(T2&&)))>>
   friend Derived<Result> co_withCancellation(
       folly::CancellationToken&& cancelToken, Derived<T>&& awaitable) {
     return Derived<Result>{
@@ -756,7 +761,7 @@ class CommutativeWrapperAwaitable {
       typename Result = decltype(folly::coro::co_withCancellation(
           FOLLY_DECLVAL(folly::CancellationToken&&), FOLLY_DECLVAL(T2)))>
   friend Derived<Result> co_withCancellation(
-      folly::CancellationToken&& cancelToken, Derived<T>&& awaitable) {
+      folly::CancellationToken&& cancelToken, Derived<T> awaitable) {
     return Derived<Result>{
         std::in_place, [&]() -> decltype(auto) {
           return folly::coro::co_withCancellation(

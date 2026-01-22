@@ -42,6 +42,10 @@ namespace adl {
 template <
     typename Awaitable,
     std::enable_if_t<!folly::ext::must_use_immediately_v<Awaitable>, int> = 0>
+// WART: The `Awaitable&&` overload must return `Awaitable&&` to support
+// `Baton`s, which is immovable and awaitable only by lvalue.  We could remove
+// this, and simplify other code, by migrating `Baton`s to emit an explicit
+// must-use-immediately awaitable instead of awaiting them by lvalue.
 Awaitable&& co_withCancellation(
     const folly::CancellationToken&, Awaitable&& awaitable) noexcept {
   return static_cast<Awaitable&&>(awaitable);
