@@ -48,6 +48,8 @@ TEST(ValueOnlyResult, ofVoid) {
 
     r3.copy().value_or_throw();
     r3.copy().value_only();
+
+    EXPECT_TRUE(result<void>(r3).has_value()); // explicit conversion to result
   }
 }
 
@@ -75,6 +77,9 @@ TEST(ValueOnlyResult, movable) {
   auto mIntPtr = std::move(mIntPtrSrc);
   EXPECT_EQ(1337, *mIntPtr.value_or_throw());
   EXPECT_EQ(1337, *mIntPtr.value_only());
+
+  EXPECT_EQ( // explicit conversion to `result`
+      1337, *result<std::unique_ptr<int>>{std::move(mIntPtr)}.value_or_throw());
 }
 
 TEST(ValueOnlyResult, refCopiable) {
@@ -523,6 +528,17 @@ TEST(ValueOnlyResult, containsRValueRef) {
   EXPECT_EQ("", moveMe);
   EXPECT_EQ("hello", moved);
 }
+
+#if 0 // Manual test: should fail with "requires T to be noexcept-movable"
+struct ThrowingMoveType {
+  ThrowingMoveType() = default;
+  ThrowingMoveType(ThrowingMoveType&&) noexcept(false) {}
+  ThrowingMoveType& operator=(ThrowingMoveType&&) noexcept(false) {
+    return *this;
+  }
+};
+inline constexpr value_only_result<ThrowingMoveType> kBadResult{};
+#endif
 
 } // namespace folly
 

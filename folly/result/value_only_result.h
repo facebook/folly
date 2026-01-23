@@ -77,6 +77,13 @@ template <typename Derived, typename T>
 class value_only_result_crtp {
   static_assert(!std::is_same_v<non_value_result, std::remove_cvref_t<T>>);
   static_assert(!std::is_same_v<stopped_result_t, std::remove_cvref_t<T>>);
+  // `value_only_result` is used on non-throwing code paths, so we require `T`
+  // to be noexcept-movable to avoid hidden termination or exception risks.
+  static_assert(
+      std::is_void_v<T> || std::is_reference_v<T> ||
+          (std::is_nothrow_move_constructible_v<T> &&
+           std::is_nothrow_move_assignable_v<T>),
+      "value_only_result<T> requires T to be noexcept-movable");
 
  protected:
   using storage_type = detail::result_ref_wrap<lift_unit_t<T>>;
@@ -306,6 +313,10 @@ class [[nodiscard]]
   {
     return std::move(this->value_).get();
   }
+
+  explicit operator result<T>() && noexcept { // T is nothrow-movable
+    return result<T>{std::move(*this).value_or_throw()};
+  }
 };
 
 template <typename T>
@@ -331,6 +342,8 @@ class [[nodiscard]]
 
   void value_or_throw() const noexcept {}
   void value_only() const noexcept {}
+
+  explicit operator result<void>() const noexcept { return result<void>{}; }
 };
 
 } // namespace folly
