@@ -420,6 +420,10 @@ function(folly_add_library)
     target_link_libraries(${_target_name}
       INTERFACE folly_deps ${FOLLY_LIB_EXPORTED_DEPS} ${FOLLY_LIB_EXTERNAL_DEPS}
     )
+    # Track external deps for monolithic library (header-only deps are used transitively)
+    if(FOLLY_LIB_EXTERNAL_DEPS)
+      set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS ${FOLLY_LIB_EXTERNAL_DEPS})
+    endif()
     install(
       TARGETS ${_target_name}
       EXPORT folly
@@ -491,6 +495,10 @@ function(folly_add_library)
   # Track OBJECT target for monolithic aggregation (unless excluded)
   if(NOT FOLLY_LIB_EXCLUDE_FROM_MONOLITH)
     set_property(GLOBAL APPEND PROPERTY FOLLY_COMPONENT_TARGETS ${_obj_target})
+    # Track external deps for the monolithic library
+    if(FOLLY_LIB_EXTERNAL_DEPS)
+      set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS ${FOLLY_LIB_EXTERNAL_DEPS})
+    endif()
   endif()
 
   # 2. Create the granular library target
@@ -702,6 +710,13 @@ function(folly_create_monolithic_library)
   )
 
   target_link_libraries(folly PUBLIC folly_deps)
+
+  # Link all external dependencies that were tracked from component targets
+  get_property(_external_deps GLOBAL PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS)
+  if(_external_deps)
+    list(REMOVE_DUPLICATES _external_deps)
+    target_link_libraries(folly PUBLIC ${_external_deps})
+  endif()
 
   # Create alias for consistency
   add_library(Folly::folly ALIAS folly)

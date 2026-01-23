@@ -186,6 +186,9 @@ folly_add_library(
     folly_function
     folly_hash_unique_hash_key
     folly_lang_bits
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+    Boost::regex
 )
 
 folly_add_library(

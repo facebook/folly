@@ -284,9 +284,6 @@ fbcode_target(
         "//folly/portability:gflags",
         "//folly/synchronization/test:barrier",
     ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
-    ],
 )
 
 fbcode_target(
@@ -300,8 +297,5 @@ fbcode_target(
         "//folly/concurrency:singleton_relaxed_counter",
         "//folly/portability:gtest",
         "//folly/synchronization/test:barrier",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
     ],
 )

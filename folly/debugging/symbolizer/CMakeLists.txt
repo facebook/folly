@@ -60,6 +60,8 @@ folly_add_library(
     folly_likely
     folly_portability_config
     folly_range
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -183,6 +185,8 @@ folly_add_library(
     folly_portability_sys_syscall
     folly_portability_unistd
     folly_scope_guard
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 add_subdirectory(detail)

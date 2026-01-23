@@ -23,6 +23,8 @@ folly_add_library(
     folly_scope_guard
   EXPORTED_DEPS
     folly_futures_core
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

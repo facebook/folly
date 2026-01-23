@@ -97,6 +97,8 @@ folly_add_library(
   EXPORTED_DEPS
     folly_executors_soft_real_time_executor
     folly_executors_thread_pool_executor
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -214,6 +216,8 @@ folly_add_library(
     folly_io_async_event_base_manager
     folly_portability
     folly_synchronization_relaxed_atomic
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -224,6 +228,8 @@ folly_add_library(
     SoftRealTimeExecutor.h
   EXPORTED_DEPS
     folly_executor
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -282,6 +288,8 @@ folly_add_library(
     folly_executors_serialized_executor
     folly_io_async_request_context
     folly_optional
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -326,6 +334,8 @@ folly_add_library(
     folly_container_f14_hash
     folly_executor
     folly_executors_thread_factory_thread_factory
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -444,6 +454,8 @@ folly_add_library(
     folly_function
     folly_hash_hash
     folly_range
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -456,6 +468,8 @@ folly_add_library(
     folly_system_thread_name
   EXPORTED_DEPS
     folly_function
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -485,6 +499,8 @@ folly_add_library(
     folly_executors_cpu_thread_pool_executor
     folly_executors_soft_real_time_executor
     folly_synchronization_throttled_lifo_sem
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 add_subdirectory(task_queue)

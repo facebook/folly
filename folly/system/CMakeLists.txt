@@ -50,6 +50,8 @@ folly_add_library(
   EXPORTED_DEPS
     folly_c_portability
     folly_memory
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -80,6 +82,8 @@ folly_add_library(
     folly_file
     folly_portability_unistd
     folly_range
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -93,6 +97,8 @@ folly_add_library(
     folly_system_at_fork
   EXPORTED_DEPS
     folly_portability_sys_types
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

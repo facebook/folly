@@ -290,7 +290,6 @@ target_compile_definitions(folly_test_util PUBLIC
 set_property(TARGET folly_test_util PROPERTY VERSION ${PACKAGE_VERSION})
 target_link_libraries(folly_test_util
   PUBLIC
-    ${BOOST_LIBRARIES}
     folly
     ${LIBGMOCK_LIBRARIES}
 )
@@ -447,7 +446,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
   )
   target_link_libraries(folly_test_support
     PUBLIC
-      ${BOOST_LIBRARIES}
       follybenchmark
       folly
       ${LIBGMOCK_LIBRARIES}

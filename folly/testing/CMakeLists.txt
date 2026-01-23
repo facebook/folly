@@ -30,4 +30,7 @@ folly_add_library(
     folly_experimental_io_fs_util
     folly_range
     folly_scope_guard
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+    Boost::regex
 )

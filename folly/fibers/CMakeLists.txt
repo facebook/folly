@@ -107,6 +107,8 @@ folly_add_library(
     folly_scope_guard
     folly_tracing_async_stack
     folly_try
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -218,6 +220,8 @@ folly_add_library(
     folly_singleton
     folly_spin_lock
     folly_synchronized
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

@@ -1619,9 +1619,6 @@ fbcode_target(
         "//folly/synchronization/test:barrier",
         "//folly/testing:test_util",
     ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
-    ],
 )
 
 fbcode_target(

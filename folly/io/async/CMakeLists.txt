@@ -179,6 +179,8 @@ folly_add_library(
     folly_optional
     folly_portability_sockets
     folly_small_vector
+  EXTERNAL_DEPS
+    Boost::headers
 )
 
 folly_add_library(
@@ -351,6 +353,8 @@ folly_add_library(
     folly_net_network_socket
     folly_network_address
     folly_scope_guard
+  EXTERNAL_DEPS
+    Boost::headers
 )
 
 folly_add_library(
@@ -528,6 +532,8 @@ folly_add_library(
   EXPORTED_DEPS
     folly_container_array
     folly_io_async_ssl_context
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -583,6 +589,8 @@ folly_add_library(
     folly_portability
     folly_portability_sys_uio
     folly_range
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -599,6 +607,9 @@ folly_add_library(
     folly_string
   EXPORTED_DEPS
     folly_experimental_io_async_base
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+    Boost::headers
 )
 
 folly_add_library(
@@ -699,6 +710,9 @@ folly_add_library(
     folly_function
     folly_range
     folly_synchronized
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+    Boost::headers
 )
 
 folly_add_library(
@@ -739,6 +753,8 @@ folly_add_library(
     folly_io_async_async_base_class
     folly_io_async_liburing
     folly_shared_mutex
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
