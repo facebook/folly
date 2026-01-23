@@ -1243,9 +1243,9 @@ fbcode_target(
         "//folly/portability:sys_resource",
         "//folly/portability:sys_time",
         "//folly/portability:unistd",
+        "//folly/synchronization/test:barrier",
     ],
     external_deps = [
-        ("boost", None, "boost_thread"),
         "boost",
     ],
 )
@@ -1554,9 +1554,9 @@ fbcode_target(
         "//folly/io/async:async_base",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
+        "//folly/synchronization/test:barrier",
     ],
     external_deps = [
-        ("boost", None, "boost_thread"),
         "glog",
     ],
 )
@@ -1616,6 +1616,7 @@ fbcode_target(
         "//folly/lang:keep",
         "//folly/portability:gtest",
         "//folly/synchronization:latch",
+        "//folly/synchronization/test:barrier",
         "//folly/testing:test_util",
     ],
     external_deps = [
@@ -1944,11 +1945,11 @@ fbcode_target(
         "//folly/portability:gtest",
         "//folly/portability:unistd",
         "//folly/synchronization:baton",
+        "//folly/synchronization:latch",
         "//folly/system:thread_id",
         "//folly/testing:test_util",
     ],
     external_deps = [
-        ("boost", None, "boost_thread"),
         "glog",
     ],
 )

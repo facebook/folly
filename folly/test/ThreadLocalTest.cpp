@@ -35,8 +35,8 @@
 #include <thread>
 #include <unordered_map>
 
-#include <boost/thread/barrier.hpp>
 #include <glog/logging.h>
+#include <folly/synchronization/Latch.h>
 
 #include <folly/Memory.h>
 #include <folly/experimental/io/FsUtil.h>
@@ -588,7 +588,7 @@ void StressAccessTest(Op op, Check check) {
   ptr.reset(new int(0));
   std::atomic<bool> running{true};
 
-  boost::barrier barrier(kNumThreads + 1);
+  folly::Latch ready(kNumThreads);
 
   std::vector<std::thread> threads;
 
@@ -596,7 +596,7 @@ void StressAccessTest(Op op, Check check) {
     threads.emplace_back([&] {
       ptr.reset(new int(1));
 
-      barrier.wait();
+      ready.count_down();
 
       while (running.load()) {
         op(ptr);
@@ -605,7 +605,7 @@ void StressAccessTest(Op op, Check check) {
   }
 
   // wait for the threads to be up and running
-  barrier.wait();
+  ready.wait();
 
   for (size_t n = 0; n < kNumLoops; n++) {
     int sum = 0;

@@ -19,7 +19,7 @@
 #include <cstddef>
 #include <thread>
 
-#include <boost/thread/barrier.hpp>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <folly/ThreadLocal.h>
 #include <folly/portability/GTest.h>
@@ -92,7 +92,7 @@ TEST_F(SingletonRelaxedCounterTest, MultithreadCorrectness) {
   for (size_t j = 0; j < kNumIters; ++j) {
     std::vector<std::thread> threads(kNumThreads);
 
-    boost::barrier barrier{kNumThreads + 1};
+    folly::test::Barrier barrier{kNumThreads + 1};
 
     for (auto& thread : threads) {
       thread = std::thread([&] {

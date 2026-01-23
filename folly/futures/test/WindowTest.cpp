@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include <boost/thread/barrier.hpp>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <folly/Conv.h>
 #include <folly/executors/ManualExecutor.h>
@@ -210,7 +210,7 @@ TEST(Window, parallel) {
   auto f = collect(window(input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
-  boost::barrier barrier(ps.size() + 1);
+  folly::test::Barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
@@ -239,7 +239,7 @@ TEST(Window, parallelWithError) {
   auto f = collect(window(input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
-  boost::barrier barrier(ps.size() + 1);
+  folly::test::Barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
@@ -271,7 +271,7 @@ TEST(Window, allParallelWithError) {
       collectAll(window(input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
-  boost::barrier barrier(ps.size() + 1);
+  folly::test::Barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
@@ -372,7 +372,7 @@ TEST(WindowExecutor, parallel) {
       window(&executor, input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
-  boost::barrier barrier(ps.size() + 1);
+  folly::test::Barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
@@ -405,7 +405,7 @@ TEST(WindowExecutor, parallelWithError) {
       window(&executor, input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
-  boost::barrier barrier(ps.size() + 1);
+  folly::test::Barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
@@ -440,7 +440,7 @@ TEST(WindowExecutor, allParallelWithError) {
       window(&executor, input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
-  boost::barrier barrier(ps.size() + 1);
+  folly::test::Barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();

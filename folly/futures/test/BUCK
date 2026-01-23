@@ -352,9 +352,7 @@ fbcode_target(
         "//folly/futures:core",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
+        "//folly/synchronization/test:barrier",
     ],
 )
 
@@ -766,9 +764,7 @@ fbcode_target(
         "//folly/executors:manual_executor",
         "//folly/futures:core",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
+        "//folly/synchronization/test:barrier",
     ],
 )
 

@@ -19,8 +19,8 @@
 #include <cstdlib>
 #include <thread>
 
-#include <boost/thread/barrier.hpp>
 #include <glog/logging.h>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GMock.h>
@@ -677,7 +677,7 @@ TEST(Singleton, SingletonEagerInitParallel) {
 
     {
       std::vector<std::shared_ptr<std::thread>> threads;
-      boost::barrier barrier(kThreads);
+      folly::test::Barrier barrier(kThreads);
       TestEagerInitParallelExecutor exe(kThreads);
       vault.registrationComplete();
 

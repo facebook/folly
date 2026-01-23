@@ -51,9 +51,7 @@ fbcode_target(
         "//folly/lang:keep",
         "//folly/portability:gflags",
         "//folly/stats:digest_builder",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
+        "//folly/synchronization/test:barrier",
     ],
 )
 

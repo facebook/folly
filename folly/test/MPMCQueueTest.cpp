@@ -23,8 +23,8 @@
 #include <utility>
 
 #include <boost/intrusive_ptr.hpp>
-#include <boost/thread/barrier.hpp>
 #include <fmt/format.h>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <folly/Format.h>
 #include <folly/Memory.h>
@@ -1137,7 +1137,7 @@ void testTryReadUntil() {
   bool rets[2];
   int vals[2];
   std::vector<std::thread> threads;
-  boost::barrier b{3};
+  folly::test::Barrier b{3};
   for (int i = 0; i < 2; i++) {
     threads.emplace_back([&, i] {
       b.wait();
@@ -1172,7 +1172,7 @@ void testTryWriteUntil() {
   stop_watch<> watch;
   bool rets[2];
   std::vector<std::thread> threads;
-  boost::barrier b{3};
+  folly::test::Barrier b{3};
   for (int i = 0; i < 2; i++) {
     threads.emplace_back([&, i] {
       b.wait();
