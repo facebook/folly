@@ -22,6 +22,20 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "seed_seq",
+    headers = [
+        "seed_seq.h",
+    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:traits",
+        "//folly/container:span",
+        "//folly/functional:invoke",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "xoshiro256pp",
     headers = [
         "xoshiro256pp.h",

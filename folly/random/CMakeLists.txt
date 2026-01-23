@@ -22,6 +22,16 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME seed_seq
+  HEADERS
+    seed_seq.h
+  EXPORTED_DEPS
+    folly_container_span
+    folly_functional_invoke
+    folly_traits
+)
+
+folly_add_library(
   NAME xoshiro256pp
   HEADERS
     xoshiro256pp.h

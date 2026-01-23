@@ -74,6 +74,17 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
+    name = "seed_seq_test",
+    srcs = ["seed_seq_test.cpp"],
+    deps = [
+        "//folly/lang:keep",
+        "//folly/portability:gtest",
+        "//folly/random:seed_seq",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
     name = "xoshiro256pp_test",
     srcs = ["Xoshiro256ppTest.cpp"],
     deps = [
