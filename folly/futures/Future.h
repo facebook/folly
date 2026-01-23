@@ -2633,7 +2633,7 @@ class FutureAwaiter {
   explicit FutureAwaiter(folly::Future<T>&& future) noexcept
       : future_(std::move(future)) {}
 
-  bool await_ready() {
+  bool await_ready() noexcept {
     if (future_.isReady()) {
       result_ = std::move(future_.result());
       return true;
@@ -2647,17 +2647,36 @@ class FutureAwaiter {
     return static_cast<Try<drop_unit_t<T>>>(std::move(result_));
   }
 
-  FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
-      coro::coroutine_handle<> h) {
+  FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
+      coro::coroutine_handle<> h) noexcept {
     // FutureAwaiter may get destroyed as soon as the callback is executed.
     // Make sure the future object doesn't get destroyed until setCallback_
     // returns.
     auto future = std::move(future_);
-    future.setCallback_(
-        [this, h](Executor::KeepAlive<>&&, Try<T>&& result) mutable {
-          result_ = std::move(result);
-          h.resume();
-        });
+    try {
+      future.setCallback_(
+          [this, h](Executor::KeepAlive<>&&, Try<T>&& result) mutable {
+            result_ = std::move(result);
+            h.resume();
+          });
+      return true; // Suspend: callback will resume later
+    } catch (...) {
+      // Before `await_suspend` was made noexcept, FutureAlreadyContinued
+      // could escape. Production code may rely on this, so we forward the
+      // error to `await_resume` instead of crashing.
+      //
+      // Only FutureAlreadyContinued should be catchable here:
+      // - FutureInvalid can't happen because co_viaIfAsync (noexcept) would
+      //   have already terminated if the future was invalid.
+      // - In debug builds, the DCHECK in Core::setExecutor fires inside
+      //   co_viaIfAsync if a callback was already attached.
+      // - In opt builds, we reach here and catch FutureAlreadyContinued.
+      DCHECK(
+          current_exception_wrapper()
+              .is_compatible_with<FutureAlreadyContinued>());
+      result_ = Try<T>(current_exception_wrapper());
+      return false; // Don't suspend: resume immediately with error
+    }
   }
 
  private:

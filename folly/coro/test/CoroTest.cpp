@@ -24,11 +24,13 @@
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/CurrentExecutor.h>
 #include <folly/coro/DetachOnCancel.h>
+#include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Invoke.h>
 #include <folly/coro/Sleep.h>
 #include <folly/coro/Task.h>
 #include <folly/coro/TimedWait.h>
 #include <folly/coro/WithCancellation.h>
+#include <folly/executors/InlineExecutor.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/fibers/Semaphore.h>
 #include <folly/futures/Future.h>
@@ -793,5 +795,26 @@ TEST_F(CoroTest, SemiNoReschedule) {
       runAndCountExecutorAdd(folly::coro::co_invoke([&]() -> coro::Task<void> {
         EXPECT_EQ(42, co_await semiFuture42());
       })));
+}
+
+CO_TEST(FutureAwaiter, InvalidFutureTerminates) {
+  auto fut = makeFuture(42);
+  [[maybe_unused]] auto fut2 = std::move(fut);
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  EXPECT_DEATH(co_await std::move(fut), "Future invalid");
+}
+
+CO_TEST(FutureAwaiter, AlreadyContinuedReturnsError) {
+  Promise<int> promise;
+  auto fut = promise.getFuture();
+  [[maybe_unused]] auto fut2 = fut.via(&InlineExecutor::instance());
+  if constexpr (kIsDebug) {
+    EXPECT_DEATH(co_await std::move(fut), "state_ != State::OnlyCallback");
+  } else {
+    auto result = co_await coro::co_awaitTry(std::move(fut));
+    EXPECT_TRUE(result.hasException());
+    EXPECT_TRUE(
+        result.exception().is_compatible_with<FutureAlreadyContinued>());
+  }
 }
 #endif
