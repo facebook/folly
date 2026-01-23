@@ -289,6 +289,11 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setBufferPoolHandle(IoUringZeroCopyBufferPool::ExportHandle&& v) {
+      bufferPoolHandle = std::move(v);
+      return *this;
+    }
+
     ssize_t sqeSize{-1};
 
     size_t capacity{256};
@@ -337,6 +342,9 @@ class IoUringBackend : public EventBaseBackendBase {
     bool useHugePages{false};
 
     bool nativeAsyncSocketSupport{false};
+
+    std::optional<IoUringZeroCopyBufferPool::ExportHandle> bufferPoolHandle =
+        std::nullopt;
   };
 
   explicit IoUringBackend(Options options);
