@@ -601,6 +601,44 @@ using semi_await_result_t = await_result_t<semi_await_awaitable_t<T>>;
 
 namespace detail {
 
+/// Mixin for awaiters that forward to an inner awaiter with value-only
+/// semantics. Provides `await_ready()` and `await_suspend()` with static
+/// asserts that both are noexcept. Derived classes implement `await_resume()`.
+///
+/// GUIDANCE FOR NEW AWAITABLES: Design `await_ready` and `await_suspend` to
+/// be noexcept.  If they must check for invariant violations:
+///   - If feasible, push invariant failures into `await_resume()`.
+///   - Otherwise, debug-fatal on violations, and throw an error with a clearly
+///     "do not catch me" naming in opt.
+template <typename Awaitable>
+class ValueOnlyAwaiterBase {
+ public:
+  using Awaiter = awaiter_type_t<Awaitable>;
+
+ protected:
+  Awaiter awaiter_;
+
+  explicit ValueOnlyAwaiterBase(Awaitable&& awaitable)
+      : awaiter_(get_awaiter(static_cast<Awaitable&&>(awaitable))) {}
+
+ public:
+  auto await_ready() noexcept -> decltype(awaiter_.await_ready()) {
+    static_assert(
+        noexcept(FOLLY_DECLVAL(Awaiter&).await_ready()),
+        "value-only await requires noexcept await_ready(); see class doc");
+    return awaiter_.await_ready();
+  }
+
+  template <typename Promise>
+  auto await_suspend(coroutine_handle<Promise> coro) noexcept
+      -> decltype(awaiter_.await_suspend(coro)) {
+    static_assert(
+        noexcept(awaiter_.await_suspend(coro)),
+        "value-only await requires noexcept await_suspend(); see class doc");
+    return awaiter_.await_suspend(coro);
+  }
+};
+
 template <typename T>
 using noexcept_awaitable_of_ = typename T::folly_private_noexcept_awaitable_t;
 

@@ -265,6 +265,24 @@ class Baton {
 
 #if FOLLY_HAS_COROUTINES
 namespace detail {
+
+// `BatonAwaitableWaiter` intentionally does NOT support value-only await
+// protocols (`value_or_error`, `co_awaitTry`) and MUST NOT gain them.
+//
+// Value-only protocols require `await_ready` and `await_suspend` to be
+// noexcept, but this can't be arranged for Baton:
+//  - Making `await_suspend` noexcept is a breaking change -- existing code
+//    may rely on `Baton` throwing on double-wait misuse.
+//  - Value-only support could in theory be implemented via awaitable wrappers
+//    like `fatal_if_await_throws` or `unsafe_throwing_await` (ref D91285418).
+//    But, `Baton` is immovable (has `std::atomic`) and awaitable only by
+//    lvalue, so it's especially annoying to wrap.
+//
+// The best fix for value-only support -- have `Baton` emit an explicit
+// must-use-immediately awaitable instead of being awaited by lvalue. This
+// would also let us deprecate the current lvalue-await API, and once it's
+// gone, much `folly/coro` code simplifies (see `ViaIfAsync.h` for breadcrumbs
+// on lvalue-awaitable handling).
 class BatonAwaitableWaiter : public Baton::Waiter {
  public:
   explicit BatonAwaitableWaiter(Baton& baton) : baton_(baton) {}
@@ -279,8 +297,7 @@ class BatonAwaitableWaiter : public Baton::Waiter {
   void await_resume() {}
 
   // Precondition: No waiter may already be registered, or `setWaiter` will
-  // throw `logic_error`.  In a context requiring noexcept await_suspend, wrap
-  // with `fatal_if_await_throws()`.
+  // throw `logic_error`.  The class doc explains why throwing is a problem.
   void await_suspend(coro::coroutine_handle<> h) {
     assert(!h_);
     h_ = std::move(h);
