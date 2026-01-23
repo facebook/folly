@@ -56,6 +56,7 @@ fbcode_target(
     deps = [
         "//folly:benchmark",
         "//folly/lang:keep",
+        "//folly/portability:config",
         "//folly/random:xoshiro256pp",
     ],
 )

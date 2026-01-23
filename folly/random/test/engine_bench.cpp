@@ -21,6 +21,11 @@
 
 #include <folly/Benchmark.h>
 #include <folly/lang/Keep.h>
+#include <folly/portability/Config.h>
+
+#if defined(FOLLY_HAVE_EXTRANDOM_SFMT19937) && FOLLY_HAVE_EXTRANDOM_SFMT19937
+#include <ext/random>
+#endif
 
 extern "C" FOLLY_KEEP void check_folly_xoshiro256pp_64_seed_value(
     folly::xoshiro256pp_64& rng, folly::xoshiro256pp_64::result_type val) {
@@ -89,10 +94,29 @@ BENCHMARK(seed_value_std_minstd_rand, iters) {
   bm_seed_value<rng_t>(iters);
 }
 
+BENCHMARK(seed_value_std_mt19937, iters) {
+  using rng_t = std::mt19937;
+  bm_seed_value<rng_t>(iters);
+}
+
 BENCHMARK(seed_value_std_mt19937_64, iters) {
   using rng_t = std::mt19937_64;
   bm_seed_value<rng_t>(iters);
 }
+
+#if defined(FOLLY_HAVE_EXTRANDOM_SFMT19937) && FOLLY_HAVE_EXTRANDOM_SFMT19937
+
+BENCHMARK(seed_value_gnu_cxx_sfmt19937, iters) {
+  using rng_t = __gnu_cxx::sfmt19937;
+  bm_seed_value<rng_t>(iters);
+}
+
+BENCHMARK(seed_value_gnu_cxx_sfmt19937_64, iters) {
+  using rng_t = __gnu_cxx::sfmt19937_64;
+  bm_seed_value<rng_t>(iters);
+}
+
+#endif
 
 BENCHMARK(seed_value_folly_xoshiro256pp_64, iters) {
   using rng_t = folly::xoshiro256pp_64;
@@ -106,10 +130,29 @@ BENCHMARK(seed_std_seed_seq_std_minstd_rand, iters) {
   bm_seed_std_seed_seq<rng_t>(iters);
 }
 
+BENCHMARK(seed_std_seed_seq_std_mt19937, iters) {
+  using rng_t = std::mt19937;
+  bm_seed_std_seed_seq<rng_t>(iters);
+}
+
 BENCHMARK(seed_std_seed_seq_std_mt19937_64, iters) {
   using rng_t = std::mt19937_64;
   bm_seed_std_seed_seq<rng_t>(iters);
 }
+
+#if defined(FOLLY_HAVE_EXTRANDOM_SFMT19937) && FOLLY_HAVE_EXTRANDOM_SFMT19937
+
+BENCHMARK(seed_std_seed_seq_gnu_cxx_sfmt19937, iters) {
+  using rng_t = __gnu_cxx::sfmt19937;
+  bm_seed_std_seed_seq<rng_t>(iters);
+}
+
+BENCHMARK(seed_std_seed_seq_gnu_cxx_sfmt19937_64, iters) {
+  using rng_t = __gnu_cxx::sfmt19937_64;
+  bm_seed_std_seed_seq<rng_t>(iters);
+}
+
+#endif
 
 BENCHMARK(seed_std_seed_seq_folly_xoshiro256pp_64, iters) {
   using rng_t = folly::xoshiro256pp_64;
@@ -123,10 +166,29 @@ BENCHMARK(next_std_minstd_rand, iters) {
   bm_next<rng_t>(iters);
 }
 
+BENCHMARK(next_std_mt19937, iters) {
+  using rng_t = std::mt19937;
+  bm_next<rng_t>(iters);
+}
+
 BENCHMARK(next_std_mt19937_64, iters) {
   using rng_t = std::mt19937_64;
   bm_next<rng_t>(iters);
 }
+
+#if defined(FOLLY_HAVE_EXTRANDOM_SFMT19937) && FOLLY_HAVE_EXTRANDOM_SFMT19937
+
+BENCHMARK(next_gnu_cxx_sfmt19937, iters) {
+  using rng_t = __gnu_cxx::sfmt19937;
+  bm_next<rng_t>(iters);
+}
+
+BENCHMARK(next_gnu_cxx_sfmt19937_64, iters) {
+  using rng_t = __gnu_cxx::sfmt19937_64;
+  bm_next<rng_t>(iters);
+}
+
+#endif
 
 BENCHMARK(next_folly_xoshiro256pp_64, iters) {
   using rng_t = folly::xoshiro256pp_64;
