@@ -67,7 +67,7 @@ class InlineTask {
 
   ~InlineTask() { DCHECK(!promise_); }
 
-  bool await_ready() const { return false; }
+  bool await_ready() const noexcept { return false; }
 
   folly::coro::coroutine_handle<> await_suspend(
       folly::coro::coroutine_handle<> awaiter) {
@@ -158,7 +158,7 @@ class InlineTaskAllocator {
 
   ~InlineTaskAllocator() { DCHECK(!promise_); }
 
-  bool await_ready() const { return false; }
+  bool await_ready() const noexcept { return false; }
 
   folly::coro::coroutine_handle<> await_suspend(
       folly::coro::coroutine_handle<> awaiter) {

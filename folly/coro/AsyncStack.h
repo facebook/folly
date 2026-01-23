@@ -30,7 +30,7 @@ namespace coro {
 class AsyncStackTraceAwaitable {
   class Awaiter {
    public:
-    bool await_ready() const { return false; }
+    bool await_ready() const noexcept { return false; }
 
     template <typename Promise>
     bool await_suspend(coroutine_handle<Promise> h) noexcept {

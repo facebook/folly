@@ -129,7 +129,9 @@ class WithAsyncStackAwaiter {
   // needs to be no-inline as return address is being captured for async stack
   // tracing
   template <typename Promise>
-  FOLLY_NOINLINE auto await_suspend(coroutine_handle<Promise> h) {
+  FOLLY_NOINLINE auto await_suspend(coroutine_handle<Promise> h) noexcept(
+      noexcept(FOLLY_DECLVAL(Awaiter&).await_suspend(FOLLY_DECLVAL(
+          coroutine_handle<WithAsyncStackCoroutine::promise_type>)))) {
     AsyncStackFrame& callerFrame = h.promise().getAsyncFrame();
     AsyncStackRoot* stackRoot = callerFrame.getStackRoot();
     assert(stackRoot != nullptr);
@@ -143,6 +145,7 @@ class WithAsyncStackAwaiter {
     using await_suspend_result_t =
         decltype(awaiter_.await_suspend(wrapperHandle));
 
+    // Restore async stack state on exception, then rethrow.
     try {
       if constexpr (std::is_same_v<await_suspend_result_t, bool>) {
         if (!awaiter_.await_suspend(wrapperHandle)) {

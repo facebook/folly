@@ -118,9 +118,9 @@ struct TrickyAwaitable {
   struct Awaiter {
     std::unique_ptr<int> value_;
 
-    bool await_ready() const { return false; }
+    bool await_ready() const noexcept { return false; }
 
-    bool await_suspend(folly::coro::coroutine_handle<>) {
+    bool await_suspend(folly::coro::coroutine_handle<>) noexcept {
       value_ = std::make_unique<int>(42);
       return false;
     }
@@ -160,10 +160,10 @@ class SimplePromise {
         folly::coro::Baton& baton, folly::Optional<T>& value) noexcept
         : awaiter_(baton), value_(value) {}
 
-    bool await_ready() { return awaiter_.await_ready(); }
+    bool await_ready() noexcept { return awaiter_.await_ready(); }
 
     template <typename Promise>
-    auto await_suspend(folly::coro::coroutine_handle<Promise> h) {
+    auto await_suspend(folly::coro::coroutine_handle<Promise> h) noexcept {
       return awaiter_.await_suspend(h);
     }
 

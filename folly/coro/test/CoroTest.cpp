@@ -367,7 +367,7 @@ namespace {
 
 template <int value>
 struct AwaitableInt {
-  bool await_ready() const { return true; }
+  bool await_ready() const noexcept { return true; }
 
   bool await_suspend(coro::coroutine_handle<>) { assume_unreachable(); }
 

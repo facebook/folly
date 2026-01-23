@@ -50,7 +50,7 @@ class Baton {
 
   ~Baton() noexcept = default;
 
-  bool ready() const {
+  bool ready() const noexcept {
     auto state = waiter_.load();
     return state == POSTED;
   }
@@ -58,6 +58,8 @@ class Baton {
   /**
    * Registers a waiter for the baton. The waiter will be notified when
    * the baton is posted.
+   *
+   * Precondition: No waiter is currently registered. Throws logic_error.
    */
   void setWaiter(Waiter& waiter);
 
@@ -272,10 +274,13 @@ class BatonAwaitableWaiter : public Baton::Waiter {
     h_();
   }
 
-  bool await_ready() const { return baton_.ready(); }
+  bool await_ready() const noexcept { return baton_.ready(); }
 
   void await_resume() {}
 
+  // Precondition: No waiter may already be registered, or `setWaiter` will
+  // throw `logic_error`.  In a context requiring noexcept await_suspend, wrap
+  // with `fatal_if_await_throws()`.
   void await_suspend(coro::coroutine_handle<> h) {
     assert(!h_);
     h_ = std::move(h);

@@ -1681,8 +1681,9 @@ struct UnexpectedAwaitable {
   void await_resume() { compiler_may_unsafely_assume_unreachable(); }
 
   template <typename U>
-  FOLLY_ALWAYS_INLINE void await_suspend(
-      coro::coroutine_handle<Promise<U, Error>> h) {
+  FOLLY_ALWAYS_INLINE void
+  await_suspend(coro::coroutine_handle<Promise<U, Error>> h) noexcept(
+      IsNothrowMovable<Error>::value) {
     auto& v = *h.promise().value_;
     ExpectedHelper::assume_empty(v);
     v = std::move(o_);
@@ -1701,8 +1702,9 @@ struct ExpectedAwaitable {
 
   // Explicitly only allow suspension into a Promise
   template <typename U>
-  FOLLY_ALWAYS_INLINE void await_suspend(
-      coro::coroutine_handle<Promise<U, Error>> h) {
+  FOLLY_ALWAYS_INLINE void
+  await_suspend(coro::coroutine_handle<Promise<U, Error>> h) noexcept(
+      IsNothrowMovable<Error>::value) {
     auto& v = *h.promise().value_;
     ExpectedHelper::assume_empty(v);
     v = makeUnexpected(std::move(o_.error()));

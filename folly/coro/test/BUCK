@@ -298,6 +298,19 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_unittest,
+    name = "with_async_stack_test",
+    srcs = ["WithAsyncStackTest.cpp"],
+    deps = [
+        "//folly/coro:detail_current_async_frame",
+        "//folly/coro:gtest_helpers",
+        "//folly/coro:traits",
+        "//folly/coro:with_async_stack",
+        "//folly/coro/safe:now_task",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_benchmark,
     name = "promise_benchmark",
     srcs = ["PromiseBenchmark.cpp"],

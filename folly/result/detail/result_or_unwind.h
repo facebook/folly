@@ -180,7 +180,7 @@ class result_or_unwind_crtp : public result_or_unwind_base<Derived, Storage> {
 
   // Suspend into a `result<U>` coroutine.
   template <typename U>
-  void await_suspend(result_promise_handle<U> h) {
+  void await_suspend(result_promise_handle<U> h) noexcept {
     auto toResult = [&](auto&& nv) {
       auto& v = *h.promise().value_;
       expected_detail::ExpectedHelper::assume_empty(v.exp_);

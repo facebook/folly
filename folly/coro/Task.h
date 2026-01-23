@@ -559,7 +559,7 @@ class [[nodiscard]] TaskWithExecutor {
 
     template <typename Promise>
     FOLLY_NOINLINE coroutine_handle<> await_suspend(
-        coroutine_handle<Promise> continuation) {
+        coroutine_handle<Promise> continuation) noexcept {
       DCHECK(coro_);
       auto& promise = coro_.promise();
       DCHECK(!promise.continuation_);

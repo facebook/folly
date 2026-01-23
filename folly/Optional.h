@@ -744,7 +744,8 @@ struct OptionalAwaitable {
 
   // Explicitly only allow suspension into an OptionalPromise
   template <typename U>
-  void await_suspend(coro::coroutine_handle<OptionalPromise<U>> h) const {
+  void await_suspend(
+      coro::coroutine_handle<OptionalPromise<U>> h) const noexcept {
     // Abort the rest of the coroutine. resume() is not going to be called
     h.destroy();
   }

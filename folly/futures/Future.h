@@ -2647,6 +2647,9 @@ class FutureAwaiter {
     return static_cast<Try<drop_unit_t<T>>>(std::move(result_));
   }
 
+  // Precondition: The Future must not already have a callback, or
+  // `setCallback_` will throw `FutureAlreadyContinued`.  In a context
+  // requiring noexcept await_suspend, wrap with `fatal_if_await_throws()`.
   FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
       coro::coroutine_handle<> h) noexcept {
     // FutureAwaiter may get destroyed as soon as the callback is executed.

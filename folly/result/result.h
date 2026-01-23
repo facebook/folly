@@ -351,7 +351,6 @@ template <typename>
 struct result_promise_return;
 template <typename, typename = void>
 struct result_promise;
-struct result_await_suspender;
 
 // Future: To mitigate the risk of `bad_alloc` at runtime, these singletons
 // should be eagerly instantiated at program start.  One way is to have a
@@ -567,7 +566,7 @@ class result_crtp {
   ///
   /// Future: when I have the appropriate error-path benchmark, try moving the
   /// 2 unlikely branches into a .cpp helper, that might help perf.
-  non_value_result non_value() && {
+  non_value_result non_value() && noexcept {
     if (FOLLY_LIKELY(exp_.hasError())) {
       return std::move(exp_).error();
     } else if (exp_.hasValue()) {
@@ -576,7 +575,9 @@ class result_crtp {
       return detail::dfatal_get_empty_result_error();
     }
   }
-  const non_value_result& non_value() const& {
+  // noexcept: std::exception_ptr copy is non-throwing on all major platforms
+  // (atomic refcount increment via Itanium ABI or MSVC shared_ptr-like impl).
+  const non_value_result& non_value() const& noexcept {
     if (FOLLY_LIKELY(exp_.hasError())) {
       return exp_.error();
     } else if (exp_.hasValue()) {
