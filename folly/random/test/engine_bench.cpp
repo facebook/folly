@@ -195,7 +195,8 @@ BENCHMARK(next_folly_xoshiro256pp_64, iters) {
   bm_next<rng_t>(iters);
 }
 
-int main() {
+int main(int argc, char** argv) {
+  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }
