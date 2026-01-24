@@ -116,6 +116,10 @@ template <typename Awaitable>
 class WithAsyncStackAwaiter {
   using Awaiter = awaiter_type_t<Awaitable>;
 
+  static constexpr bool kSuspendIsNoexcept =
+      noexcept(FOLLY_DECLVAL(Awaiter&).await_suspend(FOLLY_DECLVAL(
+          coroutine_handle<WithAsyncStackCoroutine::promise_type>)));
+
  public:
   explicit WithAsyncStackAwaiter(Awaitable&& awaitable)
       : awaiter_(get_awaiter(static_cast<Awaitable&&>(awaitable))),
@@ -130,8 +134,7 @@ class WithAsyncStackAwaiter {
   // tracing
   template <typename Promise>
   FOLLY_NOINLINE auto await_suspend(coroutine_handle<Promise> h) noexcept(
-      noexcept(FOLLY_DECLVAL(Awaiter&).await_suspend(FOLLY_DECLVAL(
-          coroutine_handle<WithAsyncStackCoroutine::promise_type>)))) {
+      kSuspendIsNoexcept) {
     AsyncStackFrame& callerFrame = h.promise().getAsyncFrame();
     AsyncStackRoot* stackRoot = callerFrame.getStackRoot();
     assert(stackRoot != nullptr);
@@ -145,8 +148,7 @@ class WithAsyncStackAwaiter {
     using await_suspend_result_t =
         decltype(awaiter_.await_suspend(wrapperHandle));
 
-    // Restore async stack state on exception, then rethrow.
-    try {
+    auto doSuspend = [&]() {
       if constexpr (std::is_same_v<await_suspend_result_t, bool>) {
         if (!awaiter_.await_suspend(wrapperHandle)) {
           folly::activateAsyncStackFrame(*stackRoot, callerFrame);
@@ -157,10 +159,19 @@ class WithAsyncStackAwaiter {
       } else {
         return awaiter_.await_suspend(wrapperHandle);
       }
-    } catch (...) {
-      folly::activateAsyncStackFrame(*stackRoot, callerFrame);
-      folly::deactivateSuspendedLeaf(coroWrapper_.getLeafFrame());
-      throw;
+    };
+
+    if constexpr (kSuspendIsNoexcept) {
+      return doSuspend();
+    } else {
+      // Restore async stack state on exception, then rethrow.
+      try {
+        return doSuspend();
+      } catch (...) {
+        folly::activateAsyncStackFrame(*stackRoot, callerFrame);
+        folly::deactivateSuspendedLeaf(coroWrapper_.getLeafFrame());
+        throw;
+      }
     }
   }
 
