@@ -105,7 +105,7 @@ now_task<void> checkFatalOnThrow() {
   auto ew = (co_await co_fatalOnThrow(co_awaitTry(coThrow()))).exception();
   EXPECT_NE(nullptr, ew.template get_exception<MyErr>());
 
-  // Composition with `co_awaitTry()`.
+  // Composition with `co_nothrow()`.
   //
   // (1) Putting `co_fatalOnThrow` around `co_nothrow` doesn't compile because
   // `NothrowAwaitable` isn't an actual awaitable, and is special-cased in some
@@ -128,7 +128,7 @@ now_task<void> checkFatalOnThrow() {
       !test_semi_await_result_v<decltype(co_nothrow(coThrow())), void>);
   static_assert(!is_awaitable_v<decltype(co_nothrow(coThrow()))>);
   // (2) The reverse order is banned for reasons `NothrowAwaitable` describes
-  bool ran = [&]<typename T>(T) { // `requires` doesa SFINAE inside templates
+  bool ran = [&]<typename T>(T) { // `requires` does SFINAE inside templates
     (void)co_nothrow(coThrow()); // compile
     (void)co_fatalOnThrow(coThrow()); // compiles
     static_assert(requires { co_nothrow(coThrow()); }); // same as prior line
@@ -189,34 +189,29 @@ CO_TEST(NoexceptTest, NowTaskIsImmediate) {
 #endif
 }
 
-// Check `awaiter_type_t` and `await_result_t` for `as_noexcept_with_executor`
+// Check `awaiter_type_t` and `await_result_t` for `as_noexcept` with awaitables
 
 static_assert(
     std::is_same_v<
         detail::NoexceptAwaiter<TaskWithExecutor<void>, terminateOnCancel>,
-        awaiter_type_t<as_noexcept_with_executor<
-            TaskWithExecutor<void>,
-            terminateOnCancel>>>);
+        awaiter_type_t<
+            as_noexcept<TaskWithExecutor<void>, terminateOnCancel>>>);
 static_assert(
     std::is_same_v<
         detail::
             NoexceptAwaiter<now_task_with_executor<void>, terminateOnCancel>,
-        awaiter_type_t<as_noexcept_with_executor<
-            now_task_with_executor<void>,
-            terminateOnCancel>>>);
+        awaiter_type_t<
+            as_noexcept<now_task_with_executor<void>, terminateOnCancel>>>);
 
+static_assert(std::is_same_v<
+              float,
+              await_result_t<
+                  as_noexcept<TaskWithExecutor<float>, terminateOnCancel>>>);
 static_assert(
     std::is_same_v<
         float,
-        await_result_t<as_noexcept_with_executor<
-            TaskWithExecutor<float>,
-            terminateOnCancel>>>);
-static_assert(
-    std::is_same_v<
-        float,
-        await_result_t<as_noexcept_with_executor<
-            now_task_with_executor<float>,
-            terminateOnCancel>>>);
+        await_result_t<
+            as_noexcept<now_task_with_executor<float>, terminateOnCancel>>>);
 
 // Check whether `semi_await_result_t` is available for various value
 // categories.  This is part of verifying that wrapping with `as_noexcept<>`
@@ -248,15 +243,12 @@ static_assert(
     noexcept_awaitable_v<as_noexcept<now_task<int>, terminateOnCancel>>);
 
 static_assert(!noexcept_awaitable_v<TaskWithExecutor<int>>);
-static_assert(
-    noexcept_awaitable_v<
-        as_noexcept_with_executor<TaskWithExecutor<int>, terminateOnCancel>>);
+static_assert(noexcept_awaitable_v<
+              as_noexcept<TaskWithExecutor<int>, terminateOnCancel>>);
 
 static_assert(!noexcept_awaitable_v<now_task_with_executor<int>>);
-static_assert(
-    noexcept_awaitable_v<as_noexcept_with_executor<
-        now_task_with_executor<int>,
-        terminateOnCancel>>);
+static_assert(noexcept_awaitable_v<
+              as_noexcept<now_task_with_executor<int>, terminateOnCancel>>);
 
 template <typename TaskT>
 now_task<void> checkAsNoexcept() {
@@ -316,6 +308,14 @@ CO_TEST(NoexceptTest, AsNoexceptOnCancelInt) {
   EXPECT_EQ(42, co_await coCancelSuccess());
 }
 
+// co_withExecutor(as_noexcept<Task>) makes as_noexcept<TaskWithExecutor>
+static_assert(
+    std::is_same_v<
+        as_noexcept<TaskWithExecutor<int>, terminateOnCancel>,
+        decltype(co_withExecutor(
+            FOLLY_DECLVAL(Executor::KeepAlive<>),
+            FOLLY_DECLVAL(as_noexcept<Task<int>, terminateOnCancel>)))>);
+
 // Spot-check the relevant `safe_alias_of` specializations
 static_assert(
     safe_alias::unsafe_closure_internal ==
@@ -338,7 +338,7 @@ static_assert(
         as_noexcept<safe_task<safe_alias::unsafe_member_internal>>>);
 static_assert(
     safe_alias::unsafe_member_internal ==
-    lenient_safe_alias_of_v<as_noexcept_with_executor<
+    lenient_safe_alias_of_v<as_noexcept<
         safe_task_with_executor<safe_alias::unsafe_member_internal>>>);
 
 } // namespace folly::coro

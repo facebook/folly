@@ -68,7 +68,7 @@
 ///
 /// This function creates a coroutine whose awaitable is that of the inner
 /// task, but wrapped with `detail::NoexceptAwaitable<...>`.
-//
+///
 /// The latter is an awaitable-wrapper similar to `co_awaitTry()`, except that
 /// it terminates the program if `someAwaitable()` resumes with a thrown
 /// exception.  So, both of these will never throw, but the former returns a
@@ -108,6 +108,12 @@ struct OnCancel<void> {
 };
 
 namespace detail {
+
+// Detect if a type is a TaskWithExecutor-like type (has an attached executor).
+template <typename T>
+inline constexpr bool is_task_with_executor_v = requires {
+  typename T::folly_private_task_without_executor_t;
+};
 
 template <typename Awaitable, auto CancelCfg>
 class NoexceptAwaiter {
@@ -186,12 +192,10 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NoexceptAwaitable
 
 template <typename Inner, auto CancelCfg>
 class as_noexcept;
-// NB: While it'd be prettier to have `as_noexcept` branch on whether the inner
-// task has an executor, a separate template is much simpler.
-template <typename Inner, auto CancelCfg>
-class as_noexcept_with_executor;
 
 namespace detail {
+
+// Configuration for wrapping TaskWithExecutor-like types
 template <typename Inner, auto CancelCfg>
 struct as_noexcept_with_executor_cfg {
   using InnerTaskWithExecutorT = Inner;
@@ -207,34 +211,22 @@ struct as_noexcept_with_executor_cfg {
             static_cast<Awaitable&&>(awaitable))()};
   }
 };
+
 template <typename Inner, auto CancelCfg>
 using as_noexcept_with_executor_base = TaskWithExecutorWrapperCrtp<
-    as_noexcept_with_executor<Inner, CancelCfg>,
+    as_noexcept<Inner, CancelCfg>,
     as_noexcept_with_executor_cfg<Inner, CancelCfg>>;
-} // namespace detail
-
-template <typename Inner, auto CancelCfg = OnCancel<void>{}>
-class [[nodiscard]] as_noexcept_with_executor final
-    : public detail::as_noexcept_with_executor_base<Inner, CancelCfg> {
- protected:
-  using detail::as_noexcept_with_executor_base<Inner, CancelCfg>::
-      as_noexcept_with_executor_base;
-
- public:
-  using folly_private_noexcept_awaitable_t = std::true_type;
-};
-
-namespace detail {
 
 template <typename... BaseArgs>
 class as_noexcept_task_promise_wrapper final
     : public TaskPromiseWrapper<BaseArgs...> {};
 
+// Configuration for wrapping Task-like types
 template <typename Inner, auto CancelCfg>
 struct as_noexcept_cfg {
   using ValueT = semi_await_result_t<Inner>;
   using InnerTaskT = Inner;
-  using TaskWithExecutorT = as_noexcept_with_executor<
+  using TaskWithExecutorT = as_noexcept<
       decltype(co_withExecutor(
           FOLLY_DECLVAL(Executor::KeepAlive<>), FOLLY_DECLVAL(Inner))),
       CancelCfg>;
@@ -255,6 +247,13 @@ template <typename Inner, auto CancelCfg>
 using as_noexcept_base = TaskWrapperCrtp<
     as_noexcept<Inner, CancelCfg>,
     as_noexcept_cfg<Inner, CancelCfg>>;
+
+// Selects base class based on whether Inner has an attached executor
+template <typename Inner, auto CancelCfg>
+using as_noexcept_auto_base = conditional_t<
+    is_task_with_executor_v<Inner>,
+    as_noexcept_with_executor_base<Inner, CancelCfg>,
+    as_noexcept_base<Inner, CancelCfg>>;
 
 // CAUTION: `as_noexcept_rewrapper` gives you the power to wrap and unwrap
 // `as_noexcept`, so you must be extremely careful to preserve behavior:
@@ -280,11 +279,13 @@ struct as_noexcept_rewrapper<as_noexcept<Inner, Cfg>> {
 
 } // namespace detail
 
+/// `as_noexcept<Task<T>>` or `as_noexcept<TaskWithExecutor<T>>` wrapper that
+/// terminates on exceptions (or handles `OperationCancelled` via `OnCancel`).
 template <typename Inner, auto CancelCfg = OnCancel<void>{}>
 class FOLLY_CORO_TASK_ATTRS as_noexcept final
-    : public detail::as_noexcept_base<Inner, CancelCfg> {
+    : public detail::as_noexcept_auto_base<Inner, CancelCfg> {
  protected:
-  using detail::as_noexcept_base<Inner, CancelCfg>::as_noexcept_base;
+  using detail::as_noexcept_auto_base<Inner, CancelCfg>::as_noexcept_auto_base;
 
   template <typename> // Can unwrap and re-wrap (construct)
   friend struct detail::as_noexcept_rewrapper;
