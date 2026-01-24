@@ -61,6 +61,12 @@ CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_of_value) {
         }());
     EXPECT_EQ(1337, *res.value_or_throw());
   }
+  { // Also test `co_result` with `value_only_result`
+    auto res = co_await value_or_error_or_stopped([&]() -> now_task<int> {
+      co_yield co_result(value_only_result<int>{42});
+    }());
+    EXPECT_EQ(42, res.value_or_throw());
+  }
 }
 
 CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_of_void) {

@@ -22,6 +22,7 @@
 #include <folly/Try.h>
 #include <folly/coro/Error.h> // compat: used to be the same header
 #include <folly/result/try.h>
+#include <folly/result/value_only_result.h>
 
 namespace folly::coro {
 
@@ -41,6 +42,12 @@ class co_result final {
   explicit co_result(U result) noexcept(
       std::is_nothrow_move_constructible<T>::value)
       : co_result(result_to_try(std::move(result))) {}
+
+  // value_only_result always has a value, so conversion to Try is simple.
+  template <std::same_as<folly::value_only_result<T>> U>
+  explicit co_result(U valueOnlyResult) noexcept(
+      std::is_nothrow_move_constructible<T>::value)
+      : result_(std::move(valueOnlyResult).value_or_throw()) {}
 #endif
 
   const Try<T>& result() const { return result_; }
@@ -54,6 +61,8 @@ class co_result final {
 #if FOLLY_HAS_RESULT
 template <typename T>
 co_result(result<T>) -> co_result<T>;
+template <typename T>
+co_result(value_only_result<T>) -> co_result<T>;
 #endif
 
 } // namespace folly::coro

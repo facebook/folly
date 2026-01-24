@@ -480,6 +480,7 @@ folly_add_library(
   EXPORTED_DEPS
     folly_coro_error
     folly_result_try
+    folly_result_value_only_result
     folly_try
 )
 

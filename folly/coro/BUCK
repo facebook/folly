@@ -1107,6 +1107,7 @@ fbcode_target(
         ":error",
         "//folly:try",
         "//folly/result:try",
+        "//folly/result:value_only_result",
     ],
 )
 
@@ -1118,6 +1119,7 @@ non_fbcode_target(
         ":error",
         "//xplat/folly:try",
         "//xplat/folly/result:try",
+        "//xplat/folly/result:value_only_result",
     ],
 )
 
