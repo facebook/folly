@@ -682,35 +682,15 @@ template <typename Awaitable>
 constexpr bool is_awaitable_try = is_awaiter_try<awaiter_type_t<Awaitable>>;
 
 template <typename Awaitable>
-class TryAwaiter {
+class TryAwaiter : public ValueOnlyAwaiterBase<Awaitable> {
+ public:
   static_assert(is_awaitable_try<Awaitable&&>);
 
-  using Awaiter = awaiter_type_t<Awaitable>;
+  explicit TryAwaiter(Awaitable&& awaitable)
+      : ValueOnlyAwaiterBase<Awaitable>(static_cast<Awaitable&&>(awaitable)) {}
 
- public:
-  explicit TryAwaiter(Awaitable&& awaiter)
-      : awaiter_(get_awaiter(static_cast<Awaitable&&>(awaiter))) {}
-
-  auto await_ready() noexcept(noexcept(std::declval<Awaiter&>().await_ready()))
-      -> decltype(std::declval<Awaiter&>().await_ready()) {
-    return awaiter_.await_ready();
-  }
-
-  template <typename Promise>
-  auto await_suspend(coroutine_handle<Promise> coro) noexcept(
-      noexcept(std::declval<Awaiter&>().await_suspend(coro)))
-      -> decltype(std::declval<Awaiter&>().await_suspend(coro)) {
-    return awaiter_.await_suspend(coro);
-  }
-
-  auto await_resume() noexcept(
-      noexcept(std::declval<Awaiter&>().await_resume_try()))
-      -> decltype(std::declval<Awaiter&>().await_resume_try()) {
-    return awaiter_.await_resume_try();
-  }
-
- private:
-  Awaiter awaiter_;
+  auto await_resume()
+      FOLLY_DETAIL_FORWARD_BODY(this->awaiter_.await_resume_try())
 };
 
 /**

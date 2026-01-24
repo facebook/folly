@@ -18,6 +18,7 @@
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Result.h>
 #include <folly/coro/ValueOrError.h>
+#include <folly/coro/ViaIfAsync.h>
 #include <folly/coro/safe/NowTask.h>
 
 /// Besides `value_or_error_or_stopped`, this test also covers the
@@ -154,6 +155,13 @@ struct ThrowingAwaitSuspendAwaitable {
 CO_TEST(ValueOrErrorTest, RequiresNoexceptAwait) {
 #if 0 // Manual test: "value-only await requires noexcept await_suspend()"
   (void)co_await value_or_error(ThrowingAwaitSuspendAwaitable{});
+#endif
+  co_return;
+}
+
+CO_TEST(ValueOrErrorTest, CoAwaitTryRequiresNoexceptAwait) {
+#if 0 // Manual test: "value-only await requires noexcept await_suspend()"
+  (void)co_await co_awaitTry(ThrowingAwaitSuspendAwaitable{});
 #endif
   co_return;
 }

@@ -1458,9 +1458,5 @@ add_subdirectory(system)
 add_subdirectory(testing)
 add_subdirectory(tracing)
 
-if (PYTHON_EXTENSIONS)
-  add_subdirectory(python)
-endif()
-
 # Resolve deferred dependencies now that all targets exist
 folly_resolve_deferred_dependencies()

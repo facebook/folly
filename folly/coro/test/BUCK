@@ -48,6 +48,7 @@ fbcode_target(
         "//folly/coro:gtest_helpers",
         "//folly/coro:result",
         "//folly/coro:value_or_error",
+        "//folly/coro:via_if_async",
         "//folly/coro/safe:now_task",
     ],
 )
