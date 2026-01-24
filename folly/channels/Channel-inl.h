@@ -84,7 +84,8 @@ class Receiver<TValue>::Waiter : public detail::IChannelCallback {
     });
   }
 
-  bool await_suspend(folly::coro::coroutine_handle<> awaitingCoroutine) {
+  bool await_suspend(
+      folly::coro::coroutine_handle<> awaitingCoroutine) noexcept {
     return state_.withWLock([&](State& state) {
       if (state.cancelled || !state.receiver ||
           !receiverWait(*state.receiver, this)) {
