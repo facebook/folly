@@ -42,7 +42,7 @@ result<int> catching_result_func(result<int>&& r) {
     if (r.has_value()) {
       return r.value_or_throw() + 1;
     }
-    return std::move(r).non_value();
+    return std::move(r).error_or_stopped();
   });
 }
 
@@ -51,7 +51,7 @@ result<int> non_catching_result_func(result<int>&& r) {
   if (r.has_value()) {
     return r.value_or_throw() + 1;
   }
-  return std::move(r).non_value();
+  return std::move(r).error_or_stopped();
 }
 
 // The wrappers are for ease of `objdump --disassemble=FN`.
@@ -102,7 +102,7 @@ BENCHMARK(catching_result_func_success, iters) {
 
 BENCHMARK(result_coro_error, iters) {
   BenchmarkSuspender suspender;
-  result<int> input{non_value_result{std::runtime_error{"test error"}}};
+  result<int> input{error_or_stopped{std::runtime_error{"test error"}}};
   suspender.dismissing([&] {
     while (iters--) {
       folly::compiler_must_not_elide(result_coro(input.copy()));
@@ -112,7 +112,7 @@ BENCHMARK(result_coro_error, iters) {
 
 BENCHMARK(non_catching_result_func_error, iters) {
   BenchmarkSuspender suspender;
-  result<int> input{non_value_result{std::runtime_error{"test error"}}};
+  result<int> input{error_or_stopped{std::runtime_error{"test error"}}};
   suspender.dismissing([&] {
     while (iters--) {
       folly::compiler_must_not_elide(non_catching_result_func(input.copy()));
@@ -122,7 +122,7 @@ BENCHMARK(non_catching_result_func_error, iters) {
 
 BENCHMARK(catching_result_func_error, iters) {
   BenchmarkSuspender suspender;
-  result<int> input{non_value_result{std::runtime_error{"test error"}}};
+  result<int> input{error_or_stopped{std::runtime_error{"test error"}}};
   suspender.dismissing([&] {
     while (iters--) {
       folly::compiler_must_not_elide(catching_result_func(input.copy()));

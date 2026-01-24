@@ -50,25 +50,25 @@ TEST(OrUnwindRich, error) {
         "std::logic_error: {} @ {}:{}", msgViaCtx, test_file_name, err_line);
   };
 
-  checkEnrichedError( // `result` in non-value state
+  checkEnrichedError( // `result` in error-or-stopped state
     [&]() -> result<> {
-      result<int> r{non_value_result{std::logic_error{"err1"}}};
+      result<int> r{error_or_stopped{std::logic_error{"err1"}}};
       err_line = std::source_location::current().line() + 1;
       (void)co_await or_unwind_rich(std::move(r), "ctx1");
     }(),
     expectedMsg("err1 [via] ctx1"));
 
-  checkEnrichedError( // `non_value_result`
+  checkEnrichedError( // `error_or_stopped`
     [&]() -> result<> {
-      non_value_result nvr{std::logic_error{"err2"}};
+      error_or_stopped eos{std::logic_error{"err2"}};
       err_line = std::source_location::current().line() + 1;
-      co_await or_unwind_rich(std::move(nvr), "ctx2");
+      co_await or_unwind_rich(std::move(eos), "ctx2");
     }(),
     expectedMsg("err2 [via] ctx2"));
 
   checkEnrichedError( // `result` with format args
     [&]() -> result<> {
-      result<int> r{non_value_result{std::logic_error{"err3"}}};
+      result<int> r{error_or_stopped{std::logic_error{"err3"}}};
       err_line = std::source_location::current().line() + 1;
       (void)co_await or_unwind_rich(std::move(r), "x={} y={}", 10, 20);
     }(),
@@ -85,9 +85,9 @@ TEST(OrUnwindRich, stopped) {
   EXPECT_TRUE(res.has_stopped());
   auto msg = "folly::OperationCancelled: coroutine operation cancelled";
   // Temporary workaround for `static_assert` against testing for OC in
-  // `result.h`.  Future: Once `result` or `non_value_result` is formattable,
+  // `result.h`.  Future: Once `result` or `error_or_stopped` is formattable,
   // we can avoid this hackery.
-  auto rep = std::move(res).non_value().release_rich_exception_ptr();
+  auto rep = std::move(res).error_or_stopped().release_rich_exception_ptr();
   EXPECT_EQ(
       fmt::format("{} [via] ctx @ {}:{}", msg, test_file_name, err_line),
       fmt::format("{}", get_exception<OperationCancelled>(rep)));

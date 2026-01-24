@@ -59,23 +59,23 @@ TEST(RichErrorBaseFormatTest, SameErrorDirectThenUnderlying2) {
 TEST(EnrichNonValueTest, accessEnrichedAndUnderlyingException) {
   std::string bare_msg = "folly::TinyErr";
 
-  auto assertUnderlying = [&](auto& nvr, const std::string& re) {
+  auto assertUnderlying = [&](auto& eos, const std::string& re) {
     {
       // Only `rich_exception_ptr` can show the enrichment info AND expose the
       // underlying exception.  By converting to a bare `exception_ptr`, we
       // discard the enrichment chain.
-      auto eptr = copy(nvr).to_exception_ptr_slow();
+      auto eptr = copy(eos).to_exception_ptr_slow();
       EXPECT_EQ(bare_msg, fmt::format("{}", *get_rich_error(eptr)));
       EXPECT_FALSE(get_exception<detail::enriched_non_value>(eptr));
       EXPECT_TRUE(get_exception<TinyErr>(eptr));
       EXPECT_TRUE(get_exception<rich_error<TinyErr>>(eptr));
     }
-    checkFormatViaGet<TinyErr, rich_error_base, std::exception>(nvr, re);
+    checkFormatViaGet<TinyErr, rich_error_base, std::exception>(eos, re);
 
     // Enrichment is transparent: although `enriched_non_value` is itself a
     // `rich_error_base`, all public APIs (except `get_outer_exception()` go to
     // the underlying error.
-    auto rex = get_rich_error(nvr);
+    auto rex = get_rich_error(eos);
     EXPECT_FALSE(dynamic_cast<const detail::enriched_non_value*>(rex.get()));
     EXPECT_TRUE(dynamic_cast<const TinyErr*>(rex.get()));
     EXPECT_TRUE(dynamic_cast<const rich_error<TinyErr>*>(rex.get()));
@@ -92,13 +92,13 @@ TEST(EnrichNonValueTest, accessEnrichedAndUnderlyingException) {
     EXPECT_TRUE(std::nullopt == get_rich_error_code<A1>(*rex));
   };
 
-  non_value_result nvr0{rich_error<TinyErr>{}};
-  const auto* innerErr = get_exception<TinyErr>(nvr0).get();
+  error_or_stopped eos0{rich_error<TinyErr>{}};
+  const auto* innerErr = get_exception<TinyErr>(eos0).get();
 
   // Cover the "outer" `rich_error_base` interface (except codes)
-  auto assertOuter = [&](auto& nvr, int err_line, const char* msg = "") {
+  auto assertOuter = [&](auto& eos, int err_line, const char* msg = "") {
     auto& outer =
-        *std::move(nvr)
+        *std::move(eos)
              .release_rich_exception_ptr()
              .template get_outer_exception<detail::enriched_non_value>();
     EXPECT_EQ(err_line, outer.source_location().line());
@@ -112,19 +112,19 @@ TEST(EnrichNonValueTest, accessEnrichedAndUnderlyingException) {
 
   // Add and test 1 enrichment
   auto err_line1 = source_location::current().line() + 1;
-  auto nvr1 = enrich_non_value(std::move(nvr0));
+  auto eos1 = enrich_non_value(std::move(eos0));
 
-  assertOuter(nvr1, err_line1);
+  assertOuter(eos1, err_line1);
   assertUnderlying(
-      nvr1,
+      eos1,
       fmt::format("{} \\[via\\] {}:{}", bare_msg, test_file_name, err_line1));
 
   // Wrap a second enrichment to ensure skip-to-underlying, not skip-to-next
   auto err_line2 = source_location::current().line() + 1;
-  auto nvr2 = enrich_non_value(std::move(nvr1), "literal");
-  assertOuter(nvr2, err_line2, "literal");
+  auto eos2 = enrich_non_value(std::move(eos1), "literal");
+  assertOuter(eos2, err_line2, "literal");
   assertUnderlying(
-      nvr2,
+      eos2,
       fmt::format(
           "{} \\[via\\] literal @ {}:{} \\[after\\] {}:{}",
           bare_msg,
@@ -136,17 +136,17 @@ TEST(EnrichNonValueTest, accessEnrichedAndUnderlyingException) {
 
 // The underlying error doesn't have to be a `rich_error_base`.
 TEST(EnrichNonValueTest, enrichPlainError) {
-  auto nvr = enrich_non_value(
+  auto eos = enrich_non_value(
       enrich_non_value(
-          enrich_non_value(non_value_result{std::logic_error{"inner"}}), "msg"),
+          enrich_non_value(error_or_stopped{std::logic_error{"inner"}}), "msg"),
       "format{}",
       std::string{"ted"});
 
   // `get_exception` makes a `logic_error*` quack-alike with rich formatting
-  const std::logic_error* ex{get_exception<std::logic_error>(nvr)};
+  const std::logic_error* ex{get_exception<std::logic_error>(eos)};
   EXPECT_STREQ("inner", ex->what());
   checkFormatViaGet<std::logic_error, std::exception>(
-      nvr,
+      eos,
       fmt::format(
           "std::logic_error: inner \\[via\\] formatted @ {}:[0-9]+ \\[after\\] "
           "msg @ {}:[0-9]+ \\[after\\] {}:[0-9]+",
@@ -180,7 +180,7 @@ TEST(EnrichNonValueTest, enrichResultWithValue) {
 // Add enrichment to a non-value `result`
 TEST(EnrichNonValueTest, enrichResultWithNonValue) {
   auto r = enrich_non_value(
-      result<int>{non_value_result{std::logic_error{"inner"}}}, "msg");
+      result<int>{error_or_stopped{std::logic_error{"inner"}}}, "msg");
   static_assert(std::same_as<result<int>, decltype(r)>);
   EXPECT_FALSE(r.has_value());
 
@@ -195,8 +195,8 @@ TEST(EnrichNonValueTest, enrichResultWithNonValue) {
 
 // Codes are forwarded to the underlying error, and formatted.
 TEST(EnrichNonValueTest, retrieveCodeDelegatesToUnderlying) {
-  auto nvr = enrich_non_value(
-      enrich_non_value(non_value_result{make_coded_rich_error(A1::ONE_A1)}));
+  auto eos = enrich_non_value(
+      enrich_non_value(error_or_stopped{make_coded_rich_error(A1::ONE_A1)}));
 
   // If we insist on inspecting the outer error (I'm not seeing how this would
   // happen in normal usage), it has no code. Yes, we could easily forward the
@@ -205,16 +205,16 @@ TEST(EnrichNonValueTest, retrieveCodeDelegatesToUnderlying) {
   EXPECT_EQ(
       std::nullopt,
       get_rich_error_code<A1>(
-          *copy(nvr)
+          *copy(eos)
                .release_rich_exception_ptr()
                .get_outer_exception<detail::enriched_non_value>()));
 
   // Normal access first resolves the underlying error, so code access works.
-  EXPECT_EQ(A1::ONE_A1, get_rich_error_code<A1>(nvr));
+  EXPECT_EQ(A1::ONE_A1, get_rich_error_code<A1>(eos));
 
   // The `get_exception` pointer has enriched formatting, including the code.
   checkFormatViaGet<coded_rich_error<A1>, rich_error_base, std::exception>(
-      nvr,
+      eos,
       fmt::format(
           "A1=1 @ {}:[0-9]+ \\[via\\] {}:[0-9]+ \\[after\\] {}:[0-9]+",
           test_file_name,

@@ -29,7 +29,7 @@
 // - Awaiter: `or_unwind` (&, const&, &&), `or_unwind_owning`
 // - Context: `result` coroutine, `now_task` coroutine
 // - Inner type: `void`, `int` and refs, `string`, `unique_ptr` and refs
-// - Result-like container: `result`, `value_only_result`, `non_value_result`
+// - Result-like container: `result`, `value_only_result`, `error_or_stopped`
 // - States: value, error, stopped
 
 #if FOLLY_HAS_RESULT
@@ -90,7 +90,8 @@ consteval void checkAwaitResumeType() {
           decltype(std::declval<Awaitable>().await_resume())>);
 }
 
-// Check `await_resume()` types for rvalue-only types (e.g. `non_value_result`).
+// Check `await_resume()` types for rvalue-only types (e.g.
+// `error_or_stopped`).
 template <typename ResultT, typename RvalueT, typename OwningT>
 consteval void checkRvalueAwaitResumeTypes() {
   checkAwaitResumeType<RvalueT, decltype(or_unwind(FOLLY_DECLVAL(ResultT)))>();
@@ -150,9 +151,9 @@ ResultT makeResultWithValue(MakeInner&& makeInner) {
   }
 }
 
-// An empty `non_value_result` made from an empty `exception_wrapper`.
-inline non_value_result emptyNonValue() {
-  return non_value_result::make_legacy_error_or_cancellation_slow(
+// An empty `error_or_stopped` made from an empty `exception_wrapper`.
+inline error_or_stopped emptyErrorOrStopped() {
+  return error_or_stopped::make_legacy_error_or_cancellation_slow(
       detail::result_private_t{}, exception_wrapper{});
 }
 
@@ -170,16 +171,17 @@ void forEachOrUnwindVariant(MakeResult makeResult, Check&& check) {
     check(tag_t<Context>{}, or_unwind(std::as_const(val)));
     // Lvalue refs must NOT mutate the original (error is copied, not moved).
     // Users don't expect `co_await or_unwind(r)` to mutate `r`.
-    if constexpr (requires { val.non_value(); }) {
-      EXPECT_TRUE(hasValue || (emptyNonValue() != val.non_value()));
+    if constexpr (requires { val.error_or_stopped(); }) {
+      EXPECT_TRUE(
+          hasValue || (emptyErrorOrStopped() != val.error_or_stopped()));
     }
   }
   check(tag_t<Context>{}, or_unwind_owning(makeResult()));
   // By rvalue ref -- error SHOULD be moved out.
   check(tag_t<Context>{}, or_unwind(std::move(val)));
-  if constexpr (requires { val.non_value(); }) {
+  if constexpr (requires { val.error_or_stopped(); }) {
     // NOLINTNEXTLINE(bugprone-use-after-move)
-    EXPECT_TRUE(hasValue || (emptyNonValue() == val.non_value()));
+    EXPECT_TRUE(hasValue || (emptyErrorOrStopped() == val.error_or_stopped()));
   }
 }
 
@@ -220,11 +222,11 @@ struct CheckExtractRef {
   }
 };
 
-// Test non-value propagation across all applicable variants.
-template <typename MakeNonValue, typename Verify>
-void testNonValue(MakeNonValue makeNonValue, Verify verify) {
+// Test error-or-stopped propagation across all applicable variants.
+template <typename MakeErrorOrStopped, typename Verify>
+void testErrorOrStopped(MakeErrorOrStopped makeErrorOrStopped, Verify verify) {
   forEachOrUnwindVariant<InResult>(
-      makeNonValue, [&](tag_t<InResult>, auto&& awaitable) {
+      makeErrorOrStopped, [&](tag_t<InResult>, auto&& awaitable) {
         auto out = InResult::run([&]() -> InResult::Coro<void> {
           (void)co_await must_use_immediately_unsafe_mover(
               static_cast<decltype(awaitable)>(awaitable))();
@@ -232,7 +234,7 @@ void testNonValue(MakeNonValue makeNonValue, Verify verify) {
         verify(out);
       });
   forEachOrUnwindVariant<InTask>(
-      makeNonValue, [&](tag_t<InTask>, auto&& awaitable) {
+      makeErrorOrStopped, [&](tag_t<InTask>, auto&& awaitable) {
         auto out = InTask::run([&]() -> InTask::Coro<void> {
           (void)co_await must_use_immediately_unsafe_mover(
               static_cast<decltype(awaitable)>(awaitable))();
@@ -242,18 +244,18 @@ void testNonValue(MakeNonValue makeNonValue, Verify verify) {
 }
 
 template <typename... Makes>
-void testNonValueErrors(Makes... makes) {
+void testErrorOrStoppedErrors(Makes... makes) {
   auto verify = [](auto& out) {
     EXPECT_TRUE(!out.has_value() && !out.has_stopped());
     EXPECT_NE(nullptr, get_exception<std::runtime_error>(out));
   };
-  (testNonValue(makes, verify), ...);
+  (testErrorOrStopped(makes, verify), ...);
 }
 
 template <typename... Makes>
-void testNonValueStopped(Makes... makes) {
+void testErrorOrStoppedStopped(Makes... makes) {
   auto verify = [](auto& out) { EXPECT_TRUE(out.has_stopped()); };
-  (testNonValue(makes, verify), ...);
+  (testErrorOrStopped(makes, verify), ...);
 }
 
 // Test all `or_unwind...` flavors in both `result` and `now_task` coros.
@@ -278,12 +280,12 @@ void testOrUnwind(MakeInner makeInner, const CheckValue& checkValue) {
     forEachOrUnwindVariant<InTask>(makeRes, checkValue);
   }
 
-  // Propagate error/stopped, for result types with `.non_value()`
-  if constexpr (requires { FOLLY_DECLVAL(ResultT).non_value(); }) {
-    testNonValueErrors([&] {
-      return ResultT{non_value_result{std::runtime_error{"err"}}};
+  // Propagate error/stopped, for result types with `.error_or_stopped()`
+  if constexpr (requires { FOLLY_DECLVAL(ResultT).error_or_stopped(); }) {
+    testErrorOrStoppedErrors([&] {
+      return ResultT{error_or_stopped{std::runtime_error{"err"}}};
     });
-    testNonValueStopped([&] { return ResultT{stopped_result}; });
+    testErrorOrStoppedStopped([&] { return ResultT{stopped_result}; });
   }
 }
 
@@ -339,16 +341,16 @@ TEST(OrUnwind, valueOnlyResult) {
   testOrUnwindVaryingInnerType<value_only_result>();
 }
 
-// Test `or_unwind...` overloads for `non_value_result` & `stopped_result_t`
-TEST(OrUnwind, nonValueResult) {
-  checkRvalueAwaitResumeTypes<non_value_result, void, void>();
+// Test `or_unwind...` overloads for `error_or_stopped` & `stopped_result_t`
+TEST(OrUnwind, errorOrStoppedResult) {
+  checkRvalueAwaitResumeTypes<error_or_stopped, void, void>();
   checkRvalueAwaitResumeTypes<stopped_result_t, void, void>();
 
-  testNonValueErrors([] {
-    return non_value_result{std::runtime_error{"err"}};
+  testErrorOrStoppedErrors([] {
+    return error_or_stopped{std::runtime_error{"err"}};
   });
-  testNonValueStopped(
-      [] { return non_value_result{stopped_result}; },
+  testErrorOrStoppedStopped(
+      [] { return error_or_stopped{stopped_result}; },
       [] { return stopped_result; });
 }
 

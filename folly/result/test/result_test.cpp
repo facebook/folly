@@ -57,7 +57,7 @@ static_assert(gettingValueDoesNotImplicitlyThrow<result<void*>>());
 
 // Smoke test to ensure we use packed `rich_exception_ptr` on 64-bit Linux.
 static_assert(
-    sizeof(non_value_result) == sizeof(void*) || !kIsLinux ||
+    sizeof(error_or_stopped) == sizeof(void*) || !kIsLinux ||
     sizeof(void*) != 8);
 
 class MyError : public std::runtime_error {
@@ -86,13 +86,13 @@ TEST(Result, resultOfVoid) {
     r3.copy().value_or_throw();
   }
   { // `result<void>` in an error state
-    result<> r(non_value_result{MyError{"soup"}}); // ctor
+    result<> r(error_or_stopped{MyError{"soup"}}); // ctor
     EXPECT_STREQ("soup", get_exception<MyError>(r)->what());
     EXPECT_STREQ("soup", get_exception<MyError>(std::as_const(r))->what());
     EXPECT_FALSE(r.has_value());
     EXPECT_FALSE(r.has_stopped());
 
-    r = non_value_result{MyError{"cake"}}; // assignment
+    r = error_or_stopped{MyError{"cake"}}; // assignment
     EXPECT_STREQ("cake", get_exception<MyError>(r)->what());
   }
   { // `result<void>` coro with "error" and "success" exit paths.
@@ -100,7 +100,7 @@ TEST(Result, resultOfVoid) {
       if (!fail) {
         co_return;
       }
-      co_await or_unwind(non_value_result{MyError{"failed"}});
+      co_await or_unwind(error_or_stopped{MyError{"failed"}});
     };
     EXPECT_TRUE(voidResFn(false).has_value());
     auto r = voidResFn(true);
@@ -110,7 +110,7 @@ TEST(Result, resultOfVoid) {
     struct ConvertToResultVoid {
       /*implicit*/ operator result<void>() const {
         if (fail_) {
-          return non_value_result{MyError{"failed"}};
+          return error_or_stopped{MyError{"failed"}};
         }
         return {};
       }
@@ -130,12 +130,12 @@ TEST(Result, noEmptyError) {
   if (kIsDebug) {
     EXPECT_DEATH(
         {
-          (void)non_value_result::from_exception_ptr_slow(std::exception_ptr{});
+          (void)error_or_stopped::from_exception_ptr_slow(std::exception_ptr{});
         },
         "`result` may not contain an empty `std::exception_ptr`");
   } else {
     EXPECT_FALSE(
-        non_value_result::from_exception_ptr_slow(std::exception_ptr{})
+        error_or_stopped::from_exception_ptr_slow(std::exception_ptr{})
             .to_exception_ptr_slow());
   }
 }
@@ -151,16 +151,17 @@ TEST(Result, storeAndGetStoppedResult) {
     // Using `exception_ptr`-like accessors when `has_stopped()` is debug-fatal
     if (kIsDebug) {
       EXPECT_DEATH(
-          { (void)std::move(r).non_value().to_exception_ptr_slow(); }, deathRe);
+          { (void)std::move(r).error_or_stopped().to_exception_ptr_slow(); },
+          deathRe);
     } else {
-      auto ew = std::move(r).non_value().to_exception_ptr_slow();
+      auto ew = std::move(r).error_or_stopped().to_exception_ptr_slow();
       EXPECT_TRUE(get_exception<OperationCancelled>(ew));
     }
   };
   check(tag<void>, stopped_result);
   check(tag<int>, stopped_result);
   auto ocEw = make_exception_wrapper<OperationCancelled>();
-  auto stoppedNvr = non_value_result::make_legacy_error_or_cancellation_slow(
+  auto stoppedNvr = error_or_stopped::make_legacy_error_or_cancellation_slow(
       detail::result_private_t{}, ocEw);
   check(tag<void>, stoppedNvr);
   check(tag<int>, stoppedNvr);
@@ -169,12 +170,12 @@ TEST(Result, storeAndGetStoppedResult) {
   if (kIsDebug) {
     EXPECT_DEATH(
         {
-          (void)non_value_result::from_exception_ptr_slow(ocEw.exception_ptr());
+          (void)error_or_stopped::from_exception_ptr_slow(ocEw.exception_ptr());
         },
         deathRe);
   } else {
     auto eptr =
-        non_value_result::from_exception_ptr_slow(ocEw.exception_ptr())
+        error_or_stopped::from_exception_ptr_slow(ocEw.exception_ptr())
             .to_exception_ptr_slow();
     EXPECT_TRUE(get_exception<OperationCancelled>(eptr));
   }
@@ -232,9 +233,9 @@ TEST(Result, copyMethod) {
   EXPECT_EQ(r.value_or_throw(), rToo.value_or_throw());
   EXPECT_TRUE(r == rToo);
 
-  result<int> rErr{non_value_result{MyError{"grr"}}};
+  result<int> rErr{error_or_stopped{MyError{"grr"}}};
   auto rErrToo = rErr.copy();
-  EXPECT_EQ(rErr.non_value(), rErrToo.non_value());
+  EXPECT_EQ(rErr.error_or_stopped(), rErrToo.error_or_stopped());
   EXPECT_TRUE(rErr == rErrToo);
 
   EXPECT_TRUE(rErr != r);
@@ -242,18 +243,18 @@ TEST(Result, copyMethod) {
 }
 
 // `stopped_result` is covered separately
-TEST(Result, fromNonValue) {
-  non_value_result nvr{MyError{"nay"}};
+TEST(Result, fromErrorOrStopped) {
+  error_or_stopped eos{MyError{"nay"}};
   {
-    result<int> r{nvr}; // ctor
+    result<int> r{eos}; // ctor
     EXPECT_EQ(std::string("nay"), get_exception<MyError>(r)->what());
-    r = copy(nvr); // assignment
+    r = copy(eos); // assignment
     EXPECT_EQ(std::string("nay"), get_exception<MyError>(r)->what());
   }
-  nvr = non_value_result{MyError{"nein"}};
+  eos = error_or_stopped{MyError{"nein"}};
   {
-    auto r = [&nvr]() -> result<> {
-      co_await or_unwind(std::move(nvr)); // await
+    auto r = [&eos]() -> result<> {
+      co_await or_unwind(std::move(eos)); // await
       LOG(FATAL) << "not reached";
     }();
     EXPECT_EQ(std::string("nein"), get_exception<MyError>(r)->what());
@@ -443,7 +444,7 @@ RESULT_CO_TEST(Result, movableContexts) {
   }
   {
     auto fn = []() -> result<std::unique_ptr<int>> {
-      auto err = non_value_result{MyError{"foo"}};
+      auto err = error_or_stopped{MyError{"foo"}};
       return err;
     };
     auto res = fn();
@@ -451,7 +452,7 @@ RESULT_CO_TEST(Result, movableContexts) {
   }
   {
     auto fn = []() -> result<std::unique_ptr<int>> {
-      auto err = non_value_result{MyError{"foo"}};
+      auto err = error_or_stopped{MyError{"foo"}};
       co_return err;
     };
     auto res = fn();
@@ -549,7 +550,7 @@ RESULT_CO_TEST(Result, fallibleConversion) {
     // loop below is "explicitly" selecting the destination type.
     explicit operator result<int>() const {
       if (v_ == 0) {
-        return non_value_result{MyError{"zero"}};
+        return error_or_stopped{MyError{"zero"}};
       }
       return v_;
     }
@@ -617,10 +618,12 @@ void test_bad_empty_result(auto bad) {
   // exposed via this accessor.
   EXPECT_FALSE(get_exception<std::exception>(bad));
   if constexpr (!kIsDebug) {
-    EXPECT_TRUE(get_exception<detail::empty_result_error>(bad.non_value()));
+    EXPECT_TRUE(
+        get_exception<detail::empty_result_error>(bad.error_or_stopped()));
   } else {
     EXPECT_DEATH(
-        (void)bad.non_value(), "`folly::result` had an empty underlying");
+        (void)bad.error_or_stopped(),
+        "`folly::result` had an empty underlying");
   }
   if constexpr (!kIsDebug) {
     EXPECT_THROW((void)bad.value_or_throw(), detail::empty_result_error);
@@ -631,7 +634,7 @@ void test_bad_empty_result(auto bad) {
   // not default-constructible:
   decltype(bad) valRes{typename decltype(bad)::value_type{}};
   EXPECT_TRUE(valRes.has_value());
-  decltype(bad) errRes = non_value_result{MyError{"fiddlesticks"}};
+  decltype(bad) errRes = error_or_stopped{MyError{"fiddlesticks"}};
   EXPECT_FALSE(errRes.has_value());
   EXPECT_FALSE(valRes == bad);
   EXPECT_TRUE(valRes != bad);
@@ -663,8 +666,8 @@ TEST(Result, BadEmptyStateString) {
 
 FOLLY_PUSH_WARNING
 FOLLY_CLANG_DISABLE_WARNING("-Wunneeded-internal-declaration")
-bool is_bad_result_access(const non_value_result& nvr) {
-  return bool{get_exception<detail::bad_result_access_error>(nvr)};
+bool is_bad_result_access(const error_or_stopped& eos) {
+  return bool{get_exception<detail::bad_result_access_error>(eos)};
 }
 FOLLY_POP_WARNING
 
@@ -679,11 +682,11 @@ TEST(Result, accessValue) {
   EXPECT_FALSE(get_exception<std::exception>(std::as_const(r)));
 
   if constexpr (!kIsDebug) {
-    EXPECT_TRUE(is_bad_result_access(std::as_const(r).non_value()));
-    EXPECT_TRUE(is_bad_result_access(r.copy().non_value()));
+    EXPECT_TRUE(is_bad_result_access(std::as_const(r).error_or_stopped()));
+    EXPECT_TRUE(is_bad_result_access(r.copy().error_or_stopped()));
   } else {
-    EXPECT_DEATH(std::as_const(r).non_value(), bad_access_re);
-    EXPECT_DEATH((void)r.copy().non_value(), bad_access_re);
+    EXPECT_DEATH(std::as_const(r).error_or_stopped(), bad_access_re);
+    EXPECT_DEATH((void)r.copy().error_or_stopped(), bad_access_re);
   }
 
   EXPECT_EQ(555, r.value_or_throw());
@@ -705,7 +708,7 @@ TEST(Result, accessValue) {
   EXPECT_TRUE(r != rDiff);
   EXPECT_FALSE(rDiff == r);
 
-  result<int> rErr{non_value_result{MyError{"hi"}}};
+  result<int> rErr{error_or_stopped{MyError{"hi"}}};
   EXPECT_TRUE(r != rErr);
   EXPECT_FALSE(rErr == r);
 }
@@ -719,11 +722,11 @@ TEST(Result, accessLvalueRef) {
   EXPECT_FALSE(get_exception<std::exception>(std::as_const(r)));
 
   if constexpr (!kIsDebug) {
-    EXPECT_TRUE(is_bad_result_access(std::as_const(r).non_value()));
-    EXPECT_TRUE(is_bad_result_access(r.copy().non_value()));
+    EXPECT_TRUE(is_bad_result_access(std::as_const(r).error_or_stopped()));
+    EXPECT_TRUE(is_bad_result_access(r.copy().error_or_stopped()));
   } else {
-    EXPECT_DEATH(std::as_const(r).non_value(), bad_access_re);
-    EXPECT_DEATH((void)r.copy().non_value(), bad_access_re);
+    EXPECT_DEATH(std::as_const(r).error_or_stopped(), bad_access_re);
+    EXPECT_DEATH((void)r.copy().error_or_stopped(), bad_access_re);
   }
 
   EXPECT_EQ(555, r.value_or_throw());
@@ -745,7 +748,7 @@ TEST(Result, accessLvalueRef) {
   EXPECT_TRUE(r != rDiff);
   EXPECT_FALSE(rDiff == r);
 
-  result<const int&> rErr{non_value_result{MyError{"hi"}}};
+  result<const int&> rErr{error_or_stopped{MyError{"hi"}}};
   EXPECT_TRUE(r != rErr);
   EXPECT_FALSE(rErr == r);
 }
@@ -759,11 +762,11 @@ TEST(Result, accessRvalueRef) {
   EXPECT_FALSE(get_exception<std::exception>(std::as_const(r)));
 
   if constexpr (!kIsDebug) {
-    EXPECT_TRUE(is_bad_result_access(std::as_const(r).non_value()));
-    EXPECT_TRUE(is_bad_result_access(std::move(r).non_value()));
+    EXPECT_TRUE(is_bad_result_access(std::as_const(r).error_or_stopped()));
+    EXPECT_TRUE(is_bad_result_access(std::move(r).error_or_stopped()));
   } else {
-    EXPECT_DEATH(std::as_const(r).non_value(), bad_access_re);
-    EXPECT_DEATH((void)std::move(r).non_value(), bad_access_re);
+    EXPECT_DEATH(std::as_const(r).error_or_stopped(), bad_access_re);
+    EXPECT_DEATH((void)std::move(r).error_or_stopped(), bad_access_re);
   }
 
   r = rref((int&&)n1); // satisfy the moved-out linter
@@ -786,21 +789,21 @@ TEST(Result, accessRvalueRef) {
   EXPECT_TRUE(r != rDiff);
   EXPECT_FALSE(rDiff == r);
 
-  result<int&&> rErr{non_value_result{MyError{"hi"}}};
+  result<int&&> rErr{error_or_stopped{MyError{"hi"}}};
   EXPECT_TRUE(r != rErr);
   EXPECT_FALSE(rErr == r);
   */
 }
 
 TEST(Result, accessError) {
-  result<int> r{non_value_result{MyError{"ohai"}}};
+  result<int> r{error_or_stopped{MyError{"ohai"}}};
   EXPECT_FALSE(r.has_value());
   EXPECT_FALSE(r.has_stopped());
 
   std::string msg1{"ohai"};
   EXPECT_EQ(msg1, get_exception<MyError>(r)->what());
   EXPECT_EQ(msg1, get_exception<MyError>(std::as_const(r))->what());
-  EXPECT_EQ(msg1, get_exception<MyError>(r.non_value())->what());
+  EXPECT_EQ(msg1, get_exception<MyError>(r.error_or_stopped())->what());
 
   // We can mutate the exception in-place.
   auto newErr = MyError{"buh-bye"};
@@ -813,15 +816,15 @@ TEST(Result, accessError) {
   EXPECT_THROW((void)std::move(r).value_or_throw(), MyError);
 
   // `r` is moved out, so let's store a new error.
-  r = non_value_result{MyError{"farewell"}};
+  r = error_or_stopped{MyError{"farewell"}};
   EXPECT_EQ(std::string("farewell"), get_exception<MyError>(r)->what());
   EXPECT_TRUE(r == r);
   EXPECT_FALSE(r != r);
 
-  result<int> rSame1{r.non_value()};
-  result<int> rSame2 = non_value_result::from_exception_ptr_slow(
-      r.copy().non_value().to_exception_ptr_slow());
-  result<int> rDiff{non_value_result{MyError{"farewell"}}};
+  result<int> rSame1{r.error_or_stopped()};
+  result<int> rSame2 = error_or_stopped::from_exception_ptr_slow(
+      r.copy().error_or_stopped().to_exception_ptr_slow());
+  result<int> rDiff{error_or_stopped{MyError{"farewell"}}};
   EXPECT_TRUE(r == rSame1);
   EXPECT_TRUE(r == rSame2);
   EXPECT_FALSE(rSame1 != r);
@@ -844,7 +847,7 @@ RESULT_CO_TEST(Result, returnImplicitCtor) {
 
 TEST(Result, checkCustomError) {
   auto returnsMyError = []() -> result<> {
-    return non_value_result{MyError{"kthxbai"}};
+    return error_or_stopped{MyError{"kthxbai"}};
   };
   auto shortCircuitOnError = [&]() -> result<std::string> {
     co_await or_unwind(returnsMyError());
@@ -894,11 +897,11 @@ RESULT_CO_TEST(Result, awaitRef) {
 TEST(Result, awaitError) {
   for (auto& r :
        {[]() -> result<> {
-          co_await or_unwind(non_value_result{MyError{"eep"}});
+          co_await or_unwind(error_or_stopped{MyError{"eep"}});
         }(),
         []() -> result<> {
           (void)co_await or_unwind(
-              result<int>{non_value_result{MyError{"eep"}}});
+              result<int>{error_or_stopped{MyError{"eep"}}});
         }()}) {
     EXPECT_EQ(std::string("eep"), get_exception<MyError>(r)->what());
   }
@@ -906,7 +909,7 @@ TEST(Result, awaitError) {
 
 TEST(Result, awaitRefError) {
   auto resultErrFn = []() -> result<> {
-    result<std::unique_ptr<int>> resultErr{non_value_result{MyError{"e"}}};
+    result<std::unique_ptr<int>> resultErr{error_or_stopped{MyError{"e"}}};
     (void)co_await or_unwind(std::as_const(resultErr));
   };
   auto res = resultErrFn();
@@ -946,7 +949,7 @@ RESULT_CO_TEST_F(ResultTest, check_TEST_F) {
 TEST(Result, catch_all_returns_result_error) {
   auto res = []() -> result<uint8_t> {
     return result_catch_all([]() -> result<uint8_t> {
-      return non_value_result{std::logic_error{"bop"}};
+      return error_or_stopped{std::logic_error{"bop"}};
     });
   }();
   ASSERT_STREQ("bop", get_exception<std::logic_error>(res)->what());
@@ -984,25 +987,26 @@ TEST(Result, catch_all_returns_value) {
   ASSERT_EQ(129, fn().value_or_throw());
 }
 
-// Even though `non_value_result` is a `rich_exception_ptr`, the latter can
+// Even though `error_or_stopped` is a `rich_exception_ptr`, the latter can
 // still be used as a value type.
 TEST(Result, of_rich_exception_ptr) {
   result<rich_exception_ptr> rVal{rich_exception_ptr{MyError{"rep"}}};
   EXPECT_TRUE(rVal.has_value());
   EXPECT_STREQ("rep", get_exception<MyError>(rVal.value_or_throw())->what());
 
-  result<rich_exception_ptr> rErr{non_value_result{MyError{"err"}}};
+  result<rich_exception_ptr> rErr{error_or_stopped{MyError{"err"}}};
   EXPECT_FALSE(rErr.has_value());
   EXPECT_STREQ("err", get_exception<MyError>(rErr)->what());
 }
 
-// This was more interesting when `non_value_result` wrapped `exception_wrapper`
+// This was more interesting when `error_or_stopped` wrapped
+// `exception_wrapper`
 TEST(Result, of_exception_wrapper) {
   result<exception_wrapper> rVal{make_exception_wrapper<MyError>("ew")};
   EXPECT_TRUE(rVal.has_value());
   EXPECT_EQ("folly::MyError: ew", rVal.value_or_throw().what());
 
-  result<exception_wrapper> rErr{non_value_result{MyError{"err"}}};
+  result<exception_wrapper> rErr{error_or_stopped{MyError{"err"}}};
   EXPECT_FALSE(rErr.has_value());
   EXPECT_STREQ("err", get_exception<MyError>(rErr)->what());
 }
