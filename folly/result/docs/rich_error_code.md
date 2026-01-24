@@ -32,7 +32,7 @@ performance, or for any of its other benefits -- then the reason to adopt
 
   - `get_rich_error_code<Code>(...)` works on all standard error-containers
     (including anything that speaks `folly::get_exception`).  It is extra-fast
-    for `result` / `non_value_result`, and works for `std::exception_ptr`, etc.
+    for `result` / `error_or_stopped`, and works for `std::exception_ptr`, etc.
 
   - Fast type-unerasure -- checking if a type-erased error has a `Code` is much
     faster than RTTI (<5ns typically).  First, we `get_rich_error(container)`,
@@ -82,7 +82,7 @@ static constexpr badFruit = immortal_rich_error<
 
 result<double> fruitToCalories(Fruit f) {
   if (!f.isGood()) {
-    return non_value_result{badFruit};
+    return error_or_stopped{badFruit};
   }
   // ...
 };
@@ -98,7 +98,7 @@ without breaking any contracts.  The dominant cost will be ~60ns to allocate
 
 ```cpp
   if (f.isMoldy()) {
-    return non_value_result{make_coded_rich_error(
+    return error_or_stopped{make_coded_rich_error(
         FruitCode::BAD, "Moldy {}: {}", f.name(), diagnoseMold(f))};
   }
 ```
@@ -163,8 +163,8 @@ does differently from `std` and `status_code`:
     need to know a "category" or "domain" to use a code.  For value-type `T` to
     be usable, it must fit in `uint64_t` and specialize `rich_error_code<T>`.
 
-  - `folly/result` supports type erasure of errors via `non_value_result`.
-    Going from `non_value_result` to `rich_error_base*` is deliberately fast.
+  - `folly/result` supports type erasure of errors via `error_or_stopped`.
+    Going from `error_or_stopped` to `rich_error_base*` is deliberately fast.
     We piggyback on this to avoid introducing any additional notion of
     "category" or "domain".  Each rich error class is its own domain.  This
     lets us synthesize extremely fast lookup of `Code` from `rich_error_base*`.

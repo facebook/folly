@@ -75,7 +75,7 @@ namespace detail {
 // Shared implementation for `T` non-`void` and `void`
 template <typename Derived, typename T>
 class value_only_result_crtp {
-  static_assert(!std::is_same_v<non_value_result, std::remove_cvref_t<T>>);
+  static_assert(!std::is_same_v<error_or_stopped, std::remove_cvref_t<T>>);
   static_assert(!std::is_same_v<stopped_result_t, std::remove_cvref_t<T>>);
   // `value_only_result` is used on non-throwing code paths, so we require `T`
   // to be noexcept-movable to avoid hidden termination or exception risks.

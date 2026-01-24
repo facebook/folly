@@ -43,7 +43,7 @@ template <typename T>
     }
   } else {
     return Try<T>{
-        std::move(r).non_value().get_legacy_error_or_cancellation_slow(
+        std::move(r).error_or_stopped().get_legacy_error_or_cancellation_slow(
             detail::result_private_t{})};
   }
 }
@@ -51,7 +51,7 @@ template <typename T>
 inline constexpr struct empty_try_as_error_t {
   template <typename T>
   result<T> on_empty_try() const {
-    return {non_value_result{UsingUninitializedTry{}}};
+    return {error_or_stopped{UsingUninitializedTry{}}};
   }
 } empty_try_as_error;
 
@@ -81,7 +81,7 @@ result<T> try_to_result(Try<T> t, IfEmpty if_empty) noexcept(
       return {std::move(t).value()};
     }
   } else if (t.hasException()) {
-    return {non_value_result::make_legacy_error_or_cancellation_slow(
+    return {error_or_stopped::make_legacy_error_or_cancellation_slow(
         detail::result_private_t{}, std::move(t).exception())};
   } else {
     return std::move(if_empty).template on_empty_try<T>();

@@ -23,17 +23,17 @@
 
 namespace folly::detail {
 
-const non_value_result& dfatal_get_empty_result_error() {
-  static const folly::Indestructible<non_value_result> r{empty_result_error{}};
+const error_or_stopped& dfatal_get_empty_result_error() {
+  static const folly::Indestructible<error_or_stopped> r{empty_result_error{}};
   LOG(DFATAL) << "`folly::result` had an empty underlying `folly::Expected`";
   return *r;
 }
 
-const non_value_result& dfatal_get_bad_result_access_error() {
-  static const folly::Indestructible<non_value_result> r{
+const error_or_stopped& dfatal_get_bad_result_access_error() {
+  static const folly::Indestructible<error_or_stopped> r{
       bad_result_access_error{}};
   LOG(DFATAL)
-      << "Used `non_value()` accessor for `folly::result` in value state";
+      << "Used `error_or_stopped()` accessor for `folly::result` in value state";
   return *r;
 }
 

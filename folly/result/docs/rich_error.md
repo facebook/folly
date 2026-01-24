@@ -50,7 +50,7 @@ struct Fruit {
   result<Food> peel() {
     if (!isGood()) {
       // `make` auto-captures source location; see `coded_rich_error::make`
-      return non_value_result{
+      return error_or_stopped{
           FruitError::make(FruitCode::BAD, "cannot peel: {}", str_)};
     }
     // ...
@@ -139,7 +139,7 @@ static constexpr auto badFruit =
 
 result<double> Fruit::toCalories() {
   if (!f.isGood()) {
-    return non_value_result{badFruit};
+    return error_or_stopped{badFruit};
   }
   // ...
 }
@@ -153,7 +153,7 @@ Switching to a dynamic error is straightforward and breaks no contracts:
 
 ```cpp
 if (f.isMoldy()) {
-  return non_value_result{make_coded_rich_error(
+  return error_or_stopped{make_coded_rich_error(
       FruitCode::BAD, "Moldy {}: {}", f.name(), diagnoseMold(f))};
 }
 ```

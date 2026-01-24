@@ -41,7 +41,7 @@
 ///
 ///   - User-friendly constructors & conversions -- you can write
 ///     `result<T>`-returning functions as-if they returned `T`, while returning
-///     returning `non_value_result{YourException{...}}` on error.
+///     returning `error_or_stopped{YourException{...}}` on error.
 ///
 ///   - Can store & and && references.  Think of them as syntax sugar for
 ///     `std::reference_wrapper` and `folly::rvalue_reference_wrapper`.
@@ -51,7 +51,7 @@
 ///          int n;
 ///          result<int&> at(int i) {
 ///            if (n + i == 42) { return std::ref(n); }
-///            return non_value_result{std::out_of_range{"FancyIntMap"}};
+///            return error_or_stopped{std::out_of_range{"FancyIntMap"}};
 ///          }
 ///        };
 ///        FancyIntMap m{.n = 12};
@@ -82,7 +82,7 @@
 ///       - `co_await or_unwind(std::as_const(res)) -> const T&`
 ///       WARNING: `auto&& ref = co_await or_unwind(rvalueFn())` dangles; search
 ///       `result.md` for "LLVM issue #177023".  Safe: `auto val = ...`
-///       - `co_await stopped_result` or `non_value_result{YourErr{}}` to
+///       - `co_await stopped_result` or `error_or_stopped{YourErr{}}` to
 ///         end the coroutine with an error without throwing.
 ///     * In `folly::coro` coroutines:
 ///       - `co_await value_or_error_or_stopped(x())` makes `result<X>`, does
@@ -91,16 +91,16 @@
 ///     * While you should strongly prefer to write `result<T>` coroutines,
 ///       propagation in non-coroutine `result<T>` functions is also easy:
 ///         if (!res.has_value()) {
-///           return std::move(res).non_value();
+///           return std::move(res).error_or_stopped();
 ///         }
 ///
 ///   - `result` is mainly used for return values -- implying single ownership.
 ///     For this reason, it encourages moves over copies (with a few carve-outs
 ///     for better usability), which also helps prevent perf bugs.
 ///
-/// Note: Unlike `Try`, `non_value_result` (and thus `result<T>` in a non-value
-/// state) will `std::terminate` in debug builds if you attempt to construct it,
-/// or access it while it contains either of:
+/// Note: Unlike `Try`, `error_or_stopped` (and thus `result<T>` in an
+/// error-or-stopped state) will `std::terminate` in debug builds if you attempt
+/// to construct it, or access it while it contains either of:
 ///
 ///   - `OperationCancelled` -- the header explains why user code should not
 ///     use that exception.  Instead, store `stopped_result`, and use
@@ -121,7 +121,7 @@ struct OperationCancelled;
 namespace detail {
 
 // In order to give `result` a stronger contract, debug builds prevent `result`
-// and `non_value_result` from ingesting empty `std::exception_ptr`s, and ones
+// and `error_or_stopped` from ingesting empty `std::exception_ptr`s, and ones
 // with `OperationCancelled`.
 //
 // In prod, neither check is done since the legacy behaviors are "okay"-ish:
@@ -146,7 +146,7 @@ inline void dfatal_if_eptr_empty_or_stopped(const std::exception_ptr& eptr) {
 struct result_private_t {};
 } // namespace detail
 
-// Place this into `result` or `non_value_result` to signal that a work-tree
+// Place this into `result` or `error_or_stopped` to signal that a work-tree
 // was stopped (aka cancelled).  You can also `co_await stopped_result` from
 // `result` coroutines.
 struct stopped_result_t {};
@@ -155,16 +155,16 @@ inline constexpr stopped_result_t stopped_result;
 template <typename, typename, auto...>
 class immortal_rich_error_t;
 
-// NB: Copying `non_value_result` is ~7ns due to `std::exception_ptr` atomics.
+// NB: Copying `error_or_stopped` is ~7ns due to `std::exception_ptr` atomics.
 // Unlike `result`, it is implicitly copyable, because:
 //   - Common usage involves only rvalues, so the risk of perf bugs is low.
 //   - `folly::Expected` assumes that the error type is copyable, and it's
 //     too convenient an implementation not to use.
-class [[nodiscard]] non_value_result {
+class [[nodiscard]] error_or_stopped {
  private:
   rich_exception_ptr rep_;
 
-  non_value_result(std::in_place_t, std::exception_ptr&& eptr) noexcept
+  error_or_stopped(std::in_place_t, std::exception_ptr&& eptr) noexcept
       : rep_{rich_exception_ptr::from_exception_ptr_slow(std::move(eptr))} {}
 
   template <typename Ex, typename REP>
@@ -174,27 +174,27 @@ class [[nodiscard]] non_value_result {
 
  public:
   /// Future: Fine to make implicit if a good use-case arises.
-  explicit non_value_result(stopped_result_t) : rep_{OperationCancelled{}} {}
-  non_value_result& operator=(stopped_result_t) {
+  explicit error_or_stopped(stopped_result_t) : rep_{OperationCancelled{}} {}
+  error_or_stopped& operator=(stopped_result_t) {
     rep_ = rich_exception_ptr{OperationCancelled{}};
     return *this;
   }
 
   /// Use this ctor to report errors from `result` coroutines & functions:
-  ///   co_await non_value_result{YourError{...}};
+  ///   co_await error_or_stopped{YourError{...}};
   ///
   /// Hot error paths should consider the `immortal_rich_error_t` ctor instead.
   ///
-  /// Design note: We do NOT want most users to construct `non_value_result`
+  /// Design note: We do NOT want most users to construct `error_or_stopped`
   /// from type-erased `std::exception_ptr` or `folly::exception_wrapper`,
   /// because that would block RTTI-avoidance optimizations for `result` code.
-  explicit non_value_result(std::derived_from<std::exception> auto ex)
+  explicit error_or_stopped(std::derived_from<std::exception> auto ex)
       : rep_(std::move(ex)) {
     static_assert(
         !std::is_same_v<decltype(ex), OperationCancelled>,
         // The reasons for this are discussed in `folly/OperationCancelled.h`.
         "Do not use `OperationCancelled` in new user code. Instead, construct "
-        "your `result` or `non_value_result` via `stopped_result`");
+        "your `result` or `error_or_stopped` via `stopped_result`");
   }
 
   /// Immortal rich errors are MUCH cheaper to instantiate than dynamic
@@ -202,12 +202,12 @@ class [[nodiscard]] non_value_result {
   /// atomic refcount ops.
   ///
   /// Usage for a `YourErr` taking a single `rich_msg` constructor argument:
-  ///    non_value_result{immortal_error<YourErr, "msg"_litv>}
+  ///    error_or_stopped{immortal_error<YourErr, "msg"_litv>}
   ///
   /// PS These are also usable in `constexpr` code, although the current header
   /// will need some more `contexpr` annotation to take advantage of this.
   template <typename T, auto... Args>
-  explicit non_value_result(
+  explicit error_or_stopped(
       const immortal_rich_error_t<rich_exception_ptr, T, Args...>& err)
       : rep_{err.ptr()} {}
 
@@ -258,7 +258,7 @@ class [[nodiscard]] non_value_result {
   //     `OperationCancelled`.
   [[noreturn]] void throw_exception() const { rep_.throw_exception(); }
 
-  /// AVOID.  Use `non_value_result(YourException{...})` if at all possible.
+  /// AVOID.  Use `error_or_stopped(YourException{...})` if at all possible.
   /// Add a `std::in_place_type_t<Ex>` constructor if needed.
   ///
   /// Provided for compatibility with existing code.  It has several downsides
@@ -268,13 +268,13 @@ class [[nodiscard]] non_value_result {
   ///     See the `dfatal_if_eptr_empty_or_stopped` doc.
   ///   - Not knowing the static exception type blocks optimizations that can
   ///     otherwise help avoid RTTI on error paths.
-  static non_value_result from_exception_ptr_slow(std::exception_ptr eptr) {
+  static error_or_stopped from_exception_ptr_slow(std::exception_ptr eptr) {
     detail::dfatal_if_eptr_empty_or_stopped(eptr);
-    return non_value_result{std::in_place, std::move(eptr)};
+    return error_or_stopped{std::in_place, std::move(eptr)};
   }
 
   /// AVOID. Use `folly::get_exception<Ex>(r)` to check for specific exceptions.
-  /// It may be OK to add more specific accessors to `non_value_result`, see
+  /// It may be OK to add more specific accessors to `error_or_stopped`, see
   /// `throw_exception()` for an example.
   ///
   /// INVARIANT: Ensure `!has_stopped()`, or you will see a debug-fatal.
@@ -288,21 +288,21 @@ class [[nodiscard]] non_value_result {
 
   /// AVOID.  Most code should use `result` coros, which catch most exceptions
   /// automatically.  Or, for a stronger guarantee, see `result_catch_all`.
-  static non_value_result from_current_exception() {
+  static error_or_stopped from_current_exception() {
     // Something was already thrown, and the user likely wants a result, so
     // it's appropriate to accept even `OperationCancelled` here.
     return {std::in_place, current_exception()};
   }
 
   friend inline bool operator==(
-      const non_value_result& lhs, const non_value_result& rhs) {
+      const error_or_stopped& lhs, const error_or_stopped& rhs) {
     return lhs.rep_ == rhs.rep_;
   }
 
   // DO NOT USE these "legacy" functions outside of `folly` internals. Instead:
-  //   - `non_value_result(YourException{...})` whenever you statically know
+  //   - `error_or_stopped(YourException{...})` whenever you statically know
   //     the exception type (feel free to add `std::in_place_type_t` support).
-  //   - `non_value_result::from_exception_ptr_slow()` only when you MUST pay
+  //   - `error_or_stopped::from_exception_ptr_slow()` only when you MUST pay
   //     for RTTI, such as "thrown exceptions".
   //
   // See `OperationCancelled.h` for how to handle cancellation.  In short: use
@@ -312,7 +312,7 @@ class [[nodiscard]] non_value_result {
   // `std::exception_ptr`s containing `OperationCancelled` made via
   // `folly::coro::co_cancelled`, without incurring the 20-80ns+ cost of
   // eagerly eagerly testing whether it contains `OperationCancelled`.
-  static non_value_result make_legacy_error_or_cancellation_slow(
+  static error_or_stopped make_legacy_error_or_cancellation_slow(
       detail::result_private_t, exception_wrapper ew) {
     return {std::in_place, std::move(ew).exception_ptr()};
   }
@@ -338,9 +338,12 @@ class [[nodiscard]] non_value_result {
 };
 static_assert(
     detail::rich_exception_ptr_packed_storage::is_supported
-        ? sizeof(non_value_result) == sizeof(std::exception_ptr)
-        : sizeof(non_value_result) ==
+        ? sizeof(error_or_stopped) == sizeof(std::exception_ptr)
+        : sizeof(error_or_stopped) ==
             sizeof(std::exception_ptr) + sizeof(void*));
+
+// Backwards-compatible alias
+using non_value_result = error_or_stopped;
 
 template <typename T = void>
 class result;
@@ -357,8 +360,8 @@ struct result_promise;
 // `shouldEagerInit` singleton in charge of this, and tell the users to do
 // this on startup:
 //   folly::SingletonVault::singleton()->doEagerInit();
-const non_value_result& dfatal_get_empty_result_error();
-const non_value_result& dfatal_get_bad_result_access_error();
+const error_or_stopped& dfatal_get_empty_result_error();
+const error_or_stopped& dfatal_get_bad_result_access_error();
 
 template <typename T>
 using result_ref_wrap = conditional_t< // Reused by `result_generator`
@@ -375,7 +378,8 @@ class or_unwind_crtp;
 // Shared implementation for `T` non-`void` and `void`
 template <typename Derived, typename T>
 class result_crtp {
-  static_assert(!std::is_same_v<non_value_result, std::remove_cvref_t<T>>);
+  static_assert(
+      !std::is_same_v<class error_or_stopped, std::remove_cvref_t<T>>);
   static_assert(!std::is_same_v<stopped_result_t, std::remove_cvref_t<T>>);
 
  public:
@@ -385,7 +389,7 @@ class result_crtp {
   using storage_type = detail::result_ref_wrap<lift_unit_t<T>>;
   static_assert(!std::is_reference_v<storage_type>);
 
-  using expected_t = Expected<storage_type, non_value_result>;
+  using expected_t = Expected<storage_type, class error_or_stopped>;
 
   expected_t exp_;
 
@@ -415,8 +419,8 @@ class result_crtp {
       // Implicitly convert `ResultT::value_type` to `Derived`.
       return {std::forward<ResultT>(rt).value_or_throw()};
     }
-    // `Derived` lets the rewrapping conversion copy a non-value state
-    return Derived{std::forward<ResultT>(rt).non_value()}; // Rewrap non-value
+    // `Derived` lets the rewrapping conversion copy an error-or-stopped state
+    return Derived{std::forward<ResultT>(rt).error_or_stopped()};
   }
 
   struct private_copy_t {};
@@ -504,15 +508,17 @@ class result_crtp {
   ///
   /// This forbids `result<stopped_result_t>` (`static_assert` above).
   /*implicit*/ result_crtp(stopped_result_t s)
-      : exp_(Unexpected{non_value_result{s}}) {}
+      : exp_(Unexpected{folly::error_or_stopped{s}}) {}
 
-  /// Implicitly movable / explicitly copyable from `non_value_result` to
-  /// make it easy to return `resT1.non_value()` in a `result<T2>` function.
+  /// Implicitly movable / explicitly copyable from `error_or_stopped` to
+  /// make it easy to return `resT1.error_or_stopped()` in a `result<T2>`
+  /// function.
   ///
-  /// This forbids `result<non_value_result>` (`static_assert` above).
-  /*implicit*/ result_crtp(non_value_result&& nvr)
-      : exp_(Unexpected{std::move(nvr)}) {}
-  explicit result_crtp(const non_value_result& nvr) : exp_(Unexpected{nvr}) {}
+  /// This forbids `result<error_or_stopped>` (`static_assert` above).
+  /*implicit*/ result_crtp(class error_or_stopped&& eos)
+      : exp_(Unexpected{std::move(eos)}) {}
+  explicit result_crtp(const class error_or_stopped& eos)
+      : exp_(Unexpected{eos}) {}
 
   /// Fallible copy/move conversion -- unlike the "simple" conversion, this can
   /// plausibly apply for `T` void.
@@ -542,7 +548,7 @@ class result_crtp {
   [[nodiscard]] bool has_value() const { return exp_.hasValue(); }
   // Also see `has_stopped()` below!
 
-  /// Non-value access should be used SPARINGLY!
+  /// Error-or-stopped access should be used SPARINGLY!
   ///
   /// Normally, you would:
   ///   - `folly::get_exception<Ex>(res)` to test for a specific error.
@@ -556,17 +562,18 @@ class result_crtp {
   /// There is no mutable `&` overload so that we can return singleton
   /// invariant-violation exceptions for `dfatal_..._error()` in opt builds:
   ///   - `folly::Expected` is empty due to an `operator=` exception
-  ///   - Calling `non_value()` when `has_value() == true` -- UB in
+  ///   - Calling `error_or_stopped()` when `has_value() == true` -- UB in
   ///     `std::expected`
   /// With folly-internal optimizations (see `extract_exception_ptr`), moving
   /// `std::exception_ptr` takes 0.5ns, vs ~7ns for a copy.
   ///
-  /// If there is a good use-case for mutating the non-value state inside
-  /// `result`, we could offer `set_non_value()` with different semantics.
+  /// If there is a good use-case for mutating the error-or-stopped state inside
+  /// `result`, we could offer `set_error_or_stopped()` with different
+  /// semantics.
   ///
   /// Future: when I have the appropriate error-path benchmark, try moving the
   /// 2 unlikely branches into a .cpp helper, that might help perf.
-  non_value_result non_value() && noexcept {
+  class error_or_stopped error_or_stopped() && noexcept {
     if (FOLLY_LIKELY(exp_.hasError())) {
       return std::move(exp_).error();
     } else if (exp_.hasValue()) {
@@ -577,7 +584,7 @@ class result_crtp {
   }
   // noexcept: std::exception_ptr copy is non-throwing on all major platforms
   // (atomic refcount increment via Itanium ABI or MSVC shared_ptr-like impl).
-  const non_value_result& non_value() const& noexcept {
+  const class error_or_stopped& error_or_stopped() const& noexcept {
     if (FOLLY_LIKELY(exp_.hasError())) {
       return exp_.error();
     } else if (exp_.hasValue()) {
@@ -587,9 +594,17 @@ class result_crtp {
     }
   }
 
-  // Syntax sugar to minimize the chances that end-users need `non_value()`.
+  // Backwards-compatible aliases
+  class error_or_stopped non_value() && noexcept {
+    return std::move(*this).error_or_stopped();
+  }
+  const class error_or_stopped& non_value() const& noexcept {
+    return error_or_stopped();
+  }
+
+  // Syntax sugar to help end-users avoid `error_or_stopped()`.
   [[nodiscard]] bool has_stopped() const {
-    return !has_value() && non_value().has_stopped();
+    return !has_value() && error_or_stopped().has_stopped();
   }
 
   /********************************* Protocols ********************************/
@@ -726,7 +741,7 @@ result final : public detail::result_crtp<result<T>, T> {
   template <class Arg, typename ResultT = std::remove_cvref_t<Arg>>
     requires(
         !std::is_same_v<ResultT, result> && // Not a move/copy ctor
-        // NB: This won't implicitly copy `non_value_result` since the
+        // NB: This won't implicitly copy `error_or_stopped` since the
         // underlying `Expected` is only constructible from `Unexpected`.
         std::is_constructible_v<expected_t, typename ResultT::expected_t &&>)
   /* implicit */ result(Arg&& that)
@@ -848,7 +863,7 @@ result_catch_all(F&& fn) noexcept {
       return static_cast<F&&>(fn)();
     }
   } catch (...) {
-    return non_value_result::from_current_exception();
+    return error_or_stopped::from_current_exception();
   }
 }
 

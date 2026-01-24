@@ -146,7 +146,7 @@ A few reasons, in order of importance:
     * Implicitly-throwing `value()` was renamed to `value_or_throw()`, and
       operators `*` / `->` were omitted. This encourages explicit, non-throwing
       error handling and/or `or_unwind` usage.
-    * `non_value()` + `has_stopped()` instead of `exception()` encourages
+    * `error_or_stopped()` + `has_stopped()` instead of `exception()` encourages
       [C++26-aligned](https://wg21.link/P2300) separation of "stopped" and
       "error" error handling.
 
@@ -214,7 +214,7 @@ synchronous code with pervasive error handling -- they are simpler and cheaper.
     Also, `folly::coro` plumbing is inherently more complex in order to support
     asynchrony (executors, cancellation tokens, etc).
   - It may be some time before `folly::coro` has native support for enriching
-    `result`s in non-value states (`enriching_errors.md`) -- currently,
+    `result`s in error-or-stopped states (`enriching_errors.md`) -- currently,
     round-tripping through `Try` discards enrichments.
 
 ## Details of the `result` API
@@ -292,7 +292,7 @@ a lot of flexibility.
     like `std::error_code` alone. If minimizing `result` size is of paramount
     importance, see `future_small_value.md` for an optimization idea.
 
-  - **Fast enough:** Using `non_value_result{Error{}}`, construct-destruct costs
+  - **Fast enough:** Using `error_or_stopped{Error{}}`, construct-destruct costs
     ~60ns. This is usually fast enough. If not, `immortal_rich_error<Error>` has
     construct-destruct costs of under 5ns. Calling `get_exception<Error>()` on
     both kinds of errors takes ~5ns thanks to a no-RTTI optimization -- we may
@@ -300,14 +300,15 @@ a lot of flexibility.
 
   - **Error provenance:** Our type-erasure also powers `enriching_errors.md`.
 
-### Why does `result`'s non-value state distinguish "stopped" and "error"?
+### Why does `result` distinguish "stopped" and "error"?
 
-`result` distinguishes "stopped" (aka cancelled) from "error" via
-`has_stopped()` and `stopped_result`.  This aligns with [P1677](
-https://wg21.link/p1677) and [C++26/P2300](https://wg21.link/p2300)
-`std::execution`, which hold that cancellation is **not** an error.  Instead,
-we learned that "stopped" is early, serendipitous success that typically only
-requires quick RAII cleanup -- **not** handling.
+`result` exposes `error_or_stopped()`.  This distinguishes with "stopped" (for
+cancellation) from "error" via `has_stopped()` and `stopped_result`.  This
+aligns with [P1677]( https://wg21.link/p1677) and
+[C++26/P2300](https://wg21.link/p2300) `std::execution`, which hold that
+cancellation is **not** an error.  Instead, we learned that "stopped" is early,
+serendipitous success that typically only requires quick RAII cleanup --
+**not** handling.
 
 Today's `folly::coro` treats cancellation as an exception
 (`OperationCancelled`), which has several problems:

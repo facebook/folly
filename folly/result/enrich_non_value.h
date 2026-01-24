@@ -124,7 +124,7 @@ class enriched_non_value : public rich_error_base {
 
 /// enrich_non_value
 ///
-/// You can enrich errors in `result` & `non_value_result` with messages (as
+/// You can enrich errors in `result` & `error_or_stopped` with messages (as
 /// allocation-free literals, or via `fmt::format`), and source locations:
 ///
 ///   r = enrich_non_value(my_result()) // only the source location
@@ -143,9 +143,9 @@ class enriched_non_value : public rich_error_base {
 /// `get_rich_error_code()`s of the error -- access to both will work the same
 /// as before enrichment.  So, this works, as do `has_stopped()` checks:
 ///
-///   nvr = enrich_non_value(non_value_result{std::logic_error{"BUG"}}, "HERE");
+///   eos = enrich_non_value(error_or_stopped{std::logic_error{"BUG"}}, "AT");
 ///   if (auto ex = get_exception<std::logic_error>()) { // NOT `auto*`!
-///     LOG(INFO) << ex; // Prints: HERE @ src.cpp:42 -> BUG
+///     LOG(INFO) << ex; // Prints: AT @ src.cpp:42 -> BUG
 ///   }
 ///
 /// For a wrapper that can change codes, check out `nestable_coded_rich_error`.
@@ -172,29 +172,30 @@ class enriched_non_value : public rich_error_base {
 /// Future: `enriching_errors.md` has pointers on how the enrichment support
 /// should evolve (for better perf & usability).
 template <typename... Args>
-non_value_result enrich_non_value(
-    non_value_result nvr,
+error_or_stopped enrich_non_value(
+    error_or_stopped eos,
     // The `format_string_and_location` doc explains the `type_identity`
     ext::format_string_and_location<std::type_identity_t<Args>...> snl = "",
     Args const&... args) {
-  return non_value_result{rich_error<detail::enriched_non_value>{
+  return error_or_stopped{rich_error<detail::enriched_non_value>{
       // No exception handling since `exception_ptr` creation currently is
       // `noexcept`, meaning that it either succeeds by using some "reserved
       // memory" if provided by the `std` implementation, or terminates.
-      std::move(nvr).release_rich_exception_ptr(),
+      std::move(eos).release_rich_exception_ptr(),
       rich_msg{std::move(snl), args...}}};
 }
 
 template <typename T, typename... Args>
 result<T> enrich_non_value(
     result<T> r,
-    // The `non_value_result` overload explains the `type_identity`.
+    // The `error_or_stopped` overload explains the `type_identity`.
     ext::format_string_and_location<std::type_identity_t<Args>...> snl = "",
     Args const&... args) {
   if (r.has_value()) {
     return r;
   }
-  return enrich_non_value(std::move(r).non_value(), std::move(snl), args...);
+  return enrich_non_value(
+      std::move(r).error_or_stopped(), std::move(snl), args...);
 }
 
 } // namespace folly

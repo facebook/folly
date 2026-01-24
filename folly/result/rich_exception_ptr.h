@@ -320,7 +320,7 @@ class rich_exception_ptr_impl : private B {
     } else if (B::SMALL_VALUE_eq == bits) {
       if constexpr (PartOfTryImpl) {
         throw StubTryException{}; // Match `Try::exception()` behavior
-      } else { // Match `result::non_value()` behavior
+      } else { // Match `result::error_or_stopped()` behavior
         B::debug_assert("Cannot `throw_exception` in value state", false);
         throw bad_result_access_error{};
       }
@@ -353,7 +353,7 @@ class rich_exception_ptr_impl : private B {
     }
     // We're NOT implementing `Try`, and are either in the small value state,
     // or in the empty `Try` state. Both are debug-fatal. For simplicity,
-    // we have both match `result::non_value()` failure behavior.
+    // we have both match `result::error_or_stopped()` failure behavior.
     B::debug_assert(
         "Cannot use `to_exception_ptr_slow` in value or empty `Try` state",
         false);
@@ -1077,7 +1077,7 @@ using rich_exception_ptr_base = rich_exception_ptr_impl<
 ///
 /// However, private APIs can store some other states in its internal union.
 /// For this reason, `rich_exception_ptr` should not be used in most end-user
-/// code.  Instead, use `non_value_result`.
+/// code.  Instead, use `error_or_stopped`.
 ///
 /// While generally aligned to `exception_wrapper`, this API is much smaller.
 /// Notably, the ONLY way to test `rich_exception_ptr` for the presence of the

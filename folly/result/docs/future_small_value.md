@@ -1,6 +1,6 @@
 # What is the small-value optimization for `result`?
 
-`result<T>` is effectively `Expected<storage_type, non_value_result>`, where the
+`result<T>` is effectively `Expected<storage_type, error_or_stopped>`, where the
 error type wraps `rich_exception_ptr` (REP). REP is a bit-discriminated variant
 that already reserves `SMALL_VALUE_eq` for future small-value storage.
 
@@ -24,14 +24,14 @@ immediate implementation plans exist, but the design preserves feasibility.
 Later in this file, you will find a discarded implementation of small-value storage, with lifetime management done by `rich_exception_ptr<SmallValue>`.
 
 I removed that approach since it conflicts with providing const reference
-access to `non_value_result` from `result<SV>`.
+access to `error_or_stopped` from `result<SV>`.
 
 ```cpp
-const non_value_result& non_value() const& {
+const error_or_stopped& error_or_stopped() const& {
 ```
 
-The `result` could store some kind of `non_value_result_impl<SV>` that manages
-lifetime, and play a type-punning game to expose `non_value_result` with the
+The `result` could store some kind of `error_or_stopped_impl<SV>` that manages
+lifetime, and play a type-punning game to expose `error_or_stopped` with the
 same bit layout, but incapable of small-value access.  However, this would add
 even more UB to the implementation, and doesn't seem like the right design.
 
@@ -107,7 +107,7 @@ My current preferred resolution for the above pointer troubles is to implement
 ---
 
 For whatever `result` instantiations are opted in, we need a separate
-`result_crtp` that only stores `non_value_result` and manages small-value
+`result_crtp` that only stores `error_or_stopped` and manages small-value
 lifetime on top, following a5f4e603c5151fae144437f99a9bea069745e8ea.
 
 Careful: The above rev has some minor deviations from the desired end
@@ -164,7 +164,7 @@ Other things to tidy:
 
 As noted above, this implementation was discarded because implementing
 small-value lifetime management within REP directly conflicts with `result`
-being able to expose its `non_value()` by reference, which is an important
+being able to expose its `error_or_stopped()` by reference, which is an important
 use-case.
 
 Nonetheless, these notes should be instructive in building similar lifetime

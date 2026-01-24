@@ -122,8 +122,8 @@ Note: Although 64-bit pointers leave the top byte (or more) unused, using those
 bits can interfere with memory tagging schemes.  In contrast, it is cheap and
 safe to use the 3 low bits that are always zero due to 8-byte alignment.
 
-In all, we could therefore represent up to 14 = (2**4 - 2) non-value states,
-and store 7 types of non-value pointers.  However, besides "small value", we
+In all, we could therefore represent up to 14 = (2**4 - 2) error-or-stopped states,
+and store 7 types of error-or-stopped pointers.  However, besides "small value", we
 only need 8 more states & 6 pointers below, and can therefore make some choices
 that make the packing and unpacking more CPU-efficient.
 

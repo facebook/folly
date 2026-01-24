@@ -37,7 +37,7 @@ struct Player {
 
 result<Ball> inboundsPass(Player& passer, Player& pointGuard) {
   if (!passer.canSeeClearly(pointGuard)) {
-    co_return non_value_result{make_coded_rich_error(
+    co_return error_or_stopped{make_coded_rich_error(
         // Don't actually use `std::errc` in a basketball simulator!
         std::errc::resource_unavailable_try_again,
         "passing lane blocked")};

@@ -59,7 +59,7 @@ moment you enrich one, that incurs an allocation.
 
 Today, `enrich_non_value` only takes REP by-value. The caller cannot retain a
 reference after the call—they have moved ownership. Meanwhile,
-`non_value_result::release_rich_exception_ptr` carries a large warning against
+`error_or_stopped::release_rich_exception_ptr` carries a large warning against
 holding references, and `maybe_enrich_in_place()` will be protected.
 
 These invariants mean `enrich_non_value()` has sole ownership of the REP during

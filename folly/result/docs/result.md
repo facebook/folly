@@ -95,7 +95,7 @@ This `result` coroutine showcases some common error-handling patterns:
 
 // This "result coro" works like a regular synchronous function returning
 // `result`. But, on exception it acts as if its body is surrounded with:
-//    try {} catch(...) { return non_value_result::from_current_exception(); }
+//    try {} catch(...) { return error_or_stopped::from_current_exception(); }
 result<size_t> countGrapefruitSeeds() {
   // If `getFruitBox()` returns an "error" or a "stopped" state, then
   // `co_await or_unwind` immediately propagates that result to the caller!
@@ -171,7 +171,7 @@ In bullets, `result<T>`:
 
   - Contains one of:
     * `T` -- which can be a value or reference, or
-    * `non_value_result` -- which either `has_stopped()`, or stores an error as
+    * `error_or_stopped` -- which either `has_stopped()`, or stores an error as
       `std::exception_ptr`, with folly-specific optimizations.  Access the
       latter via `folly::get_exception<Ex>(res)`.
 
@@ -221,7 +221,7 @@ In bullets, `result<T>`:
 What to know about exceptions & `result`:
 
   - `result` coroutines (but **not** functions) are exception boundaries.
-    Any uncaught exception is captured in `res.non_value()` & returned.
+    Any uncaught exception is captured in `res.error_or_stopped()` & returned.
 
   - The `result` API avoids throwing, aside from:
       * `value_or_throw()`, which you should avoid in favor of `co_await`,
@@ -264,7 +264,7 @@ result<int> addFive1() { co_return 5 + co_await or_unwind(childFn()); }
 result<int> addFive2() {
   auto res = childFn();
   if (!res.has_value()) {
-    return res.non_value(); // propagate "error" or "stopped"
+    return res.error_or_stopped(); // propagate "error" or "stopped"
   }
   return 5 + res.value_or_throw();
 }
@@ -294,7 +294,7 @@ Both are implicitly movable contexts, so the `std::move` is just visual
 noise, and can actually prevent NVRO for `return` (there's a linter against it).
 
 You can directly return any of these types: `result<V>`, `V`,
-convertible-to-`V`, convertible-to-`result<V>`, `non_value_result`, or
+convertible-to-`V`, convertible-to-`result<V>`, `error_or_stopped`, or
 `stopped_result`.  None will incur unnecessary copies.
 
 ## How to...
@@ -473,7 +473,7 @@ difference, **as long as you follow the "mostly non-throwing" contract** of
 result<int> plantSeeds(int n) {
   return result_catch_all([&]() -> result<int> {
     if (n < 0) {
-      return non_value_result{std::logic_error{"cannot plant < 0 seeds"}};
+      return error_or_stopped{std::logic_error{"cannot plant < 0 seeds"}};
     }
     int seedsLeft = n;
     for (int i = 0; i < n; ++i) {}
@@ -481,7 +481,7 @@ result<int> plantSeeds(int n) {
       if (auto ex = get_exception<HitBigRock>(rh)) {
         continue; // skip planting this seed
       } else if (!rh.has_value()) {
-        return rh.non_value(); // unhandled error or stopped
+        return rh.error_or_stopped(); // unhandled error or stopped
       }
       rh.value_or_throw().plantSeed(i);
       --seedsLeft;

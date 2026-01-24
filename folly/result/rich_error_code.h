@@ -367,8 +367,8 @@ class rich_error_bases_and_own_codes {
 /// Supported containers:
 ///   - Direct `rich_error_base` references
 ///   - `std::exception_ptr` (via `exception_ptr_get_object_hint`)
-///   - `exception_wrapper`, `rich_exception_ptr`, `result`, `non_value_result`,
-///     once you include the respective header.
+///   - `exception_wrapper`, `rich_exception_ptr`, `result`,
+///     `error_or_stopped`, once you include the respective header.
 ///
 /// Example:
 ///   if (auto code = get_rich_error_code<MyErrorCode>(exception_ptr)) {

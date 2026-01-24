@@ -28,7 +28,7 @@ when building new features:
 
 These are sorted from "near future" to "far future".
 
-  - Automatic `fmt` + `<<` for `non_value_result` by making
+  - Automatic `fmt` + `<<` for `error_or_stopped` by making
     `rich_exception_ptr` formattable (via bits and `rich_error_base` if
     available).  This would strengthen `checkEptrRoundtrip` non-aliasing
     checks.  Update other tests, like `enrich_non_value_test.cpp`.  `result<T>`
@@ -51,7 +51,7 @@ These are sorted from "near future" to "far future".
     issues, in the spirit of `VLOG`. Some words here may be useful
     https://fburl.com/enrichment_scopes_fast_or_slow
 
-  - Are we happy with the moved-out behavior of `non_value_result`?  Today it's
+  - Are we happy with the moved-out behavior of `error_or_stopped`?  Today it's
     "dfatal crash" / empty eptr.
 
   - Start `result/containers.h` with `result<T&> map_at(Map, Key)` and similar
@@ -75,7 +75,7 @@ These are sorted from "near future" to "far future".
     hard to change.
 
   - `rich_exception_ptr` should also be formattable, but since it's not (very)
-    user-visible, this is lower-priority than `result` / `non_value_result`..
+    user-visible, this is lower-priority than `result` / `error_or_stopped`..
 
   - We already have `enrich_non_value.h` and `nestable_coded_rich_error.h`,
     but neither is a direct counterpart to `std::nested_exception`. We
@@ -128,7 +128,7 @@ These are sorted from "near future" to "far future".
     auto v = res.value_or_handle_via(
         folly::type<YourErr> = [](const YourErr& ex) { ... },
         folly::type<OtherErr> = [](const OtherErr& ex) { ... },
-        [](const non_value_result& nvr) { /* catch-all */ });
+        [](const error_or_stopped& eos) { /* catch-all */ });
     ```
     This could also be `co_await handle_or_unwind(res, ...)` without the
     catch-all. As syntax "sugar", this does not have much urgency. But,

@@ -23,10 +23,10 @@ co_await or_unwind(enrich_non_value(
     resultFn(), "in {} due to {}", place, reason));
 ```
 
-If the inner result contains a non-value (error or stopped), the enrichment
-wrapper adds a source location and message.
+If the inner result contains an error-or-stopped, the enrichment wrapper adds a
+source location and message.
   - Value results pass through unchanged.
-  - Formatting runs only for non-value results.
+  - Formatting runs only for error-or-stopped results.
   - String literal messages without format arguments do not allocate or format.
 
 ### Enrichment is transparent: APIs access the underlying error
@@ -37,7 +37,7 @@ etc) access the **underlying** error -- the original being propagated.
 
 ```cpp
 result<> resultFn() {
-  return non_value_result{std::logic_error{"oops"}};
+  return error_or_stopped{std::logic_error{"oops"}};
 }
 ```
 
@@ -55,7 +55,7 @@ prevent this footgun. To change codes, use `nestable_coded_rich_error`.
 
 ### The return of `get_exception<Ex>()` is (richly) formattable
 
-When called on `result` or `non_value_result`, `get_rich_error()` and
+When called on `result` or `error_or_stopped`, `get_rich_error()` and
 `get_exception<Ex>()` return `rich_ptr_to_underlying_error<Ex>`, which quacks
 like a pointer to the underlying `Ex`. Unlike `Ex*`, it is both
 `fmt`-formattable and `<<(ostream&)`-printable, including the full enrichment
@@ -70,7 +70,7 @@ if (auto ex = get_exception<std::logic_error>(res)) { // NOT `auto*`
 ```
 
 **Caution:** Converting `rich_ptr<Ex>` to a raw `Ex*`, or converting
-`non_value_result` to `std::exception_ptr` or `exception_wrapper` will **lose
+`error_or_stopped` to `std::exception_ptr` or `exception_wrapper` will **lose
 the enrichment info**, keeping only the underlying error.
 
 ### Formatted output

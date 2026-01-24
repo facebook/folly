@@ -134,7 +134,6 @@ fb_dirsync_cpp_unittest(
     srcs = ["result_test.cpp"],
     deps = [
         "//folly/coro:traits",
-        "//folly/portability:gtest",
         "//folly/result:gtest_helpers",
     ],
 )

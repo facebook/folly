@@ -28,7 +28,7 @@ namespace folly {
 /// Syntax sugar for `or_unwind(enrich_non_value(...)`.
 ///
 /// On the value path: enrichment is skipped (just like `enrich_non_value`).
-/// On the non-value path: the error is enriched, then propagated.
+/// On the error-or-stopped path: the error is enriched, then propagated.
 template <typename T, typename... Args>
 auto or_unwind_rich(
     result<T> r,
@@ -38,10 +38,10 @@ auto or_unwind_rich(
 }
 template <typename... Args>
 auto or_unwind_rich(
-    non_value_result nvr,
+    error_or_stopped eos,
     ext::format_string_and_location<std::type_identity_t<Args>...> snl = "",
     Args const&... args) {
-  return or_unwind_owning(enrich_non_value(std::move(nvr), snl, args...));
+  return or_unwind_owning(enrich_non_value(std::move(eos), snl, args...));
 }
 
 } // namespace folly

@@ -40,7 +40,7 @@
 ///   result<int> getN();
 ///   int n = co_await or_unwind(getN());
 ///
-/// Supported types: `result<T>`, `value_only_result<T>`, `non_value_result`.
+/// Supported types: `result<T>`, `value_only_result<T>`, `error_or_stopped`.
 /// Reference variants (`&`, `const&`, `&&`) bind to the argument; use
 /// `or_unwind_owning` when you need to store or return the awaitable.
 ///
@@ -92,7 +92,7 @@
 /// ## Why not `co_await resultFn()`?
 ///
 /// Making `result` implicitly awaitable would guarantee confusion between
-/// async-awaits, and synchronous propagation of non-value outcomes.  The
+/// async-awaits, and synchronous propagation of error-or-stopped outcomes.  The
 /// distinction is critical.  For example, one must not hold non-coro mutexes
 /// across async suspend points.
 ///
@@ -148,45 +148,45 @@ class [[nodiscard]] or_unwind_owning<result<T>> final
 template <typename T>
 or_unwind_owning(result<T>) -> or_unwind_owning<result<T>>;
 
-/// `co_await or_unwind(non_value_result{...})` propagates the error right away.
+/// `co_await or_unwind(error_or_stopped{...})` terminates the current scope
 ///
-/// IMPORTANT: Unlike `result<T>`, there's no lvalue `or_unwind(nvr&)` variant.
+/// IMPORTANT: Unlike `result<T>`, there's no lvalue `or_unwind(eos&)` variant.
 /// If adding one, and add a test akin to the `result<T>` lvalue mutation check
 /// in `forEachOrUnwindVariant`.
 template <>
-class [[nodiscard]] or_unwind<non_value_result&&> final
-    : public detail::result_or_unwind<non_value_result&&> {
-  using detail::result_or_unwind<non_value_result&&>::result_or_unwind;
+class [[nodiscard]] or_unwind<error_or_stopped&&> final
+    : public detail::result_or_unwind<error_or_stopped&&> {
+  using detail::result_or_unwind<error_or_stopped&&>::result_or_unwind;
 };
-or_unwind(non_value_result&&) -> or_unwind<non_value_result&&>;
+or_unwind(error_or_stopped&&) -> or_unwind<error_or_stopped&&>;
 
-/// co_await or_unwind_owning(non_value_result{...})
+/// co_await or_unwind_owning(error_or_stopped{...})
 /// co_await or_unwind_owning(stopped_result)
 /// co_await or_unwind(stopped_result)
 ///
-/// Owning awaitable for `non_value_result`. Unlike the reference variant,
+/// Owning awaitable for `error_or_stopped`. Unlike the reference variant,
 /// this can be returned from functions or stored before awaiting.
 template <>
-class [[nodiscard]] or_unwind_owning<non_value_result> final
-    : public detail::result_or_unwind_owning<non_value_result> {
+class [[nodiscard]] or_unwind_owning<error_or_stopped> final
+    : public detail::result_or_unwind_owning<error_or_stopped> {
   using detail::result_or_unwind_owning<
-      non_value_result>::result_or_unwind_owning;
+      error_or_stopped>::result_or_unwind_owning;
 };
-or_unwind_owning(non_value_result) -> or_unwind_owning<non_value_result>;
-or_unwind_owning(stopped_result_t) -> or_unwind_owning<non_value_result>;
+or_unwind_owning(error_or_stopped) -> or_unwind_owning<error_or_stopped>;
+or_unwind_owning(stopped_result_t) -> or_unwind_owning<error_or_stopped>;
 
 // `or_unwind(stopped_result)` must create an owning variant since
 // `stopped_result_t` is a tag type, not a reference we can store.
 //
-// Implementation edge case: Yes, `or_unwind<non_value_result>` is owning,
+// Implementation edge case: Yes, `or_unwind<error_or_stopped>` is owning,
 // despite the lack of `_owning` in the name.  This works out because
 // `result_or_unwind_base` selects the storage base using the inner type.
 template <>
-class [[nodiscard]] or_unwind<non_value_result> final
-    : public detail::result_or_unwind<non_value_result> {
-  using detail::result_or_unwind<non_value_result>::result_or_unwind;
+class [[nodiscard]] or_unwind<error_or_stopped> final
+    : public detail::result_or_unwind<error_or_stopped> {
+  using detail::result_or_unwind<error_or_stopped>::result_or_unwind;
 };
-or_unwind(stopped_result_t) -> or_unwind<non_value_result>;
+or_unwind(stopped_result_t) -> or_unwind<error_or_stopped>;
 
 } // namespace folly
 

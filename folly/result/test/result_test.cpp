@@ -669,7 +669,7 @@ bool is_bad_result_access(const non_value_result& nvr) {
 FOLLY_POP_WARNING
 
 [[maybe_unused]] const char* const bad_access_re =
-    "Used `non_value\\(\\)` accessor for `folly::result` in value";
+    "Used `error_or_stopped\\(\\)` accessor for `folly::result` in value";
 
 TEST(Result, accessValue) {
   result<int> r{555};

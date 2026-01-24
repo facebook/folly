@@ -64,8 +64,8 @@ class result_or_unwind_ref_base
   StorageRef storage_;
 
  protected:
-  static constexpr bool kIsNonValueResult =
-      std::is_same_v<std::remove_cvref_t<StorageRef>, non_value_result>;
+  static constexpr bool kIsErrorOrStopped =
+      std::is_same_v<std::remove_cvref_t<StorageRef>, error_or_stopped>;
 
  private:
   struct my_mover {
@@ -90,7 +90,7 @@ class result_or_unwind_ref_base
 
   [[nodiscard]] decltype(auto) await_resume() noexcept
       [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
-    if constexpr (kIsNonValueResult) {
+    if constexpr (kIsErrorOrStopped) {
       // `await_ready()` is false, the coro gets destroyed in `await_suspend()`
       compiler_may_unsafely_assume_unreachable();
     } else {
@@ -115,8 +115,8 @@ class result_or_unwind_value_base {
   StorageVal storage_;
 
  protected:
-  static constexpr bool kIsNonValueResult =
-      std::is_same_v<StorageVal, non_value_result>;
+  static constexpr bool kIsErrorOrStopped =
+      std::is_same_v<StorageVal, error_or_stopped>;
 
   StorageVal&& storage() && noexcept { return std::move(storage_); }
   const StorageVal& storage() const& noexcept { return storage_; }
@@ -131,12 +131,12 @@ class result_or_unwind_value_base {
 
   explicit result_or_unwind_value_base(stopped_result_t s) noexcept
       // Can remove -- this just communicates that `or_unwind{stopped_result}
-      // constructs `or_unwind<non_value_result>`, not `or_unwind<result<T>>`.
-    requires kIsNonValueResult
+      // constructs `or_unwind<error_or_stopped>`, not `or_unwind<result<T>>`.
+    requires kIsErrorOrStopped
       : storage_(s) {}
 
   [[nodiscard]] decltype(auto) await_resume() noexcept {
-    if constexpr (kIsNonValueResult) {
+    if constexpr (kIsErrorOrStopped) {
       // `await_ready()` is false, the coro gets destroyed in `await_suspend()`
       compiler_may_unsafely_assume_unreachable();
     } else if constexpr (std::is_reference_v<typename StorageVal::value_type>) {
@@ -161,9 +161,9 @@ template <typename Derived, typename Storage>
 class result_or_unwind_crtp : public result_or_unwind_base<Derived, Storage> {
   using Base = result_or_unwind_base<Derived, Storage>;
 
-  // Capability check: result<T> has non_value(), value_only_result doesn't
-  static constexpr bool kHasNonValue = requires {
-    FOLLY_DECLVAL(Storage&&).non_value();
+  // `result<T>` has `error_or_stopped()`, `value_only_result` does not
+  static constexpr bool kHasErrorOrStopped = requires {
+    FOLLY_DECLVAL(Storage&&).error_or_stopped();
   };
 
  public:
@@ -171,7 +171,7 @@ class result_or_unwind_crtp : public result_or_unwind_base<Derived, Storage> {
   using Base::Base;
 
   [[nodiscard]] bool await_ready() const noexcept {
-    if constexpr (Base::kIsNonValueResult) {
+    if constexpr (Base::kIsErrorOrStopped) {
       return false;
     } else {
       return this->storage().has_value();
@@ -181,21 +181,21 @@ class result_or_unwind_crtp : public result_or_unwind_base<Derived, Storage> {
   // Suspend into a `result<U>` coroutine.
   template <typename U>
   void await_suspend(result_promise_handle<U> h) noexcept {
-    auto toResult = [&](auto&& nv) {
+    auto toResult = [&](auto&& eos) {
       auto& v = *h.promise().value_;
       expected_detail::ExpectedHelper::assume_empty(v.exp_);
       // For lvalue `Storage` (e.g. `result<T>&`), `storage()` returns a ref,
-      // and `result::non_value() const&` returns `const non_value_result&`,
-      // which gets copied into `Unexpected` -- preserving the original result.
-      // This is intentional: users don't expect `co_await or_unwind(r)` to
-      // mutate `r`, since `r` might outlive the current coro.
-      v.exp_ = Unexpected{static_cast<decltype(nv)>(nv)};
+      // and `result::error_or_stopped() const&` returns `const
+      // error_or_stopped&`, which gets copied into `Unexpected` -- preserving
+      // the original result. This is intentional: users don't expect `co_await
+      // or_unwind(r)` to mutate `r`, since `r` might outlive the current coro.
+      v.exp_ = Unexpected{static_cast<decltype(eos)>(eos)};
       h.destroy(); // Abort the rest of the coroutine, resume() won't be called
     };
-    if constexpr (Base::kIsNonValueResult) {
+    if constexpr (Base::kIsErrorOrStopped) {
       toResult(std::move(*this).storage());
-    } else if constexpr (kHasNonValue) {
-      toResult(std::move(*this).storage().non_value());
+    } else if constexpr (kHasErrorOrStopped) {
+      toResult(std::move(*this).storage().error_or_stopped());
     } else {
       // `value_only_result`: not reached since `await_ready()` is always true.
       compiler_may_unsafely_assume_unreachable();
@@ -213,19 +213,20 @@ class result_or_unwind_crtp : public result_or_unwind_base<Derived, Storage> {
   auto await_suspend(std::coroutine_handle<Promise> h) noexcept {
     // Uses the legacy `co_error` API because `folly::coro` models cancellation
     // as an exception, and checking for `OperationCancelled` costs 50-100ns+.
-    auto toTask = [&](non_value_result&& nv) {
+    auto toTask = [&](error_or_stopped&& eos) {
       return h.promise()
           .yield_value(
               coro::co_error(
-                  std::move(nv).get_legacy_error_or_cancellation_slow(
+                  std::move(eos).get_legacy_error_or_cancellation_slow(
                       result_private_t{})))
           .await_suspend(h);
     };
-    if constexpr (Base::kIsNonValueResult) {
+    if constexpr (Base::kIsErrorOrStopped) {
       return toTask(std::move(*this).storage());
-    } else if constexpr (kHasNonValue) {
+    } else if constexpr (kHasErrorOrStopped) {
       // `copy` since `get_legacy_error_or_cancellation_slow` lacks `const&`.
-      return toTask(::folly::copy(std::move(*this).storage().non_value()));
+      return toTask(
+          ::folly::copy(std::move(*this).storage().error_or_stopped()));
     } else {
       // `value_only_result`: not reached since `await_ready()` is always true.
       compiler_may_unsafely_assume_unreachable();
