@@ -84,43 +84,37 @@ constexpr bool is_awaitable_result =
 //   - Falling back to `await_resume_try()` can incur an extra move-copy, which
 //     may not always optimize away.
 template <typename Awaitable>
-class ResultAwaiter {
+class ResultAwaiter : public ValueOnlyAwaiterBase<Awaitable> {
  private:
   static_assert(is_awaitable_try<Awaitable> || is_awaitable_result<Awaitable>);
 
-  using Awaiter = awaiter_type_t<Awaitable>;
-  Awaiter awaiter_;
+  using Base = ValueOnlyAwaiterBase<Awaitable>;
 
  public:
-  explicit ResultAwaiter(Awaitable&& awaiter)
-      : awaiter_(get_awaiter(static_cast<Awaitable&&>(awaiter))) {}
+  explicit ResultAwaiter(Awaitable&& awaitable)
+      : Base(static_cast<Awaitable&&>(awaitable)) {}
 
+  // Preferred `await_resume()`: use `await_resume_result()` when available
   template <
-      typename Awaiter2 = Awaiter,
+      typename Awaiter2 = typename Base::Awaiter,
       typename Result =
           decltype(FOLLY_DECLVAL(Awaiter2&).await_resume_result())>
-  Result await_resume() noexcept(noexcept(awaiter_.await_resume_result())) {
-    return awaiter_.await_resume_result();
+  Result await_resume() noexcept(
+      noexcept(this->awaiter_.await_resume_result())) {
+    return this->awaiter_.await_resume_result();
   }
 
+  // Fallback `await_resume()`: use `await_resume_try()` otherwise
   template <
-      typename Awaiter2 = Awaiter,
+      typename Awaiter2 = typename Base::Awaiter,
       typename Result =
           decltype(try_to_result(FOLLY_DECLVAL(Awaiter2&).await_resume_try()))>
   Result await_resume() noexcept(
-      noexcept(try_to_result(awaiter_.await_resume_try())))
-    requires(!is_awaitable_result<Awaitable>)
+      noexcept(try_to_result(this->awaiter_.await_resume_try())))
+    requires(!is_awaitable_result<Awaitable>) // Fallback logic
   {
-    return try_to_result(awaiter_.await_resume_try());
+    return try_to_result(this->awaiter_.await_resume_try());
   }
-
-  // clang-format off
-  auto await_ready() FOLLY_DETAIL_FORWARD_BODY(awaiter_.await_ready())
-
-  template <typename Promise>
-  auto await_suspend(coroutine_handle<Promise> coro)
-      FOLLY_DETAIL_FORWARD_BODY(awaiter_.await_suspend(coro))
-  // clang-format on
 };
 
 template <typename T>
@@ -208,7 +202,7 @@ ValueOrError : public CommutativeWrapperAwaitable<ValueOrError, T> {
 } // namespace detail
 
 // BEFORE CHANGING: If you need an `Awaitable&&` overload, you must bifurcate
-// these APIs on `must_await_immediately_v`, see `co_awaitTry` for an example.
+// these APIs on `must_use_immediately_v`, see `co_awaitTry` for an example.
 
 /// When awaited, returns a `result<T>` in a value or an error state, but never
 /// `has_stopped()` (aka `OperationCancelled`).  If `awaitable` reports as

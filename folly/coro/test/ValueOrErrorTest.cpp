@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/Try.h>
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Result.h>
 #include <folly/coro/ValueOrError.h>
@@ -136,6 +137,26 @@ static_assert(noexcept(FOLLY_DECLVAL(TestAwaiter<int>).await_resume()));
 static_assert(noexcept(FOLLY_DECLVAL(TestAwaiter<NothrowMove>).await_resume()));
 static_assert(
     !noexcept(FOLLY_DECLVAL(TestAwaiter<ThrowingMove>).await_resume()));
+
+// Awaiter lacking noexcept on `await_suspend`, for manual test below.
+struct ThrowingAwaitSuspendAwaitable {
+  bool await_ready() noexcept { return false; }
+  void await_suspend(coro::coroutine_handle<>) {} // not noexcept
+  int await_resume() noexcept { return 0; }
+  Try<int> await_resume_try() noexcept { return Try<int>{0}; }
+  friend ThrowingAwaitSuspendAwaitable&& co_viaIfAsync(
+      const folly::Executor::KeepAlive<>&,
+      ThrowingAwaitSuspendAwaitable&& a) noexcept {
+    return std::move(a);
+  }
+};
+
+CO_TEST(ValueOrErrorTest, RequiresNoexceptAwait) {
+#if 0 // Manual test: "value-only await requires noexcept await_suspend()"
+  (void)co_await value_or_error(ThrowingAwaitSuspendAwaitable{});
+#endif
+  co_return;
+}
 
 } // namespace folly::coro
 

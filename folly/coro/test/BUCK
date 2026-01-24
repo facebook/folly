@@ -44,6 +44,7 @@ fbcode_target(
     name = "value_or_error_test",
     srcs = ["ValueOrErrorTest.cpp"],
     deps = [
+        "//folly:try",
         "//folly/coro:gtest_helpers",
         "//folly/coro:result",
         "//folly/coro:value_or_error",
