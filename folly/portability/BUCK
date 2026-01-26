@@ -2,9 +2,7 @@ load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "no
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
-    "IOS",
-    "MACOSX",
-    "WATCHOS",
+    "ALL_APPLE_SDKS",
 )
 load(
     "@fbsource//xplat/folly:defs.bzl",
@@ -60,7 +58,7 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "config",
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = ALL_APPLE_SDKS,
     fbobjc_exported_preprocessor_flags = [
         "-DFOLLY_ASSUME_NO_JEMALLOC=1",
         "-DFOLLY_ASSUME_NO_TCMALLOC=1",
@@ -596,7 +594,7 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "sys_types",
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = ALL_APPLE_SDKS,
     raw_headers = [
         "SysTypes.h",
     ],

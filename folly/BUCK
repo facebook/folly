@@ -7,6 +7,7 @@ load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_libra
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
+    "ALL_APPLE_SDKS",
     "ANDROID",
     "APPLE",
     "CXX",
@@ -913,6 +914,7 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "dynamic",
+    apple_sdks = ALL_APPLE_SDKS,
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
@@ -1068,7 +1070,7 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "cpp_attributes",
     headers = ["CppAttributes.h"],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = ALL_APPLE_SDKS,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [":portability"],
@@ -1077,7 +1079,7 @@ fb_dirsync_cpp_library(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "config",
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = ALL_APPLE_SDKS,
     exported_preprocessor_flags = CPPFLAGS,
     fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
     raw_headers = [
@@ -1180,14 +1182,14 @@ non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
     name = "portability_config",
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = ALL_APPLE_SDKS,
     exported_deps = ["//xplat/folly/portability:config"],
 )
 
 fb_dirsync_cpp_library(
     name = "c_portability",
     headers = ["CPortability.h"],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = ALL_APPLE_SDKS,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/portability:config",
@@ -1207,7 +1209,7 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "portability",
     headers = ["Portability.h"],
-    apple_sdks = (IOS, MACOSX, WATCHOS),
+    apple_sdks = ALL_APPLE_SDKS,
     fbobjc_complete_nullability = True,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
