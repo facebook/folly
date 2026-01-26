@@ -57,8 +57,8 @@ TEST(Xoshiro256ppTest, DeterministicWithSameSeed) {
 
   // Test 32-bit version
   {
-    xoshiro256pp_32 rng1(kTestSeed);
-    xoshiro256pp_32 rng2(kTestSeed);
+    xoshiro256pp_32 rng1(folly::to_narrow(kTestSeed));
+    xoshiro256pp_32 rng2(folly::to_narrow(kTestSeed));
 
     // Generate and compare a sequence of values
     for (int i = 0; i < 1000; ++i) {
@@ -85,8 +85,8 @@ TEST(Xoshiro256ppTest, DifferentSeedsProduceDifferentSequences) {
 
   // Test 32-bit version
   {
-    xoshiro256pp_32 rng1(kTestSeed1);
-    xoshiro256pp_32 rng2(kTestSeed2);
+    xoshiro256pp_32 rng1(folly::to_narrow(kTestSeed1));
+    xoshiro256pp_32 rng2(folly::to_narrow(kTestSeed2));
 
     // Check if sequences are different
     bool foundDifference = false;
@@ -125,7 +125,7 @@ TEST(Xoshiro256ppTest, ReseedingChangesSequence) {
 
   // Test 32-bit version
   {
-    xoshiro256pp_32 rng(kInitialSeed);
+    xoshiro256pp_32 rng(folly::to_narrow(kInitialSeed));
 
     // Generate some initial values
     std::vector<uint32_t> initialSequence;
@@ -217,7 +217,7 @@ TEST(Xoshiro256ppTest, ValueDistribution) {
 
   // Test 32-bit version
   {
-    xoshiro256pp_32 rng(kTestSeed);
+    xoshiro256pp_32 rng(folly::to_narrow(kTestSeed));
     std::array<int, kNumBins> bins = {};
 
     // Generate samples and count occurrences in each bin
@@ -277,7 +277,7 @@ TEST(Xoshiro256ppTest, StdLibCompatibility) {
 
   // Test with std::uniform_int_distribution
   {
-    xoshiro256pp_32 rng(kTestSeed);
+    xoshiro256pp_32 rng(folly::to_narrow(kTestSeed));
     std::uniform_int_distribution<int> dist(1, 100);
 
     // Generate some values and check they're in range
@@ -333,7 +333,7 @@ TEST(Xoshiro256ppTest, StreamOperator) {
 
   // Test 32-bit version
   {
-    xoshiro256pp_32 rng(kTestSeed);
+    xoshiro256pp_32 rng(folly::to_narrow(kTestSeed));
     std::stringstream ss;
     ss << rng;
 
@@ -345,7 +345,7 @@ TEST(Xoshiro256ppTest, StreamOperator) {
 
     // Create a second identical RNG and verify they produce the same string
     // representation
-    xoshiro256pp_32 rng2(kTestSeed);
+    xoshiro256pp_32 rng2(folly::to_narrow(kTestSeed));
     std::stringstream ss2;
     ss2 << rng2;
     EXPECT_EQ(ss.str(), ss2.str())

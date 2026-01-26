@@ -21,9 +21,13 @@
 #include <limits>
 #include <ostream>
 #include <random>
+#include <utility>
 
 #include <folly/Likely.h>
 #include <folly/Portability.h>
+#include <folly/container/span.h>
+#include <folly/functional/Invoke.h>
+#include <folly/random/seed_seq.h>
 
 #if FOLLY_X64
 #include <immintrin.h>
@@ -43,30 +47,36 @@ using DefaultVectorType = detail::DefaultVectorType;
 
 template <typename ResType, typename VectorType = DefaultVectorType>
 class xoshiro256pp {
+ private:
+  static_assert(sizeof(VectorType) % sizeof(ResType) == 0);
+  static_assert(sizeof(VectorType) >= sizeof(ResType));
+  static_assert(alignof(VectorType) >= alignof(ResType));
+
+  using state_array = VectorType[32];
+  using state_span = decltype(span(std::declval<state_array&>()));
+
+  template <typename SeedSeq>
+  static constexpr bool is_seed_seq =
+      is_invocable_v<seed_seq_generate_fn, state_span, SeedSeq&>;
+
  public:
   using result_type = ResType;
   static constexpr result_type default_seed =
       static_cast<result_type>(0x8690c864c6e0b716);
 
-  // While this is not the actual size of the state, it is the size of the input
-  // seed that we allow. Any uses of a larger state in the form of a seed_seq
-  // will be ignored after the first small part of it.
-  static constexpr size_t state_size = sizeof(uint64_t) / sizeof(result_type);
+  static constexpr size_t state_size =
+      sizeof(state_array) / sizeof(result_type);
   // Add static_asserts to enforce constraints on ResType
   static_assert(
       std::is_integral_v<result_type>, "ResType must be an integral type.");
   static_assert(
       std::is_unsigned_v<result_type>, "ResType must be an unsigned type.");
 
-  xoshiro256pp(uint64_t pSeed = default_seed) noexcept : state{} {
-    seed(pSeed);
-  }
+  xoshiro256pp(result_type value = default_seed) noexcept { seed(value); }
 
-  explicit xoshiro256pp(std::seed_seq& seq) noexcept {
-    // Initialize the state using the seed sequence.
-    uint64_t val;
-    seq.generate(&val, &val + 1);
-    seed(val);
+  template <typename SeedSeq, typename = std::enable_if_t<is_seed_seq<SeedSeq>>>
+  explicit xoshiro256pp(SeedSeq& seq) noexcept {
+    seed(seq);
   }
 
   result_type operator()() noexcept { return next(); }
@@ -77,8 +87,15 @@ class xoshiro256pp {
     return std::numeric_limits<result_type>::max();
   }
 
-  void seed(uint64_t pSeed = default_seed) noexcept {
-    uint64_t seed = pSeed;
+  /// seed
+  ///
+  /// Deterministically fills the internal state with uniformly-distributed data
+  /// generated from value.
+  ///
+  /// Note: the internal state is larger than result_type, so the entropy of the
+  /// internal state will be smaller than the maximum possible entropy.
+  void seed(result_type value = default_seed) noexcept {
+    uint64_t seed = value;
     for (uint64_t re = 0; re < VecResCount; re++) {
       for (uint64_t stat = 0; stat < StateSize; stat++) {
         state[re][stat] = seed_vec<vector_type>(seed);
@@ -87,11 +104,17 @@ class xoshiro256pp {
     cur = ResultCount;
   }
 
-  void seed(std::seed_seq& seq) noexcept {
-    // Initialize the state using the seed sequence.
-    std::array<uint64_t, 1> seeds{};
-    seq.generate(seeds.begin(), seeds.end());
-    seed(seeds[0]);
+  /// seed
+  ///
+  /// Deterministically fills the internal state with uniformly-distributed data
+  /// generated from seq.
+  template <typename SeedSeq, std::enable_if_t<is_seed_seq<SeedSeq>, int> = 0>
+  void seed(SeedSeq& seq) {
+    state_array arr;
+    std::memcpy(&arr, &state, sizeof(state_array));
+    seed_seq_generate(span(arr), seq);
+    std::memcpy(&state, &arr, sizeof(state_array));
+    cur = ResultCount;
   }
 
  private:
@@ -105,6 +128,7 @@ class xoshiro256pp {
     result_type res[ResultCount];
   };
   vector_type state[VecResCount][StateSize]{};
+  static_assert(sizeof(state) == sizeof(state_array));
   uint64_t cur = ResultCount;
 
   template <typename Size, typename VType, typename CharT, typename Traits>
@@ -117,7 +141,7 @@ class xoshiro256pp {
     if constexpr (sizeof(T) != sizeof(uint64_t)) {
       T sbase{};
       for (uint64_t i = 0; i < sizeof(vector_type) / sizeof(uint64_t); i++) {
-        sbase[i] = splitmix64(seed);
+        sbase[i] = folly::to_narrow(splitmix64(seed));
       }
       return sbase;
     } else {
