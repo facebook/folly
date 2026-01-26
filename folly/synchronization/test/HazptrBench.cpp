@@ -74,6 +74,13 @@ extern "C" FOLLY_KEEP long check_folly_hazptr_make_protect_default(
   return ptr ? *ptr : 0;
 }
 
+extern "C" FOLLY_KEEP void check_folly_hazptr_obj_retire(
+    folly::hazptr_obj<std::atomic>& object,
+    folly::hazptr_domain<std::atomic>& domain) {
+  struct derived : folly::hazptr_obj_base<derived, std::atomic> {};
+  static_cast<derived&>(object).retire(domain);
+}
+
 namespace {
 
 /// simple object for testing hazptr operations
