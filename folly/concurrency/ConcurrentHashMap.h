@@ -293,6 +293,16 @@ class ConcurrentHashMap {
     return findImpl(k);
   }
 
+  /*
+   * Intentionally marked as deleted to guard against common misuse.
+   *
+   * Checking for key existence via contains() is unsafe in concurrent
+   * contexts. The key may be erased between contains() and subsequent
+   * operations. Use find() and its iterator to ensure safe access and
+   * prevent race conditions.
+   */
+  bool contains(const KeyType& k) const = delete;
+
   ConstIterator cend() const noexcept { return ConstIterator(NumShards); }
 
   ConstIterator cbegin() const noexcept { return ConstIterator(this); }
