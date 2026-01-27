@@ -1460,4 +1460,3 @@ add_subdirectory(tracing)
 
 # Resolve deferred dependencies now that all targets exist
 folly_resolve_deferred_dependencies()
- 

@@ -27,12 +27,12 @@ if (PYTHON_EXTENSIONS)
   ########################################################################
   add_custom_target(create_source_symlink ALL)
   file(GLOB BindingFiles
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/executor.pyx"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf.pyx"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf_ext.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/ProactorExecutor.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pxd"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/executor.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/iobuf.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/iobuf_ext.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ProactorExecutor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
   )
   file(MAKE_DIRECTORY "${_cybld}/folly/")
   file(MAKE_DIRECTORY "${_cybld}/folly/python/")
@@ -72,14 +72,14 @@ if (PYTHON_EXTENSIONS)
       "CFLAGS=${CMAKE_C_FLAGS} ${FOLLY_CXX_OPTIONS}"
       "CXXFLAGS=${CMAKE_CXX_FLAGS} ${FOLLY_CXX_OPTIONS}"
       "CXX=${CMAKE_CXX_COMPILER}"
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py -v --api-only
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -v --api-only
     DEPENDS
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/executor.pxd
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/executor_detail.pxd
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf.pxd
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/executor.pyx
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf.pyx
+      ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
+      ${CMAKE_CURRENT_SOURCE_DIR}/executor.pxd
+      ${CMAKE_CURRENT_SOURCE_DIR}/executor_detail.pxd
+      ${CMAKE_CURRENT_SOURCE_DIR}/iobuf.pxd
+      ${CMAKE_CURRENT_SOURCE_DIR}/executor.pyx
+      ${CMAKE_CURRENT_SOURCE_DIR}/iobuf.pyx
     BYPRODUCTS
       ${_cybld}/folly/iobuf_api.h
     WORKING_DIRECTORY ${_cybld}
@@ -113,10 +113,10 @@ if (PYTHON_EXTENSIONS)
   ########################################################################
   add_library(
     folly_python_cpp
-      python/AsyncioExecutor.cpp
-      python/error.cpp
-      python/executor.cpp
-      python/iobuf.cpp
+      AsyncioExecutor.cpp
+      error.cpp
+      executor.cpp
+      iobuf.cpp
   )
   add_dependencies(folly_python_cpp folly_python_binding_headers create_binding_symlink)
   set_property(TARGET folly_python_cpp PROPERTY VERSION ${PACKAGE_VERSION})
@@ -161,18 +161,18 @@ if (PYTHON_EXTENSIONS)
       "CXXFLAGS=${CMAKE_CXX_FLAGS} ${FOLLY_CXX_OPTIONS}"
       "CC=${CMAKE_C_COMPILER}"
       "CXX=${CMAKE_CXX_COMPILER}"
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
       build_ext -f ${incs} ${libs}
     # BYPRODUCTS
     #   ${_cybld}/folly/iobuf_api.h
     DEPENDS
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/executor.pyx
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf.pyx
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf_ext.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/ProactorExecutor.cpp
-      # ${CMAKE_CURRENT_SOURCE_DIR}/python/*.pxd
-      # ${CMAKE_CURRENT_SOURCE_DIR}/python/*.h
+      ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
+      ${CMAKE_CURRENT_SOURCE_DIR}/executor.pyx
+      ${CMAKE_CURRENT_SOURCE_DIR}/iobuf.pyx
+      ${CMAKE_CURRENT_SOURCE_DIR}/iobuf_ext.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/ProactorExecutor.cpp
+      # ${CMAKE_CURRENT_SOURCE_DIR}/*.pxd
+      # ${CMAKE_CURRENT_SOURCE_DIR}/*.h
     WORKING_DIRECTORY ${_cybld}
   )
   add_dependencies(folly_python_bindings folly_python_cpp)
@@ -183,7 +183,7 @@ if (PYTHON_EXTENSIONS)
       "CXXFLAGS=${CMAKE_CXX_FLAGS} ${FOLLY_CXX_OPTIONS}"
       "CC=${CMAKE_C_COMPILER}"
       "CXX=${CMAKE_CXX_COMPILER}"
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
       bdist_wheel
     WORKING_DIRECTORY ${_cybld}
   )
@@ -199,7 +199,7 @@ if (PYTHON_EXTENSIONS)
   install(CODE "
     execute_process(
       COMMAND
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py install
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py install
         --prefix ${INSTALL_DIR}
       COMMAND_ECHO STDOUT
       WORKING_DIRECTORY ${_cybld}
