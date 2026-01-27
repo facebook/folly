@@ -41,6 +41,7 @@
 #[cfg(test)]
 mod test;
 
+mod bufext;
 mod cursor;
 mod iobuf;
 mod iobufmut;
@@ -52,6 +53,10 @@ use cxx::ExternType;
 use cxx::type_id;
 use iobuf_sys::root::folly::IOBuf as IOBufSys;
 
+pub use crate::bufext::BufExt;
+pub use crate::bufext::BufMutExt;
+pub use crate::bufext::DeserializeSource;
+pub use crate::bufext::Framing;
 pub use crate::cursor::IOBufCursor;
 pub use crate::cursor::IOBufCursorFastRemaining;
 pub use crate::cursor::IOBufMutCursor;
@@ -125,7 +130,7 @@ pub mod bridge {
 
     #[namespace = "facebook::rust"]
     unsafe extern "C++" {
-        include!("folly/rust/iobuf/iobuf.h");
+        include!("folly/rust/iobuf_sys/iobuf.h");
 
         fn iobuf_create(cap: usize) -> UniquePtr<IOBuf>;
         fn iobuf_create_combined(cap: usize) -> UniquePtr<IOBuf>;

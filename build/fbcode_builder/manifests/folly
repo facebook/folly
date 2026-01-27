@@ -63,10 +63,9 @@ fbcode/folly = folly
 ^fbcode/folly/public_tld/build/facebook_.*
 
 [cmake.defines]
-BUILD_SHARED_LIBS=OFF
-
-[cmake.defines.not(os=windows)]
-BOOST_LINK_STATIC=ON
+PYTHON_EXTENSIONS=ON
+BUILD_SHARED_LIBS=ON
+BOOST_LINK_STATIC=OFF
 
 [cmake.defines.os=freebsd]
 LIBDWARF_FOUND=NO

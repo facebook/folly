@@ -21,11 +21,12 @@ use std::slice;
 use bytes::Buf;
 use bytes::BufMut;
 use bytes::buf::UninitSlice;
-use fbthrift::BufExt;
-use fbthrift::BufMutExt;
-use fbthrift::DeserializeSource;
-use fbthrift::framing::Framing;
 use iobuf_sys::root::folly::IOBuf as IOBufSys;
+
+use crate::bufext::BufExt;
+use crate::bufext::BufMutExt;
+use crate::bufext::DeserializeSource;
+use crate::bufext::Framing;
 
 use crate::iobuf::IOBufShared;
 use crate::iobuf::RawIOBufPtr;
