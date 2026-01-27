@@ -15,7 +15,6 @@
  */
 
 #include <stdexcept>
-
 #include <vector>
 
 #include <folly/Benchmark.h>
@@ -35,10 +34,15 @@ namespace {
 }
 
 FOLLY_NOINLINE ExceptionInfo recurse(int n) {
-  if (n == 0) {
-    throwRuntimeError();
+  try {
+    if (n == 0) {
+      throwRuntimeError();
+    }
+    return recurse(n - 1);
+  } catch (const std::bad_exception&) {
+    // unreachable
+    throw;
   }
-  return recurse(n - 1);
 }
 
 ExceptionInfo makeExceptionWithStackDepthMeasureThrow(int n) {
