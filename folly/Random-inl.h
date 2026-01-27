@@ -22,28 +22,65 @@ namespace folly {
 
 namespace detail {
 
-struct SeedSeqSecureRandom {
-  using result_type = uint32_t;
-  template <typename Word>
-  void generate(Word* b, Word* e) {
-    static_assert(is_non_bool_integral_v<Word>);
-    static_assert(sizeof(Word) >= sizeof(result_type));
-    Random::secureRandom(b, (e - b) * sizeof(Word));
+// Return the state size needed by RNG, expressed as a number of uint32_t
+// integers. Specialized for all templates specified in the C++11 standard.
+// For some (mersenne_twister_engine), this is exported as a state_size static
+// data member; for others, the standard shows formulas.
+
+template <class RNG, typename = void>
+struct StateSize {
+  // A sane default.
+  using type = std::integral_constant<size_t, 512>;
+};
+
+template <class RNG>
+struct StateSize<RNG, void_t<decltype(RNG::state_size)>> {
+  using type = std::integral_constant<size_t, RNG::state_size>;
+};
+
+template <class UIntType, UIntType a, UIntType c, UIntType m>
+struct StateSize<std::linear_congruential_engine<UIntType, a, c, m>> {
+  // From the standard [rand.eng.lcong], this is ceil(log2(m) / 32) + 3,
+  // which is the same as ceil(ceil(log2(m) / 32) + 3, and
+  // ceil(log2(m)) <= std::numeric_limits<UIntType>::digits
+  using type = std::integral_constant<
+      size_t,
+      (std::numeric_limits<UIntType>::digits + 31) / 32 + 3>;
+};
+
+template <class UIntType, size_t w, size_t s, size_t r>
+struct StateSize<std::subtract_with_carry_engine<UIntType, w, s, r>> {
+  // [rand.eng.sub]: r * ceil(w / 32)
+  using type = std::integral_constant<size_t, r*((w + 31) / 32)>;
+};
+
+template <typename RNG>
+using StateSizeT = _t<StateSize<RNG>>;
+
+template <class RNG>
+struct SeedData {
+  SeedData() {
+    Random::secureRandom(seedData.data(), seedData.size() * sizeof(uint32_t));
   }
+
+  static constexpr size_t stateSize = StateSizeT<RNG>::value;
+  std::array<uint32_t, stateSize> seedData;
 };
 
 } // namespace detail
 
 template <class RNG, class /* EnableIf */>
 void Random::seed(RNG& rng) {
-  detail::SeedSeqSecureRandom seq;
-  rng.seed(seq);
+  detail::SeedData<RNG> sd;
+  std::seed_seq s(std::begin(sd.seedData), std::end(sd.seedData));
+  rng.seed(s);
 }
 
 template <class RNG, class /* EnableIf */>
 auto Random::create() -> RNG {
-  detail::SeedSeqSecureRandom seq;
-  return RNG(seq);
+  detail::SeedData<RNG> sd;
+  std::seed_seq s(std::begin(sd.seedData), std::end(sd.seedData));
+  return RNG(s);
 }
 
 } // namespace folly
