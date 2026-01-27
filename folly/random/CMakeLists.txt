@@ -36,9 +36,6 @@ folly_add_library(
   HEADERS
     xoshiro256pp.h
   EXPORTED_DEPS
-    folly_container_span
-    folly_functional_invoke
     folly_likely
     folly_portability
-    folly_random_seed_seq
 )
