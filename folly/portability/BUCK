@@ -4,12 +4,7 @@ load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
     "ALL_APPLE_SDKS",
 )
-load(
-    "@fbsource//xplat/folly:defs.bzl",
-    "WINDOWS_CLANG_CXX_FLAGS",
-    "folly_xplat_library",
-    "should_enable_gflags",
-)
+load("../defs.bzl", "WINDOWS_CLANG_CXX_FLAGS", "folly_xplat_library", "should_enable_gflags")
 
 oncall("fbcode_entropy_wardens_folly")
 

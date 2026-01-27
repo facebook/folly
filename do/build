@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -eu -o pipefail
+
+if [ ${1-} = --clean ]; then
+    if [ -d "$(dotslash -- cache-dir)" ]; then
+        dotslash -- clean
+    fi
+    rm -rf ~/.cache/act ~/.cache/actcache
+    rm -rf build/fbcode_builder/getdeps/__pycache__/
+
+    rm -rf buck-out/
+    rm -rf conan-build/
+
+    act \
+        --bind \
+        -W .github/workflows/oss-build-and-test.yml \
+        --job ubuntu-os-buck-build-and-test \
+        --rebuild \
+        --container-options --init
+else
+    act \
+        --bind \
+        -W .github/workflows/oss-build-and-test.yml \
+        --job ubuntu-os-buck-build-and-test \
+        --reuse
+fi
