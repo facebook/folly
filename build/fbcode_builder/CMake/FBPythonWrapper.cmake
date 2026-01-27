@@ -37,7 +37,7 @@ endfunction()
 function(wrap_non_fb_python_library TARGET EGG_NAME)
   set(py_lib "${TARGET}.py_lib")
   add_library("${py_lib}" INTERFACE)
-  install(TARGETS "${py_lib}" EXPORT)
+  # install(TARGETS "${py_lib}" EXPORT)
 
   set(manifest_filename "${TARGET}.manifest")
   set(build_manifest "${CMAKE_CURRENT_BINARY_DIR}/${manifest_filename}")

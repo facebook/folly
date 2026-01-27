@@ -1448,6 +1448,7 @@ add_subdirectory(net)
 add_subdirectory(observer)
 add_subdirectory(poly)
 add_subdirectory(portability)
+add_subdirectory(python)
 add_subdirectory(random)
 add_subdirectory(result)
 add_subdirectory(settings)
@@ -1460,4 +1461,3 @@ add_subdirectory(tracing)
 
 # Resolve deferred dependencies now that all targets exist
 folly_resolve_deferred_dependencies()
- 
