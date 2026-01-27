@@ -618,6 +618,7 @@ folly_add_library(
   NAME async_io_uring_socket
   SRCS
     AsyncIoUringSocket.cpp
+    AsyncIoUringSocketFactory.cpp
   HEADERS
     AsyncIoUringSocket.h
     AsyncIoUringSocketFactory.h

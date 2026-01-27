@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/io/async/AsyncIoUringSocket.h>
+#include <folly/io/async/AsyncSocketTransport.h>
 #include <folly/io/async/Liburing.h>
 
 namespace folly {
@@ -62,6 +63,16 @@ class AsyncIoUringSocketFactory {
 
     return false;
   }
+
+  /**
+   * Bind an existing async transport socket to a source port for partial
+   * Toeplitz hash collisions. This should be called after socket creation but
+   * before connect().
+   */
+  static bool bindSocketForZcRx(
+      AsyncSocketTransport& transport,
+      const folly::IPAddress& destAddr,
+      uint16_t destPort);
 };
 
 } // namespace folly

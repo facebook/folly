@@ -723,6 +723,7 @@ fb_dirsync_cpp_library(
     name = "async_io_uring_socket",
     srcs = [
         "AsyncIoUringSocket.cpp",
+        "AsyncIoUringSocketFactory.cpp",
     ],
     headers = [
         "AsyncIoUringSocket.h",
