@@ -180,7 +180,6 @@ fbcode_target(
         "//folly/coro:future_util",
         "//folly/coro:generator",
         "//folly/coro:gtest_helpers",
-        "//folly/coro:inline_task",
         "//folly/coro:invoke",
         "//folly/coro:merge",
         "//folly/coro:mutex",
@@ -196,6 +195,7 @@ fbcode_target(
         "//folly/coro:unbounded_queue",
         "//folly/coro:value_or_error",
         "//folly/coro:with_cancellation",
+        "//folly/coro/detail:inline_task",
         "//folly/coro/safe:captures",
         "//folly/coro/safe:now_task",
         "//folly/executors:cpu_thread_pool_executor",
@@ -304,10 +304,10 @@ fbcode_target(
     name = "with_async_stack_test",
     srcs = ["WithAsyncStackTest.cpp"],
     deps = [
-        "//folly/coro:detail_current_async_frame",
         "//folly/coro:gtest_helpers",
         "//folly/coro:traits",
         "//folly/coro:with_async_stack",
+        "//folly/coro/detail:current_async_frame",
         "//folly/coro/safe:now_task",
     ],
 )
