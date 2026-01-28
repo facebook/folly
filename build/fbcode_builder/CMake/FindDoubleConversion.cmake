@@ -11,6 +11,7 @@ find_path(DOUBLE_CONVERSION_INCLUDE_DIR double-conversion/double-conversion.h)
 find_library(DOUBLE_CONVERSION_LIBRARY NAMES double-conversion)
 
 include(FindPackageHandleStandardArgs)
+
 find_package_handle_standard_args(
   DoubleConversion
   DEFAULT_MSG
