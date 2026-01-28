@@ -10,7 +10,7 @@ load(
     "MACOSX",
     "WINDOWS",
 )
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
