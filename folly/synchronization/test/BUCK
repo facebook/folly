@@ -518,7 +518,6 @@ fb_dirsync_cpp_library(
         "//folly:benchmark",
         "//folly/synchronization/test:flat_combining_examples",
     ],
-    external_deps = ["glog"],
     exported_external_deps = [
         "glog",
     ],

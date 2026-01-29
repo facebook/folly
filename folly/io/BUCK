@@ -47,7 +47,6 @@ fb_dirsync_cpp_library(
         "//folly/portability:sys_uio",
         "//folly/synchronization:micro_spin_lock",
     ],
-    external_deps = ["glog"],
     exported_external_deps = [
         "glog",
     ],

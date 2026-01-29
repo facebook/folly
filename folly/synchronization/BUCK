@@ -133,7 +133,6 @@ fb_dirsync_cpp_library(
         "//folly/synchronization/detail:inline_function_ref",
         "//folly/synchronization/detail:sleeper",
     ],
-    external_deps = ["glog"],
     exported_external_deps = [
         "glog",
     ],
@@ -177,7 +176,6 @@ fb_dirsync_cpp_library(
         "//folly/synchronization:atomic_util",
         "//folly/synchronization/detail:hazptr_utils",
     ],
-    external_deps = ["glog"],
     exported_external_deps = [
         "glog",
     ],
@@ -365,7 +363,6 @@ fb_dirsync_cpp_library(
         "//folly/portability:asm",
         "//folly/synchronization/detail:spin",
     ],
-    external_deps = ["glog"],
     exported_external_deps = [
         "glog",
     ],
@@ -445,7 +442,6 @@ fb_dirsync_cpp_library(
         "//folly/portability:sys_time",
         "//folly/portability:unistd",
     ],
-    external_deps = ["glog"],
     exported_external_deps = [
         "glog",
     ],
