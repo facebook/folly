@@ -232,17 +232,18 @@ std::string CaptureFD::readIncremental() {
   return std::string(buf.get(), size);
 }
 
-fs::path find_resource(const std::string& resource) {
+fs::path find_resource(std::string_view resource) {
   auto const pos = resource.find_last_of('/');
   if (pos == std::string::npos) {
-    throw std::invalid_argument("invalid: " + resource);
+    throw std::invalid_argument("invalid: " + std::string(resource));
   }
   auto const ext = folly::ext::test_find_resource;
   auto fn = ext //
       ? fs::path(ext(resource)) // hooked, eg via internal extension
-      : fs::executable_path().parent_path() / resource; // current cmake build
+      : fs::executable_path().parent_path() //
+          / std::string(resource); // current cmake build
   if (!fs::exists(fn)) {
-    throw std::runtime_error("missing: " + resource);
+    throw std::runtime_error("missing: " + std::string(resource));
   }
   return fn;
 }

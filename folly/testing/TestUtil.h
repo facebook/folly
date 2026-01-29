@@ -262,7 +262,7 @@ class CaptureFD {
 //
 //  Care must be taken to set up the test and resource build rules in accordance
 //  with this function.
-fs::path find_resource(const std::string& resource);
+fs::path find_resource(std::string_view resource);
 
 } // namespace test
 } // namespace folly

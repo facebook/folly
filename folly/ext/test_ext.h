@@ -16,12 +16,12 @@
 
 #pragma once
 
-#include <string>
+#include <string_view>
 
 namespace folly {
 namespace ext {
 
-using test_find_resource_t = std::string(std::string const&);
+using test_find_resource_t = std::string(std::string_view);
 extern test_find_resource_t* test_find_resource;
 
 } // namespace ext

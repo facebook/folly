@@ -28,7 +28,7 @@
 namespace folly {
 namespace ext {
 
-static std::string test_find_resource_buck2(std::string const& resource) {
+static std::string test_find_resource_buck2(std::string_view resource) {
   auto const exe = fs::executable_path();
   auto const bfn = exe.filename().string() + ".resources.json";
   auto const res = exe.parent_path() / bfn;
