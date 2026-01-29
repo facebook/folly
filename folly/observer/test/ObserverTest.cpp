@@ -896,6 +896,15 @@ TEST(Observer, CoreCachedObserver) {
   observable.setValue(39);
   folly::observer_detail::ObserverManager::waitForAllUpdates();
   EXPECT_EQ(***ccObserverMove, 39);
+
+  auto dependentObserver = makeCoreCachedObserver(
+      [underlying = ccObserverMove->getUnderlyingObserver()] {
+        return **underlying;
+      });
+  EXPECT_EQ(**dependentObserver, 39);
+  observable.setValue(40);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(**dependentObserver, 40);
 }
 
 TEST(Observer, Unwrap) {

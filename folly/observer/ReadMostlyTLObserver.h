@@ -48,7 +48,7 @@ class ReadMostlyTLObserver {
     return refresh();
   }
 
-  Observer<T> getUnderlyingObserver() const { return observer_; }
+  const Observer<T>& getUnderlyingObserver() const { return observer_; }
 
  private:
   ReadMostlySharedPtr<const T> refresh() const {

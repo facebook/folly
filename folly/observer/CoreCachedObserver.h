@@ -70,6 +70,8 @@ class CoreCachedObserver {
   }
   CoreCachedSnapshot operator*() const { return getSnapshot(); }
 
+  const Observer<T>& getUnderlyingObserver() const { return observer_; }
+
  private:
   Observer<T> observer_;
   AtomicCoreCachedSharedPtr<const T> data_;
