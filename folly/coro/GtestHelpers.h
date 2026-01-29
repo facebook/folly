@@ -141,6 +141,7 @@ inline auto gtestLogCurrentException(Out&& out) {
       : public test_suite_name {                                               \
    public:                                                                     \
     GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)() {}                    \
+    ~GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)() = default;           \
     void TestBody() override;                                                  \
     folly::coro::Task<void> co_TestBody();                                     \
                                                                                \
@@ -162,8 +163,13 @@ inline auto gtestLogCurrentException(Out&& out) {
     static int gtest_registering_dummy_ [[maybe_unused]];                      \
     GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)                         \
     (const GTEST_TEST_CLASS_NAME_(test_suite_name, test_name) &) = delete;     \
+    GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)                         \
+    (GTEST_TEST_CLASS_NAME_(test_suite_name, test_name) &&) = delete;          \
     GTEST_TEST_CLASS_NAME_(test_suite_name, test_name) & operator=(            \
         const GTEST_TEST_CLASS_NAME_(test_suite_name, test_name) &) =          \
+        delete; /* NOLINT */                                                   \
+    GTEST_TEST_CLASS_NAME_(test_suite_name, test_name) & operator=(            \
+        GTEST_TEST_CLASS_NAME_(test_suite_name, test_name) &&) =               \
         delete; /* NOLINT */                                                   \
   };                                                                           \
   int GTEST_TEST_CLASS_NAME_(                                                  \
