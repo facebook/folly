@@ -349,6 +349,11 @@ class FunctionScheduler {
 
   void clearHeap();
 
+  void waitForWork(std::unique_lock<std::mutex>& lock);
+  void waitForWork(
+      std::unique_lock<std::mutex>& lock,
+      std::chrono::steady_clock::duration timeout);
+
   std::thread thread_;
 
   // Mutex to protect our member variables.

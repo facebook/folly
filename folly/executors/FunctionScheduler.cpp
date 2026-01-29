@@ -432,6 +432,18 @@ bool FunctionScheduler::shutdown() {
   return true;
 }
 
+// Use a dedicated method for sleeping in the main loop, so it can be identified
+// easily in profiles and traces.
+FOLLY_NOINLINE void FunctionScheduler::waitForWork(
+    std::unique_lock<std::mutex>& lock) {
+  runningCondvar_.wait(lock);
+}
+FOLLY_NOINLINE void FunctionScheduler::waitForWork(
+    std::unique_lock<std::mutex>& lock,
+    std::chrono::steady_clock::duration timeout) {
+  runningCondvar_.wait_for(lock, timeout);
+}
+
 void FunctionScheduler::run() {
   std::unique_lock lock(mutex_);
 
@@ -441,7 +453,7 @@ void FunctionScheduler::run() {
     // If we have nothing to run, wait until a function is added or until we
     // are stopped.
     if (functions_.empty()) {
-      runningCondvar_.wait(lock);
+      waitForWork(lock);
       continue;
     }
 
@@ -452,7 +464,7 @@ void FunctionScheduler::run() {
       runOneFunction(lock, now);
       runningCondvar_.notify_all();
     } else {
-      runningCondvar_.wait_for(lock, sleepTime);
+      waitForWork(lock, sleepTime);
     }
   }
 }
