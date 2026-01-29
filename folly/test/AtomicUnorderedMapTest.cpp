@@ -122,7 +122,7 @@ TYPED_TEST(AtomicUnorderedInsertMapTest, basic) {
       std::string,
       TypeParam,
       std::atomic,
-      folly::detail::MMapAlloc>
+      folly::detail::MallocAlloc>
       m(100);
 
   m.emplace("abc", "ABC");

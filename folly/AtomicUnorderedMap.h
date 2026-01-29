@@ -122,13 +122,12 @@ namespace folly {
 ///
 /// MEMORY ALLOCATION
 ///
-/// Underlying memory is allocated as a big anonymous mmap chunk, which
-/// might be cheaper than calloc() and is certainly not more expensive
-/// for large maps.  If the SkipKeyValueDeletion template param is true
-/// then deletion of the map consists of unmapping the backing memory,
-/// which is much faster than destructing all of the keys and values.
-/// Feel free to override if std::is_trivial_destructor isn't recognizing
-/// the triviality of your destructors.
+/// Underlying memory is allocated as a big anonymous chunk. If the
+/// SkipKeyValueDeletion template param is true then deletion of the map
+/// consists of deallocating the backing memory, which is much faster than
+/// destructing all of the keys and values.  Feel free to override if
+/// std::is_trivial_destructor isn't recognizing the triviality of your
+/// destructors.
 template <
     typename Key,
     typename Value,
@@ -139,7 +138,7 @@ template <
          std::is_trivially_destructible<Value>::value),
     template <typename> class Atom = std::atomic,
     typename IndexType = uint32_t,
-    typename Allocator = folly::detail::MMapAlloc>
+    typename Allocator = folly::detail::MallocAlloc>
 
 struct AtomicUnorderedInsertMap {
   using key_type = Key;
@@ -222,8 +221,8 @@ struct AtomicUnorderedInsertMap {
 
     numSlots_ = capacity;
     slotMask_ = folly::nextPowTwo(capacity * 4) - 1;
-    mmapRequested_ = sizeof(Slot) * capacity;
-    slots_ = reinterpret_cast<Slot*>(allocator_.allocate(mmapRequested_));
+    allocRequested_ = sizeof(Slot) * capacity;
+    slots_ = reinterpret_cast<Slot*>(allocator_.allocate(allocRequested_));
     zeroFillSlots();
     // mark the zero-th slot as in-use but not valid, since that happens
     // to be our nil value
@@ -236,7 +235,7 @@ struct AtomicUnorderedInsertMap {
         slots_[i].~Slot();
       }
     }
-    allocator_.deallocate(reinterpret_cast<char*>(slots_), mmapRequested_);
+    allocator_.deallocate(reinterpret_cast<char*>(slots_), allocRequested_);
   }
 
   /// Searches for the key, returning (iter,false) if it is found.
@@ -404,7 +403,7 @@ struct AtomicUnorderedInsertMap {
   // (by getting a zero-filled mmap chunk) and optionally destruction of
   // the slots
 
-  size_t mmapRequested_;
+  size_t allocRequested_;
   size_t numSlots_;
 
   /// tricky, see keyToSlotIdx
@@ -469,7 +468,7 @@ struct AtomicUnorderedInsertMap {
   void zeroFillSlots() {
     using folly::detail::GivesZeroFilledMemory;
     if (!GivesZeroFilledMemory<Allocator>::value) {
-      memset(static_cast<void*>(slots_), 0, mmapRequested_);
+      memset(static_cast<void*>(slots_), 0, allocRequested_);
     }
   }
 };
@@ -487,7 +486,7 @@ template <
         (std::is_trivially_destructible<Key>::value &&
          std::is_trivially_destructible<Value>::value),
     template <typename> class Atom = std::atomic,
-    typename Allocator = folly::detail::MMapAlloc>
+    typename Allocator = folly::detail::MallocAlloc>
 using AtomicUnorderedInsertMap64 = AtomicUnorderedInsertMap<
     Key,
     Value,

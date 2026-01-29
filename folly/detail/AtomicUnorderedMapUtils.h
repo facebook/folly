@@ -16,65 +16,37 @@
 
 #pragma once
 
-#include <atomic>
-#include <cassert>
 #include <cstdint>
-#include <system_error>
+#include <cstdlib>
 
-#include <folly/Exception.h>
-#include <folly/portability/SysMman.h>
-#include <folly/portability/Unistd.h>
+#include <folly/lang/Exception.h>
+#include <folly/memory/Malloc.h>
+
 namespace folly {
 namespace detail {
 
-class MMapAlloc {
- private:
-  size_t computeSize(size_t size) {
-    long pagesize = sysconf(_SC_PAGESIZE);
-    size_t mmapLength = ((size - 1) & ~(pagesize - 1)) + pagesize;
-    assert(size <= mmapLength && mmapLength < size + pagesize);
-    assert((mmapLength % pagesize) == 0);
-    return mmapLength;
-  }
-
+class MallocAlloc {
  public:
   void* allocate(size_t size) {
-    auto len = computeSize(size);
-
-    int extraflags = 0;
-#if defined(MAP_POPULATE)
-    extraflags |= MAP_POPULATE;
-#endif
-    // MAP_HUGETLB is a perf win, but requires cooperation from the
-    // deployment environment (and a change to computeSize()).
-    void* mem = static_cast<void*>(mmap(
-        nullptr,
-        len,
-        PROT_READ | PROT_WRITE,
-        MAP_PRIVATE | MAP_ANONYMOUS | extraflags,
-        -1,
-        0));
-    if (mem == reinterpret_cast<void*>(-1)) {
-      throw std::system_error(errno, errorCategoryForErrnoDomain());
+    void* p = std::malloc(size);
+    if (p == nullptr) {
+      throw_exception<std::bad_alloc>();
     }
-#if !defined(MAP_POPULATE) && defined(MADV_WILLNEED)
-    madvise(mem, size, MADV_WILLNEED);
-#endif
-
-    return mem;
+    return p;
   }
 
-  void deallocate(void* p, size_t size) {
-    auto len = computeSize(size);
-    munmap(p, len);
-  }
+  void deallocate(void* p, size_t size) { sizedFree(p, size); }
 };
 
 template <typename Allocator>
 struct GivesZeroFilledMemory : public std::false_type {};
 
-template <>
-struct GivesZeroFilledMemory<MMapAlloc> : public std::true_type {};
+/*
+ * Example of how to specialize GivesZeroFilledMemory for custom allocator.
+ *
+ * template <>
+ * struct GivesZeroFilledMemory<Alloc> : public std::true_type {};
+ */
 
 } // namespace detail
 } // namespace folly
