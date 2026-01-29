@@ -33,6 +33,9 @@
 #ifndef MADV_COLLAPSE
 #define MADV_COLLAPSE 25
 #endif // MADV_COLLAPSE
+#ifndef MAP_POPULATE
+#define MAP_POPULATE 0
+#endif
 
 #else //_WIN32
 
