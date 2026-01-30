@@ -386,12 +386,17 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
   using write_sqe_hook =
       boost::intrusive::list_base_hook<boost::intrusive::tag<write_sqe_tag>>;
   struct WriteSqe final : IoSqeBase, public write_sqe_hook {
+    struct ZeroCopyOptions {
+      bool zeroCopy{false};
+      bool fixedBuf{false};
+      uint16_t fixedBufIndex{0};
+    };
     explicit WriteSqe(
         AsyncIoUringSocket* parent,
         WriteCallback* callback,
         std::unique_ptr<IOBuf>&& buf,
         WriteFlags flags,
-        bool zc);
+        ZeroCopyOptions options);
     ~WriteSqe() override { VLOG(5) << "~WriteSqe() " << this; }
 
     void processSubmit(struct io_uring_sqe* sqe) noexcept override;
@@ -413,7 +418,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     size_t totalLength_;
     struct msghdr msg_;
 
-    bool zerocopy_{false};
+    ZeroCopyOptions zcOptions_;
     int refs_ = 1;
     folly::Function<bool(int, uint32_t)> detachedSignal_;
   };

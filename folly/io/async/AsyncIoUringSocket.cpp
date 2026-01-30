@@ -880,14 +880,14 @@ AsyncIoUringSocket::WriteSqe::WriteSqe(
     WriteCallback* callback,
     std::unique_ptr<IOBuf>&& buf,
     WriteFlags flags,
-    bool zc)
+    ZeroCopyOptions options)
     : IoSqeBase(IoSqeBase::Type::Write),
       parent_(parent),
       callback_(callback),
       buf_(std::move(buf)),
       flags_(flags),
       totalLength_(0),
-      zerocopy_(zc) {
+      zcOptions_(options) {
   IOBuf const* p = buf_.get();
   do {
     if (auto l = p->length(); l > 0) {
@@ -929,11 +929,15 @@ void AsyncIoUringSocket::WriteSqe::processSubmit(
     struct io_uring_sqe* sqe) noexcept {
   VLOG(5) << "write sqe submit " << this << " iovs=" << msg_.msg_iovlen
           << " length=" << totalLength_ << " ptr=" << msg_.msg_iov
-          << " zc=" << zerocopy_ << " fd = " << parent_->usedFd_
+          << " zc=" << zcOptions_.zeroCopy << " fd = " << parent_->usedFd_
           << " flags=" << parent_->mbFixedFileFlags_;
-  if (zerocopy_) {
+  if (zcOptions_.zeroCopy) {
     ::io_uring_prep_sendmsg_zc(
         sqe, parent_->usedFd_, &msg_, sendMsgFlags() | MSG_WAITALL);
+    if (zcOptions_.fixedBuf) {
+      sqe->ioprio |= IORING_RECVSEND_FIXED_BUF;
+      sqe->buf_index = zcOptions_.fixedBufIndex;
+    }
   } else {
     ::io_uring_prep_sendmsg(sqe, parent_->usedFd_, &msg_, sendMsgFlags());
   }
@@ -1351,7 +1355,7 @@ AsyncIoUringSocket::WriteSqe::detachEventBase() {
   auto [promise, future] =
       makePromiseContract<std::vector<std::pair<int, uint32_t>>>();
   auto newSqe =
-      new WriteSqe(parent_, callback_, std::move(buf_), flags_, zerocopy_);
+      new WriteSqe(parent_, callback_, std::move(buf_), flags_, zcOptions_);
 
   // make sure to keep the state of where we are in the write
   newSqe->totalLength_ = totalLength_;
@@ -1556,7 +1560,12 @@ void AsyncIoUringSocket::writeChain(
   if (!callback) {
     callback = &sNullWriteCallback;
   }
-  WriteSqe* w = new WriteSqe(this, callback, std::move(buf), flags, canzc);
+  WriteSqe::ZeroCopyOptions zcOptions{
+      .zeroCopy = canzc,
+      .fixedBuf = backend_->getArenaIndex() > 0,
+      .fixedBufIndex = 0,
+  };
+  WriteSqe* w = new WriteSqe(this, callback, std::move(buf), flags, zcOptions);
 
   VLOG(5) << "AsyncIoUringSocket::writeChain(" << this
           << " ) state=" << stateAsString() << " size=" << w->totalLength_
