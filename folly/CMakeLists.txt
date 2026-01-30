@@ -888,6 +888,9 @@ folly_add_library(
   NAME memset-impl
   SRCS
     FollyMemset.cpp
+    $<$<BOOL:${IS_AARCH64_ARCH}>:memset_select_aarch64.cpp>
+  DEPS
+    $<$<BOOL:${IS_AARCH64_ARCH}>:folly_external_aor_memset_aarch64>
 )
 
 folly_add_library(
@@ -903,12 +906,20 @@ folly_add_library(
   EXCLUDE_FROM_MONOLITH
   SRCS
     FollyMemset.cpp
+    $<$<BOOL:${IS_AARCH64_ARCH}>:memset_select_aarch64.cpp>
+  DEPS
+    $<$<BOOL:${IS_AARCH64_ARCH}>:folly_external_aor_memset_aarch64-use>
+  COMPILE_OPTIONS
+    $<$<BOOL:${IS_AARCH64_ARCH}>:-DFOLLY_MEMSET_IS_MEMSET>
 )
 
 folly_add_library(
   NAME memcpy-impl
   SRCS
     FollyMemcpy.cpp
+    $<$<BOOL:${IS_AARCH64_ARCH}>:memcpy_select_aarch64.cpp>
+  DEPS
+    $<$<BOOL:${IS_AARCH64_ARCH}>:folly_external_aor_memcpy_aarch64>
 )
 
 folly_add_library(
@@ -924,6 +935,11 @@ folly_add_library(
   EXCLUDE_FROM_MONOLITH
   SRCS
     FollyMemcpy.cpp
+    $<$<BOOL:${IS_AARCH64_ARCH}>:memcpy_select_aarch64.cpp>
+  DEPS
+    $<$<BOOL:${IS_AARCH64_ARCH}>:folly_external_aor_memcpy_aarch64-use>
+  COMPILE_OPTIONS
+    $<$<BOOL:${IS_AARCH64_ARCH}>:-DFOLLY_MEMCPY_IS_MEMCPY>
 )
 
 # x86 assembly memcpy implementation (not supported on MSVC)
