@@ -70,9 +70,9 @@ class xoshiro256pp {
 
   void seed(uint64_t pSeed = default_seed) noexcept {
     uint64_t seed_val = pSeed;
-    for (uint64_t result_count = 0; result_count < VecResCount; result_count++) {
-      for (uint64_t state_count = 0; state_count < StateSize; state_count++) {
-        state[idx(state_count, result_count)] = splitmix64(seed_val);
+    for (uint64_t result_idx = 0; result_idx < VecResCount; result_idx++) {
+      for (uint64_t state_idx = 0; state_idx < StateSize; state_idx++) {
+        state[idx(state_idx, result_idx)] = splitmix64(seed_val);
       }
     }
     cur = ResultCount;
@@ -88,7 +88,11 @@ class xoshiro256pp {
  private:
   using vector_type = uint64_t;
   static constexpr uint64_t StateSize = 4;
+#if FOLLY_AARCH64
   static constexpr uint64_t VecResCount = 16;
+#else 
+  static constexpr uint64_t VecResCount = 32;
+#endif
   static constexpr uint64_t size_ratio = sizeof(vector_type) / sizeof(result_type);
   static constexpr uint64_t ResultCount = VecResCount * size_ratio;
 
@@ -119,13 +123,15 @@ class xoshiro256pp {
   }
 
   void calc() noexcept {
+#if FOLLY_AARCH64
     // By default, the compiler will prefer to unroll the loop completely, deactivating vectorization.
     #if defined(__clang__)
     #pragma clang loop unroll(disable) vectorize_width(8)
     #elif defined(__GNUC__)
     #pragma GCC unroll 4
     #endif
-    for (int i = 0; i < VecResCount; ++i) {
+#endif
+    for (unsigned int i = 0; i < VecResCount; ++i) {
       const vector_type vec_res = rotl(state[idx(0, i)] + state[idx(3, i)], 23) + state[idx(0, i)];
       std::memcpy(&res[i * size_ratio], &vec_res, sizeof(vector_type));
       
