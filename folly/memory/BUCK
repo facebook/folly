@@ -226,6 +226,26 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_library,
+    name = "io_uring_arena",
+    srcs = ["IoUringArena.cpp"],
+    raw_headers = ["IoUringArena.h"],
+    deps = [
+        "fbsource//xplat/folly/portability:malloc",
+        "fbsource//xplat/folly/portability:string",
+        "fbsource//xplat/folly/portability:sys_mman",
+        "fbsource//xplat/folly/portability:unistd",
+        "//third-party/glog:glog",
+        "//xplat/folly:c_portability",
+        "//xplat/folly:conv",
+        "//xplat/folly/lang:align",
+    ],
+    exported_deps = [
+        "//xplat/folly/memory:malloc",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
     name = "shared_from_this_ptr",
     raw_headers = ["shared_from_this_ptr.h"],
     exported_deps = [
@@ -441,6 +461,38 @@ fbcode_target(
     deps = [
         ":jemalloc_nodump_allocator",
         "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "io_uring_arena",
+    srcs = ["IoUringArena.cpp"],
+    headers = ["IoUringArena.h"],
+    deps = [
+        "//folly:c_portability",
+        "//folly:conv",
+        "//folly/lang:align",
+        "//folly/portability:malloc",
+        "//folly/portability:string",
+        "//folly/portability:sys_mman",
+        "//folly/portability:unistd",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "io_uring_arena_test",
+    srcs = ["IoUringArenaTest.cpp"],
+    headers = [],
+    allocator = "jemalloc",
+    deps = [
+        ":io_uring_arena",
+        "//folly/container:f14_hash",
         "//folly/portability:gtest",
     ],
 )

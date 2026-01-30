@@ -177,4 +177,22 @@ folly_add_library(
     ${GLOG_LIBRARIES}
 )
 
+folly_add_library(
+  NAME io_uring_arena
+  SRCS
+    IoUringArena.cpp
+  HEADERS
+    IoUringArena.h
+  DEPS
+    folly_c_portability
+    folly_conv
+    folly_lang_align
+    folly_portability_malloc
+    folly_portability_string
+    folly_portability_sys_mman
+    folly_portability_unistd
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
 add_subdirectory(detail)
