@@ -84,22 +84,14 @@ struct PlatformSimdSplitByChar {
     Uint mmaskBits = mmask.first;
     while (mmaskBits) {
       auto counted = folly::findFirstSet(mmaskBits) - 1;
+      mmaskBits >>= counted;
+      mmaskBits >>= BitsPerElement{};
       auto firstSet = counted / BitsPerElement{};
-      if constexpr (BitsPerElement{} == 1) {
-        // For one bit it's cheaper to clear the lowest set bit
-        // over shifting.
-        mmaskBits &= (mmaskBits - 1);
-      } else {
-        mmaskBits >>= counted;
-        mmaskBits >>= BitsPerElement{};
-      }
 
       const std::uint8_t* split = pos + firstSet;
+      pos = split + 1;
       emplaceBack(res, prev, split);
-      prev = split + 1;
-      if constexpr (BitsPerElement{} != 1) {
-        pos = prev;
-      }
+      prev = pos;
     }
   }
 
