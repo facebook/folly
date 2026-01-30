@@ -21,12 +21,12 @@ if (PYTHON_EXTENSIONS)
 
   add_custom_target(create_binding_symlink ALL)
   file(GLOB BindingFiles
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/executor.pyx"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf.pyx"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/iobuf_ext.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/ProactorExecutor.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pxd"
-    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/executor.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/iobuf.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/iobuf_ext.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ProactorExecutor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
   )
   file(MAKE_DIRECTORY "${_cybld}/folly/")
   file(MAKE_DIRECTORY "${_cybld}/folly/python/")
@@ -64,7 +64,7 @@ if (PYTHON_EXTENSIONS)
       "CXXFLAGS=${CMAKE_CXX_FLAGS}"
       "CC=${CMAKE_C_COMPILER}"
       "CXX=${CMAKE_CXX_COMPILER}"
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
       build_ext -f ${incs} ${libs}
     BYPRODUCTS
       ${_cybld}/folly/iobuf_api.h
@@ -82,10 +82,10 @@ if (PYTHON_EXTENSIONS)
 
   add_library(
     folly_python_cpp
-      python/AsyncioExecutor.cpp
-      python/error.cpp
-      python/executor.cpp
-      python/iobuf.cpp
+      AsyncioExecutor.cpp
+      error.cpp
+      executor.cpp
+      iobuf.cpp
   )
 
   target_include_directories(folly_python_cpp PRIVATE ${Python3_INCLUDE_DIRS})
@@ -114,7 +114,7 @@ if (PYTHON_EXTENSIONS)
       "CXXFLAGS=${CMAKE_CXX_FLAGS}"
       "CC=${CMAKE_C_COMPILER}"
       "CXX=${CMAKE_CXX_COMPILER}"
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
       bdist_wheel
     WORKING_DIRECTORY ${_cybld}
   )
@@ -137,7 +137,7 @@ if (PYTHON_EXTENSIONS)
   install(CODE "
     execute_process(
       COMMAND
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py install
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py install
         --prefix ${INSTALL_DIR}
       COMMAND_ECHO STDOUT
       WORKING_DIRECTORY ${_cybld}
