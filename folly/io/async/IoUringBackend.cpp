@@ -1175,6 +1175,16 @@ void IoUringBackend::delayedInit() {
     }
 #endif
   }
+
+  if (options_.arenaIndex > 0) {
+    int ret = ::io_uring_register_buffers(&ioRing_, &options_.arenaRegion, 1);
+    if (ret < 0) {
+      throw NotAvailable(
+          fmt::format(
+              "io_uring_register_buffers failed: {}", folly::errnoStr(-ret)));
+    }
+  }
+
   if (!addTimerFd() || !addSignalFds()) {
     cleanup();
     throw NotAvailable("io_uring_submit error");

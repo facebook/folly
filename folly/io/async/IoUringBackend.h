@@ -294,6 +294,13 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setArenaRegion(void* base, size_t size, uint32_t index) {
+      arenaRegion.iov_base = base;
+      arenaRegion.iov_len = size;
+      arenaIndex = index;
+      return *this;
+    }
+
     ssize_t sqeSize{-1};
 
     size_t capacity{256};
@@ -345,11 +352,16 @@ class IoUringBackend : public EventBaseBackendBase {
 
     std::optional<IoUringZeroCopyBufferPool::ExportHandle> bufferPoolHandle =
         std::nullopt;
+
+    struct iovec arenaRegion{};
+    uint32_t arenaIndex{0};
   };
 
   explicit IoUringBackend(Options options);
   ~IoUringBackend() override;
   Options const& options() const { return options_; }
+
+  uint32_t getArenaIndex() const { return options_.arenaIndex; }
 
   bool isWaitingToSubmit() const {
     return waitingToSubmit_ || !submitList_.empty();
