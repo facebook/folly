@@ -164,6 +164,22 @@ check_cxx_source_compiles("
   FOLLY_HAVE_EXTRANDOM_SFMT19937
 )
 
+# Check if [[no_unique_address]] attribute is available at library compile time.
+# This is critical for ABI stability: the attribute changes struct layout,
+# and if headers are compiled with a different C++ standard than the library,
+# ODR violations and memory corruption can occur.
+# See: https://github.com/facebook/folly/issues/2477
+check_cxx_source_compiles("
+  struct Empty {};
+  struct Test {
+    [[no_unique_address]] Empty e;
+    int x;
+  };
+  static_assert(sizeof(Test) == sizeof(int), \"\");
+  int main() { return 0; }"
+  FOLLY_LIBRARY_HAS_NO_UNIQUE_ADDRESS
+)
+
 check_cxx_source_runs("
   #include <stdarg.h>
   #include <stdio.h>
