@@ -30,16 +30,16 @@ namespace folly {
 
 /// Syntax sugar for `folly::get_exception<rich_error_base>()`.
 ///
-/// This retrieves the **underlying** rich error.  `enriching_errors.md`
+/// This retrieves the **underlying** rich error.  `epitaphs.md`
 /// describes this in detail, but in brief:
-///   - Enrichment only works with `folly/result/` error containers.
+///   - Epitaphs only work with `folly/result/` error containers.
 ///   - If the underlying error is not a `rich_error_base`, you will get back
-///     null, **even if** it was later enriched.
-///   - Furthermore, if you used `enrich_non_value()` or another enriching
-///     wrapper, `->partial_message()` will NOT give you the enrichment
+///     null, **even if** epitaphs were added to it later.
+///   - Furthermore, if you used `epitaph()` or another epitaph
+///     wrapper, `->partial_message()` will NOT give you the epitaph
 ///     message, but the rather the one from the base rich error.
 ///
-/// Very rarely, you may want `get_outer_exception` to access the enrichment
+/// Very rarely, you may want `get_outer_exception` to access the epitaph
 /// wrapper object itself.
 inline constexpr get_exception_fn<rich_error_base> get_rich_error{};
 

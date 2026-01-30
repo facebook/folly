@@ -182,7 +182,7 @@ class rich_exception_ptr_impl : private B {
   static constexpr auto with_underlying_impl(auto* me, auto fn)
       -> decltype(fn(me));
 
-  // Calls `fn` with the underlying exception, bypassing any chain of enriching
+  // Calls `fn` with the underlying exception, bypassing any stack of epitaph
   // wrappers that `this` might represent, and returns the result.
   //
   // Note that `fn` must be generic, ready to accept either of:
@@ -281,7 +281,7 @@ class rich_exception_ptr_impl : private B {
   }
 
   // Must call via `with_underlying()` -- code that rethrows may target `catch`,
-  // so the only right behavior is to drop enriching wrappers.
+  // so the only right behavior is to drop epitaph wrappers.
   template <bool PartOfTryImpl> //  `true` only when called from `Try.h`.
   [[noreturn]] void throw_exception_impl() const {
     bits_t bits = B::get_bits();
@@ -363,7 +363,7 @@ class rich_exception_ptr_impl : private B {
   template <bool PartOfTryImpl> //  `true` only when called from `Try.h`.
   std::exception_ptr to_exception_ptr_copy() const {
     // Code that examines `exception_ptr` may rethrow or use legacy APIs, so we
-    // have to drop enriching wrappers.
+    // have to drop epitaph wrappers.
     return with_underlying([](auto* rep) {
       auto bits = rep->get_bits();
       if ((B::OWNS_EXCEPTION_PTR_and & bits) ||
@@ -397,12 +397,12 @@ class rich_exception_ptr_impl : private B {
           // When `rep` is not `this`, it comes from `with_underlying`, which
           // (by design!) points to `const`.  So, the `else` branch shouldn't
           // compile (again, by design), but more importantly, it would violate
-          // the principle that enrichment wrappers are transparent.  The doc
+          // the principle that epitaph wrappers are transparent.  The doc
           // of `rich_error_base::mutable_underlying_error` speaks to this.
           // Concretely:
-          //   rich_exception_ptr rep1 = /* enrichment-wrapped MyErr */;
-          //   auto rep2 = rep1; // Both share the same `enriched_non_value`!
-          // This would mutate `enriched_non_value::next_` for *both*.
+          //   rich_exception_ptr rep1 = /* epitaph-wrapped MyErr */;
+          //   auto rep2 = rep1; // Both share the same `epitaph_non_value`!
+          // This would mutate `epitaph_non_value::next_` for *both*.
           //   auto eptr2 = std::move(rep2).to_exception_ptr_slow();
           // So `rep1` would now be a wrapper around a moved-out (empty) REP.
           eptr = rep->get_eptr_ref_guard().ref();
@@ -486,7 +486,7 @@ class rich_exception_ptr_impl : private B {
   }
 
   // Must call via `with_underlying()` -- we want to compare the innermost
-  // exception, ignoring enriching wrappers.
+  // exception, ignoring epitaph wrappers.
   template <typename D1, typename B1, typename D2, typename B2>
   static constexpr bool compare_equal(
       const rich_exception_ptr_impl<D1, B1>* lp,
@@ -705,7 +705,7 @@ class rich_exception_ptr_impl : private B {
         B::NOTHROW_OPERATION_CANCELLED_eq);
   }
 
-  /// Throws the innermost exception, ignoring enriching wrappers.
+  /// Throws the innermost exception, ignoring epitaph wrappers.
   ///
   /// Precondition: Contains a nonempty exception.  Terminates on empty
   /// `exception_ptr`, on invalid internal state.  Small-value is debug-fatal.
@@ -724,11 +724,11 @@ class rich_exception_ptr_impl : private B {
   }
 
   /// Returns the `std::exception_ptr` for the innermost exception, DISCARDING
-  /// enriching wrappers.
+  /// epitaph wrappers.
   ///
   /// Overload differences:
   ///   - `const&` copies the inner eptr (cost: an atomic refcount increment).
-  ///   - `&&` moves the inner eptr, destroys any enriching wrappers, and
+  ///   - `&&` moves the inner eptr, destroys any epitaph wrappers, and
   ///     leaves `this` in a moved-out, empty eptr state.
   ///
   /// Precondition: Contains an exception, or empty eptr (debug-fatal otherwise)
@@ -749,7 +749,7 @@ class rich_exception_ptr_impl : private B {
   }
 
   /// Returns the `typeid` of the innermost exception object, ignoring
-  /// enriching wrappers.  If no exception object is stored, returns null.
+  /// epitaph wrappers.  If no exception object is stored, returns null.
   ///
   /// Future: Could perhaps be made public, currently PRIVATE due to the API
   /// design issue with immortals documented inline.  That would simplify the
@@ -785,7 +785,7 @@ class rich_exception_ptr_impl : private B {
   ///  - ... occur in the `Try` implementation, and both contain empty `Try`.
   ///
   /// When `lhs` and `rhs` are both representable as eptrs, we compare the
-  /// underlying exception object **pointers** -- ignoring enriching wrappers.
+  /// underlying exception object **pointers** -- ignoring epitaph wrappers.
   ///
   /// Caveat 1: If the same `immortal_rich_error<...>::ptr()` is instantiated
   /// in multiple DSOs, then you may end up with multiple copies of the
@@ -834,9 +834,9 @@ class rich_exception_ptr_impl : private B {
   // underlying error.
   //
   // CAREFUL: The type of this exception is different from whatever error
-  // actually occurred, see `enrich_non_value.h` for the most common example.
+  // actually occurred, see `epitaph.h` for the most common example.
   //
-  // This is used by `rich_error_base::format_to` to walk the enrichment chain.
+  // This is used by `rich_error_base::format_to` to walk the epitaph stack.
   template <typename Ex>
   constexpr Ex const* get_outer_exception() const noexcept
       [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
@@ -1013,7 +1013,7 @@ class rich_exception_ptr_impl : private B {
   }
 
  private:
-  // Calls `get_outer_exception` on the underlying error in the enrichment chain
+  // Calls `get_outer_exception` on the underlying error in the epitaph stack
   template <typename CEx>
   static constexpr rich_ptr_to_underlying_error<CEx> get_exception_impl(
       auto* rep);
@@ -1021,16 +1021,16 @@ class rich_exception_ptr_impl : private B {
  public:
   /// Implementation of `folly::get_exception<Ex>(rich_exception_ptr)`
   ///
-  /// Transparently handles errors with enriching wrappers -- the returned
+  /// Transparently handles errors with epitaph wrappers -- the returned
   /// pointer-like resolves to the underlying, original exception. But, `fmt` or
-  /// `ostream::operator<<` will display the full enrichment chain.
+  /// `ostream::operator<<` will display the full epitaph stack.
   ///
-  /// Avoid converting the result to `Ex*`, or you will lose the enrichments.
+  /// Avoid converting the result to `Ex*`, or you will lose the epitaphs.
   ///
   /// Sample usage:
   ///
   ///   if (auto ex = get_exception<Ex>(...)) { // NOT `Ex* ex`!
-  ///     LOG(INFO) << ex; // Will include enrichments
+  ///     LOG(INFO) << ex; // Will include epitaphs
   ///   }
   ///
   /// IMPORTANT: For immortal errors, this `const` accessor will access a
@@ -1041,7 +1041,7 @@ class rich_exception_ptr_impl : private B {
   /// use-case.  The non-`const` overload of `get_outer_exception` says more.
   ///
   /// Future: There's no return state for "did not match `Ex` (aka `nullptr`),
-  /// but still have enrichments" -- but it is easy to add if useful.
+  /// but still have epitaphs" -- but it is easy to add if useful.
   template <typename Ex>
   constexpr rich_ptr_to_underlying_error<const Ex> get_exception(
       get_exception_tag_t) const noexcept {
@@ -1068,7 +1068,7 @@ using rich_exception_ptr_base = rich_exception_ptr_impl<
 
 /// `rich_exception_ptr` is an analog of `exception_wrapper` or
 /// `std::exception_ptr`, with some extra efficiency optimizations, and
-/// integration with `rich_error` / `enrich_non_value`.  It was designed to
+/// integration with `rich_error` / `epitaph`.  It was designed to
 /// support rich-error features in `result.h`.
 ///
 /// This class typically owns a `std::exception_ptr`, or stores a cheap-to-copy
@@ -1110,7 +1110,7 @@ rich_exception_ptr_impl<Derived, B>::with_underlying_impl(auto* me, auto fn)
 }
 
 // Specializes the `with_underlying()` traversal for `get_exception<>()`, while
-// populating `top_rich_error_` to support enriched formatting.
+// populating `top_rich_error_` to support formatting with epitaphs.
 //
 // Future: A possible micro-optimization idea to try to save 1-2ns would be to
 // deduplicate the PLT call to `exception_ptr_get_object` (one per
@@ -1135,7 +1135,7 @@ constexpr inline auto rich_exception_ptr_impl<Derived, B>::get_exception_impl(
     top_rich_error = rep->template get_outer_exception<rich_error_base>();
     // Fall through to query for `CEx` in the final `return`...
   } else if (B::OWNS_EXCEPTION_PTR_and & bits) {
-    // This dynamic eptr may be an enrichment wrapper, so we have to retrieve
+    // This dynamic eptr may be an epitaph wrapper, so we have to retrieve
     // the underlying error.  This gives us `top_rich_error_` for free.
     if (auto* rex = rep->template get_outer_exception<rich_error_base>()) {
       top_rich_error = rex;

@@ -16,7 +16,7 @@
 
 #include <folly/result/immortal_rich_error.h>
 
-#include <folly/result/enrich_non_value.h>
+#include <folly/result/epitaph.h>
 #include <folly/result/rich_error.h>
 #include <folly/result/rich_msg.h>
 #include <folly/result/test/common.h>
@@ -216,12 +216,12 @@ TEST(ImmortalRichErrorTest, copyMoveAndAccess) {
   }
 }
 
-TEST(ImmortalRichErrorTest, formatEnriched) {
+TEST(ImmortalRichErrorTest, formatWithEpitaphs) {
   auto rep = immortal_rich_error<MyErr>.ptr();
   EXPECT_EQ("default MyErr", fmt::format("{}", get_rich_error(rep)));
 
   auto err_line = source_location::current().line() + 1;
-  rich_error<detail::enriched_non_value> err{std::move(rep), rich_msg{"msg"}};
+  rich_error<detail::epitaph_non_value> err{std::move(rep), rich_msg{"msg"}};
 
   checkFormatOfErrAndRep<MyErr, rich_error_base, std::exception>(
       err,
@@ -241,8 +241,7 @@ struct ConstErrWithNext : rich_error_base {
       : msg_{S.c_str()}, next_{next} {}
 
   const char* partial_message() const noexcept override { return msg_; }
-  const rich_exception_ptr* next_error_for_enriched_message()
-      const noexcept override {
+  const rich_exception_ptr* next_error_for_epitaph() const noexcept override {
     return next_;
   }
 

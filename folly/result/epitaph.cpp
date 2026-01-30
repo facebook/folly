@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/result/enrich_non_value.h>
+#include <folly/result/epitaph.h>
 
 #include <folly/Portability.h> // FOLLY_HAS_RESULT
 
@@ -22,15 +22,15 @@
 
 namespace folly::detail {
 
-folly::source_location enriched_non_value::source_location() const noexcept {
+folly::source_location epitaph_non_value::source_location() const noexcept {
   return msg_.location();
 }
 
-const char* enriched_non_value::partial_message() const noexcept {
+const char* epitaph_non_value::partial_message() const noexcept {
   return msg_.message();
 }
 
-const rich_exception_ptr* enriched_non_value::next_error_for_enriched_message()
+const rich_exception_ptr* epitaph_non_value::next_error_for_epitaph()
     const noexcept {
   return &next_;
 }

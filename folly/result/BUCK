@@ -90,9 +90,9 @@ fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
-    name = "enrich_non_value",
-    srcs = ["enrich_non_value.cpp"],
-    raw_headers = ["enrich_non_value.h"],
+    name = "epitaph",
+    srcs = ["epitaph.cpp"],
+    raw_headers = ["epitaph.h"],
     exported_deps = [
         ":result",
         ":rich_error",
@@ -103,9 +103,9 @@ non_fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "enrich_non_value",
-    srcs = ["enrich_non_value.cpp"],
-    headers = ["enrich_non_value.h"],
+    name = "epitaph",
+    srcs = ["epitaph.cpp"],
+    headers = ["epitaph.h"],
     exported_deps = [
         ":result",
         ":rich_error",
@@ -243,21 +243,21 @@ fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
-    name = "or_unwind_rich",
-    raw_headers = ["or_unwind_rich.h"],
+    name = "or_unwind_epitaph",
+    raw_headers = ["or_unwind_epitaph.h"],
     exported_deps = [
         ":coro",
-        ":enrich_non_value",
+        ":epitaph",
     ],
 )
 
 fbcode_target(
     _kind = cpp_library,
-    name = "or_unwind_rich",
-    headers = ["or_unwind_rich.h"],
+    name = "or_unwind_epitaph",
+    headers = ["or_unwind_epitaph.h"],
     exported_deps = [
         ":coro",
-        ":enrich_non_value",
+        ":epitaph",
     ],
 )
 

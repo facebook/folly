@@ -73,7 +73,7 @@ than thrown exceptions, and more flexible than error codes:
   - The standard pattern for accessing the value is `co_await
     or_unwind(resultFn())`, which also **visibly and efficiently** propagates
     unhandled exceptions (and cancellation) to the caller.  For error
-    enrichment with source location tracking, use `co_await or_unwind_rich(
+    enrichment with source location tracking, use `co_await or_unwind_forensic(
     resultFn(), "context {}", arg)` instead.
   - Handling specific exceptions via `if (auto ex = get_exception<Ex>(res))` is
     as clear as `try-catch`, and lacks the many gotchas of the

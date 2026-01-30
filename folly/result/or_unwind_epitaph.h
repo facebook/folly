@@ -17,31 +17,32 @@
 #pragma once
 
 #include <folly/result/coro.h>
-#include <folly/result/enrich_non_value.h>
+#include <folly/result/epitaph.h>
 
 #if FOLLY_HAS_RESULT
 
 namespace folly {
 
-/// or_unwind_rich
+/// or_unwind_epitaph
 ///
-/// Syntax sugar for `or_unwind(enrich_non_value(...)`.
+/// Syntax sugar for `or_unwind(epitaph(...)`.
 ///
-/// On the value path: enrichment is skipped (just like `enrich_non_value`).
-/// On the error-or-stopped path: the error is enriched, then propagated.
+/// On the value path: epitaphs are skipped (just like `epitaph`).
+/// On the error-or-stopped path: epitaphs are added, then the error is
+/// propagated.
 template <typename T, typename... Args>
-auto or_unwind_rich(
+auto or_unwind_epitaph(
     result<T> r,
     ext::format_string_and_location<std::type_identity_t<Args>...> snl = "",
     Args const&... args) {
-  return or_unwind_owning(enrich_non_value(std::move(r), snl, args...));
+  return or_unwind_owning(epitaph(std::move(r), snl, args...));
 }
 template <typename... Args>
-auto or_unwind_rich(
+auto or_unwind_epitaph(
     error_or_stopped eos,
     ext::format_string_and_location<std::type_identity_t<Args>...> snl = "",
     Args const&... args) {
-  return or_unwind_owning(enrich_non_value(std::move(eos), snl, args...));
+  return or_unwind_owning(epitaph(std::move(eos), snl, args...));
 }
 
 } // namespace folly

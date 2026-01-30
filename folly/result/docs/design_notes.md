@@ -66,7 +66,7 @@ behavior is similar, there are many valuable improvements:
       non-debuggable `BadExpectedAccess`.
     * `folly::get_exception<Ex>(result)` makes error-checking easy.
     * `result` supports enrichment / provenance, which lets users capture
-      error-propagation stacks (details in `enriching_errors.md`).
+      error-propagation stacks (details in `epitaphs.md`).
     * Full integration with `folly::coro`, so that `result` can supersede `Try`
       in that usage.
     * `co_await expectedFn()` is easily confused with async `folly::coro` code,
@@ -214,7 +214,7 @@ synchronous code with pervasive error handling -- they are simpler and cheaper.
     Also, `folly::coro` plumbing is inherently more complex in order to support
     asynchrony (executors, cancellation tokens, etc).
   - It may be some time before `folly::coro` has native support for enriching
-    `result`s in error-or-stopped states (`enriching_errors.md`) -- currently,
+    `result`s in error-or-stopped states (`forensic.md`) -- currently,
     round-tripping through `Try` discards enrichments.
 
 ## Details of the `result` API
@@ -298,7 +298,7 @@ a lot of flexibility.
     both kinds of errors takes ~5ns thanks to a no-RTTI optimization -- we may
     later extend this per `future_fast_rtti.md`.
 
-  - **Error provenance:** Our type-erasure also powers `enriching_errors.md`.
+  - **Error provenance:** Our type-erasure also powers `epitaphs.md`.
 
 ### Why does `result` distinguish "stopped" and "error"?
 

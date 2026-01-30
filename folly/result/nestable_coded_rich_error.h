@@ -45,8 +45,7 @@ class nestable_coded_rich_error_crtp : public coded_rich_error<Codes...> {
       : coded_rich_error<Codes...>{codes..., std::move(msg)},
         next_{std::move(next)} {}
 
-  const rich_exception_ptr* next_error_for_enriched_message()
-      const noexcept override {
+  const rich_exception_ptr* next_error_for_epitaph() const noexcept override {
     return (next_ != rich_exception_ptr{}) ? &next_ : nullptr;
   }
 
@@ -76,7 +75,7 @@ class nestable_coded_rich_error_crtp : public coded_rich_error<Codes...> {
 /// only visible via fmt / ostream output for debugging.
 ///
 /// If you do NOT intend to "hide" the type of the old error (`next` arg), then
-/// you may be wanting the transparent annotations from `enrich_non_value.h`.
+/// you may be wanting the transparent annotations from `epitaph.h`.
 ///
 /// Future: This currently doesn't support nesting during constant evaluation.
 /// That would require adding a consteval ctor taking `rich_exception_ptr*`,

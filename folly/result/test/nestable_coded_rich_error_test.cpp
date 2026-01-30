@@ -39,8 +39,7 @@ void checkConstructionAndAccess(
   EXPECT_STREQ(err.partial_message(), "outer");
   EXPECT_STREQ(
       next_what,
-      get_exception<decltype(next)>(*err.next_error_for_enriched_message())
-          ->what());
+      get_exception<decltype(next)>(*err.next_error_for_epitaph())->what());
 
   checkFormatOfErrAndRep<
       nestable_coded_rich_error<A1>,

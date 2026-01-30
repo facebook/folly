@@ -1,4 +1,4 @@
-## Error provenance via `enrich_non_value`
+## Error provenance via `epitaph`
 
 An `ENOENT` (File not found) can be anything from a "normal user error" to a
 "serious bug", so application logs need context.
@@ -7,19 +7,19 @@ An `ENOENT` (File not found) can be anything from a "normal user error" to a
 through your code.
 
 With traditional exceptions, stack traces are automatic, but stack unwinding is
-slow (1usec+) **[*]**. With `enrich_non_value`, you explicitly add *custom*
+slow (1usec+) **[*]**. With `epitaph`, you explicitly add *custom*
 context as the error propagates. Hot code can opt out, though eventually adding
 an entry should amortize to a few nanoseconds (today's V0 implementation has a
-~60ns lifetime cost: ctor + dtor, but see `future_enrich_in_place.md`).
+~60ns lifetime cost: ctor + dtor, but see `future_epitaph_in_place.md`).
 
 ### Basic usage
 
-See `enrich_non_value.h` for the full API:
+See `epitaph.h` for the full API:
 
 ```cpp
-co_await or_unwind_rich(resultFn(), "in {} due to {}", place, reason);
+co_await or_unwind_epitaph(resultFn(), "in {} due to {}", place, reason);
 // ... syntax sugar for:
-co_await or_unwind(enrich_non_value(
+co_await or_unwind(epitaph(
     resultFn(), "in {} due to {}", place, reason));
 ```
 
@@ -31,7 +31,7 @@ source location and message.
 
 ### Enrichment is transparent: APIs access the underlying error
 
-Internally, `enrich_non_value` wraps the error with a different type. But all
+Internally, `epitaph` wraps the error with a different type. But all
 public APIs (`get_exception<Ex>()`, `get_rich_error()`, `get_rich_error_code()`,
 etc) access the **underlying** error -- the original being propagated.
 
@@ -42,7 +42,7 @@ result<> resultFn() {
 ```
 
 There is no way to add rich context *into* the `logic_error`, so we wrap it.
-Internally, `enrich_non_value` stores:
+Internally, `epitaph` stores:
   - A `rich_exception_ptr` owning the original `logic_error`, accessible via
     `underlying_error()` for O(1) unwrapping by `get_exception<Ex>()`.
   - A `source_location` of the enrichment call-site.
@@ -62,7 +62,7 @@ like a pointer to the underlying `Ex`. Unlike `Ex*`, it is both
 stack:
 
 ```cpp
-auto res = enrich_non_value(resultFn(), "context");
+auto res = epitaph(resultFn(), "context");
 if (auto ex = get_exception<std::logic_error>(res)) { // NOT `auto*`
   LOG(INFO) << "Oh no: " << ex; // includes "context" and source location
   static_assert(std::is_same_v<decltype(*ex), const std::logic_error&>);
@@ -85,7 +85,7 @@ Here, `[via]` precedes the enrichment stack, and `[after]` separates its entries
 (most recent annotation first).
 
 To emulate `std::nested_exception`, any rich error can store a "caused-by" error
-and expose it via `next_error_for_enriched_message()`. See
+and expose it via `next_error_for_epitaph()`. See
 `nestable_coded_rich_error.h` for an example.
 
 When nesting, you may see multiple `[via]` separators, since each nested error
@@ -103,7 +103,7 @@ Here are two ideas to make `result` coroutines easier to debug:
     special enrichment wrapper type should capture the exception's call stack,
     and expose it via `format_to()`.
 
- 2. **Lo-pri:** `result` coroutines must manually enrich via `enrich_non_value`
+ 2. **Lo-pri:** `result` coroutines must manually enrich via `forensic`
     before `co_await`. But, in some coros, the best UX may be to add a default
     enrichment info to all `co_await` points, without annotating each one.
 
@@ -111,7 +111,7 @@ Here are two ideas to make `result` coroutines easier to debug:
     "enrichment function argument" along these lines:
 
     ```cpp
-    result<> myFn(enrich_non_value_on_co_await<"my fn"_litv>, ...);
+    result<> myFn(epitaph_on_co_await<"my fn"_litv>, ...);
     ```
 
     Then, use `coroutine_traits` to customize the promise type for this

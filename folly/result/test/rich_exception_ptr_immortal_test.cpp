@@ -123,13 +123,13 @@ void checkAccessExceptions() {
 
   // Behavior matches "owned", except for the mutable/immutable singleton split
   checkGetExceptionForRichErr</*constAndMutPointersAreSame=*/false>(rep);
-  checkGetExceptionForEnrichedRichErr<REP, /*PointersAreSame=*/false>(
+  checkGetExceptionForEpitaphRichErr<REP, /*PointersAreSame=*/false>(
       // We cannot use `REP` for the inner error, since `underlying_error()` is
       // always `rich_exception_ptr`.
       immortal_rich_error<rich_error<RichErr>>.ptr());
 
   // NB: Since immortals do not support `underlying_error()` today, there's no
-  // test coverage for immortal enrichment wrappers.
+  // test coverage for immortal epitaph wrappers.
 
   // Exercise (get, outer) x (const, mutable) queries for types served by
   // (constexpr pointer, immutable singleton, mutable singleton)

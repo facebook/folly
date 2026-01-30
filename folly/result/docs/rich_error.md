@@ -19,7 +19,7 @@ addresses **all** the common error-handling needs of services:
     when needed, you can use inheritance, throwing, and RTTI.
   - **Provenance:** Captures enrichment data -- a propagation message & source
     location. Think of it as customizable stack traces for the return-`result`
-    paradigm. See `enriching_errors.md`.
+    paradigm. See `epitaphs.md`.
 
 ## Tutorial
 
@@ -146,7 +146,7 @@ result<double> Fruit::toCalories() {
 ```
 
 Immortal errors work just like their dynamic counterparts: you can still
-`enrich_non_value` to add context, convert them to a dynamic
+`epitaph` to add context, convert them to a dynamic
 `std::exception_ptr`, throw them, etc.
 
 Switching to a dynamic error is straightforward and breaks no contracts:
@@ -165,11 +165,11 @@ The dominant cost is ~60ns to allocate and free a heap `std::exception_ptr`.
 Errors can carry contextual information as they propagate through your code.
 Stack traces help debug exceptions; error codes need an equivalent facility.
 For example, `ENOENT` (file not found) can range from "normal user error" to
-"serious bug" -- provenance is essential. See `enriching_errors.md` for
+"serious bug" -- provenance is essential. See `epitaphs.md` for
 details; here's the gist:
 
 ```cpp
-co_await or_unwind(enrich_non_value(
+co_await or_unwind(epitaph(
     resultFn(), "in {} due to {}", place, reason));
 ```
 
@@ -186,7 +186,7 @@ Key properties:
   - Enrichment **cannot** add error codes (codes direct control flow; enrichments
     are discardable). Use `nestable_coded_rich_error` to change codes.
   - Hot code can opt out. Adding an enrichment currently costs ~60ns; see
-    `docs/future_enrich_in_place.md` for a design that amortizes to 5-10ns.
+    `docs/future_epitaph_in_place.md` for a design that amortizes to 5-10ns.
 
 ## Performance
 

@@ -50,11 +50,11 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME enrich_non_value
+  NAME epitaph
   SRCS
-    enrich_non_value.cpp
+    epitaph.cpp
   HEADERS
-    enrich_non_value.h
+    epitaph.h
   EXPORTED_DEPS
     folly_lang_safe_assert
     folly_portability
@@ -117,12 +117,12 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME or_unwind_rich
+  NAME or_unwind_epitaph
   HEADERS
-    or_unwind_rich.h
+    or_unwind_epitaph.h
   EXPORTED_DEPS
     folly_result_coro
-    folly_result_enrich_non_value
+    folly_result_epitaph
 )
 
 folly_add_library(

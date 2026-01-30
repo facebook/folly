@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/result/enrich_non_value.h>
+#include <folly/result/epitaph.h>
 #include <folly/result/rich_error.h>
 #include <folly/result/test/rich_exception_ptr_common.h>
 
@@ -44,8 +44,8 @@ REP checkEptrRoundtrip(const auto& original_src) {
   //
   // Future: It'd be nice to format `get_rich_error()` and
   // `get_exception<std:exception>()`, but there's currently no rendering
-  // modifier to omit the enrichment, whereas this comparison should be
-  // transparent to enrichment.  Also format the REP itself, when available.
+  // modifier to omit epitaphs, whereas this comparison should be
+  // transparent to epitaphs.  Also format the REP itself, when available.
   auto serialize = [](const auto& rep) {
     auto rex = get_rich_error(rep).get();
     return std::tuple{
@@ -85,7 +85,7 @@ REP checkEptrRoundtrip(const auto& original_src) {
 }
 
 template <typename REP>
-auto allEnrichableRepVariants() {
+auto allEpitaphRepVariants() {
   auto RichErr1 = REP{rich_error<RichErr>{}};
   auto logic_err = REP{std::runtime_error{"test"}};
   auto immortal = immortal_rich_error_t<REP, RichErr>{}.ptr();
@@ -119,34 +119,35 @@ auto allEnrichableRepVariants() {
 // Indirectly (via `checkEptrRoundtrip`) tests `std::exception_ptr` conversion.
 template <typename REP>
 auto allRepVariants() {
-  auto reps = allEnrichableRepVariants<REP>();
-  // Enrich the whole test matrix: for each base variant, add enriched versions.
-  // Enriched errors wrap an underlying error with additional context.
-  // The inner type must be `rich_exception_ptr` as required by
-  // `underlying_error()`.`
+  auto reps = allEpitaphRepVariants<REP>();
+  // Add epitaphs to the whole test matrix: for each base variant, add
+  // versions with epitaph wrappers. They wrap an underlying error with
+  // additional context. The inner type must be `rich_exception_ptr` as
+  // required by `underlying_error()`.
   if constexpr (std::is_same_v<rich_exception_ptr, REP>) {
-    auto repsToEnrich = reps;
-    for (auto& [key, rep] : repsToEnrich) {
-      auto enriched = REP{
-          rich_error<enriched_non_value>{std::move(rep), rich_msg{"enriched"}}};
-      // Same key, since enrichment is transparent
-      reps.emplace_back(key, enriched);
-      reps.emplace_back(key, checkEptrRoundtrip<REP>(enriched));
+    auto repsToAddEpitaphs = reps;
+    for (auto& [key, rep] : repsToAddEpitaphs) {
+      auto withEpitaphs = REP{
+          rich_error<epitaph_non_value>{std::move(rep), rich_msg{"epitaph"}}};
+      // Same key, since epitaphs are transparent
+      reps.emplace_back(key, withEpitaphs);
+      reps.emplace_back(key, checkEptrRoundtrip<REP>(withEpitaphs));
     }
   } else { // rich_exception_ptr != REP
-    auto repsToEnrich = allEnrichableRepVariants<rich_exception_ptr>();
-    for (auto& [key, rep] : repsToEnrich) {
-      auto enriched = REP{
-          rich_error<enriched_non_value>{std::move(rep), rich_msg{"enriched"}}};
-      // Different key -- although enrichment is transparent, the different
+    auto repsToAddEpitaphs = allEpitaphRepVariants<rich_exception_ptr>();
+    for (auto& [key, rep] : repsToAddEpitaphs) {
+      auto withEpitaphs = REP{
+          rich_error<epitaph_non_value>{std::move(rep), rich_msg{"epitaph"}}};
+      // Different key -- although epitaphs are transparent, the different
       // types `rich_exception_ptr != REP` guarantee these won't compare equal.
-      reps.emplace_back("enriched_" + key, enriched);
-      reps.emplace_back("enriched_" + key, checkEptrRoundtrip<REP>(enriched));
+      reps.emplace_back("epitaph_" + key, withEpitaphs);
+      reps.emplace_back(
+          "epitaph_" + key, checkEptrRoundtrip<REP>(withEpitaphs));
     }
   }
-  // Avoid enriching empty-eptr -- `enriched_non_value` currently has a
-  // debug-assert against this usage.  If we change our mind, then move
-  // empty-eptr into `allEnrichableRepVariants` to add coverage.
+  // Avoid adding epitaphs to empty-eptr -- `epitaph_non_value` currently has
+  // a debug-assert against this usage.  If we change our mind, then move
+  // empty-eptr into `allEpitaphRepVariants` to add coverage.
   {
     auto empty = REP{};
     reps.emplace_back("empty", empty);
@@ -157,9 +158,9 @@ auto allRepVariants() {
         "empty", REP::from_exception_ptr_slow(std::exception_ptr{}));
     reps.emplace_back("empty", checkEptrRoundtrip<REP>(empty));
   }
-  // Aoid `checkEptrRoundtrip` on empty-try -- it doesn't support
-  // `to_exception_ptr_slow` (by design).  We could test enriching empty-try
-  // (as in the loops above), but that should never be used, so omit it.
+  // Aoid `checkEptrRoundtrip` on empty-try.  By design, it doesn't support
+  // `to_exception_ptr_slow`.  We could test adding epitaphs to empty-try (as
+  // in the loops above), but that should never be used, so omit it.
   reps.emplace_back("empty_try", REP{make_empty_try_t{}});
   return reps;
 }

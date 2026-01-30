@@ -34,7 +34,8 @@ namespace folly {
 // try to dissuade you.
 //
 // Instead, prefer to use `co_await or_unwind()`.  You could even add a macro
-// to your `.cpp` files for brevity -- for debuggability, use `or_unwind_rich`.
+// to your `.cpp` files for brevity -- for debuggability, use
+// `or_unwind_epitaph`.
 //
 //   #define OR_UNWIND(...) (co_await or_unwind(__VA_ARGS__))
 //

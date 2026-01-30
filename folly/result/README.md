@@ -27,7 +27,7 @@ know this game. But, first, a mini-glossary:
     via `co_await or_unwind(...)`. That returns early if the inner call did not
     complete with a value -- similar to Rust's `?` operator.
   - `result` coros also wrap uncaught exceptions from their scope.
-  - The `enrich_non_value` wrapper adds context to "error" and "stopped"
+  - The `epitaph` wrapper adds context to "error" and "stopped"
     completions, building a lightweight "stack" for debugging.
 
 ```cpp
@@ -43,7 +43,7 @@ result<Ball> inboundsPass(Player& passer, Player& pointGuard) {
 
 result<int> runFastBreak(
     Player& inbounder, Player& pointGuard, Player& shootingGuard) {
-  Ball ball = co_await or_unwind(enrich_non_value(
+  Ball ball = co_await or_unwind(epitaph(
       inboundsPass(inbounder, pointGuard), "fast break collapsed"));
   ball = co_await or_unwind(pointGuard.bounceTo(shootingGuard));
   co_return co_await or_unwind(
@@ -68,8 +68,8 @@ differences:
   - Propagation is explicit via `co_await or_unwind()`, reducing unhandled
     error bugs.
   - You get ergonomic & efficient support for type-erased error codes.
-  - Natively formattable, including "enrichment stacks".
-  - Opt-in error provenance via `enrich_non_value` means that hot error paths
+  - Natively formattable, including "epitaph stacks".
+  - Opt-in error provenance via `epitaph` means that hot error paths
     can opt out, while preserving debuggability everywhere else.
   - As with any result type, the "happy path" sees a 1-branch overhead per
     function call.
@@ -86,7 +86,7 @@ Here's how `result` compares with a few other well-known error-handling paradigm
 | value path | zero-cost | low ns | low ns | low ns |
 | error path | 1 usec+ **[*]** | low ns | low ns | low ns |
 | type erasure | yes | yes | no | no |
-| provenance | stacks | `enrich_non_value` | n/a | n/a |
+| provenance | stacks | `epitaph` | n/a | n/a |
 | propagation | implicit | `co_await or_unwind(res)` | `if (res.has_error()) { return ...; }` | `?` |
 | handling | `try`-`catch` | `get_exception<>()`, `get_rich_error_code<>()`, `has_stopped()` | `.error()` | `.err()` |
 | cancellation | [wrongly](https://wg21.link/P1677), cancellation-as-error | has "stopped" state | n/a | n/a |

@@ -33,7 +33,7 @@ namespace ext { // For extension authors -- public details
 ///
 /// Rich error users probably want `rich_msg` instead, see below.  This is meant
 /// to enable library authors to make concise APIs, in the style
-/// `enrich_non_value` or `...coded_rich_error`.
+/// `epitaph` or `...coded_rich_error`.
 ///
 /// Captures a source location together with a literal string -- either for
 /// `fmt` formatting with arguments, or one without substitutions. Usage:

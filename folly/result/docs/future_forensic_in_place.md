@@ -10,7 +10,7 @@ enrichment would still cost tens of nanoseconds.
 
 In-place enrichment is an idea to amortize the allocation cost, by having rich
 errors reserve "in-place" storage for an array of enrichment frames. Unlike
-`enrich_non_value`, most enrichments only need to track source location &
+`forensic`, most enrichments only need to track source location &
 message, so the storage can be a fixed-size array of 16-byte `rich_msg`s.
 
 This optimization will grow in importance when we support automatic enrichment
@@ -27,19 +27,19 @@ bool rich_error_base::maybe_enrich_in_place(rich_msg&&) noexcept;
 This returns `true` iff the rich error is mutable, and was able to move
 `rich_msg` into its storage array. The `rich_msg` is unchanged on `false`.
 
-Given this protocol, `enrich_non_value` would be extended to try these 2 things
+Given this protocol, `epitaph` would be extended to try these 2 things
 in turn. If either fails, it falls back to dynamic enrichment:
   - First, try *only* a fast, RTTI-free query for `rich_error_base`.
     Allocation can easily be cheaper than `dynamic_cast`.
   - Then, try to `maybe_enrich_in_place()`.
 
 **Note:** Access to `maybe_enrich_in_place()` should be restricted to
-`enrich_non_value` via friendship or passkey, preventing API misuse that would
+`epitaph` via friendship or passkey, preventing API misuse that would
 violate the "usage requirements" documented in the thread-safety design.
 
 ### Implementers of the protocol
 
-The `detail::enriched_non_value` wrapper would automatically come with multiple
+The `detail::epitaph_non_value` wrapper would automatically come with multiple
 slots to amortize the cost of allocations -- determined by benchmarking. Once we
 can allocate errors without eptrs, the "sweet spot" array size will decrease.
 
@@ -57,12 +57,12 @@ moment you enrich one, that incurs an allocation.
 
 #### Usage requirements
 
-Today, `enrich_non_value` only takes REP by-value. The caller cannot retain a
+Today, `epitaph` only takes REP by-value. The caller cannot retain a
 reference after the call—they have moved ownership. Meanwhile,
 `error_or_stopped::release_rich_exception_ptr` carries a large warning against
 holding references, and `maybe_enrich_in_place()` will be protected.
 
-These invariants mean `enrich_non_value()` has sole ownership of the REP during
+These invariants mean `epitaph()` has sole ownership of the REP during
 mutation, guaranteeing "correct usage":
 
   - **Correct usage**: The sole owner enriches; any copy calls `lock()` first,

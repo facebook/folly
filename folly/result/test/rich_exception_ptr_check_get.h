@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/result/enrich_non_value.h>
+#include <folly/result/epitaph.h>
 #include <folly/result/rich_error.h>
 #include <folly/result/test/rich_exception_ptr_common.h>
 
@@ -133,21 +133,21 @@ void checkGetExceptionForRichErr(auto rep) {
       rich_error<RichErr>>(rep);
 }
 
-// Reuse the same "rich error with enrichment wrapper" tests for immortals &
+// Reuse the same "rich error with epitaph wrapper" tests for immortals &
 // owned pointers.
 //
-// Note that only the enrichment wrapper is the template parameter `REP`. The
+// Note that only the epitaph wrapper is the template parameter `REP`. The
 // inner type is `rich_exception_ptr`, as required by `underlying_error()`.
 template <typename REP, bool PointersAreSame = true>
-void checkGetExceptionForEnrichedRichErr(rich_exception_ptr rep) {
+void checkGetExceptionForEpitaphRichErr(rich_exception_ptr rep) {
   REP rep_wrapped{
-      rich_error<detail::enriched_non_value>{copy(rep), rich_msg{"msg"}}};
+      rich_error<detail::epitaph_non_value>{copy(rep), rich_msg{"msg"}}};
   checkGetException<
       GetExceptionResult{.isHit = false},
       std::logic_error,
-      // Enrichment is transparent, so these 2 miss
-      detail::enriched_non_value,
-      rich_error<detail::enriched_non_value>>(rep_wrapped);
+      // Epitaphs are transparent, so these 2 miss
+      detail::epitaph_non_value,
+      rich_error<detail::epitaph_non_value>>(rep_wrapped);
   // Querying the underlying error should hit, with `top_rich_error_` set
   checkGetException<
       GetExceptionResult{
@@ -157,7 +157,7 @@ void checkGetExceptionForEnrichedRichErr(rich_exception_ptr rep) {
       std::exception,
       RichErr,
       rich_error<RichErr>>(rep_wrapped);
-  // `get_outer_exception` sees enrichment wrapper, not the underlying error
+  // `get_outer_exception` sees epitaph wrapper, not the underlying error
   checkGetOuterException<
       GetExceptionResult{.isHit = false},
       RichErr,
@@ -168,8 +168,8 @@ void checkGetExceptionForEnrichedRichErr(rich_exception_ptr rep) {
       GetExceptionResult{.isHit = true},
       std::exception,
       rich_error_base,
-      detail::enriched_non_value,
-      rich_error<detail::enriched_non_value>>(rep_wrapped);
+      detail::epitaph_non_value,
+      rich_error<detail::epitaph_non_value>>(rep_wrapped);
 }
 
 } // namespace folly::detail

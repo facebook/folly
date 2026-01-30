@@ -31,11 +31,11 @@ These are sorted from "near future" to "far future".
   - Automatic `fmt` + `<<` for `error_or_stopped` by making
     `rich_exception_ptr` formattable (via bits and `rich_error_base` if
     available).  This would strengthen `checkEptrRoundtrip` non-aliasing
-    checks.  Update other tests, like `enrich_non_value_test.cpp`.  `result<T>`
+    checks.  Update other tests, like `epitaph_test.cpp`.  `result<T>`
     should also do this, iff `T` is formattable.  Update `rich_error.md` /
     `result.md` / `README.md` accordingly.
 
-  - Automatic enrichment for `result` coroutines as in `enriching_errors.md`.
+  - Automatic enrichment for `result` coroutines as in `forensic.md`.
     I'm thinking of symbolizing the stack and attaching it to the exception in
     `unhandled_exception`.  Perf-wise this should be "fine" since `throw` is
     already stupid-expensive.  Update docs, since this is Very Useful.
@@ -77,10 +77,10 @@ These are sorted from "near future" to "far future".
   - `rich_exception_ptr` should also be formattable, but since it's not (very)
     user-visible, this is lower-priority than `result` / `error_or_stopped`..
 
-  - We already have `enrich_non_value.h` and `nestable_coded_rich_error.h`,
+  - We already have `epitaph.h` and `nestable_coded_rich_error.h`,
     but neither is a direct counterpart to `std::nested_exception`. We
     don't really need anything to support that "intrusive" behavior, current
-    users can just implement `next_error_for_enriched_message()`.
+    users can just implement `next_error_for_epitaph()`.
 
     But, a ready-made verb like this would not be hard to add -- for example:
       nest_error(underlying_rep, next_rep)
@@ -90,12 +90,12 @@ These are sorted from "near future" to "far future".
     `detail::nesting_error` ought to be mostly transparent, delegating to the
     underlying, but **should**, at least, automatically capture the source
     location where the nesting took place (and maybe a message).  This
-    implementation would follow or extend `detail::enriched_non_value`.
+    implementation would follow or extend `detail::epitaph_non_value`.
 
   - (*C++23 required*) The internals of `result` should migrate to
     `std::expected` to avoid needing to handle the "empty by exception" state.
 
-  - Implement the enrichment optimization from `future_enrich_in_place.md`.
+  - Implement the enrichment optimization from `future_forensic_in_place.md`.
 
   - A specialized `rich_exception_ptr::operator bool` might be faster than
     comparing to the default-constructed object.  The idiom isn't currently

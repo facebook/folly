@@ -17,7 +17,7 @@
 #include <fmt/core.h>
 #include <folly/Portability.h> // FOLLY_HAS_RESULT
 #include <folly/result/coro.h>
-#include <folly/result/enrich_non_value.h>
+#include <folly/result/epitaph.h>
 #include <folly/result/errc_rich_error.h>
 
 #if FOLLY_HAS_RESULT
@@ -47,8 +47,8 @@ result<Ball> inboundsPass(Player& passer, Player& pointGuard) {
 
 result<int> runFastBreak(
     Player& inbounder, Player& pointGuard, Player& shootingGuard) {
-  Ball ball = co_await or_unwind(enrich_non_value(
-      inboundsPass(inbounder, pointGuard), "fast break collapsed"));
+  Ball ball = co_await or_unwind(
+      epitaph(inboundsPass(inbounder, pointGuard), "fast break collapsed"));
   ball = co_await or_unwind(pointGuard.bounceTo(shootingGuard));
   co_return co_await or_unwind(shootingGuard.layup(std::move(ball))); // 🏀
 }

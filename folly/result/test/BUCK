@@ -28,26 +28,26 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_unittest(
-    name = "enrich_non_value_bench",
-    srcs = ["enrich_non_value_bench.cpp"],
+    name = "epitaph_bench",
+    srcs = ["epitaph_bench.cpp"],
     deps = [
         ":common",
         "//folly:benchmark",
-        "//folly/result:enrich_non_value",
+        "//folly/result:epitaph",
         "//folly/result:immortal_rich_error",
     ],
 )
 
 fb_dirsync_cpp_unittest(
-    name = "enrich_non_value_test",
-    srcs = ["enrich_non_value_test.cpp"],
+    name = "epitaph_test",
+    srcs = ["epitaph_test.cpp"],
     deps = [
         ":common",
         ":rich_error_codes",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/result:coded_rich_error",
-        "//folly/result:enrich_non_value",
+        "//folly/result:epitaph",
     ],
 )
 
@@ -71,7 +71,7 @@ fb_dirsync_cpp_unittest(
     deps = [
         ":common",
         "//folly/portability:gtest",
-        "//folly/result:enrich_non_value",
+        "//folly/result:epitaph",
         "//folly/result:immortal_rich_error",
         "//folly/result:rich_error",
         "//folly/result:rich_msg",
@@ -91,12 +91,12 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
-    name = "or_unwind_rich_test",
-    srcs = ["or_unwind_rich_test.cpp"],
+    name = "or_unwind_epitaph_test",
+    srcs = ["or_unwind_epitaph_test.cpp"],
     deps = [
         "//folly/portability:gtest",
         "//folly/result:gtest_helpers",
-        "//folly/result:or_unwind_rich",
+        "//folly/result:or_unwind_epitaph",
     ],
 )
 
@@ -186,7 +186,7 @@ fb_dirsync_cpp_unittest(
         ":rich_error_codes",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
-        "//folly/result:enrich_non_value",
+        "//folly/result:epitaph",
         "//folly/result:rich_error",
         "//folly/result:rich_error_base",
         "//folly/result:rich_error_code",
@@ -211,7 +211,7 @@ fb_dirsync_cpp_library(
     headers = ["rich_exception_ptr_check_get.h"],
     exported_deps = [
         ":rich_exception_ptr_common",
-        "//folly/result:enrich_non_value",
+        "//folly/result:epitaph",
         "//folly/result:rich_error",
     ],
 )
@@ -239,7 +239,7 @@ fb_dirsync_cpp_unittest(
     deps = [
         ":rich_exception_ptr_common",
         "//folly/portability:gtest",
-        "//folly/result:enrich_non_value",
+        "//folly/result:epitaph",
         "//folly/result:immortal_rich_error",
         "//folly/result:rich_error",
     ],

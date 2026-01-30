@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <folly/result/or_unwind_rich.h>
+#include <folly/result/or_unwind_epitaph.h>
 
 #include <folly/portability/GTest.h>
 #include <folly/result/gtest_helpers.h>
 
 // NB These tests are a bit over-elaborate / redundant with others, but the
-// hope is they give a clear picture of the usage of `or_unwind_rich`.
+// hope is they give a clear picture of the usage of `or_unwind_epitaph`.
 
 #if FOLLY_HAS_RESULT
 
@@ -28,8 +28,8 @@ namespace folly {
 
 const auto test_file_name = std::source_location::current().file_name();
 
-// Verify enrichment was applied to the error.
-void checkEnrichedError(folly::result<> res, std::string_view msg) {
+// Verify epitaphs were added to the error.
+void checkEpitaphError(folly::result<> res, std::string_view msg) {
   ASSERT_FALSE(res.has_value());
   ASSERT_FALSE(res.has_stopped());
   EXPECT_EQ(
@@ -38,11 +38,11 @@ void checkEnrichedError(folly::result<> res, std::string_view msg) {
 
 // Value path: returns the value without formatting.
 RESULT_CO_TEST(OrUnwindRich, value) {
-  EXPECT_EQ(42, co_await or_unwind_rich(result<int>{42}, "unused"));
-  co_await or_unwind_rich(result<>{}, "unused");
+  EXPECT_EQ(42, co_await or_unwind_epitaph(result<int>{42}, "unused"));
+  co_await or_unwind_epitaph(result<>{}, "unused");
 }
 
-// Errors propagate with enrichment -- message & source location.
+// Errors propagate with epitaphs -- message & source location.
 TEST(OrUnwindRich, error) {
   std::uint_least32_t err_line = 0;
   auto expectedMsg = [&](std::string_view msgViaCtx) {
@@ -50,37 +50,37 @@ TEST(OrUnwindRich, error) {
         "std::logic_error: {} @ {}:{}", msgViaCtx, test_file_name, err_line);
   };
 
-  checkEnrichedError( // `result` in error-or-stopped state
+  checkEpitaphError( // `result` in error-or-stopped state
     [&]() -> result<> {
       result<int> r{error_or_stopped{std::logic_error{"err1"}}};
       err_line = std::source_location::current().line() + 1;
-      (void)co_await or_unwind_rich(std::move(r), "ctx1");
+      (void)co_await or_unwind_epitaph(std::move(r), "ctx1");
     }(),
     expectedMsg("err1 [via] ctx1"));
 
-  checkEnrichedError( // `error_or_stopped`
+  checkEpitaphError( // `error_or_stopped`
     [&]() -> result<> {
       error_or_stopped eos{std::logic_error{"err2"}};
       err_line = std::source_location::current().line() + 1;
-      co_await or_unwind_rich(std::move(eos), "ctx2");
+      co_await or_unwind_epitaph(std::move(eos), "ctx2");
     }(),
     expectedMsg("err2 [via] ctx2"));
 
-  checkEnrichedError( // `result` with format args
+  checkEpitaphError( // `result` with format args
     [&]() -> result<> {
       result<int> r{error_or_stopped{std::logic_error{"err3"}}};
       err_line = std::source_location::current().line() + 1;
-      (void)co_await or_unwind_rich(std::move(r), "x={} y={}", 10, 20);
+      (void)co_await or_unwind_epitaph(std::move(r), "x={} y={}", 10, 20);
     }(),
     expectedMsg("err3 [via] x=10 y=20"));
 }
 
-// Stopped state propagates with enrichment.
+// Stopped state propagates with epitaphs.
 TEST(OrUnwindRich, stopped) {
   std::uint_least32_t err_line = 0;
   auto res = [&]() -> result<int> {
     err_line = std::source_location::current().line() + 1;
-    co_return co_await or_unwind_rich(result<int>{stopped_result}, "ctx");
+    co_return co_await or_unwind_epitaph(result<int>{stopped_result}, "ctx");
   }();
   EXPECT_TRUE(res.has_stopped());
   auto msg = "folly::OperationCancelled: coroutine operation cancelled";

@@ -29,7 +29,7 @@ handful of features any production project is likely to want:
     logging.  Note that, in contrast, the `std::exception` API of `const char*
     what()` makes it hard to avoid allocations when logging dynamic messages.
 
-  - `enrich_non_value()` to stack or chain contextual information as an exception
+  - `epitaph()` to stack or chain contextual information as an exception
     propagates.  This is inexpensive (60ns, reducible to < 5ns), and does
     not change the type identity of the underlying exception.
 

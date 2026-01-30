@@ -77,7 +77,7 @@ TEST(CodedRichErrorTest, basics) {
     EXPECT_EQ(get_rich_error_code<A1>(err), A1::ONE_A1);
     EXPECT_STREQ(err.partial_message(), "msg");
     EXPECT_EQ(err_line, err.source_location().line());
-    EXPECT_EQ(err.next_error_for_enriched_message(), nullptr);
+    EXPECT_EQ(err.next_error_for_epitaph(), nullptr);
   };
 
   accessError(err1);

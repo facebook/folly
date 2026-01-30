@@ -15,7 +15,7 @@
  */
 
 #include <folly/Benchmark.h>
-#include <folly/result/enrich_non_value.h>
+#include <folly/result/epitaph.h>
 #include <folly/result/immortal_rich_error.h>
 #include <folly/result/test/common.h>
 
@@ -23,7 +23,7 @@
 
 namespace folly {
 
-TEST(EnrichNonValueBench, benchmarksDoNotCrash) {
+TEST(EpitaphBench, benchmarksDoNotCrash) {
   runBenchmarksAsTest();
 }
 
@@ -31,18 +31,18 @@ struct BenchErr : rich_error_base {
   using folly_get_exception_hint_types = rich_error_hints<BenchErr>;
 };
 
-template <typename ExpectedOuterErr, typename EnrichFn>
-FOLLY_ALWAYS_INLINE void bench_enrich_non_value(size_t iters, EnrichFn&& fn) {
+template <typename ExpectedOuterErr, typename EpitaphsFn>
+FOLLY_ALWAYS_INLINE void bench_epitaph(size_t iters, EpitaphsFn&& fn) {
   folly::BenchmarkSuspender suspender;
   size_t numOkay = 0;
   suspender.dismissing([&] {
     for (size_t i = 0; i < iters; ++i) {
       // An immortal avoids measuring the cost of dynamic `std::exception_ptr`
       // for the base error -- otherwise, the baseline would be closer to 50ns.
-      auto enriched = fn(error_or_stopped{immortal_rich_error<BenchErr>});
-      folly::compiler_must_not_predict(enriched);
+      auto withEpitaphs = fn(error_or_stopped{immortal_rich_error<BenchErr>});
+      folly::compiler_must_not_predict(withEpitaphs);
       numOkay += nullptr !=
-          std::move(enriched)
+          std::move(withEpitaphs)
               .release_rich_exception_ptr()
               .template get_outer_exception<ExpectedOuterErr>();
     }
@@ -50,31 +50,29 @@ FOLLY_ALWAYS_INLINE void bench_enrich_non_value(size_t iters, EnrichFn&& fn) {
   CHECK_EQ(iters, numOkay);
 }
 
-BENCHMARK(non_enriched_baseline, n) {
-  bench_enrich_non_value<BenchErr>(n, [](error_or_stopped&& eos) {
+BENCHMARK(no_epitaphs_baseline, n) {
+  bench_epitaph<BenchErr>(n, [](error_or_stopped&& eos) {
     return std::move(eos);
   });
 }
 
-BENCHMARK(enrich_non_value_location_only, n) {
-  bench_enrich_non_value<detail::enriched_non_value>(
-      n,
-      [](error_or_stopped&& eos) { return enrich_non_value(std::move(eos)); });
+BENCHMARK(epitaph_location_only, n) {
+  bench_epitaph<detail::epitaph_non_value>(n, [](error_or_stopped&& eos) {
+    return epitaph(std::move(eos));
+  });
 }
 
-BENCHMARK(enrich_non_value_location_plus_static_message, n) {
-  bench_enrich_non_value<detail::enriched_non_value>(
-      n, [](error_or_stopped&& eos) {
-        return enrich_non_value(std::move(eos), "context");
-      });
+BENCHMARK(epitaph_location_plus_static_message, n) {
+  bench_epitaph<detail::epitaph_non_value>(n, [](error_or_stopped&& eos) {
+    return epitaph(std::move(eos), "context");
+  });
 }
 
-BENCHMARK(enrich_non_value_location_plus_formatted_message, n) {
+BENCHMARK(epitaph_location_plus_formatted_message, n) {
   int value = 42;
-  bench_enrich_non_value<detail::enriched_non_value>(
-      n, [&](error_or_stopped&& eos) {
-        return enrich_non_value(std::move(eos), "value={}", value);
-      });
+  bench_epitaph<detail::epitaph_non_value>(n, [&](error_or_stopped&& eos) {
+    return epitaph(std::move(eos), "value={}", value);
+  });
 }
 
 } // namespace folly

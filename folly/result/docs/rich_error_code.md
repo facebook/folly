@@ -89,7 +89,7 @@ result<double> fruitToCalories(Fruit f) {
 ```
 
 The beauty of immortal errors is that they quack just like their dynamic
-counterparts. You can still `enrich_non_value` to add context, convert them to a
+counterparts. You can still `epitaph` to add context, convert them to a
 dynamic `std::exception_ptr`, throw them, etc.
 
 But, if you need a dynamic error, you can change the above code like so,

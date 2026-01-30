@@ -323,7 +323,7 @@ class [[nodiscard]] error_or_stopped {
 
   // IMPORTANT: We do NOT want to provide general by-reference access to the
   // `rich_exception_ptr` because that would e.g. put in jeopardy our ability
-  // to do `future_enrich_in_place.md`.
+  // to do `future_epitaph_in_place.md`.
   //
   // In particular, it is an invariant violation to call `release_...` and
   // use the resulting reference for anything other than:
@@ -353,7 +353,7 @@ namespace detail {
 template <typename>
 struct result_promise_return;
 template <typename, typename = void>
-struct result_promise;
+struct result_promise; // Build error? #include <folly/result/coro.h>
 
 // Future: To mitigate the risk of `bad_alloc` at runtime, these singletons
 // should be eagerly instantiated at program start.  One way is to have a

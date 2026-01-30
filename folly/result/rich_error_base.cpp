@@ -34,7 +34,7 @@ source_location rich_error_base::source_location() const noexcept {
   return {};
 }
 
-const rich_exception_ptr* rich_error_base::next_error_for_enriched_message()
+const rich_exception_ptr* rich_error_base::next_error_for_epitaph()
     const noexcept {
   return nullptr;
 }
@@ -65,7 +65,7 @@ namespace {
 struct FormatterState {
   rich_error_base::private_get_exception_ptr_type_t priv_;
 
-  // Multiple stacked enrichment wrappers can share the same underlying error,
+  // Multiple stacked epitaph wrappers can share the same underlying error,
   // but we only want to show that underlying error once.
   const rich_exception_ptr* seen_underlying_rep_ = nullptr;
   // Deduplicating `rich_exception_ptr*` is not enough -- when printing an
@@ -117,10 +117,10 @@ struct FormatterState {
     }
   }
 
-  // Handle an enrichment wrapper -- outputs "underlying [via] wrapper"
-  void format_underlying_and_enrichment(
-      fmt::appender& out, const rich_error_base* enrichment) {
-    auto* underlying_rep = enrichment->underlying_error();
+  // Handle an epitaph wrapper -- outputs "underlying [via] wrapper"
+  void format_underlying_and_epitaph(
+      fmt::appender& out, const rich_error_base* wrapper) {
+    auto* underlying_rep = wrapper->underlying_error();
     // Format the underlying error first, if we haven't already
     if (seen_underlying_rep_ != underlying_rep) {
       if (auto* underlying_rex =
@@ -135,13 +135,13 @@ struct FormatterState {
       }
       fmt::format_to(out, " [via] ");
     }
-    format_rich(out, enrichment);
+    format_rich(out, wrapper);
   }
 
-  void format_enrichment_chain_entry(
+  void format_epitaph_stack_entry(
       fmt::appender& out, const rich_error_base* current) {
-    if (current->underlying_error()) { // Enrichment
-      format_underlying_and_enrichment(out, current);
+    if (current->underlying_error()) { // Epitaph wrapper
+      format_underlying_and_epitaph(out, current);
     } else if (seen_underlying_rex_ != current) { // Underlying error
       format_rich(out, current);
       mark_underlying_as_seen(nullptr, current);
@@ -150,7 +150,7 @@ struct FormatterState {
 
   // Precondition: `current` was already formatted.
   void format_rest_of_chain(fmt::appender& out, const rich_error_base* rex) {
-    while (const auto* next_rep = rex->next_error_for_enriched_message()) {
+    while (const auto* next_rep = rex->next_error_for_epitaph()) {
       rex = next_rep->get_outer_exception<rich_error_base>();
       need_after_separator_ = true;
       if (!rex) { // Non-rich, making it both last AND underlying.
@@ -159,25 +159,25 @@ struct FormatterState {
         }
         return;
       }
-      format_enrichment_chain_entry(out, rex);
+      format_epitaph_stack_entry(out, rex);
     }
   }
 };
 
 } // namespace
 
-// Format this enrichment chain, starting with its underlying error.
+// Format this epitaph stack, starting with its underlying error.
 // Outputs: "Underlying [via] OuterWrapper [after] InnerWrapper"
-void rich_error_base::format_enriched(fmt::appender& out) const {
+void rich_error_base::format_with_epitaphs(fmt::appender& out) const {
   FormatterState state{private_get_exception_ptr_type_t{}};
-  state.format_enrichment_chain_entry(out, this);
+  state.format_epitaph_stack_entry(out, this);
   state.format_rest_of_chain(out, this);
 }
 
-// Format only the enrichment chain (caller had already formatted underlying).
+// Format only the epitaph stack (caller had already formatted underlying).
 // Precondition: `this` is a wrapper, not an underlying error.
 // Outputs: " [via] OuterWrapper [after] InnerWrapper"
-void rich_error_base::format_enriched_without_first_underlying(
+void rich_error_base::format_with_epitaphs_without_first_underlying(
     fmt::appender& out) const {
   FormatterState state{private_get_exception_ptr_type_t{}};
   { // Mark the first underlying as already printed (by the caller)

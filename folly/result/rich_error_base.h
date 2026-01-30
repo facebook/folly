@@ -45,7 +45,7 @@ namespace folly {
 class rich_error_code_query;
 
 namespace detail {
-class enriched_non_value;
+class epitaph_non_value;
 template <typename>
 class immortal_rich_error_storage;
 template <typename>
@@ -137,7 +137,7 @@ class rich_error_base {
   virtual void only_rich_error_may_instantiate(
       only_rich_error_may_instantiate_t) = 0;
 
-  // This is set only by `enriched_non_value`.  All reads should go through
+  // This is set only by `epitaph_non_value`.  All reads should go through
   // `...underlying_error()` to make risky mutable access more obvious.
   //
   // It is accessed on each `get_exception<Ex>(rich_exception_ptr)`, and by
@@ -163,11 +163,11 @@ class rich_error_base {
 
   // Use `<<` or `fmt` to log errors, AVOID `partial_message()` & `what()`.
   //   - `<<` and `fmt` render more information than this partial message:
-  //     enrichment info, exception-specific data, source location.
+  //     epitaphs, exception-specific data, source location.
   //   - With care, you can avoid heap allocations for the complete message.
   //
   // Most higher-level errors in `folly/result/` implement this for you -- see
-  // e.g. `coded_rich_error` and `enrich_non_value.h`. If no base supplies it,
+  // e.g. `coded_rich_error` and `epitaph.h`. If no base supplies it,
   // `rich_error` and `immortal_rich_error` will automatically back-fill this
   // with `pretty_name` of the base.
   //
@@ -221,36 +221,35 @@ class rich_error_base {
   // Rendering for rich errors via `fmt` and `ostream<<`.
   virtual void format_to(fmt::appender& out) const;
 
-  // Format this enrichment chain, starting with its underlying error.
-  void format_enriched(fmt::appender& out) const;
+  // Format this epitaph stack, starting with its underlying error.
+  void format_with_epitaphs(fmt::appender& out) const;
 
-  // Format only the enrichment chain, omitting the first underlying error.
+  // Format only the epitaph stack, omitting the first underlying error.
   // Precondition: `this` is a wrapper, not an underlying error.
-  void format_enriched_without_first_underlying(fmt::appender& out) const;
+  void format_with_epitaphs_without_first_underlying(fmt::appender& out) const;
 
-  // Formatting of rich errors follows the `next_error_for_enriched_message()`
+  // Formatting of rich errors follows the `next_error_for_epitaph()`
   // linked list, printing each one in turn.  There are two use-cases:
   //
-  // (1) `enrich_non_value` -- as you stack these, the outer one always points
+  // (1) `epitaph` -- as you stack these, the outer one always points
   // at the next one, etc.  But the `underlying_error()` for all of them points
   // at the original error being propagated. The log output will be like this:
   //
   //   OriginalErr [via] last annotation @ src.cpp:50 [after] first @ src.cpp:40
   //
-  // Here, "via" means "what follows is an enrichment stack for the error", and
+  // Here, "via" means "what follows is an epitaph stack for the error", and
   // "after" separates entries in that stack.
   //
   // (2) To emulate `std::nested_exception` (but much cheaper to log!), any
   // rich error type may internally store `rich_exception_ptr next_`, and
-  // expose that via `next_error_for_enriched_message()`.  An example is
+  // expose that via `next_error_for_epitaph()`.  An example is
   // provided in `nestable_coded_rich_error.h`.  For example, if `OriginalErr`
   // from (1) had wrapped `NestedErr`, which was turn wrapped by its own
-  // `enrich_non_value` during propagation, then we might see this output:
+  // `epitaph` during propagation, then we might see this output:
   //
   //   OriginalErr [via] last annotation @ src.cpp:50 [after] first @ src.cpp:40
   //   [after] NestedErr [via] nested_src.cpp:12
-  virtual const rich_exception_ptr* next_error_for_enriched_message()
-      const noexcept;
+  virtual const rich_exception_ptr* next_error_for_epitaph() const noexcept;
 
   // Future: this passkey for `rich_exception_ptr::exception_type()` could
   // perhaps be removed, see its docblock.
@@ -259,20 +258,20 @@ class rich_error_base {
     private_get_exception_ptr_type_t() = default;
   };
 
-  // Used only by "transparent" error wrappers like `enrich_non_value()`.
+  // Used only by "transparent" error wrappers like `epitaph()`.
   // Otherwise, `nullptr`, meaning that `this` itself is the underlying error.
   //
   // From a program-logic perspective, `underlying_error()` is the error that
   // is actually propagating.  To observe anything about `this`, the outer
   // error object, the end-user would have to call `get_outer_exception`.
   //
-  // Every enrichment wrapper points this at the original error, so that
+  // Every epitaph wrapper points this at the original error, so that
   // `get_exception<Ex>()` is O(1).
   constexpr const rich_exception_ptr* underlying_error() const noexcept {
     return underlying_ptr_;
   }
   class underlying_error_private_t {
-    friend class detail::enriched_non_value; // Sets `underlying_ptr_`
+    friend class detail::epitaph_non_value; // Sets `underlying_ptr_`
     // Needs mutable access for `get_mutable_exception`.
     template <typename, typename>
     friend class detail::rich_exception_ptr_impl;
@@ -282,9 +281,9 @@ class rich_error_base {
   // is very risky.  It is only used to implement `get_mutable_exception`,
   // which does NOT mutate the underlying REP, but only the pointed-to
   // exception object.  This distinction is important for wrappers because
-  // `*underlying_ptr_` aka `enriched_non_value::next_` ends up being
+  // `*underlying_ptr_` aka `epitaph_non_value::next_` ends up being
   // unexpectectedly shared state.  Consider:
-  //   - `repConst` and `repMutable` both point to an `enriched_non_value`
+  //   - `repConst` and `repMutable` both point to an `epitaph_non_value`
   //     object, call it `e`.  It sets `underlying_ptr_` to point to its
   //     `next_` member.
   //   - A function calls `repMutable.with_underlying()` or
@@ -300,7 +299,7 @@ class rich_error_base {
   }
 
  protected:
-  // Only used by `enriched_non_value`.  It can't set `underlying_ptr_` until
+  // Only used by `epitaph_non_value`.  It can't set `underlying_ptr_` until
   // AFTER its `next_` is populated, so this is a setter, not a ctor argument.
   // Do NOT add more callsites without maintainer review -- the safer design
   // might be to add an immovable base class that exposes the setter.
@@ -323,7 +322,7 @@ template <auto, typename Ex>
 void expectGetExceptionResult(const rich_ptr_to_underlying_error<Ex>&);
 } // namespace detail
 
-// Quacks like `Ex*`, but show a chain of enrichment info when formatted.
+// Quacks like `Ex*`, but show an epitaph stack when formatted.
 // Returned by `get_exception<Ex>(rep)` and `get_mutable_exception<Ex>(rep)`,
 // for `rich_exception_ptr<...> rep`.  The respective `get_exception()`
 // implementations have more detailed docs.
@@ -472,7 +471,7 @@ struct fmt::formatter<folly::rich_error_base> {
   format_context::iterator format(
       const folly::rich_error_base& e, format_context& ctx) const {
     auto it = ctx.out();
-    e.format_enriched(it);
+    e.format_with_epitaphs(it);
     return it;
   }
 };
@@ -481,7 +480,7 @@ template <typename T>
 struct fmt::formatter<T> : fmt::formatter<folly::rich_error_base> {};
 
 // Format pointer-like returned by `get_exception<Ex>(rich_exception_ptr)`.
-// Crucially, this displays `enrich_non_value()` chains when available.
+// Crucially, this displays `epitaph()` stacks when available.
 //
 template <typename Ex>
 struct fmt::formatter<folly::rich_ptr_to_underlying_error<Ex>> {
@@ -522,15 +521,15 @@ struct fmt::formatter<folly::rich_ptr_to_underlying_error<Ex>> {
       it = ex_formatter_.format(*p.raw_ptr_, ctx);
       if (p.top_rich_error_) {
         // Underlying error already formatted above, just format the wrappers
-        p.top_rich_error_->format_enriched_without_first_underlying(it);
+        p.top_rich_error_->format_with_epitaphs_without_first_underlying(it);
       }
       return it;
     } else {
-      // Use detailed rich-error formatting if available: either we have an
-      // enrichment wrapper, or the underlying error is rich, or both.
+      // Use detailed rich-error formatting if available: either we have a
+      // epitaph wrapper, or the underlying error is rich, or both.
       if (std::is_convertible_v<Ex*, const folly::rich_error_base*> ||
           p.top_rich_error_) {
-        p.top_rich_error_->format_enriched(it);
+        p.top_rich_error_->format_with_epitaphs(it);
       } else {
         // For non-formattable non-rich errors without a wrapper, match the
         // `rich_error_base::format_to` formatting.
