@@ -33,6 +33,7 @@
 #include <folly/lang/SafeAssert.h>
 #include <folly/lang/cstring_view.h>
 #include <folly/portability/Config.h>
+#include <folly/portability/Unistd.h>
 
 #if FOLLY_HAVE_ELF
 
