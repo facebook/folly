@@ -5,6 +5,7 @@ none = none
 [cell_aliases]
 config = prelude
 ovr_config = prelude
+antlir = gh_facebookincubator_antlir
 bazel_skylib = gh_facebook_buck2_shims_meta
 buck = gh_facebook_buck2_shims_meta
 fbcode = gh_facebook_buck2_shims_meta
