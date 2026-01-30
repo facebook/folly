@@ -13,7 +13,7 @@ fbcode_target(
     cxx_bridge = "dynamic.rs",
     deps = [
         "fbsource//third-party/rust:cxx",
-        "//common/rust/folly/string:string",
+        "//folly/rust/string:string",
     ],
 )
 

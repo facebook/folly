@@ -1351,7 +1351,7 @@ fb_dirsync_cpp_library(
     ] + select({
         "DEFAULT": [],
         "antlir//antlir/distro:build-for-distro": ["third-party//binutils:iberty"],
-        "fbsource//xplat/folly:folly_demangle_macos_disable_iberty_config": [],
+        ":folly_demangle_macos_disable_iberty_config": [],
         "ovr_config//os:linux": ["fbsource//third-party/binutils:iberty-demangle"],
         "ovr_config//os:macos": ["fbsource//third-party/binutils:iberty-demangle"],
         "ovr_config//runtime:fbcode": ["third-party//binutils:iberty"],
@@ -5511,9 +5511,9 @@ fbcode_target(
     exported_deps = [],
 )
 
-fb_native.export_file(
-    name = "src-tree",
-    src = ".",
-    mode = "reference",
-    visibility = ["PUBLIC"],
-)
+# @fb-only: fb_native.export_file(
+# @fb-only:     name = "src-tree",
+# @fb-only:     src = ".",
+# @fb-only:     mode = "reference",
+# @fb-only:     visibility = ["PUBLIC"],
+# @fb-only: )
