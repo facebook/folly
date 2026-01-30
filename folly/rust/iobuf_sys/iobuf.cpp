@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/rust/iobuf/iobuf.h>
+#include <folly/rust/iobuf_sys/iobuf.h>
 
 namespace facebook {
 namespace rust {

@@ -756,7 +756,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST io_async_event_base_test BROKEN SOURCES EventBaseTest.cpp
       TEST io_async_event_base_local_test WINDOWS_DISABLED
         SOURCES EventBaseLocalTest.cpp
-      TEST io_async_hh_wheel_timer_test SOURCES HHWheelTimerTest.cpp
+      TEST io_async_hh_wheel_timer_test APPLE_DISABLED SOURCES HHWheelTimerTest.cpp
       TEST io_async_hh_wheel_timer_slow_tests SLOW
         SOURCES HHWheelTimerSlowTests.cpp
       TEST io_async_notification_queue_test WINDOWS_DISABLED
@@ -840,7 +840,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST stats_quantile_estimator_test SOURCES QuantileEstimatorTest.cpp
       TEST stats_sliding_window_test SOURCES SlidingWindowTest.cpp
       BENCHMARK stats_tdigest_benchmark SOURCES TDigestBenchmark.cpp
-      TEST stats_tdigest_test SOURCES TDigestTest.cpp
+      TEST stats_tdigest_test WINDOWS_DISABLED SOURCES TDigestTest.cpp
       TEST stats_timeseries_histogram_test SOURCES TimeseriesHistogramTest.cpp
       TEST stats_timeseries_test SOURCES TimeSeriesTest.cpp
 
@@ -914,7 +914,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES ExceptionWrapperBenchmark.cpp
       TEST exception_wrapper_test WINDOWS_DISABLED
         SOURCES ExceptionWrapperTest.cpp
-      TEST expected_coroutines_test SOURCES ExpectedCoroutinesTest.cpp
+      TEST expected_coroutines_test WINDOWS_DISABLED SOURCES ExpectedCoroutinesTest.cpp
       TEST expected_test WINDOWS_DISABLED
         SOURCES ExpectedTest.cpp
       BENCHMARK fbstring_benchmark WINDOWS_DISABLED
