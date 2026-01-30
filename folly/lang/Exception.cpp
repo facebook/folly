@@ -121,7 +121,8 @@ static constexpr uint64_t __gxx_dependent_exception_class =
 struct __cxa_exception {
   std::type_info* exceptionType;
   void(_GLIBCXX_CDTOR_CALLABI* exceptionDestructor)(void*);
-  std::unexpected_handler unexpectedHandler;
+  void (*unexpectedHandler)(); // std::unexpected_handler has been removed from
+                              // C++17.
   std::terminate_handler terminateHandler;
   __cxa_exception* nextException;
   int handlerCount;
