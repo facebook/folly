@@ -84,8 +84,8 @@ struct ZSTD_dctx_pool_singleton : ZSTD_DCtx_Pool {
       : ZSTD_DCtx_Pool{8, {}, {}, {}, {}, ZSTD_DCtx_Pool_Callback{this}} {}
 };
 
-FOLLY_CONSTINIT ZSTD_cctx_pool_singleton zstd_cctx_pool_singleton;
-FOLLY_CONSTINIT ZSTD_dctx_pool_singleton zstd_dctx_pool_singleton;
+constinit ZSTD_cctx_pool_singleton zstd_cctx_pool_singleton;
+constinit ZSTD_dctx_pool_singleton zstd_dctx_pool_singleton;
 
 #if FOLLY_COMPRESSION_USE_HUGEPAGES
 constexpr bool use_huge_pages = kIsArchAmd64;
