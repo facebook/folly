@@ -31,7 +31,7 @@
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/lang/Aligned.h>
 #include <folly/lang/SafeAssert.h>
-#include <folly/synchronization/AtomicStruct.h>
+#include <folly/synchronization/AtomicBitFields.h>
 #include <folly/synchronization/SaturatingSemaphore.h>
 
 namespace folly {
@@ -212,67 +212,61 @@ struct LifoSemNodeRecycler {
   }
 };
 
-/// LifoSemHead is a 64-bit struct that holds a 32-bit value, some state
+/// LifoSemHead is a 64-bit packed atomic that holds a 32-bit value, some state
 /// bits, and a sequence number used to avoid ABA problems in the lock-free
 /// management of the LifoSem's wait lists.  The value can either hold
 /// an integral semaphore value (if there are no waiters) or a node index
-/// (see IndexedMemPool) for the head of a list of wait nodes
-class LifoSemHead {
-  // What we really want are bitfields:
-  //  uint64_t data : 32; uint64_t isNodeIdx : 1; uint64_t seq : 31;
-  // Unfortunately g++ generates pretty bad code for this sometimes (I saw
-  // -O3 code from gcc 4.7.1 copying the bitfields one at a time instead of
-  // in bulk, for example).  We can generate better code anyway by assuming
-  // that setters won't be given values that cause under/overflow, and
-  // putting the sequence at the end where its planned overflow doesn't
-  // need any masking.
-  //
-  // data == 0 (empty list) with isNodeIdx is conceptually the same
-  // as data == 0 (no unclaimed increments) with !isNodeIdx, we always
-  // convert the former into the latter to make the logic simpler.
-  enum {
-    IsNodeIdxShift = 32,
-    IsShutdownShift = 33,
-    IsLockedShift = 34,
-    SeqShift = 35,
-  };
-  enum : uint64_t {
-    IsNodeIdxMask = uint64_t(1) << IsNodeIdxShift,
-    IsShutdownMask = uint64_t(1) << IsShutdownShift,
-    IsLockedMask = uint64_t(1) << IsLockedShift,
-    SeqIncr = uint64_t(1) << SeqShift,
-    SeqMask = ~(SeqIncr - 1),
-  };
+/// (see IndexedMemPool) for the head of a list of wait nodes.
+///
+/// Layout using bit_fields:
+///   data      : 32 bits (value or node index)
+///   isNodeIdx :  1 bit
+///   isShutdown:  1 bit
+///   isLocked  :  1 bit
+///   seq       : 29 bits (at the end, overflow is okay)
+///
+/// data == 0 (empty list) with isNodeIdx is conceptually the same
+/// as data == 0 (no unclaimed increments) with !isNodeIdx, we always
+/// convert the former into the latter to make the logic simpler.
+struct LifoSemHead : public bit_fields<uint64_t, LifoSemHead> {
+ private:
+  using Data = unsigned_bit_field<LifoSemHead, 32, no_prev_bit_field>;
+  using IsNodeIdx = bool_bit_field<LifoSemHead, Data>;
+  using IsShutdown = bool_bit_field<LifoSemHead, IsNodeIdx>;
+  using IsLocked = bool_bit_field<LifoSemHead, IsShutdown>;
+  using Seq = unsigned_bit_field<LifoSemHead, 29, IsLocked>;
+
+  // Increment seq for a modification
+  constexpr LifoSemHead withNextSeq() const { return with<Seq>(seq() + 1); }
 
  public:
-  uint64_t bits;
-
   //////// getters
 
   inline uint32_t idx() const {
     assert(isNodeIdx());
-    assert(uint32_t(bits) != 0);
-    return uint32_t(bits);
+    assert(get<Data>() != 0);
+    return get<Data>();
   }
+
   inline uint32_t value() const {
     assert(!isNodeIdx());
-    return uint32_t(bits);
+    return get<Data>();
   }
-  inline constexpr bool isNodeIdx() const {
-    return (bits & IsNodeIdxMask) != 0;
-  }
-  inline constexpr bool isShutdown() const {
-    return (bits & IsShutdownMask) != 0;
-  }
-  inline constexpr bool isLocked() const { return (bits & IsLockedMask) != 0; }
-  inline constexpr uint32_t seq() const { return uint32_t(bits >> SeqShift); }
+
+  inline constexpr bool isNodeIdx() const { return get<IsNodeIdx>(); }
+
+  inline constexpr bool isShutdown() const { return get<IsShutdown>(); }
+
+  inline constexpr bool isLocked() const { return get<IsLocked>(); }
+
+  inline constexpr uint32_t seq() const { return get<Seq>(); }
 
   //////// setter-like things return a new struct
 
   /// This should only be used for initial construction, not for setting
   /// the value, because it clears the sequence number
   static inline constexpr LifoSemHead fresh(uint32_t value) {
-    return LifoSemHead{value};
+    return LifoSemHead{}.with<Data>(value);
   }
 
   /// Returns the LifoSemHead that results from popping a waiter node,
@@ -280,16 +274,14 @@ class LifoSemHead {
   inline LifoSemHead withPop(uint32_t idxNext) const {
     assert(!isLocked());
     assert(isNodeIdx());
-    if (idxNext == 0) {
-      // no isNodeIdx bit or data bits.  Wraparound of seq bits is okay
-      return LifoSemHead{(bits & (SeqMask | IsShutdownMask)) + SeqIncr};
-    } else {
-      // preserve sequence bits (incremented with wraparound okay) and
-      // isNodeIdx bit, replace all data bits
-      return LifoSemHead{
-          (bits & (SeqMask | IsShutdownMask | IsNodeIdxMask)) + SeqIncr +
-          idxNext};
-    }
+    // Build result from empty, setting only the fields we need.
+    // Preserves isShutdown, clears isLocked (already asserted false),
+    // sets data and isNodeIdx based on idxNext, increments seq.
+    return LifoSemHead{}
+        .with<Data>(idxNext)
+        .with<IsNodeIdx>(idxNext != 0)
+        .with<IsShutdown>(isShutdown())
+        .with<Seq>(seq() + 1);
   }
 
   /// Returns the LifoSemHead that results from pushing a new waiter node
@@ -298,39 +290,50 @@ class LifoSemHead {
     assert(isNodeIdx() || value() == 0);
     assert(!isShutdown());
     assert(_idx != 0);
-    return LifoSemHead{(bits & SeqMask) | IsNodeIdxMask | _idx};
+    // Build result from empty, setting only the fields we need.
+    // Seq is preserved (no increment on push), shutdown is known false.
+    return LifoSemHead{}.with<Data>(_idx).with<IsNodeIdx>(true).with<Seq>(
+        seq());
   }
 
   /// Returns the LifoSemHead with value increased by delta, with
-  /// saturation if the maximum value is reached
+  /// saturation (no overflow) if the maximum value is reached
   inline LifoSemHead withValueIncr(uint32_t delta) const {
     assert(!isLocked());
     assert(!isNodeIdx());
-    auto rv = LifoSemHead{bits + SeqIncr + delta};
+    // Ugly-but-optimized: direct bit manipulation for single add operation
+    // with overflow checking *after* application.
+    constexpr uint64_t kSeqIncr = uint64_t{1} << Seq::kBitOffset;
+    LifoSemHead rv;
+    rv.underlying = underlying + kSeqIncr + delta;
+    static_assert(IsNodeIdx::kBitOffset == Data::kEndBit);
     if (FOLLY_UNLIKELY(rv.isNodeIdx())) {
-      // value has overflowed into the isNodeIdx bit
-      rv = LifoSemHead{(rv.bits & ~IsNodeIdxMask) | (IsNodeIdxMask - 1)};
+      // Overflow detected: clear overflow and saturate
+      rv.set<IsNodeIdx>(false);
+      rv.set<Data>(Data::kMask);
     }
     return rv;
   }
 
-  /// Returns the LifoSemHead that results from decrementing the value
+  /// Returns the LifoSemHead that results from decrementing the value.
+  /// Caller guarantees the delta is not greater than the current value.
   inline LifoSemHead withValueDecr(uint32_t delta) const {
     assert(!isLocked());
     assert(delta > 0 && delta <= value());
-    return LifoSemHead{bits + SeqIncr - delta};
+    // NOTE: optimized for efficiency
+    return transformed(
+        Data::minusTransformPromiseNoUnderflow(delta) +
+        Seq::plusTransformIgnoreOverflow(1));
   }
 
   /// Returns the LifoSemHead with the same state as the current node,
   /// but with the shutdown bit set
-  inline LifoSemHead withShutdown() const {
-    return LifoSemHead{bits | IsShutdownMask};
-  }
+  inline LifoSemHead withShutdown() const { return with<IsShutdown>(true); }
 
   // Returns LifoSemHead with lock bit set, but rest of bits unchanged.
   inline LifoSemHead withLock() const {
     assert(!isLocked());
-    return LifoSemHead{bits | IsLockedMask};
+    return with<IsLocked>(true);
   }
 
   // Returns LifoSemHead with lock bit unset, and updated seqno based
@@ -338,14 +341,7 @@ class LifoSemHead {
   inline LifoSemHead withoutLock(uint32_t idxNext) const {
     assert(isLocked());
     // We need to treat this as a pop, as we may change the list head.
-    return LifoSemHead{bits & ~IsLockedMask}.withPop(idxNext);
-  }
-
-  inline constexpr bool operator==(const LifoSemHead& rhs) const {
-    return bits == rhs.bits;
-  }
-  inline constexpr bool operator!=(const LifoSemHead& rhs) const {
-    return !(*this == rhs);
+    return with<IsLocked>(false).withPop(idxNext);
   }
 };
 
@@ -663,7 +659,7 @@ struct LifoSemBase {
   }
 
  private:
-  cacheline_aligned<folly::AtomicStruct<LifoSemHead, Atom>> head_;
+  cacheline_aligned<atomic_bit_fields<LifoSemHead, Atom>> head_;
 
   static LifoSemNode<Handoff, Atom>& idxToNode(uint32_t idx) {
     auto raw = &LifoSemRawNode<Atom>::pool()[idx];
