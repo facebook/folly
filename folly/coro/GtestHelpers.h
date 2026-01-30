@@ -141,7 +141,7 @@ inline auto gtestLogCurrentException(Out&& out) {
       : public test_suite_name {                                               \
    public:                                                                     \
     GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)() {}                    \
-    ~GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)() = default;           \
+    ~GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)() override = default;  \
     void TestBody() override;                                                  \
     folly::coro::Task<void> co_TestBody();                                     \
                                                                                \
