@@ -72,8 +72,8 @@ than thrown exceptions, and more flexible than error codes:
     and does not implicitly convert to `T`.  You **have** to unpack it.
   - The standard pattern for accessing the value is `co_await
     or_unwind(resultFn())`, which also **visibly and efficiently** propagates
-    unhandled exceptions (and cancellation) to the caller.  For error
-    enrichment with source location tracking, use `co_await or_unwind_forensic(
+    unhandled exceptions (and cancellation) to the caller.  To add epitaphs
+    with source location tracking, use `co_await or_unwind_epitaph(
     resultFn(), "context {}", arg)` instead.
   - Handling specific exceptions via `if (auto ex = get_exception<Ex>(res))` is
     as clear as `try-catch`, and lacks the many gotchas of the
@@ -231,8 +231,8 @@ What to know about exceptions & `result`:
   - If you need truly non-throwing code, wrap it with `result_catch_all`.
 
   - `result` coroutines (functions containing `co_await`, `co_return`, or
-    `co_yield` ) should **NOT** be declared `noexcept` -- that will not do [what
-    you expect](
+    `co_yield` ) should **NOT** be declared `noexcept` -- that will not do
+    [what you expect](
     https://devblogs.microsoft.com/oldnewthing/20210426-00/?p=105153).
       * In particular, if you mark a `result` coro `noexcept`, calling it may
         `std::terminate` if an argument's copy/move constructors throws, or if

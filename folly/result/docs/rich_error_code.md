@@ -21,7 +21,7 @@ Rich error codes integrate with `folly::result` & rich errors.  Compared to
 ## Why use `rich_error_code.h`?
 
 If you already use rich errors -- for the automatic source locations, for the
-ergonomic error-provenance enrichment, for the speedy mostly-no-RTTI
+ergonomic error-provenance epitaphs, for the speedy mostly-no-RTTI
 performance, or for any of its other benefits -- then the reason to adopt
 `rich_error_code` is that it is built-in!  Key integrations:
 

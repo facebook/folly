@@ -122,10 +122,10 @@ Note: Although 64-bit pointers leave the top byte (or more) unused, using those
 bits can interfere with memory tagging schemes.  In contrast, it is cheap and
 safe to use the 3 low bits that are always zero due to 8-byte alignment.
 
-In all, we could therefore represent up to 14 = (2**4 - 2) error-or-stopped states,
-and store 7 types of error-or-stopped pointers.  However, besides "small value", we
-only need 8 more states & 6 pointers below, and can therefore make some choices
-that make the packing and unpacking more CPU-efficient.
+In all, we could therefore represent up to 14 = (2**4 - 2) error-or-stopped
+states, and store 7 types of error-or-stopped pointers.  However, besides
+"small value", we only need 8 more states & 6 pointers below, and can therefore
+make some choices that make the packing and unpacking more CPU-efficient.
 
 This section aims to explain WHY we ended up with the current states & bit
 representation.  If you just want to see the bit-packing scheme, the table is
@@ -231,7 +231,7 @@ current implementation.
       this with "Idea 1" below without hurting "is eptr?" performance.
     * Furthermore, all it would enable is RTTI-free code to log `what()`.  As
       discussed above, `what()` is a poor API, and logging `rich_error` -- with
-      detailed context & enrichment chains -- should be strongly preferred.
+      detailed context & epitaph stacks -- should be strongly preferred.
 
   - It would be technically straightforward to support immortal exceptions
     of non-`rich_error` type, but:
@@ -244,7 +244,7 @@ current implementation.
 
   - As noted in the `rich_error_base` docblock, if we had another free bit in
     `rich_exception_ptr`, we could use it to cache the absence of an underlying
-    error in the enrichment chain.  However, the current solution is pretty
+    error in the epitaph stack.  However, the current solution is pretty
     good, and it's not trivial to eke out another cross-platform bit.
 
 ## Design space

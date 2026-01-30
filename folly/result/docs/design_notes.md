@@ -65,7 +65,7 @@ behavior is similar, there are many valuable improvements:
     * `res.value_or_throw()` rethrows the actual exception instead of a
       non-debuggable `BadExpectedAccess`.
     * `folly::get_exception<Ex>(result)` makes error-checking easy.
-    * `result` supports enrichment / provenance, which lets users capture
+    * `result` supports epitaphs / provenance, which lets users capture
       error-propagation stacks (details in `epitaphs.md`).
     * Full integration with `folly::coro`, so that `result` can supersede `Try`
       in that usage.
@@ -213,9 +213,9 @@ synchronous code with pervasive error handling -- they are simpler and cheaper.
     well as short-circuiting coroutines, which only suspend on destruction.
     Also, `folly::coro` plumbing is inherently more complex in order to support
     asynchrony (executors, cancellation tokens, etc).
-  - It may be some time before `folly::coro` has native support for enriching
-    `result`s in error-or-stopped states (`forensic.md`) -- currently,
-    round-tripping through `Try` discards enrichments.
+  - It may be some time before `folly::coro` has native support for adding
+    epitaphs to `result`s in error-or-stopped states (`epitaphs.md`) --
+    currently, round-tripping through `Try` discards epitaphs.
 
 ## Details of the `result` API
 

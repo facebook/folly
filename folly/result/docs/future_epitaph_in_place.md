@@ -1,19 +1,19 @@
-## Future: In-place enrichment protocol
+## Future: In-place epitaphs protocol
 
-Currently, enrichment effectively adds a node to a dynamic linked list, costing
+Currently, epitaphs effectively adds a node to a dynamic linked list, costing
 an `std::exception_ptr` (eptr) allocation+free (~60ns). Moreover, eptr allocates
-120-160 bytes of `__cxa_exception` storage, which enrichment cannot use.
+120-160 bytes of `__cxa_exception` storage, which epitaphs cannot use.
 
 In `future_ideas.md`, we discuss bit state for storing errors without the
 `std::exception_ptr` memory overhead, but having a heap allocation per
-enrichment would still cost tens of nanoseconds.
+epitaph would still cost tens of nanoseconds.
 
-In-place enrichment is an idea to amortize the allocation cost, by having rich
-errors reserve "in-place" storage for an array of enrichment frames. Unlike
-`forensic`, most enrichments only need to track source location &
+In-place epitaphs is an idea to amortize the allocation cost, by having rich
+errors reserve "in-place" storage for an array of epitaph frames. Unlike
+`epitaph`, most epitaphs only need to track source location &
 message, so the storage can be a fixed-size array of 16-byte `rich_msg`s.
 
-This optimization will grow in importance when we support automatic enrichment
+This optimization will grow in importance when we support automatic epitaphs
 in `result_promise::unhandled_exception()`.
 
 ### Protocol contract
@@ -21,19 +21,19 @@ in `result_promise::unhandled_exception()`.
 The core of the implementation is this protocol:
 
 ```cpp
-bool rich_error_base::maybe_enrich_in_place(rich_msg&&) noexcept;
+bool rich_error_base::maybe_add_epitaph_in_place(rich_msg&&) noexcept;
 ```
 
 This returns `true` iff the rich error is mutable, and was able to move
 `rich_msg` into its storage array. The `rich_msg` is unchanged on `false`.
 
 Given this protocol, `epitaph` would be extended to try these 2 things
-in turn. If either fails, it falls back to dynamic enrichment:
+in turn. If either fails, it falls back to dynamic epitaphs:
   - First, try *only* a fast, RTTI-free query for `rich_error_base`.
     Allocation can easily be cheaper than `dynamic_cast`.
-  - Then, try to `maybe_enrich_in_place()`.
+  - Then, try to `maybe_add_epitaph_in_place()`.
 
-**Note:** Access to `maybe_enrich_in_place()` should be restricted to
+**Note:** Access to `maybe_add_epitaph_in_place()` should be restricted to
 `epitaph` via friendship or passkey, preventing API misuse that would
 violate the "usage requirements" documented in the thread-safety design.
 
@@ -43,15 +43,15 @@ The `detail::epitaph_non_value` wrapper would automatically come with multiple
 slots to amortize the cost of allocations -- determined by benchmarking. Once we
 can allocate errors without eptrs, the "sweet spot" array size will decrease.
 
-Dynamic errors may default to providing some enrichment storage -- and
+Dynamic errors may default to providing some epitaphs storage -- and
 `rich_error` would provide the array. As needed, we could introduce some way for
 user base classes to configure this behavior. For example, a member type or
 member variable could opt into more / fewer array slots, or even allow a custom
 implementation.
 
 None of the 3 possible instances of immortal errors (constexpr, immutable /
-mutable singleton) would return `true` from `maybe_enrich_in_place`. So, the
-moment you enrich one, that incurs an allocation.
+mutable singleton) would return `true` from `maybe_add_epitaph_in_place`.  So,
+the moment you add epitaphs to one, that incurs an allocation.
 
 ### Thread-safety design
 
@@ -60,13 +60,13 @@ moment you enrich one, that incurs an allocation.
 Today, `epitaph` only takes REP by-value. The caller cannot retain a
 reference after the call—they have moved ownership. Meanwhile,
 `error_or_stopped::release_rich_exception_ptr` carries a large warning against
-holding references, and `maybe_enrich_in_place()` will be protected.
+holding references, and `maybe_add_epitaph_in_place()` will be protected.
 
 These invariants mean `epitaph()` has sole ownership of the REP during
 mutation, guaranteeing "correct usage":
 
-  - **Correct usage**: The sole owner enriches; any copy calls `lock()` first,
-      disabling in-place enrichment for all aliases.
+  - **Correct usage**: The sole owner adds epitaphs; any copy calls `lock()`
+    first, disabling in-place epitaphs for all aliases.
       - *Outcome*: Traces are correct. No data races.
 
   - **Incorrect usage**: Aliasing REPs across threads without copying.
@@ -89,8 +89,8 @@ storage. Similarly, `to_exception_ptr_slow()` returns an aliasing eptr.
 
 REP copy and `to_exception_ptr_slow()` call `lock()` when they detect that the
 eptr holds a `rich_error_base` (via the `IS_RICH_ERROR_BASE_masked_q`, avoiding
-RTTI). This is the same condition gating `maybe_enrich_in_place()`. Unknown-type
-eptrs skip in-place enrichment entirely, so they need no lock.
+RTTI). This is the same condition gating `maybe_add_epitaph_in_place()`.
+Unknown-type eptrs skip in-place epitaphs entirely, so they need no lock.
 
 **Note:** The only reason to `lock()` on `to_exception_ptr_slow()` is that
 future rich error enhancements could re-enable RTTI-free optimizations upon
@@ -107,7 +107,7 @@ std::array<nullable_rich_msg, kCapacity> entries_{};  // default: null
 ```
 
 `next_slot_` is both slot counter and lock flag:
-  - `< kCapacity`: can enrich in-place
+  - `< kCapacity`: can add epitaph in-place
   - `>= kCapacity`: full or locked → fall back to dynamic
 
 #### Core operations
@@ -123,7 +123,7 @@ uint8_t count() const noexcept {
   return std::min(next_slot_.load(std::memory_order_acquire), kCapacity);
 }
 
-bool maybe_enrich_in_place(rich_msg&& msg) noexcept {
+bool maybe_add_epitaph_in_place(rich_msg&& msg) noexcept {
   // Early-out: avoids incrementing after lock, preserving count accuracy
   if (next_slot_.load(std::memory_order_relaxed) >= kCapacity)
     return false;
