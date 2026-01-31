@@ -91,7 +91,7 @@ using co_cleanup_safe_task = safe_task<safe_alias::co_cleanup_safe_ref, T>;
 // never be moved) -- immovability is meant to reduce the odds of misuse.
 // Making it truly opaque / not semi-awaitable would be a stronger safeguard,
 // but that requires extra complexity even just so that
-// `as_noexcept<closure_task<>> foo()` would compile.
+// `value_or_fatal<closure_task<>> foo()` would compile.
 //
 // "closure_task is a safe_task" rationale: `async_closure` cannot emit a
 // `safe_task` without the inner coro being a `safe_task` -- otherwise it could

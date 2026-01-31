@@ -640,34 +640,34 @@ class ValueOnlyAwaiterBase {
 };
 
 template <typename T>
-using noexcept_awaitable_of_ = typename T::folly_private_noexcept_awaitable_t;
+using value_only_awaitable_of_ =
+    typename T::folly_private_value_only_awaitable_t;
 
 template <typename Void, typename T>
-struct noexcept_awaitable_ {
-  static_assert(require_sizeof<T>, "`noexcept_awaitable_t` on incomplete type");
+struct value_only_awaitable_ {
+  static_assert(
+      require_sizeof<T>, "`value_only_awaitable_t` on incomplete type");
   using type = std::false_type;
 };
 
 template <>
-struct noexcept_awaitable_<void, void> {
+struct value_only_awaitable_<void, void> {
   using type = std::false_type;
 };
 
 template <typename T>
-struct noexcept_awaitable_<void_t<noexcept_awaitable_of_<T>>, T> {
-  using type = noexcept_awaitable_of_<T>;
+struct value_only_awaitable_<void_t<value_only_awaitable_of_<T>>, T> {
+  using type = value_only_awaitable_of_<T>;
 };
 
 } // namespace detail
 
-// This trait is in `ViaIfAsync.h` so that we don't have include `Noexcept.h`
-// If there's ever a use-case that doesn't depend on `ViaIfAsync.h`, this can
-// be moved up to `Traits.h`
+/// True for awaitables that only complete with value (not stopped or error)
 template <typename T>
-using noexcept_awaitable_t =
-    typename detail::noexcept_awaitable_<void, T>::type;
+using value_only_awaitable_t =
+    typename detail::value_only_awaitable_<void, T>::type;
 template <typename T>
-inline constexpr bool noexcept_awaitable_v = noexcept_awaitable_t<T>::value;
+inline constexpr bool value_only_awaitable_v = value_only_awaitable_t<T>::value;
 
 namespace detail {
 
@@ -792,7 +792,7 @@ class CommutativeWrapperAwaitable {
   // IMPORTANT: If a commutative wrapper changes safety, immediate- or
   // noexcept-awaitability, it must remember to override these:
   using folly_must_use_immediately_t = ext::must_use_immediately_t<T>;
-  using folly_private_noexcept_awaitable_t = noexcept_awaitable_t<T>;
+  using folly_private_value_only_awaitable_t = value_only_awaitable_t<T>;
   template <safe_alias Default>
   using folly_private_safe_alias_t = safe_alias_of<T, Default>;
 
@@ -859,7 +859,7 @@ TryAwaitable : public CommutativeWrapperAwaitable<TryAwaitable, T> {
     return TryAwaiter<T2>{static_cast<Self&&>(self).inner_};
   }
 
-  using folly_private_noexcept_awaitable_t = std::true_type;
+  using folly_private_value_only_awaitable_t = std::true_type;
 };
 
 } // namespace detail

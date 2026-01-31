@@ -1025,8 +1025,8 @@ non_fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "noexcept",
-    headers = ["Noexcept.h"],
+    name = "value_or_fatal",
+    headers = ["ValueOrFatal.h"],
     exported_deps = [
         ":task_wrapper",
         ":via_if_async",
@@ -1035,8 +1035,8 @@ fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_cxx_library,
-    name = "noexcept",
-    raw_headers = ["Noexcept.h"],
+    name = "value_or_fatal",
+    raw_headers = ["ValueOrFatal.h"],
     exported_deps = [
         ":task_wrapper",
         ":via_if_async",

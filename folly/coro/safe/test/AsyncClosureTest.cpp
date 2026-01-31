@@ -15,8 +15,8 @@
  */
 
 #include <folly/coro/GtestHelpers.h>
-#include <folly/coro/Noexcept.h>
 #include <folly/coro/Timeout.h>
+#include <folly/coro/ValueOrFatal.h>
 #include <folly/coro/safe/AsyncClosure.h>
 #include <folly/fibers/Semaphore.h>
 
@@ -35,12 +35,15 @@ CO_TEST(AsyncClosure, invalid_co_cleanup) {
   };
 
   struct ValidCleanup : NonCopyableNonMovable {
-    as_noexcept<Task<>> co_cleanup(async_closure_private_t) { co_return; }
+    value_or_fatal<Task<>, on_stopped_void> co_cleanup(
+        async_closure_private_t) {
+      co_return;
+    }
   };
   co_await checkCleanup(tag<ValidCleanup>);
 
   struct InvalidCleanupNonVoid : NonCopyableNonMovable {
-    [[maybe_unused]] as_noexcept<Task<int>, OnCancel{0}> co_cleanup(
+    [[maybe_unused]] value_or_fatal<Task<int>, on_stopped<0>> co_cleanup(
         async_closure_private_t) {
       co_return 1;
     }
@@ -59,7 +62,8 @@ CO_TEST(AsyncClosure, invalid_co_cleanup) {
 #endif
 
   struct InvalidCleanupIsMovable {
-    [[maybe_unused]] as_noexcept<Task<>> co_cleanup(async_closure_private_t) {
+    [[maybe_unused]] value_or_fatal<Task<>, on_stopped_void> co_cleanup(
+        async_closure_private_t) {
       co_return;
     }
   };
@@ -564,7 +568,7 @@ CO_TEST(AsyncClosure, nestedRefsWithoutOuterCoro) {
 struct ErrorObliviousHasCleanup : NonCopyableNonMovable {
   explicit ErrorObliviousHasCleanup(int* p) : cleanBits_(p) {}
   int* cleanBits_;
-  as_noexcept<Task<>> co_cleanup(async_closure_private_t) {
+  value_or_fatal<Task<>, on_stopped_void> co_cleanup(async_closure_private_t) {
     *cleanBits_ += 3;
     co_return;
   }
@@ -583,7 +587,7 @@ struct HasCleanup : NonCopyableNonMovable {
   std::optional<exception_wrapper>* optCleanupErrPtr_;
   // If the closure (not other cleanups!) exited with an exception, each
   // `co_cleanup` gets to see it.
-  as_noexcept<Task<>> co_cleanup(
+  value_or_fatal<Task<>, on_stopped_void> co_cleanup(
       async_closure_private_t, const exception_wrapper* ew) {
     *optCleanupErrPtr_ = *ew;
     co_return;
@@ -871,37 +875,44 @@ CO_TEST(AsyncClosure, nowClosureCoCleanup) {
   co_await checkNowClosureCoCleanup<Task<int>, after_cleanup_capture<int&>>();
 }
 
-constexpr bool check_as_noexcept_closures() {
+constexpr bool check_value_or_fatal_closures() {
   static_assert( // safe_task, without outer coro
       std::is_same_v<
-          as_noexcept<value_task<>>,
+          value_or_fatal<value_task<>, on_stopped_void>,
           decltype(async_closure(
               bind::args{},
-              []() -> as_noexcept<closure_task<>> { co_return; }))>);
+              []() -> value_or_fatal<closure_task<>, on_stopped_void> {
+                co_return;
+              }))>);
 
   static_assert( // safe_task, with outer coro
       std::is_same_v<
-          as_noexcept<value_task<>>,
+          value_or_fatal<value_task<>, on_stopped_void>,
           decltype(async_closure<ForceOuter>(
               bind::args{},
-              []() -> as_noexcept<closure_task<>> { co_return; }))>);
+              []() -> value_or_fatal<closure_task<>, on_stopped_void> {
+                co_return;
+              }))>);
 
   static_assert( // now_task, without outer coro
       std::is_same_v<
-          as_noexcept<now_task<>>,
-          decltype(async_now_closure(bind::args{}, []() -> as_noexcept<Task<>> {
-            co_return;
-          }))>);
+          value_or_fatal<now_task<>, on_stopped_void>,
+          decltype(async_now_closure(
+              bind::args{}, []() -> value_or_fatal<Task<>, on_stopped_void> {
+                co_return;
+              }))>);
   static_assert( // now_task, with outer coro
       std::is_same_v<
-          as_noexcept<now_task<>>,
+          value_or_fatal<now_task<>, on_stopped_void>,
           decltype(async_now_closure<ForceOuter>(
-              bind::args{}, []() -> as_noexcept<Task<>> { co_return; }))>);
+              bind::args{}, []() -> value_or_fatal<Task<>, on_stopped_void> {
+                co_return;
+              }))>);
 
   return true;
 }
 
-static_assert(check_as_noexcept_closures());
+static_assert(check_value_or_fatal_closures());
 
 struct MyErr : std::exception {};
 
@@ -921,9 +932,9 @@ TEST(AsyncClosure, fatalWhenNoexceptClosureThrows) {
 
   auto noexceptThrowNoOuter = async_closure(
       bind::args{},
-      []() -> as_noexcept<closure_task<ThrowOnMove>, terminateOnCancel> {
-        co_return {};
-      });
+      []() -> value_or_fatal<
+               closure_task<ThrowOnMove>,
+               on_stopped_and_error<will_fatal>> { co_return {}; });
   EXPECT_DEATH({ blockingWait(std::move(noexceptThrowNoOuter)); }, "MyErr");
 
   auto throwOuter = async_closure<ForceOuter>(
@@ -932,9 +943,9 @@ TEST(AsyncClosure, fatalWhenNoexceptClosureThrows) {
 
   auto noexceptThrowOuter = async_closure<ForceOuter>(
       bind::args{},
-      []() -> as_noexcept<closure_task<ThrowOnMove>, terminateOnCancel> {
-        co_return {};
-      });
+      []() -> value_or_fatal<
+               closure_task<ThrowOnMove>,
+               on_stopped_and_error<will_fatal>> { co_return {}; });
   EXPECT_DEATH({ blockingWait(std::move(noexceptThrowOuter)); }, "MyErr");
 }
 
@@ -949,7 +960,7 @@ struct OrderTracker : NonCopyableNonMovable {
   explicit OrderTracker(int& n, int& cleanupN)
       : myN_(++n), nRef_(n), myCleanupN_(++cleanupN), cleanupNRef_(cleanupN) {}
 
-  as_noexcept<Task<>> co_cleanup(async_closure_private_t) {
+  value_or_fatal<Task<>, on_stopped_void> co_cleanup(async_closure_private_t) {
     EXPECT_EQ(myCleanupN_, cleanupNRef_--);
     co_return;
   }

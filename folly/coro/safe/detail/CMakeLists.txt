@@ -19,9 +19,9 @@ folly_add_library(
   HEADERS
     AsyncClosure.h
   EXPORTED_DEPS
-    folly_coro_noexcept
     folly_coro_safe_detail_bind_async_closure
     folly_coro_safe_safe_task
+    folly_coro_value_or_fatal
     folly_detail_tuple
 )
 

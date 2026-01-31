@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/coro/Noexcept.h>
 #include <folly/coro/Task.h>
+#include <folly/coro/ValueOrFatal.h>
 #include <folly/coro/safe/detail/BindAsyncClosure.h>
 #include <folly/portability/GTest.h>
 
@@ -24,7 +24,9 @@
 namespace folly::coro::detail {
 
 struct HasCleanup : NonCopyableNonMovable {
-  as_noexcept<Task<>> co_cleanup(async_closure_private_t) { co_return; }
+  value_or_fatal<Task<>, on_stopped_void> co_cleanup(async_closure_private_t) {
+    co_return;
+  }
 };
 
 constexpr capture_private_t coro_safe_detail_bindings_test_private() {

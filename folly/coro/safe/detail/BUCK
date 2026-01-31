@@ -10,7 +10,7 @@ non_fbcode_target(
     raw_headers = ["AsyncClosure.h"],
     exported_deps = [
         ":bind_async_closure",
-        "//xplat/folly/coro:noexcept",
+        "//xplat/folly/coro:value_or_fatal",
         "//xplat/folly/coro/safe:safe_task",
         "//xplat/folly/detail:tuple",
     ],
@@ -22,7 +22,7 @@ fbcode_target(
     headers = ["AsyncClosure.h"],
     exported_deps = [
         ":bind_async_closure",
-        "//folly/coro:noexcept",
+        "//folly/coro:value_or_fatal",
         "//folly/coro/safe:safe_task",
         "//folly/detail:tuple",
     ],

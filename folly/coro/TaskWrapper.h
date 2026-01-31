@@ -316,8 +316,8 @@ class TaskWrapperCrtp {
   // Wrappers can override these as-needed
   using folly_must_use_immediately_t =
       ext::must_use_immediately_t<typename Cfg::InnerTaskT>;
-  using folly_private_noexcept_awaitable_t =
-      noexcept_awaitable_t<typename Cfg::InnerTaskT>;
+  using folly_private_value_only_awaitable_t =
+      value_only_awaitable_t<typename Cfg::InnerTaskT>;
   template <safe_alias Default>
   using folly_private_safe_alias_t =
       safe_alias_of<folly_private_task_wrapper_inner_t, Default>;

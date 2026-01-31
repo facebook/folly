@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/coro/Noexcept.h>
+#include <folly/coro/ValueOrFatal.h>
 #include <folly/coro/safe/SafeTask.h>
 #include <folly/coro/safe/detail/BindAsyncClosure.h>
 #include <folly/detail/tuple.h>
@@ -50,9 +50,9 @@ auto async_closure_make_cleanup_tuple(
     async_closure_private_t priv, auto&& arg, const exception_wrapper* err) {
   auto to_lite_tuple = []<typename T>(T task) {
     static_assert(
-        noexcept_awaitable_v<T> && std::is_void_v<semi_await_result_t<T>>,
-        "`co_cleanup()` must return a `noexcept`-awaitable `void` coro. "
-        "Change your return type to `as_noexcept<Task<>>` and don't throw.");
+        value_only_awaitable_v<T> && std::is_void_v<semi_await_result_t<T>>,
+        "`co_cleanup()` must return a value-only awaitable `void` coro. "
+        "Change your return type to `value_or_fatal<Task<>>` and don't throw.");
     return lite_tuple::tuple{std::move(task)};
   };
   if constexpr (has_async_object_private_hack_co_cleanup<decltype(arg)>) {
@@ -134,9 +134,10 @@ template <
     bool SetCancelTok,
     typename ResultT,
     safe_alias OuterSafety,
-    // This coro is noexcept-awaitable iff `async_closure_outer_coro_result` is
-    // `noexcept`.  But we don't want to restrict it for coros that are not
-    // marked `as_noexcept` -- this boolean toggles its "is noexcept" asserts.
+    // This coro is value-only awaitable iff `async_closure_outer_coro_result`
+    // is `noexcept`. But we don't want to restrict it for coros that are not
+    // marked `value_or_fatal` -- this boolean toggles its "is noexcept"
+    // asserts.
     bool AssertNoexcept,
     typename OuterResT =
         drop_unit_t<decltype(async_closure_outer_coro_result<AssertNoexcept>(
@@ -651,11 +652,11 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
           static_cast<decltype(make_inner_coro)>(make_inner_coro),
           pick_safest_b_tup());
 
-  // First, unwrap `as_noexcept` so that `safe_task_traits` below can work.
-  // We only allow `as_noexcept` as the outer wrapper.
-  using NoexceptWrap = as_noexcept_rewrapper<decltype(raw_inner_coro)>;
+  // First, unwrap `value_or_fatal` so that `safe_task_traits` below can work.
+  // We only allow `value_or_fatal` as the outer wrapper.
+  using NoexceptWrap = value_or_fatal_rewrapper<decltype(raw_inner_coro)>;
   auto unwrapped_inner = []<typename T>(T&& t) {
-    if constexpr (NoexceptWrap::as_noexcept_wrapped) {
+    if constexpr (NoexceptWrap::value_or_fatal_wrapped) {
       return NoexceptWrap::unwrapTask(std::move(t));
     } else {
       return ::folly::ext::must_use_immediately_unsafe_mover(std::move(t))();
@@ -728,7 +729,7 @@ auto bind_captures_to_closure(auto&& make_inner_coro, auto safeties_and_binds) {
               /*cancelTok*/ true,
               ResultT,
               OuterSafety,
-              NoexceptWrap::as_noexcept_wrapped>(
+              NoexceptWrap::value_or_fatal_wrapped>(
               async_closure_private_t{},
               std::move(inner_mover),
               std::move(storage_ptr)));

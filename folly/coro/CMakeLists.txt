@@ -442,9 +442,9 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME noexcept
+  NAME value_or_fatal
   HEADERS
-    Noexcept.h
+    ValueOrFatal.h
   EXPORTED_DEPS
     folly_coro_task_wrapper
     folly_coro_via_if_async

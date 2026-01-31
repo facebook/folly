@@ -32,7 +32,7 @@ namespace detail {
 template <typename T>
 class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] NothrowAwaitable;
 
-// The `!noexcept_awaitable_v` constraint stops `co_nothrow()` from wrapping
+// The `!value_only_awaitable_v` constraint stops `co_nothrow()` from wrapping
 // `value_or_error_or_stopped`, `co_awaitTry`, `AsNoexcept`, etc.
 //
 // Rationale: Instead, we could do:
@@ -51,7 +51,7 @@ NothrowAwaitable : public CommutativeWrapperAwaitable<NothrowAwaitable, T> {
 
   template <
       typename T2 = T,
-      std::enable_if_t<!noexcept_awaitable_v<T>, int> = 0>
+      std::enable_if_t<!value_only_awaitable_v<T>, int> = 0>
   T2&& unwrap() {
     return std::move(this->inner_);
   }
@@ -107,7 +107,7 @@ class BypassExceptionThrowing {
   template <typename Awaitable>
   void requestDueToNothrow() {
     // `co_nothrow` is incompatible with noexcept-awaitables, doc above.
-    static_assert(!noexcept_awaitable_v<Awaitable>);
+    static_assert(!value_only_awaitable_v<Awaitable>);
     bypassMode_ = BypassMode::REQUESTED;
   }
 
@@ -130,7 +130,7 @@ class BypassExceptionThrowing {
 template <
     typename Awaitable,
     std::enable_if_t<
-        !noexcept_awaitable_v<Awaitable> && // Comment on `NothrowAwaitable`
+        !value_only_awaitable_v<Awaitable> && // Comment on `NothrowAwaitable`
             !folly::ext::must_use_immediately_v<Awaitable>,
         int> = 0>
 detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
@@ -141,7 +141,7 @@ detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(
 template <
     typename Awaitable,
     std::enable_if_t<
-        !noexcept_awaitable_v<Awaitable> && // Comment on `NothrowAwaitable`
+        !value_only_awaitable_v<Awaitable> && // Comment on `NothrowAwaitable`
             folly::ext::must_use_immediately_v<Awaitable>,
         int> = 0>
 detail::NothrowAwaitable<remove_cvref_t<Awaitable>> co_nothrow(

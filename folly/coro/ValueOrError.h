@@ -135,12 +135,12 @@ class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] ValueOrErrorOrStopped
     return ResultAwaiter<T2>{static_cast<Self&&>(self).inner_};
   }
 
-  using folly_private_noexcept_awaitable_t = std::true_type;
+  using folly_private_value_only_awaitable_t = std::true_type;
 };
 
 // The awaitable backing `ValueOrError`, see that doc for why it's separate.
 //
-// NB: Besides `folly_private_noexcept_awaitable_t`, this is identical to
+// NB: Besides `folly_private_value_only_awaitable_t`, this is identical to
 // `ValueOrErrorOrStopped`, but the way the `CommutativeWrapperAwaitable`
 // template is set up, it's a lot of code to parameterize it.
 //
@@ -164,7 +164,7 @@ ValueOrErrorImpl : public CommutativeWrapperAwaitable<ValueOrErrorImpl, T> {
     return ResultAwaiter<T2>{static_cast<Self&&>(self).inner_};
   }
 
-  // Future: Cannot mark `folly_private_noexcept_awaitable_t` since it
+  // Future: Cannot mark `folly_private_value_only_awaitable_t` since it
   // completes with "stopped" which may throw in contexts like `blocking_wait`.
   // Once the `awaitable_completions_v` refactor is complete, this should
   // remove the "error" completion from the underlying awaitable.
@@ -196,7 +196,7 @@ ValueOrError : public CommutativeWrapperAwaitable<ValueOrError, T> {
   }
 
   // Future: See `ValueOrErrorImpl` regarding
-  // `folly_private_noexcept_awaitable_t` and `awaitable_completions_v`.
+  // `folly_private_value_only_awaitable_t` and `awaitable_completions_v`.
 };
 
 } // namespace detail

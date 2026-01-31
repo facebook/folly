@@ -22,12 +22,12 @@
 /// For functions-of-coros, like `timeout()` or `collectAll()`, we want the
 /// outer coro to be able to pass through these attributes of the inner coro:
 ///  - `folly::ext::must_use_immediately_v`
-///  - `noexcept_awaitable_v`
+///  - `value_only_awaitable_v`
 ///  - `strict_safe_alias_of_v` / `lenient_safe_alias_of_v`
 ///
 /// Variation along these dimensions is currently implemented as a zoo of coro
 /// templates and wrappers -- `Task` aka `UnsafeMovableTask`, `now_task`,
-/// `safe_task`, `as_noexcept<InnerTask>`.  The type function
+/// `safe_task`, `value_or_fatal<InnerTask>`.  The type function
 /// `pick_task_wrapper` provides common logic for picking a task type with the
 /// given attributes.
 
@@ -51,7 +51,7 @@ template <typename T>
 class now_task_with_executor;
 
 template <typename, auto>
-class as_noexcept;
+class value_or_fatal;
 
 namespace detail {
 
@@ -121,11 +121,12 @@ struct pick_task_wrapper_impl<Safety, /*await now*/ false> {
 
 #endif // FOLLY_HAS_IMMOVABLE_COROUTINES
 
-// Pass this as `AddWrapperMetaFn` to `pick_task_wrapper` to add `as_noexcept`.
+// Pass this as `AddWrapperMetaFn` to `pick_task_wrapper` to add
+// `value_or_fatal`.
 template <auto CancelCfg>
-struct as_noexcept_with_cancel_cfg {
+struct value_or_fatal_with_cancel_cfg {
   template <typename T>
-  using apply = as_noexcept<T, CancelCfg>;
+  using apply = value_or_fatal<T, CancelCfg>;
 };
 
 template <

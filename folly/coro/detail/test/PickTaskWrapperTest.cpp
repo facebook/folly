@@ -16,7 +16,7 @@
 
 #include <folly/Portability.h>
 
-#include <folly/coro/Noexcept.h>
+#include <folly/coro/ValueOrFatal.h>
 #include <folly/coro/detail/PickTaskWrapper.h>
 #include <folly/coro/safe/NowTask.h>
 #include <folly/coro/safe/SafeTask.h>
@@ -61,25 +61,29 @@ static_assert(
             /*await now*/ false>>);
 
 // (co_cleanup_safe_ref, movable, wrapper) ->
-// as_noexcept<co_cleanup_safe_task<>>
+// value_or_fatal<co_cleanup_safe_task<>>
 static_assert(
     std::is_same_v<
-        as_noexcept<co_cleanup_safe_task<int>, terminateOnCancel>,
+        value_or_fatal<
+            co_cleanup_safe_task<int>,
+            on_stopped_and_error<will_fatal>>,
         detail::pick_task_wrapper<
             int,
             safe_alias::co_cleanup_safe_ref,
             /*await now*/ false,
-            detail::as_noexcept_with_cancel_cfg<terminateOnCancel>>>);
+            detail::value_or_fatal_with_cancel_cfg<
+                on_stopped_and_error<will_fatal>>>>);
 static_assert(
     std::is_same_v<
-        as_noexcept<
+        value_or_fatal<
             safe_task_with_executor<safe_alias::co_cleanup_safe_ref, int>,
-            terminateOnCancel>,
+            on_stopped_and_error<will_fatal>>,
         detail::pick_task_with_executor_wrapper<
             int,
             safe_alias::co_cleanup_safe_ref,
             /*await now*/ false,
-            detail::as_noexcept_with_cancel_cfg<terminateOnCancel>>>);
+            detail::value_or_fatal_with_cancel_cfg<
+                on_stopped_and_error<will_fatal>>>>);
 
 } // namespace folly::coro
 

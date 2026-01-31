@@ -288,15 +288,16 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
-    name = "noexcept_test",
-    srcs = ["NoexceptTest.cpp"],
+    name = "value_or_fatal_test",
+    srcs = ["ValueOrFatalTest.cpp"],
     deps = [
         "//folly/coro:async_scope",
         "//folly/coro:gtest_helpers",
-        "//folly/coro:noexcept",
+        "//folly/coro:value_or_fatal",
         "//folly/coro/safe:now_task",
         "//folly/coro/safe:safe_task",
     ],
+    external_deps = ["glog"],
 )
 
 fbcode_target(

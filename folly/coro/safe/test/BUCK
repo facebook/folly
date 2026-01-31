@@ -20,8 +20,8 @@ fbcode_target(
     srcs = ["AsyncClosureTest.cpp"],
     deps = [
         "//folly/coro:gtest_helpers",
-        "//folly/coro:noexcept",
         "//folly/coro:timeout",
+        "//folly/coro:value_or_fatal",
         "//folly/coro/safe:async_closure",
         "//folly/fibers:semaphore",
     ],
