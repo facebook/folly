@@ -914,39 +914,29 @@ constexpr bool check_value_or_fatal_closures() {
 
 static_assert(check_value_or_fatal_closures());
 
-struct MyErr : std::exception {};
+TEST(AsyncClosure, throwingMoveCtor) {
+  struct MyErr : std::exception {};
 
-struct ThrowOnMove {
-  ThrowOnMove() {}
-  ~ThrowOnMove() = default;
-  [[noreturn]] ThrowOnMove(ThrowOnMove&&) { throw MyErr{}; }
-  ThrowOnMove(const ThrowOnMove&) = delete;
-  void operator=(ThrowOnMove&&) = delete;
-  void operator=(const ThrowOnMove&) = delete;
-};
+  struct ThrowOnMove {
+    ThrowOnMove() {}
+    ~ThrowOnMove() = default;
+    [[noreturn]] ThrowOnMove(ThrowOnMove&&) { throw MyErr{}; }
+    ThrowOnMove(const ThrowOnMove&) = delete;
+    void operator=(ThrowOnMove&&) = delete;
+    void operator=(const ThrowOnMove&) = delete;
+  };
 
-TEST(AsyncClosure, fatalWhenNoexceptClosureThrows) {
+  // This used to also test `value_or_fatal<closure_task<ThrowingMove>...>`,
+  // but this no longer compiles since value-only awaitables don't make any
+  // sense with throwing move constructors.
+
   auto throwNoOuter = async_closure(
       bind::args{}, []() -> closure_task<ThrowOnMove> { co_return {}; });
   EXPECT_THROW(blockingWait(std::move(throwNoOuter)), MyErr);
 
-  auto noexceptThrowNoOuter = async_closure(
-      bind::args{},
-      []() -> value_or_fatal<
-               closure_task<ThrowOnMove>,
-               on_stopped_and_error<will_fatal>> { co_return {}; });
-  EXPECT_DEATH({ blockingWait(std::move(noexceptThrowNoOuter)); }, "MyErr");
-
   auto throwOuter = async_closure<ForceOuter>(
       bind::args{}, []() -> closure_task<ThrowOnMove> { co_return {}; });
   EXPECT_THROW(blockingWait(std::move(throwOuter)), MyErr);
-
-  auto noexceptThrowOuter = async_closure<ForceOuter>(
-      bind::args{},
-      []() -> value_or_fatal<
-               closure_task<ThrowOnMove>,
-               on_stopped_and_error<will_fatal>> { co_return {}; });
-  EXPECT_DEATH({ blockingWait(std::move(noexceptThrowOuter)); }, "MyErr");
 }
 
 // Records construction order, asserts that (1) cleanup & destruction happen in

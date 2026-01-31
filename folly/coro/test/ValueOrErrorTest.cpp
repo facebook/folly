@@ -18,6 +18,7 @@
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Result.h>
 #include <folly/coro/ValueOrError.h>
+#include <folly/coro/ValueOrFatal.h>
 #include <folly/coro/ViaIfAsync.h>
 #include <folly/coro/safe/NowTask.h>
 
@@ -28,7 +29,7 @@
 
 namespace folly::coro {
 
-CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_of_error) {
+CO_TEST(ValueOrErrorTest, valueOrErrorOrStoppedOfError) {
   auto voidErrorTask = []() -> now_task<void> {
     co_yield co_error(std::runtime_error("foo"));
   };
@@ -44,7 +45,7 @@ CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_of_error) {
   }
 }
 
-CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_of_value) {
+CO_TEST(ValueOrErrorTest, valueOrErrorOrStoppedOfValue) {
   // Return a move-only thing to make sure we don't copy
   auto valueTask = []() -> now_task<std::unique_ptr<int>> {
     co_return std::make_unique<int>(1337);
@@ -69,7 +70,7 @@ CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_of_value) {
   }
 }
 
-CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_of_void) {
+CO_TEST(ValueOrErrorTest, valueOrErrorOrStoppedOfVoid) {
   int numAwaited = 0;
   auto voidTask = [&]() -> now_task<void> {
     ++numAwaited;
@@ -91,7 +92,7 @@ CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_of_void) {
   }
 }
 
-CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_stopped) {
+CO_TEST(ValueOrErrorTest, valueOrErrorOrStoppedStopped) {
   auto stoppedTask = [&]() -> now_task<void> {
     co_yield co_cancelled;
     LOG(FATAL) << "not reached";
@@ -109,7 +110,7 @@ CO_TEST(ValueOrErrorTest, value_or_error_or_stopped_stopped) {
   }
 }
 
-TEST(ValueOrErrorTest, co_nothrow_value_or_error_or_stopped) {
+TEST(ValueOrErrorTest, coNothrowValueOrErrorOrStopped) {
   bool ran = []<typename T>(T) { // `requires` does SFINAE inside templates
     auto errorTask = [&]() -> now_task<> {
       co_yield co_error(std::runtime_error("foo"));
@@ -158,18 +159,35 @@ struct ThrowingAwaitSuspendAwaitable {
   }
 };
 
-CO_TEST(ValueOrErrorTest, RequiresNoexceptAwait) {
+CO_TEST(ValueOrErrorTest, requiresNoexceptAwait) {
 #if 0 // Manual test: "value-only await requires noexcept await_suspend()"
   (void)co_await value_or_error(ThrowingAwaitSuspendAwaitable{});
 #endif
   co_return;
 }
 
-CO_TEST(ValueOrErrorTest, CoAwaitTryRequiresNoexceptAwait) {
+CO_TEST(ValueOrErrorTest, coAwaitTryRequiresNoexceptAwait) {
 #if 0 // Manual test: "value-only await requires noexcept await_suspend()"
   (void)co_await co_awaitTry(ThrowingAwaitSuspendAwaitable{});
 #endif
   co_return;
+}
+
+// Deliberately redundant with `ValueOrFatalTest.ValueOrErrorComposition`.
+// Do NOT remove.
+//
+// `value_or_error` must not activate the "bypass" mechanism when wrapping a
+// value-only awaitable like `value_or_fatal`. Otherwise, `OperationCancelled`
+// would be intercepted at the promise level, before the inner awaitable's
+// `on_stopped` policy could substitute the default value.
+CO_TEST(ValueOrErrorTest, valueOrErrorAroundValueOnlyAwaitable) {
+  auto coStopped = []() -> value_or_fatal<Task<int>, on_stopped<99>> {
+    co_yield co_cancelled;
+    co_return -1;
+  };
+  EXPECT_EQ(99, (co_await value_or_error(coStopped())).value_only());
+  EXPECT_EQ(
+      99, (co_await value_or_error_or_stopped(coStopped())).value_or_throw());
 }
 
 } // namespace folly::coro

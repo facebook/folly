@@ -117,7 +117,7 @@ class BasePromise {
 
   template <typename Awaitable>
   auto await_transform(ValueOrError<Awaitable> awaitable) {
-    bypassThrowing_.requestDueToValueOrError();
+    bypassThrowing_.template requestDueToValueOrError<Awaitable>();
     return await_transform(std::move(awaitable).toValueOrErrorImpl());
   }
 

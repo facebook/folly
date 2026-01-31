@@ -448,6 +448,7 @@ folly_add_library(
   EXPORTED_DEPS
     folly_coro_task_wrapper
     folly_coro_via_if_async
+    folly_result_value_only_result
 )
 
 folly_add_library(

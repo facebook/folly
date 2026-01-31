@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-#include <glog/logging.h>
-
 #include <folly/coro/AsyncScope.h>
 #include <folly/coro/GtestHelpers.h>
+#include <folly/coro/ValueOrError.h>
 #include <folly/coro/ValueOrFatal.h>
 #include <folly/coro/safe/NowTask.h>
 #include <folly/coro/safe/SafeTask.h>
@@ -68,14 +67,55 @@ static_assert(test_semi_await_result_v<fatal_on_non_value_of_now_task, int>);
 static_assert(!test_semi_await_result_v<fatal_on_non_value_of_now_task&, int>);
 static_assert(!test_semi_await_result_v<fatal_on_non_value_of_now_task&&, int>);
 
-// Check that `value_only_awaitable_v` is set as expected (via `co_awaitTry` and
-// `ValueOrFatalAwaitable`), and propagates even when wrapped.
+// Check `value_only_awaitable_v` is set correctly, and that `await_resume_try`
+// is NOT available (we want compile errors for
+// `co_awaitTry(value_or_fatal(...))`).
 static_assert(!value_only_awaitable_v<Task<int>>);
 static_assert(value_only_awaitable_v<detail::TryAwaitable<Task<int>>>);
 static_assert(value_only_awaitable_v<fatal_on_non_value_of_Task>);
 static_assert(!value_only_awaitable_v<detail::NothrowAwaitable<Task<int>>>);
 
+// Verify `await_resume_result()` is available on `ValueOrFatalAwaiter` and
+// returns `value_only_result<T>`. This enables composition with
+// `value_or_error`.
+static_assert(
+    detail::is_awaiter_result<
+        awaiter_type_t<value_or_fatal<TaskWithExecutor<int>, on_stopped<0>>>>);
+static_assert(
+    std::is_same_v<
+        value_only_result<int>,
+        decltype(FOLLY_DECLVAL(
+                     awaiter_type_t<
+                         value_or_fatal<TaskWithExecutor<int>, on_stopped<0>>>&)
+                     .await_resume_result())>);
+static_assert(
+    std::is_same_v<
+        value_only_result<void>,
+        decltype(FOLLY_DECLVAL(
+                     awaiter_type_t<
+                         value_or_fatal<TaskWithExecutor<>, on_stopped_void>>&)
+                     .await_resume_result())>);
+
+// Verify `await_resume_try()` is NOT available (see comment in ValueOrFatal.h)
+static_assert(
+    !detail::is_awaiter_try<
+        awaiter_type_t<value_or_fatal<TaskWithExecutor<int>, on_stopped<0>>>>);
+
 struct MyErr : std::exception {};
+
+#if 0 // Manual test: value_or_fatal<Task<T>> requires T to be noexcept-movable
+struct ThrowOnMove {
+  ThrowOnMove() = default;
+  [[noreturn]] ThrowOnMove(ThrowOnMove&&) { throw MyErr{}; }
+};
+value_or_fatal<Task<ThrowOnMove>, on_stopped_and_error<will_fatal>>
+throwOnMoveTask() {
+  co_return ThrowOnMove{};
+}
+[[maybe_unused]] void instantiateThrowOnMoveTask() {
+  blockingWait(throwOnMoveTask());
+}
+#endif
 
 template <typename TaskT>
 now_task<void> checkFatalOnNonValue() {
@@ -143,11 +183,11 @@ now_task<void> checkFatalOnNonValue() {
   EXPECT_TRUE(ran); // it's easy to forget to call the lambda
 }
 
-CO_TEST(ValueOrFatalTest, Task) {
+CO_TEST(ValueOrFatalTest, task) {
   co_await checkFatalOnNonValue<Task<void>>();
 }
 
-CO_TEST(ValueOrFatalTest, NowTask) {
+CO_TEST(ValueOrFatalTest, nowTask) {
   co_await checkFatalOnNonValue<now_task<void>>();
 }
 
@@ -164,7 +204,7 @@ inline constexpr bool test_make_fatal_on_non_value_v = std::is_same_v<
         std::remove_reference_t<T>,
         on_stopped_and_error<will_fatal>>>;
 
-CO_TEST(ValueOrFatalTest, NowTaskIsImmediate) {
+CO_TEST(ValueOrFatalTest, nowTaskIsImmediate) {
   auto myNowTask = []() -> now_task<int> { co_return 5; };
   EXPECT_EQ(5, co_await fatal_on_non_value(myNowTask()));
 
@@ -271,9 +311,16 @@ now_task<void> checkValueOrFatalAllFatal() {
         co_await co_withExecutor(co_await co_current_executor, coFatalThrow());
       },
       "MyErr");
+
+  // Stopped path also terminates (tests the other branch in value_only_default)
+  auto coFatalStopped =
+      []() -> value_or_fatal<TaskT, on_stopped_and_error<will_fatal>> {
+    co_yield co_cancelled;
+  };
+  EXPECT_DEATH({ co_await coFatalStopped(); }, "OperationCancelled");
 }
 
-CO_TEST(ValueOrFatalTest, AllFatalTask) {
+CO_TEST(ValueOrFatalTest, allFatalTask) {
   co_await checkValueOrFatalAllFatal<Task<void>>();
 
   // We want to check `value_or_fatal` for an `AsyncScope` task because
@@ -292,29 +339,66 @@ CO_TEST(ValueOrFatalTest, AllFatalTask) {
   EXPECT_DEATH(co_await coThrowFromScopeTask(), "MyErr");
 }
 
-CO_TEST(ValueOrFatalTest, AllFatalNowTask) {
+CO_TEST(ValueOrFatalTest, allFatalNowTask) {
   co_await checkValueOrFatalAllFatal<now_task<>>();
 }
 
-CO_TEST(ValueOrFatalTest, OnStoppedVoid) {
+// Normal completion (no exception) works correctly
+CO_TEST(ValueOrFatalTest, successfulCompletion) {
+  auto coSuccessInt = []() -> value_or_fatal<Task<int>, on_stopped<0>> {
+    co_return 42;
+  };
+  EXPECT_EQ(42, co_await coSuccessInt());
+
   bool ran = false;
-  auto coCancelSuccess = [&]() -> value_or_fatal<Task<>, on_stopped_void> {
+  auto coSuccessVoid = [&]() -> value_or_fatal<Task<>, on_stopped_void> {
     ran = true;
-    throw OperationCancelled{}; // pretend to be cancelled
-    LOG(FATAL) << "not reached";
     co_return;
   };
-  co_await coCancelSuccess();
+  co_await coSuccessVoid();
   EXPECT_TRUE(ran);
 }
 
-CO_TEST(ValueOrFatalTest, OnStoppedInt) {
-  auto coCancelSuccess = [&]() -> value_or_fatal<Task<int>, on_stopped<42>> {
-    throw OperationCancelled{}; // pretend to be cancelled
-    LOG(FATAL) << "not reached";
-    co_return -1;
-  };
-  EXPECT_EQ(42, co_await coCancelSuccess());
+template <typename ExceptionType, auto Policy>
+value_or_fatal<now_task<int>, Policy> intTaskThrows() {
+  throw ExceptionType{};
+  co_return -1;
+}
+
+template <typename ExceptionType, auto Policy>
+value_or_fatal<now_task<>, Policy> voidTaskThrows() {
+  throw ExceptionType{};
+  co_return;
+}
+
+// Policy substitutes value instead of fataling
+CO_TEST(ValueOrFatalTest, policySubstitutesValue) {
+  // stopped -> void
+  co_await voidTaskThrows<OperationCancelled, on_stopped_void>();
+  co_await voidTaskThrows<OperationCancelled, on_stopped<unit>>();
+
+  // stopped & error -> void
+  co_await voidTaskThrows<OperationCancelled, on_stopped_and_error<unit>>();
+  co_await voidTaskThrows<MyErr, on_stopped_and_error<unit>>();
+
+  // stopped -> int, error -> fatal
+  EXPECT_EQ(42, (co_await intTaskThrows<OperationCancelled, on_stopped<42>>()));
+  EXPECT_DEATH(
+      { blockingWait(intTaskThrows<MyErr, on_stopped<42>>()); }, "MyErr");
+
+  // stopped & error -> same int
+  EXPECT_EQ(
+      99,
+      (co_await intTaskThrows<OperationCancelled, on_stopped_and_error<99>>()));
+  EXPECT_EQ(99, (co_await intTaskThrows<MyErr, on_stopped_and_error<99>>()));
+
+  // on_stopped_and_error<V1, V2> lets stopped and error use distinct values
+  EXPECT_EQ( // stopped -> V1
+      1,
+      (co_await intTaskThrows<
+          OperationCancelled,
+          on_stopped_and_error<1, 2>>()));
+  EXPECT_EQ(2, (co_await intTaskThrows<MyErr, on_stopped_and_error<1, 2>>()));
 }
 
 // co_withExecutor(as_noexcept<Task>) makes as_noexcept<TaskWithExecutor>
@@ -354,6 +438,46 @@ static_assert(
     lenient_safe_alias_of_v<value_or_fatal<
         safe_task_with_executor<safe_alias::unsafe_member_internal>,
         on_stopped_void>>);
+
+// Test `value_or_error(value_or_fatal(...))` composition - verifies the
+// `await_resume_result()` protocol is used correctly.
+CO_TEST(ValueOrFatalTest, valueOrErrorComposition) {
+  { // value_or_error(value_or_fatal(...)) returns value_only_result<T>
+    auto coSuccess = []() -> value_or_fatal<Task<int>, on_stopped<0>> {
+      co_return 42;
+    };
+    auto res = co_await value_or_error(coSuccess());
+    static_assert(std::is_same_v<decltype(res), value_only_result<int>>);
+    EXPECT_EQ(42, res.value_only());
+  }
+
+  { // Also works with void tasks
+    bool ran = false;
+    auto coVoid = [&]() -> value_or_fatal<Task<>, on_stopped_void> {
+      ran = true;
+      co_return;
+    };
+    auto voidRes = co_await value_or_error(coVoid());
+    static_assert(std::is_same_v<decltype(voidRes), value_only_result<void>>);
+    EXPECT_TRUE(ran);
+  }
+
+  { // Stopped policy -- intentionally cloned in ValueOrErrorTest.cpp
+    auto coStopped = []() -> value_or_fatal<Task<int>, on_stopped<99>> {
+      co_yield co_cancelled;
+      co_return -1;
+    };
+    EXPECT_EQ(99, (co_await value_or_error(coStopped())).value_only());
+  }
+
+  { // Error policy substitution
+    auto coError = []() -> value_or_fatal<Task<int>, on_stopped_and_error<42>> {
+      co_yield co_error{MyErr{}};
+      co_return -1;
+    };
+    EXPECT_EQ(42, (co_await value_or_error(coError())).value_only());
+  }
+}
 
 } // namespace folly::coro
 

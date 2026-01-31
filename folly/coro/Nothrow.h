@@ -89,7 +89,11 @@ class BypassExceptionThrowing {
   template <typename Awaitable>
   void maybeActivate() {
     if (is_instantiation_of_v<ValueOrErrorImpl, Awaitable>) {
-      DCHECK(bypassMode_ == BypassMode::ONLY_WHEN_OPERATION_CANCELLED);
+      DCHECK(
+          // normal `value_or_error`: bypass `OperationCancelled` handling.
+          bypassMode_ == BypassMode::ONLY_WHEN_OPERATION_CANCELLED ||
+          // inner awaitable is value-only, no bypass needed.
+          bypassMode_ == BypassMode::INACTIVE);
     } else {
       // Awaitable should've been unwrapped before getting here.
       static_assert(
@@ -111,8 +115,15 @@ class BypassExceptionThrowing {
     bypassMode_ = BypassMode::REQUESTED;
   }
 
+  template <typename Awaitable>
   void requestDueToValueOrError() {
-    bypassMode_ = BypassMode::ONLY_WHEN_OPERATION_CANCELLED;
+    // If the inner awaitable is value-only (e.g., `value_or_fatal`), it
+    // already guarantees no exceptions escape.  Do NOT activate bypass mode,
+    // as that would intercept exceptions before the inner awaitable's
+    // `await_resume_result()` can apply its policy.
+    if constexpr (!value_only_awaitable_v<Awaitable>) {
+      bypassMode_ = BypassMode::ONLY_WHEN_OPERATION_CANCELLED;
+    }
   }
 
  public: // Otherwise we'd also need to friend `AsyncGenerator`, etc

@@ -1030,6 +1030,7 @@ fbcode_target(
     exported_deps = [
         ":task_wrapper",
         ":via_if_async",
+        "//folly/result:value_only_result",
     ],
 )
 
@@ -1040,6 +1041,7 @@ non_fbcode_target(
     exported_deps = [
         ":task_wrapper",
         ":via_if_async",
+        "//xplat/folly/result:value_only_result",
     ],
 )
 

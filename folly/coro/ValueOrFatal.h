@@ -22,6 +22,7 @@
 #include <folly/lang/Assume.h>
 #include <folly/result/result.h>
 #include <folly/result/try.h>
+#include <folly/result/value_only_result.h>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -118,29 +119,54 @@ inline constexpr bool is_task_with_executor_v = requires {
 };
 
 template <typename Awaitable, auto Policy>
-class ValueOrFatalAwaiter {
+class ValueOrFatalAwaiter : public ValueOnlyAwaiterBase<Awaitable> {
  private:
-  using Awaiter = awaiter_type_t<Awaitable>;
-  Awaiter awaiter_;
+  using Base = ValueOnlyAwaiterBase<Awaitable>;
+  using RetT = decltype(FOLLY_DECLVAL(typename Base::Awaiter).await_resume());
 
  public:
-  explicit ValueOrFatalAwaiter(Awaitable&& awaiter)
-      : awaiter_(get_awaiter(static_cast<Awaitable&&>(awaiter))) {}
+  explicit ValueOrFatalAwaiter(Awaitable&& awaitable)
+      : Base(static_cast<Awaitable&&>(awaitable)) {}
 
-  auto await_ready() noexcept -> decltype(awaiter_.await_ready()) {
-    // As of this writing, all `await_ready` in `folly::coro` are `noexcept`.
-    // If this is legitimately triggered, then we can decide the right policy.
-    static_assert(noexcept(awaiter_.await_ready()));
-    return awaiter_.await_ready();
-  }
+  // Returns `value_only_result<T>` for composition with `await_resume_result()`
+  // protocol. Implicitly converts to `result<T>` for callers expecting that.
+  value_only_result<RetT> await_resume_result() noexcept {
+    // Get result from awaiter using the best available protocol
+    auto res = [&]() -> result<RetT> {
+      if constexpr (is_awaiter_result<typename Base::Awaiter>) {
+        // Catch missed optimization: `awaiter_` returning `value_only_result`
+        // would needlessly convert `value_only_result` to `result`, then back.
+        static_assert(
+            !is_instantiation_of_v<
+                value_only_result,
+                std::remove_cvref_t<
+                    decltype(this->awaiter_.await_resume_result())>>);
+        return this->awaiter_.await_resume_result();
+      } else if constexpr (is_awaiter_try<typename Base::Awaiter>) {
+        return try_to_result(this->awaiter_.await_resume_try());
+      } else {
+        try {
+          if constexpr (std::is_void_v<RetT>) {
+            this->awaiter_.await_resume();
+            return {};
+          } else {
+            return this->awaiter_.await_resume();
+          }
+        } catch (...) { // Policy may handle both "stopped" and "error" below
+          return non_value_result::from_current_exception();
+        }
+      }
+    }();
 
-  // `noexcept` forces any unhandled exceptions to `std::terminate`
-  auto await_resume() noexcept -> decltype(awaiter_.await_resume()) {
-    using RetT = decltype(awaiter_.await_resume());
-    try {
-      return awaiter_.await_resume();
-    } catch (const OperationCancelled&) {
-      auto nv = non_value_result{stopped_result};
+    // Handle result uniformly
+    if (res.has_value()) {
+      if constexpr (std::is_void_v<RetT>) {
+        return {};
+      } else {
+        return std::move(res).value_or_throw();
+      }
+    } else { // Apply policy to non-value result
+      auto nv = std::move(res).non_value();
       using PolicyRetT = decltype(Policy.value_only_default(std::move(nv)));
       if constexpr (std::is_same_v<PolicyRetT, will_fatal_t>) {
         // Policy terminates (will_fatal), won't return
@@ -148,21 +174,21 @@ class ValueOrFatalAwaiter {
         folly::assume_unreachable();
       } else if constexpr (std::is_void_v<RetT>) {
         Policy.value_only_default(std::move(nv));
+        return {};
       } else {
         return Policy.value_only_default(std::move(nv));
       }
     }
   }
 
-  // `noexcept` here as well, because the underlying awaitable might
-  // have a throwing `await_suspend`, and those exceptions propagate
-  // to the parent coro promise, bypassing `await_resume`.
-  // Demo: https://godbolt.org/z/Edfj8P8be
-  template <typename Promise>
-  auto await_suspend(coroutine_handle<Promise> coro) noexcept
-      -> decltype(awaiter_.await_suspend(coro)) {
-    return awaiter_.await_suspend(coro);
-  }
+  RetT await_resume() noexcept { return await_resume_result().value_only(); }
+
+  // IMPORTANT: There is deliberately NO `await_resume_try()` here. This causes
+  // `co_awaitTry(value_or_fatal(...))` to INTENTIONALLY fail at compile time:
+  //   - `value_or_fatal` guarantees value-only completion
+  //   - `Try`'s error state would be useless (never populated)
+  //   - We want new code to adopt `result`, not `Try`
+  void await_resume_try(auto&&...) = delete;
 };
 
 template <typename, auto>

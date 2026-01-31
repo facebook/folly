@@ -48,6 +48,7 @@ fbcode_target(
         "//folly/coro:gtest_helpers",
         "//folly/coro:result",
         "//folly/coro:value_or_error",
+        "//folly/coro:value_or_fatal",
         "//folly/coro:via_if_async",
         "//folly/coro/safe:now_task",
     ],
@@ -293,11 +294,11 @@ fbcode_target(
     deps = [
         "//folly/coro:async_scope",
         "//folly/coro:gtest_helpers",
+        "//folly/coro:value_or_error",
         "//folly/coro:value_or_fatal",
         "//folly/coro/safe:now_task",
         "//folly/coro/safe:safe_task",
     ],
-    external_deps = ["glog"],
 )
 
 fbcode_target(
