@@ -155,9 +155,27 @@ class CompressionContextPool {
     return stack.size();
   }
 
+  /// @returns the total bytes of memory used by the pool.
+  size_t bytes_used() const {
+    auto lock = state_.rlock();
+#if !FOLLY_COMPRESSION_HAS_CONSTEXPR_VECTOR
+    if (!lock->stack_) {
+      return 0;
+    }
+#endif
+    auto& stack = *lock->stack_;
+    size_t bytes = 0;
+    for (auto& ptr : stack) {
+      bytes += size_of_(ptr.get());
+    }
+    return bytes;
+  }
+
   ReturnToPoolDeleter get_deleter() { return ReturnToPoolDeleter(this); }
 
   const Resetter& get_resetter() { return resetter_; }
+
+  const Sizeof& get_sizeof() const { return size_of_; }
 
   void flush_deep() {
     flush_shallow();

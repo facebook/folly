@@ -30,7 +30,8 @@ namespace {
 std::atomic<size_t> numFoos{0};
 std::atomic<size_t> numDeleted{0};
 
-class Foo {
+// Ensure sizeof(Foo) != 1 for bytes_used() test to be meaningful
+class alignas(4) Foo {
  public:
   void use() {
     EXPECT_FALSE(used_);
@@ -261,6 +262,24 @@ TEST_F(CompressionContextPoolTest, testCallback) {
   EXPECT_EQ(FooIncrementCallback::count, 1);
 }
 
+TEST_F(CompressionContextPoolTest, testBytesUsed) {
+  static_assert(sizeof(Foo) != 1);
+  {
+    auto ptr1 = pool_->get();
+  }
+  EXPECT_EQ(pool_->created_count(), 1);
+  EXPECT_EQ(pool_->size(), 1);
+  EXPECT_EQ(pool_->bytes_used(), sizeof(Foo));
+  {
+    auto ptr1 = pool_->get();
+    auto ptr2 = pool_->get();
+    EXPECT_NE(ptr1.get(), ptr2.get());
+  }
+  EXPECT_EQ(pool_->created_count(), 2);
+  EXPECT_EQ(pool_->size(), 2);
+  EXPECT_EQ(pool_->bytes_used(), 2 * sizeof(Foo));
+}
+
 class CompressionCoreLocalContextPoolTest : public testing::Test {
  protected:
   using Pool = CompressionCoreLocalContextPool<
@@ -386,6 +405,22 @@ TEST_F(CompressionCoreLocalContextPoolTest, testGetZeroStripes) {
   Pool pool(0);
   auto ptr = pool.get();
   EXPECT_NE(ptr, nullptr);
+}
+
+TEST_F(CompressionCoreLocalContextPoolTest, testBytesUsed) {
+  static_assert(sizeof(Foo) != 1);
+  {
+    auto ptr1 = pool_->get();
+  }
+  EXPECT_EQ(pool_->created_count(), 1);
+  EXPECT_EQ(pool_->bytes_used(), sizeof(Foo));
+  {
+    auto ptr1 = pool_->get();
+    auto ptr2 = pool_->get();
+    EXPECT_NE(ptr1.get(), ptr2.get());
+  }
+  EXPECT_EQ(pool_->created_count(), 2);
+  EXPECT_EQ(pool_->bytes_used(), 2 * sizeof(Foo));
 }
 
 #ifdef FOLLY_COMPRESSION_HAS_ZSTD_CONTEXT_POOL_SINGLETONS

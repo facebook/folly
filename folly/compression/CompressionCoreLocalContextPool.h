@@ -164,6 +164,16 @@ class CompressionCoreLocalContextPool
     }
   }
 
+  size_t bytes_used() const {
+    size_t bytes = pool_.bytes_used();
+    for (const auto& cache : caches_) {
+      if (auto ptr = cache.ptr.load()) {
+        bytes += pool_.get_sizeof()(ptr);
+      }
+    }
+    return bytes;
+  }
+
  private:
   ReturnToPoolDeleter get_deleter() { return ReturnToPoolDeleter(this); }
 
