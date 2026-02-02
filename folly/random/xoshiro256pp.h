@@ -96,7 +96,7 @@ class xoshiro256pp {
   static constexpr uint64_t size_ratio = sizeof(vector_type) / sizeof(result_type);
   static constexpr uint64_t ResultCount = VecResCount * size_ratio;
 
-  vector_type state[StateSize * VecResCount]{};
+  alignas(64) vector_type state[StateSize * VecResCount]{};
   
   result_type res[ResultCount];
   uint64_t cur = ResultCount;
@@ -123,14 +123,6 @@ class xoshiro256pp {
   }
 
   void calc() noexcept {
-#if FOLLY_AARCH64
-    // By default, the compiler will prefer to unroll the loop completely, deactivating vectorization.
-    #if defined(__clang__)
-    #pragma clang loop unroll(disable) vectorize_width(8)
-    #elif defined(__GNUC__)
-    #pragma GCC unroll 4
-    #endif
-#endif
     for (unsigned int i = 0; i < VecResCount; ++i) {
       const vector_type vec_res = rotl(state[idx(0, i)] + state[idx(3, i)], 23) + state[idx(0, i)];
       std::memcpy(&res[i * size_ratio], &vec_res, sizeof(vector_type));
