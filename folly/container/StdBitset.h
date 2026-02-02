@@ -22,6 +22,7 @@
 #include <bit>
 #include <bitset>
 #include <cassert>
+#include <folly/Likely.h>
 
 namespace folly {
 
@@ -77,7 +78,7 @@ size_t std_bitset_find_next(const std::bitset<N>& bitset, size_t start) {
 
   while (word_idx < max_words) {
     size_t word = data[word_idx];
-    if (word) [[unlikely]] {
+    if (FOLLY_UNLIKELY(word)) {
       size_t idx_in_word = std::countr_zero(word);
       // we found the first
       return word_idx * kWordSize + idx_in_word;
