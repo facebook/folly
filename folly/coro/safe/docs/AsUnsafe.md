@@ -68,13 +68,34 @@ In order to safely pass a reference to an unsafe `Task`, this condition must hol
 
 **The underlying memory is guaranteed to outlive the coroutine execution.**
 
-This condition can be achieved using `co_invoke` or `deferValue`. `co_invoke`
-is the preferred pattern, however there is a small performance tax to allocate the coroutine frame.
-`deferValue` is harder to read, and harder to get right, however pays less of a performance tax.
-In the rare case where you must make a `now_task` take reference arguments self-contained,
-use one of these patterns.
+This condition can be achieved using `co_invoke` or `deferValue`. **`co_invoke`
+is strongly preferred** — use `deferValue` only as an absolute last resort when you
+cannot afford the extra memory cost of `co_invoke`.
 
-#### Pattern 1: `co_invoke` (Preferred)
+The `co_invoke` coroutine frame is typically only a few dozen bytes larger. This difference is
+unlikely to matter for the vast majority of use cases. Only consider `deferValue` in extremely
+high-fanout scenarios where this memory overhead accumulates significantly.
+
+**WARNING**: `deferValue` introduces additional safety risks. With `deferValue`, the task has
+already started — the work runs in the background on some other executor. This makes it
+very easy to fail to await completion, due to an unhandled exception or other subtle
+control-flow bug. Failing to await completion is dangerous because:
+
+1. **You lose success-or-error information.** Your background work might be
+   failing 100% of the time, but there will be no recourse — errors are silently
+   dropped.
+
+2. **You may violate implicit sequencing invariants.** Something that expects to
+   run "after" the completion may run concurrently instead. While this might be
+   fine if you packaged up all task state in `deferValue`, in practice code
+   often relies on global state. Your background work might still be running
+   after the global state no longer expects it to (is destroyed, invalid, or
+   must not be mutated).
+
+In the rare case where you must make a `now_task` take reference arguments
+self-contained, use one of these patterns.
+
+#### Pattern 1: `co_invoke` (Strongly Preferred)
 
 Use `co_invoke` to make decay-copies of arguments into an additional coro frame (often on the heap),
 guaranteeing their lifetime for the duration of the coroutine:
@@ -94,7 +115,7 @@ folly::SemiFuture<int> processDataSafe(int& x) {
 }
 ```
 
-#### Pattern 2: `deferValue` with Explicit Heap Allocation
+#### Pattern 2: `deferValue` with Explicit Heap Allocation (Last Resort)
 
 If `co_invoke` is not suitable, you can use `deferValue` to extend the
 lifetime of heap-allocated data:
