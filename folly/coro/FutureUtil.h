@@ -73,7 +73,7 @@ Task<drop_unit_t<V>> toTaskInterruptOnCancel(folly::Future<V> f) {
     co_await baton;
   }
   if (cancelled) {
-    co_yield co_cancelled;
+    co_yield co_stopped_may_throw;
   }
   co_yield co_result(std::move(result));
 }

@@ -65,7 +65,7 @@ Today, `folly/OperationCancelled.h` propagates as an exception through
 propagation semantics are always throwing-by-default:
 
 ```
-co_yield co_cancelled;
+co_yield co_stopped_may_throw;
 throw OperationCancelled{}; // discouraged
 co_yield co_error{OperationCancelled{}}; // discouraged
 ```
@@ -88,13 +88,13 @@ auto res = co_await co_awaitTry(task());
 The consequence is lots of explicit, error-prone handling of cancellation in
 user code.  And lots of bugs.
 
-I soon intend to propose `co_yield co_cancelled_nothrow`, plus a migration
+I soon intend to propose `co_yield co_stopped_nothrow`, plus a migration
 strategy that keeps the current code working, while encouraging new and
 refactored code to adopt the new primitive.
 
 For the purposes of this document, you just need to know that:
   - We will have 2 different `...OperationCancelled` types.
-  - The type emitted by `co_cancelled_nothrow` always propagates through
+  - The type emitted by `co_stopped_nothrow` always propagates through
     `folly::coro` code as if wrapped with `co_nothrow()`.  When going outside
     of coroutines (e.g. `blocking_wait`), it will still be thrown due to a
     lack of better alternatives.
@@ -153,7 +153,7 @@ under "Idea 1".
 
     * `exception_ptr` to two variants of `OperationCancelled`
       - Legacy / thrown exception; currently stores a dynamic `exception_ptr`
-      - New `co_cancelled_nothrow`; currently stores a leaky singleton ptr.
+      - New `co_stopped_nothrow`; currently stores a leaky singleton ptr.
 
     * Known-type non-fast-path `exception_ptr`.
 
@@ -214,7 +214,7 @@ For now, our implementation ("Idea 1" below) resolves the puzzle in the most
 conservative way:
   - Preserve dynamic object identity for the legacy, thrown
     `OperationCancelled`.
-  - Use a leaky singleton for the new `co_cancelled_nothrow`, but still
+  - Use a leaky singleton for the new `co_stopped_nothrow`, but still
     store its pointer so that, on the off-chance that two DSOs end up with
     different instances of the singleton, object identity is preserved.
 If a compelling performance argument comes up, we can revisit this choice.
@@ -257,7 +257,7 @@ desire to preserve OC object identity.
 
 Use two 3-bit positions on OCs, preserving dynamic eptrs for both.
   - **Not doing this** -- "has dynamic eptr?" would no longer be a 1-bit test.
-  - Also, we don't even WANT normal `co_cancelled_nothrow` usage to allocate a
+  - Also, we don't even WANT normal `co_stopped_nothrow` usage to allocate a
     dynamic eptr.
 
 ### Idea 1: Only store dynamic eptr for the legacy thrown OC

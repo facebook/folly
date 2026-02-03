@@ -94,7 +94,7 @@ CO_TEST(ValueOrErrorTest, valueOrErrorOrStoppedOfVoid) {
 
 CO_TEST(ValueOrErrorTest, valueOrErrorOrStoppedStopped) {
   auto stoppedTask = [&]() -> now_task<void> {
-    co_yield co_cancelled;
+    co_yield co_stopped_may_throw;
     LOG(FATAL) << "not reached";
   };
   { // Capturing a "stopped" completion
@@ -182,7 +182,7 @@ CO_TEST(ValueOrErrorTest, coAwaitTryRequiresNoexceptAwait) {
 // `on_stopped` policy could substitute the default value.
 CO_TEST(ValueOrErrorTest, valueOrErrorAroundValueOnlyAwaitable) {
   auto coStopped = []() -> value_or_fatal<Task<int>, on_stopped<99>> {
-    co_yield co_cancelled;
+    co_yield co_stopped_may_throw;
     co_return -1;
   };
   EXPECT_EQ(99, (co_await value_or_error(coStopped())).value_only());

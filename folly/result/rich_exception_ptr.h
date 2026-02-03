@@ -684,7 +684,7 @@ class rich_exception_ptr_impl : private B {
   }
 
   // PRIVATE, not for end users -- the non-stub type will be in `detail`.
-  // Users will instead use `co_yield co_cancellet_nothrow` in coros.
+  // Users will instead use `co_yield co_stopped_nothrow` in coros.
   explicit rich_exception_ptr_impl(StubNothrowOperationCancelled) {
     // Wrapper that constructs the exception_ptr on first use.
     // No destructor needed - mutable_eptr_ref_guard is POD-like storage,

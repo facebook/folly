@@ -73,7 +73,7 @@ class SmallUnboundedQueue : detail::SmallUnboundedQueueBase<!SingleConsumer> {
         });
         co_await c.baton;
         if (cancelled) {
-          co_yield co_cancelled;
+          co_yield co_stopped_may_throw;
         }
       }
       buffer_ = queue_.getMessages();

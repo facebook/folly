@@ -173,7 +173,7 @@ coro::Task<void> Semaphore::co_wait() {
         // TODO: This is not unreachable code, but the compiler wrongly thinks
         // it is. Once the compiler is fixed we can remove this.
         if (cancelled) {
-          co_yield folly::coro::co_cancelled;
+          co_yield folly::coro::co_stopped_may_throw;
         }
 
         co_return;

@@ -298,6 +298,13 @@ auto CoThrow(Ex&& e) {
   });
 }
 
+template <typename T>
+auto CoStoppedMayThrow() {
+  return detail::makeCoAction([]() -> Task<T> {
+    co_yield co_stopped_may_throw;
+  });
+}
+
 // CoThrows()
 // CoThrows(exceptionMatcher)
 // CoThrowsMessage(messageMatcher)

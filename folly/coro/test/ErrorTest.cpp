@@ -47,7 +47,7 @@ TEST(CoErrorTest, constructible) {
 
 CO_TEST(CoCancellationTest, propagateOperationCancelled) {
   auto cancelledTask = []() -> now_task<> {
-    co_yield co_cancelled;
+    co_yield co_stopped_may_throw;
     ADD_FAILURE() << "Not reached";
   };
 

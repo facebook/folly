@@ -128,11 +128,11 @@ namespace detail {
 //   - Empty `std::exception_ptr`s, while nonsensical in the context of
 //     `result`, are safe to use unless you call `throw_exception()`.  And,
 //     unfortunately, `co_yield co_error(exception_wrapper{})` compiles.
-//   - As of 2025, erroring with `OperationCancelled` is the implementation of
-//     `co_yield co_canceled`, and some code paths actually rely on this, often
-//     erroneously (see `coro/Retry.h`).  So, even as we work to reduce
-//     reliance on this in anticipation of C++26 "stopped" semantics, for
-//     the foreseeable future it will "sort of work".
+//   - As of 2026, erroring with `OperationCancelled` is the implementation of
+//     `co_yield co_stopped_may_throw`, and some code paths actually rely on
+//     this, often erroneously (see `coro/Retry.h`).  So, even as we work to
+//     reduce reliance on this in anticipation of C++26 "stopped" semantics,
+//     for the foreseeable future it will "sort of work".
 void fatal_if_eptr_empty_or_stopped(const std::exception_ptr&);
 inline void dfatal_if_eptr_empty_or_stopped(const std::exception_ptr& eptr) {
   // This can be hot in production code (usage similar to `co_awaitTry`).  So,
@@ -310,8 +310,8 @@ class [[nodiscard]] error_or_stopped {
   //
   // These internal-only functions let the `folly::coro` implementation ingest
   // `std::exception_ptr`s containing `OperationCancelled` made via
-  // `folly::coro::co_cancelled`, without incurring the 20-80ns+ cost of
-  // eagerly eagerly testing whether it contains `OperationCancelled`.
+  // `folly::coro::co_stopped_may_throw`, without incurring the 20-80ns+ cost
+  // of eagerly testing whether it contains `OperationCancelled`.
   static error_or_stopped make_legacy_error_or_cancellation_slow(
       detail::result_private_t, exception_wrapper ew) {
     return {std::in_place, std::move(ew).exception_ptr()};

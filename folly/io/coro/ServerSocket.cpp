@@ -111,7 +111,7 @@ Task<std::unique_ptr<Transport>> ServerSocket::accept() {
   co_await baton;
   if (cancelToken.isCancellationRequested()) {
     socket_->stopAccepting();
-    co_yield co_cancelled;
+    co_yield co_stopped_may_throw;
   }
   if (cb.error) {
     co_yield co_error(std::move(cb.error));

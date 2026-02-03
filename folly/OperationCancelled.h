@@ -22,7 +22,7 @@ namespace folly {
 
 /// IMPORTANT: `folly`-internal, do NOT use this in new user code. Instead:
 ///
-///   - `co_yield coro::co_cancelled` to signal that a coro was cancelled.
+///   - `co_yield coro::co_stopped_may_throw` to signal a coro was cancelled.
 ///
 ///   - To check for cancellation in `folly::coro` coroutines, use one of:
 ///       // (1) default behavior
@@ -31,7 +31,7 @@ namespace folly {
 ///       auto& ctok = co_await coro::co_current_cancellation_token;
 ///       if (ctok.isCancellationRequested()) {
 ///         /* ... do stuff ... */
-///         co_yield coro::co_cancelled;
+///         co_yield coro::co_stopped_may_throw;
 ///       }
 ///
 ///   - Store `stopped_result` to obtain a `result<T>` or `non_value_result`
@@ -46,7 +46,7 @@ namespace folly {
 ///         // Handle error here; `ex` quacks like `const MyErr*`.
 ///       } else if (res.has_stopped()) {
 ///         // Handle cancellation here
-///         co_yield coro::co_cancelled;
+///         co_yield coro::co_stopped_may_throw;
 ///       } else { // get value, or propagate unhandled errors/cancellation
 ///         auto v = co_await folly::or_unwind(std::move(res));
 ///       }

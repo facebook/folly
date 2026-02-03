@@ -128,7 +128,7 @@ class RetryImmediatelyWithLimit {
 
     const auto& cancelToken = co_await co_current_cancellation_token;
     if (cancelToken.isCancellationRequested()) {
-      co_yield folly::coro::co_error(OperationCancelled{});
+      co_yield folly::coro::co_stopped_may_throw;
     }
 
     --retriesRemaining_;
@@ -212,7 +212,7 @@ class ExponentialBackoffWithJitter {
     /// Check to see if we were cancelled during the sleep.
     const auto& cancelToken = co_await co_current_cancellation_token;
     if (cancelToken.isCancellationRequested()) {
-      co_yield folly::coro::co_cancelled;
+      co_yield folly::coro::co_stopped_may_throw;
     }
   }
 

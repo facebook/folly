@@ -45,7 +45,7 @@ class TransportCallbackBase {
     auto cancelToken = co_await co_current_cancellation_token;
     if (cancelToken.isCancellationRequested()) {
       cancel();
-      co_yield folly::coro::co_cancelled;
+      co_yield folly::coro::co_stopped_may_throw;
     }
     folly::CancellationCallback cancellationCallback{
         cancelToken, [this] {
@@ -58,7 +58,7 @@ class TransportCallbackBase {
 
     if (cancelToken.isCancellationRequested()) {
       cancel();
-      co_yield folly::coro::co_cancelled;
+      co_yield folly::coro::co_stopped_may_throw;
     }
     co_return folly::unit;
   }
