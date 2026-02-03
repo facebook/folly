@@ -802,7 +802,7 @@ unique_ptr<IOBuf> IOBuf::cloneImpl(std::pmr::memory_resource* mr) const {
 
 unique_ptr<IOBuf> IOBuf::cloneOneImpl(std::pmr::memory_resource* mr) const {
   if (sharedInfo_) {
-    sharedInfo_->refcount.fetch_add(1, std::memory_order_acq_rel);
+    sharedInfo_->refcount.fetch_add(1, std::memory_order_relaxed);
   }
 
   auto [storage, mallocSize] = allocateStorage<HeapStorage>(mr);
@@ -832,7 +832,7 @@ IOBuf IOBuf::cloneAsValue() const {
 
 IOBuf IOBuf::cloneOneAsValue() const {
   if (sharedInfo_) {
-    sharedInfo_->refcount.fetch_add(1, std::memory_order_acq_rel);
+    sharedInfo_->refcount.fetch_add(1, std::memory_order_relaxed);
   }
   return IOBuf(
       InternalConstructor(), sharedInfo_, buf_, capacity_, data_, length_);
