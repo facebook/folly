@@ -11,6 +11,7 @@ import hashlib
 import os
 import random
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -873,20 +874,39 @@ def download_url_to_file_with_progress(url: str, file_name) -> None:
                 c.close()
             headers = None
         else:
-            req_header = {"Accept": "application/*"}
-            res = urlopen(Request(url, None, req_header))
-            chunk_size = 8192  # urlretrieve uses this value
-            headers = res.headers
-            content_length = res.headers.get("Content-Length")
-            total = int(content_length.strip()) if content_length else -1
-            amount = 0
-            with open(file_name, "wb") as f:
-                chunk = res.read(chunk_size)
-                while chunk:
-                    f.write(chunk)
-                    amount += len(chunk)
-                    progress.write_update(total, amount)
+            try:
+                req_header = {"Accept": "application/*"}
+                res = urlopen(Request(url, None, req_header))
+                chunk_size = 8192  # urlretrieve uses this value
+                headers = res.headers
+                content_length = res.headers.get("Content-Length")
+                total = int(content_length.strip()) if content_length else -1
+                amount = 0
+                with open(file_name, "wb") as f:
                     chunk = res.read(chunk_size)
+                    while chunk:
+                        f.write(chunk)
+                        amount += len(chunk)
+                        progress.write_update(total, amount)
+                        chunk = res.read(chunk_size)
+            except (OSError, IOError) as exc:  # noqa: B014
+                # Downloading from within Meta's network needs to use a proxy.
+                if shutil.which("fwdproxy-config") is None:
+                    print(
+                        "Note: Could not find Meta-specific fallback 'fwdproxy-config'. "
+                        "If you are working externally, you can ignore this message."
+                    )
+                    raise
+
+                print("Default download failed, retrying with curl and fwdproxy...")
+                cmd = f"curl -L $(fwdproxy-config curl) -o {shlex.quote(file_name)} {shlex.quote(url)}"
+                print(f"Running command: {cmd}")
+                result = subprocess.run(cmd, shell=True, capture_output=True)
+                if result.returncode != 0:
+                    raise TransientFailure(
+                        f"Failed to download {url} to {file_name}: {exc} (fwdproxy fallback failed: {result.stderr.decode()})"
+                    )
+                headers = None
     except (OSError, IOError) as exc:  # noqa: B014
         raise TransientFailure(
             "Failed to download %s to %s: %s" % (url, file_name, str(exc))
