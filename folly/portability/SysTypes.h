@@ -20,6 +20,7 @@
 
 #ifdef _WIN32
 #include <basetsd.h> // @manual
+#include <inttypes.h>
 
 // This is a massive pain to have be an `int` due to the pthread implementation
 // we support, but it's far more compatible with the rest of the windows world
@@ -28,6 +29,8 @@ using pid_t = int;
 
 using uid_t = int;
 using gid_t = int;
+
+using off64_t = int64_t;
 
 // This isn't actually supposed to be defined here, but it's the most
 // appropriate place without defining a portability header for stdint.h

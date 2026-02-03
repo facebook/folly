@@ -41,9 +41,7 @@
 
 #include <cstdint>
 
-#include <sys/types.h>
-
-using off64_t = int64_t;
+#include <folly/portability/SysTypes.h>
 
 #define MAP_ANONYMOUS 1
 #define MAP_ANON MAP_ANONYMOUS

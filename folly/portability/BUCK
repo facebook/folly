@@ -517,6 +517,7 @@ non_fbcode_target(
         "SysMman.h",
     ],
     exported_deps = [
+        ":sys_types",
         ":windows",
         "//xplat/folly:portability",
     ],
@@ -1048,6 +1049,9 @@ fbcode_target(
     deps = [
         ":windows",
         "//folly:portability",
+    ],
+    exported_deps = [
+        ":sys_types",
     ],
     exported_external_deps = [
         ("glibc", None, "rt"),

@@ -331,6 +331,8 @@ folly_add_library(
   DEPS
     folly_portability
     folly_portability_windows
+  EXPORTED_DEPS
+    folly_portability_sys_types
 )
 
 folly_add_library(

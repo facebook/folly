@@ -71,7 +71,6 @@ ssize_t pread64(int fd, void* buf, size_t count, off64_t offset);
 namespace folly {
 namespace portability {
 namespace unistd {
-using off64_t = int64_t;
 int fsync(int fd);
 int ftruncate(int fd, off_t len);
 int getdtablesize();
