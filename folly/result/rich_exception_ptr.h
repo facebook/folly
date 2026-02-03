@@ -40,8 +40,12 @@ struct empty_result_error : public std::exception {};
 //
 // Will be replaced by real types from OperationCancelled.h, which will both
 // derive from `OperationCancelled`.
-struct StubNothrowOperationCancelled {}; // NOT an `std::exception`
-struct StubThrownOperationCancelled : std::exception {};
+struct StoppedNoThrow {}; // NOT an `std::exception`
+struct StoppedMayThrow : std::exception {
+  const char* what() const noexcept override {
+    return "operation stopped (cancelled)";
+  }
+};
 // Will be replaced by the real types that are currently in Try.h
 struct StubUsingUninitializedTry : std::exception {};
 struct StubTryException : std::exception {};
@@ -114,8 +118,8 @@ class rich_exception_ptr_impl : private B {
   template <typename Ex>
   consteval static void assert_operation_cancelled_queries() {
     static_assert(
-        !std::is_same_v<const Ex, const StubNothrowOperationCancelled> &&
-            !std::is_same_v<const Ex, const StubThrownOperationCancelled>,
+        !std::is_same_v<const Ex, const StoppedNoThrow> &&
+            !std::is_same_v<const Ex, const StoppedMayThrow>,
         "User code may only test for `OperationCancelled`; its derived classes "
         "are private implementation details.");
   }
@@ -304,7 +308,7 @@ class rich_exception_ptr_impl : private B {
       // Don't bother with the stored eptr since re-throwing does not
       // preserve object identity.
       // NOLINTNEXTLINE(facebook-hte-ThrowNonStdExceptionIssue)
-      throw StubNothrowOperationCancelled{};
+      throw StoppedNoThrow{};
     } else if (B::SIGIL_eq == bits) {
       B::debug_assert(
           "throw_exception SIGIL_eq", B::get_uintptr() == B::kSigilEmptyTry);
@@ -626,13 +630,13 @@ class rich_exception_ptr_impl : private B {
       } else if constexpr (std::derived_from<Ex, OperationCancelled>) {
         // We only want the throwing version here, since nothrow OC uses a
         // different ctor, and a non-owned copy of a leaky singleton.  This
-        // should never fire since `StubNothrowOperationCancelled` doesn't
+        // should never fire since `StoppedNoThrow` doesn't
         // derive from `std::exception`, and `OperationCancelled` will soon
         // no longer be directly constructible.
         static_assert(
             // FIXME: This one will go away:
             std::is_same_v<const Ex, const OperationCancelled> ||
-            std::is_same_v<const Ex, const StubThrownOperationCancelled>);
+            std::is_same_v<const Ex, const StoppedMayThrow>);
         return static_cast<bits_t>(
             bits_t::OWNS_EXCEPTION_PTR_and |
             bits_t::IS_OPERATION_CANCELLED_masked_eq);
@@ -685,14 +689,14 @@ class rich_exception_ptr_impl : private B {
 
   // PRIVATE, not for end users -- the non-stub type will be in `detail`.
   // Users will instead use `co_yield co_stopped_nothrow` in coros.
-  explicit rich_exception_ptr_impl(StubNothrowOperationCancelled) {
+  explicit rich_exception_ptr_impl(StoppedNoThrow) {
     // Wrapper that constructs the exception_ptr on first use.
     // No destructor needed - mutable_eptr_ref_guard is POD-like storage,
     // so the exception_ptr is leaked to avoid SDOF.
     struct InitializedSingleton : B::mutable_eptr_ref_guard {
       InitializedSingleton() {
-        new (&this->ref()) std::exception_ptr{make_exception_ptr_with(
-            std::in_place_type<StubNothrowOperationCancelled>)};
+        new (&this->ref()) std::exception_ptr{
+            make_exception_ptr_with(std::in_place_type<StoppedNoThrow>)};
       }
     };
     // Meyer singleton is thread-safe past C++11.
@@ -774,7 +778,7 @@ class rich_exception_ptr_impl : private B {
             ? rep->get_immortal_storage()->user_base_type_
             : nullptr;
       } else if (bits_t::NOTHROW_OPERATION_CANCELLED_eq == rep->get_bits()) {
-        return &typeid(StubNothrowOperationCancelled);
+        return &typeid(StoppedNoThrow);
       }
       return nullptr; // Non-exceptions: empty `Try`, small value uintptr
     });

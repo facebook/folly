@@ -89,7 +89,7 @@ auto allEpitaphRepVariants() {
   auto RichErr1 = REP{rich_error<RichErr>{}};
   auto logic_err = REP{std::runtime_error{"test"}};
   auto immortal = immortal_rich_error_t<REP, RichErr>{}.ptr();
-  auto nothrow_oc = REP{StubNothrowOperationCancelled{}};
+  auto nothrow_oc = REP{StoppedNoThrow{}};
   // NOTE: Two strings are equal iff the REPs should be equal.
   return std::vector<std::pair<std::string, REP>>{
       {"owned_richerr1", RichErr1},

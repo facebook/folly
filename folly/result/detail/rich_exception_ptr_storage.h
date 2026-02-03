@@ -139,7 +139,7 @@ class rich_exception_ptr_base_storage {
     // mind the cost of branching over a large number of these.
     SIGIL_eq = 2,
     // `...eptr_ref_guard_` contains an UNOWNED copy of a leaky singleton of
-    // `StubNothrowOperationCancelled`, which propagates through coros without
+    // `StoppedNoThrow`, which propagates through coros without
     // throwing, or being interrupted by `co_awaitTry`.
     NOTHROW_OPERATION_CANCELLED_eq = 4,
 

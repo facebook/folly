@@ -125,22 +125,21 @@ void checkNothrowOperationCancelled() {
   auto checkToEptr = [](auto&& rep, auto... priv) {
     auto eptr = static_cast<decltype(rep)>(rep).to_exception_ptr_slow(priv...);
     // This one should later be banned by a `static_assert`...
-    EXPECT_TRUE(get_exception<StubNothrowOperationCancelled>(eptr));
+    EXPECT_TRUE(get_exception<StoppedNoThrow>(eptr));
     // Future: The non-stub version will inherit from OC, which will NOT
     // inherit from `std::exception`.
     // EXPECT_TRUE(get_exception<OperationCancelled>(eptr));
     // EXPECT_FALSE(get_exception<std::exception>(eptr));
   };
 
-  REP rep{StubNothrowOperationCancelled{}};
+  REP rep{StoppedNoThrow{}};
   checkFundamentals(rep, REP{});
 
   // `throw_exception`: `result` and `Try` flavors
   // Future: should probably actually catch `OperationCancelled` here
-  EXPECT_THROW(rep.throw_exception(), StubNothrowOperationCancelled);
+  EXPECT_THROW(rep.throw_exception(), StoppedNoThrow);
   EXPECT_THROW(
-      rep.throw_exception(try_rich_exception_ptr_private_t{}),
-      StubNothrowOperationCancelled);
+      rep.throw_exception(try_rich_exception_ptr_private_t{}), StoppedNoThrow);
 
   // `to_exception_ptr_slow`: `const&` / `&&` with `result` / `Try`
   checkToEptr(std::as_const(rep));
@@ -157,11 +156,9 @@ void checkNothrowOperationCancelled() {
 #if 0 // manual test
   checkGetOuterException<
       GetExceptionResult{.isHit = false},
-      StubNothrowOperationCancelled>(rep);
+      StoppedNoThrow>(rep);
 #elif 0
-  checkGetException<
-      GetExceptionResult{.isHit = false},
-      StubNothrowOperationCancelled>(rep);
+  checkGetException<GetExceptionResult{.isHit = false}, StoppedNoThrow>(rep);
 #endif
 
   // But, we *can* query for `OperationCancelled`
