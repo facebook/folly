@@ -206,6 +206,18 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
+fb_dirsync_cpp_unittest(
+    name = "rich_exception_ptr_fmt_bench",
+    srcs = ["rich_exception_ptr_fmt_bench.cpp"],
+    deps = [
+        ":common",
+        "//folly:benchmark",
+        "//folly/result:epitaph",
+        "//folly/result:rich_error",
+        "//folly/result:rich_error_base",
+    ],
+)
+
 fb_dirsync_cpp_library(
     name = "rich_exception_ptr_check_get",
     headers = ["rich_exception_ptr_check_get.h"],

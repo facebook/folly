@@ -81,65 +81,6 @@ BENCHMARK(copyAndCompare_immortalRichExceptionPtr, n) {
 
 BENCHMARK_DRAW_LINE();
 
-struct PrintMe : rich_error_base {
-  const char* partial_message() const noexcept override {
-    return "hello, world!";
-  }
-  using folly_get_exception_hint_types = rich_error_hints<PrintMe>;
-};
-
-BENCHMARK(fmtSimpleRichError, iters) {
-  folly::BenchmarkSuspender suspender;
-  std::string buf;
-  buf.reserve(100);
-  rich_error<PrintMe> err;
-  bool all_ok = true;
-  suspender.dismissing([&] {
-    while (iters--) {
-      buf.clear();
-      fmt::format_to(std::back_inserter(buf), "{}", err);
-      folly::compiler_must_not_predict(buf);
-      all_ok = all_ok && (buf.size() == 13);
-    }
-  });
-  CHECK(all_ok);
-}
-
-struct MyBuf : std::streambuf {
-  static constexpr size_t size_ = 128;
-  char buf_[size_]{};
-  MyBuf() { setp(buf_, buf_ + size_); }
-  std::string_view written() const { return {pbase(), pptr()}; }
-  int overflow(int) override { throw std::logic_error{"bad"}; }
-  void clear() { setp(buf_, buf_ + size_); }
-};
-
-BENCHMARK(ostreamAppendSimpleRichError, iters) {
-  folly::BenchmarkSuspender suspender;
-
-  rich_error<PrintMe> err;
-  MyBuf buf;
-  std::ostream ss{&buf};
-  CHECK_EQ(std::string(), buf.written());
-  ss << err;
-  CHECK_EQ(std::string("hello, world!"), buf.written());
-  buf.clear();
-  CHECK_EQ(std::string(), buf.written());
-
-  bool all_ok = true;
-  suspender.dismissing([&] {
-    while (iters--) {
-      buf.clear();
-      ss << err;
-      folly::compiler_must_not_predict(buf);
-      all_ok = all_ok && (buf.written().size() == 13);
-    }
-  });
-  CHECK(all_ok);
-}
-
-BENCHMARK_DRAW_LINE();
-
 static constexpr auto src_loc = source_location::current();
 
 const auto same_src_line = [](const auto& ex) {
