@@ -45,15 +45,9 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME iterator
+  NAME collection_util
   HEADERS
-    Iterator.h
-  EXPORTED_DEPS
-    folly_container_access
-    folly_functional_invoke
-    folly_lang_rvalue_reference_wrapper
-    folly_traits
-    folly_utility
+    CollectionUtil.h
 )
 
 folly_add_library(
@@ -106,20 +100,18 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME heap_vector_types
+  NAME fbvector
   HEADERS
-    heap_vector_types.h
+    FBVector.h
   EXPORTED_DEPS
-    folly_container_iterator
-    folly_functional_invoke
+    folly_format_traits
+    folly_lang_checked_math
     folly_lang_exception
-    folly_memory_memory_resource
-    folly_portability_builtins
-    folly_range
+    folly_lang_hint
+    folly_likely
+    folly_memory_malloc
     folly_scope_guard
-    folly_small_vector
     folly_traits
-    folly_utility
 )
 
 folly_add_library(
@@ -137,9 +129,20 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME heterogeneous_access_fwd
+  NAME heap_vector_types
   HEADERS
-    HeterogeneousAccess-fwd.h
+    heap_vector_types.h
+  EXPORTED_DEPS
+    folly_container_iterator
+    folly_functional_invoke
+    folly_lang_exception
+    folly_memory_memory_resource
+    folly_portability_builtins
+    folly_range
+    folly_scope_guard
+    folly_small_vector
+    folly_traits
+    folly_utility
 )
 
 folly_add_library(
@@ -153,6 +156,60 @@ folly_add_library(
     folly_hash_rapidhash
     folly_range
     folly_traits
+)
+
+folly_add_library(
+  NAME heterogeneous_access_fwd
+  HEADERS
+    HeterogeneousAccess-fwd.h
+)
+
+folly_add_library(
+  NAME intrusive_heap
+  HEADERS
+    IntrusiveHeap.h
+  EXPORTED_DEPS
+    folly_lang_builtin
+    folly_portability
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+    Boost::headers
+)
+
+folly_add_library(
+  NAME intrusive_list
+  HEADERS
+    IntrusiveList.h
+  EXTERNAL_DEPS
+    Boost::headers
+)
+
+folly_add_library(
+  NAME irange
+  HEADERS
+    irange.h
+)
+
+folly_add_library(
+  NAME iterator
+  HEADERS
+    Iterator.h
+  EXPORTED_DEPS
+    folly_container_access
+    folly_functional_invoke
+    folly_lang_rvalue_reference_wrapper
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME map_util
+  HEADERS
+    MapUtil.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_optional
+    folly_range
 )
 
 folly_add_library(
@@ -194,71 +251,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME span
-  HEADERS
-    span.h
-  EXPORTED_DEPS
-    folly_container_access
-    folly_container_iterator
-    folly_cpp_attributes
-    folly_functional_invoke
-    folly_portability
-    folly_portability_constexpr
-    folly_traits
-    folly_utility
-)
-
-folly_add_library(
-  NAME sparse_byte_set
-  HEADERS
-    SparseByteSet.h
-  EXPORTED_DEPS
-    folly_c_portability
-)
-
-folly_add_library(
-  NAME tape
-  HEADERS
-    tape.h
-  EXPORTED_DEPS
-    folly_container_detail_tape_detail
-    folly_container_iterator
-    folly_memory_uninitialized_memory_hacks
-    folly_portability
-    folly_range
-)
-
-folly_add_library(
-  NAME view
-  HEADERS
-    View.h
-  EXPORTED_DEPS
-    folly_functional_invoke
-    folly_lang_customization_point
-    folly_portability
-)
-
-folly_add_library(
-  NAME weighted_evicting_cache_map
-  HEADERS
-    WeightedEvictingCacheMap.h
-  EXPORTED_DEPS
-    folly_container_evicting_cache_map
-)
-
-folly_add_library(
-  NAME intrusive_heap
-  HEADERS
-    IntrusiveHeap.h
-  EXPORTED_DEPS
-    folly_lang_builtin
-    folly_portability
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
-    Boost::headers
-)
-
-folly_add_library(
   NAME reserve
   HEADERS
     Reserve.h
@@ -267,62 +259,6 @@ folly_add_library(
     folly_likely
     folly_traits
     folly_utility
-)
-
-folly_add_library(
-  NAME sorted_vector_types
-  HEADERS
-    sorted_vector_types.h
-  EXPORTED_DEPS
-    folly_lang_access
-    folly_lang_exception
-    folly_memory_memory_resource
-    folly_scope_guard
-    folly_small_vector
-    folly_traits
-    folly_utility
-)
-
-folly_add_library(
-  NAME std_bitset
-  HEADERS
-    StdBitset.h
-  EXPORTED_DEPS
-    folly_c_portability
-    folly_portability
-)
-
-folly_add_library(
-  NAME fbvector
-  HEADERS
-    FBVector.h
-  EXPORTED_DEPS
-    folly_format_traits
-    folly_lang_checked_math
-    folly_lang_exception
-    folly_lang_hint
-    folly_likely
-    folly_memory_malloc
-    folly_scope_guard
-    folly_traits
-)
-
-folly_add_library(
-  NAME intrusive_list
-  HEADERS
-    IntrusiveList.h
-  EXTERNAL_DEPS
-    Boost::headers
-)
-
-folly_add_library(
-  NAME map_util
-  HEADERS
-    MapUtil.h
-  EXPORTED_DEPS
-    folly_functional_invoke
-    folly_optional
-    folly_range
 )
 
 folly_add_library(
@@ -350,6 +286,64 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME sorted_vector_types
+  HEADERS
+    sorted_vector_types.h
+  EXPORTED_DEPS
+    folly_lang_access
+    folly_lang_exception
+    folly_memory_memory_resource
+    folly_scope_guard
+    folly_small_vector
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME span
+  HEADERS
+    span.h
+  EXPORTED_DEPS
+    folly_container_access
+    folly_container_iterator
+    folly_cpp_attributes
+    folly_functional_invoke
+    folly_portability
+    folly_portability_constexpr
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
+  NAME sparse_byte_set
+  HEADERS
+    SparseByteSet.h
+  EXPORTED_DEPS
+    folly_c_portability
+)
+
+folly_add_library(
+  NAME std_bitset
+  HEADERS
+    StdBitset.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_portability
+)
+
+folly_add_library(
+  NAME tape
+  HEADERS
+    tape.h
+  EXPORTED_DEPS
+    folly_container_detail_tape_detail
+    folly_container_iterator
+    folly_memory_uninitialized_memory_hacks
+    folly_portability
+    folly_range
+)
+
+folly_add_library(
   NAME vector_bool
   HEADERS
     vector_bool.h
@@ -359,15 +353,21 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME collection_util
+  NAME view
   HEADERS
-    CollectionUtil.h
+    View.h
+  EXPORTED_DEPS
+    folly_functional_invoke
+    folly_lang_customization_point
+    folly_portability
 )
 
 folly_add_library(
-  NAME irange
+  NAME weighted_evicting_cache_map
   HEADERS
-    irange.h
+    WeightedEvictingCacheMap.h
+  EXPORTED_DEPS
+    folly_container_evicting_cache_map
 )
 
 add_subdirectory(detail)

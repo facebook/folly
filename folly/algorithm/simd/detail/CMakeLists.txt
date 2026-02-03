@@ -25,17 +25,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME simd_platform
-  HEADERS
-    SimdPlatform.h
-  EXPORTED_DEPS
-    folly_algorithm_simd_ignore
-    folly_algorithm_simd_movemask
-    folly_lang_safe_assert
-    folly_portability
-)
-
-folly_add_library(
   NAME simd_contains_impl
   HEADERS
     ContainsImpl.h
@@ -56,6 +45,17 @@ folly_add_library(
     folly_c_portability
     folly_lang_align
     folly_traits
+)
+
+folly_add_library(
+  NAME simd_platform
+  HEADERS
+    SimdPlatform.h
+  EXPORTED_DEPS
+    folly_algorithm_simd_ignore
+    folly_algorithm_simd_movemask
+    folly_lang_safe_assert
+    folly_portability
 )
 
 folly_add_library(

@@ -161,6 +161,17 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME bounded_queue
+  HEADERS
+    BoundedQueue.h
+  EXPORTED_DEPS
+    folly_coro_task
+    folly_fibers_semaphore
+    folly_mpmc_queue
+    folly_producer_consumer_queue
+)
+
+folly_add_library(
   NAME cleanup
   HEADERS
     Cleanup.h
@@ -442,16 +453,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME value_or_fatal
-  HEADERS
-    ValueOrFatal.h
-  EXPORTED_DEPS
-    folly_coro_task_wrapper
-    folly_coro_via_if_async
-    folly_result_value_only_result
-)
-
-folly_add_library(
   NAME nothrow
   HEADERS
     Nothrow.h
@@ -725,17 +726,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME bounded_queue
-  HEADERS
-    BoundedQueue.h
-  EXPORTED_DEPS
-    folly_coro_task
-    folly_fibers_semaphore
-    folly_mpmc_queue
-    folly_producer_consumer_queue
-)
-
-folly_add_library(
   NAME unbounded_queue
   HEADERS
     UnboundedQueue.h
@@ -753,6 +743,16 @@ folly_add_library(
   EXPORTED_DEPS
     folly_coro_via_if_async
     folly_result_try
+)
+
+folly_add_library(
+  NAME value_or_fatal
+  HEADERS
+    ValueOrFatal.h
+  EXPORTED_DEPS
+    folly_coro_task_wrapper
+    folly_coro_via_if_async
+    folly_result_value_only_result
 )
 
 folly_add_library(

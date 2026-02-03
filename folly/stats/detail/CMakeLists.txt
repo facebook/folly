@@ -35,15 +35,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME sliding_window
-  HEADERS
-    SlidingWindow-inl.h
-    SlidingWindow.h
-  EXPORTED_DEPS
-    folly_function
-)
-
-folly_add_library(
   NAME double_radix_sort
   SRCS
     DoubleRadixSort.cpp
@@ -51,4 +42,13 @@ folly_add_library(
     DoubleRadixSort.h
   EXTERNAL_DEPS
     ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME sliding_window
+  HEADERS
+    SlidingWindow-inl.h
+    SlidingWindow.h
+  EXPORTED_DEPS
+    folly_function
 )

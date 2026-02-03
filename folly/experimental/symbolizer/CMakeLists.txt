@@ -36,11 +36,11 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME symbolized_frame
+  NAME elf_cache
   HEADERS
-    SymbolizedFrame.h
+    ElfCache.h
   EXPORTED_DEPS
-    folly_debugging_symbolizer_symbolized_frame
+    folly_debugging_symbolizer_elf_cache
 )
 
 folly_add_library(
@@ -52,19 +52,19 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME signal_handler
+  HEADERS
+    SignalHandler.h
+  EXPORTED_DEPS
+    folly_debugging_symbolizer_signal_handler
+)
+
+folly_add_library(
   NAME stack_trace
   HEADERS
     StackTrace.h
   EXPORTED_DEPS
     folly_debugging_symbolizer_stack_trace
-)
-
-folly_add_library(
-  NAME elf_cache
-  HEADERS
-    ElfCache.h
-  EXPORTED_DEPS
-    folly_debugging_symbolizer_elf_cache
 )
 
 folly_add_library(
@@ -76,19 +76,19 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME symbolized_frame
+  HEADERS
+    SymbolizedFrame.h
+  EXPORTED_DEPS
+    folly_debugging_symbolizer_symbolized_frame
+)
+
+folly_add_library(
   NAME symbolizer
   HEADERS
     Symbolizer.h
   EXPORTED_DEPS
     folly_debugging_symbolizer_symbolizer
-)
-
-folly_add_library(
-  NAME signal_handler
-  HEADERS
-    SignalHandler.h
-  EXPORTED_DEPS
-    folly_debugging_symbolizer_signal_handler
 )
 
 add_subdirectory(detail)

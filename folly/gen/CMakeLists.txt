@@ -64,6 +64,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME istream
+  HEADERS
+    IStream.h
+  EXPORTED_DEPS
+    folly_gen_core
+)
+
+folly_add_library(
   NAME parallel
   HEADERS
     Parallel-inl.h
@@ -101,12 +109,4 @@ folly_add_library(
     folly_portability
     folly_range
     folly_string
-)
-
-folly_add_library(
-  NAME istream
-  HEADERS
-    IStream.h
-  EXPORTED_DEPS
-    folly_gen_core
 )

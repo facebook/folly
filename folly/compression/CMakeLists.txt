@@ -73,6 +73,19 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME instructions
+  HEADERS
+    Instructions.h
+  EXPORTED_DEPS
+    folly_cpu_id
+    folly_lang_assume
+    folly_portability
+    folly_portability_builtins
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
   NAME quotient_multiset
   SRCS
     QuotientMultiSet.cpp
@@ -91,19 +104,6 @@ folly_add_library(
     folly_lang_safe_assert
     folly_portability
     folly_range
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
-)
-
-folly_add_library(
-  NAME instructions
-  HEADERS
-    Instructions.h
-  EXPORTED_DEPS
-    folly_cpu_id
-    folly_lang_assume
-    folly_portability
-    folly_portability_builtins
   EXTERNAL_DEPS
     ${GLOG_LIBRARIES}
 )

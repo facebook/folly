@@ -33,15 +33,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME result_promise
-  HEADERS
-    result_promise.h
-  EXPORTED_DEPS
-    folly_coro_coroutine
-    folly_result_result
-)
-
-folly_add_library(
   NAME result_or_unwind
   HEADERS
     result_or_unwind.h
@@ -50,6 +41,15 @@ folly_add_library(
     folly_cpp_attributes
     folly_lang_must_use_immediately
     folly_result_detail_result_promise
+    folly_result_result
+)
+
+folly_add_library(
+  NAME result_promise
+  HEADERS
+    result_promise.h
+  EXPORTED_DEPS
+    folly_coro_coroutine
     folly_result_result
 )
 

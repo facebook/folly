@@ -67,43 +67,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME symbolized_frame
-  SRCS
-    SymbolizedFrame.cpp
-  HEADERS
-    SymbolizedFrame.h
-  EXPORTED_DEPS
-    folly_range
-)
-
-folly_add_library(
-  NAME line_reader
-  SRCS
-    LineReader.cpp
-  HEADERS
-    LineReader.h
-  DEPS
-    folly_file_util
-  EXPORTED_DEPS
-    folly_range
-)
-
-folly_add_library(
-  NAME stack_trace
-  SRCS
-    StackTrace.cpp
-  HEADERS
-    StackTrace.h
-  DEPS
-    folly_portability
-    folly_portability_config
-    folly_portability_libunwind
-    folly_tracing_async_stack
-  EXPORTED_DEPS
-    folly_portability_sys_types
-)
-
-folly_add_library(
   NAME elf_cache
   SRCS
     ElfCache.cpp
@@ -124,6 +87,49 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME line_reader
+  SRCS
+    LineReader.cpp
+  HEADERS
+    LineReader.h
+  DEPS
+    folly_file_util
+  EXPORTED_DEPS
+    folly_range
+)
+
+folly_add_library(
+  NAME signal_handler
+  SRCS
+    SignalHandler.cpp
+  HEADERS
+    SignalHandler.h
+  DEPS
+    folly_debugging_symbolizer_symbolizer
+    folly_lang_to_ascii
+    folly_portability_sys_syscall
+    folly_portability_unistd
+    folly_scope_guard
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME stack_trace
+  SRCS
+    StackTrace.cpp
+  HEADERS
+    StackTrace.h
+  DEPS
+    folly_portability
+    folly_portability_config
+    folly_portability_libunwind
+    folly_tracing_async_stack
+  EXPORTED_DEPS
+    folly_portability_sys_types
+)
+
+folly_add_library(
   NAME symbolize_printer
   SRCS
     SymbolizePrinter.cpp
@@ -138,6 +144,16 @@ folly_add_library(
   EXPORTED_DEPS
     folly_debugging_symbolizer_symbolized_frame
     folly_fbstring
+    folly_range
+)
+
+folly_add_library(
+  NAME symbolized_frame
+  SRCS
+    SymbolizedFrame.cpp
+  HEADERS
+    SymbolizedFrame.h
+  EXPORTED_DEPS
     folly_range
 )
 
@@ -173,22 +189,6 @@ folly_add_library(
     folly_portability_unistd
     folly_range
     folly_string
-)
-
-folly_add_library(
-  NAME signal_handler
-  SRCS
-    SignalHandler.cpp
-  HEADERS
-    SignalHandler.h
-  DEPS
-    folly_debugging_symbolizer_symbolizer
-    folly_lang_to_ascii
-    folly_portability_sys_syscall
-    folly_portability_unistd
-    folly_scope_guard
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 add_subdirectory(detail)

@@ -27,6 +27,18 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME digest_builder
+  HEADERS
+    DigestBuilder-inl.h
+    DigestBuilder.h
+  EXPORTED_DEPS
+    folly_concurrency_cache_locality
+    folly_lang_bits
+    folly_memory
+    folly_spin_lock
+)
+
+folly_add_library(
   NAME histogram
   HEADERS
     Histogram-inl.h
@@ -39,14 +51,6 @@ folly_add_library(
     folly_traits
   EXTERNAL_DEPS
     ${GLOG_LIBRARIES}
-)
-
-folly_add_library(
-  NAME streaming_stats
-  HEADERS
-    StreamingStats.h
-  EXPORTED_DEPS
-    folly_lang_exception
 )
 
 folly_add_library(
@@ -86,6 +90,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME streaming_stats
+  HEADERS
+    StreamingStats.h
+  EXPORTED_DEPS
+    folly_lang_exception
+)
+
+folly_add_library(
   NAME tdigest
   SRCS
     TDigest.cpp
@@ -102,18 +114,6 @@ folly_add_library(
     folly_utility
   EXTERNAL_DEPS
     ${GLOG_LIBRARIES}
-)
-
-folly_add_library(
-  NAME digest_builder
-  HEADERS
-    DigestBuilder-inl.h
-    DigestBuilder.h
-  EXPORTED_DEPS
-    folly_concurrency_cache_locality
-    folly_lang_bits
-    folly_memory
-    folly_spin_lock
 )
 
 folly_add_library(

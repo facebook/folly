@@ -53,22 +53,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME stacktrace
-  HEADERS
-    StackTrace.h
-  EXPORTED_DEPS
-    folly_debugging_exception_tracer_stacktrace
-)
-
-folly_add_library(
-  NAME smart_exception_tracer_singleton
-  HEADERS
-    SmartExceptionTracerSingleton.h
-  EXPORTED_DEPS
-    folly_debugging_exception_tracer_smart_exception_tracer_singleton
-)
-
-folly_add_library(
   NAME smart_exception_stack_trace_hooks
   DEPS
     folly_debugging_exception_tracer_smart_exception_stack_trace_hooks
@@ -80,4 +64,20 @@ folly_add_library(
     SmartExceptionTracer.h
   EXPORTED_DEPS
     folly_debugging_exception_tracer_smart_exception_tracer
+)
+
+folly_add_library(
+  NAME smart_exception_tracer_singleton
+  HEADERS
+    SmartExceptionTracerSingleton.h
+  EXPORTED_DEPS
+    folly_debugging_exception_tracer_smart_exception_tracer_singleton
+)
+
+folly_add_library(
+  NAME stacktrace
+  HEADERS
+    StackTrace.h
+  EXPORTED_DEPS
+    folly_debugging_exception_tracer_stacktrace
 )

@@ -48,6 +48,16 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME batch_semaphore
+  SRCS
+    BatchSemaphore.cpp
+  HEADERS
+    BatchSemaphore.h
+  EXPORTED_DEPS
+    folly_fibers_semaphore_base
+)
+
+folly_add_library(
   NAME boost_context_compatibility
   HEADERS
     BoostContextCompatibility.h
@@ -135,6 +145,15 @@ folly_add_library(
     folly_fibers_executor_based_loop_controller
     folly_io_async_async_base
     folly_memory
+)
+
+folly_add_library(
+  NAME executor_based_loop_controller
+  HEADERS
+    ExecutorBasedLoopController.h
+  EXPORTED_DEPS
+    folly_executor
+    folly_fibers_loop_controller
 )
 
 folly_add_library(
@@ -235,15 +254,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME executor_based_loop_controller
-  HEADERS
-    ExecutorBasedLoopController.h
-  EXPORTED_DEPS
-    folly_executor
-    folly_fibers_loop_controller
-)
-
-folly_add_library(
   NAME semaphore
   SRCS
     Semaphore.cpp
@@ -256,16 +266,6 @@ folly_add_library(
     folly_futures_core
     folly_intrusive_list
     folly_synchronized
-)
-
-folly_add_library(
-  NAME batch_semaphore
-  SRCS
-    BatchSemaphore.cpp
-  HEADERS
-    BatchSemaphore.h
-  EXPORTED_DEPS
-    folly_fibers_semaphore_base
 )
 
 folly_add_library(

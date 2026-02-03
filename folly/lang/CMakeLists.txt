@@ -129,6 +129,15 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME cstring_view
+  HEADERS
+    cstring_view.h
+  EXPORTED_DEPS
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
   NAME customization_point
   HEADERS
     CustomizationPoint.h
@@ -166,15 +175,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME keep
-  HEADERS
-    Keep.h
-  EXPORTED_DEPS
-    folly_c_portability
-    folly_cpp_attributes
-)
-
-folly_add_library(
   NAME hint
   HEADERS
     Hint-inl.h
@@ -183,6 +183,15 @@ folly_add_library(
     folly_lang_safe_assert
     folly_portability
     folly_traits
+)
+
+folly_add_library(
+  NAME keep
+  HEADERS
+    Keep.h
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_cpp_attributes
 )
 
 folly_add_library(
@@ -296,15 +305,6 @@ folly_add_library(
     Strong.h
   EXPORTED_DEPS
     folly_traits
-)
-
-folly_add_library(
-  NAME cstring_view
-  HEADERS
-    cstring_view.h
-  EXPORTED_DEPS
-    folly_traits
-    folly_utility
 )
 
 folly_add_library(

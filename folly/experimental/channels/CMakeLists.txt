@@ -69,6 +69,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME max_concurrent_rate_limiter
+  HEADERS
+    MaxConcurrentRateLimiter.h
+  EXPORTED_DEPS
+    folly_channels_max_concurrent_rate_limiter
+)
+
+folly_add_library(
   NAME merge
   HEADERS
     Merge-inl.h
@@ -127,14 +135,6 @@ folly_add_library(
     RateLimiter.h
   EXPORTED_DEPS
     folly_channels_rate_limiter
-)
-
-folly_add_library(
-  NAME max_concurrent_rate_limiter
-  HEADERS
-    MaxConcurrentRateLimiter.h
-  EXPORTED_DEPS
-    folly_channels_max_concurrent_rate_limiter
 )
 
 folly_add_library(

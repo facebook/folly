@@ -63,16 +63,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME unbounded_blocking_queue
-  HEADERS
-    UnboundedBlockingQueue.h
-  EXPORTED_DEPS
-    folly_concurrency_unbounded_queue
-    folly_executors_task_queue_blocking_queue
-    folly_synchronization_lifo_sem
-)
-
-folly_add_library(
   NAME striped_priority_unbounded_blocking_queue
   HEADERS
     StripedPriorityUnboundedBlockingQueue.h
@@ -86,4 +76,14 @@ folly_add_library(
     folly_glog
     folly_lang_exception
     folly_synchronization_striped_throttled_lifo_sem
+)
+
+folly_add_library(
+  NAME unbounded_blocking_queue
+  HEADERS
+    UnboundedBlockingQueue.h
+  EXPORTED_DEPS
+    folly_concurrency_unbounded_queue
+    folly_executors_task_queue_blocking_queue
+    folly_synchronization_lifo_sem
 )

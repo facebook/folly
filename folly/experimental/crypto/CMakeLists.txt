@@ -31,19 +31,19 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME lt_hash_sse2
-  EXCLUDE_FROM_MONOLITH
-  HEADERS
-    LtHash.h
-  EXPORTED_DEPS
-    folly_crypto_lt_hash_sse2
-)
-
-folly_add_library(
   NAME lt_hash_avx2
   EXCLUDE_FROM_MONOLITH
   HEADERS
     LtHash.h
   EXPORTED_DEPS
     folly_crypto_lt_hash_avx2
+)
+
+folly_add_library(
+  NAME lt_hash_sse2
+  EXCLUDE_FROM_MONOLITH
+  HEADERS
+    LtHash.h
+  EXPORTED_DEPS
+    folly_crypto_lt_hash_sse2
 )

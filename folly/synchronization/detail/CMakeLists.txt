@@ -34,6 +34,17 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME inline_function_ref
+  HEADERS
+    InlineFunctionRef.h
+  EXPORTED_DEPS
+    folly_function
+    folly_functional_invoke
+    folly_traits
+    folly_utility
+)
+
+folly_add_library(
   NAME rcu-detail
   HEADERS
     ThreadCachedLists.h
@@ -66,15 +77,4 @@ folly_add_library(
   EXPORTED_DEPS
     folly_portability_asm
     folly_synchronization_wait_options
-)
-
-folly_add_library(
-  NAME inline_function_ref
-  HEADERS
-    InlineFunctionRef.h
-  EXPORTED_DEPS
-    folly_function
-    folly_functional_invoke
-    folly_traits
-    folly_utility
 )

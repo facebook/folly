@@ -29,15 +29,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME read_mostly_shared_ptr
-  HEADERS
-    ReadMostlySharedPtr.h
-  EXPORTED_DEPS
-    folly_concurrency_memory_tl_ref_count
-    folly_function
-)
-
-folly_add_library(
   NAME primary_ptr
   HEADERS
     PrimaryPtr.h
@@ -47,6 +38,15 @@ folly_add_library(
     folly_futures_core
   EXTERNAL_DEPS
     ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME read_mostly_shared_ptr
+  HEADERS
+    ReadMostlySharedPtr.h
+  EXPORTED_DEPS
+    folly_concurrency_memory_tl_ref_count
+    folly_function
 )
 
 folly_add_library(

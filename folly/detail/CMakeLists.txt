@@ -153,6 +153,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME mpmc_pipeline_detail
+  HEADERS
+    MPMCPipelineDetail.h
+  EXPORTED_DEPS
+    folly_mpmc_queue
+)
+
+folly_add_library(
   NAME perf_scoped
   SRCS
     PerfScoped.cpp
@@ -164,14 +172,6 @@ folly_add_library(
     folly_testing_test_util
   EXTERNAL_DEPS
     Boost::regex
-)
-
-folly_add_library(
-  NAME mpmc_pipeline_detail
-  HEADERS
-    MPMCPipelineDetail.h
-  EXPORTED_DEPS
-    folly_mpmc_queue
 )
 
 folly_add_library(
@@ -230,6 +230,19 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME simple_simd_string_utils
+  SRCS
+    SimpleSimdStringUtils.cpp
+  HEADERS
+    SimpleSimdStringUtils.h
+    SimpleSimdStringUtilsImpl.h
+  EXPORTED_DEPS
+    folly_algorithm_simd_detail_simd_any_of
+    folly_algorithm_simd_detail_simd_platform
+    folly_range
+)
+
+folly_add_library(
   NAME singleton
   HEADERS
     Singleton.h
@@ -248,26 +261,14 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME sse
+  NAME socket_fast_open
   SRCS
-    Sse.cpp
+    SocketFastOpen.cpp
   HEADERS
-    Sse.h
+    SocketFastOpen.h
   EXPORTED_DEPS
-    folly_portability
-)
-
-folly_add_library(
-  NAME simple_simd_string_utils
-  SRCS
-    SimpleSimdStringUtils.cpp
-  HEADERS
-    SimpleSimdStringUtils.h
-    SimpleSimdStringUtilsImpl.h
-  EXPORTED_DEPS
-    folly_algorithm_simd_detail_simd_any_of
-    folly_algorithm_simd_detail_simd_platform
-    folly_range
+    folly_net_network_socket
+    folly_portability_sockets
 )
 
 folly_add_library(
@@ -286,14 +287,13 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME socket_fast_open
+  NAME sse
   SRCS
-    SocketFastOpen.cpp
+    Sse.cpp
   HEADERS
-    SocketFastOpen.h
+    Sse.h
   EXPORTED_DEPS
-    folly_net_network_socket
-    folly_portability_sockets
+    folly_portability
 )
 
 folly_add_library(
@@ -365,6 +365,26 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME traponavx512
+  SRCS
+    TrapOnAvx512.cpp
+  HEADERS
+    TrapOnAvx512.h
+  DEPS
+    folly_portability
+)
+
+folly_add_library(
+  NAME tuple
+  HEADERS
+    tuple.h
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_lang_safe_alias_fwd
+    folly_traits
+)
+
+folly_add_library(
   NAME turn_sequencer
   HEADERS
     TurnSequencer.h
@@ -399,26 +419,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_cpp_attributes
     folly_detail_static_singleton_manager
-)
-
-folly_add_library(
-  NAME traponavx512
-  SRCS
-    TrapOnAvx512.cpp
-  HEADERS
-    TrapOnAvx512.h
-  DEPS
-    folly_portability
-)
-
-folly_add_library(
-  NAME tuple
-  HEADERS
-    tuple.h
-  EXPORTED_DEPS
-    folly_cpp_attributes
-    folly_lang_safe_alias_fwd
-    folly_traits
 )
 
 add_subdirectory(base64_detail)

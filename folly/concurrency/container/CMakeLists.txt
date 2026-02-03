@@ -30,18 +30,15 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME relaxed_concurrent_priority_queue
+  NAME flat_combining_priority_queue
   HEADERS
-    RelaxedConcurrentPriorityQueue.h
+    FlatCombiningPriorityQueue.h
   EXPORTED_DEPS
     folly_detail_futex
-    folly_lang_align
-    folly_random
-    folly_spin_lock
-    folly_synchronization_detail_spin
-    folly_synchronization_hazptr
-    folly_synchronization_wait_options
-    folly_thread_local
+    folly_optional
+    folly_synchronization_flat_combining
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -59,15 +56,18 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME flat_combining_priority_queue
+  NAME relaxed_concurrent_priority_queue
   HEADERS
-    FlatCombiningPriorityQueue.h
+    RelaxedConcurrentPriorityQueue.h
   EXPORTED_DEPS
     folly_detail_futex
-    folly_optional
-    folly_synchronization_flat_combining
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
+    folly_lang_align
+    folly_random
+    folly_spin_lock
+    folly_synchronization_detail_spin
+    folly_synchronization_hazptr
+    folly_synchronization_wait_options
+    folly_thread_local
 )
 
 folly_add_library(

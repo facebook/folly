@@ -30,6 +30,16 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME cleanup
+  HEADERS
+    Cleanup.h
+  EXPORTED_DEPS
+    folly_futures_core
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
   NAME core
   SRCS
     Future.cpp
@@ -142,16 +152,6 @@ folly_add_library(
     folly_futures_core
     folly_lang_exception
     folly_portability
-)
-
-folly_add_library(
-  NAME cleanup
-  HEADERS
-    Cleanup.h
-  EXPORTED_DEPS
-    folly_futures_core
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 add_subdirectory(detail)

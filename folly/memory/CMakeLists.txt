@@ -33,6 +33,59 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME io_uring_arena
+  SRCS
+    IoUringArena.cpp
+  HEADERS
+    IoUringArena.h
+  DEPS
+    folly_c_portability
+    folly_conv
+    folly_lang_align
+    folly_portability_malloc
+    folly_portability_string
+    folly_portability_sys_mman
+    folly_portability_unistd
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME jemalloc_huge_page_allocator
+  SRCS
+    JemallocHugePageAllocator.cpp
+  HEADERS
+    JemallocHugePageAllocator.h
+  DEPS
+    folly_c_portability
+    folly_memory_malloc
+    folly_portability_malloc
+    folly_portability_string
+    folly_portability_sys_mman
+    folly_portability_sys_types
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME jemalloc_nodump_allocator
+  SRCS
+    JemallocNodumpAllocator.cpp
+  HEADERS
+    JemallocNodumpAllocator.h
+  DEPS
+    folly_conv
+    folly_string
+  EXPORTED_DEPS
+    folly_c_portability
+    folly_portability_config
+    folly_portability_malloc
+    folly_portability_sys_mman
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
   NAME mallctl_helper
   SRCS
     MallctlHelper.cpp
@@ -140,59 +193,6 @@ folly_add_library(
   NAME uninitialized_memory_hacks
   HEADERS
     UninitializedMemoryHacks.h
-)
-
-folly_add_library(
-  NAME jemalloc_nodump_allocator
-  SRCS
-    JemallocNodumpAllocator.cpp
-  HEADERS
-    JemallocNodumpAllocator.h
-  DEPS
-    folly_conv
-    folly_string
-  EXPORTED_DEPS
-    folly_c_portability
-    folly_portability_config
-    folly_portability_malloc
-    folly_portability_sys_mman
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
-)
-
-folly_add_library(
-  NAME jemalloc_huge_page_allocator
-  SRCS
-    JemallocHugePageAllocator.cpp
-  HEADERS
-    JemallocHugePageAllocator.h
-  DEPS
-    folly_c_portability
-    folly_memory_malloc
-    folly_portability_malloc
-    folly_portability_string
-    folly_portability_sys_mman
-    folly_portability_sys_types
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
-)
-
-folly_add_library(
-  NAME io_uring_arena
-  SRCS
-    IoUringArena.cpp
-  HEADERS
-    IoUringArena.h
-  DEPS
-    folly_c_portability
-    folly_conv
-    folly_lang_align
-    folly_portability_malloc
-    folly_portability_string
-    folly_portability_sys_mman
-    folly_portability_unistd
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 add_subdirectory(detail)

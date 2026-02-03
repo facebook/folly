@@ -54,58 +54,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME json_pointer
-  SRCS
-    json_pointer.cpp
-  HEADERS
-    json_pointer.h
-  DEPS
-    folly_string
-  EXPORTED_DEPS
-    folly_expected
-    folly_range
-)
-
-folly_add_library(
-  NAME json_patch
-  SRCS
-    json_patch.cpp
-  HEADERS
-    json_patch.h
-  DEPS
-    folly_container_enumerate
-  EXPORTED_DEPS
-    folly_expected
-    folly_json_dynamic
-    folly_json_pointer
-    folly_optional
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
-)
-
-folly_add_library(
-  NAME json_schema
-  SRCS
-    JSONSchema.cpp
-  HEADERS
-    JSONSchema.h
-  DEPS
-    folly_c_portability
-    folly_conv
-    folly_memory
-    folly_optional
-    folly_portability_math
-    folly_singleton
-    folly_string
-  EXPORTED_DEPS
-    folly_exception_wrapper
-    folly_json_dynamic
-    folly_range
-  EXTERNAL_DEPS
-    Boost::regex
-)
-
-folly_add_library(
   NAME dynamic_parser
   SRCS
     DynamicParser.cpp
@@ -132,6 +80,58 @@ folly_add_library(
     JsonMockUtil.h
   EXPORTED_DEPS
     folly_portability_gmock
+)
+
+folly_add_library(
+  NAME json_patch
+  SRCS
+    json_patch.cpp
+  HEADERS
+    json_patch.h
+  DEPS
+    folly_container_enumerate
+  EXPORTED_DEPS
+    folly_expected
+    folly_json_dynamic
+    folly_json_pointer
+    folly_optional
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME json_pointer
+  SRCS
+    json_pointer.cpp
+  HEADERS
+    json_pointer.h
+  DEPS
+    folly_string
+  EXPORTED_DEPS
+    folly_expected
+    folly_range
+)
+
+folly_add_library(
+  NAME json_schema
+  SRCS
+    JSONSchema.cpp
+  HEADERS
+    JSONSchema.h
+  DEPS
+    folly_c_portability
+    folly_conv
+    folly_memory
+    folly_optional
+    folly_portability_math
+    folly_singleton
+    folly_string
+  EXPORTED_DEPS
+    folly_exception_wrapper
+    folly_json_dynamic
+    folly_range
+  EXTERNAL_DEPS
+    Boost::regex
 )
 
 folly_add_library(

@@ -47,6 +47,22 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME auto_cleanup
+  HEADERS
+    AutoCleanup.h
+  EXPORTED_DEPS
+    folly_coro_auto_cleanup
+)
+
+folly_add_library(
+  NAME auto_cleanup_fwd
+  HEADERS
+    AutoCleanup-fwd.h
+  EXPORTED_DEPS
+    folly_coro_auto_cleanup_fwd
+)
+
+folly_add_library(
   NAME baton
   HEADERS
     Baton.h
@@ -60,6 +76,22 @@ folly_add_library(
     BlockingWait.h
   EXPORTED_DEPS
     folly_coro_blocking_wait
+)
+
+folly_add_library(
+  NAME bounded_queue
+  HEADERS
+    BoundedQueue.h
+  EXPORTED_DEPS
+    folly_coro_bounded_queue
+)
+
+folly_add_library(
+  NAME cleanup
+  HEADERS
+    Cleanup.h
+  EXPORTED_DEPS
+    folly_coro_cleanup
 )
 
 folly_add_library(
@@ -291,6 +323,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME shared_promise
+  HEADERS
+    SharedPromise.h
+  EXPORTED_DEPS
+    folly_coro_shared_promise
+)
+
+folly_add_library(
   NAME sleep
   HEADERS
     Sleep-inl.h
@@ -379,44 +419,4 @@ folly_add_library(
     WithCancellation.h
   EXPORTED_DEPS
     folly_coro_with_cancellation
-)
-
-folly_add_library(
-  NAME bounded_queue
-  HEADERS
-    BoundedQueue.h
-  EXPORTED_DEPS
-    folly_coro_bounded_queue
-)
-
-folly_add_library(
-  NAME shared_promise
-  HEADERS
-    SharedPromise.h
-  EXPORTED_DEPS
-    folly_coro_shared_promise
-)
-
-folly_add_library(
-  NAME cleanup
-  HEADERS
-    Cleanup.h
-  EXPORTED_DEPS
-    folly_coro_cleanup
-)
-
-folly_add_library(
-  NAME auto_cleanup_fwd
-  HEADERS
-    AutoCleanup-fwd.h
-  EXPORTED_DEPS
-    folly_coro_auto_cleanup_fwd
-)
-
-folly_add_library(
-  NAME auto_cleanup
-  HEADERS
-    AutoCleanup.h
-  EXPORTED_DEPS
-    folly_coro_auto_cleanup
 )

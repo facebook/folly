@@ -109,30 +109,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME stacktrace
-  SRCS
-    StackTrace.cpp
-  HEADERS
-    StackTrace.h
-  DEPS
-    folly_experimental_symbolizer_stack_trace
-  EXPORTED_DEPS
-    folly_portability
-)
-
-folly_add_library(
-  NAME smart_exception_tracer_singleton
-  SRCS
-    SmartExceptionTracerSingleton.cpp
-  HEADERS
-    SmartExceptionTracerSingleton.h
-  EXPORTED_DEPS
-    folly_container_f14_hash
-    folly_debugging_exception_tracer_stacktrace
-    folly_synchronized
-)
-
-folly_add_library(
   NAME smart_exception_stack_trace_hooks
   SRCS
     SmartExceptionStackTraceHooks.cpp
@@ -164,6 +140,30 @@ folly_add_library(
     folly_exception_wrapper
   EXTERNAL_DEPS
     ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME smart_exception_tracer_singleton
+  SRCS
+    SmartExceptionTracerSingleton.cpp
+  HEADERS
+    SmartExceptionTracerSingleton.h
+  EXPORTED_DEPS
+    folly_container_f14_hash
+    folly_debugging_exception_tracer_stacktrace
+    folly_synchronized
+)
+
+folly_add_library(
+  NAME stacktrace
+  SRCS
+    StackTrace.cpp
+  HEADERS
+    StackTrace.h
+  DEPS
+    folly_experimental_symbolizer_stack_trace
+  EXPORTED_DEPS
+    folly_portability
 )
 
 endif() # NOT FOLLY_NO_EXCEPTION_TRACER

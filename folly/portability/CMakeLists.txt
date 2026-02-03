@@ -212,16 +212,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME sched
-  SRCS
-    Sched.cpp
-  HEADERS
-    Sched.h
-  EXPORTED_DEPS
-    folly_portability
-)
-
-folly_add_library(
   NAME pthread
   SRCS
     PThread.cpp
@@ -242,6 +232,16 @@ if(WIN32)
   target_link_libraries(folly_portability_pthread_obj PUBLIC Boost::thread)
   target_link_libraries(folly_portability_pthread PUBLIC Boost::thread)
 endif()
+
+folly_add_library(
+  NAME sched
+  SRCS
+    Sched.cpp
+  HEADERS
+    Sched.h
+  EXPORTED_DEPS
+    folly_portability
+)
 
 folly_add_library(
   NAME sockets

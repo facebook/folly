@@ -31,27 +31,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME atomic_ref
-  HEADERS
-    AtomicRef.h
-  EXPORTED_DEPS
-    folly_lang_safe_assert
-    folly_traits
-)
-
-folly_add_library(
-  NAME atomic_util
-  HEADERS
-    AtomicUtil-inl.h
-    AtomicUtil.h
-  EXPORTED_DEPS
-    folly_constexpr_math
-    folly_likely
-    folly_portability
-    folly_traits
-)
-
-folly_add_library(
   NAME atomic_notification
   SRCS
     AtomicNotification.cpp
@@ -65,12 +44,33 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME atomic_ref
+  HEADERS
+    AtomicRef.h
+  EXPORTED_DEPS
+    folly_lang_safe_assert
+    folly_traits
+)
+
+folly_add_library(
   NAME atomic_struct
   HEADERS
     AtomicStruct.h
   EXPORTED_DEPS
     folly_constexpr_math
     folly_synchronization_detail_atomic_utils
+    folly_traits
+)
+
+folly_add_library(
+  NAME atomic_util
+  HEADERS
+    AtomicUtil-inl.h
+    AtomicUtil.h
+  EXPORTED_DEPS
+    folly_constexpr_math
+    folly_likely
+    folly_portability
     folly_traits
 )
 
@@ -103,6 +103,15 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME delayed_init
+  HEADERS
+    DelayedInit.h
+  EXPORTED_DEPS
+    folly_lang_safe_assert
+    folly_synchronization_call_once
+)
+
+folly_add_library(
   NAME distributed_mutex
   SRCS
     DistributedMutex.cpp
@@ -130,6 +139,33 @@ folly_add_library(
     folly_utility
   EXTERNAL_DEPS
     ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME event_count
+  HEADERS
+    EventCount.h
+  EXPORTED_DEPS
+    folly_detail_futex
+    folly_lang_bits
+    folly_likely
+    folly_portability_sys_time
+    folly_portability_unistd
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+)
+
+folly_add_library(
+  NAME flat_combining
+  HEADERS
+    FlatCombining.h
+  EXPORTED_DEPS
+    folly_concurrency_cache_locality
+    folly_function
+    folly_indexed_mem_pool
+    folly_portability
+    folly_synchronization_saturating_semaphore
+    folly_system_thread_name
 )
 
 folly_add_library(
@@ -244,19 +280,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME pico_spin_lock
-  HEADERS
-    PicoSpinLock.h
-  EXPORTED_DEPS
-    folly_lang_safe_assert
-    folly_portability
-    folly_synchronization_atomic_ref
-    folly_synchronization_atomic_util
-    folly_synchronization_detail_sleeper
-    folly_synchronization_sanitize_thread
-)
-
-folly_add_library(
   NAME parking_lot
   SRCS
     ParkingLot.cpp
@@ -268,6 +291,19 @@ folly_add_library(
     folly_lang_safe_assert
     folly_portability
     folly_unit
+)
+
+folly_add_library(
+  NAME pico_spin_lock
+  HEADERS
+    PicoSpinLock.h
+  EXPORTED_DEPS
+    folly_lang_safe_assert
+    folly_portability
+    folly_synchronization_atomic_ref
+    folly_synchronization_atomic_util
+    folly_synchronization_detail_sleeper
+    folly_synchronization_sanitize_thread
 )
 
 folly_add_library(
@@ -288,6 +324,12 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME relaxed_atomic
+  HEADERS
+    RelaxedAtomic.h
+)
+
+folly_add_library(
   NAME rw_spin_lock
   HEADERS
     RWSpinLock.h
@@ -296,12 +338,6 @@ folly_add_library(
     folly_portability
     folly_portability_asm
     folly_synchronization_lock
-)
-
-folly_add_library(
-  NAME relaxed_atomic
-  HEADERS
-    RelaxedAtomic.h
 )
 
 folly_add_library(
@@ -345,65 +381,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME wait_options
-  HEADERS
-    WaitOptions.h
-  EXPORTED_DEPS
-    folly_c_portability
-)
-
-folly_add_library(
-  NAME delayed_init
-  HEADERS
-    DelayedInit.h
-  EXPORTED_DEPS
-    folly_lang_safe_assert
-    folly_synchronization_call_once
-)
-
-folly_add_library(
-  NAME throttled_lifo_sem
-  HEADERS
-    ThrottledLifoSem.h
-  EXPORTED_DEPS
-    folly_glog
-    folly_intrusive_list
-    folly_lang_align
-    folly_optional
-    folly_synchronization_detail_spin
-    folly_synchronization_distributed_mutex
-    folly_synchronization_saturating_semaphore
-    folly_synchronization_wait_options
-)
-
-folly_add_library(
-  NAME flat_combining
-  HEADERS
-    FlatCombining.h
-  EXPORTED_DEPS
-    folly_concurrency_cache_locality
-    folly_function
-    folly_indexed_mem_pool
-    folly_portability
-    folly_synchronization_saturating_semaphore
-    folly_system_thread_name
-)
-
-folly_add_library(
-  NAME event_count
-  HEADERS
-    EventCount.h
-  EXPORTED_DEPS
-    folly_detail_futex
-    folly_lang_bits
-    folly_likely
-    folly_portability_sys_time
-    folly_portability_unistd
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
-)
-
-folly_add_library(
   NAME striped_throttled_lifo_sem
   SRCS
     StripedThrottledLifoSem.cpp
@@ -423,6 +400,29 @@ folly_add_library(
     folly_synchronization_relaxed_atomic
     folly_synchronization_throttled_lifo_sem
     folly_unit
+)
+
+folly_add_library(
+  NAME throttled_lifo_sem
+  HEADERS
+    ThrottledLifoSem.h
+  EXPORTED_DEPS
+    folly_glog
+    folly_intrusive_list
+    folly_lang_align
+    folly_optional
+    folly_synchronization_detail_spin
+    folly_synchronization_distributed_mutex
+    folly_synchronization_saturating_semaphore
+    folly_synchronization_wait_options
+)
+
+folly_add_library(
+  NAME wait_options
+  HEADERS
+    WaitOptions.h
+  EXPORTED_DEPS
+    folly_c_portability
 )
 
 add_subdirectory(detail)

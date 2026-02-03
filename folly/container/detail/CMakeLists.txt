@@ -25,11 +25,9 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME f14_intrinsics_availability
+  NAME bool_wrapper
   HEADERS
-    F14IntrinsicsAvailability.h
-  EXPORTED_DEPS
-    folly_portability
+    BoolWrapper.h
 )
 
 folly_add_library(
@@ -76,6 +74,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME f14_intrinsics_availability
+  HEADERS
+    F14IntrinsicsAvailability.h
+  EXPORTED_DEPS
+    folly_portability
+)
+
+folly_add_library(
   NAME f14_mask
   HEADERS
     F14Mask.h
@@ -110,10 +116,4 @@ folly_add_library(
     folly_container_iterator
     folly_functional_apply_tuple
     folly_traits
-)
-
-folly_add_library(
-  NAME bool_wrapper
-  HEADERS
-    BoolWrapper.h
 )

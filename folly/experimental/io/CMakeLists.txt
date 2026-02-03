@@ -31,28 +31,12 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME liburing
-  HEADERS
-    Liburing.h
-  EXPORTED_DEPS
-    folly_io_async_liburing
-)
-
-folly_add_library(
   NAME async_io_uring_socket
   HEADERS
     AsyncIoUringSocket.h
     AsyncIoUringSocketFactory.h
   EXPORTED_DEPS
     folly_io_async_async_io_uring_socket
-)
-
-folly_add_library(
-  NAME simple_async_io
-  HEADERS
-    SimpleAsyncIO.h
-  EXPORTED_DEPS
-    folly_io_async_simple_async_io
 )
 
 folly_add_library(
@@ -81,11 +65,19 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME mux_io_thread_pool_executor
+  NAME fs_util
   HEADERS
-    MuxIOThreadPoolExecutor.h
+    FsUtil.h
   EXPORTED_DEPS
-    folly_io_async_mux_io_thread_pool_executor
+    folly_io_fs_util
+)
+
+folly_add_library(
+  NAME huge_pages
+  HEADERS
+    HugePages.h
+  EXPORTED_DEPS
+    folly_io_huge_pages
 )
 
 folly_add_library(
@@ -107,15 +99,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME io_uring_provided_buffer_ring
-  HEADERS
-    IoUringBase.h
-    IoUringProvidedBufferRing.h
-  EXPORTED_DEPS
-    folly_io_async_io_uring_provided_buffer_ring
-)
-
-folly_add_library(
   NAME io_uring_event
   HEADERS
     IoUringEvent.h
@@ -132,17 +115,34 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME fs_util
+  NAME io_uring_provided_buffer_ring
   HEADERS
-    FsUtil.h
+    IoUringBase.h
+    IoUringProvidedBufferRing.h
   EXPORTED_DEPS
-    folly_io_fs_util
+    folly_io_async_io_uring_provided_buffer_ring
 )
 
 folly_add_library(
-  NAME huge_pages
+  NAME liburing
   HEADERS
-    HugePages.h
+    Liburing.h
   EXPORTED_DEPS
-    folly_io_huge_pages
+    folly_io_async_liburing
+)
+
+folly_add_library(
+  NAME mux_io_thread_pool_executor
+  HEADERS
+    MuxIOThreadPoolExecutor.h
+  EXPORTED_DEPS
+    folly_io_async_mux_io_thread_pool_executor
+)
+
+folly_add_library(
+  NAME simple_async_io
+  HEADERS
+    SimpleAsyncIO.h
+  EXPORTED_DEPS
+    folly_io_async_simple_async_io
 )

@@ -96,6 +96,17 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME max_concurrent_rate_limiter
+  SRCS
+    MaxConcurrentRateLimiter.cpp
+  EXPORTED_DEPS
+    folly_channels_rate_limiter
+    folly_concurrency_unbounded_queue
+    folly_executors_sequenced_executor
+    folly_synchronized
+)
+
+folly_add_library(
   NAME merge
   HEADERS
     Merge-inl.h
@@ -177,17 +188,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_executors_sequenced_executor
     folly_function
-)
-
-folly_add_library(
-  NAME max_concurrent_rate_limiter
-  SRCS
-    MaxConcurrentRateLimiter.cpp
-  EXPORTED_DEPS
-    folly_channels_rate_limiter
-    folly_concurrency_unbounded_queue
-    folly_executors_sequenced_executor
-    folly_synchronized
 )
 
 folly_add_library(
