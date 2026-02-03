@@ -22,11 +22,13 @@
 #include <folly/coro/Baton.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Collect.h>
+#include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Invoke.h>
 #include <folly/coro/Sleep.h>
 #include <folly/coro/Task.h>
 #include <folly/coro/ValueOrError.h>
 #include <folly/coro/WithCancellation.h>
+#include <folly/coro/safe/NowTask.h>
 #include <folly/futures/Future.h>
 
 #include <folly/portability/GTest.h>
@@ -706,6 +708,34 @@ TEST(AsyncGenerator, CoAwaitValueOrError) {
     CHECK(folly::get_exception<SomeError>(item3));
   }());
 }
+
+#if FOLLY_HAS_RESULT
+// Test that value_or_error() auto-propagates OperationCancelled (stops the
+// consuming coroutine) when an AsyncGenerator yields co_stopped_may_throw.
+CO_TEST(AsyncGenerator, ValueOrErrorPropagatesStopped) {
+  using namespace folly::coro;
+
+  auto stoppedGen = []() -> AsyncGenerator<int> {
+    co_yield 1;
+    co_yield co_stopped_may_throw;
+    ADD_FAILURE() << "Generator should not continue after co_stopped_may_throw";
+  };
+
+  int firstItem = 0;
+  auto consumer = [&]() -> now_task<> {
+    auto gen = stoppedGen();
+    auto r1 = co_await value_or_error(gen.next());
+    firstItem = *r1.value_or_throw();
+    // This should propagate OperationCancelled, stopping this task
+    (void)co_await value_or_error(gen.next());
+    ADD_FAILURE();
+  };
+
+  auto res = co_await value_or_error_or_stopped(consumer());
+  EXPECT_EQ(1, firstItem);
+  EXPECT_TRUE(res.has_stopped());
+}
+#endif
 
 TEST(AsyncGenerator, SafePoint) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
