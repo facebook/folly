@@ -50,8 +50,8 @@ fbcode_target(
         "//folly/coro:base_promise",
         "//folly/coro:coroutine",
         "//folly/coro:current_executor",
-        "//folly/coro:detail_malloc",
-        "//folly/coro:detail_manual_lifetime",
+        "//folly/coro/detail:malloc",
+        "//folly/coro/detail:manual_lifetime",
         "//folly/coro:invoke",
         "//folly/coro:result",
         "//folly/coro:scope_exit",
@@ -138,8 +138,8 @@ fbcode_target(
     exported_deps = [
         ":coroutine",
         ":current_executor",
-        ":detail_barrier",
-        ":detail_barrier_task",
+        "//folly/coro/detail:barrier",
+        "//folly/coro/detail:barrier_task",
         ":task",
         "//folly:cancellation_token",
         "//folly:exception_wrapper",
@@ -317,8 +317,8 @@ fbcode_target(
     exported_deps = [
         "//folly:try",
         "//folly/coro:coroutine",
-        "//folly/coro:detail_malloc",
-        "//folly/coro:detail_traits",
+        "//folly/coro/detail:malloc",
+        "//folly/coro/detail:traits",
         "//folly/coro:task",
         "//folly/coro:traits",
         "//folly/coro:via_if_async",
@@ -396,11 +396,11 @@ fbcode_target(
         "//folly/coro:async_pipe",
         "//folly/coro:async_scope",
         "//folly/coro:coroutine",
-        "//folly/coro:detail_barrier",
-        "//folly/coro:detail_barrier_task",
-        "//folly/coro:detail_current_async_frame",
-        "//folly/coro:detail_helpers",
-        "//folly/coro:detail_traits",
+        "//folly/coro/detail:barrier",
+        "//folly/coro/detail:barrier_task",
+        "//folly/coro/detail:current_async_frame",
+        "//folly/coro/detail:helpers",
+        "//folly/coro/detail:traits",
         "//folly/coro:mutex",
         "//folly/coro:task",
         "//folly/coro:via_if_async",
@@ -531,7 +531,7 @@ fbcode_target(
     exported_deps = [
         "//folly/coro:baton",
         "//folly/coro:coroutine",
-        "//folly/coro:detail_helpers",
+        "//folly/coro/detail:helpers",
         "//folly/coro:invoke",
         "//folly/coro:task",
         "//folly/coro:traits",
@@ -550,176 +550,6 @@ non_fbcode_target(
         "//xplat/folly/experimental/coro:task",
         "//xplat/folly/experimental/coro:traits",
     ],
-)
-
-### this line is a hint for source control merge
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "detail_barrier",
-    headers = ["detail/Barrier.h"],
-    exported_deps = [
-        ":coroutine",
-        ":traits",
-        ":with_async_stack",
-        "//folly/tracing:async_stack",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "detail_barrier",
-    raw_headers = ["detail/Barrier.h"],
-    exported_deps = [
-        "//xplat/folly/experimental/coro:coroutine",
-        "//xplat/folly/experimental/coro:traits",
-        "//xplat/folly/experimental/coro:with_async_stack",
-        "//xplat/folly/tracing:async_stack",
-    ],
-)
-
-### this line is a hint for source control merge
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "detail_barrier_task",
-    headers = ["detail/BarrierTask.h"],
-    exported_deps = [
-        ":coroutine",
-        ":detail_barrier",
-        ":detail_malloc",
-        ":with_async_stack",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "detail_barrier_task",
-    raw_headers = ["detail/BarrierTask.h"],
-    exported_deps = [
-        "//xplat/folly/experimental/coro:coroutine",
-        "//xplat/folly/experimental/coro:detail_barrier",
-        "//xplat/folly/experimental/coro:detail_malloc",
-        "//xplat/folly/experimental/coro:with_async_stack",
-    ],
-)
-
-### this line is a hint for source control merge
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "detail_current_async_frame",
-    headers = ["detail/CurrentAsyncFrame.h"],
-    exported_deps = [
-        ":coroutine",
-        ":with_async_stack",
-        "//folly:executor",
-        "//folly/tracing:async_stack",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "detail_current_async_frame",
-    raw_headers = ["detail/CurrentAsyncFrame.h"],
-    exported_deps = [
-        "//xplat/folly:executor",
-        "//xplat/folly/experimental/coro:coroutine",
-        "//xplat/folly/experimental/coro:with_async_stack",
-        "//xplat/folly/tracing:async_stack",
-    ],
-)
-
-### this line is a hint for source control merge
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "detail_helpers",
-    headers = ["detail/Helpers.h"],
-    exported_deps = [
-        ":coroutine",
-        "//folly:executor",
-        "//folly:singleton_thread_local",
-        "//folly/io/async:request_context",
-        "//folly/tracing:async_stack",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "detail_helpers",
-    raw_headers = ["detail/Helpers.h"],
-    exported_deps = [
-        "//xplat/folly:executor",
-        "//xplat/folly:singleton_thread_local",
-        "//xplat/folly/experimental/coro:coroutine",
-        "//xplat/folly/io/async:request_context",
-        "//xplat/folly/tracing:async_stack",
-    ],
-)
-
-### this line is a hint for source control merge
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "detail_malloc",
-    srcs = ["detail/Malloc.cpp"],
-    headers = ["detail/Malloc.h"],
-    deps = [
-        "//folly/lang:hint",
-        "//folly/lang:new",
-    ],
-    exported_deps = [
-        "//folly:c_portability",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "detail_malloc",
-    srcs = ["detail/Malloc.cpp"],
-    raw_headers = ["detail/Malloc.h"],
-    deps = [
-        "//xplat/folly/lang:hint",
-        "//xplat/folly/lang:new",
-    ],
-    exported_deps = ["//xplat/folly:c_portability"],
-)
-
-### this line is a hint for source control merge
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "detail_manual_lifetime",
-    headers = ["detail/ManualLifetime.h"],
-    exported_deps = [
-        "//folly:scope_guard",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "detail_manual_lifetime",
-    raw_headers = ["detail/ManualLifetime.h"],
-    exported_deps = ["//xplat/folly:scope_guard"],
-)
-
-### this line is a hint for source control merge
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "detail_traits",
-    headers = ["detail/Traits.h"],
-    exported_deps = [
-        "//folly:traits",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "detail_traits",
-    raw_headers = ["detail/Traits.h"],
-    exported_deps = ["//xplat/folly:traits"],
 )
 
 ### this line is a hint for source control merge
@@ -892,38 +722,6 @@ non_fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "inline_task",
-    headers = ["detail/InlineTask.h"],
-    exported_deps = [
-        ":coroutine",
-        ":detail_malloc",
-        ":with_async_stack",
-        "//folly:scope_guard",
-        "//folly:try",
-        "//folly/lang:assume",
-        "//folly/tracing:async_stack",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "inline_task",
-    raw_headers = ["detail/InlineTask.h"],
-    exported_deps = [
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:try",
-        "//xplat/folly/experimental/coro:coroutine",
-        "//xplat/folly/experimental/coro:detail_malloc",
-        "//xplat/folly/experimental/coro:with_async_stack",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/tracing:async_stack",
-    ],
-)
-
-### this line is a hint for source control merge
-
-fbcode_target(
-    _kind = cpp_library,
     name = "invoke",
     headers = ["Invoke.h"],
     exported_deps = [
@@ -958,10 +756,10 @@ fbcode_target(
         "//folly/coro:async_generator",
         "//folly/coro:baton",
         "//folly/coro:coroutine",
-        "//folly/coro:detail_barrier",
-        "//folly/coro:detail_barrier_task",
-        "//folly/coro:detail_current_async_frame",
-        "//folly/coro:detail_helpers",
+        "//folly/coro/detail:barrier",
+        "//folly/coro/detail:barrier_task",
+        "//folly/coro/detail:current_async_frame",
+        "//folly/coro/detail:helpers",
         "//folly/coro:mutex",
         "//folly/coro:task",
         "//folly/coro:via_if_async",
@@ -1446,9 +1244,6 @@ fbcode_target(
         "//folly/coro:base_promise",
         "//folly/coro:coroutine",
         "//folly/coro:current_executor",
-        "//folly/coro:detail_malloc",
-        "//folly/coro:detail_traits",
-        "//folly/coro:inline_task",
         "//folly/coro:invoke",
         "//folly/coro:result",
         "//folly/coro:scope_exit",
@@ -1456,6 +1251,9 @@ fbcode_target(
         "//folly/coro:via_if_async",
         "//folly/coro:with_async_stack",
         "//folly/coro:with_cancellation",
+        "//folly/coro/detail:inline_task",
+        "//folly/coro/detail:malloc",
+        "//folly/coro/detail:traits",
         "//folly/futures:core",
         "//folly/io/async:request_context",
         "//folly/lang:assume",
@@ -1540,7 +1338,7 @@ fbcode_target(
         "//folly:optional",
         "//folly/coro:baton",
         "//folly/coro:coroutine",
-        "//folly/coro:detail_helpers",
+        "//folly/coro/detail:helpers",
         "//folly/coro:invoke",
         "//folly/coro:task",
         "//folly/coro:traits",
@@ -1748,7 +1546,7 @@ fbcode_target(
         "//folly:executor",
         "//folly:traits",
         "//folly/coro:coroutine",
-        "//folly/coro:detail_malloc",
+        "//folly/coro/detail:malloc",
         "//folly/coro:traits",
         "//folly/coro:with_async_stack",
         "//folly/coro:with_cancellation",
