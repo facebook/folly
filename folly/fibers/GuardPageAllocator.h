@@ -53,5 +53,15 @@ class GuardPageAllocator {
   std::allocator<unsigned char> fallbackAllocator_;
   size_t guardPagesPerStack_{0};
 };
+
+#ifndef _WIN32
+/**
+ * Unconditionally install the SIGSEGV handler that detects fiber stack
+ * overflow. Can be useful if the handler has been overridden by some other code
+ * overriding the SIGSEGV handler
+ */
+void installGuardPageSignalHandler();
+#endif
+
 } // namespace fibers
 } // namespace folly

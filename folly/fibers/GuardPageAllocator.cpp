@@ -248,31 +248,33 @@ bool isInJVM() {
   return getCreated;
 }
 
-void installSignalHandler() {
+void maybeInstallGuardPageSignalHandler() {
   static std::once_flag onceFlag;
-  std::call_once(onceFlag, []() {
-    if (isInJVM()) {
-      // Don't install signal handler, since JVM internal signal handler doesn't
-      // work with SA_ONSTACK
-      return;
-    }
-
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sigemptyset(&sa.sa_mask);
-    // By default signal handlers are run on the signaled thread's stack.
-    // In case of stack overflow running the SIGSEGV signal handler on
-    // the same stack leads to another SIGSEGV and crashes the program.
-    // Use SA_ONSTACK, so alternate stack is used (only if configured via
-    // sigaltstack).
-    sa.sa_flags |= SA_SIGINFO | SA_ONSTACK;
-    sa.sa_sigaction = &sigsegvSignalHandler;
-    sigaction(SIGSEGV, &sa, &oldSigsegvAction);
-  });
+  std::call_once(onceFlag, installGuardPageSignalHandler);
 }
 } // namespace
 
-#endif
+void installGuardPageSignalHandler() {
+  if (isInJVM()) {
+    // Don't install signal handler, since JVM internal signal handler doesn't
+    // work with SA_ONSTACK
+    return;
+  }
+
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sigemptyset(&sa.sa_mask);
+  // By default signal handlers are run on the signaled thread's stack.
+  // In case of stack overflow running the SIGSEGV signal handler on
+  // the same stack leads to another SIGSEGV and crashes the program.
+  // Use SA_ONSTACK, so alternate stack is used (only if configured via
+  // sigaltstack).
+  sa.sa_flags |= SA_SIGINFO | SA_ONSTACK;
+  sa.sa_sigaction = &sigsegvSignalHandler;
+  sigaction(SIGSEGV, &sa, &oldSigsegvAction);
+}
+
+#endif // _WIN32
 
 /*
  * RAII Wrapper around a StackCache that calls
@@ -337,7 +339,7 @@ StackCacheEntry::~StackCacheEntry() {
 GuardPageAllocator::GuardPageAllocator(size_t guardPagesPerStack)
     : guardPagesPerStack_(guardPagesPerStack) {
 #ifndef _WIN32
-  installSignalHandler();
+  maybeInstallGuardPageSignalHandler();
 #endif
 }
 
