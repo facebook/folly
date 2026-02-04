@@ -438,6 +438,20 @@ class fbstring_core {
     return category() == Category::isLarge && RefCounted::refs(ml_.data_) > 1;
   }
 
+  // Returns the reference count for Large (RefCounted) strings, or 1 for
+  // Small/Medium strings which are not reference counted.
+  size_t useCount() const {
+    if (category() == Category::isLarge) {
+      return RefCounted::refs(ml_.data_);
+    }
+    return 1;
+  }
+
+  // Returns true if the string is using RefCounted (Large) storage mode.
+  // Large strings have a RefCounted header that adds sizeof(size_t) bytes
+  // to the allocation, which is important for accurate memory accounting.
+  bool isCounted() const { return category() == Category::isLarge; }
+
  private:
   Char* c_str() {
     Char* ptr = ml_.data_;
@@ -928,6 +942,8 @@ class dummy_fbstring_core {
   size_t size() const { return backend_.size(); }
   size_t capacity() const { return backend_.capacity(); }
   bool isShared() const { return false; }
+  size_t useCount() const { return 1; }
+  bool isCounted() const { return false; }
   void reserve(size_t minCapacity) { backend_.reserve(minCapacity); }
 
  private:
@@ -1221,6 +1237,17 @@ class basic_fbstring {
   void resize(size_type n, value_type c = value_type());
 
   size_type capacity() const { return store_.capacity(); }
+
+  // Returns the reference count for this string's underlying data.
+  // Returns 1 for Small (SSO) or Medium strings which are not reference
+  // counted. For Large strings, returns the actual reference count.
+  // Useful for memory accounting with fair-share division.
+  size_t use_count() const { return store_.useCount(); }
+
+  // Returns true if the string uses RefCounted (Large) storage mode.
+  // Large strings have a RefCounted header (sizeof(size_t) bytes) before
+  // the data, which must be accounted for in memory calculations.
+  bool is_counted() const { return store_.isCounted(); }
 
   void reserve(size_type res_arg = 0) {
     enforce<std::length_error>(res_arg <= max_size(), "");
