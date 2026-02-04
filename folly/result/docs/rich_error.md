@@ -104,7 +104,9 @@ All of the above applies to thrown exceptions, too. Prefer to catch
         avoid RTTI.
   - **Catch-alls:** Query `rich_error_base` via `get_rich_error()` before
     checking `std::exception` -- better speed & logging.
-  - **Logging:** Prefer `operator<<` or `fmt::format` over `what()`.
+  - **Logging:** Prefer `operator<<` or `fmt::format` over `what()`. Both
+    can show provenance vua *epitaph* stacks, and can format `error_or_stopped`
+    or `get_exception<Ex>(container)`.
   - **Inheritance:** Derive from `Err`, not `rich_error<Err>`. Hints are
     mandatory; list the current type and likely derived types:
 

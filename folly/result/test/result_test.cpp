@@ -18,6 +18,8 @@
 
 #include <folly/coro/Traits.h>
 #include <folly/result/gtest_helpers.h>
+#include <folly/result/or_unwind_epitaph.h>
+#include <folly/result/test/common.h>
 
 #if FOLLY_HAS_RESULT
 
@@ -1020,6 +1022,30 @@ TEST(Result, of_exception_wrapper) {
   result<exception_wrapper> rErr{error_or_stopped{MyError{"err"}}};
   EXPECT_FALSE(rErr.has_value());
   EXPECT_STREQ("err", get_exception<MyError>(rErr)->what());
+}
+
+// Minimal test for error_or_stopped fmt/ostream formatting.
+// See `rich_exception_ptr_fmt_test.cpp` for comprehensive formatting tests.
+TEST(Result, error_or_stopped_format) {
+  auto line = source_location::current().line() + 1;
+  auto eos = epitaph(error_or_stopped{stopped_result}, "ctx");
+  checkFormat(
+      eos,
+      fmt::format(
+          "folly::OperationCancelled: coroutine operation cancelled"
+          " \\[via\\] ctx @ {}:{}",
+          source_location::current().file_name(),
+          line));
+}
+
+// To examine RESULT_CO_TEST failure messages:
+//   buck run test:result_test -- --gtest_also_run_disabled_tests
+RESULT_CO_TEST(Result, DISABLED_checkEpitaphErrorMessage) {
+  co_await or_unwind_epitaph(error_or_stopped{MyError{"inner error"}}, "ctx");
+}
+
+RESULT_CO_TEST(Result, DISABLED_checkEpitaphStoppedMessage) {
+  co_await or_unwind_epitaph(error_or_stopped{stopped_result}, "ctx");
 }
 
 } // namespace folly::test

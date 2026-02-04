@@ -338,6 +338,9 @@ class [[nodiscard]] error_or_stopped {
   rich_exception_ptr&& release_rich_exception_ptr() && {
     return std::move(rep_);
   }
+
+  // Implementation of `fmt::format` and `operator<<(ostream&)`.
+  void format_to(fmt::appender out) const { rep_.format_to(out); }
 };
 static_assert(
     detail::rich_exception_ptr_packed_storage::is_supported
@@ -870,7 +873,21 @@ result_catch_all(F&& fn) noexcept {
   }
 }
 
+std::ostream& operator<<(std::ostream&, const error_or_stopped&);
+
 } // namespace folly
+
+template <>
+struct fmt::formatter<folly::error_or_stopped> {
+  constexpr format_parse_context::iterator parse(format_parse_context& ctx) {
+    return ctx.begin();
+  }
+  format_context::iterator format(
+      const folly::error_or_stopped& eos, format_context& ctx) const {
+    eos.format_to(ctx.out());
+    return ctx.out();
+  }
+};
 
 #endif // FOLLY_HAS_RESULT
 

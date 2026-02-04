@@ -84,13 +84,9 @@ TEST(OrUnwindRich, stopped) {
   }();
   EXPECT_TRUE(res.has_stopped());
   auto msg = "folly::OperationCancelled: coroutine operation cancelled";
-  // Temporary workaround for `static_assert` against testing for OC in
-  // `result.h`.  Future: Once `result` or `error_or_stopped` is formattable,
-  // we can avoid this hackery.
-  auto rep = std::move(res).error_or_stopped().release_rich_exception_ptr();
   EXPECT_EQ(
       fmt::format("{} [via] ctx @ {}:{}", msg, test_file_name, err_line),
-      fmt::format("{}", get_exception<OperationCancelled>(rep)));
+      fmt::format("{}", std::move(res).error_or_stopped()));
 }
 
 } // namespace folly::test

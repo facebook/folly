@@ -21,17 +21,12 @@
 
 namespace folly {
 
-#define RESULT_CO_UNWRAP_BODY(body)                                     \
-  {                                                                     \
-    auto ret = body();                                                  \
-    if (!ret.has_value()) {                                             \
-      if (ret.error_or_stopped().has_stopped()) {                       \
-        FAIL() << "RESULT_CO_TEST got cancellation";                    \
-      } else {                                                          \
-        FAIL() << folly::exception_wrapper{                             \
-            std::move(ret).error_or_stopped().to_exception_ptr_slow()}; \
-      }                                                                 \
-    }                                                                   \
+#define RESULT_CO_UNWRAP_BODY(body)     \
+  {                                     \
+    auto ret = body();                  \
+    if (!ret.has_value()) {             \
+      FAIL() << ret.error_or_stopped(); \
+    }                                   \
   }
 
 /*

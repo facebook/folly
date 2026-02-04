@@ -16,12 +16,15 @@
 
 #include <folly/result/result.h>
 
+#include <ostream>
+
 #include <glog/logging.h>
 #include <folly/Indestructible.h>
 
 #if FOLLY_HAS_RESULT
 
-namespace folly::detail {
+namespace folly {
+namespace detail {
 
 const error_or_stopped& dfatal_get_empty_result_error() {
   static const folly::Indestructible<error_or_stopped> r{empty_result_error{}};
@@ -49,6 +52,12 @@ void fatal_if_eptr_empty_or_stopped(const std::exception_ptr& eptr) {
   }
 }
 
-} // namespace folly::detail
+} // namespace detail
+
+std::ostream& operator<<(std::ostream& os, const error_or_stopped& eos) {
+  return detail::ostream_write_via_fmt(os, eos);
+}
+
+} // namespace folly
 
 #endif // FOLLY_HAS_RESULT

@@ -28,12 +28,10 @@ when building new features:
 
 These are sorted from "near future" to "far future".
 
-  - Automatic `fmt` + `<<` for `error_or_stopped` by making
-    `rich_exception_ptr` formattable (via bits and `rich_error_base` if
-    available).  This would strengthen `checkEptrRoundtrip` non-aliasing
-    checks.  Update other tests, like `epitaph_test.cpp`.  `result<T>`
-    should also do this, iff `T` is formattable.  Update `rich_error.md` /
-    `result.md` / `README.md` accordingly.
+  - I am unsure whether `result<T>` should become `fmt`- and
+    `<<(ostream&)`-formattable whenever `T` is.  It's convenient, but it's not
+    obvious what convention should disinguish value from non-value output,
+    which may just mean it's bad to sugar this.
 
   - Automatic epitaphs for `result` coroutines as in `epitaphs.md`.
     I'm thinking of symbolizing the stack and attaching it to the exception in
