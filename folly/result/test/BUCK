@@ -213,6 +213,7 @@ fb_dirsync_cpp_unittest(
         ":common",
         "//folly:benchmark",
         "//folly/result:epitaph",
+        "//folly/result:immortal_rich_error",
         "//folly/result:rich_error",
         "//folly/result:rich_error_base",
     ],

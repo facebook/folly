@@ -16,9 +16,12 @@
 
 #include <folly/Benchmark.h>
 #include <folly/result/epitaph.h>
+#include <folly/result/immortal_rich_error.h>
 #include <folly/result/rich_error.h>
 #include <folly/result/rich_exception_ptr.h>
 #include <folly/result/test/common.h>
+
+// Cover formatting perf for rich_error & rich_exception_ptr
 
 #if FOLLY_HAS_RESULT
 
@@ -122,6 +125,53 @@ BENCHMARK(fmtEpitaphStdException, iters) {
     }
   });
   CHECK(all_ok);
+}
+
+template <typename MakeRep>
+FOLLY_ALWAYS_INLINE void benchFmtRep(size_t iters, MakeRep makeRep) {
+  folly::BenchmarkSuspender suspender;
+  std::string buf;
+  buf.reserve(100);
+  auto rep = makeRep();
+  suspender.dismissing([&] {
+    while (iters--) {
+      buf.clear();
+      fmt::format_to(std::back_inserter(buf), "{}", rep);
+      folly::compiler_must_not_predict(buf);
+    }
+  });
+}
+
+BENCHMARK(fmtRep_empty, iters) {
+  benchFmtRep(iters, []() { return rich_exception_ptr{}; });
+}
+
+BENCHMARK(fmtRep_richError, iters) {
+  benchFmtRep(iters, []() {
+    return rich_exception_ptr{rich_error<PrintMe>{}};
+  });
+}
+
+BENCHMARK(fmtRep_immortalRichError, iters) {
+  benchFmtRep(iters, []() { return immortal_rich_error<PrintMe>.ptr(); });
+}
+
+BENCHMARK(fmtRep_stdException, iters) {
+  benchFmtRep(iters, []() {
+    return rich_exception_ptr{std::logic_error{"error message"}};
+  });
+}
+
+BENCHMARK(fmtRep_stoppedNothrow, iters) {
+  benchFmtRep(iters, []() {
+    return rich_exception_ptr{detail::StoppedNoThrow{}};
+  });
+}
+
+BENCHMARK(fmtRep_stoppedMayThrow, iters) {
+  benchFmtRep(iters, []() {
+    return rich_exception_ptr{detail::StoppedMayThrow{}};
+  });
 }
 
 } // namespace folly::test
