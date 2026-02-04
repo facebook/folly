@@ -142,6 +142,7 @@ folly_add_library(
     rich_exception_ptr.h
   DEPS
     folly_demangle
+    folly_lang_switch
   EXPORTED_DEPS
     folly_cpp_attributes
     folly_lang_exception

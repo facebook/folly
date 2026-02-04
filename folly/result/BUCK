@@ -20,6 +20,7 @@ non_fbcode_target(
     deps = [
         "//third-party/glog:glog",
         "//xplat/folly:demangle",
+        "//xplat/folly/lang:switch",
     ],
     exported_deps = [
         ":rich_error_fwd",
@@ -45,7 +46,10 @@ fbcode_target(
         "rich_error_base.h",
         "rich_exception_ptr.h",
     ],
-    deps = ["//folly:demangle"],
+    deps = [
+        "//folly:demangle",
+        "//folly/lang:switch",
+    ],
     exported_deps = [
         ":rich_error_fwd",
         "//folly:cpp_attributes",

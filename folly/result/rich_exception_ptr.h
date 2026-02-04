@@ -62,10 +62,35 @@ struct force_slow_rtti_t {};
 struct make_empty_try_t {};
 struct try_rich_exception_ptr_private_t {};
 
+// Passkey for `rich_exception_ptr::format_to` optimization.
+// Lets `rich_error_base.cpp` skip a redundant maybe-RTTI "is rich?" check.
+class format_to_skip_rich_t {
+  friend class ::folly::rich_error_base;
+  friend class ::folly::rich_exception_ptr;
+  bool skip_;
+  explicit format_to_skip_rich_t(bool skip) : skip_(skip) {}
+
+ public:
+  format_to_skip_rich_t() : skip_(false) {}
+};
+
 template <typename Derived, typename B>
-// `private` inheritance to show that the members of the storage classes are
-// all implementation details -- all the public interfaces are here.
-class rich_exception_ptr_impl : private B {
+// `protected` inheritance keeps the members of the storage classes as
+// implementation details, while allowing the derived `rich_exception_ptr`
+// (which is `final`) to access them for out-of-line member functions.
+class rich_exception_ptr_impl : protected B {
+ protected:
+  // Make unused code dead, while verifying that small-value code paths compile.
+  static constexpr bool kImplementsSmallValue = false;
+
+  constexpr const detail::immortal_exception_storage* get_immortal_storage()
+      const {
+    if (!std::is_constant_evaluated()) {
+      B::debug_assert("get_immortal_storage", !B::get_bits());
+    }
+    return B::get_immortal_storage_or_punned_uintptr();
+  }
+
  private:
   // This allows comparing REPs with different storage.  Only tests need it,
   // since they explicitly cover both "separate" and "packed" storage, whereas
@@ -78,14 +103,6 @@ class rich_exception_ptr_impl : private B {
   void set_empty_try() {
     B::apply_bits_after_setting_data_with(
         [](auto& d) { d.uintptr_ = B::kSigilEmptyTry; }, B::SIGIL_eq);
-  }
-
-  constexpr const detail::immortal_exception_storage* get_immortal_storage()
-      const {
-    if (!std::is_constant_evaluated()) {
-      B::debug_assert("get_immortal_storage", !B::get_bits());
-    }
-    return B::get_immortal_storage_or_punned_uintptr();
   }
 
   constexpr void set_immortal_storage_and_bits(
@@ -321,7 +338,7 @@ class rich_exception_ptr_impl : private B {
         B::debug_assert("Cannot `throw_exception` on empty `Try`", false);
         throw empty_result_error{};
       }
-    } else if (B::SMALL_VALUE_eq == bits) {
+    } else if (kImplementsSmallValue && B::SMALL_VALUE_eq == bits) {
       if constexpr (PartOfTryImpl) {
         throw StubTryException{}; // Match `Try::exception()` behavior
       } else { // Match `result::error_or_stopped()` behavior
@@ -351,7 +368,7 @@ class rich_exception_ptr_impl : private B {
         // some other usage `Try` insetad throws `TryException`, but luckily
         // `UsingUninitializedTry` derives from that.
         throw StubUsingUninitializedTry{};
-      } else if (B::SMALL_VALUE_eq == bits) {
+      } else if (kImplementsSmallValue && B::SMALL_VALUE_eq == bits) {
         throw StubTryException{}; // Match `Try::exception()` behavior
       } // Else: fall through...
     }
@@ -509,7 +526,9 @@ class rich_exception_ptr_impl : private B {
         ((B::OWNS_EXCEPTION_PTR_and & rbits) ||
          B::NOTHROW_OPERATION_CANCELLED_eq == rbits)) {
       return lp->get_eptr_ref_guard().ref() == rp->get_eptr_ref_guard().ref();
-    } else if (B::SMALL_VALUE_eq == lbits && B::SMALL_VALUE_eq == rbits) {
+    } else if (
+        kImplementsSmallValue && B::SMALL_VALUE_eq == lbits &&
+        B::SMALL_VALUE_eq == rbits) {
       B::debug_assert(
           "rich_exception_ptr::operator== invalid for 2 small value uintptrs",
           false);
@@ -752,38 +771,6 @@ class rich_exception_ptr_impl : private B {
     return to_exception_ptr_move</*PartOfTryImpl=*/true>();
   }
 
-  /// Returns the `typeid` of the innermost exception object, ignoring
-  /// epitaph wrappers.  If no exception object is stored, returns null.
-  ///
-  /// Future: Could perhaps be made public, currently PRIVATE due to the API
-  /// design issue with immortals documented inline.  That would simplify the
-  /// `rich_error_base` plumbing.
-  constexpr const std::type_info* exception_type(
-      rich_error_base::private_get_exception_ptr_type_t) const noexcept {
-    using bits_t = typename B::bits_t; // MSVC thinks `B::BIT_NAME` is private
-    return with_underlying([](auto* rep) -> const std::type_info* {
-      if (bits_t::OWNS_EXCEPTION_PTR_and & rep->get_bits()) {
-        return exception_ptr_get_type(rep->get_eptr_ref_guard().ref());
-      } else if (
-          bits_t::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq == rep->get_bits()) {
-        // This shouldn't even be hit on our internal formatting code path.
-        //
-        // FIXME: This is potentially too confusing for a public API, since:
-        //  - The actual storage type is `immortal_rich_error_storage`, which
-        //    is not user-addressable.
-        //  - The user can get `const UserBase*`, `rich_error<UserBase>*>, or
-        //    `const rich_error<UserBase>*`, but the latter 2 have costs,
-        //    and all 3 are distinct objects.
-        return rep->get_immortal_storage()
-            ? rep->get_immortal_storage()->user_base_type_
-            : nullptr;
-      } else if (bits_t::NOTHROW_OPERATION_CANCELLED_eq == rep->get_bits()) {
-        return &typeid(StoppedNoThrow);
-      }
-      return nullptr; // Non-exceptions: empty `Try`, small value uintptr
-    });
-  }
-
   /// Returns `true` when both `lhs` and `rhs`...
   ///  - ... point at the same underlying exception, per the details below.
   ///  - ... occur in the `Try` implementation, and both contain empty `Try`.
@@ -1017,6 +1004,37 @@ class rich_exception_ptr_impl : private B {
   }
 
  private:
+  /// Returns the `typeid` of the innermost exception object, ignoring
+  /// epitaph wrappers.  If no exception object is stored, returns null.
+  ///
+  /// UNFINISHED: Could perhaps be made public, currently PRIVATE due to the API
+  /// design issue with immortals documented inline.  That would simplify the
+  /// `rich_error_base` plumbing.
+  constexpr const std::type_info* UNFINISHED_exception_type() const noexcept {
+    using bits_t = typename B::bits_t; // MSVC thinks `B::BIT_NAME` is private
+    return with_underlying([](auto* rep) -> const std::type_info* {
+      if (bits_t::OWNS_EXCEPTION_PTR_and & rep->get_bits()) {
+        return exception_ptr_get_type(rep->get_eptr_ref_guard().ref());
+      } else if (
+          bits_t::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq == rep->get_bits()) {
+        // This shouldn't even be hit on our internal formatting code path.
+        //
+        // FIXME: This is potentially too confusing for a public API, since:
+        //  - The actual storage type is `immortal_rich_error_storage`, which
+        //    is not user-addressable.
+        //  - The user can get `const UserBase*`, `rich_error<UserBase>*>, or
+        //    `const rich_error<UserBase>*`, but the latter 2 have costs,
+        //    and all 3 are distinct objects.
+        return rep->get_immortal_storage()
+            ? rep->get_immortal_storage()->user_base_type_
+            : nullptr;
+      } else if (bits_t::NOTHROW_OPERATION_CANCELLED_eq == rep->get_bits()) {
+        return &typeid(StoppedNoThrow);
+      }
+      return nullptr; // Non-exceptions: empty `Try`, small value uintptr
+    });
+  }
+
   // Calls `get_outer_exception` on the underlying error in the epitaph stack
   template <typename CEx>
   static constexpr rich_ptr_to_underlying_error<CEx> get_exception_impl(
@@ -1089,6 +1107,10 @@ using rich_exception_ptr_base = rich_exception_ptr_impl<
 class [[nodiscard]]
 rich_exception_ptr final : public detail::rich_exception_ptr_base {
   using detail::rich_exception_ptr_base::rich_exception_ptr_base;
+
+ public:
+  void format_to(
+      fmt::appender out, detail::format_to_skip_rich_t opts = {}) const;
 };
 
 namespace detail {
@@ -1170,6 +1192,21 @@ constexpr inline auto rich_exception_ptr_impl<Derived, B>::get_exception_impl(
 
 } // namespace detail
 
+std::ostream& operator<<(std::ostream&, const rich_exception_ptr&);
+
 } // namespace folly
+
+template <>
+struct fmt::formatter<folly::rich_exception_ptr> {
+  constexpr fmt::format_parse_context::iterator parse(
+      fmt::format_parse_context& ctx) {
+    return ctx.begin();
+  }
+  fmt::format_context::iterator format(
+      const folly::rich_exception_ptr& rep, fmt::format_context& ctx) const {
+    rep.format_to(ctx.out());
+    return ctx.out();
+  }
+};
 
 #endif // FOLLY_HAS_RESULT

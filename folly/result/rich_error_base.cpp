@@ -17,7 +17,6 @@
 #include <folly/result/rich_error_base.h>
 #include <folly/result/rich_exception_ptr.h>
 
-#include <folly/Demangle.h>
 #include <folly/lang/SafeAssert.h>
 
 #include <ostream>
@@ -63,7 +62,8 @@ void rich_error_base::format_to(fmt::appender& out) const {
 namespace {
 
 struct FormatterState {
-  rich_error_base::private_get_exception_ptr_type_t priv_;
+  // Skips potentially-RTTI "is rich?" check when we have a non-rich error.
+  detail::format_to_skip_rich_t skip_rich_;
 
   // Multiple stacked epitaph wrappers can share the same underlying error,
   // but we only want to show that underlying error once.
@@ -73,9 +73,6 @@ struct FormatterState {
   // `rich_exception_ptr*` to compare against.
   const rich_error_base* seen_underlying_rex_ = nullptr;
   bool need_after_separator_ = false;
-
-  explicit FormatterState(rich_error_base::private_get_exception_ptr_type_t p)
-      : priv_{p} {}
 
   void mark_underlying_as_seen(
       const rich_exception_ptr* rep, const rich_error_base* rex) {
@@ -97,24 +94,7 @@ struct FormatterState {
 
   void format_non_rich(fmt::appender& out, const rich_exception_ptr& rep) {
     format_separator_if_needed(out);
-    const char* type_name = rep.exception_type(priv_)->name();
-    decltype(folly::demangle(type_name)) demangled;
-    // Demangling requires* an allocation, but we really don't want formatting
-    // to throw since it may make debugging OOMs painful.
-    //
-    // *If you need async-signal-safety, then try-allocate-catch is no good.
-    // `folly::demangle` also has a fixed-buffer version, for which you could
-    // allocate a few dozen bytes on stack here.
-    try {
-      demangled = folly::demangle(type_name);
-      type_name = demangled.c_str();
-    } catch (...) {
-    }
-    if (const auto* ex = rep.get_outer_exception<std::exception>()) {
-      fmt::format_to(out, "{}: {}", type_name, ex->what());
-    } else {
-      fmt::format_to(out, "{}", type_name);
-    }
+    rep.format_to(out, skip_rich_);
   }
 
   // Handle an epitaph wrapper -- outputs "underlying [via] wrapper"
@@ -169,7 +149,7 @@ struct FormatterState {
 // Format this epitaph stack, starting with its underlying error.
 // Outputs: "Underlying [via] OuterWrapper [after] InnerWrapper"
 void rich_error_base::format_with_epitaphs(fmt::appender& out) const {
-  FormatterState state{private_get_exception_ptr_type_t{}};
+  FormatterState state{detail::format_to_skip_rich_t{true}};
   state.format_epitaph_stack_entry(out, this);
   state.format_rest_of_chain(out, this);
 }
@@ -179,7 +159,7 @@ void rich_error_base::format_with_epitaphs(fmt::appender& out) const {
 // Outputs: " [via] OuterWrapper [after] InnerWrapper"
 void rich_error_base::format_with_epitaphs_without_first_underlying(
     fmt::appender& out) const {
-  FormatterState state{private_get_exception_ptr_type_t{}};
+  FormatterState state{detail::format_to_skip_rich_t{true}};
   { // Mark the first underlying as already printed (by the caller)
     auto* rep = underlying_error();
     FOLLY_SAFE_DCHECK(rep); // See precondition; falls back to `rex == this`

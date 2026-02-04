@@ -287,6 +287,19 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
+    name = "rich_exception_ptr_fmt_test",
+    srcs = ["rich_exception_ptr_fmt_test.cpp"],
+    deps = [
+        ":common",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/result:epitaph",
+        "//folly/result:immortal_rich_error",
+        "//folly/result:rich_error",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
     name = "rich_msg_test",
     srcs = ["rich_msg_test.cpp"],
     deps = [

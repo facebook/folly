@@ -211,6 +211,9 @@ class [[nodiscard]] error_or_stopped {
       const immortal_rich_error_t<rich_exception_ptr, T, Args...>& err)
       : rep_{err.ptr()} {}
 
+  // PRIVATE, use `stopped_nothrow` (future) instead.
+  explicit error_or_stopped(detail::StoppedNoThrow s) : rep_(s) {}
+
   [[nodiscard]] bool has_stopped() const {
     return bool{::folly::get_exception<OperationCancelled>(rep_)};
   }

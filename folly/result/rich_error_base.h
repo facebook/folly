@@ -52,6 +52,7 @@ template <typename>
 class rich_error_test_for_partial_message;
 template <typename, typename>
 class rich_exception_ptr_impl;
+
 } // namespace detail
 
 // As per `docs/rich_error.md`, user rich error types should use this alias to
@@ -250,13 +251,6 @@ class rich_error_base {
   //   OriginalErr [via] last annotation @ src.cpp:50 [after] first @ src.cpp:40
   //   [after] NestedErr [via] nested_src.cpp:12
   virtual const rich_exception_ptr* next_error_for_epitaph() const noexcept;
-
-  // Future: this passkey for `rich_exception_ptr::exception_type()` could
-  // perhaps be removed, see its docblock.
-  class private_get_exception_ptr_type_t {
-    friend class rich_error_base;
-    private_get_exception_ptr_type_t() = default;
-  };
 
   // Used only by "transparent" error wrappers like `epitaph()`.
   // Otherwise, `nullptr`, meaning that `this` itself is the underlying error.
