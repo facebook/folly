@@ -89,15 +89,19 @@ class HazptrObserver {
         updateObserver_(
             makeObserver([o = std::move(observer), alive = alive_, this]() {
               auto snapshot = o.getSnapshot();
-              auto oldState = static_cast<State*>(nullptr);
-              alive->withRLock([&](auto vAlive) {
-                if (vAlive) { // otherwise state_ may be out-of-scope
-                  oldState = state_.exchange(
-                      new State(snapshot), std::memory_order_acq_rel);
-                }
-              });
-              if (oldState) {
-                oldState->retire(domain_);
+              auto alivePtr = alive->rlock();
+              if (!*alivePtr) {
+                return folly::unit; // This instance has already been destroyed
+              }
+              auto oldState = state_.exchange(
+                  new State(snapshot), std::memory_order_acq_rel);
+              auto& domain = domain_;
+              // Release the alive lock before retiring the old state to avoid a
+              // potential deadlock due to inline hazptr reclamation
+              alivePtr.unlock();
+              // At this point, this instance may have already been destroyed
+              if (oldState != nullptr) {
+                oldState->retire(domain);
               }
               return folly::unit;
             })) {}
