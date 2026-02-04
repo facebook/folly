@@ -25,7 +25,9 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly::detail {
+namespace folly::test {
+
+using namespace folly::detail;
 
 // For owned errors, aims to cover:
 //  - `get_exception` and `get_outer_exception`
@@ -53,7 +55,7 @@ void checkAccessException() {
         std::logic_error>(rep);
   }
   { // Non-rich error with epitaph wrapper
-    REP rep{rich_error<detail::epitaph_non_value>{
+    REP rep{rich_error<epitaph_non_value>{
         // We cannot use `REP` for the inner error, since `underlying_error()`
         // is always `rich_exception_ptr`.
         rich_exception_ptr{std::logic_error{"test"}},
@@ -63,8 +65,8 @@ void checkAccessException() {
         GetExceptionResult{.isHit = false},
         rich_error_base,
         RichErr,
-        detail::epitaph_non_value,
-        rich_error<detail::epitaph_non_value>>(rep);
+        epitaph_non_value,
+        rich_error<epitaph_non_value>>(rep);
     // `get_exception<underlying error>` should hit, with `top_rich_error_` set
     checkGetException<
         GetExceptionResult{.isHit = true, .hitHasTopRichError = true},
@@ -78,8 +80,8 @@ void checkAccessException() {
         GetExceptionResult{.isHit = true},
         std::exception,
         rich_error_base,
-        detail::epitaph_non_value,
-        rich_error<detail::epitaph_non_value>>(rep);
+        epitaph_non_value,
+        rich_error<epitaph_non_value>>(rep);
   }
 }
 
@@ -128,6 +130,6 @@ TEST(RichExceptionPtrOwned, throwExceptionPacked) {
   }
 }
 
-} // namespace folly::detail
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

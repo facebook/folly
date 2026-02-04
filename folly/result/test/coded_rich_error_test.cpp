@@ -24,7 +24,7 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly {
+namespace folly::test {
 
 using namespace folly::string_literals;
 
@@ -34,16 +34,16 @@ constexpr bool testImmortalCodedRichError() {
   { // default message is empty
     constexpr auto eptr =
         immortal_rich_error<coded_rich_error<A1>, A1::TWO_A1>.ptr();
-    test(std::string_view{""} == get_rich_error(eptr)->partial_message());
+    check(std::string_view{""} == get_rich_error(eptr)->partial_message());
   }
   { // non-default message
     constexpr auto eptr =
         immortal_rich_error<coded_rich_error<A1>, A1::ONE_A1, "msg"_litv>.ptr();
-    test(get_rich_error_code<A1>(eptr) == A1::ONE_A1);
+    check(get_rich_error_code<A1>(eptr) == A1::ONE_A1);
 
     auto& err = *get_rich_error(eptr);
-    test(get_rich_error_code<A1>(err) == A1::ONE_A1);
-    test(std::string_view{"msg"} == err.partial_message());
+    check(get_rich_error_code<A1>(err) == A1::ONE_A1);
+    check(std::string_view{"msg"} == err.partial_message());
   }
   return true;
 }
@@ -56,14 +56,14 @@ constexpr bool testMultipleCodes() {
         B2::TWO_B2,
         "multi-code"_litv>.ptr();
 
-  test(get_rich_error_code<A1>(eptr) == A1::ONE_A1);
-  test(get_rich_error_code<B2>(eptr) == B2::TWO_B2);
+  check(get_rich_error_code<A1>(eptr) == A1::ONE_A1);
+  check(get_rich_error_code<B2>(eptr) == B2::TWO_B2);
 
-  auto derived = get_exception<coded_rich_error<A1, B2>>(eptr);
-  test(derived->code_of_type<A1>() == A1::ONE_A1);
-  test(derived->code_of_type<B2>() == B2::TWO_B2);
+  constexpr auto derived = get_exception<coded_rich_error<A1, B2>>(eptr);
+  check(derived->code_of_type<A1>() == A1::ONE_A1);
+  check(derived->code_of_type<B2>() == B2::TWO_B2);
 
-  test(std::string_view{"multi-code"} == derived->partial_message());
+  check(std::string_view{"multi-code"} == derived->partial_message());
   return true;
 }
 static_assert(testMultipleCodes());
@@ -167,6 +167,6 @@ TEST(CodedRichErrorTest, customCodedRichError) {
   EXPECT_STREQ(err.partial_message(), "hi");
 }
 
-} // namespace folly
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

@@ -25,7 +25,10 @@
 
 #if FOLLY_HAS_RESULT
 
+// In `namespace folly::detail` for friend access to `top_rich_error_`.
 namespace folly::detail {
+
+using folly::test::RichErr;
 
 // Describes the `rich_ptr` returned from `get_...exception`.
 struct GetExceptionResult {
@@ -140,14 +143,13 @@ void checkGetExceptionForRichErr(auto rep) {
 // inner type is `rich_exception_ptr`, as required by `underlying_error()`.
 template <typename REP, bool PointersAreSame = true>
 void checkGetExceptionForEpitaphRichErr(rich_exception_ptr rep) {
-  REP rep_wrapped{
-      rich_error<detail::epitaph_non_value>{copy(rep), rich_msg{"msg"}}};
+  REP rep_wrapped{rich_error<epitaph_non_value>{copy(rep), rich_msg{"msg"}}};
   checkGetException<
       GetExceptionResult{.isHit = false},
       std::logic_error,
       // Epitaphs are transparent, so these 2 miss
-      detail::epitaph_non_value,
-      rich_error<detail::epitaph_non_value>>(rep_wrapped);
+      epitaph_non_value,
+      rich_error<epitaph_non_value>>(rep_wrapped);
   // Querying the underlying error should hit, with `top_rich_error_` set
   checkGetException<
       GetExceptionResult{
@@ -168,8 +170,8 @@ void checkGetExceptionForEpitaphRichErr(rich_exception_ptr rep) {
       GetExceptionResult{.isHit = true},
       std::exception,
       rich_error_base,
-      detail::epitaph_non_value,
-      rich_error<detail::epitaph_non_value>>(rep_wrapped);
+      epitaph_non_value,
+      rich_error<epitaph_non_value>>(rep_wrapped);
 }
 
 } // namespace folly::detail

@@ -25,7 +25,9 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly::detail {
+namespace folly::test {
+
+using namespace folly::detail;
 
 // `get_outer_exception` analogs of `get_exception` & `get_mutable_exception_fn`
 template <typename Ptr>
@@ -122,10 +124,11 @@ void checkAccessExceptions() {
   REP rep = immortal_rich_error_t<REP, rich_error<RichErr>>{}.ptr();
 
   // Behavior matches "owned", except for the mutable/immutable singleton split
-  checkGetExceptionForRichErr</*constAndMutPointersAreSame=*/false>(rep);
+  checkGetExceptionForRichErr<
+      /*constAndMutPointersAreSame=*/false>(rep);
   checkGetExceptionForEpitaphRichErr<REP, /*PointersAreSame=*/false>(
-      // We cannot use `REP` for the inner error, since `underlying_error()` is
-      // always `rich_exception_ptr`.
+      // We cannot use `REP` for the inner error, since `underlying_error()`
+      // is always `rich_exception_ptr`.
       immortal_rich_error<rich_error<RichErr>>.ptr());
 
   // NB: Since immortals do not support `underlying_error()` today, there's no
@@ -178,6 +181,6 @@ TEST(RichExceptionPtrImmortal, throwExceptionPacked) {
   }
 }
 
-} // namespace folly::detail
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

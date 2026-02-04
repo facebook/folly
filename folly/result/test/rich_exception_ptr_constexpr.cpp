@@ -21,23 +21,28 @@
 
 #if FOLLY_HAS_RESULT
 
+// In `namespace folly::detail` for friend access to protected storage members.
 namespace folly::detail {
+
+using folly::test::rich_exception_ptr_packed;
+using folly::test::rich_exception_ptr_separate;
+using folly::test::RichErr;
 
 // This exists so that the test shows up in CI telemetry
 TEST(RichExceptionPtrConstexprTest, allTestsAreCompileTime) {}
 
 constexpr bool test_rich_exception_ptr_sizes() {
   static_assert(
-      sizeof(detail::rich_exception_ptr_separate_storage) ==
+      sizeof(rich_exception_ptr_separate_storage) ==
       sizeof(rich_exception_ptr_separate));
   static_assert(
-      sizeof(detail::rich_exception_ptr_packed_storage) ==
+      sizeof(rich_exception_ptr_packed_storage) ==
       sizeof(rich_exception_ptr_packed));
   static_assert(
       sizeof(rich_exception_ptr) ==
       (rich_exception_ptr_packed_storage::is_supported
-           ? sizeof(detail::rich_exception_ptr_packed_storage)
-           : sizeof(detail::rich_exception_ptr_separate_storage)));
+           ? sizeof(rich_exception_ptr_packed_storage)
+           : sizeof(rich_exception_ptr_separate_storage)));
   return true;
 }
 
@@ -46,7 +51,7 @@ static_assert(test_rich_exception_ptr_sizes());
 // These internal consistency checks for `rich_exception_ptr::bits_t` aim to
 // prevent careless changes that could violate the invariants the code needs.
 constexpr bool test_rich_exception_ptr_bits() {
-  using R = detail::rich_exception_ptr_base_storage;
+  using R = rich_exception_ptr_base_storage;
 
   // C++ doesn't let us modify the alignment bits of constexpr pointers.  We
   // need this to give `rich_exception_ptr_packed_storage` constexpr support

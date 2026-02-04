@@ -34,7 +34,7 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly {
+namespace folly::test {
 namespace {
 
 using ext::must_use_immediately_unsafe_mover;
@@ -354,6 +354,6 @@ TEST(OrUnwind, errorOrStoppedResult) {
       [] { return stopped_result; });
 }
 
-} // namespace folly
+} // namespace folly::test
 
 #endif

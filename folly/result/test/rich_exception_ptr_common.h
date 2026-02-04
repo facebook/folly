@@ -25,7 +25,7 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly::detail {
+namespace folly::test {
 
 // Minimal rich error for tests
 struct RichErr : rich_error_base {
@@ -34,24 +34,26 @@ struct RichErr : rich_error_base {
 
 // `rich_exception_ptr` but storage guaranteed to be separate
 class rich_exception_ptr_separate final
-    : public rich_exception_ptr_impl<
+    : public folly::detail::rich_exception_ptr_impl<
           rich_exception_ptr_separate,
-          detail::rich_exception_ptr_separate_storage> {
-  using rich_exception_ptr_impl<
+          folly::detail::rich_exception_ptr_separate_storage> {
+  using folly::detail::rich_exception_ptr_impl<
       rich_exception_ptr_separate,
-      detail::rich_exception_ptr_separate_storage>::rich_exception_ptr_impl;
+      folly::detail::rich_exception_ptr_separate_storage>::
+      rich_exception_ptr_impl;
 };
 
 // `rich_exception_ptr`, with storage guaranteed to be packed
 class rich_exception_ptr_packed final
-    : public rich_exception_ptr_impl<
+    : public folly::detail::rich_exception_ptr_impl<
           rich_exception_ptr_packed,
-          detail::rich_exception_ptr_packed_storage> {
-  using rich_exception_ptr_impl<
+          folly::detail::rich_exception_ptr_packed_storage> {
+  using folly::detail::rich_exception_ptr_impl<
       rich_exception_ptr_packed,
-      detail::rich_exception_ptr_packed_storage>::rich_exception_ptr_impl;
+      folly::detail::rich_exception_ptr_packed_storage>::
+      rich_exception_ptr_impl;
 };
 
-} // namespace folly::detail
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

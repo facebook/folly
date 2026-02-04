@@ -25,7 +25,7 @@
 
 #include <folly/result/coro.h>
 
-namespace folly {
+namespace folly::test {
 
 TEST(ResultCoroBench, benchmarksDoNotCrash) {
   runBenchmarksAsTest();
@@ -130,10 +130,10 @@ BENCHMARK(catching_result_func_error, iters) {
   });
 }
 
-} // namespace folly
+} // namespace folly::test
 
 int main(int argc, char** argv) {
-  return folly::benchmarkMain(argc, argv);
+  return folly::test::benchmarkMain(argc, argv);
 }
 
 #else // FOLLY_HAS_RESULT

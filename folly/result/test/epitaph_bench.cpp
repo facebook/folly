@@ -21,7 +21,9 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly {
+namespace folly::test {
+
+using namespace folly::detail;
 
 TEST(EpitaphBench, benchmarksDoNotCrash) {
   runBenchmarksAsTest();
@@ -57,28 +59,28 @@ BENCHMARK(no_epitaphs_baseline, n) {
 }
 
 BENCHMARK(epitaph_location_only, n) {
-  bench_epitaph<detail::epitaph_non_value>(n, [](error_or_stopped&& eos) {
+  bench_epitaph<epitaph_non_value>(n, [](error_or_stopped&& eos) {
     return epitaph(std::move(eos));
   });
 }
 
 BENCHMARK(epitaph_location_plus_static_message, n) {
-  bench_epitaph<detail::epitaph_non_value>(n, [](error_or_stopped&& eos) {
+  bench_epitaph<epitaph_non_value>(n, [](error_or_stopped&& eos) {
     return epitaph(std::move(eos), "context");
   });
 }
 
 BENCHMARK(epitaph_location_plus_formatted_message, n) {
   int value = 42;
-  bench_epitaph<detail::epitaph_non_value>(n, [&](error_or_stopped&& eos) {
+  bench_epitaph<epitaph_non_value>(n, [&](error_or_stopped&& eos) {
     return epitaph(std::move(eos), "value={}", value);
   });
 }
 
-} // namespace folly
+} // namespace folly::test
 
 #endif
 
 int main(int argc, char** argv) {
-  return folly::benchmarkMain(argc, argv);
+  return folly::test::benchmarkMain(argc, argv);
 }

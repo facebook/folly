@@ -23,7 +23,7 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly {
+namespace folly::test {
 
 TEST(RichErrorCodeBench, benchmarksDoNotCrash) {
   runBenchmarksAsTest();
@@ -139,10 +139,11 @@ void registerBenchmarks() {
   addCodeBenchmarkSuite<BenchImmortalRichError>("immortal_error");
 }
 
-} // namespace folly
+} // namespace folly::test
 
 int main(int argc, char** argv) {
-  return folly::benchmarkMain(argc, argv, folly::registerBenchmarks);
+  return folly::test::benchmarkMain(
+      argc, argv, folly::test::registerBenchmarks);
 }
 
 #else // FOLLY_HAS_RESULT

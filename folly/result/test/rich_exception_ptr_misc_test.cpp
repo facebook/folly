@@ -26,7 +26,9 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly::detail {
+namespace folly::test {
+
+using namespace folly::detail;
 
 // IMPORTANT: There are more `#if 0` tests below. Run them all!
 constexpr bool manualTestsForStaticAsserts() {
@@ -93,7 +95,7 @@ void checkEmptyTry() {
   }
   EXPECT_THROW( // For `Try`, always throws
       rep.throw_exception(try_rich_exception_ptr_private_t{}),
-      detail::StubUsingUninitializedTry);
+      StubUsingUninitializedTry);
 
   checkEmptyTryToExceptionPtr<REP>(rep); // Covers both `result` and `Try`
 
@@ -222,6 +224,6 @@ TEST(RichExceptionPtr, emptyEptrPacked) {
   }
 }
 
-} // namespace folly::detail
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

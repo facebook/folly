@@ -25,8 +25,9 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly::detail {
+namespace folly::test {
 
+using namespace folly::detail;
 using namespace folly::string_literals;
 
 const auto test_file_name = source_location::current().file_name();
@@ -60,9 +61,9 @@ struct MyErr : rich_error_base {
 
 struct ManualChecks {
   struct BadErr {};
-  static constexpr detail::immortal_rich_error_storage<MyErr> my_err;
+  static constexpr immortal_rich_error_storage<MyErr> my_err;
   static constexpr BadErr bad_err;
-  static constexpr bool test() {
+  static constexpr bool check() {
 #if 0 // `T` derives from `rich_error_base` for `immortal_rich_error<T>`
   // NB: `rich_error_test.cpp` adequately covers the other cases from
   // `static_assert_is_valid_rich_error_type`.
@@ -73,7 +74,7 @@ struct ManualChecks {
     return true;
   }
 };
-static_assert(ManualChecks::test());
+static_assert(ManualChecks::check());
 
 // Note: these interfaces have much more exhaustive, albeit non-`constexpr`
 // tests in `rich_exception_ptr_fundamentals_test.cpp`.
@@ -83,33 +84,33 @@ constexpr bool testCopyMoveAndAccess(
   // leaky singleton tests since those use non-`constexpr` `std::exception`
 
   auto rex = get_rich_error(rep);
-  test(msg == rex->partial_message());
+  check(msg == rex->partial_message());
 
   // Typing `immortal_rich_error<...>` with the same args in the same TU does
   // NOT give you a brand new pointer.
-  test(rex == get_rich_error(repToo));
+  check(rex == get_rich_error(repToo));
   {
     auto otherRep = immortal_rich_error<rich_error<MyErr>, "other"_litv>.ptr();
-    test(rex != get_rich_error(otherRep));
+    check(rex != get_rich_error(otherRep));
   }
 
   auto userEx = get_exception<MyErr>(rep);
-  test(msg == userEx->partial_message());
-  test(rex == static_cast<const rich_error_base*>(userEx.get()));
+  check(msg == userEx->partial_message());
+  check(rex == static_cast<const rich_error_base*>(userEx.get()));
 
   { // Copying the `rich_exception_ptr` preserves the pointers
     auto rep2 = rep;
-    test(rex == get_rich_error(rep2));
-    test(userEx == get_exception<MyErr>(rep2));
+    check(rex == get_rich_error(rep2));
+    check(userEx == get_exception<MyErr>(rep2));
   }
   { // Moving the `rich_exception_ptr` preserves the pointers
     auto rep3 = std::move(rep);
 
     // NOLINTNEXTLINE(bugprone-use-after-move)
-    test(rich_exception_ptr{} == rep);
+    check(rich_exception_ptr{} == rep);
 
-    test(rex == get_rich_error(rep3));
-    test(userEx == get_exception<MyErr>(rep3));
+    check(rex == get_rich_error(rep3));
+    check(userEx == get_exception<MyErr>(rep3));
   }
 
   return true;
@@ -221,7 +222,7 @@ TEST(ImmortalRichErrorTest, formatWithEpitaphs) {
   EXPECT_EQ("default MyErr", fmt::format("{}", get_rich_error(rep)));
 
   auto err_line = source_location::current().line() + 1;
-  rich_error<detail::epitaph_non_value> err{std::move(rep), rich_msg{"msg"}};
+  rich_error<epitaph_non_value> err{std::move(rep), rich_msg{"msg"}};
 
   checkFormatOfErrAndRep<MyErr, rich_error_base, std::exception>(
       err,
@@ -306,6 +307,6 @@ TEST(ImmortalRichErrorTest, compareRichExceptionPtrs) {
   EXPECT_NE(repB, repAOwned);
 }
 
-} // namespace folly::detail
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

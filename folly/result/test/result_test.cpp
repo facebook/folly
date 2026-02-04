@@ -27,7 +27,9 @@
 // This tests `result.h` -- `coro.h` is tested incidentally.  A full test
 // matrix for `or_unwind` combinations is covered by `or_unwind_test.cpp`
 
-namespace folly {
+namespace folly::test {
+
+using namespace folly::detail;
 
 // If you came here, you probably want `result` to have `->` or `*` operators,
 // or `.value()`, just like `folly::Try` or `std::expected`.  This comment will
@@ -163,7 +165,7 @@ TEST(Result, storeAndGetStoppedResult) {
   check(tag<int>, stopped_result);
   auto ocEw = make_exception_wrapper<OperationCancelled>();
   auto stoppedNvr = error_or_stopped::make_legacy_error_or_cancellation_slow(
-      detail::result_private_t{}, ocEw);
+      result_private_t{}, ocEw);
   check(tag<void>, stoppedNvr);
   check(tag<int>, stoppedNvr);
   // Constructing with `OperationCancelled` without the legacy path
@@ -615,19 +617,18 @@ RESULT_CO_TEST(Result, fallibleConversion) {
 
 void test_bad_empty_result(auto bad) {
   EXPECT_FALSE(bad.has_value());
-  // `detail::empty_result_error` derives from `std::exception` but is not
-  // exposed via this accessor.
+  // `empty_result_error` derives from `std::exception` but is
+  // not exposed via this accessor.
   EXPECT_FALSE(get_exception<std::exception>(bad));
   if constexpr (!kIsDebug) {
-    EXPECT_TRUE(
-        get_exception<detail::empty_result_error>(bad.error_or_stopped()));
+    EXPECT_TRUE(get_exception<empty_result_error>(bad.error_or_stopped()));
   } else {
     EXPECT_DEATH(
         (void)bad.error_or_stopped(),
         "`folly::result` had an empty underlying");
   }
   if constexpr (!kIsDebug) {
-    EXPECT_THROW((void)bad.value_or_throw(), detail::empty_result_error);
+    EXPECT_THROW((void)bad.value_or_throw(), empty_result_error);
   } else {
     EXPECT_DEATH(
         (void)bad.value_or_throw(), "`folly::result` had an empty underlying");
@@ -647,11 +648,16 @@ void test_bad_empty_result(auto bad) {
   };
   if constexpr (!kIsDebug) {
     auto res = awaitsBad();
-    EXPECT_TRUE(get_exception<detail::empty_result_error>(res));
+    EXPECT_TRUE(get_exception<empty_result_error>(res));
   } else {
     EXPECT_DEATH((void)awaitsBad(), "`folly::result` had an empty underlying");
   }
 }
+
+} // namespace folly::test
+
+// In `namespace folly` for FRIEND_TEST access to `result`'s protected ctor.
+namespace folly {
 
 // This state will no longer be possible with `std::expected`.  The tests
 // use a protected ctor via FRIEND_TEST, which can then be removed.
@@ -659,16 +665,20 @@ void test_bad_empty_result(auto bad) {
 // Testing `int` and `std::string` since `Expected` uses different storage for
 // PoD and non-PoD types.  Separate death tests run faster.
 TEST(Result, BadEmptyStateInt) {
-  test_bad_empty_result(result<int>{expected_detail::EmptyTag{}});
+  test::test_bad_empty_result(result<int>{expected_detail::EmptyTag{}});
 }
 TEST(Result, BadEmptyStateString) {
-  test_bad_empty_result(result<std::string>{expected_detail::EmptyTag{}});
+  test::test_bad_empty_result(result<std::string>{expected_detail::EmptyTag{}});
 }
+
+} // namespace folly
+
+namespace folly::test {
 
 FOLLY_PUSH_WARNING
 FOLLY_CLANG_DISABLE_WARNING("-Wunneeded-internal-declaration")
 bool is_bad_result_access(const error_or_stopped& eos) {
-  return bool{get_exception<detail::bad_result_access_error>(eos)};
+  return bool{get_exception<bad_result_access_error>(eos)};
 }
 FOLLY_POP_WARNING
 
@@ -1005,13 +1015,13 @@ TEST(Result, of_rich_exception_ptr) {
 TEST(Result, of_exception_wrapper) {
   result<exception_wrapper> rVal{make_exception_wrapper<MyError>("ew")};
   EXPECT_TRUE(rVal.has_value());
-  EXPECT_EQ("folly::MyError: ew", rVal.value_or_throw().what());
+  EXPECT_EQ("folly::test::MyError: ew", rVal.value_or_throw().what());
 
   result<exception_wrapper> rErr{error_or_stopped{MyError{"err"}}};
   EXPECT_FALSE(rErr.has_value());
   EXPECT_STREQ("err", get_exception<MyError>(rErr)->what());
 }
 
-} // namespace folly
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

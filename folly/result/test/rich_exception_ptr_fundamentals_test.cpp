@@ -26,7 +26,9 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly::detail {
+namespace folly::test {
+
+using namespace folly::detail;
 
 // Returns `REP` after a round-trip through `std::exception_ptr`.
 //
@@ -258,6 +260,6 @@ TEST(RichExceptionPtr, allAssignmentsPacked) {
   }
 }
 
-} // namespace folly::detail
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

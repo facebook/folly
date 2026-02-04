@@ -27,7 +27,7 @@
 
 // Shared between `rich_error_code_test.cpp` and `rich_error_code_bench.cpp`
 
-namespace folly {
+namespace folly::test {
 
 // Error code definitions
 enum class A1 { ZERO_A1 = 0, ONE_A1 = 1, TWO_A1 = 2 };
@@ -39,54 +39,59 @@ struct B1 {
 enum class B2 : int { ZERO_B2 = -20, ONE_B2 = -21, TWO_B2 = -22 };
 enum class C1 { ZERO_C1 = 100, ONE_C1 = 101, TWO_C1 = 102 };
 
-} // namespace folly
+} // namespace folly::test
 
 // Formatter for B1 type
 template <>
-struct fmt::formatter<folly::B1> {
+struct fmt::formatter<folly::test::B1> {
   constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
 
-  auto format(const folly::B1& b1, format_context& ctx) const {
+  auto format(const folly::test::B1& b1, format_context& ctx) const {
     return fmt::format_to(ctx.out(), "{}", static_cast<int>(b1.value));
   }
 };
 
+// rich_error_code specializations must be in namespace folly (same as primary
+// template)
 namespace folly {
 
-// rich_error_code specializations: UUID + type-erasure (mangle/unmangle)
-
 template <>
-struct rich_error_code<A1> {
+struct rich_error_code<test::A1> {
   static constexpr uint64_t uuid = 154011801583020582ULL;
   static constexpr const char* name = "A1";
 };
 
 template <>
-struct rich_error_code<B1> {
+struct rich_error_code<test::B1> {
   static constexpr uint64_t uuid = 8583738238600016729ULL;
   static constexpr const char* name = "B1";
-  static constexpr uintptr_t mangle_code(B1 code) {
+  static constexpr uintptr_t mangle_code(test::B1 code) {
     auto underlying = to_underlying(code.value);
     static_assert(sizeof(underlying) <= sizeof(uintptr_t));
     return static_cast<uintptr_t>(underlying);
   }
-  static constexpr B1 unmangle_code(uintptr_t value) {
-    using Underlying = std::underlying_type_t<ImplB1>;
+  static constexpr test::B1 unmangle_code(uintptr_t value) {
+    using Underlying = std::underlying_type_t<test::ImplB1>;
     static_assert(sizeof(Underlying) <= sizeof(uintptr_t));
-    return B1{.value = static_cast<ImplB1>(static_cast<Underlying>(value))};
+    return test::B1{
+        .value = static_cast<test::ImplB1>(static_cast<Underlying>(value))};
   }
 };
 
 template <>
-struct rich_error_code<B2> {
+struct rich_error_code<test::B2> {
   static constexpr uint64_t uuid = 15264009825950242918ULL;
   static constexpr const char* name = "B2";
 };
 
 template <>
-struct rich_error_code<C1> {
+struct rich_error_code<test::C1> {
   static constexpr uint64_t uuid = 17144754153784372294ULL;
 };
+
+} // namespace folly
+
+namespace folly::test {
 
 // Example error hierarchy: ErrorA -> ErrorB -> ErrorC
 class ErrorB;
@@ -143,4 +148,4 @@ class ErrorC : public ErrorB {
   using folly_get_exception_hint_types = rich_error_hints<ErrorC>;
 };
 
-} // namespace folly
+} // namespace folly::test

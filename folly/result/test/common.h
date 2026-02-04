@@ -24,18 +24,14 @@
 #include <folly/portability/GTest.h>
 #include <folly/result/rich_exception_ptr.h>
 
-namespace folly {
+namespace folly::test {
 
-constexpr void test(bool cond) {
+consteval void check(bool cond) {
   if (!cond) {
     // NOLINTNEXTLINE(facebook-hte-ThrowNonStdExceptionIssue)
-    throw "test failed";
+    throw "check failed";
   }
 }
-
-namespace detail { // Some tests are defined in `detail`...
-using folly::test;
-} // namespace detail
 
 void checkFormat(const auto& err, const std::string& re) {
   EXPECT_THAT(fmt::format("{}", err), ::testing::MatchesRegex(re));
@@ -87,4 +83,4 @@ inline int benchmarkMain(
   return ret;
 }
 
-} // namespace folly
+} // namespace folly::test

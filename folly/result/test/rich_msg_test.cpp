@@ -20,7 +20,7 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly {
+namespace folly::test {
 
 static_assert(!std::is_default_constructible_v<rich_msg>);
 static_assert(std::is_copy_constructible_v<rich_msg>);
@@ -75,6 +75,6 @@ TEST(RichMsgTest, constructFromComponents) {
   EXPECT_EQ(msg.location().line(), loc.line());
 }
 
-} // namespace folly
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

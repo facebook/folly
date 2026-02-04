@@ -19,7 +19,7 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly {
+namespace folly::test {
 
 struct ThrowingMove {
   ThrowingMove(const ThrowingMove&) = default;
@@ -90,6 +90,6 @@ TEST(ResultTry, empty_try_to_result_default) {
   EXPECT_STREQ("baz", get_exception<std::runtime_error>(rErr)->what());
 }
 
-} // namespace folly
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

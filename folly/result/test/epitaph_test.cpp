@@ -25,8 +25,9 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly {
+namespace folly::test {
 
+using namespace folly::detail;
 using namespace folly::string_literals;
 
 const auto test_file_name = source_location::current().file_name();
@@ -36,7 +37,7 @@ struct TinyErr : rich_error_base {
 };
 
 // Minimal version of `accessEpitaphsAndUnderlyingException`, except we also
-// check direct formatting of `detail::epitaph_non_value`.
+// check direct formatting of `folly::detail::epitaph_non_value`.
 TEST(RichErrorBaseFormatTest, SameErrorDirectThenUnderlying2) {
   struct MyErr : rich_error_base {
     using folly_get_exception_hint_types = rich_error_hints<MyErr>;
@@ -44,7 +45,7 @@ TEST(RichErrorBaseFormatTest, SameErrorDirectThenUnderlying2) {
 
   rich_exception_ptr inner{rich_error<MyErr>{}};
   auto err_line = source_location::current().line() + 1;
-  rich_error<detail::epitaph_non_value> err{std::move(inner), rich_msg{"msg"}};
+  rich_error<epitaph_non_value> err{std::move(inner), rich_msg{"msg"}};
   checkFormatOfErrAndRep<MyErr, rich_error_base, std::exception>(
       err,
       fmt::format("MyErr \\[via\\] msg @ {}:{}", test_file_name, err_line));
@@ -57,7 +58,7 @@ TEST(RichErrorBaseFormatTest, SameErrorDirectThenUnderlying2) {
 //   - `get_exception<>()` returns a formattable pointer with epitaphs, and the
 //     propagation history is visible in the message.
 TEST(EpitaphTest, accessEpitaphsAndUnderlyingException) {
-  std::string bare_msg = "folly::TinyErr";
+  std::string bare_msg = "folly::test::TinyErr";
 
   auto assertUnderlying = [&](auto& eos, const std::string& re) {
     {
@@ -66,7 +67,7 @@ TEST(EpitaphTest, accessEpitaphsAndUnderlyingException) {
       // discard epitaphs.
       auto eptr = copy(eos).to_exception_ptr_slow();
       EXPECT_EQ(bare_msg, fmt::format("{}", *get_rich_error(eptr)));
-      EXPECT_FALSE(get_exception<detail::epitaph_non_value>(eptr));
+      EXPECT_FALSE(get_exception<epitaph_non_value>(eptr));
       EXPECT_TRUE(get_exception<TinyErr>(eptr));
       EXPECT_TRUE(get_exception<rich_error<TinyErr>>(eptr));
     }
@@ -76,7 +77,7 @@ TEST(EpitaphTest, accessEpitaphsAndUnderlyingException) {
     // `rich_error_base`, all public APIs (except `get_outer_exception()`) go to
     // the underlying error.
     auto rex = get_rich_error(eos);
-    EXPECT_FALSE(dynamic_cast<const detail::epitaph_non_value*>(rex.get()));
+    EXPECT_FALSE(dynamic_cast<const epitaph_non_value*>(rex.get()));
     EXPECT_TRUE(dynamic_cast<const TinyErr*>(rex.get()));
     EXPECT_TRUE(dynamic_cast<const rich_error<TinyErr>*>(rex.get()));
 
@@ -100,7 +101,7 @@ TEST(EpitaphTest, accessEpitaphsAndUnderlyingException) {
     auto& outer =
         *std::move(eos)
              .release_rich_exception_ptr()
-             .template get_outer_exception<detail::epitaph_non_value>();
+             .template get_outer_exception<epitaph_non_value>();
     EXPECT_EQ(err_line, outer.source_location().line());
     EXPECT_STREQ(msg, outer.partial_message());
     EXPECT_TRUE(nullptr != outer.next_error_for_epitaph());
@@ -155,7 +156,7 @@ TEST(EpitaphTest, addEpitaphsToPlainError) {
           test_file_name));
 }
 
-} // namespace folly
+} // namespace folly::test
 
 struct FatalToFormat {}; // Checks that format args are lazily evaluated.
 template <>
@@ -167,7 +168,7 @@ struct fmt::formatter<FatalToFormat> : fmt::formatter<std::string_view> {
   }
 };
 
-namespace folly {
+namespace folly::test {
 
 // No effect on value-state `result`
 TEST(EpitaphTest, addEpitaphsToResultWithValue) {
@@ -206,7 +207,7 @@ TEST(EpitaphTest, retrieveCodeDelegatesToUnderlying) {
       get_rich_error_code<A1>(
           *copy(eos)
                .release_rich_exception_ptr()
-               .get_outer_exception<detail::epitaph_non_value>()));
+               .get_outer_exception<epitaph_non_value>()));
 
   // Normal access first resolves the underlying error, so code access works.
   EXPECT_EQ(A1::ONE_A1, get_rich_error_code<A1>(eos));
@@ -221,6 +222,6 @@ TEST(EpitaphTest, retrieveCodeDelegatesToUnderlying) {
           test_file_name));
 }
 
-} // namespace folly
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

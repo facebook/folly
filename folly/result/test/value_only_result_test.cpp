@@ -23,7 +23,7 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly {
+namespace folly::test {
 
 // Fully tests `void`-specific behaviors.  Loosely covers common features from
 // `value_only_result_crtp` -- the subsequent non-`void` tests cover them more.
@@ -540,6 +540,6 @@ struct ThrowingMoveType {
 inline constexpr value_only_result<ThrowingMoveType> kBadResult{};
 #endif
 
-} // namespace folly
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

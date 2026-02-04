@@ -28,7 +28,7 @@
 
 using namespace folly::string_literals;
 
-namespace folly {
+namespace folly::test {
 
 constexpr bool testImmortalErrcRichError() {
   // FYI, this immortal error is semanticaly equivalent to
@@ -40,9 +40,9 @@ constexpr bool testImmortalErrcRichError() {
   constexpr auto err_ptr =
       immortal_rich_error<errc_rich_error, std::errc::io_error, "msg"_litv>.ptr();
   auto& err = *get_rich_error(err_ptr);
-  test(get_rich_error_code<std::errc>(err) == std::errc::io_error);
-  test(std::string_view{"msg"} == std::string_view{err.partial_message()});
-  test(get_rich_error_code<A1>(err) == std::nullopt);
+  check(get_rich_error_code<std::errc>(err) == std::errc::io_error);
+  check(std::string_view{"msg"} == std::string_view{err.partial_message()});
+  check(get_rich_error_code<A1>(err) == std::nullopt);
   return true;
 }
 static_assert(testImmortalErrcRichError());
@@ -55,4 +55,4 @@ TEST(ErrcRichErrorTest, formatting) {
       err, "message - std::errc=[0-9]+ \\([^)]+\\).*");
 }
 
-} // namespace folly
+} // namespace folly::test

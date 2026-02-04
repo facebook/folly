@@ -24,7 +24,7 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly {
+namespace folly::test {
 
 const auto test_file_name = std::source_location::current().file_name();
 
@@ -93,6 +93,6 @@ TEST(OrUnwindRich, stopped) {
       fmt::format("{}", get_exception<OperationCancelled>(rep)));
 }
 
-} // namespace folly
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

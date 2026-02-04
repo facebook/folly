@@ -24,7 +24,9 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly {
+namespace folly::test {
+
+using namespace folly::detail;
 
 const auto kTestFile = source_location::current().file_name();
 
@@ -45,8 +47,7 @@ TEST(RichExceptionPtrFormat, empty) {
 }
 
 TEST(RichExceptionPtrFormat, emptyTry) {
-  checkFormat(
-      rich_exception_ptr{detail::make_empty_try_t{}}, "\\[empty Try\\]");
+  checkFormat(rich_exception_ptr{make_empty_try_t{}}, "\\[empty Try\\]");
 }
 
 TEST(RichExceptionPtrFormat, stopped) {
@@ -54,14 +55,13 @@ TEST(RichExceptionPtrFormat, stopped) {
       "folly::detail::StoppedMayThrow: operation stopped \\(cancelled\\)";
 
   checkFormat(
-      rich_exception_ptr{detail::StoppedNoThrow{}},
-      "folly::detail::StoppedNoThrow");
-  checkFormat(rich_exception_ptr{detail::StoppedMayThrow{}}, mayThrowFmt);
+      rich_exception_ptr{StoppedNoThrow{}}, "folly::detail::StoppedNoThrow");
+  checkFormat(rich_exception_ptr{StoppedMayThrow{}}, mayThrowFmt);
 
   // StoppedNoThrow can be a regular (non-bit-optimized) eptr; works the same
   checkFormat(
       rich_exception_ptr::from_exception_ptr_slow(
-          std::make_exception_ptr(detail::StoppedNoThrow{})),
+          std::make_exception_ptr(StoppedNoThrow{})),
       "folly::detail::StoppedNoThrow");
 
   auto checkWrappedStopped = [](auto eos, std::string_view expected_inner) {
@@ -73,10 +73,9 @@ TEST(RichExceptionPtrFormat, stopped) {
             "{} \\[via\\] ctx @ {}:{}", expected_inner, kTestFile, line));
   };
 
-  checkWrappedStopped(error_or_stopped{detail::StoppedMayThrow{}}, mayThrowFmt);
+  checkWrappedStopped(error_or_stopped{StoppedMayThrow{}}, mayThrowFmt);
   checkWrappedStopped(
-      error_or_stopped{detail::StoppedNoThrow{}},
-      "folly::detail::StoppedNoThrow");
+      error_or_stopped{StoppedNoThrow{}}, "folly::detail::StoppedNoThrow");
 }
 
 TEST(RichExceptionPtrFormat, richError) {
@@ -105,7 +104,7 @@ TEST(RichExceptionPtrFormat, nonStdException) {
   checkFormat(
       rich_exception_ptr::from_exception_ptr_slow(
           std::make_exception_ptr(NotAnException{})),
-      "folly::NotAnException");
+      "folly::test::NotAnException");
 }
 
 // Epitaph-wrapped rich error
@@ -137,6 +136,6 @@ TEST(RichExceptionPtrFormat, epitaphWrappedStdException) {
           line1));
 }
 
-} // namespace folly
+} // namespace folly::test
 
 #endif // FOLLY_HAS_RESULT

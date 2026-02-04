@@ -22,7 +22,7 @@
 
 #if FOLLY_HAS_RESULT
 
-namespace folly {
+namespace folly::test {
 
 TEST(RichExceptionPtrFmtBench, benchmarksDoNotCrash) {
   runBenchmarksAsTest();
@@ -124,10 +124,10 @@ BENCHMARK(fmtEpitaphStdException, iters) {
   CHECK(all_ok);
 }
 
-} // namespace folly
+} // namespace folly::test
 
 int main(int argc, char** argv) {
-  return folly::benchmarkMain(argc, argv);
+  return folly::test::benchmarkMain(argc, argv);
 }
 
 #else // FOLLY_HAS_RESULT
