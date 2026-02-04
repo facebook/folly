@@ -39,7 +39,7 @@ TEST(MPMCPipeline, Trivial) {
   EXPECT_EQ(42, val);
   EXPECT_EQ(1, a.sizeGuess());
 
-  a.blockingWriteStage<0>(ticket, "hello world");
+  a.blockingWriteStage<0>(ticket, std::string("hello world"));
   EXPECT_EQ(1, a.sizeGuess());
 
   std::string s;
@@ -60,9 +60,9 @@ TEST(MPMCPipeline, TrivialAmplification) {
   EXPECT_EQ(42, val);
   EXPECT_EQ(2, a.sizeGuess());
 
-  a.blockingWriteStage<0>(ticket, "hello world");
+  a.blockingWriteStage<0>(ticket, std::string("hello world"));
   EXPECT_EQ(2, a.sizeGuess());
-  a.blockingWriteStage<0>(ticket, "goodbye");
+  a.blockingWriteStage<0>(ticket, std::string("goodbye"));
   EXPECT_EQ(2, a.sizeGuess());
 
   std::string s;
@@ -89,7 +89,7 @@ TEST(MPMCPipeline, MultiThreaded) {
         auto ticket = a.blockingReadStage<0>(val);
         if (val == -1) { // stop
           // We still need to propagate
-          a.blockingWriteStage<0>(ticket, "");
+          a.blockingWriteStage<0>(ticket, std::string(""));
           break;
         }
         a.blockingWriteStage<0>(ticket, folly::to<std::string>(val, " hello"));
@@ -104,7 +104,7 @@ TEST(MPMCPipeline, MultiThreaded) {
         auto ticket = a.blockingReadStage<1>(val);
         if (val.empty()) { // stop
           // We still need to propagate
-          a.blockingWriteStage<1>(ticket, "");
+          a.blockingWriteStage<1>(ticket, std::string(""));
           break;
         }
         a.blockingWriteStage<1>(ticket, folly::to<std::string>(val, " world"));
