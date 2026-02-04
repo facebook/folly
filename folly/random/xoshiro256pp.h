@@ -18,6 +18,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <ostream>
 #include <random>
@@ -31,17 +32,7 @@
 
 namespace folly {
 
-namespace detail {
-#if defined(__AVX2__) && defined(__GNUC__)
-using DefaultVectorType = __v4du; // GCC-specific unsigned vector type
-#else
-using DefaultVectorType = uint64_t; // Fallback for other compilers
-#endif
-} // namespace detail
-
-using DefaultVectorType = detail::DefaultVectorType;
-
-template <typename ResType, typename VectorType = DefaultVectorType>
+template <typename ResType>
 class xoshiro256pp {
  public:
   using result_type = ResType;
@@ -78,10 +69,10 @@ class xoshiro256pp {
   }
 
   void seed(uint64_t pSeed = default_seed) noexcept {
-    uint64_t seed = pSeed;
-    for (uint64_t re = 0; re < VecResCount; re++) {
-      for (uint64_t stat = 0; stat < StateSize; stat++) {
-        state[re][stat] = seed_vec<vector_type>(seed);
+    uint64_t seed_val = pSeed;
+    for (uint64_t result_idx = 0; result_idx < VecResCount; result_idx++) {
+      for (uint64_t state_idx = 0; state_idx < StateSize; state_idx++) {
+        state[idx(state_idx, result_idx)] = splitmix64(seed_val);
       }
     }
     cur = ResultCount;
@@ -95,35 +86,25 @@ class xoshiro256pp {
   }
 
  private:
-  using vector_type = VectorType;
+  using vector_type = uint64_t;
   static constexpr uint64_t StateSize = 4;
-  static constexpr uint64_t VecResCount = 8;
-  static constexpr uint64_t ResultCount =
-      VecResCount * (sizeof(vector_type) / sizeof(result_type));
-  union {
-    vector_type vecRes[VecResCount]{};
-    result_type res[ResultCount];
-  };
-  vector_type state[VecResCount][StateSize]{};
+#if FOLLY_AARCH64
+  static constexpr uint64_t VecResCount = 16;
+#else 
+  static constexpr uint64_t VecResCount = 32;
+#endif
+  static constexpr uint64_t size_ratio = sizeof(vector_type) / sizeof(result_type);
+  static constexpr uint64_t ResultCount = VecResCount * size_ratio;
+
+  alignas(64) vector_type state[StateSize * VecResCount]{};
+  
+  result_type res[ResultCount];
   uint64_t cur = ResultCount;
 
-  template <typename Size, typename VType, typename CharT, typename Traits>
+  template <typename Size, typename CharT, typename Traits>
   friend std::basic_ostream<CharT, Traits>& operator<<(
       std::basic_ostream<CharT, Traits>& os,
-      const xoshiro256pp<Size, VType>& rng);
-
-  template <typename T>
-  static inline T seed_vec(uint64_t& seed) {
-    if constexpr (sizeof(T) != sizeof(uint64_t)) {
-      T sbase{};
-      for (uint64_t i = 0; i < sizeof(vector_type) / sizeof(uint64_t); i++) {
-        sbase[i] = splitmix64(seed);
-      }
-      return sbase;
-    } else {
-      return T(splitmix64(seed));
-    }
-  }
+      const xoshiro256pp<Size>& rng);
 
   static inline uint64_t splitmix64(uint64_t& cur) noexcept {
     uint64_t z = (cur += 0x9e3779b97f4a7c15);
@@ -132,22 +113,27 @@ class xoshiro256pp {
     return z ^ (z >> 31);
   }
 
+  constexpr uint64_t FOLLY_ALWAYS_INLINE idx(uint64_t state_idx, uint64_t result_idx) noexcept {
+    return state_idx * VecResCount + result_idx;
+  }
+
   FOLLY_ALWAYS_INLINE static vector_type rotl(
       const vector_type x, int k) noexcept {
     return (x << k) | (x >> (64 - k));
   }
 
   void calc() noexcept {
-    for (uint64_t i = 0; i < VecResCount; i++) {
-      auto& curState = state[i];
-      vecRes[i] = rotl(curState[0] + curState[3], 23) + curState[0];
-      const auto t = curState[1] << 17;
-      curState[2] ^= curState[0];
-      curState[3] ^= curState[1];
-      curState[1] ^= curState[2];
-      curState[0] ^= curState[3];
-      curState[2] ^= t;
-      curState[3] = rotl(curState[3], 45);
+    for (unsigned int i = 0; i < VecResCount; ++i) {
+      const vector_type vec_res = rotl(state[idx(0, i)] + state[idx(3, i)], 23) + state[idx(0, i)];
+      std::memcpy(&res[i * size_ratio], &vec_res, sizeof(vector_type));
+      
+      const auto t = state[idx(1, i)] << 17;
+      state[idx(2, i)] ^= state[idx(0, i)];
+      state[idx(3, i)] ^= state[idx(1, i)];
+      state[idx(1, i)] ^= state[idx(2, i)];
+      state[idx(0, i)] ^= state[idx(3, i)];
+      state[idx(2, i)] ^= t;
+      state[idx(3, i)] = rotl(state[idx(3, i)], 45);
     }
     cur = 0;
   }
@@ -160,10 +146,10 @@ class xoshiro256pp {
   }
 };
 
-template <typename Size, typename VectorType, typename CharT, typename Traits>
+template <typename Size, typename CharT, typename Traits>
 std::basic_ostream<CharT, Traits>& operator<<(
     std::basic_ostream<CharT, Traits>& os,
-    const xoshiro256pp<Size, VectorType>& rng) {
+    const xoshiro256pp<Size>& rng) {
   for (auto i2 : rng.res) {
     os << i2 << " ";
   }
