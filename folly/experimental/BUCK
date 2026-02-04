@@ -1,96 +1,51 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "event_count",
-    raw_headers = [
-        "EventCount.h",
-    ],
-    exported_deps = [
-        "//xplat/folly/synchronization:event_count",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "flat_combining_priority_queue",
-    raw_headers = [
-        "FlatCombiningPriorityQueue.h",
-    ],
-    deps = [
-        "//xplat/folly/concurrency/container:flat_combining_priority_queue",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "function_scheduler",
-    raw_headers = [
-        "FunctionScheduler.h",
-    ],
-    deps = [
-        "//xplat/folly/executors:function_scheduler",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "threaded_repeating_function_runner",
-    raw_headers = [
-        "ThreadedRepeatingFunctionRunner.h",
-    ],
-    deps = [
-        "//xplat/folly/executors:threaded_repeating_function_runner",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "event_count",
     headers = [
         "EventCount.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/synchronization:event_count",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "flat_combining_priority_queue",
     headers = [
         "FlatCombiningPriorityQueue.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/concurrency/container:flat_combining_priority_queue",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "function_scheduler",
     headers = [
         "FunctionScheduler.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/executors:function_scheduler",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "threaded_repeating_function_runner",
     headers = [
         "ThreadedRepeatingFunctionRunner.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/executors:threaded_repeating_function_runner",
     ],
