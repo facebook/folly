@@ -29,10 +29,24 @@ namespace folly {
 void rich_exception_ptr::format_to(
     fmt::appender out, detail::format_to_skip_rich_t opts) const {
   using B = detail::rich_exception_ptr_base;
+  using S = detail::private_rich_exception_ptr_sigil;
   FOLLY_NON_EXHAUSTIVE_SWITCH(switch (get_bits()) {
-    case B::SIGIL_eq:
-      fmt::format_to(out, "[empty Try]");
-      return;
+    case B::SIGIL_eq: {
+      auto sigil = static_cast<S>(get_uintptr());
+      FOLLY_EXHAUSTIVE_SWITCH({
+        switch (sigil) {
+          case S::RESULT_HAS_VALUE:
+            fmt::format_to(out, "[result has value]");
+            return;
+          case S::EMPTY_TRY:
+            fmt::format_to(out, "[empty Try]");
+            return;
+          default:
+            fmt::format_to(out, "[unknown sigil]");
+            return;
+        }
+      });
+    }
 
     case B::NOTHROW_OPERATION_CANCELLED_eq:
       fmt::format_to(out, "folly::detail::StoppedNoThrow");

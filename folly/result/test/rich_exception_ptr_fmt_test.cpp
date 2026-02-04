@@ -27,6 +27,7 @@
 namespace folly::test {
 
 using namespace folly::detail;
+using S = private_rich_exception_ptr_sigil;
 
 const auto kTestFile = source_location::current().file_name();
 
@@ -47,7 +48,12 @@ TEST(RichExceptionPtrFormat, empty) {
 }
 
 TEST(RichExceptionPtrFormat, emptyTry) {
-  checkFormat(rich_exception_ptr{make_empty_try_t{}}, "\\[empty Try\\]");
+  checkFormat(rich_exception_ptr{vtag<S::EMPTY_TRY>}, "\\[empty Try\\]");
+}
+
+TEST(RichExceptionPtrFormat, resultHasValue) {
+  checkFormat(
+      rich_exception_ptr{vtag<S::RESULT_HAS_VALUE>}, "\\[result has value\\]");
 }
 
 TEST(RichExceptionPtrFormat, stopped) {

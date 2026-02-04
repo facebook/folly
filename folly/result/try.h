@@ -84,6 +84,9 @@ result<T> try_to_result(Try<T> t, IfEmpty if_empty) noexcept(
     return {error_or_stopped::make_legacy_error_or_cancellation_slow(
         detail::result_private_t{}, std::move(t).exception())};
   } else {
+    // NEVER use `private_rich_exception_ptr_sigil` here, that is reserved for
+    // a potential `Try`-in-terms-of-`result` implementation, and would make
+    // the returned `result` behave in unexpected ways.
     return std::move(if_empty).template on_empty_try<T>();
   }
 }

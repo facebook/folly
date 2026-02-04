@@ -59,7 +59,6 @@ using detect_folly_detail_base_of_rich_error =
 
 // Tag types for non-public `rich_exception_ptr` interfaces
 struct force_slow_rtti_t {};
-struct make_empty_try_t {};
 struct try_rich_exception_ptr_private_t {};
 
 // Passkey for `rich_exception_ptr::format_to` optimization.
@@ -99,11 +98,6 @@ class rich_exception_ptr_impl : protected B {
   friend class rich_exception_ptr_impl;
 
   using typename B::bits_t;
-
-  void set_empty_try() {
-    B::apply_bits_after_setting_data_with(
-        [](auto& d) { d.uintptr_ = B::kSigilEmptyTry; }, B::SIGIL_eq);
-  }
 
   constexpr void set_immortal_storage_and_bits(
       const detail::immortal_exception_storage* p, typename B::bits_t bits) {
@@ -266,7 +260,7 @@ class rich_exception_ptr_impl : protected B {
       // DO NOT run the `std::exception_ptr` copy ctor; immortal OC is unowned.
       B::operator=(other);
     } else {
-      // Immortal RE, empty eptr, empty Try, small value uintptr
+      // Immortal RE; empty eptr; sigil uintptr; small value uintptr
       copy_unowned_pointer_sized_state(other);
     }
   }
@@ -281,7 +275,7 @@ class rich_exception_ptr_impl : protected B {
           nullptr, B::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq);
     }
     // Else: `this` is unchanged, since these pre-move states match post-move
-    // states: empty eptr, empty Try, small value uintptr.
+    // states: empty eptr; sigil uintptr; small value uintptr.
   }
 
   // IMPORTANT: Must not read `this`, it may be after-dtor, or before-ctor
@@ -295,7 +289,7 @@ class rich_exception_ptr_impl : protected B {
       // DO NOT run the `std::exception_ptr` move ctor; immortal OC is unowned.
       B::operator=(other);
     } else {
-      // Immortal RE, empty eptr, empty Try, small value uintptr
+      // Immortal RE, empty eptr, sigil uintptr, small value uintptr
       copy_unowned_pointer_sized_state(other);
     }
     other.make_moved_out(other_bits);
@@ -327,16 +321,16 @@ class rich_exception_ptr_impl : protected B {
       // NOLINTNEXTLINE(facebook-hte-ThrowNonStdExceptionIssue)
       throw StoppedNoThrow{};
     } else if (B::SIGIL_eq == bits) {
-      B::debug_assert(
-          "throw_exception SIGIL_eq", B::get_uintptr() == B::kSigilEmptyTry);
+      // All sigil states represent non-error conditions (empty Try, has value).
+      // Calling throw_exception on these is a bug.
       if (PartOfTryImpl) {
-        // Match behavior of `Try::throwUnlessValue` ...  in some other usage
-        // `Try` instead throws `TryException`, but luckily
-        // `UsingUninitializedTry` derives from that.
+        B::debug_assert(
+            "Try has unexpected sigil (not EMPTY_TRY)",
+            has_sigil<private_rich_exception_ptr_sigil::EMPTY_TRY>());
         throw StubUsingUninitializedTry{};
-      } else { // Match `result::value_or_throw()` behavior
-        B::debug_assert("Cannot `throw_exception` on empty `Try`", false);
-        throw empty_result_error{};
+      } else {
+        B::debug_assert("Cannot `throw_exception` in sigil state", false);
+        throw bad_result_access_error{};
       }
     } else if (kImplementsSmallValue && B::SMALL_VALUE_eq == bits) {
       if constexpr (PartOfTryImpl) {
@@ -364,19 +358,17 @@ class rich_exception_ptr_impl : protected B {
     }
     if constexpr (PartOfTryImpl) {
       if (B::SIGIL_eq == bits) {
-        // For empty `Try`, match behavior of `Try::throwUnlessValue` ... in
-        // some other usage `Try` insetad throws `TryException`, but luckily
-        // `UsingUninitializedTry` derives from that.
+        B::debug_assert(
+            "Try has unexpected sigil (not EMPTY_TRY)",
+            has_sigil<private_rich_exception_ptr_sigil::EMPTY_TRY>());
         throw StubUsingUninitializedTry{};
       } else if (kImplementsSmallValue && B::SMALL_VALUE_eq == bits) {
         throw StubTryException{}; // Match `Try::exception()` behavior
       } // Else: fall through...
     }
-    // We're NOT implementing `Try`, and are either in the small value state,
-    // or in the empty `Try` state. Both are debug-fatal. For simplicity,
-    // we have both match `result::error_or_stopped()` failure behavior.
+    // Sigil & small value match `result::error_or_stopped()` failure behavior
     B::debug_assert(
-        "Cannot use `to_exception_ptr_slow` in value or empty `Try` state",
+        "Cannot use `to_exception_ptr_slow` in sigil or small-value state",
         false);
     return bad_result_access_singleton();
   }
@@ -546,8 +538,8 @@ class rich_exception_ptr_impl : protected B {
     // comparing the various kinds of errors.  All the remaining heterogeneous
     // comparisons are false:
     //   small value uintptr VS eptr_ref_guard
-    //   sigil (empty Try) VS eptr_ref_guard
-    //   sigil (empty Try) VS small value uintptr
+    //   sigil VS eptr_ref_guard
+    //   sigil VS small value uintptr
     //
     // This means that the only possible true comparison is "sigil VS sigil".
     //
@@ -555,14 +547,11 @@ class rich_exception_ptr_impl : protected B {
     // `SIGIL_eq` -- this is done to avoid templating the container on "is it
     // in `Try`?" to make it easier to interconvert `Try` and `result`.
     if (B::SIGIL_eq == lbits && B::SIGIL_eq == rbits) {
-      B::debug_assert(
-          "operator== SIGIL_eq",
-          lp->get_uintptr() == B::kSigilEmptyTry &&
-              rp->get_uintptr() == B::kSigilEmptyTry);
-    } else {
-      B::debug_assert("operator== !SIGIL_eq", lbits != rbits);
+      // Both are sigils; compare the actual sigil values
+      return lp->get_uintptr() == rp->get_uintptr();
     }
-    return lbits == rbits;
+    B::debug_assert("operator== exhaustiveness", lbits != rbits);
+    return false;
   }
 
  protected:
@@ -619,7 +608,19 @@ class rich_exception_ptr_impl : protected B {
         nullptr, B::IS_IMMORTAL_RICH_ERROR_OR_EMPTY_eq);
   }
 
-  explicit rich_exception_ptr_impl(make_empty_try_t) { set_empty_try(); }
+  /// Construct in a sigil state. See `private_rich_exception_ptr_sigil`.
+  template <private_rich_exception_ptr_sigil S>
+  explicit rich_exception_ptr_impl(vtag_t<S>) {
+    B::apply_bits_after_setting_data_with(
+        [](auto& d) { d.uintptr_ = static_cast<uintptr_t>(S); }, B::SIGIL_eq);
+  }
+
+  /// Check for a specific sigil state. See `private_rich_exception_ptr_sigil`.
+  template <private_rich_exception_ptr_sigil S>
+  [[nodiscard]] constexpr bool has_sigil() const noexcept {
+    return B::SIGIL_eq == B::get_bits() &&
+        B::get_uintptr() == static_cast<uintptr_t>(S);
+  }
 
   /// This constructor makes an "owning" `rich_exception_ptr`.
   ///
@@ -773,7 +774,8 @@ class rich_exception_ptr_impl : protected B {
 
   /// Returns `true` when both `lhs` and `rhs`...
   ///  - ... point at the same underlying exception, per the details below.
-  ///  - ... occur in the `Try` implementation, and both contain empty `Try`.
+  ///  - ... occur in the `Try` implementation, and both contain empty `Try`
+  ///        (similarly for other non-user-observable sigils)
   ///
   /// When `lhs` and `rhs` are both representable as eptrs, we compare the
   /// underlying exception object **pointers** -- ignoring epitaph wrappers.
@@ -1031,7 +1033,7 @@ class rich_exception_ptr_impl : protected B {
       } else if (bits_t::NOTHROW_OPERATION_CANCELLED_eq == rep->get_bits()) {
         return &typeid(StoppedNoThrow);
       }
-      return nullptr; // Non-exceptions: empty `Try`, small value uintptr
+      return nullptr; // Non-exceptions: sigil uintptr, small value uintptr
     });
   }
 

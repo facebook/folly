@@ -29,6 +29,7 @@
 namespace folly::test {
 
 using namespace folly::detail;
+using S = private_rich_exception_ptr_sigil;
 
 // IMPORTANT: There are more `#if 0` tests below. Run them all!
 constexpr bool manualTestsForStaticAsserts() {
@@ -59,11 +60,16 @@ void checkFundamentals(const REP& rep, const REP& other) {
   }
 }
 
+// Tests `to_exception_ptr_slow` for sigil states.
+//  - `result` path: debug-fatal, returning bad_result_access_error eptr in opt.
+//  - `Try` path: throws StubUsingUninitializedTry; if `tryDebugDeathRe` is set,
+//    expects a debug death first (for unexpected/pathological sigils like
+//    RESULT_HAS_VALUE appearing in a Try context).
 template <typename REP>
-void checkEmptyTryToExceptionPtr(REP& rep) {
+void checkSigilToExceptionPtr(REP& rep, const char* tryDebugDeathRe = nullptr) {
   // For `result`, avoid throwing: debug-fatal, returning an eptr in opt.
   if (kIsDebug) {
-    auto re = "Cannot use `to_exception_ptr_slow` in value or empty `Try` ";
+    auto re = "Cannot use `to_exception_ptr_slow` in sigil or small-value";
     EXPECT_DEATH({ (void)std::as_const(rep).to_exception_ptr_slow(); }, re);
     EXPECT_DEATH({ (void)REP{rep}.to_exception_ptr_slow(); }, re);
   } else {
@@ -73,50 +79,97 @@ void checkEmptyTryToExceptionPtr(REP& rep) {
     EXPECT_TRUE(get_exception<bad_result_access_error>(eptr2));
   }
 
-  // For `Try`, alway throw
+  // For `Try`, always throws StubUsingUninitializedTry.
   try_rich_exception_ptr_private_t priv;
-  EXPECT_THROW(
-      (void)std::as_const(rep).to_exception_ptr_slow(priv),
-      StubUsingUninitializedTry);
-  EXPECT_THROW(
-      (void)REP{rep}.to_exception_ptr_slow(priv), StubUsingUninitializedTry);
+  if (tryDebugDeathRe && kIsDebug) {
+    // Pathological sigil for Try -- debug-asserts before throwing.
+    EXPECT_DEATH(
+        (void)std::as_const(rep).to_exception_ptr_slow(priv), tryDebugDeathRe);
+    EXPECT_DEATH((void)REP{rep}.to_exception_ptr_slow(priv), tryDebugDeathRe);
+  } else {
+    EXPECT_THROW(
+        (void)std::as_const(rep).to_exception_ptr_slow(priv),
+        StubUsingUninitializedTry);
+    EXPECT_THROW(
+        (void)REP{rep}.to_exception_ptr_slow(priv), StubUsingUninitializedTry);
+  }
 }
 
-template <typename REP>
-void checkEmptyTry() {
-  REP rep{make_empty_try_t{}};
+// Tests a sigil state: fundamentals, throw_exception, to_exception_ptr_slow,
+// get_exception.  If `tryDebugDeathRe` is set, expects debug deaths on the
+// Try path (for pathological sigils like RESULT_HAS_VALUE in a Try context).
+template <typename REP, S Sigil>
+void checkSigil(const char* tryDebugDeathRe = nullptr) {
+  constexpr auto otherSigil =
+      (Sigil == S::EMPTY_TRY) ? S::RESULT_HAS_VALUE : S::EMPTY_TRY;
+
+  REP rep{vtag<Sigil>};
   checkFundamentals(rep, REP{});
 
-  if (kIsDebug) { // For `result`, debug-fatal, with fallback to throwing
+  // Check distinctness from other sigil + `has_sigil<>` queries
+  EXPECT_NE(rep, REP{vtag<otherSigil>});
+  EXPECT_TRUE(rep.template has_sigil<Sigil>());
+  EXPECT_FALSE(rep.template has_sigil<otherSigil>());
+
+  // throw_exception: `result` path is debug-fatal for both sigils
+  if (kIsDebug) {
     EXPECT_DEATH(
-        { rep.throw_exception(); }, "Cannot `throw_exception` on empty `Try`");
+        { rep.throw_exception(); }, "Cannot `throw_exception` in sigil state");
   } else {
-    EXPECT_THROW(rep.throw_exception(), empty_result_error);
+    EXPECT_THROW(rep.throw_exception(), bad_result_access_error);
   }
-  EXPECT_THROW( // For `Try`, always throws
-      rep.throw_exception(try_rich_exception_ptr_private_t{}),
-      StubUsingUninitializedTry);
+  // throw_exception: `Try` path always throws StubUsingUninitializedTry.
+  // If `tryDebugDeathRe` is set, the sigil is unexpected for Try, so we
+  // also expect a debug death before the throw.
+  if (tryDebugDeathRe && kIsDebug) {
+    EXPECT_DEATH(
+        rep.throw_exception(try_rich_exception_ptr_private_t{}),
+        tryDebugDeathRe);
+  } else {
+    EXPECT_THROW(
+        rep.throw_exception(try_rich_exception_ptr_private_t{}),
+        StubUsingUninitializedTry);
+  }
 
-  checkEmptyTryToExceptionPtr<REP>(rep); // Covers both `result` and `Try`
+  checkSigilToExceptionPtr<REP>(rep, tryDebugDeathRe);
 
-  // We throw `UninitializedTry` / `empty_result_error`, but cannot query them
+  // We throw `UsingUninitializedTry` / `bad_result_access_error`, but can't
+  // query them -- the sigil itself doesn't store an exception.
   checkGetExceptionBoth<
       GetExceptionResult{.isHit = false},
       std::exception,
       rich_error_base,
       StubUsingUninitializedTry,
-      empty_result_error>(rep);
+      bad_result_access_error,
+      OperationCancelled>(rep);
 }
 
 TEST(RichExceptionPtr, emptyTry) {
-  checkEmptyTry<rich_exception_ptr>();
+  checkSigil<rich_exception_ptr, S::EMPTY_TRY>();
 }
 TEST(RichExceptionPtr, emptyTrySeparate) {
-  checkEmptyTry<rich_exception_ptr_separate>();
+  checkSigil<rich_exception_ptr_separate, S::EMPTY_TRY>();
 }
 TEST(RichExceptionPtr, emptyTryPacked) {
   if constexpr (rich_exception_ptr_packed_storage::is_supported) {
-    checkEmptyTry<rich_exception_ptr_packed>();
+    checkSigil<rich_exception_ptr_packed, S::EMPTY_TRY>();
+  } else {
+    GTEST_SKIP() << "Packed storage not supported on this platform";
+  }
+}
+
+TEST(RichExceptionPtr, resultHasValue) {
+  checkSigil<rich_exception_ptr, S::RESULT_HAS_VALUE>(
+      "Try has unexpected sigil");
+}
+TEST(RichExceptionPtr, resultHasValueSeparate) {
+  checkSigil<rich_exception_ptr_separate, S::RESULT_HAS_VALUE>(
+      "Try has unexpected sigil");
+}
+TEST(RichExceptionPtr, resultHasValuePacked) {
+  if constexpr (rich_exception_ptr_packed_storage::is_supported) {
+    checkSigil<rich_exception_ptr_packed, S::RESULT_HAS_VALUE>(
+        "Try has unexpected sigil");
   } else {
     GTEST_SKIP() << "Packed storage not supported on this platform";
   }
@@ -190,6 +243,10 @@ void checkEmptyEptr() {
   try_rich_exception_ptr_private_t priv;
   REP rep;
   checkFundamentals(rep, REP{rich_error<RichErr>{}});
+
+  // Empty eptr is not a sigil
+  EXPECT_FALSE(rep.template has_sigil<S::EMPTY_TRY>());
+  EXPECT_FALSE(rep.template has_sigil<S::RESULT_HAS_VALUE>());
 
   // `throw_exception` always terminates on empty eptr (rethrowing empty is UB)
   auto re = "Cannot use `throw_exception\\(\\)` with an empty or invalid ";

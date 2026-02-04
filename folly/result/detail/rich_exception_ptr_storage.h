@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/Portability.h> // FOLLY_HAS_RESULT
+#include <folly/Traits.h> // vtag_t
 #include <folly/result/detail/immortal_exception_storage.h>
 
 #include <cstdint>
@@ -29,6 +30,20 @@
 // its public interface.
 
 namespace folly::detail {
+
+// Internal-only sigil types for `rich_exception_ptr` union states.
+//
+// FOLLY-INTERNAL: Using these outside of exhaustively-tested folly
+// internals (result.h, Try.h) risks unannounced UB and build breaks.
+//
+// IMPORTANT: Values must have the low 3 bits clear (see "packed" storage).
+enum class private_rich_exception_ptr_sigil : uintptr_t {
+  // Used by `result` to indicate the value union member is active.
+  RESULT_HAS_VALUE = 0,
+  // Reserved for a potential future implementation of `Try` via `result`.
+  // IMPORTANT: Must NEVER be ingestable into a user-visible `result`.
+  EMPTY_TRY = 8,
+};
 
 class rich_exception_ptr_base_storage {
  protected:
@@ -82,7 +97,7 @@ class rich_exception_ptr_base_storage {
       // Below, we assert that eptr has the highest alignment of these members.
       alignas(std::exception_ptr) data_t {
     // (1) Used as a convenience to access packed bits for all union states.
-    // (2) With `SIGIL_eq == bits`, would currently only store `kSigilEmptyTry`.
+    // (2) With `SIGIL_eq == bits`, stores a `private_rich_exception_ptr_sigil`.
     // (3) With `SMALL_VALUE_eq == bits`, stores a bit-mangled small value.
     uintptr_t uintptr_;
     // NB: This {}-init is here to silence a linter.  It's not meant to do
@@ -97,15 +112,12 @@ class rich_exception_ptr_base_storage {
       alignof(detail::immortal_exception_storage*));
   static_assert(alignof(std::exception_ptr) >= alignof(uintptr_t));
 
-  constexpr static uintptr_t kSigilEmptyTry = 0; // See also `SIGIL_eq`
-  static_assert(!(kSigilEmptyTry & 0x7)); // for compatibility w/ "packed"
-
   // The setup of `bits_t` is a bit subtle, see `rich_exception_ptr.md`.  This
   // lets us turn the bottom 3 alignment bits of the pointer into a union-type
   // selector, letting one pointer represent:
   //   - `exception_ptr`
   //   - Small values
-  //   - An empty `Try`
+  //   - Sigil storage, see `private_rich_exception_ptr_sigil`
   //   - Immortal `rich_error`s (think error codes + strings)
   //
   // These also support a few fast non-RTTI type queries.  Is this
@@ -132,11 +144,8 @@ class rich_exception_ptr_base_storage {
     // Future small-value optimization.  The idea is to inline `result<T>` for
     // trivial `T` of <= 61 bits modulo alignment, like `int` or `void&`.
     SMALL_VALUE_eq = 6,
-    // When `rich_exception_ptr` is used in the `Try` implementation, the
-    // "empty Try" state is represented by `kSigilEmptyTry` in `...sigil_`.
-    //
-    // Future: This can be extended to support other sigils, though keep in
-    // mind the cost of branching over a large number of these.
+    // When `rich_exception_ptr` stores a `private_rich_exception_ptr_sigil`,
+    // the sigil value is in `...uintptr_`.
     SIGIL_eq = 2,
     // `...eptr_ref_guard_` contains an UNOWNED copy of a leaky singleton of
     // `StoppedNoThrow`, which propagates through coros without

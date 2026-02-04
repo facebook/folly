@@ -29,6 +29,7 @@
 namespace folly::test {
 
 using namespace folly::detail;
+using S = private_rich_exception_ptr_sigil;
 
 // Returns `REP` after a round-trip through `std::exception_ptr`.
 //
@@ -160,10 +161,11 @@ auto allRepVariants() {
         "empty", REP::from_exception_ptr_slow(std::exception_ptr{}));
     reps.emplace_back("empty", checkEptrRoundtrip<REP>(empty));
   }
-  // Aoid `checkEptrRoundtrip` on empty-try.  By design, it doesn't support
-  // `to_exception_ptr_slow`.  We could test adding epitaphs to empty-try (as
+  // Avoid `checkEptrRoundtrip` on sigils.  By design, they don't support
+  // `to_exception_ptr_slow`.  We could test adding epitaphs to sigils (as
   // in the loops above), but that should never be used, so omit it.
-  reps.emplace_back("empty_try", REP{make_empty_try_t{}});
+  reps.emplace_back("empty_try", REP{vtag<S::EMPTY_TRY>});
+  reps.emplace_back("result_has_value", REP{vtag<S::RESULT_HAS_VALUE>});
   return reps;
 }
 
@@ -205,9 +207,10 @@ void checkAllAssignments() {
     for (size_t j = 0; j < reps.size(); ++j) {
       const auto& [unused1, original_src] = reps[i];
       const auto& [unused2, original_dst] = reps[j];
-      // Moved-from is empty, except for "empty try".
+      // Moved-from is empty, except for sigils (unowned pointer-sized states).
       auto checkMovedOut = [&](auto& rep) {
-        if (REP{make_empty_try_t{}} == original_src) {
+        if (REP{vtag<S::EMPTY_TRY>} == original_src ||
+            REP{vtag<S::RESULT_HAS_VALUE>} == original_src) {
           EXPECT_EQ(original_src, rep);
         } else {
           EXPECT_EQ(rich_exception_ptr{}, rep);
