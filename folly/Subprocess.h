@@ -659,6 +659,10 @@ class Subprocess {
    * Poll the child's status.  If the process is still running, return false.
    * Otherwise, return true if the process exited with status 0 (success),
    * or throw CalledProcessError if the process exited with a non-zero status.
+   * Note: this should only be called for processes in the RUNNING state. If
+   * another trigger has caused the process to register as exited, or the
+   * process is yet to start before this is called, this will throw a
+   * std::logic_error.
    */
   bool pollChecked();
 
