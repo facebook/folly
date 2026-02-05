@@ -1107,6 +1107,10 @@ non_fbcode_target(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        ":format",
+        ":function",
+        ":shared_mutex",
+        "//xplat/folly/detail:static_singleton_manager",
     ],
 )
 
