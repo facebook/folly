@@ -1172,13 +1172,6 @@ class IoUringBackend : public EventBaseBackendBase {
   void dCheckSubmitTid();
   void setSubmitting() noexcept { isSubmitting_++; }
   void doneSubmitting() noexcept { isSubmitting_--; }
-  void setGetActiveEvents() {
-    if (kIsDebug && gettingEvents_) {
-      throw std::runtime_error("getting events is not reentrant");
-      gettingEvents_ = true;
-    }
-  }
-  void doneGetActiveEvents() noexcept { gettingEvents_ = false; }
   bool isSubmitting() const noexcept { return isSubmitting_; }
 };
 

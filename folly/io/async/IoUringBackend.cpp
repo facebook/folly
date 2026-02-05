@@ -1475,9 +1475,13 @@ int IoUringBackend::cancelOne(IoSqe* ioSqe) {
 size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
   struct io_uring_cqe* cqe;
 
-  setGetActiveEvents();
+  if (kIsDebug && gettingEvents_) {
+    throw std::runtime_error("getting events is not reentrant");
+  }
+  gettingEvents_ = true;
+
   SCOPE_EXIT {
-    doneGetActiveEvents();
+    gettingEvents_ = false;
   };
 
   auto inner_do_wait = [&]() -> int {
