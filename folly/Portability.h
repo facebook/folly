@@ -689,9 +689,13 @@ constexpr auto kCpplibVer = 0;
 //  - 14 is still bad: https://godbolt.org/z/nW1W8cWvb
 //  - 15.0.0 is good: https://godbolt.org/z/Tco4c9hbq and sEaKKTf8r
 #define FOLLY_HAS_IMMOVABLE_COROUTINES 0
+// On Windows, Clang with -fms-compatibility defines _MSC_FULL_VER to
+// emulate MSVC - even for newer versions of Clang.
+// Explicitly allow Clang 15+, prior to checking _MSC_FULL_VER
+#elif defined(__clang_major__) && __clang_major__ >= 15
+#define FOLLY_HAS_IMMOVABLE_COROUTINES 1
 // BEWARE: Older versions of Clang pretend to be MSVC and define
-// `_MSC_FULL_VER`, but fortunately none of clang 15, 16, 17, 18, 19 do this,
-// so this branch should not result in a false-negative.
+// `_MSC_FULL_VER`
 #elif defined(_MSC_FULL_VER) && _MSC_FULL_VER <= 192930040
 //  - 192930040 is bad: https://godbolt.org/z/E797W8xTT
 //  - 192930153 is good: https://godbolt.org/z/cM4nW5rTK
