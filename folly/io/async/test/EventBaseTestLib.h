@@ -1734,6 +1734,35 @@ TYPED_TEST_P(EventBaseTest, RunPollLoop) {
   ASSERT_GT(calls, 1);
 }
 
+// Test loopPollBlocking() call sequence
+TYPED_TEST_P(EventBaseTest, RunPollLoopBlocking) {
+  auto evbPtr = this->makeEventBase();
+  folly::EventBase& eventBase = *evbPtr;
+  auto running = std::make_shared<std::atomic<bool>>(true);
+  auto wakeups = std::make_shared<std::atomic<int>>(0);
+
+  eventBase.loopPollSetup();
+
+  std::thread waker([running, wakeups, &eventBase]() {
+    while (running->load()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      eventBase.runInEventBaseThread([wakeups]() { (*wakeups)++; });
+    }
+  });
+
+  EventBase::LoopPollOptions options;
+  options.nonblock = false;
+  while (wakeups->load() < 5) {
+    eventBase.loopPoll(options);
+  }
+
+  running->store(false);
+  waker.join();
+  eventBase.loopPollCleanup();
+
+  ASSERT_GE(wakeups->load(), 5);
+}
+
 TYPED_TEST_P(EventBaseTest, PidCheck) {
   auto evbPtr = this->makeEventBase();
 
@@ -3075,6 +3104,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     RunInLoopNoTimeMeasurement,
     RunInLoopStopLoop,
     RunPollLoop,
+    RunPollLoopBlocking,
     MessageAvailableException,
     TryRunningAfterTerminate,
     CancelRunInLoop,

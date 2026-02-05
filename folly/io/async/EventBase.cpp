@@ -543,10 +543,11 @@ void EventBase::loopPollSetup() {
   loopMainSetup();
 }
 
-bool EventBase::loopPoll() {
+bool EventBase::loopPoll(LoopPollOptions options) {
   DCHECK(isRunning());
   dcheckIsInEventBaseThread();
-  return isSuccess(loopMain(EVLOOP_NONBLOCK | EVLOOP_ONCE, {}));
+  return isSuccess(
+      loopMain((options.nonblock ? EVLOOP_NONBLOCK : 0) | EVLOOP_ONCE, {}));
 }
 
 void EventBase::loopPollCleanup() {

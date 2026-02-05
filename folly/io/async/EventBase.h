@@ -411,6 +411,11 @@ class EventBase
    */
   bool loopOnce(int flags = 0);
 
+  struct LoopPollOptions {
+    bool nonblock = true;
+    LoopPollOptions() {}
+  };
+
   /**
    * Poll the EventBase for active events, run them, then return. Unlike
    * loopOnce, the expectation is that loopPoll will be called multiple times
@@ -427,8 +432,13 @@ class EventBase
    *
    * Must be called within a corresponding pair of loopPollSetup and
    * loopPollCleanup; may be called many times within the pair.
+   *
+   * @param option: whether the function can block waiting for active events
+   *  true:  return immediately after all active events are processed.
+   *  false: block and keep running active events, until waken up by
+   * notification.
    */
-  bool loopPoll();
+  bool loopPoll(LoopPollOptions options = {});
 
   /**
    * Sets up state for active polling to be done against the EventBase. Call
