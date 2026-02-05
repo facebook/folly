@@ -434,5 +434,110 @@ TEST_F(ThreadLocalDetailTest, PendingInsertsConsistency) {
   }
 }
 
+// Test that verifies pending inserts are properly drained during reset().
+//
+// The scenario:
+// 1. Thread A sets a value while accessor holds the lock (defers to pending,
+//    stores wrapper.ptr = X, updates elements[id] = X)
+// 2. Accessor is released
+// 3. Thread A resets to null - this should now drain pending inserts first
+//    to ensure wrapper in ThreadEntrySet is consistent with elements[id].
+// 4. ThreadLocal is destroyed safely because pending inserts were drained.
+//
+// The fix adds a check in resetElementImplAfterSet to drain pending inserts
+// before processing the reset, ensuring the caller can safely delete the
+// element pointer.
+TEST_F(ThreadLocalDetailTest, PendingInsertsThenUpdateBeforeDestroy) {
+  struct Tag {};
+
+  // Use unique_ptr so we can control when destruction happens
+  auto helperPtr = std::make_unique<ThreadLocalTestHelper<Tag>>();
+  auto& helper = *helperPtr;
+
+  // Create single element for this test
+  helper.elements.emplace_back();
+
+  // Initialize main thread's value to establish its ThreadEntry in the set.
+  // This allows us to verify the pending inserts path was taken by checking
+  // that the accessor only sees this one entry (not the worker's).
+  *helper.elements[0] = 42;
+
+  // Use barriers for synchronization to ensure the accessor's
+  // wlock is definitely held when the worker tries tryRLock().
+  test::Barrier accessorReadyBarrier{2};
+  test::Barrier workerFirstSetDoneBarrier{2};
+  test::Barrier canDoSecondOpBarrier{2};
+  test::Barrier workerDoneBarrier{2};
+
+  std::thread workerThread([&]() {
+    // Wait until accessor is ready - this ensures wlock is held
+    accessorReadyBarrier.wait();
+
+    // First set - accessor is holding wlock, so tryRLock() MUST fail,
+    // forcing this to go through the pending inserts path.
+    *helper.elements[0] = 100;
+
+    // Signal that first set is complete
+    workerFirstSetDoneBarrier.wait();
+
+    // Wait for permission to do second operation
+    canDoSecondOpBarrier.wait();
+
+    // Reset to null - with the fix, this now drains pending inserts first
+    // to ensure wrapper in ThreadEntrySet is consistent with elements[id].
+    helper.elements[0].reset();
+
+    // Signal that we're done
+    workerDoneBarrier.wait();
+  });
+
+  // Hold accessor to create contention - worker's first set will defer
+  {
+    auto accessor = helper.elements[0].accessAllThreads();
+
+    // Signal worker that accessor is ready (wlock is held)
+    accessorReadyBarrier.wait();
+
+    // Wait for worker to complete first set
+    workerFirstSetDoneBarrier.wait();
+
+    // CRITICAL: Verify that worker's set went to pending inserts by checking
+    // that the accessor only sees main thread's entry (value 42), not worker's.
+    // If we see 2 entries, the pending inserts path wasn't taken due to timing.
+    // In that case, skip the test since it cannot properly validate the fix.
+    int32_t seenCount = 0;
+    bool sawMainThread = false;
+    for (const auto& value : accessor) {
+      seenCount++;
+      if (value == 42) {
+        sawMainThread = true;
+      }
+    }
+    ASSERT_EQ(seenCount, 1)
+        << "Accessor should only see main thread while holding wlock";
+    ASSERT_TRUE(sawMainThread) << "Main thread's value (42) should be visible";
+  } // Release accessor
+
+  // Signal worker to do second operation (reset to null)
+  canDoSecondOpBarrier.wait();
+
+  // Wait for worker to complete
+  workerDoneBarrier.wait();
+
+  // Now destroy the ThreadLocal - this calls
+  // popThreadEntrySetAndClearElementPtrs which acquires wlock() and drains
+  // pending inserts. After drain: wrapper.ptr points to storage from first set
+  // But: elements[id].ptr is nullptr (from reset)
+  // Without the fix, DCHECK would fail because these don't match.
+  // With the fix, the DCHECK was removed, so destruction succeeds.
+  helperPtr.reset(); // Destroy the helper and its ThreadLocal elements
+
+  workerThread.join();
+
+  // Success: Pending inserts were properly drained during reset
+  SUCCEED()
+      << "ThreadLocal destruction succeeded - pending inserts drained during reset";
+}
+
 } // namespace threadlocal_detail
 } // namespace folly

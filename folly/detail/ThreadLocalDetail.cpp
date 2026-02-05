@@ -820,6 +820,16 @@ void ThreadEntry::resetElementImplAfterSet(
       ? StaticMetaBase::SynchronizedThreadEntrySet::RLockedPtr(
             std::move(triedRlock))
       : set.rlock();
+
+  // Drain pending inserts before cleanup. This is critical when resetting
+  // to null (!null -> null) to ensure we drain any prior pending insert
+  // for this thread before the caller deletes the element pointer.
+  if (set.hasPendingInserts()) {
+    rlock.unlock();
+    auto wlock = set.wlock(); // Drains pending inserts
+    rlock = wlock.moveFromWriteToRead();
+  }
+
   cleanupElement(id);
   elements[id] = element;
   if (removed_) {
