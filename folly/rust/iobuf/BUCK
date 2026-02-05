@@ -19,7 +19,12 @@ create_forwarding_aliases(
         "ovr_config//os:macos": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_mac() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
         "ovr_config//os:windows": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_win() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
     }),
-    platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
+    platforms = [
+        CXX,
+        APPLE,
+        FBCODE,
+        WINDOWS,
+    ] + ([ANDROID] if is_xplat() else []),
     sdks = (IOS, MACOSX),
     visibility = ["PUBLIC"],
 ) if is_xplat() else None
@@ -32,7 +37,12 @@ create_forwarding_aliases(
         "ovr_config//os:macos": "fbcode//folly/rust/iobuf:_iobuf-ffi" if is_fbcode_mode_mac() else "fbsource//xplat/folly/rust/iobuf:_iobuf-ffi",
         "ovr_config//os:windows": "fbcode//folly/rust/iobuf:_iobuf-ffi" if is_fbcode_mode_win() else "fbsource//xplat/folly/rust/iobuf:_iobuf-ffi",
     }),
-    platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
+    platforms = [
+        CXX,
+        APPLE,
+        FBCODE,
+        WINDOWS,
+    ] + ([ANDROID] if is_xplat() else []),
     sdks = (IOS, MACOSX),
     visibility = ["PUBLIC"],
 ) if is_xplat() else None
@@ -63,7 +73,12 @@ rust_bindgen_library(
         "std::.*",
         "folly::fbstring.*",
     ],
-    platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
+    platforms = [
+        CXX,
+        APPLE,
+        FBCODE,
+        WINDOWS,
+    ] + ([ANDROID] if is_xplat() else []),
     src_includes = ["iobuf_sys.rs"],
     visibility = [],
 )
@@ -72,7 +87,12 @@ fb_xplat_cxx_library(
     name = "_iobuf-ffi",
     srcs = ["iobuf.cpp"],
     exported_headers = ["iobuf.h"],
-    platforms = (CXX, ANDROID, APPLE, FBCODE, WINDOWS),
+    platforms = [
+        CXX,
+        APPLE,
+        FBCODE,
+        WINDOWS,
+    ] + ([ANDROID] if is_xplat() else []),
     preferred_linkage = "static",
     visibility = [
         "fbcode//folly/rust/iobuf/...",
@@ -90,7 +110,11 @@ fb_xplat_rust_library(
     crate = "iobuf",
     crate_root = "src/lib.rs",
     cxx_bridge = "src/lib.rs",
-    platforms = (CXX, ANDROID, APPLE, WINDOWS),
+    platforms = [
+        CXX,
+        APPLE,
+        WINDOWS,
+    ] + ([ANDROID] if is_xplat() else []),
     test_deps = [
         "fbsource//third-party/rust:quickcheck",
         "fbsource//xplat/thrift/lib/rust/src/dep_tests:test_if-rust",
