@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_path(LIBUNWIND_INCLUDE_DIR NAMES libunwind.h)
+# When using prepackaged LLVM libunwind on Ubuntu, its includes are installed in a subdirectory.
+find_path(LIBUNWIND_INCLUDE_DIR NAMES libunwind.h PATH_SUFFIXES libunwind)
 mark_as_advanced(LIBUNWIND_INCLUDE_DIR)
 
 find_library(LIBUNWIND_LIBRARY NAMES unwind)
