@@ -8,6 +8,7 @@ load(
     "@fbsource//tools/build_defs:default_platform_defs.bzl",
     "ANDROID",
     "APPLE",
+    "APPLETVOS",
     "CXX",
     "FBCODE",
     "IOS",
@@ -107,7 +108,7 @@ WINDOWS_CLANG_CXX_FLAGS = [
     "-D_ENABLE_EXTENDED_ALIGNED_STORAGE",
 ]
 
-DEFAULT_APPLE_SDKS = (IOS, MACOSX)
+DEFAULT_APPLE_SDKS = (IOS, APPLETVOS, MACOSX)
 DEFAULT_PLATFORMS = (CXX, ANDROID, APPLE, FBCODE, WINDOWS)
 
 def _compute_include_directories():
