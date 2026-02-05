@@ -975,7 +975,6 @@ class IoUringBackend : public EventBaseBackendBase {
 
     const char* oldPath_;
     const char* newPath_;
-    int flags_;
   };
 
   struct FUnlinkIoSqe : public FileOpIoSqe {
