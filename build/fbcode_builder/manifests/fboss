@@ -20,6 +20,7 @@ folly
 fb303
 wangle
 fizz
+mvfst
 fmt
 libsodium
 googletest
