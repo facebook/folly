@@ -88,26 +88,33 @@ struct secret_guaranteed_not_null : guaranteed_not_null_provider {
 //  - It must not already be castable, otherwise the compiler will raise an
 //    ambiguity error
 //  - PtrT must be castable to ToT
+//
+// NOTE: We use std::conjunction for short-circuit evaluation to avoid infinite
+// template recursion. With std::integral_constant<bool, A && B>, both operands
+// are instantiated even when A is false. When external code checks
+// std::is_convertible<not_null<PtrT>, U>, this instantiates operator U(),
+// whose SFINAE constraint instantiates is_not_null_castable, which would check
+// std::is_convertible<not_null<PtrT>, U> again, causing unbounded recursion.
+// std::conjunction short-circuits: if the first trait is false_type, the second
+// trait is not instantiated, breaking the cycle.
 template <typename FromPtrT, typename ToT>
 struct is_not_null_castable
-    : std::integral_constant<
-          bool,
-          std::is_convertible_v<const FromPtrT&, ToT> &&
-              !std::is_convertible_v<
-                  // No need to specialize based on null handler as it doesn't
-                  // affect the result.
-                  const not_null<FromPtrT, default_null_handler>&,
-                  ToT>> {};
+    : std::conjunction<
+          std::is_convertible<const FromPtrT&, ToT>,
+          std::negation<std::is_convertible<
+              // No need to specialize based on null handler as it doesn't
+              // affect the result.
+              const not_null<FromPtrT, default_null_handler>&,
+              ToT>>> {};
 template <typename FromPtrT, typename ToT>
 struct is_not_null_move_castable
-    : std::integral_constant<
-          bool,
-          std::is_convertible_v<FromPtrT&&, ToT> &&
-              !std::is_convertible_v<
-                  // No need to specialize based on null handler as it doesn't
-                  // affect the result.
-                  not_null<FromPtrT, default_null_handler>&&,
-                  ToT>> {};
+    : std::conjunction<
+          std::is_convertible<FromPtrT&&, ToT>,
+          std::negation<std::is_convertible<
+              // No need to specialize based on null handler as it doesn't
+              // affect the result.
+              not_null<FromPtrT, default_null_handler>&&,
+              ToT>>> {};
 
 template <typename T, typename = decltype(*std::declval<T*>() == nullptr)>
 inline std::true_type is_comparable_to_nullptr_fn(const T&) {
