@@ -22,6 +22,7 @@
 #include <folly/Conv.h>
 #include <folly/FileUtil.h>
 #include <folly/String.h>
+#include <folly/container/Reserve.h>
 #include <folly/logging/LogCategory.h>
 #include <folly/logging/LogConfig.h>
 #include <folly/logging/LogHandler.h>
@@ -337,6 +338,7 @@ std::vector<std::shared_ptr<LogHandler>> LoggerDB::buildCategoryHandlerList(
     StringPiece categoryName,
     const std::vector<std::string>& categoryHandlerNames) {
   std::vector<std::shared_ptr<LogHandler>> catHandlers;
+  folly::grow_capacity_by(catHandlers, categoryHandlerNames.size());
   for (const auto& handlerName : categoryHandlerNames) {
     auto iter = handlerMap.find(handlerName);
     if (iter == handlerMap.end()) {
