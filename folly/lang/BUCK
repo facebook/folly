@@ -401,6 +401,15 @@ non_fbcode_target(
     raw_headers = ["VectorTraits.h"],
 )
 
+non_fbcode_target(
+    _kind = folly_xplat_cxx_library,
+    name = "bit_fields",
+    raw_headers = ["BitFields.h"],
+    exported_deps = [
+        ":bits",
+    ],
+)
+
 # fbcode build rules
 
 fbcode_target(
@@ -448,6 +457,15 @@ fbcode_target(
     headers = ["Badge.h"],
     exported_deps = [
         "//folly:traits",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "bit_fields",
+    headers = ["BitFields.h"],
+    exported_deps = [
+        ":bits",
     ],
 )
 

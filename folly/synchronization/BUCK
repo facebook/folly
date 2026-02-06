@@ -215,7 +215,7 @@ fb_dirsync_cpp_library(
     headers = ["LifoSem.h"],
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        ":atomic_struct",
+        ":atomic_bit_fields",
         ":saturating_semaphore",
         "//folly:c_portability",
         "//folly:indexed_mem_pool",
@@ -471,5 +471,15 @@ fb_dirsync_cpp_library(
         "//folly/memory:malloc",
         "//folly/synchronization:relaxed_atomic",
         "//folly/synchronization:throttled_lifo_sem",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "atomic_bit_fields",
+    headers = ["AtomicBitFields.h"],
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        ":atomic_struct",
+        "//folly/lang:bit_fields",
     ],
 )
