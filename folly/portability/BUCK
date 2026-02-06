@@ -872,16 +872,13 @@ fbcode_target(
     name = "malloc",
     srcs = ["Malloc.cpp"],
     headers = ["Malloc.h"],
-    os_deps = [
-        (
-            "linux",
-            ["third-party//jemalloc:headers"],
-        ),
-    ],
     exported_deps = [
         ":config",
         "//folly:c_portability",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": ["third-party//jemalloc:headers"],
+    }),
 )
 
 fbcode_target(
