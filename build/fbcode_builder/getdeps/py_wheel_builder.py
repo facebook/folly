@@ -151,7 +151,7 @@ class PythonWheelBuilder(BuilderBase):
         # Find sources from the root directory
         path_mapping = {}
         for entry in os.listdir(self.src_dir):
-            if entry in (dist_info_name, data_dir_name):
+            if entry == data_dir_name:
                 continue
             self._add_sources(path_mapping, os.path.join(self.src_dir, entry), entry)
 
