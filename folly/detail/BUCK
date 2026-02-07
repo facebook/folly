@@ -690,17 +690,14 @@ fbcode_target(
     srcs = ["PerfScoped.cpp"],
     headers = ["PerfScoped.h"],
     # folly subprocess is not supported on windows
-    os_deps = [
-        (
-            "linux",
-            ["//folly:subprocess"],
-        ),
-    ],
     deps = [
         "//folly:conv",
         "//folly/system:pid",
         "//folly/testing:test_util",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": ["//folly:subprocess"],
+    }),
     external_deps = [
         ("boost", None, "boost_regex"),
     ],
