@@ -627,9 +627,18 @@ inline constexpr bool is_detected_v =
 template <template <typename...> class T, typename... A>
 struct is_detected : detected_or<nonesuch, T, A...>::value_t {};
 
+template<std::size_t Len, std::size_t Align /* default alignment not implemented */>
+struct aligned_storage
+{
+    struct type
+    {
+        alignas(Align) std::byte data[Len];
+    };
+};
+
 template <typename T>
 using aligned_storage_for_t =
-    typename std::aligned_storage<sizeof(T), alignof(T)>::type;
+    typename aligned_storage<sizeof(T), alignof(T)>::type;
 
 //  ----
 
