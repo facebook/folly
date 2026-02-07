@@ -256,6 +256,26 @@ size_t demangle(const char* name, char* out, size_t outSize) {
     }
   }
 
+  // fallback to cxxabi if available
+  if (cxxabi_demangle) {
+    int status;
+    size_t len = 0;
+    // malloc() memory for the demangled type name
+    char* demangled = cxxabi_demangle(name, nullptr, &len, &status);
+    if (status == 0) {
+      // Successfully demangled, copy to output buffer
+      size_t demangledLen = strlen(demangled);
+      if (outSize) {
+        size_t n = std::min(demangledLen, outSize - 1);
+        memcpy(out, demangled, n);
+        out[n] = '\0';
+      }
+      free(demangled);
+      return demangledLen;
+    }
+    // If demangling failed, fall through to return original name
+  }
+
   // fallback - just return original
   return folly::strlcpy(out, name, outSize);
 }
