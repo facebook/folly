@@ -27,6 +27,7 @@ rocksdb
 re2
 libgit2
 pexpect
+python-psutil
 python-toml
 python-filelock
 edencommon
