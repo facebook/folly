@@ -4,9 +4,9 @@
 name = python-3_14
 
 [download]
-url = https://github.com/python/cpython/archive/refs/tags/v3.14.2.tar.gz
-sha256 = 452d758a660bf1faa31b0b5e39999721b6034421b1cb0a3a26223a344c4fa949
+url = https://github.com/python/cpython/archive/refs/tags/v3.14.3.tar.gz
+sha256 = f229a232052ae318d2fc8eb0aca4a02d631e7e1a8790ef1f9b65e1632743a469
 
 [build]
 builder = autoconf
-subdir = cpython-3.14.2
+subdir = cpython-3.14.3
