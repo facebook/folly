@@ -94,8 +94,8 @@ template <class String>
 void randomString(String* toFill, unsigned int maxSize = 1000) {
   assert(toFill);
   toFill->resize(random(0, maxSize));
-  FOR_EACH (i, *toFill) {
-    *i = random('a', 'z');
+  for (auto& c : *toFill) {
+    c = random('a', 'z');
   }
 }
 
@@ -1300,9 +1300,9 @@ sed nisl. In diam lacus, lobortis ut posuere nec, ornare id quam.";
   {
     istringstream input(s1);
     fbstring line;
-    FOR_EACH (i, v) {
+    for (const auto& expected : v) {
       EXPECT_TRUE(!getline(input, line).fail());
-      EXPECT_EQ(line, *i);
+      EXPECT_EQ(line, expected);
     }
   }
 }

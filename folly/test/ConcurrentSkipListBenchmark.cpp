@@ -118,9 +118,9 @@ void BM_SetMerge(int iters, int size) {
   susp.dismiss();
 
   [[maybe_unused]] int64_t mergedSum = 0;
-  FOR_EACH (it, a_set) {
-    if (b_set.find(*it) != b_set.end()) {
-      mergedSum += *it;
+  for (const auto& value : a_set) {
+    if (b_set.find(value) != b_set.end()) {
+      mergedSum += value;
     }
   }
   BENCHMARK_SUSPEND {
@@ -143,9 +143,9 @@ void BM_CSLMergeLookup(int iters, int size) {
   susp.dismiss();
 
   SkipListType::Skipper skipper(skipList2);
-  FOR_EACH (it, skipList) {
-    if (skipper.to(*it)) {
-      mergedSum += *it;
+  for (const auto& value : skipList) {
+    if (skipper.to(value)) {
+      mergedSum += value;
     }
   }
 
@@ -390,8 +390,9 @@ class ConcurrentAccessData {
   }
 
   ~ConcurrentAccessData() {
-    FOR_EACH (lock, locks_)
-      delete *lock;
+    for (auto* lock : locks_) {
+      delete lock;
+    }
   }
 
   inline bool skipListFind(int /* idx */, ValueType val) {
@@ -501,8 +502,8 @@ void BM_ContentionCSL(int iters, int size) {
   for (int i = 0; i < FLAGS_num_threads; ++i) {
     threads.emplace_back(&ConcurrentAccessData::runSkipList, data, i, iters);
   }
-  FOR_EACH (t, threads) {
-    (*t).join();
+  for (auto& thread : threads) {
+    thread.join();
   }
 }
 
@@ -515,8 +516,8 @@ void BM_ContentionStdSet(int iters, int size) {
   for (int i = 0; i < FLAGS_num_threads; ++i) {
     threads.emplace_back(&ConcurrentAccessData::runSet, data, i, iters);
   }
-  FOR_EACH (t, threads) {
-    (*t).join();
+  for (auto& thread : threads) {
+    thread.join();
   }
   susp.rehire();
 }
