@@ -225,6 +225,7 @@ fbcode_target(
         "Elf-inl.h",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:exception",
         "//folly:scope_guard",
         "//folly/lang:c_string",
@@ -238,9 +239,6 @@ fbcode_target(
         "//folly/container:span",
         "//folly/lang:safe_assert",
         "//folly/portability:config",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -381,13 +379,11 @@ fbcode_target(
         "SignalHandler.h",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":symbolizer",
         "//folly:scope_guard",
         "//folly/lang:to_ascii",
         "//folly/portability:sys_syscall",
         "//folly/portability:unistd",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

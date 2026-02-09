@@ -114,6 +114,7 @@ fb_dirsync_cpp_library(
     ],
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":atomic_notification",
         ":atomic_util",
         ":lock",
@@ -132,9 +133,6 @@ fb_dirsync_cpp_library(
         "//folly/portability:asm",
         "//folly/synchronization/detail:inline_function_ref",
         "//folly/synchronization/detail:sleeper",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -162,6 +160,7 @@ fb_dirsync_cpp_library(
         "//folly/portability:gflags",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":asymmetric_thread_fence",
         "//folly:c_portability",
         "//folly:function",
@@ -175,9 +174,6 @@ fb_dirsync_cpp_library(
         "//folly/portability:config",
         "//folly/synchronization:atomic_util",
         "//folly/synchronization/detail:hazptr_utils",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -354,6 +350,7 @@ fb_dirsync_cpp_library(
     headers = ["SaturatingSemaphore.h"],
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":atomic_util",
         ":wait_options",
         "//folly:likely",
@@ -362,9 +359,6 @@ fb_dirsync_cpp_library(
         "//folly/lang:switch",
         "//folly/portability:asm",
         "//folly/synchronization/detail:spin",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -436,14 +430,12 @@ fb_dirsync_cpp_library(
     headers = ["EventCount.h"],
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:likely",
         "//folly/detail:futex",
         "//folly/lang:bits",
         "//folly/portability:sys_time",
         "//folly/portability:unistd",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

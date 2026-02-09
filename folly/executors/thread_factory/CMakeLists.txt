@@ -45,8 +45,6 @@ folly_add_library(
     folly_system_thread_name
   EXPORTED_DEPS
     folly_executors_thread_factory_init_thread_factory
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

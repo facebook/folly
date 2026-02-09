@@ -68,8 +68,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_memory
     folly_portability_openssl
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

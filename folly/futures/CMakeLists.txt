@@ -25,8 +25,6 @@ folly_add_library(
     folly_scope_guard
   EXPORTED_DEPS
     folly_futures_core
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -35,8 +33,6 @@ folly_add_library(
     Cleanup.h
   EXPORTED_DEPS
     folly_futures_core
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

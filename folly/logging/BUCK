@@ -451,7 +451,7 @@ fbcode_target(
         ":logging",
         "//folly:utility",
     ],
-    exported_external_deps = ["glog"],
+    exported_deps = ["fbsource//third-party/glog:glog"],
 )
 
 fbcode_target(
@@ -460,11 +460,9 @@ fbcode_target(
     headers = ["AutoTimer.h"],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:conv",
         "//folly:optional",
         "//folly:string",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )

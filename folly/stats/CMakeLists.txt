@@ -22,8 +22,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_likely
     folly_stats_detail_bucket
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -49,8 +47,6 @@ folly_add_library(
     folly_lang_exception
     folly_stats_detail_bucket
     folly_traits
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -62,8 +58,6 @@ folly_add_library(
     folly_constexpr_math
     folly_stats_bucketed_time_series
     folly_string
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -112,8 +106,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_range
     folly_utility
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

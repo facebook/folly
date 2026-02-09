@@ -20,10 +20,8 @@ fbcode_target(
     srcs = ["ConvTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/chrono:conv",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

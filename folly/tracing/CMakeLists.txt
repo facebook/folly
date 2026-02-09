@@ -33,8 +33,6 @@ folly_add_library(
     folly_cpp_attributes
     folly_function
     folly_portability
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

@@ -130,12 +130,10 @@ fbcode_target(
     srcs = ["CallOnceBenchmark.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly/lang:keep",
         "//folly/synchronization:call_once",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -329,6 +327,7 @@ fbcode_target(
     name = "rcu_test",
     srcs = ["RcuTest.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":barrier",
         "//folly:benchmark",
         "//folly:random",
@@ -336,9 +335,6 @@ fbcode_target(
         "//folly/portability:gtest",
         "//folly/synchronization:rcu",
         "//folly/synchronization:relaxed_atomic",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -360,13 +356,11 @@ fbcode_target(
     srcs = ["RWSpinLockTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/portability:unistd",
         "//folly/synchronization:rw_spin_lock",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -401,14 +395,12 @@ fbcode_target(
     name = "semaphore_test",
     srcs = ["SemaphoreTest.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":barrier",
         ":semaphore",
         "//folly/portability:gtest",
         "//folly/portability:sys_mman",
         "//folly/synchronization:latch",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -435,6 +427,7 @@ fbcode_target(
     srcs = ["SmallLocksTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:random",
         "//folly/portability:asm",
         "//folly/portability:gflags",
@@ -445,9 +438,6 @@ fbcode_target(
         "//folly/synchronization:small_locks",
         "//folly/system:hardware_concurrency",
         "//folly/test:test_utils",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -515,11 +505,9 @@ fb_dirsync_cpp_library(
     headers = ["FlatCombiningTestHelpers.h"],
     xplat_impl = folly_xplat_library,
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly/synchronization/test:flat_combining_examples",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -541,11 +529,9 @@ fbcode_target(
     srcs = ["FlatCombiningTest.cpp"],
     supports_static_listing = False,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/portability:gtest",
         "//folly/synchronization/test:flat_combining_test_helpers",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -555,12 +541,10 @@ fbcode_target(
     srcs = ["EventCountTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:random",
         "//folly/portability:gtest",
         "//folly/synchronization:event_count",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

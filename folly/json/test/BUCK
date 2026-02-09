@@ -45,15 +45,13 @@ fb_dirsync_cpp_unittest(
     srcs = ["DynamicTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:range",
         "//folly/hash:hash",
         "//folly/json:dynamic",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/test:comparison_operator_test_util",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -141,12 +139,10 @@ fb_dirsync_cpp_unittest(
     srcs = ["JsonTestUtilTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/test:json_mock_util",
         "//folly/test:json_test_util",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

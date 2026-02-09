@@ -68,8 +68,6 @@ folly_add_library(
     folly_net_network_socket
     folly_optional
     folly_string
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

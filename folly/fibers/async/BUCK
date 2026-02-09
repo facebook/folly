@@ -28,13 +28,11 @@ fbcode_target(
         "//folly/fibers:core",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:traits",
         "//folly:unit",
         "//folly/functional:invoke",
         "//folly/lang:customization_point",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -63,11 +61,9 @@ fbcode_target(
     name = "baton",
     headers = ["Baton.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":core",
         "//folly/fibers:core",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -128,12 +124,10 @@ fbcode_target(
         "AsyncStack.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":core",
         "//folly:c_portability",
         "//folly:scope_guard",
         "//folly/tracing:async_stack",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )

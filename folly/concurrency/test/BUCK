@@ -11,12 +11,10 @@ fbcode_target(
     srcs = ["CacheLocalityBenchmark.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly/concurrency:cache_locality",
         "//folly/lang:keep",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -36,15 +34,13 @@ fbcode_target(
     headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly/concurrency:cache_locality",
         "//folly/portability:gtest",
         "//folly/portability:sys_resource",
         "//folly/portability:unistd",
         "//folly/test:test_utils",
         "//folly/testing:test_util",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -55,15 +51,13 @@ fbcode_target(
     headers = ["AtomicSharedPtrCounted.h"],
     labels = ["case-isolation-failure"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:portability",
         "//folly/concurrency:atomic_shared_ptr",
         "//folly/portability:config",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/test:deterministic_schedule",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -195,14 +189,12 @@ fbcode_target(
     srcs = ["DynamicBoundedQueueTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:mpmc_queue",
         "//folly:producer_consumer_queue",
         "//folly/concurrency:dynamic_bounded_queue",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -224,6 +216,7 @@ fbcode_target(
     srcs = ["UnboundedQueueTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:mpmc_queue",
         "//folly:producer_consumer_queue",
         "//folly/concurrency:unbounded_queue",
@@ -231,9 +224,6 @@ fbcode_target(
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/synchronization/test:barrier",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

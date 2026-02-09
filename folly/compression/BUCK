@@ -190,6 +190,7 @@ fbcode_target(
         "-DLZ4F_STATIC_LINKING_ONLY",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "fbsource//third-party/lz4:lz4",
         ":compression_context_pool_singletons",
         "//folly:conv",
@@ -210,7 +211,6 @@ fbcode_target(
         "//folly/lang:bits",
     ],
     external_deps = [
-        "glog",
         "snappy",
         ("bzip2", None, "bz2"),
         ("xz", None, "lzma"),
@@ -265,6 +265,7 @@ fbcode_target(
         "//folly:math",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:format",
         "//folly:portability",
         "//folly:range",
@@ -275,9 +276,6 @@ fbcode_target(
         "//folly/lang:bits_class",
         "//folly/lang:safe_assert",
     ],
-    exported_external_deps = [
-        "glog",
-    ],
 )
 
 fbcode_target(
@@ -285,13 +283,11 @@ fbcode_target(
     name = "instructions",
     headers = ["Instructions.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:cpu_id",
         "//folly:portability",
         "//folly/lang:assume",
         "//folly/portability:builtins",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -305,10 +301,8 @@ fbcode_target(
         "//folly:utility",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":instructions",
         "//folly:portability",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )

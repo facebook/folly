@@ -105,11 +105,9 @@ fbcode_target(
         "HazptrUtils.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":sleeper",
         "//folly:portability",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -122,14 +120,12 @@ fbcode_target(
         "ThreadCachedTag.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:function",
         "//folly:synchronized",
         "//folly:thread_local",
         "//folly/synchronization:asymmetric_thread_fence",
         "//folly/synchronization:relaxed_atomic",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

@@ -64,6 +64,7 @@ fbcode_target(
     deps = [
         "fbcode//folly/portability:gflags",
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:conv",
         "//folly:file_util",
         "//folly:format",
@@ -79,7 +80,6 @@ fbcode_target(
     external_deps = [
         "boost",
         "gflags",
-        "glog",
     ],
     exported_external_deps = [
         ("boost", None, "boost_program_options"),

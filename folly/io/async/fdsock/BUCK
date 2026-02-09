@@ -51,8 +51,8 @@ fbcode_target(
     name = "socket_fds",
     srcs = ["SocketFds.cpp"],
     headers = ["SocketFds.h"],
-    exported_deps = ["//folly:file"],
-    exported_external_deps = [
-        "glog",
+    exported_deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly:file",
     ],
 )

@@ -118,11 +118,9 @@ fbcode_target(
     name = "openssl_ptr_types",
     headers = ["OpenSSLPtrTypes.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:memory",
         "//folly/portability:openssl",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

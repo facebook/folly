@@ -13,12 +13,10 @@ fbcode_target(
     name = "async_stack_test",
     srcs = ["AsyncStackTest.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/tracing:async_stack",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

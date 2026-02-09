@@ -33,8 +33,6 @@ folly_add_library(
     folly_synchronization_atomic_util
     folly_try
     folly_utility
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

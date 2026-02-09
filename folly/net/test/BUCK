@@ -68,12 +68,10 @@ fbcode_target(
     name = "net_ops_test",
     srcs = ["NetOpsTest.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/net:net_ops",
         "//folly/net:network_socket",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

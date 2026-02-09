@@ -72,6 +72,4 @@ folly_add_library(
   EXPORTED_DEPS
     folly_portability
     folly_result_detail_immortal_exception_storage
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )

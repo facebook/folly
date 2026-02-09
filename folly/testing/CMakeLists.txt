@@ -33,6 +33,5 @@ folly_add_library(
     folly_range
     folly_scope_guard
   EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
     Boost::regex
 )

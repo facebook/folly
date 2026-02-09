@@ -48,8 +48,6 @@ folly_add_library(
     folly_tracing_async_stack
     folly_traits
     folly_try
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -81,8 +79,6 @@ folly_add_library(
     folly_futures_core
     folly_portability_source_location
     folly_synchronization_relaxed_atomic
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -459,8 +455,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_coro_via_if_async
     folly_exception_wrapper
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -557,8 +551,6 @@ folly_add_library(
     folly_coro_task
     folly_portability
     folly_synchronization_lock
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -659,8 +651,6 @@ folly_add_library(
     folly_tracing_async_stack
     folly_traits
     folly_try
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -772,8 +762,6 @@ folly_add_library(
     folly_lang_safe_alias_fwd
     folly_tracing_async_stack
     folly_traits
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

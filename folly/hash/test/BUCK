@@ -34,12 +34,10 @@ fbcode_target(
     srcs = ["ChecksumBenchmark.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:memory",
         "//folly/hash:checksum",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -61,6 +59,7 @@ fbcode_target(
     headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:preprocessor",
         "//folly/hash:hash",
@@ -68,9 +67,6 @@ fbcode_target(
         "//folly/hash:rapidhash",
         "//folly/lang:keep",
         "//folly/portability:gflags",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -108,12 +104,10 @@ fbcode_target(
     srcs = ["SpookyHashV1Test.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/hash:spooky_hash_v1",
         "//folly/portability:gtest",
         "//folly/portability:time",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -123,12 +117,10 @@ fbcode_target(
     srcs = ["SpookyHashV2Test.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/hash:spooky_hash_v2",
         "//folly/portability:gtest",
         "//folly/portability:time",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

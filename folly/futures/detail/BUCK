@@ -58,6 +58,7 @@ fbcode_target(
         "fbsource//third-party/fmt:fmt",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:executor",
         "//folly:function",
         "//folly:optional",
@@ -69,9 +70,6 @@ fbcode_target(
         "//folly/lang:exception",
         "//folly/lang:switch",
         "//folly/synchronization:atomic_util",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

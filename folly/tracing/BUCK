@@ -37,6 +37,7 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:indestructible",
         "//folly:likely",
         "//folly:synchronized",
@@ -49,8 +50,5 @@ fb_dirsync_cpp_library(
         "//folly:function",
         "//folly:portability",
         "//folly/coro:coroutine",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

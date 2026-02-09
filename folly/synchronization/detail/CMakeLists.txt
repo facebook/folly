@@ -29,8 +29,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_portability
     folly_synchronization_detail_sleeper
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -56,8 +54,6 @@ folly_add_library(
     folly_synchronization_relaxed_atomic
     folly_synchronized
     folly_thread_local
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

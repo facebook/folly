@@ -317,6 +317,7 @@ fbcode_target(
     # due to relying on link order. Excluding all libs with `RTLD_NEXT` usage from any link group.
     labels = ["EXCLUDED_FROM_LINK_GROUPS"],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":exception_abi",
         ":stacktrace",
         "//folly:portability",
@@ -327,7 +328,6 @@ fbcode_target(
         "//folly/portability:config",
     ],
     external_deps = [
-        "glog",
         ("glibc", None, "dl"),
     ],
 )
@@ -441,6 +441,7 @@ fbcode_target(
     srcs = ["SmartExceptionTracer.cpp"],
     headers = ["SmartExceptionTracer.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":exception_tracer_callbacks",
         ":smart_exception_tracer_singleton",
         ":stacktrace",
@@ -455,8 +456,5 @@ fbcode_target(
         ":exception_tracer_base",
         ":exception_tracer_callbacks",
         "//folly:exception_wrapper",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

@@ -139,12 +139,10 @@ fbcode_target(
     name = "flat_combining_priority_queue",
     headers = ["FlatCombiningPriorityQueue.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:optional",
         "//folly/detail:futex",
         "//folly/synchronization:flat_combining",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -155,9 +153,7 @@ fbcode_target(
         "SingleWriterFixedHashMap.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/lang:bits",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )

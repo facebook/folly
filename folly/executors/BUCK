@@ -662,6 +662,7 @@ fbcode_target(
     srcs = ["EDFThreadPoolExecutor.cpp"],
     headers = ["EDFThreadPoolExecutor.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/concurrency:process_local_unique_id",
         "//folly/portability:gflags",
         "//folly/synchronization:lifo_sem",
@@ -671,9 +672,6 @@ fbcode_target(
     exported_deps = [
         ":soft_real_time_executor",
         ":thread_pool_executor",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -789,6 +787,7 @@ fbcode_target(
     srcs = ["IOThreadPoolExecutor.cpp"],
     headers = ["IOThreadPoolExecutor.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/detail:memory_idler",
         "//folly/portability:gflags",
     ],
@@ -800,9 +799,6 @@ fbcode_target(
         "//folly/io/async:event_base_manager",
         "//folly/synchronization:relaxed_atomic",
     ],
-    external_deps = [
-        "glog",
-    ],
 )
 
 fbcode_target(
@@ -810,11 +806,9 @@ fbcode_target(
     name = "soft_real_time_executor",
     srcs = ["SoftRealTimeExecutor.cpp"],
     headers = ["SoftRealTimeExecutor.h"],
+    deps = ["fbsource//third-party/glog:glog"],
     exported_deps = [
         "//folly:executor",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -836,6 +830,7 @@ fbcode_target(
         "SerialExecutor-inl.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":global_executor",
         ":serialized_executor",
         "//folly:exception_string",
@@ -843,9 +838,6 @@ fbcode_target(
         "//folly/io/async:request_context",
         "//folly/synchronization:distributed_mutex",
         "//folly/synchronization:relaxed_atomic",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -873,6 +865,7 @@ fbcode_target(
     srcs = ["StrandExecutor.cpp"],
     headers = ["StrandExecutor.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":global_executor",
         "//folly:exception_string",
     ],
@@ -881,9 +874,6 @@ fbcode_target(
         "//folly:optional",
         "//folly/concurrency:unbounded_queue",
         "//folly/io/async:request_context",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -899,6 +889,7 @@ fbcode_target(
         "//folly/tracing:static_tracepoint",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":global_thread_pool_list",
         "//folly:default_keep_alive_executor",
         "//folly:memory",
@@ -911,9 +902,6 @@ fbcode_target(
         "//folly/synchronization:baton",
         "//folly/synchronization:relaxed_atomic",
     ],
-    exported_external_deps = [
-        "glog",
-    ],
 )
 
 fbcode_target(
@@ -922,6 +910,7 @@ fbcode_target(
     srcs = ["ThreadedExecutor.cpp"],
     headers = ["ThreadedExecutor.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:scope_guard",
         "//folly/executors/thread_factory:named_thread_factory",
         "//folly/system:thread_name",
@@ -931,9 +920,6 @@ fbcode_target(
         "//folly/concurrency:unbounded_queue",
         "//folly/container:f14_hash",
         "//folly/executors/thread_factory:thread_factory",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -954,11 +940,9 @@ fbcode_target(
     srcs = ["TimekeeperScheduledExecutor.cpp"],
     headers = ["TimekeeperScheduledExecutor.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":scheduled_executor",
         "//folly/futures:core",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -988,10 +972,8 @@ fbcode_target(
         "ExecutorWithPriority-inl.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:executor",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -1055,6 +1037,7 @@ fbcode_target(
     srcs = ["FunctionScheduler.cpp"],
     headers = ["FunctionScheduler.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:conv",
         "//folly:random",
         "//folly:string",
@@ -1067,9 +1050,6 @@ fbcode_target(
         "//folly/container:intrusive_heap",
         "//folly/hash:hash",
     ],
-    external_deps = [
-        "glog",
-    ],
 )
 
 fbcode_target(
@@ -1078,13 +1058,11 @@ fbcode_target(
     srcs = ["ThreadedRepeatingFunctionRunner.cpp"],
     headers = ["ThreadedRepeatingFunctionRunner.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/system:thread_name",
     ],
     exported_deps = [
         "//folly:function",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -1110,6 +1088,7 @@ fb_dirsync_cpp_library(
         "StripedEDFThreadPoolExecutor.h",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/concurrency:cache_locality",
         "//folly/container:intrusive_heap",
         "//folly/synchronization:distributed_mutex",
@@ -1119,8 +1098,5 @@ fb_dirsync_cpp_library(
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:soft_real_time_executor",
         "//folly/synchronization:throttled_lifo_sem",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

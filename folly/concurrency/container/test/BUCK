@@ -34,6 +34,7 @@ fbcode_target(
     srcs = ["RelaxedConcurrentPriorityQueueTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:random",
         "//folly:spin_lock",
         "//folly/concurrency/container:flat_combining_priority_queue",
@@ -43,7 +44,6 @@ fbcode_target(
         "//folly/test:deterministic_schedule",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_thread"),
     ],
 )
@@ -66,12 +66,10 @@ fbcode_target(
     srcs = ["FlatCombiningPriorityQueueTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly/concurrency/container:flat_combining_priority_queue",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -81,6 +79,7 @@ fbcode_target(
     srcs = ["SingleWriterFixedHashMapTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly/concurrency/container:single_writer_fixed_hash_map",
         "//folly/container:array",
@@ -90,6 +89,5 @@ fbcode_target(
     ],
     external_deps = [
         ("boost", None, "boost_thread"),
-        "glog",
     ],
 )

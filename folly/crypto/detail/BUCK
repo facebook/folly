@@ -119,12 +119,10 @@ fbcode_target(
         ],
     },
     deps = [
+        "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
         "//folly:memory",
         "//folly/lang:bits",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -142,12 +140,12 @@ fbcode_target(
         ],
     },
     deps = [
+        "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
         "//folly:memory",
         "//folly/lang:bits",
     ],
     external_deps = [
-        "glog",
         ("libsodium", None, "sodium"),
     ],
 )
@@ -166,12 +164,12 @@ fbcode_target(
         ],
     },
     deps = [
+        "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
         "//folly:memory",
         "//folly/lang:bits",
     ],
     external_deps = [
-        "glog",
         ("libsodium", None, "sodium"),
     ],
 )
@@ -190,12 +188,12 @@ fbcode_target(
         ],
     },
     deps = [
+        "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
         "//folly:memory",
         "//folly/lang:bits",
     ],
     external_deps = [
-        "glog",
         ("libsodium", None, "sodium"),
     ],
 )
@@ -214,12 +212,12 @@ fbcode_target(
         ],
     },
     deps = [
+        "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
         "//folly:memory",
         "//folly/lang:bits",
     ],
     external_deps = [
-        "glog",
         ("libsodium", None, "sodium"),
     ],
 )

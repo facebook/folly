@@ -25,15 +25,13 @@ fbcode_target(
     supports_static_listing = False,
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "fbsource//third-party/zstd:zstd",
         "//folly:random",
         "//folly:varint",
         "//folly/compression:compression",
         "//folly/io:iobuf",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -57,12 +55,10 @@ fbcode_target(
     srcs = ["CompressionContextPoolBenchmark.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly/compression:compression_context_pool",
         "//folly/compression:compression_context_pool_singletons",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -111,11 +107,9 @@ fbcode_target(
     srcs = ["InstructionsTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/compression:instructions",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -139,13 +133,11 @@ fbcode_target(
         "//folly/portability:gflags",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:likely",
         "//folly:optional",
         "//folly/compression:instructions",
         "//folly/portability:gtest",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )

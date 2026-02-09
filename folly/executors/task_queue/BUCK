@@ -87,11 +87,9 @@ fbcode_target(
     name = "blocking_queue",
     headers = ["BlockingQueue.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:c_portability",
         "//folly:optional",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -111,14 +109,12 @@ fbcode_target(
     name = "priority_lifo_sem_mpmc_queue",
     headers = ["PriorityLifoSemMPMCQueue.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":blocking_queue",
         "//folly:executor",
         "//folly:mpmc_queue",
         "//folly:range",
         "//folly/synchronization:lifo_sem",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

@@ -216,6 +216,7 @@ fbcode_target(
     headers = ["CacheLocality.h"],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:indestructible",
         "//folly:memory",
         "//folly:scope_guard",
@@ -234,7 +235,6 @@ fbcode_target(
         "//folly/synchronization:atomic_ref",
     ],
     external_deps = [
-        "glog",
         ("glibc", None, "dl"),
     ],
 )
@@ -293,11 +293,9 @@ fbcode_target(
         "DynamicBoundedQueue.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":cache_locality",
         ":unbounded_queue",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -321,6 +319,7 @@ fbcode_target(
         "UnboundedQueue.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":cache_locality",
         "//folly:constexpr_math",
         "//folly:optional",
@@ -330,9 +329,6 @@ fbcode_target(
         "//folly/synchronization:saturating_semaphore",
         "//folly/synchronization:wait_options",
         "//folly/synchronization/detail:spin",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

@@ -109,7 +109,6 @@ folly_add_library(
     folly_scope_guard
     folly_traits
   EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
     Boost::headers
     Boost::regex
 )
@@ -164,8 +163,6 @@ folly_add_library(
     folly_cpp_attributes
     folly_function
     folly_operation_cancelled
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -220,7 +217,6 @@ folly_add_library(
     folly_synchronization_micro_spin_lock
     folly_thread_local
   EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
     Boost::headers
 )
 
@@ -301,8 +297,6 @@ folly_add_library(
     folly_executor
     folly_executors_sequenced_executor
     folly_synchronization_baton
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -329,8 +323,6 @@ folly_add_library(
     folly_detail_discriminated_ptr_detail
     folly_likely
     folly_portability
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -406,8 +398,6 @@ folly_add_library(
     folly_optional
     folly_range
     folly_utility
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -473,8 +463,6 @@ folly_add_library(
     folly_portability_fcntl
     folly_portability_unistd
     folly_range
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -595,8 +583,6 @@ folly_add_library(
     GLog.h
   EXPORTED_DEPS
     folly_likely
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -613,8 +599,6 @@ folly_add_library(
     folly_portability
     folly_portability_builtins
     folly_range
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -825,8 +809,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_detail_mpmc_pipeline_detail
     folly_portability
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -897,8 +879,6 @@ folly_add_library(
     folly_optional
     folly_scope_guard
     folly_small_vector
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -937,8 +917,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_portability
     folly_synchronization_small_locks
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -1024,8 +1002,6 @@ folly_add_library(
     folly_portability
     folly_random_xoshiro256pp
     folly_traits
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -1130,8 +1106,6 @@ folly_add_library(
     folly_memory_sanitize_leak
     folly_synchronization_baton
     folly_synchronized
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -1207,8 +1181,6 @@ folly_add_library(
     folly_scope_guard
     folly_traits
     folly_unit
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 # subprocess is not supported on Windows
@@ -1265,8 +1237,6 @@ folly_add_library(
     folly_synchronization_lock
     folly_traits
     folly_utility
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

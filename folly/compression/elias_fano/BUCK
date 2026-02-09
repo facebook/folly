@@ -63,6 +63,7 @@ fbcode_target(
     name = "bit_vector_coding",
     headers = ["BitVectorCoding.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:likely",
         "//folly:portability",
         "//folly:range",
@@ -72,9 +73,6 @@ fbcode_target(
         "//folly/lang:bits",
         "//folly/lang:bits_class",
     ],
-    exported_external_deps = [
-        "glog",
-    ],
 )
 
 fbcode_target(
@@ -82,6 +80,7 @@ fbcode_target(
     name = "elias_fano_coding",
     headers = ["EliasFanoCoding.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:likely",
         "//folly:portability",
         "//folly:range",
@@ -90,8 +89,5 @@ fbcode_target(
         "//folly/compression/elias_fano:coding_detail",
         "//folly/lang:assume",
         "//folly/lang:bits",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )

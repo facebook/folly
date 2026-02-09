@@ -10,13 +10,11 @@ fb_dirsync_cpp_unittest(
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_test,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:utility",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/system:at_fork",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -37,6 +35,7 @@ fb_dirsync_cpp_unittest(
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_test,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:subprocess",
         "//folly/container:array",
         "//folly/portability:fcntl",
@@ -47,7 +46,6 @@ fb_dirsync_cpp_unittest(
     ],
     external_deps = [
         ("boost", None, "boost_algorithm"),
-        "glog",
     ],
 )
 
@@ -57,11 +55,9 @@ fb_dirsync_cpp_unittest(
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_test,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/portability:gtest",
         "//folly/system:pid",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -71,14 +67,12 @@ fb_dirsync_cpp_unittest(
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_test,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:file_util",
         "//folly:random",
         "//folly/portability:gtest",
         "//folly/portability:sys_mman",
         "//folly/system:memory_mapping",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -88,11 +82,9 @@ fb_dirsync_cpp_unittest(
     feature = triage_InfrastructureSupermoduleOptou,
     xplat_impl = folly_xplat_cxx_test,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/portability:gtest",
         "//folly/system:shell",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

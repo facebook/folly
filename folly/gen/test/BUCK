@@ -11,11 +11,9 @@ fbcode_target(
     srcs = ["BaseBenchmark.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly/gen:base",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -28,6 +26,7 @@ fbcode_target(
         "serialize_test_cases",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:fbvector",
         "//folly:map_util",
         "//folly:memory",
@@ -38,9 +37,6 @@ fbcode_target(
         "//folly/portability:gtest",
         "//folly/testing:test_util",
     ],
-    external_deps = [
-        "glog",
-    ],
 )
 
 fbcode_target(
@@ -49,14 +45,12 @@ fbcode_target(
     srcs = ["CombineTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:fbvector",
         "//folly/gen:base",
         "//folly/gen:combine",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -66,13 +60,11 @@ fbcode_target(
     srcs = ["FileBenchmark.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:file",
         "//folly/gen:base",
         "//folly/gen:file",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -99,12 +91,10 @@ fbcode_target(
     srcs = ["ParallelBenchmark.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":util",
         "//folly/gen:base",
         "//folly/gen:parallel",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -117,13 +107,11 @@ fbcode_target(
         "serialize",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/gen:base",
         "//folly/gen:parallel",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -146,14 +134,12 @@ fbcode_target(
     srcs = ["ParallelMapTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:memory",
         "//folly/gen:base",
         "//folly/gen:parallel_map",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -163,14 +149,12 @@ fbcode_target(
     srcs = ["StringBenchmark.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:string",
         "//folly/container:foreach",
         "//folly/gen:base",
         "//folly/gen:string",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

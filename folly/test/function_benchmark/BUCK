@@ -19,12 +19,10 @@ fbcode_target(
         "--json",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:function",
         "//folly:scope_guard",
         "//folly/portability:gflags",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

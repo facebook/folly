@@ -148,6 +148,7 @@ fbcode_target(
         "TcpInfoTypes.h",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/portability:sockets",
     ],
     exported_deps = [
@@ -156,9 +157,6 @@ fbcode_target(
         "//folly:expected",
         "//folly:optional",
         "//folly:string",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

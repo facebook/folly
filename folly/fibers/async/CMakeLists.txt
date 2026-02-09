@@ -21,8 +21,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_fibers_async_core
     folly_fibers_core
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -55,8 +53,6 @@ folly_add_library(
     folly_lang_customization_point
     folly_traits
     folly_unit
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -96,8 +92,6 @@ folly_add_library(
     folly_fibers_async_core
     folly_scope_guard
     folly_tracing_async_stack
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

@@ -152,11 +152,9 @@ fbcode_target(
         "BucketedTimeSeries-inl.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:likely",
         "//folly/stats/detail:bucket",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -168,14 +166,12 @@ fbcode_target(
         "Histogram-inl.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:c_portability",
         "//folly:conv",
         "//folly:traits",
         "//folly/lang:exception",
         "//folly/stats/detail:bucket",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -198,12 +194,10 @@ fbcode_target(
         "MultiLevelTimeSeries-inl.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":bucketed_time_series",
         "//folly:constexpr_math",
         "//folly:string",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -247,6 +241,7 @@ fbcode_target(
         "TDigest.h",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:overload",
         "//folly/algorithm:binary_heap",
         "//folly/lang:exception",
@@ -256,9 +251,6 @@ fbcode_target(
     exported_deps = [
         "//folly:range",
         "//folly:utility",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

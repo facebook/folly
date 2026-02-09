@@ -187,14 +187,12 @@ fbcode_target(
     srcs = ["Barrier.cpp"],
     headers = ["Barrier.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:scope_guard",
         "//folly/lang:new",
     ],
     exported_deps = [
         ":core",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -330,9 +328,7 @@ fbcode_target(
     name = "cleanup",
     headers = ["Cleanup.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/futures:core",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )

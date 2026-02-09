@@ -18,8 +18,6 @@ folly_add_library(
   NAME graph_cycle_detector
   HEADERS
     GraphCycleDetector.h
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -47,6 +45,4 @@ folly_add_library(
     folly_portability
     folly_synchronization_sanitize_thread
     folly_synchronized
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )

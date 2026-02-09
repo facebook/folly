@@ -49,7 +49,6 @@ folly_add_library(
     folly_traits
     folly_utility
   EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
     Boost::headers
 )
 
@@ -70,7 +69,6 @@ folly_add_library(
     folly_scope_guard
     folly_traits
   EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
     Boost::headers
 )
 
@@ -95,8 +93,6 @@ folly_add_library(
     folly_json_dynamic
     folly_json_pointer
     folly_optional
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

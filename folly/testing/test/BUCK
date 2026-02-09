@@ -9,6 +9,7 @@ fbcode_target(
     srcs = ["TestUtilTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:memory",
         "//folly/portability:fcntl",
         "//folly/portability:gtest",
@@ -17,7 +18,6 @@ fbcode_target(
         "//folly/testing:test_util",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_algorithm"),
     ],
 )

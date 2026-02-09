@@ -34,6 +34,4 @@ folly_add_library(
     SocketFds.h
   EXPORTED_DEPS
     folly_file
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )

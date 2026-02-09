@@ -366,11 +366,9 @@ fbcode_target(
     srcs = ["BitsClassBenchmark.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly/lang:bits_class",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -380,12 +378,10 @@ fbcode_target(
     srcs = ["BitsClassTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/lang:bits_class",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -561,14 +557,12 @@ fbcode_target(
     srcs = ["SafeAssertTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:conv",
         "//folly/lang:keep",
         "//folly/lang:safe_assert",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

@@ -64,6 +64,7 @@ fb_dirsync_cpp_library(
     fbobjc_complete_nullability = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":constructor_callback_list",
         ":function",
         ":optional",
@@ -71,9 +72,6 @@ fb_dirsync_cpp_library(
         ":small_vector",
         "//folly/io/async:destructor_check",
         "//folly/lang:switch",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -705,6 +703,7 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/container:array",
     ],
     exported_deps = [
@@ -720,9 +719,6 @@ fb_dirsync_cpp_library(
         "//folly/container:reserve",
         "//folly/detail:simple_simd_string_utils",
         "//folly/detail:split_string_simd",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -4283,6 +4279,7 @@ fbcode_target(
         "//folly/json:dynamic",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":benchmark_util",
         ":portability",
         ":preprocessor",
@@ -4298,7 +4295,6 @@ fbcode_target(
     ],
     exported_external_deps = [
         "boost",
-        "glog",
     ],
 )
 
@@ -4318,12 +4314,10 @@ fbcode_target(
         "//folly/synchronization/detail:sleeper",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":cpp_attributes",
         ":function",
         ":operation_cancelled",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -4364,6 +4358,7 @@ fbcode_target(
         "ConcurrentSkipList-inl.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":constexpr_math",
         ":likely",
         ":memory",
@@ -4372,7 +4367,6 @@ fbcode_target(
         "//folly/synchronization:micro_spin_lock",
     ],
     exported_external_deps = [
-        "glog",
         ("boost", None, "boost_random"),
     ],
 )
@@ -4458,12 +4452,10 @@ fbcode_target(
         "DefaultKeepAliveExecutor.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":executor",
         "//folly/executors:sequenced_executor",
         "//folly/synchronization:baton",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -4472,12 +4464,10 @@ fbcode_target(
     name = "discriminated_ptr",
     headers = ["DiscriminatedPtr.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":likely",
         ":portability",
         "//folly/detail:discriminated_ptr_detail",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -4542,6 +4532,7 @@ fbcode_target(
         "Executor.h",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":exception_string",
         ":portability",
     ],
@@ -4551,9 +4542,6 @@ fbcode_target(
         ":range",
         ":utility",
         "//folly/lang:exception",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -4574,6 +4562,7 @@ fbcode_target(
     srcs = ["File.cpp"],
     headers = ["File.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":exception",
         ":file_util",
         ":scope_guard",
@@ -4588,9 +4577,6 @@ fbcode_target(
         ":range",
         "//folly/portability:fcntl",
         "//folly/portability:unistd",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -4685,14 +4671,12 @@ fbcode_target(
         "//folly/container:array",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":portability",
         ":range",
         "//folly/detail:group_varint_detail",
         "//folly/lang:bits",
         "//folly/portability:builtins",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -4775,10 +4759,8 @@ fbcode_target(
     name = "glog",
     headers = ["GLog.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":likely",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -4987,11 +4969,9 @@ fbcode_target(
     name = "mpmc_pipeline",
     headers = ["MPMCPipeline.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":portability",
         "//folly/detail:mpmc_pipeline_detail",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -5088,11 +5068,9 @@ fbcode_target(
     name = "packed_sync_ptr",
     headers = ["PackedSyncPtr.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":portability",
         "//folly/synchronization:small_locks",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -5158,6 +5136,7 @@ fbcode_target(
         "Random-inl.h",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":cpp_attributes",
         ":singleton_thread_local",
         ":thread_local",
@@ -5177,9 +5156,6 @@ fbcode_target(
         "DEFAULT": [],
         "ovr_config//os:windows": ["fbsource//third-party/toolchains/win:advapi32.lib"],
     }),
-    external_deps = [
-        "glog",
-    ],
 )
 
 fbcode_target(
@@ -5236,6 +5212,7 @@ fbcode_target(
         "//folly/system:at_fork",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":cancellation_token",
         ":exception",
         ":executor",
@@ -5253,9 +5230,6 @@ fbcode_target(
     external_deps = [
         ("glibc", None, "dl"),
         ("glibc", None, "rt"),
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -5369,6 +5343,7 @@ fbcode_target(
     name = "synchronized",
     headers = ["Synchronized.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":function",
         ":likely",
         ":preprocessor",
@@ -5378,9 +5353,6 @@ fbcode_target(
         "//folly/container:foreach",
         "//folly/functional:apply_tuple",
         "//folly/synchronization:lock",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

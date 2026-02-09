@@ -141,9 +141,9 @@ fbcode_target(
     name = "rich_exception_ptr_storage",
     srcs = ["rich_exception_ptr_storage.cpp"],
     headers = ["rich_exception_ptr_storage.h"],
+    deps = ["fbsource//third-party/glog:glog"],
     exported_deps = [
         ":immortal_exception_storage",
         "//folly:portability",
     ],
-    external_deps = ["glog"],
 )

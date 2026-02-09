@@ -84,6 +84,7 @@ fbcode_target(
     name = "priority_thread_factory",
     srcs = ["PriorityThreadFactory.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:string",
         "//folly/portability:sys_resource",
         "//folly/portability:sys_time",
@@ -91,9 +92,6 @@ fbcode_target(
     ],
     exported_deps = [
         ":init_thread_factory",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

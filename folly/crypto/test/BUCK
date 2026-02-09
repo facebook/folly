@@ -39,6 +39,7 @@ fbcode_target(
     ],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:random",
         "//folly/crypto:lt_hash",
@@ -47,7 +48,6 @@ fbcode_target(
         "//folly/io:iobuf",
     ],
     external_deps = [
-        "glog",
         ("libsodium", None, "sodium"),
     ],
 )
@@ -60,6 +60,7 @@ fbcode_target(
     ],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:random",
         "//folly/crypto:lt_hash_sse2",  # @manual
@@ -67,7 +68,6 @@ fbcode_target(
         "//folly/io:iobuf",
     ],
     external_deps = [
-        "glog",
         ("libsodium", None, "sodium"),
     ],
 )
@@ -80,6 +80,7 @@ fbcode_target(
     ],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:random",
         "//folly/crypto:lt_hash_avx2",  # @manual
@@ -88,7 +89,6 @@ fbcode_target(
         "//folly/io:iobuf",
     ],
     external_deps = [
-        "glog",
         ("libsodium", None, "sodium"),
     ],
 )

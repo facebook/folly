@@ -43,6 +43,7 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:string",
         "//folly/portability:stdlib",
         "//folly/portability:unistd",
@@ -51,7 +52,6 @@ fb_dirsync_cpp_library(
         "//folly:c_portability",
         "//folly:memory",
     ],
-    external_deps = ["glog"],
 )
 
 fb_dirsync_cpp_library(
@@ -77,6 +77,7 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:portability",
         "//folly/experimental/io:huge_pages",
         "//folly/portability:gflags",
@@ -88,7 +89,6 @@ fb_dirsync_cpp_library(
         "//folly:range",
         "//folly/portability:unistd",
     ],
-    external_deps = ["glog"],
 )
 
 fb_dirsync_cpp_library(
@@ -99,13 +99,13 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     deps = [
+        "fbsource//third-party/glog:glog",
         ":at_fork",
         "//folly/portability:unistd",
     ],
     exported_deps = [
         "//folly/portability:sys_types",
     ],
-    external_deps = ["glog"],
 )
 
 fb_dirsync_cpp_library(

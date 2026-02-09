@@ -40,8 +40,6 @@ folly_add_library(
     folly_optional
     folly_portability
     folly_range
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -81,8 +79,6 @@ folly_add_library(
     folly_lang_assume
     folly_portability
     folly_portability_builtins
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -104,8 +100,6 @@ folly_add_library(
     folly_lang_safe_assert
     folly_portability
     folly_range
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -120,8 +114,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_compression_instructions
     folly_portability
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 add_subdirectory(elias_fano)

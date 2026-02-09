@@ -43,12 +43,10 @@ fbcode_target(
     name = "test_main_lib",
     srcs = ["TestMain.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:portability",
         "//folly/init:init",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

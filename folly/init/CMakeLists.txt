@@ -30,8 +30,6 @@ folly_add_library(
     folly_synchronization_hazptr_thread_pool_executor
   EXPORTED_DEPS
     folly_portability
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

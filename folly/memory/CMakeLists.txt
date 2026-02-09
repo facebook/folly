@@ -46,8 +46,6 @@ folly_add_library(
     folly_portability_string
     folly_portability_sys_mman
     folly_portability_unistd
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -63,8 +61,6 @@ folly_add_library(
     folly_portability_string
     folly_portability_sys_mman
     folly_portability_sys_types
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -81,8 +77,6 @@ folly_add_library(
     folly_portability_config
     folly_portability_malloc
     folly_portability_sys_mman
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

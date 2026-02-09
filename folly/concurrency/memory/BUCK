@@ -100,12 +100,10 @@ fbcode_target(
     name = "primary_ptr",
     headers = ["PrimaryPtr.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:function",
         "//folly/futures:cleanup",
         "//folly/futures:core",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

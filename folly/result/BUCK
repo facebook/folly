@@ -47,6 +47,7 @@ fbcode_target(
         "rich_exception_ptr.h",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:demangle",
         "//folly/lang:switch",
     ],
@@ -61,7 +62,6 @@ fbcode_target(
         "//folly/portability:source_location",
         "//folly/result/detail:rich_exception_ptr_storage",
     ],
-    external_deps = ["glog"],
 )
 
 ### this line is a hint for source control merge
@@ -294,6 +294,7 @@ fbcode_target(
     srcs = ["result.cpp"],
     headers = ["result.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:indestructible",
     ],
     exported_deps = [
@@ -305,9 +306,6 @@ fbcode_target(
         "//folly/lang:align",
         "//folly/lang:rvalue_reference_wrapper",
         "//folly/portability:gtest_prod",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

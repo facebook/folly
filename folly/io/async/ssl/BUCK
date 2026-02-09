@@ -108,6 +108,7 @@ fbcode_target(
     srcs = ["OpenSSLUtils.cpp"],
     headers = ["OpenSSLUtils.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:scope_guard",
         "//folly/portability:unistd",
         "//folly/ssl/detail:openssl_session",
@@ -120,9 +121,6 @@ fbcode_target(
         "//folly/portability:sockets",
         "//folly/ssl:openssl_ptr_types",
         "//folly/ssl:ssl_session",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

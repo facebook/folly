@@ -128,6 +128,7 @@ fbcode_target(
     srcs = ["RecordIOTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:conv",
         "//folly:fbstring",
         "//folly:random",
@@ -138,9 +139,6 @@ fbcode_target(
         "//folly/portability:unistd",
         "//folly/testing:test_util",
     ],
-    external_deps = [
-        "glog",
-    ],
 )
 
 fbcode_target(
@@ -149,14 +147,12 @@ fbcode_target(
     srcs = ["ShutdownSocketSetTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/io:shutdown_socket_set",
         "//folly/net:net_ops",
         "//folly/net:network_socket",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -166,12 +162,10 @@ fbcode_target(
     srcs = ["SocketOptionValueTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:conv",
         "//folly/io:socket_option_map",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -181,13 +175,11 @@ fbcode_target(
     srcs = ["FsUtilTest.cpp"],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:string",
         "//folly/experimental/io:fs_util",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/testing:test_util",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

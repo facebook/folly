@@ -20,8 +20,6 @@ folly_add_library(
     AtomicQueue.h
   EXPORTED_DEPS
     folly_lang_assume
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

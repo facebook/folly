@@ -89,8 +89,6 @@ folly_add_library(
     folly_string
   EXPORTED_DEPS
     folly_portability_config
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -138,8 +136,6 @@ folly_add_library(
     folly_debugging_exception_tracer_exception_tracer_base
     folly_debugging_exception_tracer_exception_tracer_callbacks
     folly_exception_wrapper
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

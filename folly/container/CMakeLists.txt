@@ -172,7 +172,6 @@ folly_add_library(
     folly_lang_builtin
     folly_portability
   EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
     Boost::headers
 )
 
@@ -246,7 +245,6 @@ folly_add_library(
     folly_hash_unique_hash_key
     folly_lang_bits
   EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
     Boost::regex
 )
 

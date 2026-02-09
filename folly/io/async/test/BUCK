@@ -1345,11 +1345,9 @@ fbcode_target(
     headers = [],
     emails = ["oncall+thrift@xmail.facebook.com"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/io/async:delayed_destruction",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -1670,12 +1668,10 @@ fbcode_target(
     name = "time_util_test",
     srcs = ["TimeUtilTest.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":util",
         "//folly/portability:gtest",
         "//folly/portability:unistd",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -1775,6 +1771,7 @@ fbcode_target(
         "Util.h",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:conv",
         "//folly:portability",
         "//folly:scope_guard",
@@ -1790,9 +1787,6 @@ fbcode_target(
         "//folly/portability:gtest",
         "//folly/portability:sys_types",
         "//folly/test:test_utils",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -2090,6 +2084,7 @@ fbcode_target(
     srcs = ["SimpleAsyncIOTest.cpp"],
     supports_static_listing = False,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:file",
         "//folly:random",
         "//folly/coro:blocking_wait",
@@ -2098,9 +2093,6 @@ fbcode_target(
         "//folly/io:iobuf",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -2114,11 +2106,9 @@ fbcode_target(
         "//folly:string",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/experimental/io:fs_util",
         "//folly/testing:test_util",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -2128,6 +2118,7 @@ fbcode_target(
     srcs = ["AsyncBaseTestLib.cpp"],
     headers = ["AsyncBaseTestLib.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:scope_guard",
         "//folly:string",
         "//folly/experimental/io:async_base",
@@ -2137,9 +2128,6 @@ fbcode_target(
         "//folly/portability:sockets",
         "//folly/portability:unistd",
         "//folly/test:test_utils",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

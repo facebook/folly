@@ -36,8 +36,6 @@ folly_add_library(
     folly_function
     folly_futures_cleanup
     folly_futures_core
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

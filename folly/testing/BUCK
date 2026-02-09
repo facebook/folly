@@ -46,6 +46,7 @@ fbcode_target(
     srcs = ["TestUtil.cpp"],
     headers = ["TestUtil.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:exception",
         "//folly:file",
         "//folly:file_util",
@@ -61,7 +62,6 @@ fbcode_target(
         "//folly/experimental/io:fs_util",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_regex"),
     ],
 )

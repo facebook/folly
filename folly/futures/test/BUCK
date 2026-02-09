@@ -637,6 +637,7 @@ fbcode_target(
     headers = ["TimekeeperTestLib.h"],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:default_keep_alive_executor",
         "//folly:random",
         "//folly:singleton",
@@ -646,9 +647,6 @@ fbcode_target(
         "//folly/executors:virtual_executor",
         "//folly/futures:core",
         "//folly/portability:gtest",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

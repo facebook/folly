@@ -15,14 +15,12 @@ fbcode_target(
     resources = [
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:subprocess",
         "//folly/cli:program_options",
         "//folly/experimental/io:fs_util",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -66,14 +64,14 @@ fbcode_target(
     srcs = ["ProgramOptionsTestHelper.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
+        # boost_atomic is required by boost_filesystem, which is required by
+        # boost_program_options, prior to C++20, for its implementation of
+        # atomic_ref; this is controlled by a preprocessory symbol
         "//folly:conv",
         "//folly/cli:program_options",
     ],
     external_deps = [
-        "glog",
-        # boost_atomic is required by boost_filesystem, which is required by
-        # boost_program_options, prior to C++20, for its implementation of
-        # atomic_ref; this is controlled by a preprocessory symbol
         ("boost", None, "boost_atomic"),  # @manual
     ],
 )

@@ -672,10 +672,8 @@ fbcode_target(
     headers = ["IPAddressSource.h"],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         ":ip_address",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -911,6 +909,7 @@ fbcode_target(
         "//folly/synchronization:call_once",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":static_singleton_manager",
         ":unique_instance",
         "//folly:exception",
@@ -929,9 +928,6 @@ fbcode_target(
         "//folly/synchronization:relaxed_atomic",
         "//folly/system:at_fork",
         "//folly/system:thread_id",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -952,14 +948,12 @@ fbcode_target(
     name = "turn_sequencer",
     headers = ["TurnSequencer.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":futex",
         "//folly:portability",
         "//folly/chrono:hardware",
         "//folly/portability:asm",
         "//folly/portability:unistd",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

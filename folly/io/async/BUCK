@@ -54,6 +54,7 @@ fb_dirsync_cpp_library(
         "//folly/system:thread_name",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":async_base_fwd",
         ":delayed_destruction",
         ":event_util",
@@ -94,7 +95,6 @@ fb_dirsync_cpp_library(
     ],
     exported_external_deps = [
         "boost",
-        "glog",
     ],
 )
 
@@ -567,6 +567,7 @@ fb_dirsync_cpp_library(
         "//folly/ssl:ssl_session_manager",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:function",
         "//folly:portability",
         "//folly:range",
@@ -575,9 +576,6 @@ fb_dirsync_cpp_library(
         "//folly/io/async/ssl:openssl_utils",
         "//folly/portability:openssl",
         "//folly/ssl:openssl_ptr_types",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -588,14 +586,12 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:format",
     ],
     exported_deps = [
         ":ssl_context",
         "//folly/container:array",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -652,6 +648,7 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:exception",
         "//folly:format",
         "//folly/portability:filesystem",
@@ -663,9 +660,6 @@ fb_dirsync_cpp_library(
         "//folly:range",
         "//folly/portability:sys_uio",
     ],
-    external_deps = [
-        "glog",
-    ],
 )
 
 fb_dirsync_cpp_library(
@@ -676,6 +670,7 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:exception",
         "//folly:likely",
         "//folly:small_vector",
@@ -687,7 +682,6 @@ fb_dirsync_cpp_library(
     ],
     external_deps = [
         "boost",
-        "glog",
     ],
     exported_external_deps = [
         ("libaio", None, "aio"),
@@ -826,6 +820,7 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:file_util",
         "//folly:string",
         "//folly/experimental/io:epoll",
@@ -842,7 +837,6 @@ fb_dirsync_cpp_library(
     ],
     external_deps = [
         "boost",
-        "glog",
     ],
 )
 
@@ -882,6 +876,7 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:exception",
         "//folly:string",
         "//folly/portability:unistd",
@@ -890,9 +885,6 @@ fb_dirsync_cpp_library(
         ":async_base_class",
         ":liburing",
         "//folly:shared_mutex",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -925,6 +917,7 @@ fb_dirsync_cpp_library(
         "//folly/tracing:static_tracepoint",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":async_base",
         ":delayed_destruction",
         ":io_uring_provided_buffer_ring",
@@ -944,7 +937,6 @@ fb_dirsync_cpp_library(
     ],
     exported_external_deps = [
         "boost",
-        "glog",
     ],
 )
 

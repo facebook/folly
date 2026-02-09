@@ -22,8 +22,6 @@ folly_add_library(
     folly_conv
     folly_optional
     folly_string
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -47,8 +45,6 @@ folly_add_library(
   DEPS
     folly_logging_logging
     folly_utility
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

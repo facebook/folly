@@ -36,10 +36,8 @@ fbcode_target(
         "AtomicQueue.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/lang:assume",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

@@ -546,13 +546,11 @@ fbcode_target(
     srcs = ["BitIteratorBench.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:small_vector",
         "//folly/container:bit_iterator",
         "//folly/init:init",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -632,6 +630,7 @@ fbcode_target(
         "F14MapTest.cpp",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":f14_test_util",
         ":tracking_types",
         "//folly:benchmark",
@@ -642,9 +641,6 @@ fbcode_target(
         "//folly/hash:hash",
         "//folly/portability:gtest",
         "//folly/test:test_utils",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -656,6 +652,7 @@ fbcode_target(
     ],
     preprocessor_flags = ["-DFOLLY_F14_FORCE_FALLBACK=1"],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":f14_test_util",
         ":tracking_types",
         "//folly:benchmark",
@@ -666,9 +663,6 @@ fbcode_target(
         "//folly/hash:hash",
         "//folly/portability:gtest",
         "//folly/test:test_utils",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -691,6 +685,7 @@ fbcode_target(
         "F14SetTest.cpp",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":f14_test_util",
         ":tracking_types",
         "//folly:benchmark",
@@ -701,9 +696,6 @@ fbcode_target(
         "//folly/lang:keep",
         "//folly/portability:gtest",
         "//folly/test:test_utils",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -715,6 +707,7 @@ fbcode_target(
     ],
     preprocessor_flags = ["-DFOLLY_F14_FORCE_FALLBACK=1"],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":f14_test_util",
         ":tracking_types",
         "//folly:benchmark",
@@ -725,9 +718,6 @@ fbcode_target(
         "//folly/lang:keep",
         "//folly/portability:gtest",
         "//folly/test:test_utils",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -988,14 +978,12 @@ fbcode_target(
     srcs = ["UtilTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:optional",
         "//folly:range",
         "//folly/container/detail:util",
         "//folly/container/test:tracking_types",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -1031,6 +1019,7 @@ fbcode_target(
     headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:conv",
         "//folly:format",
@@ -1040,9 +1029,6 @@ fbcode_target(
         "//folly/hash:hash",
         "//folly/init:init",
         "//folly/portability:gflags",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

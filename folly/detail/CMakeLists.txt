@@ -128,8 +128,6 @@ folly_add_library(
     IPAddressSource.h
   EXPORTED_DEPS
     folly_detail_ip_address
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -360,8 +358,6 @@ folly_add_library(
     folly_synchronized
     folly_system_at_fork
     folly_system_thread_id
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -406,8 +402,6 @@ folly_add_library(
     folly_portability
     folly_portability_asm
     folly_portability_unistd
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

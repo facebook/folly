@@ -37,8 +37,6 @@ folly_add_library(
     folly_detail_futex
     folly_optional
     folly_synchronization_flat_combining
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -76,6 +74,4 @@ folly_add_library(
     SingleWriterFixedHashMap.h
   EXPORTED_DEPS
     folly_lang_bits
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )

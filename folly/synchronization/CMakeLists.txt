@@ -137,8 +137,6 @@ folly_add_library(
     folly_synchronization_detail_sleeper
     folly_synchronization_lock
     folly_utility
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -151,8 +149,6 @@ folly_add_library(
     folly_likely
     folly_portability_sys_time
     folly_portability_unistd
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -201,8 +197,6 @@ folly_add_library(
     folly_synchronization_atomic_util
     folly_synchronization_detail_hazptr_utils
     folly_traits
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -365,8 +359,6 @@ folly_add_library(
     folly_synchronization_atomic_util
     folly_synchronization_detail_spin
     folly_synchronization_wait_options
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

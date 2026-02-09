@@ -118,8 +118,6 @@ folly_add_library(
     folly_operation_cancelled
     folly_portability_gtest_prod
     folly_result_rich_error_base
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -153,8 +151,6 @@ folly_add_library(
     folly_result_rich_error_fwd
     folly_unit
     folly_utility
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

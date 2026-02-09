@@ -28,6 +28,7 @@ fb_dirsync_cpp_library(
         "//folly/portability:iovec",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:fbstring",
         "//folly:fbvector",
         "//folly:function",
@@ -46,9 +47,6 @@ fb_dirsync_cpp_library(
         "//folly/memory:memory_resource",
         "//folly/portability:sys_uio",
         "//folly/synchronization:micro_spin_lock",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -100,6 +98,7 @@ fb_dirsync_cpp_library(
     headers = ["ShutdownSocketSet.h"],
     xplat_impl = folly_xplat_library,
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:file_util",
         "//folly/net:net_ops",
         "//folly/portability:sockets",
@@ -108,9 +107,6 @@ fb_dirsync_cpp_library(
         "//folly:file",
         "//folly/net:network_socket",
         "//folly/synchronization:relaxed_atomic",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

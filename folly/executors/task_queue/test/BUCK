@@ -9,13 +9,11 @@ fbcode_target(
     name = "UnboundedBlockingQueueBench",
     srcs = ["UnboundedBlockingQueueBench.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly/executors/task_queue:unbounded_blocking_queue",
         "//folly/init:init",
         "//folly/synchronization/test:barrier",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

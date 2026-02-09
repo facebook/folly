@@ -42,6 +42,7 @@ fbcode_target(
     srcs = [],
     headers = ["AsyncGenerator.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:cancellation_token",
         "//folly:exception_wrapper",
         "//folly:traits",
@@ -60,9 +61,6 @@ fbcode_target(
         "//folly/coro:with_cancellation",
         "//folly/lang:safe_alias_fwd",
         "//folly/tracing:async_stack",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -136,6 +134,7 @@ fbcode_target(
     srcs = [],
     headers = ["AsyncScope.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":coroutine",
         ":current_executor",
         ":detail_barrier",
@@ -146,9 +145,6 @@ fbcode_target(
         "//folly/futures:core",
         "//folly/portability:source_location",
         "//folly/synchronization:relaxed_atomic",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -1052,10 +1048,10 @@ fbcode_target(
     name = "nothrow",
     headers = ["Nothrow.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":via_if_async",
         "//folly:exception_wrapper",
     ],
-    exported_external_deps = ["glog"],
 )
 
 non_fbcode_target(
@@ -1251,12 +1247,12 @@ fbcode_target(
     name = "shared_lock",
     headers = ["SharedLock.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:portability",
         "//folly/coro:coroutine",
         "//folly/coro:task",
         "//folly/synchronization:lock",
     ],
-    exported_external_deps = ["glog"],
 )
 
 non_fbcode_target(
@@ -1435,6 +1431,7 @@ fbcode_target(
     name = "task",
     headers = ["Task.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:cancellation_token",
         "//folly:default_keep_alive_executor",
         "//folly:executor",
@@ -1464,9 +1461,6 @@ fbcode_target(
         "//folly/result:result",
         "//folly/result:try",
         "//folly/tracing:async_stack",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -1745,6 +1739,7 @@ fbcode_target(
     name = "via_if_async",
     headers = ["ViaIfAsync.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:executor",
         "//folly:traits",
         "//folly/coro:coroutine",
@@ -1757,9 +1752,6 @@ fbcode_target(
         "//folly/lang:must_use_immediately",
         "//folly/lang:safe_alias_fwd",
         "//folly/tracing:async_stack",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 

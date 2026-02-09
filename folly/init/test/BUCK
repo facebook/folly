@@ -8,11 +8,9 @@ fbcode_target(
     name = "phase_test",
     srcs = ["PhaseTest.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:singleton",
         "//folly/init:phase",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

@@ -279,13 +279,11 @@ fbcode_target(
     labels = ["oss-broken"],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly/concurrency:deadlock_detector",
         "//folly/executors:io_thread_pool_deadlock_detector_observer",
         "//folly/executors:io_thread_pool_executor",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -297,15 +295,13 @@ fbcode_target(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:random",
         "//folly/container:f14_hash",
         "//folly/executors:io_thread_pool_executor",
         "//folly/io/async:async_base",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
 
@@ -328,13 +324,13 @@ fbcode_target(
     headers = [],
     labels = ["slow"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:random",
         "//folly/executors:function_scheduler",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_thread"),
     ],
 )

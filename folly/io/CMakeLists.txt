@@ -102,8 +102,6 @@ folly_add_library(
     folly_range
     folly_scope_guard
     folly_synchronization_micro_spin_lock
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -142,8 +140,6 @@ folly_add_library(
     folly_file
     folly_net_network_socket
     folly_synchronization_relaxed_atomic
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

@@ -21,8 +21,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_c_portability
     folly_optional
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -45,8 +43,6 @@ folly_add_library(
     folly_mpmc_queue
     folly_range
     folly_synchronization_lifo_sem
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

@@ -11,6 +11,7 @@ fbcode_target(
     headers = [],
     labels = ["oss-broken"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:memory",
         "//folly:random",
         "//folly/memory:arena",
@@ -18,9 +19,6 @@ fbcode_target(
         "//folly/memory:malloc",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -140,15 +138,13 @@ fbcode_target(
     srcs = ["ThreadCachedArenaTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:memory",
         "//folly:range",
         "//folly/lang:align",
         "//folly/memory:thread_cached_arena",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -160,11 +156,9 @@ fbcode_target(
         "UninitializedMemoryHacksTest.cpp",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:random",
         "//folly/memory:uninitialized_memory_hacks",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

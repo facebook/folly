@@ -42,6 +42,7 @@ fbcode_target(
     srcs = ["Init.cpp"],
     headers = ["Init.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":phase",
         "//folly:singleton",
         "//folly/experimental/symbolizer:signal_handler",
@@ -52,9 +53,6 @@ fbcode_target(
     ],
     exported_deps = [
         "//folly:portability",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 

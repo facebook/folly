@@ -96,8 +96,6 @@ folly_add_library(
     folly_observer_observer
     folly_random
     folly_synchronized
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 add_subdirectory(detail)

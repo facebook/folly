@@ -637,6 +637,7 @@ fbcode_target(
     headers = ["RegexMatchCache.h"],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:map_util",
         "//folly:string",
         "//folly/portability:windows",
@@ -651,7 +652,6 @@ fbcode_target(
         "//folly/lang:bits",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_regex"),
     ],
 )
@@ -725,12 +725,12 @@ fbcode_target(
         "IntrusiveHeap.h",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:portability",
         "//folly/lang:builtin",
     ],
     exported_external_deps = [
         "boost",
-        "glog",
     ],
 )
 

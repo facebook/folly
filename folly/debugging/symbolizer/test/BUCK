@@ -63,11 +63,9 @@ fbcode_target(
     name = "symbolized_frame_test",
     srcs = ["SymbolizedFrameTest.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/debugging/symbolizer:symbolized_frame",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -140,13 +138,11 @@ fbcode_target(
     name = "line_reader_test",
     srcs = ["LineReaderTest.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:file_util",
         "//folly/debugging/symbolizer:line_reader",
         "//folly/portability:gtest",
         "//folly/testing:test_util",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -157,6 +153,7 @@ fbcode_target(
     headers = ["SignalHandlerTest.h"],
     labels = ["broken-test"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:c_portability",
         "//folly:file_util",
         "//folly:range",
@@ -165,9 +162,6 @@ fbcode_target(
         "//folly/debugging/symbolizer:signal_handler",
         "//folly/executors:io_thread_pool_executor",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -203,6 +197,7 @@ fbcode_target(
     srcs = ["StackTraceTest.cpp"],
     labels = ["oss-broken"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/coro:blocking_wait",
         "//folly/coro:task",
         "//folly/debugging/symbolizer:stack_trace",
@@ -213,7 +208,6 @@ fbcode_target(
         "//folly/testing:test_util",
     ],
     external_deps = [
-        "glog",
         ("boost", None, "boost_regex"),
     ],
 )

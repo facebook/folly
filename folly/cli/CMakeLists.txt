@@ -38,7 +38,6 @@ folly_add_library(
     folly_string
   EXTERNAL_DEPS
     ${GFLAGS_LIBRARIES}
-    ${GLOG_LIBRARIES}
     Boost::headers
     Boost::program_options
 )

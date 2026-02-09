@@ -434,10 +434,10 @@ fbcode_target(
     name = "boost_context_compatibility",
     headers = ["BoostContextCompatibility.h"],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:function",
     ],
     exported_external_deps = [
-        "glog",
         ("boost", None, "boost_context"),
     ],
 )
@@ -462,6 +462,7 @@ fbcode_target(
         "Promise-inl.h",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:constexpr_math",
         "//folly:singleton_thread_local",
         "//folly/detail:memory_idler",
@@ -498,9 +499,6 @@ fbcode_target(
         "//folly/lang:thunk",
         "//folly/portability:pthread",
         "//folly/tracing:async_stack",
-    ],
-    external_deps = [
-        "glog",
     ],
 )
 
@@ -625,6 +623,7 @@ fbcode_target(
     srcs = ["GuardPageAllocator.cpp"],
     headers = ["GuardPageAllocator.h"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly:singleton",
         "//folly:spin_lock",
         "//folly:synchronized",
@@ -632,7 +631,6 @@ fbcode_target(
         "//folly/portability:unistd",
     ],
     external_deps = [
-        "glog",
         ("glibc", None, "dl"),
     ],
 )

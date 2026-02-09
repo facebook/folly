@@ -79,8 +79,6 @@ folly_add_library(
     folly_lang_bits
     folly_portability
     folly_range
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
