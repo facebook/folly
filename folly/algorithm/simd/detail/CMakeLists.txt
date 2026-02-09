@@ -54,6 +54,8 @@ folly_add_library(
   EXPORTED_DEPS
     folly_algorithm_simd_ignore
     folly_algorithm_simd_movemask
+    folly_detail_avx2
+    folly_detail_sse
     folly_lang_safe_assert
     folly_portability
 )

@@ -27,6 +27,8 @@ fb_dirsync_cpp_library(
         "//folly:portability",
         "//folly/algorithm/simd:ignore",
         "//folly/algorithm/simd:movemask",
+        "//folly/detail:avx2",
+        "//folly/detail:sse",
         "//folly/lang:safe_assert",
     ],
 )

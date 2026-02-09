@@ -14,23 +14,29 @@
  * limitations under the License.
  */
 
-#include <folly/detail/Sse.h>
+#pragma once
 
-#include <folly/CppAttributes.h>
+#include <folly/Portability.h>
+
+#if defined(__AVX2__)
+
+#include <immintrin.h>
+
+#endif
 
 namespace folly {
 namespace detail {
 
-#if FOLLY_SSE_PREREQ(2, 0)
+#if defined(__AVX2__)
 
-[[FOLLY_ATTR_GNU_FLATTEN]] FOLLY_DISABLE_SANITIZERS __m128i
-_mm_loadu_si128_nosan(__m128i const* const p) {
-  return _mm_loadu_si128(p);
+__m256i _mm256_loadu_si256_nosan(__m256i const* const p);
+FOLLY_ERASE __m256i _mm256_loadu_si256_unchecked(__m256i const* const p) {
+  return kIsSanitize ? _mm256_loadu_si256_nosan(p) : _mm256_loadu_si256(p);
 }
 
-[[FOLLY_ATTR_GNU_FLATTEN]] FOLLY_DISABLE_SANITIZERS __m128i
-_mm_load_si128_nosan(__m128i const* const p) {
-  return _mm_load_si128(p);
+__m256i _mm256_load_si256_nosan(__m256i const* const p);
+FOLLY_ERASE __m256i _mm256_load_si256_unchecked(__m256i const* const p) {
+  return kIsSanitize ? _mm256_load_si256_nosan(p) : _mm256_load_si256(p);
 }
 
 #endif

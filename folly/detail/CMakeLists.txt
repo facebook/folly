@@ -43,6 +43,17 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME avx2
+  SRCS
+    Avx2.cpp
+  HEADERS
+    Avx2.h
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_portability
+)
+
+folly_add_library(
   NAME discriminated_ptr_detail
   HEADERS
     DiscriminatedPtrDetail.h
@@ -293,6 +304,7 @@ folly_add_library(
   HEADERS
     Sse.h
   EXPORTED_DEPS
+    folly_cpp_attributes
     folly_portability
 )
 

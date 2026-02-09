@@ -270,6 +270,22 @@ non_fbcode_target(
         "Sse.h",
     ],
     deps = [
+        "//xplat/folly:cpp_attributes",
+        "//xplat/folly:portability",
+    ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "avx2",
+    srcs = [
+        "Avx2.cpp",
+    ],
+    raw_headers = [
+        "Avx2.h",
+    ],
+    deps = [
+        "//xplat/folly:cpp_attributes",
         "//xplat/folly:portability",
     ],
 )
@@ -565,6 +581,17 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
+    name = "avx2",
+    srcs = ["Avx2.cpp"],
+    headers = ["Avx2.h"],
+    exported_deps = [
+        "//folly:cpp_attributes",
+        "//folly:portability",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
     name = "discriminated_ptr_detail",
     headers = ["DiscriminatedPtrDetail.h"],
     exported_deps = [
@@ -800,6 +827,7 @@ fbcode_target(
     srcs = ["Sse.cpp"],
     headers = ["Sse.h"],
     exported_deps = [
+        "//folly:cpp_attributes",
         "//folly:portability",
     ],
 )

@@ -20,6 +20,8 @@
 #include <folly/algorithm/simd/Ignore.h>
 #include <folly/algorithm/simd/Movemask.h>
 #include <folly/algorithm/simd/detail/SimdPlatform.h>
+#include <folly/detail/Avx2.h>
+#include <folly/detail/Sse.h>
 #include <folly/lang/SafeAssert.h>
 
 #include <array>
@@ -231,10 +233,10 @@ struct SimdSse42PlatformSpecific {
     return _mm_loadu_si128(reinterpret_cast<const reg_t*>(p));
   }
 
-  FOLLY_DISABLE_SANITIZERS
   FOLLY_ERASE
   static reg_t unsafeLoadu(const scalar_t* p) {
-    return _mm_loadu_si128(reinterpret_cast<const reg_t*>(p));
+    return folly::detail::_mm_loadu_si128_unchecked(
+        reinterpret_cast<const reg_t*>(p));
   }
 
   FOLLY_ERASE
@@ -311,10 +313,10 @@ struct SimdAvx2PlatformSpecific {
     return _mm256_loadu_si256(reinterpret_cast<const reg_t*>(p));
   }
 
-  FOLLY_DISABLE_SANITIZERS
   FOLLY_ERASE
   static reg_t unsafeLoadu(const scalar_t* p) {
-    return _mm256_loadu_si256(reinterpret_cast<const reg_t*>(p));
+    return folly::detail::_mm256_loadu_si256_unchecked(
+        reinterpret_cast<const reg_t*>(p));
   }
 
   FOLLY_ERASE

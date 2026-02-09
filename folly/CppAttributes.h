@@ -183,6 +183,12 @@
 #define FOLLY_ATTR_GNU_NOCLONE
 #endif
 
+#if FOLLY_HAS_CPP_ATTRIBUTE(gnu::flatten)
+#define FOLLY_ATTR_GNU_FLATTEN gnu::flatten
+#else
+#define FOLLY_ATTR_GNU_FLATTEN
+#endif
+
 #if FOLLY_HAS_CPP_ATTRIBUTE(clang::lifetimebound)
 #define FOLLY_ATTR_CLANG_LIFETIMEBOUND clang::lifetimebound
 #else
