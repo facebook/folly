@@ -23,7 +23,6 @@
 #include <folly/experimental/io/test/IoTestTempFileUtil.h>
 #include <folly/init/Init.h>
 #include <folly/io/async/AsyncUDPServerSocket.h>
-#include <folly/io/async/AsyncUDPSocket.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/IoUringBackend.h>
 #include <folly/io/async/IoUringProvidedBufferRing.h>
