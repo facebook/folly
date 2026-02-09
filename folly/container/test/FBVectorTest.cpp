@@ -45,8 +45,8 @@ using FBStringFBVector = fbvector<fbstring>;
 TEST(fbvector, clause233613Ambiguity) {
   fbvector<int> v(10, 20);
   EXPECT_EQ(v.size(), 10);
-  FOR_EACH (i, v) {
-    EXPECT_EQ(*i, 20);
+  for (const auto& element : v) {
+    EXPECT_EQ(element, 20);
   }
 }
 
@@ -54,8 +54,8 @@ TEST(fbvector, clause2336111Ambiguity) {
   fbvector<int> v;
   v.assign(10, 20);
   EXPECT_EQ(v.size(), 10);
-  FOR_EACH (i, v) {
-    EXPECT_EQ(*i, 20);
+  for (const auto& element : v) {
+    EXPECT_EQ(element, 20);
   }
 }
 
