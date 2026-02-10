@@ -34,6 +34,8 @@ if (NOT TARGET glog::glog)
   add_library(glog::glog UNKNOWN IMPORTED)
   set_target_properties(glog::glog PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${GLOG_INCLUDE_DIRS}")
   set_target_properties(glog::glog PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES "C" IMPORTED_LOCATION "${GLOG_LIBRARIES}")
+  set_target_properties(glog::glog PROPERTIES
+    INTERFACE_COMPILE_DEFINITIONS "GLOG_USE_GLOG_EXPORT")
 
   find_package(Gflags)
   if(GFLAGS_FOUND)
