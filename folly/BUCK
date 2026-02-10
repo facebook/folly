@@ -5493,3 +5493,21 @@ fb_native.export_file(
     mode = "reference",
     visibility = ["PUBLIC"],
 )
+
+fb_native.export_file(
+    name = "support/gdb.py",
+    src = "support/gdb.py",
+    visibility = ["PUBLIC"],
+)
+
+fb_native.export_file(
+    name = "fibers/scripts/gdb.py",
+    src = "fibers/scripts/gdb.py",
+    visibility = ["PUBLIC"],
+)
+
+fb_native.export_file(
+    name = "coro/scripts/co_bt.py",
+    src = "coro/scripts/co_bt.py",
+    visibility = ["PUBLIC"],
+)
