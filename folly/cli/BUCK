@@ -52,6 +52,25 @@ non_fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
+    name = "args",
+    srcs = [
+        "Args.cpp",
+    ],
+    headers = [
+        "Args.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:file_util",
+    ],
+    exported_deps = [
+        "//folly/container:span",
+        "//folly/lang:cstring_view",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
     name = "program_options",
     srcs = [
         "NestedCommandLineApp.cpp",

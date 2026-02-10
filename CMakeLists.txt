@@ -470,6 +470,9 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST chrono_conv_test WINDOWS_DISABLED
         SOURCES ConvTest.cpp
 
+    DIRECTORY cli/test/
+      TEST cli_args_test SOURCES ArgsTest.cpp
+
     DIRECTORY codec/test/
       TEST codec_hex_test SOURCES hex_test.cpp
       TEST codec_uuid_test SOURCES UuidTest.cpp

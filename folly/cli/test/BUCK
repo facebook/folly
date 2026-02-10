@@ -77,6 +77,20 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_unittest,
+    name = "args_test",
+    srcs = ["ArgsTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:string",
+        "//folly/cli:args",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/testing:test_util",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_binary,
     name = "nested_command_line_app_example",
     srcs = ["NestedCommandLineAppExample.cpp"],
