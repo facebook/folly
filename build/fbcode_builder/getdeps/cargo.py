@@ -208,7 +208,14 @@ opt-level = "{}"
         )
 
     def run_tests(
-        self, schedule_type, owner, test_filter, retry, no_testpilot, timeout=None
+        self,
+        schedule_type,
+        owner,
+        test_filter,
+        test_exclude,
+        retry,
+        no_testpilot,
+        timeout=None,
     ) -> None:
         build_args = []
         if self.build_opts.build_type != "Debug":

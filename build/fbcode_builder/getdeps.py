@@ -940,6 +940,7 @@ class TestCmd(ProjectCmdBase):
             schedule_type=args.schedule_type,
             owner=args.test_owner,
             test_filter=args.filter,
+            test_exclude=args.exclude,
             retry=args.retry,
             no_testpilot=args.no_testpilot,
             timeout=args.timeout,
@@ -948,6 +949,7 @@ class TestCmd(ProjectCmdBase):
     def setup_project_cmd_parser(self, parser):
         parser.add_argument("--test-owner", help="Owner for testpilot")
         parser.add_argument("--filter", help="Only run the tests matching the regex")
+        parser.add_argument("--exclude", help="Exclude tests matching the regex")
         parser.add_argument(
             "--retry",
             type=int,
