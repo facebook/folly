@@ -23,7 +23,6 @@
 #include <fmt/core.h>
 
 #include <folly/Random.h>
-#include <folly/container/span.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {
