@@ -92,6 +92,33 @@ TEST(SignalHandler, Simple) {
       ".*");
 }
 
+TEST(SignalHandler, GenericSICode) {
+  addFatalSignalCallback(callback1);
+  addFatalSignalCallback(callback2);
+  installFatalSignalHandler();
+  installFatalSignalCallbacks();
+
+  EXPECT_FALSE(fatalSignalReceived());
+
+  EXPECT_DEATH(
+      raise(SIGSEGV),
+      "^\\*\\*\\* Aborted at [0-9]+ \\(Unix time, try 'date -d @[0-9]+'\\) "
+      "\\*\\*\\*\n"
+      "\\*\\*\\* Signal 11 \\(SIGSEGV\\) \\(0x[a-f0-9]+\\) received by PID [0-9]+ "
+      "\\(pthread TID 0x[0-9a-f]+\\) \\(linux TID [0-9]+\\) \\(maybe from PID [0-9]+, UID [0-9]+\\) "
+      "\\(code: sent by tkill or tgkill\\), "
+      "stack trace: \\*\\*\\*\n"
+      ".*\n"
+      ".*    @ [0-9a-f]+.* folly::symbolizer::test::SignalHandler_GenericSICode_Test"
+      "::TestBody\\(\\).*\n"
+      ".*\n"
+      ".*    @ [0-9a-f]+.* main.*\n"
+      ".*\n"
+      "Callback1\n"
+      "Callback2\n"
+      ".*");
+}
+
 TEST(SignalHandler, AsyncStackTraceSimple) {
   addFatalSignalCallback(callback1);
   addFatalSignalCallback(callback2);

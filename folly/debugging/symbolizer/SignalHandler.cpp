@@ -50,6 +50,13 @@ const unsigned long kAllFatalSignals = (1UL << SIGSEGV) | (1UL << SIGILL) |
 
 #endif
 
+#ifndef SI_KERNEL
+#define SI_KERNEL 0x80
+#endif
+#ifndef SI_TKILL
+#define SI_TKILL (-6)
+#endif
+
 namespace {
 
 /**
@@ -270,6 +277,26 @@ void dumpTimeInfo() {
   print("') ***\n");
 }
 
+// Any signal can have a generic SI_CODE attached to it.
+const char* generic_sicode_reason(int si_code) {
+  switch (si_code) {
+    case SI_USER:
+      return "sent by kill, sigsend or raise";
+    case SI_QUEUE:
+      return "sent by sigqueue";
+    case SI_TIMER:
+      return "sent by alarm/timer expiry";
+    case SI_ASYNCIO:
+      return "sent by AIO completion";
+    case SI_KERNEL:
+      return "sent by kernel (SI_KERNEL)";
+    case SI_TKILL:
+      return "sent by tkill or tgkill";
+    default:
+      return nullptr;
+  }
+}
+
 const char* sigill_reason(int si_code) {
   switch (si_code) {
     case ILL_ILLOPC:
@@ -290,7 +317,7 @@ const char* sigill_reason(int si_code) {
       return "internal stack error";
 
     default:
-      return nullptr;
+      return generic_sicode_reason(si_code);
   }
 }
 
@@ -314,7 +341,7 @@ const char* sigfpe_reason(int si_code) {
       return "subscript out of range";
 
     default:
-      return nullptr;
+      return generic_sicode_reason(si_code);
   }
 }
 
@@ -326,7 +353,7 @@ const char* sigsegv_reason(int si_code) {
       return "invalid permissions for mapped object";
 
     default:
-      return nullptr;
+      return generic_sicode_reason(si_code);
   }
 }
 
@@ -342,7 +369,7 @@ const char* sigbus_reason(int si_code) {
       // MCEERR_AR and MCEERR_AO: in sigaction(2) but not in headers.
 
     default:
-      return nullptr;
+      return generic_sicode_reason(si_code);
   }
 }
 
@@ -356,7 +383,7 @@ const char* sigtrap_reason(int si_code) {
       // TRAP_BRANCH and TRAP_HWBKPT: in sigaction(2) but not in headers.
 
     default:
-      return nullptr;
+      return generic_sicode_reason(si_code);
   }
 }
 
@@ -376,7 +403,7 @@ const char* sigchld_reason(int si_code) {
       return "stopped child has continued";
 
     default:
-      return nullptr;
+      return generic_sicode_reason(si_code);
   }
 }
 
@@ -396,7 +423,7 @@ const char* sigio_reason(int si_code) {
       return "device disconnected";
 
     default:
-      return nullptr;
+      return generic_sicode_reason(si_code);
   }
 }
 
@@ -416,9 +443,8 @@ const char* signal_reason(int signum, int si_code) {
       return sigchld_reason(si_code);
     case SIGIO:
       return sigio_reason(si_code); // aka SIGPOLL
-
     default:
-      return nullptr;
+      return generic_sicode_reason(si_code);
   }
 }
 
