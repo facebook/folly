@@ -752,7 +752,7 @@ bool readToString(int fd, std::string& buf, size_t maxSize) {
       if (errno == EAGAIN) {
         break;
       }
-      PCHECK("read failed");
+      PCHECK(false && "read failed");
     } else if (n == 0) {
       break;
     }
