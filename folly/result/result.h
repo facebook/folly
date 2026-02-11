@@ -20,7 +20,6 @@
 #include <folly/Expected.h>
 #include <folly/OperationCancelled.h>
 #include <folly/Portability.h> // FOLLY_HAS_RESULT
-#include <folly/Utility.h> // FOLLY_DECLVAL
 #include <folly/lang/Align.h> // for `hardware_constructive_interference_size`
 #include <folly/lang/RValueReferenceWrapper.h>
 #include <folly/portability/GTestProd.h>
@@ -32,7 +31,7 @@
 /// but is cheaper, and targets "never empty" semantics in C++23.  Its intended
 /// use-case is a "better `Try<T>`", both in sync & `folly::coro` code:
 ///
-///   - No "empty state" wart -- all states of `result` have a clear meaning,
+///   - No "empty state" wart -- all state of `result` have a clear meaning,
 ///     as far as control flow is concerned.
 ///
 ///   - Easy exception checks:
@@ -41,7 +40,7 @@
 ///       }
 ///
 ///   - User-friendly constructors & conversions -- you can write
-///     `result<T>`-returning functions as-if they returned `T`, while
+///     `result<T>`-returning functions as-if they returned `T`, while returning
 ///     returning `error_or_stopped{YourException{...}}` on error.
 ///
 ///   - Can store & and && references.  Think of them as syntax sugar for
@@ -145,10 +144,6 @@ inline void dfatal_if_eptr_empty_or_stopped(const std::exception_ptr& eptr) {
 
 // Do NOT use outside of `folly`, the APIs this gates WILL change.
 struct result_private_t {};
-
-template <typename, typename>
-class result_crtp; // Forward decl for `error_or_stopped` friend
-
 } // namespace detail
 
 // Place this into `result` or `error_or_stopped` to signal that a work-tree
@@ -172,18 +167,9 @@ class [[nodiscard]] error_or_stopped {
   error_or_stopped(std::in_place_t, std::exception_ptr&& eptr) noexcept
       : rep_{rich_exception_ptr::from_exception_ptr_slow(std::move(eptr))} {}
 
-  // Private: for `result_crtp` and `result` to construct "has value" state
-  template <typename, typename>
-  friend class detail::result_crtp;
-  template <typename>
-  friend class result;
-  explicit error_or_stopped(
-      vtag_t<detail::private_rich_exception_ptr_sigil::RESULT_HAS_VALUE>
-          sigil) noexcept
-      : rep_{sigil} {}
-  [[nodiscard]] constexpr bool is_result_has_value() const noexcept {
-    return rep_.has_sigil<
-        detail::private_rich_exception_ptr_sigil::RESULT_HAS_VALUE>();
+  template <typename Ex, typename REP>
+  static Ex* get_exception_impl(REP& rep) {
+    return folly::get_exception<Ex>(rep);
   }
 
  public:
@@ -219,7 +205,7 @@ class [[nodiscard]] error_or_stopped {
   ///    error_or_stopped{immortal_error<YourErr, "msg"_litv>}
   ///
   /// PS These are also usable in `constexpr` code, although the current header
-  /// will need some more `constexpr` annotation to take advantage of this.
+  /// will need some more `contexpr` annotation to take advantage of this.
   template <typename T, auto... Args>
   explicit error_or_stopped(
       const immortal_rich_error_t<rich_exception_ptr, T, Args...>& err)
@@ -371,7 +357,7 @@ class result;
 namespace detail {
 
 template <typename>
-class result_promise_return;
+struct result_promise_return;
 template <typename, typename = void>
 struct result_promise; // Build error? #include <folly/result/coro.h>
 
@@ -380,6 +366,7 @@ struct result_promise; // Build error? #include <folly/result/coro.h>
 // `shouldEagerInit` singleton in charge of this, and tell the users to do
 // this on startup:
 //   folly::SingletonVault::singleton()->doEagerInit();
+const error_or_stopped& dfatal_get_empty_result_error();
 const error_or_stopped& dfatal_get_bad_result_access_error();
 
 template <typename T>
@@ -390,6 +377,9 @@ using result_ref_wrap = conditional_t< // Reused by `result_generator`
         std::is_lvalue_reference_v<T>,
         std::reference_wrapper<std::remove_reference_t<T>>,
         T>>;
+
+template <typename, typename>
+class or_unwind_crtp;
 
 // Shared implementation for `T` non-`void` and `void`
 template <typename Derived, typename T>
@@ -405,22 +395,29 @@ class result_crtp {
   using storage_type = detail::result_ref_wrap<lift_unit_t<T>>;
   static_assert(!std::is_reference_v<storage_type>);
 
-  template <typename>
-  friend class folly::result; // Cross-instantiation uses `eos_`
+  using expected_t = Expected<storage_type, class error_or_stopped>;
 
+  expected_t exp_;
+
+  template <typename>
+  friend class folly::result; // The simple conversion ctor uses `exp_`
+
+  friend struct result_promise<T>;
+  friend struct result_promise_return<T>;
   template <typename, typename>
-  friend class result_or_unwind_crtp; // `await_suspend` uses `eos_`
+  friend class result_or_unwind_crtp; // `await_suspend` uses `exp_`
 
-  template <typename>
-  friend struct result_promise_base; // `unhandled_exception` uses `eos_`
-
-  // Only non-void derived classes have `value_`.
-  // `value_` is initialized iff `eos_.is_result_has_value()` is true.
-  class error_or_stopped eos_;
-
-  result_crtp(result_crtp&& that) noexcept : eos_{std::move(that.eos_)} {}
-  result_crtp& operator=(result_crtp&&) = delete; // See derived classes
-
+  friend inline bool operator==(const result_crtp& a, const result_crtp& b) {
+    // FIXME: This logic is meant to follow `std::expected`, so once that's in
+    // use, this operator becomes `a.exp_ == b.exp_`, or simply ` = default;`.
+    if (a.exp_.hasValue()) {
+      return b.exp_.hasValue() && a.exp_.value() == b.exp_.value();
+    } else if (a.exp_.hasError()) {
+      return b.exp_.hasError() && a.exp_.error() == b.exp_.error();
+    } else { // `a` empty
+      return b.is_expected_empty(); // equal iff both are empty
+    }
+  }
   template <typename ResultT>
   static Derived rewrapping_result_convert(ResultT&& rt) {
     static_assert(is_instantiation_of_v<result, std::remove_cvref_t<ResultT>>);
@@ -433,38 +430,51 @@ class result_crtp {
   }
 
   struct private_copy_t {};
-  result_crtp(private_copy_t, const Derived& that) : eos_{that.eos_} {}
+  result_crtp(private_copy_t, const Derived& that) : exp_(that.exp_) {}
 
-  // Derived classes use `has_value_sigil_t` to construct value-state results.
-  //
-  // WARNING: The promise return object ALSO calls this -- it sets `eos_` to
-  // "has value" sigil, leaving `value_` uninitialized.  `return_value` uses
-  // placement `new`; `unhandled_exception` directly sets `eos_`.  All uses
-  // bypass assignment, which would try to destroy uninitialized `value_`.
-  using has_value_sigil_t =
-      vtag_t<private_rich_exception_ptr_sigil::RESULT_HAS_VALUE>;
-  explicit result_crtp(has_value_sigil_t s) : eos_{s} {}
+  template <typename ExpT>
+  result_crtp(std::in_place_t, ExpT&& exp) : exp_(static_cast<ExpT&&>(exp)) {}
+
+  // As of D42260201, `folly::Expected` coroutines use an empty `Expected`
+  // as the default storage for a promise return object.  Here, we replicate
+  // that pattern, see `result_promise_return`.
+  explicit result_crtp(expected_detail::EmptyTag tag) noexcept : exp_{tag} {}
+  result_crtp(expected_detail::EmptyTag tag, Derived*& pointer) noexcept
+      : exp_{tag} {
+    pointer = static_cast<Derived*>(this);
+  }
+
+  // Not for direct use
+  ~result_crtp() = default;
 
   void throw_if_no_value() const {
-    if (FOLLY_UNLIKELY(!eos_.is_result_has_value())) {
-      eos_.throw_exception();
+    if (FOLLY_UNLIKELY(exp_.hasError())) {
+      exp_.error().throw_exception();
+    } else if (FOLLY_UNLIKELY(!exp_.hasValue())) {
+      detail::dfatal_get_empty_result_error().throw_exception();
     }
   }
 
-  explicit result_crtp(class error_or_stopped&& eos) : eos_{std::move(eos)} {}
-  explicit result_crtp(const class error_or_stopped& eos) : eos_{eos} {}
+  bool is_expected_empty() const {
+    // We're checking for an `EmptyTag`-constructed `Expected`, so this
+    // would be ideal, but that detail isn't public:
+    //   exp_.which_ == expected_detail::Which::eEmpty
+    return !(exp_.hasValue() || exp_.hasError());
+  }
 
  public:
-  ~result_crtp() = default;
-
   /********* Construction & assignment for `T` `void` and non-`void` **********/
+
+  /// Movable, so long as `T` is.
+  result_crtp(result_crtp&&) = default;
+  result_crtp& operator=(result_crtp&&) = default;
 
   /// `result<T>` has an explicit `.copy()` method instead of a standard copy
   /// constructor.  This was done because `result` is intended to act as cheap
   /// plumbing for function-result-or-error, and
   ///   - Copying `T` is almost always a performance bug in this setting, but
   ///     see the below carve-out for "cheap-to-copy `T`".
-  ///   - Copying `std::exception_ptr` also has atomic costs (~7ns).
+  ///   - Copying `std::exception_ptr` also has atomic costs (~7s).
   ///
   /// Future: We may later make `result` copyable, see `docs/design_notes.md`.
   ///
@@ -474,7 +484,7 @@ class result_crtp {
   /// in `result.md` under "Store references...".  Standard copy semantics
   /// allows creating a new `result<V&>` from `const result<V&>&`.  But, this
   /// would present a const-safety problem -- since `result<V&>` gives access
-  /// to a mutable `V&`. To fix this, copying `result<V&>` is ONLY allowed:
+  /// to a mutable `V&`. To fix this, copying `result<V&> is ONLY allowed:
   ///   - from `result<V&>&`, since you already have mutable access
   ///   - from `const result<const V&>&`, since the inner `const` is not
   ///     lost during the copy.
@@ -499,9 +509,49 @@ class result_crtp {
   result_crtp(const result_crtp&) = delete;
   result_crtp& operator=(const result_crtp&) = delete;
 
+  /// Implicit constructor to allow returning `stopped_result` from `result`
+  /// coroutines & functions.
+  ///
+  /// This forbids `result<stopped_result_t>` (`static_assert` above).
+  /*implicit*/ result_crtp(stopped_result_t s)
+      : exp_(Unexpected{folly::error_or_stopped{s}}) {}
+
+  /// Implicitly movable / explicitly copyable from `error_or_stopped` to
+  /// make it easy to return `resT1.error_or_stopped()` in a `result<T2>`
+  /// function.
+  ///
+  /// This forbids `result<error_or_stopped>` (`static_assert` above).
+  /*implicit*/ result_crtp(class error_or_stopped&& eos)
+      : exp_(Unexpected{std::move(eos)}) {}
+  explicit result_crtp(const class error_or_stopped& eos)
+      : exp_(Unexpected{eos}) {}
+
+  /// Fallible copy/move conversion -- unlike the "simple" conversion, this can
+  /// plausibly apply for `T` void.
+  ///
+  /// If a user type has a fallible conversion: `U` -> `result<T>`, implicitly
+  /// convert `result<U>` into `result<T>`, and rewrap any conversion error.
+  /// The test `fallibleConversion` explains why it has to be **implicit**.
+  ///
+  /// This helps with `for` loops that iterate over `result<U>`.  This loop:
+  ///   auto uGen = generate_result<U>();
+  ///   for (result<T> mv: uGen) {}
+  /// expands to:
+  ///   result<T> mv = *loopIter;
+  /// The RHS is usually `result<U>&`, or `result<U>&&` if `U` is an rref.
+  ///
+  /// As with the simple conversion, prefer move conversions in hot code.
+  template <class Arg, typename ResultT = std::remove_cvref_t<Arg>>
+    requires(
+        !std::is_same_v<ResultT, Derived> && // Not a move/copy ctor.
+        // Avoid ambiguity with the above "simple conversion"
+        !std::is_constructible_v<expected_t, typename ResultT::expected_t &&>)
+  /*implicit*/ result_crtp(Arg&& rt)
+      : result_crtp(rewrapping_result_convert(std::forward<Arg>(rt))) {}
+
   /***************** Accessors for `T` `void` and non-`void` ******************/
 
-  [[nodiscard]] bool has_value() const { return eos_.is_result_has_value(); }
+  [[nodiscard]] bool has_value() const { return exp_.hasValue(); }
   // Also see `has_stopped()` below!
 
   /// Error-or-stopped access should be used SPARINGLY!
@@ -517,6 +567,7 @@ class result_crtp {
   ///
   /// There is no mutable `&` overload so that we can return singleton
   /// invariant-violation exceptions for `dfatal_..._error()` in opt builds:
+  ///   - `folly::Expected` is empty due to an `operator=` exception
   ///   - Calling `error_or_stopped()` when `has_value() == true` -- UB in
   ///     `std::expected`
   /// With folly-internal optimizations (see `extract_exception_ptr`), moving
@@ -525,19 +576,28 @@ class result_crtp {
   /// If there is a good use-case for mutating the error-or-stopped state inside
   /// `result`, we could offer `set_error_or_stopped()` with different
   /// semantics.
+  ///
+  /// Future: when I have the appropriate error-path benchmark, try moving the
+  /// 2 unlikely branches into a .cpp helper, that might help perf.
   class error_or_stopped error_or_stopped() && noexcept {
-    if (FOLLY_LIKELY(!eos_.is_result_has_value())) {
-      return std::move(eos_);
+    if (FOLLY_LIKELY(exp_.hasError())) {
+      return std::move(exp_).error();
+    } else if (exp_.hasValue()) {
+      return detail::dfatal_get_bad_result_access_error();
+    } else {
+      return detail::dfatal_get_empty_result_error();
     }
-    return detail::dfatal_get_bad_result_access_error();
   }
   // noexcept: std::exception_ptr copy is non-throwing on all major platforms
   // (atomic refcount increment via Itanium ABI or MSVC shared_ptr-like impl).
   const class error_or_stopped& error_or_stopped() const& noexcept {
-    if (FOLLY_LIKELY(!eos_.is_result_has_value())) {
-      return eos_;
+    if (FOLLY_LIKELY(exp_.hasError())) {
+      return exp_.error();
+    } else if (exp_.hasValue()) {
+      return detail::dfatal_get_bad_result_access_error();
+    } else {
+      return detail::dfatal_get_empty_result_error();
     }
-    return detail::dfatal_get_bad_result_access_error();
   }
 
   // Backwards-compatible aliases
@@ -562,18 +622,18 @@ class result_crtp {
   template <typename Ex>
   rich_ptr_to_underlying_error<const Ex> get_exception(
       get_exception_tag_t) const noexcept {
-    if (eos_.is_result_has_value()) {
+    if (!exp_.hasError()) {
       return rich_ptr_to_underlying_error<const Ex>{nullptr};
     }
-    return folly::get_exception<Ex>(eos_);
+    return folly::get_exception<Ex>(exp_.error());
   }
   template <typename Ex>
   rich_ptr_to_underlying_error<Ex> get_mutable_exception(
       get_exception_tag_t) noexcept {
-    if (eos_.is_result_has_value()) {
+    if (!exp_.hasError()) {
       return rich_ptr_to_underlying_error<Ex>{nullptr};
     }
-    return folly::get_mutable_exception<Ex>(eos_);
+    return folly::get_mutable_exception<Ex>(exp_.error());
   }
 };
 
@@ -585,41 +645,32 @@ class [[nodiscard]] [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
 result final : public detail::result_crtp<result<T>, T> {
  private:
   template <typename, typename>
-  friend class detail::result_crtp; // conversion ctors access `value_`, `eos_`
+  friend class detail::result_crtp; // `ResultT::expected_t` in `requires`
   template <typename>
-  friend class result; // conversion ctors access `value_`, `eos_`
-  friend struct detail::result_promise<T>;
-  friend class detail::result_promise_return<T>;
+  friend class result; // `ResultT::expected_t` in `requires`
 
   using base = typename detail::result_crtp<result<T>, T>;
+  using typename base::expected_t;
   // For `T` non-`void`, we store either `T` or a ref wrapper.
   using ref_wrapped_t = typename base::storage_type;
 
-  // Value storage in non-`void` result (not in CRTP base).
-  // Use union to avoid requiring default-constructibility.
-  union {
-    ref_wrapped_t value_;
-  };
+ protected:
+  FOLLY_GTEST_FRIEND_TEST(Result, BadEmptyStateInt);
+  FOLLY_GTEST_FRIEND_TEST(Result, BadEmptyStateString);
 
  public:
-  ~result() {
-    if (this->eos_.is_result_has_value()) {
-      value_.~ref_wrapped_t();
-    }
-  }
+  using detail::result_crtp<result<T>, T>::result_crtp;
 
   /// Not default-constructible yet, since the utility is debatable.  If we
   /// were to later make `result` default-constructible, it should follow
   /// `std::expected` semantics, as below.  As of now, there are only a couple
-  /// of tests in `result_test.cpp` marked "not default-constructible".
+  /// of tests in `ResultTest.cpp` marked "not default-constructible".
 
   /*
   /// Default-construct as `std::expected` would, and unlike `folly::Expected`
-  result() noexcept(noexcept(ref_wrapped_t{}))
+  result() noexcept(noexcept(expected_t(ref_wrapped_t{})))
     requires std::is_default_constructible_v<ref_wrapped_t>
-      : base{typename base::has_value_sigil_t{}} {
-    new (&value_) ref_wrapped_t{};
-  }
+      : base{std::in_place, ref_wrapped_t{}} {}
 
   TEST(result, defaultCtor) {
     result<> mVoid;
@@ -629,94 +680,25 @@ result final : public detail::result_crtp<result<T>, T> {
   }
   */
 
-  /// Movable iff `T` is
-  result(result&& that) noexcept(noexcept( //
-      ref_wrapped_t{std::move(that.value_)}))
-    requires requires { ref_wrapped_t{std::move(that.value_)}; }
-      : base{std::move(that)} {
-    if (this->eos_.is_result_has_value()) {
-      new (&value_) ref_wrapped_t{std::move(that.value_)};
-    }
-  }
-  result& operator=(result&& that) noexcept(
-      noexcept(FOLLY_DECLVAL(ref_wrapped_t&) = std::move(that.value_)) &&
-      noexcept(ref_wrapped_t{std::move(that.value_)}))
-    requires requires {
-      FOLLY_DECLVAL(ref_wrapped_t&) = std::move(that.value_);
-      ref_wrapped_t{std::move(that.value_)};
-    }
-  {
-    if (FOLLY_LIKELY(this != &that)) {
-      const bool this_has_val = this->eos_.is_result_has_value();
-      const bool that_has_val = that.eos_.is_result_has_value();
-
-      if (this_has_val && that_has_val) {
-        // Value to value: use move assignment (can throw, stays in value state)
-        value_ = std::move(that.value_);
-      } else if (this_has_val && !that_has_val) {
-        // Value to error: destroy value, move error (nothrow)
-        value_.~ref_wrapped_t();
-        this->eos_ = std::move(that.eos_);
-      } else if (!this_has_val && that_has_val) {
-        // Construct first; if it throws, we stay in error state (no valueless).
-        new (&value_) ref_wrapped_t{std::move(that.value_)};
-        this->eos_ = std::move(that.eos_);
-      } else {
-        // Error to error: just move error (nothrow)
-        this->eos_ = std::move(that.eos_);
-      }
-    }
-    return *this;
-  }
-
-  /// Allow returning `stopped_result` from `result` coroutines & functions.
-  ///
-  /// This forbids `result<stopped_result_t>` (`static_assert` in CRTP).
-  /*implicit*/ result(stopped_result_t s) : base{folly::error_or_stopped{s}} {}
-
-  /// Implicitly movable / explicitly copyable from `error_or_stopped` to
-  /// make it easy to return `resT1.error_or_stopped()` in a `result<T2>`
-  /// function.
-  ///
-  /// This forbids `result<error_or_stopped>` (`static_assert` in CRTP).
-  /*implicit*/ result(class error_or_stopped&& eos) : base{std::move(eos)} {}
-  explicit result(const class error_or_stopped& eos) : base{eos} {}
-
   /// Copy- & move-conversion from a reference wrapper.
   ///
   /// Implicit to allow returning `std::ref(memberVar_)` from member functions.
   /* implicit */ result(ref_wrapped_t t) noexcept
     requires std::is_reference_v<T>
-      : base{typename base::has_value_sigil_t{}} {
-    new (&value_) ref_wrapped_t{std::move(t)};
-  }
+      : base{std::in_place, std::move(t)} {}
 
   /// Move-construct `result<T>` from the underlying value type `T`.
   ///
   /// Implicit to allow `result<T>` functions to return `T{}` etc.
-  /* implicit */ result(T&& t) noexcept(noexcept(ref_wrapped_t{std::move(t)}))
+  /* implicit */ result(T&& t) noexcept(noexcept(expected_t(std::move(t))))
     requires(
-        !std::is_reference_v<T> && requires { ref_wrapped_t{std::move(t)}; })
-      : base{typename base::has_value_sigil_t{}} {
-    new (&value_) ref_wrapped_t{std::move(t)};
-  }
+        !std::is_reference_v<T> && std::is_constructible_v<expected_t, T &&>)
+      : base{std::in_place, std::move(t)} {}
   result& operator=(T&& t) noexcept(
-      noexcept(FOLLY_DECLVAL(ref_wrapped_t&) = std::move(t)) &&
-      noexcept(ref_wrapped_t{std::move(t)}))
-    requires(
-        !std::is_reference_v<T> &&
-        requires {
-          FOLLY_DECLVAL(ref_wrapped_t&) = std::move(t);
-          ref_wrapped_t{std::move(t)};
-        })
+      std::is_nothrow_assignable_v<expected_t, T&&>)
+    requires(!std::is_reference_v<T> && std::is_assignable_v<expected_t, T &&>)
   {
-    if (this->eos_.is_result_has_value()) {
-      value_ = std::move(t);
-    } else {
-      // Construct first; if it throws, we stay in error state (no valueless).
-      new (&value_) ref_wrapped_t{std::move(t)};
-      this->eos_ = folly::error_or_stopped{typename base::has_value_sigil_t{}};
-    }
+    this->exp_ = std::move(t);
     return *this;
   }
 
@@ -724,7 +706,7 @@ result final : public detail::result_crtp<result<T>, T> {
   /// Implicit, so that e.g. `result<int> memberFn()` can return `memVar_`.
   //
   /// These are a special case because such copies are cheap*, and because
-  /// good alternatives for populating trivially copyable data are few:
+  /// good alternatives for populating trivially copiable data are few:
   ///   - Copy-construct the value into the `result`.
   ///   - Less efficient: Default-initialize the `result` and assign
   ///     `folly::copy(T)`, or use a mutable value reference to populate it.
@@ -732,7 +714,7 @@ result final : public detail::result_crtp<result<T>, T> {
   ///
   /// This constructor is deliberately restricted to objects that fit in a
   /// cache-line.  This is a heuristic to require larger copies to be explicit
-  /// via `folly::copy()`.  If it proves fragile across different architectures,
+  /// via folly::copy()`.  If it proves fragile across different architectures,
   /// it can be relaxed later.
   ///
   /// Notes:
@@ -742,23 +724,22 @@ result final : public detail::result_crtp<result<T>, T> {
   ///   - We don't need copy ctors for `co_return varOfTypeT;` because this is
   ///     an "implicitly movable context" in the C++ spec, so a move ctor is
   ///     automatically considered as the first option.
-  /* implicit */ result(const T& t) noexcept(noexcept(ref_wrapped_t{t}))
+  /* implicit */ result(const T& t) noexcept(noexcept(expected_t(t)))
     requires(
-        !std::is_reference_v<T> && requires { ref_wrapped_t{t}; } &&
+        !std::is_reference_v<T> &&
+        std::is_constructible_v<expected_t, const T&> &&
         std::is_trivially_copyable_v<T> &&
         sizeof(T) <= hardware_constructive_interference_size)
-      : base{typename base::has_value_sigil_t{}} {
-    new (&value_) ref_wrapped_t{t};
-  }
+      : base{std::in_place, t} {}
 
   /// No copy assignment.  When appropriate, use a mutable `value_or_throw()`
   /// reference, or assign `rhs.copy()` to be explicit.
 
-  /// Simple copy/move conversion (see also the fallible conversion below).
+  /// Simple copy/move conversion; `result_crtp` also has a fallible conversion.
   ///
   /// Convert `result<U>` to `result<T>` if:
   ///   - `U` is a value type that is copy/move convertible to `T`.
-  ///   - `U` is a reference whose ref-wrapper is convertible to `T`.
+  ///   - `U` is a reference whose ref-wrapper is converible to `T`.
   /// The test `simpleConversion` shows why this was made implicit.
   ///
   /// In hot code, prefer to convert from an rvalue (move conversion), because
@@ -766,56 +747,12 @@ result final : public detail::result_crtp<result<T>, T> {
   template <class Arg, typename ResultT = std::remove_cvref_t<Arg>>
     requires(
         !std::is_same_v<ResultT, result> && // Not a move/copy ctor
-        is_instantiation_of_v<::folly::result, ResultT> &&
-        // Check that source value type is convertible to our storage type.
-        // `FOLLY_DECLVAL(Arg&&).value_` naturally gets the right value
-        // category via reference collapsing on `Arg`.
-        requires { ref_wrapped_t(FOLLY_DECLVAL(Arg&&).value_); })
-  /* implicit */ result(Arg&& that) : base{std::forward<Arg>(that).eos_} {
-    if (this->eos_.is_result_has_value()) {
-      // Uses () instead of {} to match standard C++ implicit conversion
-      // behavior, e.g. `co_return 129` in `result<uint8_t>`.
-      // See `Result.conversionTypes` test.
-      new (&value_) ref_wrapped_t(std::forward<Arg>(that).value_);
-    }
-  }
-
-  /// Fallible copy/move conversion
-  ///
-  /// If a user type has a fallible conversion: `U` -> `result<T>`, implicitly
-  /// convert `result<U>` into `result<T>`, and rewrap any conversion error.
-  /// The test `fallibleConversion` explains why it has to be **implicit**.
-  ///
-  /// This helps with `for` loops that iterate over `result<U>`.  This loop:
-  ///   auto uGen = generate_result<U>();
-  ///   for (result<T> mv: uGen) {}
-  /// expands to:
-  ///   result<T> mv = *loopIter;
-  /// The RHS is usually `result<U>&`, or `result<U>&&` if `U` is an rref.
-  ///
-  /// Fallible conversion from other result types (via rewrapping).
-  template <class Arg, typename ResultT = std::remove_cvref_t<Arg>>
-    requires(
-        !std::is_same_v<ResultT, result> && // Not a move/copy ctor.
-        is_instantiation_of_v<::folly::result, ResultT> && // Must be a result.
-        // Avoid ambiguity with the above "simple conversion": if our
-        // storage_type is constructible from theirs, use simple conversion.
-        !requires { ref_wrapped_t(FOLLY_DECLVAL(Arg&&).value_); } &&
-        // The value types must be compatible for rewrapping to work.
-        // This includes both direct T construction AND conversion operators.
-        std::is_constructible_v<
-            result,
-            like_t<Arg &&, typename ResultT::value_type>>)
-  /*implicit*/ result(Arg&& rt)
-      : result(base::rewrapping_result_convert(std::forward<Arg>(rt))) {}
-
-  friend bool operator==(const result& a, const result& b)
-    requires requires(const ref_wrapped_t& v) { v == v; }
-  {
-    if (a.has_value()) {
-      return b.has_value() && a.value_ == b.value_;
-    }
-    return !b.has_value() && a.eos_ == b.eos_;
+        // NB: This won't implicitly copy `error_or_stopped` since the
+        // underlying `Expected` is only constructible from `Unexpected`.
+        std::is_constructible_v<expected_t, typename ResultT::expected_t &&>)
+  /* implicit */ result(Arg&& that)
+      : base{std::in_place, std::forward<Arg>(that).exp_} {
+    static_assert(is_instantiation_of_v<result, ResultT>);
   }
 
   /// Retrieve non-reference `T`
@@ -823,30 +760,30 @@ result final : public detail::result_crtp<result<T>, T> {
     requires(!std::is_reference_v<T>)
   {
     this->throw_if_no_value();
-    return this->value_;
+    return *this->exp_;
   }
   [[nodiscard]] T& value_or_throw() &
     requires(!std::is_reference_v<T>)
   {
     this->throw_if_no_value();
-    return this->value_;
+    return *this->exp_;
   }
   [[nodiscard]] const T&& value_or_throw() const&&
     requires(!std::is_reference_v<T>)
   {
     this->throw_if_no_value();
-    return std::move(this->value_);
+    return *std::move(this->exp_);
   }
   [[nodiscard]] T&& value_or_throw() &&
     requires(!std::is_reference_v<T>)
   {
     this->throw_if_no_value();
-    return std::move(this->value_);
+    return *std::move(this->exp_);
   }
 
   /// Retrieve reference `T`.
   ///
-  /// NB Unlike the value-type versions, accessors cannot mutate the reference
+  /// NB Unlike the value-type versions, accesors cannot mutate the reference
   /// wrapper inside `this`.  Assign a ref-wrapper to the `result` to do that.
 
   /// Lvalue result-ref propagate `const`: `const result<T&>` -> `const T&`.
@@ -855,19 +792,19 @@ result final : public detail::result_crtp<result<T>, T> {
     requires std::is_lvalue_reference_v<T>
   {
     this->throw_if_no_value();
-    return std::as_const(this->value_.get());
+    return std::as_const(this->exp_->get());
   }
   [[nodiscard]] T value_or_throw() &
     requires std::is_lvalue_reference_v<T>
   {
     this->throw_if_no_value();
-    return this->value_.get();
+    return this->exp_->get();
   }
   [[nodiscard]] T value_or_throw() &&
     requires std::is_lvalue_reference_v<T>
   {
     this->throw_if_no_value();
-    return this->value_.get();
+    return this->exp_->get();
   }
 
   // R-value refs follow `folly::rvalue_reference_wrapper`.  They model
@@ -876,19 +813,7 @@ result final : public detail::result_crtp<result<T>, T> {
     requires std::is_rvalue_reference_v<T>
   {
     this->throw_if_no_value();
-    return std::move(this->value_).get();
-  }
-
-  /// PRIVATE: See comments in the base class.
-  explicit result(typename base::has_value_sigil_t s) noexcept : base{s} {}
-  result(typename base::has_value_sigil_t s, result*& ptr) noexcept : base{s} {
-    ptr = this;
-  }
-  result(typename base::private_copy_t priv, const result& that)
-      : base{priv, that} {
-    if (this->eos_.is_result_has_value()) {
-      new (&value_) ref_wrapped_t{that.value_};
-    }
+    return std::move(*std::move(this->exp_)).get();
   }
 };
 
@@ -898,67 +823,23 @@ result(std::reference_wrapper<T>) -> result<T&>;
 template <typename T>
 result(rvalue_reference_wrapper<T>) -> result<T&&>;
 
-/// Specialization for `T = void` aka `result<>`. Uses no `value_` storage.
+// Specialization for `T = void` aka `result<>`.
 template <>
 class [[nodiscard]] [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] result<void> final
     : public detail::result_crtp<result<void>, void> {
  private:
   using base = detail::result_crtp<result<void>, void>;
-  friend class detail::result_promise_return<void>;
 
  public:
-  ~result() = default;
+  using base::result_crtp;
 
-  /// Unlike `result<T>` (above), default-constructing `result<void>` is fine.
-  /// Here, `std::expected<void>` and `Try<void>` agree on the semantics -- and
-  /// this is the most obvious way to get a value-state `result<>`.
-  result() : base{typename base::has_value_sigil_t{}} {}
-
-  /// Movable
-  result(result&& that) noexcept = default;
-  result& operator=(result&& that) noexcept {
-    if (FOLLY_LIKELY(this != &that)) {
-      this->eos_ = std::move(that.eos_);
-    }
-    return *this;
-  }
-
-  /// Allow returning `stopped_result` from `result` coroutines & functions.
-  /*implicit*/ result(stopped_result_t s) : base{folly::error_or_stopped{s}} {}
-
-  /// Implicitly movable / explicitly copyable from `error_or_stopped`.
-  /*implicit*/ result(class error_or_stopped&& eos) : base{std::move(eos)} {}
-  explicit result(const class error_or_stopped& eos) : base{eos} {}
-
-  /// Fallible conversion from other result types. Details in `result<T>` ctor.
-  /// Accepts `result<void>` OR types convertible to `result<void>`.
-  template <class Arg, typename ResultT = std::remove_cvref_t<Arg>>
-    requires(
-        !std::is_same_v<ResultT, result> && // Not a move/copy ctor.
-        is_instantiation_of_v<::folly::result, ResultT> &&
-        (std::is_void_v<typename ResultT::value_type> ||
-         std::is_constructible_v<
-             result,
-             like_t<Arg &&, typename ResultT::value_type>>))
-  /*implicit*/ result(Arg&& rt)
-      : result(base::rewrapping_result_convert(std::forward<Arg>(rt))) {}
-
-  friend bool operator==(const result& a, const result& b) {
-    if (a.has_value()) {
-      return b.has_value();
-    }
-    return !b.has_value() && a.eos_ == b.eos_;
-  }
+  // Unlike `result<T>`, default-constructing `result<void>` seems fine.
+  // Specifically: `std::expected<void>` and `Try<void>` actually agree on the
+  // semantics (yes, `Try` is internally inconsistent) -- and this is the most
+  // obvious way to get a value-state `result<>`.
+  result() : base(std::in_place, unit) {}
 
   void value_or_throw() const { this->throw_if_no_value(); }
-
-  // PRIVATE: See `has_value_sigil_t` in base class.
-  explicit result(typename base::has_value_sigil_t s) noexcept : base{s} {}
-  result(typename base::has_value_sigil_t s, result*& ptr) noexcept : base{s} {
-    ptr = this;
-  }
-  result(typename base::private_copy_t priv, const result& that)
-      : base{priv, that} {}
 };
 
 // Type trait to test if a type is a `result`.
@@ -1009,3 +890,5 @@ struct fmt::formatter<folly::error_or_stopped> {
 };
 
 #endif // FOLLY_HAS_RESULT
+
+#undef FOLLY_MOVABLE_AND_DEEP_CONST_LREF_COPYABLE

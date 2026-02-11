@@ -26,6 +26,12 @@
 namespace folly {
 namespace detail {
 
+const error_or_stopped& dfatal_get_empty_result_error() {
+  static const folly::Indestructible<error_or_stopped> r{empty_result_error{}};
+  LOG(DFATAL) << "`folly::result` had an empty underlying `folly::Expected`";
+  return *r;
+}
+
 const error_or_stopped& dfatal_get_bad_result_access_error() {
   static const folly::Indestructible<error_or_stopped> r{
       bad_result_access_error{}};

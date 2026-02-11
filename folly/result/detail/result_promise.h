@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <folly/Utility.h>
 #include <folly/coro/Coroutine.h> // delete with clang-15 support
 #include <folly/result/result.h>
 
@@ -31,15 +30,13 @@ template <typename>
 struct result_promise_base;
 
 template <typename T>
-class result_promise_return {
- private:
-  result<T> storage_{typename result<T>::has_value_sigil_t{}};
-  result<T>*& ptr_;
+struct result_promise_return {
+  result<T> storage_{expected_detail::EmptyTag{}};
+  result<T>*& pointer_;
 
- public:
   /* implicit */ result_promise_return(result_promise_base<T>& p) noexcept
-      : ptr_{p.value_} {
-    ptr_ = &storage_;
+      : pointer_{p.value_} {
+    pointer_ = &storage_;
   }
   result_promise_return(result_promise_return const&) = delete;
   void operator=(result_promise_return const&) = delete;
@@ -52,15 +49,14 @@ class result_promise_return {
   /* implicit */ operator result<T>() {
     // Simplify this once clang 15 is well-forgotten, and remove the dep on
     // `Coroutine.h`.  From D42260201: handle both deferred and eager
-    // return-object conversion behaviors; see docs for
+    // return-object conversion behaviors see docs for
     // detect_promise_return_object_eager_conversion
-    //
-    // Storage is in "has value" sigil state with uninitialized `value_`;
-    // `return_value` / `unhandled_exception` will initialize it.
-    if (coro::detect_promise_return_object_eager_conversion()) { // eager
-      return result<T>{typename result<T>::has_value_sigil_t{}, ptr_};
-    } else { // deferred
-      return std::move(storage_);
+    if (coro::detect_promise_return_object_eager_conversion()) {
+      assert(storage_.is_expected_empty());
+      return result<T>{expected_detail::EmptyTag{}, pointer_}; // eager
+    } else {
+      assert(!storage_.is_expected_empty());
+      return std::move(storage_); // deferred
     }
   }
 };
@@ -79,9 +75,7 @@ struct result_promise_base {
   std::suspend_never initial_suspend() const noexcept { return {}; }
   std::suspend_never final_suspend() const noexcept { return {}; }
   void unhandled_exception() noexcept {
-    // Directly set `eos_` -- using `result` assignment would try to destroy
-    // uninitialized `value_` (UB since we start in "has value" sigil state).
-    value_->eos_ = error_or_stopped::from_current_exception();
+    *value_ = result<T>{error_or_stopped::from_current_exception()};
   }
 
   result_promise_return<T> get_return_object() noexcept { return *this; }
@@ -96,26 +90,9 @@ struct result_promise<T, typename std::enable_if<!std::is_void_v<T>>::type>
   // The default for `U` is tested in `returnImplicitCtor`.
   template <typename U = T>
   void return_value(U&& u) {
-    // We're in "has value" sigil state with uninitialized `value_`.  Use
-    // placement `new` -- NEVER assignment, which would call `operator=(T&)` on
-    // garbage (UB!).  This supports non-default-constructible `T`, helps perf.
     auto& v = *this->value_;
-    if constexpr (std::is_same_v<std::remove_cvref_t<U>, error_or_stopped>) {
-      v.eos_ = static_cast<U&&>(u);
-    } else if constexpr (std::is_same_v<std::remove_cvref_t<U>, result<T>>) {
-      // Returning `result<T>` (with `T` matching ours) acts like `or_unwind()`:
-      if (static_cast<U&&>(u).has_value()) {
-        return_value(static_cast<U&&>(u).value_or_throw());
-      } else {
-        // NOLINTNEXTLINE(facebook-hte-MissingStdForward): false positive
-        return_value(forward_like<U>(u.eos_));
-      }
-    } else {
-      // Returning a value; `eos_` already says "has value"
-      new (&v.value_)
-          typename std::remove_reference_t<decltype(v)>::storage_type(
-              static_cast<U&&>(u));
-    }
+    expected_detail::ExpectedHelper::assume_empty(v.exp_);
+    v = static_cast<U&&>(u);
   }
 };
 
@@ -123,8 +100,7 @@ template <typename T>
 struct result_promise<T, typename std::enable_if<std::is_void_v<T>>::type>
     : public result_promise_base<T> {
   // You can fail via `co_await err` since void coros only allow `co_return;`.
-  // NB: `has_value_sigil_t` sets `eos_` to "has value", nothing to do.
-  void return_void() {}
+  void return_void() { this->value_->exp_.emplace(unit); }
 };
 
 template <typename T> // Need an alias since nested types cannot be deduced.

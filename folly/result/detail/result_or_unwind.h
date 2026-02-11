@@ -183,12 +183,13 @@ class result_or_unwind_crtp : public result_or_unwind_base<Derived, Storage> {
   void await_suspend(result_promise_handle<U> h) noexcept {
     auto toResult = [&](auto&& eos) {
       auto& v = *h.promise().value_;
+      expected_detail::ExpectedHelper::assume_empty(v.exp_);
       // For lvalue `Storage` (e.g. `result<T>&`), `storage()` returns a ref,
       // and `result::error_or_stopped() const&` returns `const
-      // error_or_stopped&`, which gets copied into `eos_` -- preserving the
-      // original result.  This is intentional: users don't expect `co_await
+      // error_or_stopped&`, which gets copied into `Unexpected` -- preserving
+      // the original result. This is intentional: users don't expect `co_await
       // or_unwind(r)` to mutate `r`, since `r` might outlive the current coro.
-      v.eos_ = static_cast<decltype(eos)>(eos);
+      v.exp_ = Unexpected{static_cast<decltype(eos)>(eos)};
       h.destroy(); // Abort the rest of the coroutine, resume() won't be called
     };
     if constexpr (Base::kIsErrorOrStopped) {
