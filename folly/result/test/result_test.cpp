@@ -886,66 +886,6 @@ RESULT_CO_TEST(Result, fallibleConversion) {
   }
 }
 
-void test_bad_empty_result(auto bad) {
-  EXPECT_FALSE(bad.has_value());
-  // `empty_result_error` derives from `std::exception` but is
-  // not exposed via this accessor.
-  EXPECT_FALSE(get_exception<std::exception>(bad));
-  if constexpr (!kIsDebug) {
-    EXPECT_TRUE(get_exception<empty_result_error>(bad.error_or_stopped()));
-  } else {
-    EXPECT_DEATH(
-        (void)bad.error_or_stopped(),
-        "`folly::result` had an empty underlying");
-  }
-  if constexpr (!kIsDebug) {
-    EXPECT_THROW((void)bad.value_or_throw(), empty_result_error);
-  } else {
-    EXPECT_DEATH(
-        (void)bad.value_or_throw(), "`folly::result` had an empty underlying");
-  }
-  // not default-constructible:
-  decltype(bad) valRes{typename decltype(bad)::value_type{}};
-  EXPECT_TRUE(valRes.has_value());
-  decltype(bad) errRes = error_or_stopped{MyError{"fiddlesticks"}};
-  EXPECT_FALSE(errRes.has_value());
-  EXPECT_FALSE(valRes == bad);
-  EXPECT_TRUE(valRes != bad);
-  EXPECT_FALSE(errRes == bad);
-  EXPECT_TRUE(errRes != bad);
-  EXPECT_TRUE(bad == bad);
-  auto awaitsBad = [&]() -> result<> {
-    (void)co_await or_unwind(std::as_const(bad));
-  };
-  if constexpr (!kIsDebug) {
-    auto res = awaitsBad();
-    EXPECT_TRUE(get_exception<empty_result_error>(res));
-  } else {
-    EXPECT_DEATH((void)awaitsBad(), "`folly::result` had an empty underlying");
-  }
-}
-
-} // namespace folly::test
-
-// In `namespace folly` for FRIEND_TEST access to `result`'s protected ctor.
-namespace folly {
-
-// This state will no longer be possible with `std::expected`.  The tests
-// use a protected ctor via FRIEND_TEST, which can then be removed.
-//
-// Testing `int` and `std::string` since `Expected` uses different storage for
-// PoD and non-PoD types.  Separate death tests run faster.
-TEST(Result, BadEmptyStateInt) {
-  test::test_bad_empty_result(result<int>{expected_detail::EmptyTag{}});
-}
-TEST(Result, BadEmptyStateString) {
-  test::test_bad_empty_result(result<std::string>{expected_detail::EmptyTag{}});
-}
-
-} // namespace folly
-
-namespace folly::test {
-
 FOLLY_PUSH_WARNING
 FOLLY_CLANG_DISABLE_WARNING("-Wunneeded-internal-declaration")
 bool is_bad_result_access(const error_or_stopped& eos) {
