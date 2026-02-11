@@ -112,6 +112,8 @@ folly_add_library(
   NAME process_local_unique_id
   SRCS
     ProcessLocalUniqueId.cpp
+  HEADERS
+    ProcessLocalUniqueId.h
   DEPS
     folly_likely
     folly_synchronization_relaxed_atomic
