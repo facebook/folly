@@ -113,7 +113,7 @@ void testMap() {
     ref.insert(e);
     EXPECT_EQ(ref.size(), arr->size());
     if (ret.first == arr->end()) {
-      EXPECT_FALSE("AHA should not have run out of space.");
+      EXPECT_TRUE(false && "AHA should not have run out of space.");
       continue;
     }
     EXPECT_EQ(e.first, ret.first->first);
@@ -140,7 +140,7 @@ void testMap() {
   for (const auto& e : ref) {
     auto ret = arr->find(e.first);
     if (ret == arr->end()) {
-      EXPECT_FALSE("Key was not in AHA");
+      EXPECT_TRUE(false && "Key was not in AHA");
       continue;
     }
     EXPECT_EQ(e.first, ret->first);

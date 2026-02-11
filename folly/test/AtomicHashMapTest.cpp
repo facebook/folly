@@ -544,7 +544,7 @@ void raceIterateThread(std::atomic<bool>* shouldIterate, size_t maxSize) {
     for (; it != end; ++it) {
       ++count;
       if (count > maxSize) {
-        EXPECT_FALSE("Infinite loop in iterator.");
+        EXPECT_TRUE(false && "Infinite loop in iterator.");
         return;
       }
     }
