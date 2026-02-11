@@ -1,122 +1,13 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "openssl_ptr_types",
-    raw_headers = ["OpenSSLPtrTypes.h"],
-    exported_deps = [
-        "fbsource//xplat/folly/portability:openssl",
-        "//third-party/glog:glog",
-        "//xplat/folly:memory",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "openssl_hash",
-    srcs = ["OpenSSLHash.cpp"],
-    raw_headers = ["OpenSSLHash.h"],
-    deps = ["//xplat/folly:format"],
-    exported_deps = [
-        "fbsource//third-party/fmt:fmt",
-        "fbsource//xplat/folly/io:iobuf",
-        "fbsource//xplat/folly/portability:openssl",
-        ":openssl_ptr_types",
-        "//xplat/folly:range",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "openssl_cert_utils",
-    srcs = ["OpenSSLCertUtils.cpp"],
-    raw_headers = ["OpenSSLCertUtils.h"],
-    deps = [
-        "//xplat/folly:file_util",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:string",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/io:iobuf",
-        "fbsource//xplat/folly/portability:openssl",
-        ":openssl_ptr_types",
-        "//xplat/folly:optional",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "openssl_version_finder",
-    raw_headers = ["OpenSSLVersionFinder.h"],
-    exported_deps = [
-        "fbsource//xplat/folly/portability:openssl",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "openssl_ticket_handler",
-    raw_headers = ["OpenSSLTicketHandler.h"],
-    deps = [
-        "fbsource//xplat/folly/portability:openssl",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "ssl_session",
-    raw_headers = ["SSLSession.h"],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "ssl_session_manager",
-    srcs = ["SSLSessionManager.cpp"],
-    raw_headers = ["SSLSessionManager.h"],
-    deps = [
-        "//xplat/folly:overload",
-        "//xplat/folly/ssl/detail:openssl_session",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/portability:openssl",
-        ":openssl_ptr_types",
-        ":ssl_session",
-        "//third-party/boost:boost",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "password_collector",
-    srcs = ["PasswordCollector.cpp"],
-    raw_headers = ["PasswordCollector.h"],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "openssl_key_utils",
-    srcs = ["OpenSSLKeyUtils.cpp"],
-    raw_headers = ["OpenSSLKeyUtils.h"],
-    deps = [
-        "fbsource//xplat/folly/portability:openssl",
-        ":password_collector",
-    ],
-    exported_deps = [
-        ":openssl_ptr_types",
-        "//xplat/folly:range",
-    ],
-)
-
-# !!!! fbcode/folly/ssl/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "openssl_ptr_types",
     headers = ["OpenSSLPtrTypes.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:memory",
@@ -124,11 +15,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "openssl_hash",
     srcs = ["OpenSSLHash.cpp"],
     headers = ["OpenSSLHash.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:format",
@@ -142,11 +34,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "openssl_cert_utils",
     srcs = ["OpenSSLCertUtils.cpp"],
     headers = ["OpenSSLCertUtils.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:file_util",
         "//folly:scope_guard",
@@ -160,36 +53,40 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "openssl_version_finder",
     headers = ["OpenSSLVersionFinder.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/portability:openssl",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "openssl_ticket_handler",
     headers = ["OpenSSLTicketHandler.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/portability:openssl",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "ssl_session",
     headers = ["SSLSession.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "ssl_session_manager",
     srcs = ["SSLSessionManager.cpp"],
     headers = ["SSLSessionManager.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:overload",
         "//folly/ssl/detail:openssl_session",
@@ -201,18 +98,20 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "password_collector",
     srcs = ["PasswordCollector.cpp"],
     headers = ["PasswordCollector.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "openssl_key_utils",
     srcs = ["OpenSSLKeyUtils.cpp"],
     headers = ["OpenSSLKeyUtils.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
         ":password_collector",
         "//folly/portability:openssl",
