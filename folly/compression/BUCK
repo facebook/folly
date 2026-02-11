@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -65,21 +66,19 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "compression_context_pool",
     srcs = [],
-    raw_headers = [
+    headers = [
         "CompressionContextPool.h",
         "CompressionCoreLocalContextPool.h",
     ],
-    deps = [
-        "//xplat/folly/memory:malloc",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        "//xplat/folly:memory",
-        "//xplat/folly:synchronized",
-        "//xplat/folly/concurrency:cache_locality",
+        "//folly:memory",
+        "//folly:synchronized",
+        "//folly/concurrency:cache_locality",
     ],
 )
 
@@ -110,61 +109,62 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "quotient_multiset",
     srcs = [
         "QuotientMultiSet.cpp",
     ],
-    raw_headers = [
+    headers = [
         "QuotientMultiSet.h",
         "QuotientMultiSet-inl.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
-        "fbsource//xplat/folly/io:iobuf",
-        ":select64",
-        "//third-party/glog:glog",
-        "//xplat/folly:format",
-        "//xplat/folly:math",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly/compression:instructions",
-        "//xplat/folly/lang:bits",
-        "//xplat/folly/lang:bits_class",
-        "//xplat/folly/lang:safe_assert",
+        "//folly:math",
+    ],
+    exported_deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly:format",
+        "//folly:portability",
+        "//folly:range",
+        "//folly/compression:instructions",
+        "//folly/compression:select64",
+        "//folly/io:iobuf",
+        "//folly/lang:bits",
+        "//folly/lang:bits_class",
+        "//folly/lang:safe_assert",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "instructions",
-    raw_headers = [
-        "Instructions.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/portability:builtins",
-        "//third-party/glog:glog",
-        "//xplat/folly:cpu_id",
-        "//xplat/folly:portability",
-        "//xplat/folly/lang:assume",
+    headers = ["Instructions.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly:cpu_id",
+        "//folly:portability",
+        "//folly/lang:assume",
+        "//folly/portability:builtins",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "select64",
-    srcs = [
-        "Select64.cpp",
-    ],
-    raw_headers = [
-        "Select64.h",
-    ],
+    srcs = ["Select64.cpp"],
+    headers = ["Select64.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
+        "//folly:constexpr_math",
+        "//folly:utility",
+    ],
+    exported_deps = [
+        "fbsource//third-party/glog:glog",
         ":instructions",
-        "//third-party/glog:glog",
-        "//xplat/folly:constexpr_math",
-        "//xplat/folly:portability",
-        "//xplat/folly:utility",
+        "//folly:portability",
     ],
 )
 
@@ -219,21 +219,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "compression_context_pool",
-    srcs = [],
-    headers = [
-        "CompressionContextPool.h",
-        "CompressionCoreLocalContextPool.h",
-    ],
-    exported_deps = [
-        "//folly:memory",
-        "//folly:synchronized",
-        "//folly/concurrency:cache_locality",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "compression_context_pool_singletons",
     srcs = ["CompressionContextPoolSingletons.cpp"],
     headers = ["CompressionContextPoolSingletons.h"],
@@ -248,61 +233,5 @@ fbcode_target(
         ":compression_context_pool",
         "//folly/portability:config",
         "//folly/portability:gflags",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "quotient_multiset",
-    srcs = [
-        "QuotientMultiSet.cpp",
-    ],
-    headers = [
-        "QuotientMultiSet.h",
-        "QuotientMultiSet-inl.h",
-    ],
-    deps = [
-        "//folly:math",
-    ],
-    exported_deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:format",
-        "//folly:portability",
-        "//folly:range",
-        "//folly/compression:instructions",
-        "//folly/compression:select64",
-        "//folly/io:iobuf",
-        "//folly/lang:bits",
-        "//folly/lang:bits_class",
-        "//folly/lang:safe_assert",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "instructions",
-    headers = ["Instructions.h"],
-    exported_deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:cpu_id",
-        "//folly:portability",
-        "//folly/lang:assume",
-        "//folly/portability:builtins",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "select64",
-    srcs = ["Select64.cpp"],
-    headers = ["Select64.h"],
-    deps = [
-        "//folly:constexpr_math",
-        "//folly:utility",
-    ],
-    exported_deps = [
-        "fbsource//third-party/glog:glog",
-        ":instructions",
-        "//folly:portability",
     ],
 )
