@@ -1,42 +1,144 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "rich_error_base",
-    srcs = [
-        "rich_error_base.cpp",
-        "rich_exception_ptr.cpp",
-    ],
-    raw_headers = [
-        "rich_error_base.h",
-        "rich_exception_ptr.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:demangle",
-        "//xplat/folly/lang:switch",
-    ],
+fb_dirsync_cpp_library(
+    name = "coded_rich_error",
+    headers = ["coded_rich_error.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        ":rich_error_fwd",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:portability",
-        "//xplat/folly:portability_source_location",
-        "//xplat/folly:unit",
-        "//xplat/folly:utility",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:pretty",
-        "//xplat/folly/result/detail:rich_exception_ptr_storage",
+        ":rich_error",
+        ":rich_error_base",
+        ":rich_error_code",
+        "//folly/result:rich_msg",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
+    name = "coro",
+    headers = ["coro.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        ":result",
+        "//folly/coro:coroutine",
+        "//folly/coro:error",
+        "//folly/lang:must_use_immediately",
+        "//folly/result/detail:result_or_unwind",
+        "//folly/result/detail:result_promise",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "epitaph",
+    srcs = ["epitaph.cpp"],
+    headers = ["epitaph.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        ":result",
+        ":rich_error",
+        "//folly:portability",
+        "//folly/lang:safe_assert",
+        "//folly/result:rich_msg",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "errc_rich_error",
+    srcs = ["errc_rich_error.cpp"],
+    headers = ["errc_rich_error.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        ":coded_rich_error",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "gtest_helpers",
+    headers = ["gtest_helpers.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        ":coro",
+        "//folly/coro:gtest_helpers",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "immortal_rich_error",
+    headers = ["immortal_rich_error.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        ":rich_error_base",
+        "//folly/result/detail:ptr_immortal_exception_storage",
+        "//folly/result/detail:rich_error_common",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "nestable_coded_rich_error",
+    headers = ["nestable_coded_rich_error.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        ":coded_rich_error",
+        ":rich_error",
+        ":rich_error_base",
+        "//folly/result:rich_msg",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "or_unwind_epitaph",
+    headers = ["or_unwind_epitaph.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        ":coro",
+        ":epitaph",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "result",
+    srcs = ["result.cpp"],
+    headers = ["result.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    deps = [
+        "//folly:indestructible",
+    ],
+    exported_deps = [
+        "fbsource//third-party/glog:glog",
+        ":rich_error_base",
+        "//folly:exception_wrapper",
+        "//folly:expected",
+        "//folly:operation_cancelled",
+        "//folly/coro:coroutine",
+        "//folly/lang:align",
+        "//folly/lang:rvalue_reference_wrapper",
+        "//folly/portability:gtest_prod",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "rich_error",
+    headers = ["rich_error.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        ":rich_error_base",
+        "//folly:portability",
+        "//folly/result/detail:rich_error_common",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "rich_error_base",
     srcs = [
         "rich_error_base.cpp",
@@ -46,6 +148,8 @@ fbcode_target(
         "rich_error_base.h",
         "rich_exception_ptr.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:demangle",
@@ -64,295 +168,12 @@ fbcode_target(
     ],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "coded_rich_error",
-    raw_headers = ["coded_rich_error.h"],
-    exported_deps = [
-        ":rich_error",
-        ":rich_error_base",
-        ":rich_error_code",
-        "//xplat/folly/result:rich_msg",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "coded_rich_error",
-    headers = ["coded_rich_error.h"],
-    exported_deps = [
-        ":rich_error",
-        ":rich_error_base",
-        ":rich_error_code",
-        "//folly/result:rich_msg",
-    ],
-)
-
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "epitaph",
-    srcs = ["epitaph.cpp"],
-    raw_headers = ["epitaph.h"],
-    exported_deps = [
-        ":result",
-        ":rich_error",
-        "//xplat/folly/lang:safe_assert",
-        "//xplat/folly/result:rich_msg",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "epitaph",
-    srcs = ["epitaph.cpp"],
-    headers = ["epitaph.h"],
-    exported_deps = [
-        ":result",
-        ":rich_error",
-        "//folly:portability",
-        "//folly/lang:safe_assert",
-        "//folly/result:rich_msg",
-    ],
-)
-
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "errc_rich_error",
-    srcs = ["errc_rich_error.cpp"],
-    raw_headers = ["errc_rich_error.h"],
-    exported_deps = [
-        ":coded_rich_error",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "errc_rich_error",
-    srcs = ["errc_rich_error.cpp"],
-    headers = ["errc_rich_error.h"],
-    exported_deps = [
-        ":coded_rich_error",
-    ],
-)
-
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "nestable_coded_rich_error",
-    raw_headers = ["nestable_coded_rich_error.h"],
-    exported_deps = [
-        ":coded_rich_error",
-        ":rich_error",
-        ":rich_error_base",
-        "//xplat/folly/result:rich_msg",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "nestable_coded_rich_error",
-    headers = ["nestable_coded_rich_error.h"],
-    exported_deps = [
-        ":coded_rich_error",
-        ":rich_error",
-        ":rich_error_base",
-        "//folly/result:rich_msg",
-    ],
-)
-
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "gtest_helpers",
-    raw_headers = ["gtest_helpers.h"],
-    exported_deps = [
-        ":coro",
-        "//xplat/folly/coro:gtest_helpers",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "gtest_helpers",
-    headers = ["gtest_helpers.h"],
-    exported_deps = [
-        ":coro",
-        "//folly/coro:gtest_helpers",
-    ],
-)
-
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "coro",
-    raw_headers = ["coro.h"],
-    exported_deps = [
-        ":result",
-        "//xplat/folly/coro:coroutine",
-        "//xplat/folly/coro:error",
-        "//xplat/folly/lang:must_use_immediately",
-        "//xplat/folly/result/detail:result_or_unwind",
-        "//xplat/folly/result/detail:result_promise",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "coro",
-    headers = ["coro.h"],
-    exported_deps = [
-        ":result",
-        "//folly/coro:coroutine",
-        "//folly/coro:error",
-        "//folly/lang:must_use_immediately",
-        "//folly/result/detail:result_or_unwind",
-        "//folly/result/detail:result_promise",
-    ],
-)
-
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "immortal_rich_error",
-    raw_headers = ["immortal_rich_error.h"],
-    exported_deps = [
-        ":rich_error_base",
-        "//xplat/folly/result/detail:ptr_immortal_exception_storage",
-        "//xplat/folly/result/detail:rich_error_common",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "immortal_rich_error",
-    headers = ["immortal_rich_error.h"],
-    exported_deps = [
-        ":rich_error_base",
-        "//folly/result/detail:ptr_immortal_exception_storage",
-        "//folly/result/detail:rich_error_common",
-    ],
-)
-
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "or_unwind_epitaph",
-    raw_headers = ["or_unwind_epitaph.h"],
-    exported_deps = [
-        ":coro",
-        ":epitaph",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "or_unwind_epitaph",
-    headers = ["or_unwind_epitaph.h"],
-    exported_deps = [
-        ":coro",
-        ":epitaph",
-    ],
-)
-
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "result",
-    srcs = ["result.cpp"],
-    raw_headers = ["result.h"],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:indestructible",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/portability:gtest_prod",
-        ":rich_error_base",
-        "//xplat/folly:exception_wrapper",
-        "//xplat/folly:expected",
-        "//xplat/folly:operation_cancelled",
-        "//xplat/folly/coro:coroutine",
-        "//xplat/folly/lang:align",
-        "//xplat/folly/lang:rvalue_reference_wrapper",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "result",
-    srcs = ["result.cpp"],
-    headers = ["result.h"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:indestructible",
-    ],
-    exported_deps = [
-        ":rich_error_base",
-        "//folly:exception_wrapper",
-        "//folly:expected",
-        "//folly:operation_cancelled",
-        "//folly/coro:coroutine",
-        "//folly/lang:align",
-        "//folly/lang:rvalue_reference_wrapper",
-        "//folly/portability:gtest_prod",
-    ],
-)
-
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "rich_error",
-    raw_headers = ["rich_error.h"],
-    exported_deps = [
-        ":rich_error_base",
-        "//xplat/folly:portability",
-        "//xplat/folly/result/detail:rich_error_common",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "rich_error",
-    headers = ["rich_error.h"],
-    exported_deps = [
-        ":rich_error_base",
-        "//folly:portability",
-        "//folly/result/detail:rich_error_common",
-    ],
-)
-
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "rich_error_code",
-    srcs = ["rich_error_code.cpp"],
-    raw_headers = ["rich_error_code.h"],
-    deps = ["//xplat/folly/lang:exception"],
-    exported_deps = [
-        ":rich_error_base",
-        "//third-party/fmt:fmt",
-        "//xplat/folly:portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "rich_error_code",
     srcs = ["rich_error_code.cpp"],
     headers = ["rich_error_code.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = ["//folly/lang:exception"],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
@@ -361,41 +182,19 @@ fbcode_target(
     ],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "rich_error_fwd",
-    raw_headers = ["rich_error_fwd.h"],
-    exported_deps = ["//xplat/folly:portability"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "rich_error_fwd",
     headers = ["rich_error_fwd.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = ["//folly:portability"],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "rich_msg",
-    raw_headers = ["rich_msg.h"],
-    exported_deps = [
-        "//third-party/fmt:fmt",
-        "//xplat/folly:portability_source_location",
-        "//xplat/folly:utility",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:safe_assert",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "rich_msg",
     headers = ["rich_msg.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:utility",
@@ -404,46 +203,25 @@ fbcode_target(
         "//folly/portability:source_location",
     ],
 )
-### this line is a hint for source control merge
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "try",
-    raw_headers = ["try.h"],
-    exported_deps = [
-        ":result",
-        "//xplat/folly:try",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "try",
     headers = ["try.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":result",
         "//folly:try",
     ],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "value_only_result",
-    raw_headers = [
-        "value_only_result.h",
-        "value_only_result_coro.h",
-    ],
-    exported_deps = ["//xplat/folly/result:coro"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "value_only_result",
     headers = [
         "value_only_result.h",
         "value_only_result_coro.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = ["//folly/result:coro"],
 )
