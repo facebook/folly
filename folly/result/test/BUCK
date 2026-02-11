@@ -120,6 +120,19 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
+    name = "result_bench",
+    srcs = ["result_bench.cpp"],
+    deps = [
+        ":common",
+        "//folly:benchmark",
+        "//folly:exception_wrapper",
+        "//folly:portability",
+        "//folly/result:result",
+        "//folly/result:try",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
     name = "result_coro_bench",
     srcs = ["result_coro_bench.cpp"],
     deps = [
