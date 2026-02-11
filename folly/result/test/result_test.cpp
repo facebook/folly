@@ -16,7 +16,9 @@
 
 #include <gtest/gtest.h>
 
+#include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Traits.h>
+#include <folly/coro/safe/NowTask.h>
 #include <folly/result/gtest_helpers.h>
 #include <folly/result/or_unwind_epitaph.h>
 #include <folly/result/test/common.h>
@@ -32,6 +34,22 @@
 namespace folly::test {
 
 using namespace folly::detail;
+
+class MyError : public std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
+
+// Type that always throws on move, for testing exception handling.
+struct ThrowOnMove : private MoveOnly {
+  int value{};
+  explicit ThrowOnMove(int v) : value(v) {}
+  // NOLINTNEXTLINE(performance-noexcept-move-constructor)
+  [[noreturn]] ThrowOnMove(ThrowOnMove&&) { throw MyError{"move ctor"}; }
+  // NOLINTNEXTLINE(performance-noexcept-move-constructor)
+  [[noreturn]] ThrowOnMove& operator=(ThrowOnMove&&) {
+    throw MyError{"move assignment"};
+  }
+};
 
 // If you came here, you probably want `result` to have `->` or `*` operators,
 // or `.value()`, just like `folly::Try` or `std::expected`.  This comment will
@@ -65,9 +83,74 @@ static_assert(
     sizeof(error_or_stopped) == sizeof(void*) || !kIsLinux ||
     sizeof(void*) != 8);
 
-class MyError : public std::runtime_error {
-  using std::runtime_error::runtime_error;
+// result<T>: not (yet) copyable, but movable
+static_assert(!std::is_copy_constructible_v<result<int>>);
+static_assert(!std::is_copy_assignable_v<result<int>>);
+static_assert(std::is_move_constructible_v<result<int>>);
+static_assert(std::is_move_assignable_v<result<int>>);
+
+// result<T&>: not (yet) copyable, but movable
+//
+// WARNING: When adding copyability, forbid copies from `const result<T&>&`,
+// details in `DefineMovableDeepConstLrefCopyable.h`.
+static_assert(!std::is_copy_constructible_v<result<int&>>);
+static_assert(!std::is_copy_assignable_v<result<int&>>);
+static_assert(std::is_move_constructible_v<result<int&>>);
+static_assert(std::is_move_assignable_v<result<int&>>);
+
+// result<T&&> will always be move-only, following `rvalue_reference_wrapper`
+static_assert(!std::is_copy_constructible_v<result<int&&>>);
+static_assert(!std::is_copy_assignable_v<result<int&&>>);
+static_assert(std::is_move_constructible_v<result<int&&>>);
+static_assert(std::is_move_assignable_v<result<int&&>>);
+
+// result propagates noexcept from the value type
+static_assert(std::is_nothrow_move_constructible_v<result<int>>);
+static_assert(std::is_nothrow_move_assignable_v<result<int>>);
+static_assert(std::is_move_constructible_v<ThrowOnMove>);
+static_assert(!std::is_nothrow_move_constructible_v<ThrowOnMove>);
+static_assert(std::is_move_assignable_v<ThrowOnMove>);
+static_assert(!std::is_nothrow_move_assignable_v<ThrowOnMove>);
+
+// Simple conversions between compatible result types
+static_assert(std::is_constructible_v<result<int>, result<long>>);
+static_assert(std::is_constructible_v<result<float>, result<int>>);
+static_assert(
+    std::is_constructible_v<result<std::string>, result<const char*>>);
+static_assert(std::is_constructible_v<result<const int&>, result<int&>>);
+
+// Conversions that CANNOT happen:
+
+// - `result<T>` has no default ctor (intentional), but `result<void>` does
+static_assert(!std::is_default_constructible_v<result<int>>);
+static_assert(std::is_default_constructible_v<result<void>>);
+
+// - Unrelated types are properly rejected
+static_assert(!std::is_constructible_v<result<int>, std::vector<int>>);
+static_assert(!std::is_constructible_v<result<int>, int*>);
+// BUG: Should be a SFINAE failure, not instantiation failure.
+// Incompatible value types should not match the fallible conversion.
+static_assert(std::is_constructible_v<result<int>, result<std::string>>);
+// BUG: Should be a SFINAE failure, not instantiation failure.
+// Cannot silently discard values when converting to result<void>.
+static_assert(std::is_constructible_v<result<void>, result<int>>);
+
+// - Non-result types with `storage_type` member should not match.
+struct FakeResultLike {
+  using storage_type = std::string;
+  bool has_value() const { return true; }
+  std::string value_or_throw() const { return "fake"; }
+  error_or_stopped error_or_stopped() const {
+    return folly::error_or_stopped{stopped_result};
+  }
 };
+static_assert(!std::is_constructible_v<result<int>, FakeResultLike>);
+
+// Test self-move-assignment without triggering `-Wself-move`.
+template <typename T>
+void selfMove(T& x) {
+  x = std::move(x);
+}
 
 // Fully tests `void`-specific behaviors.  Loosely covers common features from
 // `result_crtp` -- they're covered in-depth by the non-`void` tests below.
@@ -77,6 +160,11 @@ TEST(Result, resultOfVoid) {
   {
     static_assert(!std::is_copy_constructible_v<result<>>);
     static_assert(!std::is_copy_assignable_v<result<>>);
+
+    // Exception-safety of result's move assignment relies on error_or_stopped
+    // being nothrow movable (so eos_ updates in move operations never throw).
+    static_assert(std::is_nothrow_move_constructible_v<error_or_stopped>);
+    static_assert(std::is_nothrow_move_assignable_v<error_or_stopped>);
 
     result<> r;
     static_assert(std::is_same_v<decltype(r), result<void>>);
@@ -153,6 +241,8 @@ TEST(Result, storeAndGetStoppedResult) {
     result<T> r = std::move(in);
     EXPECT_FALSE(r.has_value());
     EXPECT_TRUE(r.has_stopped());
+    selfMove(r);
+    EXPECT_TRUE(r.has_stopped());
     // Using `exception_ptr`-like accessors when `has_stopped()` is debug-fatal
     if (kIsDebug) {
       EXPECT_DEATH(
@@ -215,9 +305,13 @@ TEST(Result, movable) {
   result<> rVoidSrc;
   auto rVoid = std::move(rVoidSrc);
   EXPECT_TRUE(rVoid.has_value());
+  selfMove(rVoid);
+  EXPECT_TRUE(rVoid.has_value());
 
   result<std::unique_ptr<int>> mIntPtrSrc = std::make_unique<int>(1337);
   auto mIntPtr = std::move(mIntPtrSrc);
+  EXPECT_EQ(1337, *mIntPtr.value_or_throw());
+  selfMove(mIntPtr);
   EXPECT_EQ(1337, *mIntPtr.value_or_throw());
 }
 
@@ -254,6 +348,8 @@ TEST(Result, fromErrorOrStopped) {
     result<int> r{eos}; // ctor
     EXPECT_EQ(std::string("nay"), get_exception<MyError>(r)->what());
     r = copy(eos); // assignment
+    EXPECT_EQ(std::string("nay"), get_exception<MyError>(r)->what());
+    selfMove(r);
     EXPECT_EQ(std::string("nay"), get_exception<MyError>(r)->what());
   }
   eos = error_or_stopped{MyError{"nein"}};
@@ -401,6 +497,8 @@ RESULT_CO_TEST(Result, fromRefWrapperAndRefAccess) {
     result<T&> rLref = std::ref(t1);
     EXPECT_EQ(321, *(co_await or_unwind(rLref.copy())));
     EXPECT_EQ(321, *rLref.value_or_throw());
+    selfMove(rLref);
+    EXPECT_EQ(321, *rLref.value_or_throw());
     *(co_await or_unwind(rLref)) += 1;
     EXPECT_EQ(322, *t1);
     (co_await or_unwind(std::move(rLref))) = std::move(t2);
@@ -435,6 +533,145 @@ TEST(Result, moveFromUnderlying) {
   EXPECT_EQ(6, *r.value_or_throw());
   r = std::make_unique<int>(28); // move assignment
   EXPECT_EQ(28, *r.value_or_throw());
+}
+
+// FIXME: This test is aspirational for after the `result`-without-`Expected`
+// refactor -- the "Sad trombone" sections show the current bad-empty state.
+//
+// Unlike `folly::Expected` or `std::variant`, `result` never becomes
+// "valueless by exception" because we construct the new value before updating
+// `eos_`.  If construction throws, `eos_` remains in its original state.
+TEST(Result, throwingMove) {
+  struct ThrowOnNegative : private MoveOnly {
+    int value;
+    explicit ThrowOnNegative(int v) : value(v) {}
+    // NOLINTNEXTLINE(performance-noexcept-move-constructor)
+    ThrowOnNegative(ThrowOnNegative&& o) : value(o.value) {
+      if (value < 0) {
+        throw MyError{"move threw"};
+      }
+    }
+    // NOLINTNEXTLINE(performance-noexcept-move-constructor)
+    ThrowOnNegative& operator=(ThrowOnNegative&& o) {
+      if (o.value < 0) {
+        throw MyError{"move assign threw"};
+      }
+      value = o.value;
+      return *this;
+    }
+  };
+
+  { // Move constructor: can throw, exception propagates
+    result src{ThrowOnNegative{42}};
+    src.value_or_throw().value = -1;
+    EXPECT_THROW(result<ThrowOnNegative> dest{std::move(src)}, MyError);
+  }
+  { // Move assignment: error to value, stays in error on throw
+    result src{ThrowOnNegative{42}};
+    src.value_or_throw().value = -1;
+    result<ThrowOnNegative> dest{error_or_stopped{MyError{"initial error"}}};
+    EXPECT_STREQ("initial error", get_exception<MyError>(dest)->what());
+
+    EXPECT_THROW(dest = std::move(src), MyError);
+
+    // Sad trombone: our internal `folly::Expected` is empty-by-exception.
+    EXPECT_FALSE(dest.has_value());
+    if constexpr (!kIsDebug) {
+      EXPECT_TRUE(get_exception<empty_result_error>(dest.error_or_stopped()));
+    } else {
+      EXPECT_DEATH(
+          (void)dest.error_or_stopped(),
+          "`folly::result` had an empty underlying");
+    }
+  }
+  { // Move assignment: value to value, throws but stays in value state
+    result src{ThrowOnNegative{42}};
+    src.value_or_throw().value = -1;
+    result<ThrowOnNegative> dest{ThrowOnNegative{10}};
+
+    EXPECT_THROW(dest = std::move(src), MyError);
+
+    EXPECT_EQ(10, dest.value_or_throw().value);
+  }
+  { // Successful move (non-throwing case)
+    result src{ThrowOnNegative{42}};
+    result<ThrowOnNegative> dest{error_or_stopped{MyError{"initial error"}}};
+
+    dest = std::move(src);
+
+    EXPECT_EQ(42, dest.value_or_throw().value);
+  }
+  { // Value assignment from error state, stays in error on throw
+    result<ThrowOnNegative> r{error_or_stopped{MyError{"initial error"}}};
+    ThrowOnNegative val{-1};
+
+    EXPECT_THROW(r = std::move(val), MyError);
+
+    // Sad trombone: our internal `folly::Expected` is empty-by-exception.
+    EXPECT_FALSE(r.has_value());
+    if constexpr (!kIsDebug) {
+      EXPECT_TRUE(get_exception<empty_result_error>(r.error_or_stopped()));
+    } else {
+      EXPECT_DEATH(
+          (void)r.error_or_stopped(),
+          "`folly::result` had an empty underlying");
+    }
+  }
+}
+
+// Test that throwing during co_return (in return_value's placement new) is
+// correctly caught by unhandled_exception and produces an error result.
+TEST(Result, throwingMoveInCoReturn) {
+  auto throwingCoro = []() -> result<ThrowOnMove> {
+    ThrowOnMove val{42};
+    co_return val; // This move will throw during return_value's placement new
+  };
+  // The exception from placement new in return_value should be caught by
+  // unhandled_exception, which sets eos_ to error state.
+  auto r = throwingCoro();
+  EXPECT_FALSE(r.has_value());
+  EXPECT_STREQ("move ctor", get_exception<MyError>(r)->what());
+}
+
+// Test co_return of result<T> -- the result unwrapping path in return_value.
+// Unwrapping only happens when co_return type exactly matches the coro type.
+TEST(Result, coReturnResultUnwrapping) {
+  { // co_return result<T> with value; unwraps and forwards the value
+    auto r = []() -> result<int> { co_return result{42}; }();
+    EXPECT_EQ(42, r.value_or_throw());
+  }
+  { // co_return result<T> with error; forwards the error
+    auto r = []() -> result<int> {
+      co_return result<int>{error_or_stopped{MyError{"inner error"}}};
+    }();
+    EXPECT_STREQ("inner error", get_exception<MyError>(r)->what());
+  }
+  // co_return result<T> where extracting value throws -- caught by
+  // unhandled_exception (tests value_or_throw() in return_value)
+  {
+    auto r = []() -> result<ThrowOnMove> {
+      co_return result{ThrowOnMove{42}};
+    }();
+    EXPECT_STREQ("move ctor", get_exception<MyError>(r)->what());
+  }
+}
+
+// Test that co_return of result<U> where U != T does NOT unwrap.
+// This is important for result<result<T>> -- the inner result should be
+// stored as a value, not unwrapped (which would incorrectly propagate errors).
+TEST(Result, coReturnNestedResultNoUnwrap) {
+  { // Inner result with value -- stored as value, not unwrapped
+    auto r = []() -> result<result<int>> { co_return result{42}; }();
+    EXPECT_EQ(42, r.value_or_throw().value_or_throw());
+  }
+  { // Inner result with error -- stored as value, error does NOT propagate
+    auto r = []() -> result<result<int>> {
+      co_return result<int>{error_or_stopped{MyError{"inner error"}}};
+    }();
+    EXPECT_TRUE(r.has_value()); // outer has value, but ...
+    EXPECT_STREQ( // ... inner has error
+        "inner error", get_exception<MyError>(r.value_or_throw())->what());
+  }
 }
 
 // The point is that `std::move` is not required in `return` / `co_return`,
@@ -480,6 +717,38 @@ RESULT_CO_TEST(Result, copySmallTrivialUnderlying) {
   EXPECT_EQ(s, co_await or_unwind(m));
   EXPECT_EQ(s, co_await or_unwind(std::move(m)));
   EXPECT_EQ(s, co_await or_unwind(result<Smol>{s}));
+}
+
+// Document narrowing/widening behaviors of `result`'s simple conversion ctor
+// (it mentions `conversionTypes`).  If that ctor had {}-initialization instead
+// of (), then narrowing conversions that work today would break.
+CO_TEST(Result, conversionTypes) {
+  // short -> int: Widening
+  result<short> rShort{static_cast<short>(42)};
+  EXPECT_EQ(42, result<int>{std::move(rShort)}.value_or_throw());
+
+  // int -> float: Narrowing because large ints may lose precision.
+  result<int> rInt{1000};
+  EXPECT_EQ(1000.0f, result<float>{std::move(rInt)}.value_or_throw());
+
+  // result coroutine `co_return` allows narrowing
+  EXPECT_EQ(129, []() -> result<uint8_t> { co_return 129; }().value_or_throw());
+
+  // Comparison: plain functions and task coros also allow narrowing.
+  EXPECT_EQ(129, []() -> uint8_t { return 129; }());
+  EXPECT_EQ(129, co_await []() -> coro::now_task<uint8_t> { co_return 129; }());
+}
+
+// Test error/stopped state propagation through type conversions.
+TEST(Result, conversionPropagatesErrorAndStopped) {
+  { // "Error" propagates through result<int> -> result<float> conversion
+    result<float> r{result<int>{error_or_stopped{MyError{"propagate"}}}};
+    EXPECT_STREQ("propagate", get_exception<MyError>(r)->what());
+  }
+  { // "Stopped" propagates through result<int> -> result<float> conversion
+    result<float> r{result<int>{stopped_result}};
+    EXPECT_TRUE(r.has_stopped());
+  }
 }
 
 RESULT_CO_TEST(Result, simpleConversion) {
@@ -856,6 +1125,36 @@ RESULT_CO_TEST(Result, returnImplicitCtor) {
     co_return {3, 4};
   };
   EXPECT_EQ(4, (co_await or_unwind(returnImplicitCtor())).second);
+}
+
+// Test that result<T> works as a coroutine return type for
+// non-default-constructible T.
+RESULT_CO_TEST(Result, nonDefaultConstructible) {
+  struct NoDefaultCtor {
+    int value;
+    explicit NoDefaultCtor(int v) : value(v) {}
+  };
+  static_assert(!std::is_default_constructible_v<NoDefaultCtor>);
+
+  { // result_promise::return_value(T)
+    auto r = []() -> result<NoDefaultCtor> { co_return NoDefaultCtor{42}; }();
+    EXPECT_EQ(42, (co_await or_unwind(r)).value);
+  }
+
+  { // result_promise::return_value(error_or_stopped)
+    auto r = []() -> result<NoDefaultCtor> {
+      co_return error_or_stopped{MyError{"error path"}};
+    }();
+    EXPECT_STREQ("error path", get_exception<MyError>(r)->what());
+  }
+
+  { // result_promise::unhandled_exception
+    auto r = []() -> result<NoDefaultCtor> {
+      throw MyError{"oops"};
+      co_return NoDefaultCtor{5}; // only a coro is an exception boundary
+    }();
+    EXPECT_STREQ("oops", get_exception<MyError>(r)->what());
+  }
 }
 
 TEST(Result, checkCustomError) {

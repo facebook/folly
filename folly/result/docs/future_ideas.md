@@ -28,6 +28,8 @@ when building new features:
 
 These are sorted from "near future" to "far future".
 
+  - Make `result` copyable, see `docs/design_notes.md` for the subtleties.
+
   - I am unsure whether `result<T>` should become `fmt`- and
     `<<(ostream&)`-formattable whenever `T` is.  It's convenient, but it's not
     obvious what convention should disinguish value from non-value output,
@@ -43,6 +45,10 @@ These are sorted from "near future" to "far future".
         is instructive.  Also see https://fburl.com/cpp_debug_only_stack_trace.
       * A further extension would be to also add epitaphs to the error with
         the coroutine stack (see `AsyncStack` code in `folly/coro`).
+
+  - Thoughtfully add `in_place` / `in_place_t` support to the public API as
+    appropriate.  When `result` gets it, clean up `TEST(Result, throwingMove)`
+    where we reassign `.value`.
 
   - Make it easy to mark certain epitaphs debug-only.  Ideally it would also
     be easy to toggle some epitaphs at runtime for debugging production
