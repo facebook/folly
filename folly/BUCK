@@ -4797,12 +4797,13 @@ fbcode_target(
     }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
-    arch_preprocessor_flags = {
-        "x86_64": [
+    modular_headers = False,
+    preprocessor_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
             "-mavx2",
         ],
-    },
-    modular_headers = False,
+    }),
     exported_deps = select({
         "DEFAULT": [],
         "ovr_config//os:linux-arm64": [
@@ -4838,17 +4839,18 @@ fbcode_target(
     }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
-    arch_preprocessor_flags = {
-        "aarch64": [
+    link_whole = True,  # Set link_whole to force linker to use __folly_memset
+    modular_headers = False,
+    preprocessor_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:arm64": [
             "-DFOLLY_MEMSET_IS_MEMSET",
         ],
-        "x86_64": [
+        "ovr_config//cpu:x86_64": [
             "-DFOLLY_MEMSET_IS_MEMSET",
             "-mavx2",
         ],
-    },
-    link_whole = True,  # Set link_whole to force linker to use __folly_memset
-    modular_headers = False,
+    }),
     exported_deps = select({
         "DEFAULT": [],
         "ovr_config//os:linux-arm64": [
@@ -4873,12 +4875,13 @@ fbcode_target(
     }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
-    arch_preprocessor_flags = {
-        "x86_64": [
+    modular_headers = False,
+    preprocessor_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
             "-mavx2",
         ],
-    },
-    modular_headers = False,
+    }),
     exported_deps = select({
         "DEFAULT": [],
         "ovr_config//os:linux-arm64": [
@@ -4914,18 +4917,19 @@ fbcode_target(
     }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
-    arch_preprocessor_flags = {
-        "aarch64": [
+    link_whole = True,  # Set link_whole to force linker to use __folly_memcpy
+    modular_headers = False,
+    preprocessor_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:arm64": [
             "-DFOLLY_MEMCPY_IS_MEMCPY",
         ],
-        "x86_64": [
+        "ovr_config//cpu:x86_64": [
             "-DFOLLY_MEMCPY_IS_MEMCPY",
             "-mavx2",
             "-march=haswell",
         ],
-    },
-    link_whole = True,  # Set link_whole to force linker to use __folly_memcpy
-    modular_headers = False,
+    }),
     exported_deps = select({
         "DEFAULT": [],
         "ovr_config//os:linux-arm64": [

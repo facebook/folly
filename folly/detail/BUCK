@@ -987,13 +987,14 @@ fbcode_target(
     name = "traponavx512",
     srcs = ["TrapOnAvx512.cpp"],
     headers = ["TrapOnAvx512.h"],
-    arch_preprocessor_flags = {
-        "x86_64": [
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
             "-msse4.2",
             "-mavx512f",
             "-mavx512vl",
         ],
-    },
+    }),
     deps = [
         "//folly:portability",
     ],

@@ -12,13 +12,14 @@ fbcode_target(
     headers = [
         "avx512_crc32c_v8s3x4.h",
     ],
-    arch_preprocessor_flags = {
-        "x86_64": [
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
             "-mavx512f",
             "-mavx512vl",
             "-mpclmul",
         ],
-    },
+    }),
     exported_deps = [
         "//folly:portability",
     ],
@@ -47,11 +48,12 @@ fbcode_target(
     headers = [
         "neon_crc32c_v3s4x2e_v2.h",
     ],
-    arch_preprocessor_flags = {
-        "aarch64": [
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:arm64": [
             "-march=armv8-a+crypto+crc",
         ],
-    },
+    }),
     deps = [
         "//folly:portability",
         "//folly/system:aux_vector",

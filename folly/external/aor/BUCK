@@ -34,11 +34,12 @@ fbcode_target(
     headers = [
         "asmdefs.h",
     ],
-    arch_preprocessor_flags = {
-        "aarch64": [
+    preprocessor_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:arm64": [
             "-DFOLLY_MEMCPY_IS_MEMCPY",
         ],
-    },
+    }),
     target_compatible_with = [
         "ovr_config//os:linux-arm64",
     ],
@@ -69,11 +70,12 @@ fbcode_target(
     headers = [
         "asmdefs.h",
     ],
-    arch_preprocessor_flags = {
-        "aarch64": [
+    preprocessor_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:arm64": [
             "-DFOLLY_MEMSET_IS_MEMSET",
         ],
-    },
+    }),
     target_compatible_with = [
         "ovr_config//os:linux-arm64",
     ],
