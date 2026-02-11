@@ -1,5 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "../defs.bzl",
     "folly_xplat_library",
@@ -7,102 +6,12 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "net_ops_dispatcher",
-    srcs = [
-        "NetOpsDispatcher.cpp",
-    ],
-    raw_headers = [
-        "NetOpsDispatcher.h",
-    ],
-    deps = [
-        "//xplat/folly/net:net_ops",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "network_socket",
-    raw_headers = [
-        "NetworkSocket.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/portability:windows",
-        "//xplat/folly/net/detail:socket_file_descriptor_map",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "net_ops",
-    srcs = [
-        "NetOps.cpp",
-    ],
-    raw_headers = [
-        "NetOps.h",
-    ],
-    deps = [
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:utility",
-        "//xplat/folly/net/detail:socket_file_descriptor_map",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/portability:iovec",
-        "fbsource//xplat/folly/portability:sys_types",
-        "fbsource//xplat/folly/portability:time",
-        "fbsource//xplat/folly/portability:windows",
-        "//xplat/folly:portability",
-        "//xplat/folly/net:network_socket",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "tcpinfo_dispatcher",
-    srcs = [
-        "TcpInfoDispatcher.cpp",
-    ],
-    raw_headers = [
-        "TcpInfoDispatcher.h",
-    ],
-    exported_deps = [
-        "//xplat/folly:expected",
-        "//xplat/folly/net:net_ops_dispatcher",
-        "//xplat/folly/net:tcpinfo",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "tcpinfo",
-    srcs = [
-        "TcpInfo.cpp",
-    ],
-    raw_headers = [
-        "TcpInfo.h",
-        "TcpInfoTypes.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/portability:sockets",
-        "//third-party/glog:glog",
-    ],
-    exported_deps = [
-        "//xplat/folly:expected",
-        "//xplat/folly:optional",
-        "//xplat/folly:string",
-        "//xplat/folly/net:net_ops_dispatcher",
-        "//xplat/folly/net:network_socket",
-    ],
-)
-
-# !!!! fbcode/folly/net/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "net_ops",
     srcs = ["NetOps.cpp"],
     headers = ["NetOps.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:c_portability",
         "//folly:scope_guard",
@@ -119,34 +28,26 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "net_ops_dispatcher",
-    srcs = ["NetOpsDispatcher.cpp"],
-    headers = ["NetOpsDispatcher.h"],
-    exported_deps = [
-        ":net_ops",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "network_socket",
     headers = ["NetworkSocket.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/net/detail:socket_file_descriptor_map",
         "//folly/portability:windows",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "tcpinfo",
     srcs = ["TcpInfo.cpp"],
     headers = [
         "TcpInfo.h",
         "TcpInfoTypes.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly/portability:sockets",
@@ -160,11 +61,23 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
+    name = "net_ops_dispatcher",
+    srcs = ["NetOpsDispatcher.cpp"],
+    headers = ["NetOpsDispatcher.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":net_ops",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "tcpinfo_dispatcher",
     srcs = ["TcpInfoDispatcher.cpp"],
     headers = ["TcpInfoDispatcher.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":net_ops_dispatcher",
         ":tcpinfo",
