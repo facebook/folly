@@ -18,8 +18,10 @@
 
 #include <sstream>
 #include <string>
+#include <type_traits>
 
 #include <folly/Benchmark.h>
+#include <folly/Unit.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/result/rich_exception_ptr.h>
@@ -84,3 +86,54 @@ inline int benchmarkMain(
 }
 
 } // namespace folly::test
+
+#if FOLLY_HAS_RESULT
+
+#include <folly/result/result.h>
+
+namespace folly::test {
+
+// Used for a non-predictable `result<T>` in micro-benchmarks where constant
+// propagation would otherwise make it meaningless.
+//
+// Array of `result<T>` with mixed states -- errors at even indices, values at
+// odd indices.  `next()` strides by 2 starting at `withValue` or `withError`.
+// The result is always the same, but the compiler can't easily prove it.
+template <auto V = unit>
+struct BenchResult {
+  using T = drop_unit_t<decltype(V)>;
+
+  enum Start : size_t { withValue = 1, withError = 0 };
+
+  static result<T> makeValue() {
+    if constexpr (std::is_same_v<T, void>) {
+      return {};
+    } else {
+      return result<T>{V};
+    }
+  }
+
+  result<T> a[4] = {
+      result<T>{error_or_stopped{std::runtime_error{"e"}}},
+      makeValue(),
+      result<T>{error_or_stopped{std::runtime_error{"e"}}},
+      makeValue(),
+  };
+  size_t idx_;
+
+  explicit BenchResult(Start start) : idx_(start) {}
+
+  static FOLLY_ALWAYS_INLINE size_t advance(size_t idx) {
+    return (idx + 2) & 0x3;
+  }
+  // Returns lref to current element and advances.
+  FOLLY_ALWAYS_INLINE result<T>& next() {
+    auto& r = a[idx_];
+    idx_ = advance(idx_);
+    return r;
+  }
+};
+
+} // namespace folly::test
+
+#endif // FOLLY_HAS_RESULT

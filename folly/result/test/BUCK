@@ -21,8 +21,10 @@ fb_dirsync_cpp_library(
     headers = ["common.h"],
     exported_deps = [
         "//folly:benchmark",
+        "//folly:unit",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
+        "//folly/result:result",
         "//folly/result:rich_error_base",
     ],
 )
@@ -124,6 +126,7 @@ fb_dirsync_cpp_unittest(
         ":common",
         "//folly:benchmark",
         "//folly:portability",
+        "//folly:scope_guard",
         "//folly/lang:keep",
         "//folly/result:coro",
     ],
