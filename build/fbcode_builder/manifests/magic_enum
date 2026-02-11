@@ -1,0 +1,14 @@
+[manifest]
+name = magic_enum
+
+[download]
+url = https://github.com/Neargye/magic_enum/releases/download/v0.9.7/magic_enum-v0.9.7.tar.gz
+sha256 = c047bc7ca0b76752168140e7ae9a4a30d72bf6530c196fdfbf5105a39d40cc46
+
+[build]
+builder = cmake
+
+[cmake.defines]
+MAGIC_ENUM_OPT_BUILD_EXAMPLES = OFF
+MAGIC_ENUM_OPT_BUILD_TESTS = OFF
+MAGIC_ENUM_OPT_INSTALL = ON
