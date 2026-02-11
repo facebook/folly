@@ -31,7 +31,7 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
   }
 
   void setExpectedCount(size_t expectedCount) {
-    assert(expectedCount_ == 0 || !"expectedCount_ being set more than once");
+    assert(expectedCount_ == 0 && "expectedCount_ being set more than once");
     expectedCount_ = expectedCount;
     optEntries_.resize(expectedCount_);
   }
@@ -41,7 +41,7 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
       optEntries_.resize(sequenceNumber + 1);
     }
     folly::Optional<Entry>& optEntry = optEntries_[sequenceNumber];
-    assert(!optEntry || !"Multiple inputs have the same token sequence number");
+    assert(!optEntry && "Multiple inputs have the same token sequence number");
     optEntry = Entry(std::move(input));
     return optEntry->promise.getFuture();
   }
@@ -65,8 +65,8 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
 
       // Validate entries count same as expectedCount_
       assert(
-          optEntries_.size() == expectedCount_ ||
-          !"Entries vector did not have expected size");
+          optEntries_.size() == expectedCount_ &&
+          "Entries vector did not have expected size");
       std::vector<size_t> vecTokensNotDispatched;
       for (size_t i = 0; i < expectedCount_; ++i) {
         if (!optEntries_[i]) {
