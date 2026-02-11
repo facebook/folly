@@ -32,9 +32,8 @@ class immortal_rich_error_t;
 
 namespace detail {
 
-// These are in `detail` since they're opt-build fallbacks for a debug-fatal.
+// This is in `detail` since it's an opt-build fallback for a debug-fatal.
 struct bad_result_access_error : public std::exception {};
-struct empty_result_error : public std::exception {};
 
 // Stub types that will be replaced by integrations with other folly/ types.
 //
