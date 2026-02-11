@@ -705,6 +705,75 @@ RESULT_CO_TEST(Result, movableContexts) {
   }
 }
 
+// It is easy to mis-implement `result_promise::return_value` so that it plumbs
+// the value category of the value / error_or_stopped incorrectly.  The worst
+// failure would be if `co_return`ing an lvalue moved from the original.
+TEST(Result, coReturnLvalueResultDoesNotMove) {
+  // `hasError(...)` / `hasValue(...)` compare `res` with an `co_return lvalue`
+  // coming from an inline lambda coro.  These trigger copies, since
+  // reference-captures are not implicitly movable.
+  {
+    result<int> res{error_or_stopped{MyError{"original error"}}};
+    auto hasError = [](const result<int>& r) {
+      EXPECT_FALSE(r.has_value());
+      EXPECT_STREQ("original error", get_exception<MyError>(r)->what());
+    };
+    // Both the returned and original results have the error.
+    hasError([&res]() -> result<int> { co_return res; }());
+    hasError(res);
+  }
+  { // shared_ptr is copyable and becomes null when moved-from.
+    auto ptr = std::make_shared<int>(42);
+    result<std::shared_ptr<int>> res{copy(ptr)};
+    auto hasValue = [&ptr](const result<std::shared_ptr<int>>& r) {
+      EXPECT_EQ(ptr, r.value_or_throw());
+    };
+    // Both the returned and original results share the pointer.
+    hasValue([&res]() -> result<std::shared_ptr<int>> { co_return res; }());
+    hasValue(res);
+  }
+}
+
+// Check that `co_return lvalue_result<T&>` preserves const-correctness, like
+// the `.copy()` method constraints in `forbidUnsafeCopyOfResultRef`.
+//
+// The concern: `const result<int&>` only gives `const int&` access. If we could
+// `co_return` a const lvalue `result<int&>`, we'd get a new `result<int&>` with
+// mutable `int&` access, violating const-correctness.
+//
+// The implementation prevents this: `value_or_throw() const& -> const int&`,
+// but `std::reference_wrapper<int>` is not constructible from `const int&`.
+TEST(Result, coReturnLvalueResultRefConstCorrectness) {
+  int n = 42;
+  { // OK to copy mutable `result<int&>`
+    result<int&> r = std::ref(n);
+    auto r2 = [](result<int&>& ref) -> result<int&> { co_return ref; }(r);
+    EXPECT_EQ(42, r2.value_or_throw());
+    r2.value_or_throw() = 100;
+    EXPECT_EQ(100, n);
+    n = 42; // restore
+  }
+
+  auto testConstLvalueCoReturn = [&]<typename T>(tag_t<T>) {
+    using RefWrap = std::conditional_t<
+        std::is_const_v<std::remove_reference_t<T>>,
+        std::reference_wrapper<const int>,
+        std::reference_wrapper<int>>;
+    result<T> r{RefWrap{n}};
+    // The `const` here is what causes the "manual test" to be a build error.
+    return [](const result<T>& ref) -> result<T> { co_return ref; }(r);
+  };
+
+  // OK to copy `const result<const int&>` -- inner const is preserved
+  EXPECT_EQ(42, testConstLvalueCoReturn(tag<const int&>).value_or_throw());
+
+#if 0 // Manual test -- verifies const-correctness violation doesn't compile
+  // Cannot copy `const result<int&>` -- would return mutable `result<int&>`
+  // error: no matching constructor for 'reference_wrapper<int>' from 'const int'
+  EXPECT_EQ(42, testConstLvalueCoReturn(tag<int&>).value_or_throw());
+#endif
+}
+
 RESULT_CO_TEST(Result, copySmallTrivialUnderlying) {
   struct Smol {
     size_t a;
