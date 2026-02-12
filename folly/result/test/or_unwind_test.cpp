@@ -165,8 +165,15 @@ void forEachOrUnwindVariant(MakeResult makeResult, Check&& check) {
   if constexpr (requires { val.has_value(); }) {
     hasValue = val.has_value(); // Ward against `or_unwind` mutating it
   }
-  // By lvalue ref, only for copyable results
-  if constexpr (requires { val.copy(); }) {
+  // By lvalue ref, only for result types that support lvalue `or_unwind`.
+  if constexpr (
+      // Exclude `error_or_stopped` (rvalue-only)
+      requires { val.has_value(); } &&
+      // Deep-const: `result<V&>` is only copyable from a mutable source,
+      // so test with `decltype(val)&` rather than `const`.
+      std::is_constructible_v<
+          std::remove_cvref_t<decltype(val)>,
+          decltype(val)&>) {
     check(tag_t<Context>{}, or_unwind(val));
     check(tag_t<Context>{}, or_unwind(std::as_const(val)));
     // Lvalue refs must NOT mutate the original (error is copied, not moved).

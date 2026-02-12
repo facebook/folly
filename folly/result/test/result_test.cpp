@@ -90,26 +90,52 @@ static_assert(
     sizeof(error_or_stopped) == sizeof(void*) || !kIsLinux ||
     sizeof(void*) != 8);
 
-// result<T>: not (yet) copyable, but movable
-static_assert(!std::is_copy_constructible_v<result<int>>);
-static_assert(!std::is_copy_assignable_v<result<int>>);
+// result<V>: copyable when V is, movable
+static_assert(std::is_copy_constructible_v<result<int>>);
+static_assert(std::is_copy_assignable_v<result<int>>);
 static_assert(std::is_move_constructible_v<result<int>>);
 static_assert(std::is_move_assignable_v<result<int>>);
 
-// result<T&>: not (yet) copyable, but movable
-//
-// WARNING: When adding copyability, forbid copies from `const result<T&>&`,
-// details in `DefineMovableDeepConstLrefCopyable.h`.
+// result<V> with move-only V: not copyable, movable
+static_assert(!std::is_copy_constructible_v<result<std::unique_ptr<int>>>);
+static_assert(!std::is_copy_assignable_v<result<std::unique_ptr<int>>>);
+static_assert(std::is_move_constructible_v<result<std::unique_ptr<int>>>);
+static_assert(std::is_move_assignable_v<result<std::unique_ptr<int>>>);
+
+// result<V&>: copyable from mutable only (deep-const), like
+// `DefineMovableDeepConstLrefCopyable.h`.
+// `is_copy_constructible_v` tests `const&`, so it's correctly FALSE here.
 static_assert(!std::is_copy_constructible_v<result<int&>>);
-static_assert(!std::is_copy_assignable_v<result<int&>>);
+static_assert(std::is_constructible_v<result<int&>, result<int&>&>);
+static_assert(!std::is_constructible_v<result<int&>, const result<int&>&>);
+static_assert(!std::is_constructible_v<result<int&>, const result<int&>&&>);
+static_assert(std::is_assignable_v<result<int&>&, result<int&>&>);
+static_assert(!std::is_assignable_v<result<int&>&, const result<int&>&>);
+static_assert(!std::is_assignable_v<result<int&>&, const result<int&>&&>);
 static_assert(std::is_move_constructible_v<result<int&>>);
 static_assert(std::is_move_assignable_v<result<int&>>);
 
-// result<T&&> will always be move-only, following `rvalue_reference_wrapper`
-static_assert(!std::is_copy_constructible_v<result<int&&>>);
-static_assert(!std::is_copy_assignable_v<result<int&&>>);
+// result<const V&>: fully copyable (from both mutable and const source)
+static_assert(std::is_copy_constructible_v<result<const int&>>);
+static_assert(std::is_copy_assignable_v<result<const int&>>);
+static_assert(std::is_move_constructible_v<result<const int&>>);
+static_assert(std::is_move_assignable_v<result<const int&>>);
+
+// result<V&&>: never copyable, following `rvalue_reference_wrapper`
+static_assert(!std::is_constructible_v<result<int&&>, result<int&&>&>);
+static_assert(!std::is_constructible_v<result<int&&>, const result<int&&>&>);
+static_assert(!std::is_constructible_v<result<int&&>, const result<int&&>&&>);
+static_assert(!std::is_assignable_v<result<int&&>&, result<int&&>&>);
+static_assert(!std::is_assignable_v<result<int&&>&, const result<int&&>&>);
+static_assert(!std::is_assignable_v<result<int&&>&, const result<int&&>&&>);
 static_assert(std::is_move_constructible_v<result<int&&>>);
 static_assert(std::is_move_assignable_v<result<int&&>>);
+
+// result<void>: copyable & movable
+static_assert(std::is_copy_constructible_v<result<>>);
+static_assert(std::is_copy_assignable_v<result<>>);
+static_assert(std::is_move_constructible_v<result<>>);
+static_assert(std::is_move_assignable_v<result<>>);
 
 // result propagates noexcept from the value type
 static_assert(std::is_nothrow_move_constructible_v<result<int>>);
@@ -167,15 +193,19 @@ void selfMove(T& x) {
   x = std::move(x);
 }
 
+// Test self-copy-assignment without triggering `-Wself-assign-overloaded`.
+template <typename T>
+void selfCopy(T& x) {
+  auto* p = &x;
+  x = *p;
+}
+
 // Fully tests `void`-specific behaviors.  Loosely covers common features from
 // `result_crtp` -- they're covered in-depth by the non-`void` tests below.
 TEST(Result, resultOfVoid) {
   // Cover the handful of things specific to the `result<void>` specialization,
   // plus copyability & movability.
   {
-    static_assert(!std::is_copy_constructible_v<result<>>);
-    static_assert(!std::is_copy_assignable_v<result<>>);
-
     // Exception-safety of result's move assignment relies on error_or_stopped
     // being nothrow movable (so eos_ updates in move operations never throw).
     static_assert(std::is_nothrow_move_constructible_v<error_or_stopped>);
@@ -191,7 +221,36 @@ TEST(Result, resultOfVoid) {
     result<> r3;
     r3 = std::move(r2); // move-assign
 
-    r3.copy().value_or_throw();
+    copy(r3).value_or_throw(); // copy-construct value state
+    result<> rErr{error_or_stopped{MyError{"e"}}};
+    { // copy-construct error state
+      auto rErr2{rErr};
+      EXPECT_TRUE(get_exception<MyError>(rErr2));
+    }
+    { // copy-assign: value <- value
+      result<> rc;
+      rc = r3;
+      EXPECT_TRUE(rc.has_value());
+    }
+    { // copy-assign: error <- value
+      result<> rc{error_or_stopped{MyError{"e"}}};
+      rc = r3;
+      EXPECT_TRUE(rc.has_value());
+    }
+    { // copy-assign: value <- error
+      result<> rc;
+      rc = rErr;
+      EXPECT_TRUE(get_exception<MyError>(rc));
+    }
+    { // copy-assign: error <- error
+      result<> rc{error_or_stopped{MyError{"e1"}}};
+      rc = rErr;
+      EXPECT_TRUE(get_exception<MyError>(rc));
+    }
+    selfCopy(r3);
+    EXPECT_TRUE(r3.has_value());
+    selfCopy(rErr);
+    EXPECT_TRUE(get_exception<MyError>(rErr));
   }
   { // `result<void>` in an error state
     result<> r(error_or_stopped{MyError{"soup"}}); // ctor
@@ -335,25 +394,65 @@ TEST(Result, refCopiable) {
   result mIntPtrRef1 = std::ref(intPtr);
   static_assert(
       std::is_same_v<result<std::unique_ptr<int>&>, decltype(mIntPtrRef1)>);
-  auto mIntPtrRef2 = mIntPtrRef1.copy();
+  auto mIntPtrRef2 = result{mIntPtrRef1}; // copy from mutable
   *(mIntPtrRef2.value_or_throw()) += 1;
   EXPECT_EQ(1338, *mIntPtrRef1.value_or_throw());
   EXPECT_EQ(1338, *intPtr);
 }
 
 TEST(Result, copyMethod) {
+  // Copy-construction: value state
   result<int> r{1337};
-  auto rToo = r.copy();
+  auto rToo{r};
   EXPECT_EQ(r.value_or_throw(), rToo.value_or_throw());
   EXPECT_TRUE(r == rToo);
 
+  // Copy-construction: error state
   result<int> rErr{error_or_stopped{MyError{"grr"}}};
-  auto rErrToo = rErr.copy();
+  auto rErrToo{rErr};
   EXPECT_EQ(rErr.error_or_stopped(), rErrToo.error_or_stopped());
   EXPECT_TRUE(rErr == rErrToo);
 
   EXPECT_TRUE(rErr != r);
   EXPECT_TRUE(rErrToo != rToo);
+
+  // Copy-construction: non-trivially-copyable type
+  {
+    result<std::string> rs{std::string("hello")};
+    auto rs2{rs};
+    EXPECT_EQ("hello", rs2.value_or_throw());
+    EXPECT_EQ("hello", rs.value_or_throw()); // source unchanged
+    rs2 = rs; // copy-assign non-trivially-copyable
+    EXPECT_EQ("hello", rs2.value_or_throw());
+  }
+
+  { // Copy assignment: value <- value
+    result<int> rc{0};
+    rc = rToo;
+    EXPECT_EQ(1337, rc.value_or_throw());
+    EXPECT_EQ(1337, rToo.value_or_throw());
+  }
+  { // Copy assignment: value <- error
+    result<int> rc{0};
+    rc = rErr;
+    EXPECT_TRUE(get_exception<MyError>(rc));
+    EXPECT_TRUE(get_exception<MyError>(rErr));
+  }
+  { // Copy assignment: error <- value
+    result<int> rc{error_or_stopped{MyError{"e"}}};
+    rc = rToo;
+    EXPECT_EQ(1337, rc.value_or_throw());
+  }
+  { // Copy assignment: error <- error
+    result<int> rc{error_or_stopped{MyError{"e1"}}};
+    rc = rErr;
+    EXPECT_TRUE(get_exception<MyError>(rc));
+  }
+  // Self-copy-assignment
+  selfCopy(r);
+  EXPECT_EQ(1337, r.value_or_throw());
+  selfCopy(rErr);
+  EXPECT_TRUE(get_exception<MyError>(rErr));
 }
 
 // `stopped_result` is covered separately
@@ -417,27 +516,36 @@ RESULT_CO_TEST(Result, forbidUnsafeCopyOfResultRef) {
   result rc = std::cref(n);
   static_assert(std::is_same_v<result<const int&>, decltype(rc)>);
   { // Safe copies of ref -- `rc` has `const` inside, cannot be discarded
-    result rc2 = rc.copy();
+    auto rc2{rc};
     EXPECT_EQ(42, (co_await or_unwind(rc2)));
-    result rc3 = std::as_const(rc).copy();
+    auto rc3{std::as_const(rc)};
     EXPECT_EQ(42, (co_await or_unwind(rc3)));
   }
-  static_assert(requires { rc.copy(); });
-  static_assert(requires { std::as_const(rc).copy(); });
+  { // Copy-assign result<const int&> -- rebinds the ref wrapper
+    int m = 99;
+    result<const int&> rc2 = std::cref(m);
+    rc2 = rc;
+    EXPECT_EQ(42, rc2.value_or_throw());
+    EXPECT_EQ(&n, &rc2.value_or_throw());
+  }
 
   result<int&> r = std::ref(n);
   { // Safe copy of ref -- `r` has no `const` to discard
-    result r2 = r.copy();
+    auto r2 = result{r}; // copy from mutable
     EXPECT_EQ(42, (co_await or_unwind(r2)));
   }
-  // Unsafe: copying `const result<int&>` would discard the outer `const`
-  //   result r3 = std::as_const(r).copy();
-  // The next assert shows the above `.copy()` is SFINAE-deleted.
-  //
-  // NB: This `requires` won't compile without using a dependent type.
-  static_assert(![](const auto& r2) { return requires { r2.copy(); }; }(r));
-  // Copy-from-mutable still works
-  static_assert([](auto& r2) { return requires { r2.copy(); }; }(r));
+  { // Copy-assign result<int&> from mutable -- rebinds the ref wrapper
+    int m = 99;
+    result<int&> r2 = std::ref(m);
+    r2 = r;
+    EXPECT_EQ(42, r2.value_or_throw());
+    EXPECT_EQ(&n, &r2.value_or_throw());
+  }
+  // Unsafe: copying `const result<int&>` would discard the outer `const`.
+  // The copy ctor from `const result<int&>&` is constrained away.
+  static_assert(!std::is_constructible_v<result<int&>, const result<int&>&>);
+  // Copy-from-mutable works
+  static_assert(std::is_constructible_v<result<int&>, result<int&>&>);
 }
 
 // Check `?.value_or_throw()` and `co_await ?` return types for various ways of
@@ -510,7 +618,7 @@ RESULT_CO_TEST(Result, fromRefWrapperAndRefAccess) {
   T t2 = std::make_unique<int>(567);
   {
     result<T&> rLref = std::ref(t1);
-    EXPECT_EQ(321, *(co_await or_unwind(rLref.copy())));
+    EXPECT_EQ(321, *(co_await or_unwind(result{rLref})));
     EXPECT_EQ(321, *rLref.value_or_throw());
     selfMove(rLref);
     EXPECT_EQ(321, *rLref.value_or_throw());
@@ -522,7 +630,7 @@ RESULT_CO_TEST(Result, fromRefWrapperAndRefAccess) {
 
   {
     result<const T&> rCref = std::cref(t1);
-    EXPECT_EQ(567, *(co_await or_unwind(rCref.copy())));
+    EXPECT_EQ(567, *(co_await or_unwind(copy(rCref))));
     EXPECT_EQ(567, *rCref.value_or_throw());
     *(co_await or_unwind(std::as_const(rCref))) +=
         1; // can change the int, not the unique_ptr
@@ -531,7 +639,7 @@ RESULT_CO_TEST(Result, fromRefWrapperAndRefAccess) {
     EXPECT_TRUE(t2 == nullptr); // was moved out above
     t2 = std::make_unique<int>(42);
     rCref = std::cref(t2); // assignment uses the implict ctor
-    EXPECT_EQ(42, *(co_await or_unwind(rCref.copy())));
+    EXPECT_EQ(42, *(co_await or_unwind(copy(rCref))));
   }
 
   {
@@ -977,10 +1085,10 @@ TEST(Result, accessValue) {
 
   if constexpr (!kIsDebug) {
     EXPECT_TRUE(is_bad_result_access(std::as_const(r).error_or_stopped()));
-    EXPECT_TRUE(is_bad_result_access(r.copy().error_or_stopped()));
+    EXPECT_TRUE(is_bad_result_access(copy(r).error_or_stopped()));
   } else {
     EXPECT_DEATH(std::as_const(r).error_or_stopped(), bad_access_re);
-    EXPECT_DEATH((void)r.copy().error_or_stopped(), bad_access_re);
+    EXPECT_DEATH((void)copy(r).error_or_stopped(), bad_access_re);
   }
 
   EXPECT_EQ(555, r.value_or_throw());
@@ -1017,10 +1125,10 @@ TEST(Result, accessLvalueRef) {
 
   if constexpr (!kIsDebug) {
     EXPECT_TRUE(is_bad_result_access(std::as_const(r).error_or_stopped()));
-    EXPECT_TRUE(is_bad_result_access(r.copy().error_or_stopped()));
+    EXPECT_TRUE(is_bad_result_access(copy(r).error_or_stopped()));
   } else {
     EXPECT_DEATH(std::as_const(r).error_or_stopped(), bad_access_re);
-    EXPECT_DEATH((void)r.copy().error_or_stopped(), bad_access_re);
+    EXPECT_DEATH((void)copy(r).error_or_stopped(), bad_access_re);
   }
 
   EXPECT_EQ(555, r.value_or_throw());
@@ -1117,7 +1225,7 @@ TEST(Result, accessError) {
 
   result<int> rSame1{r.error_or_stopped()};
   result<int> rSame2 = error_or_stopped::from_exception_ptr_slow(
-      r.copy().error_or_stopped().to_exception_ptr_slow());
+      copy(r).error_or_stopped().to_exception_ptr_slow());
   result<int> rDiff{error_or_stopped{MyError{"farewell"}}};
   EXPECT_TRUE(r == rSame1);
   EXPECT_TRUE(r == rSame2);

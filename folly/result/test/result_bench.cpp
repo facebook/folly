@@ -107,7 +107,7 @@ BENCHMARK(error_or_stopped_move, iters) {
   BenchResult<42> inputs{BenchResult<42>::withError};
   suspender.dismissing([&] {
     while (iters--) {
-      compiler_must_not_elide(inputs.next().copy().error_or_stopped());
+      compiler_must_not_elide(copy(inputs.next()).error_or_stopped());
     }
   });
 }
@@ -209,7 +209,7 @@ BENCHMARK(result_to_try_value, iters) {
   BenchmarkSuspender suspender;
   suspender.dismissing([&] {
     while (iters--) {
-      compiler_must_not_elide(result_to_try(r.copy()));
+      compiler_must_not_elide(result_to_try(r));
     }
   });
 }
@@ -219,7 +219,7 @@ BENCHMARK(result_to_try_error, iters) {
   BenchmarkSuspender suspender;
   suspender.dismissing([&] {
     while (iters--) {
-      compiler_must_not_elide(result_to_try(r.copy()));
+      compiler_must_not_elide(result_to_try(r));
     }
   });
 }

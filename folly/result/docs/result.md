@@ -185,13 +185,12 @@ In bullets, `result<T>`:
     fatal in debug builds, but "works" in opt unless you hit a later assertion,
     like the `std::terminate` in `exception_wrapper::throw_exception`.
 
-  - Is move-only, unlike `Expected` and `Try`. The benefit is that the `result`
-    plumbing tax stays low, avoiding both user data copies, and
-    `std::exception_ptr` atomic ops. If you need to add copyability, check out
-    `design_notes.md` to do it right.
+  - Is movable iff `T` is, and copyable iff `T` is.  `result<V&&>` is
+    move-only (following `rvalue_reference_wrapper`).  `result<const V&>` is
+    fully copyable, but `result<V&>` can only be copied from a mutable source
+    (not from `const result<V&>&`) -- see `design_notes.md` for why.
+    Moves save ~7ns on the error path (atomic `exception_ptr` copy).
       * For usability, copy conversion from cheap types (like `int`) is allowed.
-      * Explicit `res.copy()` is rarely needed, since `return` and `co_return`
-        are "implicit move contexts".
       * WARNING: `co_await or_unwind(resOfV)` returns `V&` and so makes it easy
         to accidentally copy `V` (or the `exception_ptr`).  While unfortunate,
         this is the behavior of least surprise for C++ programmers.  Luckily,
@@ -323,7 +322,7 @@ multi-type dispatch.
 The semantics of `result<Value>` are straightforward:
   - You can implicitly move values in & out -- `result r{fn()}`, then
     `co_await or_unwind(std::move(r))`.
-  - You can explicitly copy `result` via `r.copy()`.
+  - You can copy `result` via `auto r2{r};` or `folly::copy(r)`.
   - To copy `Value v` into a `result`, use `result r{folly::copy(v)}`. Small
     trivially copyable `Value`s (like `int`) can be copied in implicitly.
   - Some `result<U>`s are implicitly convertible to `result<V>`. See the two

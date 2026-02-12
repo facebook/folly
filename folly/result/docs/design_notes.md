@@ -222,29 +222,18 @@ synchronous code with pervasive error handling -- they are simpler and cheaper.
 If you're wondering "why does `result` do \<*specific thing*\>?", and cannot
 find it in a code comment, the rationale may be documented here.
 
-### Why is `result` copyable only explicitly via `.copy()`?
+### Why does `result<V&>` have deep-const copy semantics?
 
-A generic `std` container, like `optional` or `expected`, follows the
-movability / copiability constraints of the underlying type.
+`result` is movable iff `T` is, and copyable iff `T` is.  The exception is
+reference types: `result<V&&>` is move-only (following
+`rvalue_reference_wrapper`), and `result<V&>` has a "deep const" restriction.
 
-We could do the same with `result` -- but **chose not to** (for now), because
-`result` is "return value plumbing".  That is, its container role is secondary,
-while the primary job is to transmit values (or references) from a subroutine
-to a caller.
-
-In typical usage, `result` is either passed by-ref or moved:
-  - `co_await ref` -- by-ref, `co_await resFn()` -- moved
-  - ditto for function arguments
-Having to write `res.copy()` should be infrequent and doesn't seem too onerous.
-I do want to acknowledge that lack of copyability makes generic programming
-around `result` worse, and that it deviates from normal user expectations.
-
-**Future**: We may revisit making `result` implicitly copyable.  The current
-explicit `.copy()` API was chosen in part due to incorrect measurements of the
-copy+destroy cost for `std::exception_ptr` -- it is actually only ~7ns.
-Important -- to implement implicit copy-construction, `result` must use the
-pattern from `folly/coro/safe/detail/DefineMovableDeepConstLrefCopyable.h` to
-preserve const-safety (see next section) -- which may still surprise users.
+Since `const result<V&>` only exposes `const V&` (see next section), copying
+`result<V&>` from `const result<V&>&` would silently grant mutable `V&` access
+through what was behind a const barrier.  To prevent this, `result<V&>` is only
+copyable from a mutable source (`result<V&>&`), not from `const result<V&>&`.
+`result<const V&>` is fully copyable, since the inner `const` cannot be lost.
+See also `DefineMovableDeepConstLrefCopyable.h` for the general pattern.
 
 ### Why does `const result<Ref>` propagate `const`?
 

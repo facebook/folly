@@ -78,7 +78,7 @@ BENCHMARK(non_catching_result_func_success, iters) {
   result<int> input{42};
   suspender.dismissing([&] {
     while (iters--) {
-      folly::compiler_must_not_elide(non_catching_result_func(input.copy()));
+      folly::compiler_must_not_elide(non_catching_result_func(copy(input)));
     }
   });
 }
@@ -88,7 +88,7 @@ BENCHMARK_RELATIVE(catching_result_func_success, iters) {
   result<int> input{42};
   suspender.dismissing([&] {
     while (iters--) {
-      folly::compiler_must_not_elide(catching_result_func(input.copy()));
+      folly::compiler_must_not_elide(catching_result_func(copy(input)));
     }
   });
 }
@@ -98,7 +98,7 @@ BENCHMARK_RELATIVE(result_coro_success, iters) {
   result<int> input{42};
   suspender.dismissing([&] {
     while (iters--) {
-      folly::compiler_must_not_elide(result_coro(input.copy()));
+      folly::compiler_must_not_elide(result_coro(copy(input)));
     }
   });
 }
@@ -112,7 +112,7 @@ BENCHMARK(non_catching_result_func_error, iters) {
   result<int> input{error_or_stopped{std::runtime_error{"test error"}}};
   suspender.dismissing([&] {
     while (iters--) {
-      folly::compiler_must_not_elide(non_catching_result_func(input.copy()));
+      folly::compiler_must_not_elide(non_catching_result_func(copy(input)));
     }
   });
 }
@@ -122,7 +122,7 @@ BENCHMARK_RELATIVE(catching_result_func_error, iters) {
   result<int> input{error_or_stopped{std::runtime_error{"test error"}}};
   suspender.dismissing([&] {
     while (iters--) {
-      folly::compiler_must_not_elide(catching_result_func(input.copy()));
+      folly::compiler_must_not_elide(catching_result_func(copy(input)));
     }
   });
 }
@@ -132,7 +132,7 @@ BENCHMARK_RELATIVE(result_coro_error, iters) {
   result<int> input{error_or_stopped{std::runtime_error{"test error"}}};
   suspender.dismissing([&] {
     while (iters--) {
-      folly::compiler_must_not_elide(result_coro(input.copy()));
+      folly::compiler_must_not_elide(result_coro(copy(input)));
     }
   });
 }
@@ -189,7 +189,7 @@ BENCHMARK(if_check_inner_success, iters) {
     size_t idx = BenchResult<42>::withValue;
     while (iters--) {
       if (!inputs.a[idx].has_value()) {
-        return folly::copy(inputs.a[idx].error_or_stopped());
+        return copy(inputs.a[idx].error_or_stopped());
       }
       folly::compiler_must_not_elide(inputs.a[idx].value_or_throw());
       idx = BenchResult<42>::advance(idx);

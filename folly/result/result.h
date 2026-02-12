@@ -77,7 +77,6 @@
 ///       - `co_await or_unwind(resultFn())` returns `T&&` from a `result<T>`,
 ///         or propagates error/stopped to the parent. Same for:
 ///           * `co_await or_unwind(std::move(res))`
-///           * `co_await or_unwind(res.copy())`
 ///           * `co_await or_unwind(folly::copy(res))`
 ///       - `co_await or_unwind(res) -> T&`. Copies `exception_ptr` on error.
 ///       - `co_await or_unwind(std::as_const(res)) -> const T&`
@@ -96,8 +95,7 @@
 ///         }
 ///
 ///   - `result` is mainly used for return values -- implying single ownership.
-///     For this reason, it encourages moves over copies (with a few carve-outs
-///     for better usability), which also helps prevent perf bugs.
+///     It is copyable (when `T` is), but moves save ~7ns on the error path.
 ///
 /// Note: Unlike `Try`, `error_or_stopped` (and thus `result<T>` in an
 /// error-or-stopped state) will `std::terminate` in debug builds if you attempt
@@ -432,9 +430,6 @@ class result_crtp {
     return Derived{std::forward<ResultT>(rt).error_or_stopped()};
   }
 
-  struct private_copy_t {};
-  result_crtp(private_copy_t, const Derived& that) : eos_{that.eos_} {}
-
   // Derived classes use `has_value_sigil_t` to construct value-state results.
   //
   // WARNING: The promise return object ALSO calls this -- it sets `eos_` to
@@ -459,14 +454,7 @@ class result_crtp {
 
   /********* Construction & assignment for `T` `void` and non-`void` **********/
 
-  /// `result<T>` has an explicit `.copy()` method instead of a standard copy
-  /// constructor.  This was done because `result` is intended to act as cheap
-  /// plumbing for function-result-or-error, and
-  ///   - Copying `T` is almost always a performance bug in this setting, but
-  ///     see the below carve-out for "cheap-to-copy `T`".
-  ///   - Copying `std::exception_ptr` also has atomic costs (~7ns).
-  ///
-  /// Future: We may later make `result` copyable, see `docs/design_notes.md`.
+  /// `result<T>` is copyable iff `T` is copyable.
   ///
   /// ## Copies are restricted when `T` is a reference
   ///
@@ -478,25 +466,28 @@ class result_crtp {
   ///   - from `result<V&>&`, since you already have mutable access
   ///   - from `const result<const V&>&`, since the inner `const` is not
   ///     lost during the copy.
+  ///
+  /// See `docs/design_notes.md` for details.
+
+  [[deprecated("result<T> is copyable; use folly::copy() for explicit copies")]]
   Derived copy()
     requires(
         !std::is_rvalue_reference_v<T> &&
         (std::is_void_v<T> || std::is_copy_constructible_v<T>))
   {
-    return Derived{private_copy_t{}, static_cast<const Derived&>(*this)};
+    return static_cast<Derived&>(*this);
   }
+  [[deprecated("result<T> is copyable; use folly::copy() for explicit copies")]]
   Derived copy() const
     requires(
         (!std::is_reference_v<T> ||
          std::is_const_v<std::remove_reference_t<T>>) &&
         (std::is_void_v<T> || std::is_copy_constructible_v<T>))
   {
-    return Derived{private_copy_t{}, static_cast<const Derived&>(*this)};
+    return static_cast<const Derived&>(*this);
   }
-  // IMPORTANT: If you need to relax this, emulate the "restricted copy"
-  // behavior of `DefineMovableDeepConstLrefCopyable.h` when `T` is a ref.
-  // Note that this HAS to go on the leaf classes, not in the CRTP.
-  result_crtp(const result_crtp&) = delete;
+  // Leaf classes provide copy ctors with deep-const constraints for refs.
+  result_crtp(const result_crtp&) = default;
   result_crtp& operator=(const result_crtp&) = delete;
 
   /***************** Accessors for `T` `void` and non-`void` ******************/
@@ -594,12 +585,37 @@ result final : public detail::result_crtp<result<T>, T> {
   using base = typename detail::result_crtp<result<T>, T>;
   // For `T` non-`void`, we store either `T` or a ref wrapper.
   using ref_wrapped_t = typename base::storage_type;
+  // `true` for `result<V&>` where `V` is non-const.  These use deep-const copy
+  // semantics: only copyable from a mutable source (see `design_notes.md`).
+  static constexpr bool is_mutable_lref_v = std::is_lvalue_reference_v<T> &&
+      !std::is_const_v<std::remove_reference_t<T>>;
 
   // Value storage in non-`void` result (not in CRTP base).
   // Use union to avoid requiring default-constructibility.
   union {
     ref_wrapped_t value_;
   };
+
+  template <typename Self>
+  result& copy_assign_from(Self& that) {
+    if (FOLLY_LIKELY(this != &that)) {
+      const bool this_v = this->eos_.is_result_has_value();
+      const bool that_v = that.eos_.is_result_has_value();
+      if (this_v && that_v) {
+        value_ = that.value_;
+      } else if (this_v) {
+        value_.~ref_wrapped_t();
+        this->eos_ = that.eos_;
+      } else if (that_v) {
+        // Construct first; if it throws, we stay in error state.
+        new (&value_) ref_wrapped_t{that.value_};
+        this->eos_ = that.eos_;
+      } else {
+        this->eos_ = that.eos_;
+      }
+    }
+    return *this;
+  }
 
  public:
   ~result() {
@@ -667,6 +683,48 @@ result final : public detail::result_crtp<result<T>, T> {
       }
     }
     return *this;
+  }
+
+  /// Copyable iff `T` is, except:
+  ///  - `result<V&&>` is move-only.
+  ///  - For `result<V&>` with `V` non-const, can only copy only from a mutable
+  ///    source -- this prevents extracting a mutable `V&` from a const source.
+
+  // Copy from `const result&`: value types and const-lvalue-ref types.
+  result(const result& that)
+    requires(
+        !std::is_rvalue_reference_v<T> && !is_mutable_lref_v &&
+        std::is_copy_constructible_v<ref_wrapped_t>)
+      : base{that} {
+    if (this->eos_.is_result_has_value()) {
+      new (&value_) ref_wrapped_t{that.value_};
+    }
+  }
+  // Copy from mutable `result&`: non-const lvalue refs (deep-const).
+  result(result& that)
+    requires(is_mutable_lref_v)
+      : base{that} {
+    if (this->eos_.is_result_has_value()) {
+      new (&value_) ref_wrapped_t{that.value_};
+    }
+  }
+
+  // Copy-assign from `const result&`: value types and const-lvalue-ref types.
+  result& operator=(const result& that)
+    requires(
+        !std::is_rvalue_reference_v<T> && !is_mutable_lref_v &&
+        std::is_copy_constructible_v<ref_wrapped_t> &&
+        std::is_copy_assignable_v<ref_wrapped_t>)
+  {
+    return copy_assign_from(that);
+  }
+  // Copy-assign from mutable `result&`: non-const lvalue refs (deep-const).
+  result& operator=(result& that)
+    requires(
+        is_mutable_lref_v &&
+        std::is_assignable_v<ref_wrapped_t&, ref_wrapped_t>)
+  {
+    return copy_assign_from(that);
   }
 
   /// Allow returning `stopped_result` from `result` coroutines & functions.
@@ -750,9 +808,6 @@ result final : public detail::result_crtp<result<T>, T> {
       : base{typename base::has_value_sigil_t{}} {
     new (&value_) ref_wrapped_t{t};
   }
-
-  /// No copy assignment.  When appropriate, use a mutable `value_or_throw()`
-  /// reference, or assign `rhs.copy()` to be explicit.
 
   /// Simple copy/move conversion (see also the fallible conversion below).
   ///
@@ -893,12 +948,6 @@ result final : public detail::result_crtp<result<T>, T> {
   result(typename base::has_value_sigil_t s, result*& ptr) noexcept : base{s} {
     ptr = this;
   }
-  result(typename base::private_copy_t priv, const result& that)
-      : base{priv, that} {
-    if (this->eos_.is_result_has_value()) {
-      new (&value_) ref_wrapped_t{that.value_};
-    }
-  }
 };
 
 template <typename T>
@@ -928,6 +977,15 @@ class [[nodiscard]] [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] result<void> final
   result& operator=(result&& that) noexcept {
     if (FOLLY_LIKELY(this != &that)) {
       this->eos_ = std::move(that.eos_);
+    }
+    return *this;
+  }
+
+  /// Copyable
+  result(const result& that) : base{that} {}
+  result& operator=(const result& that) {
+    if (FOLLY_LIKELY(this != &that)) {
+      this->eos_ = that.eos_;
     }
     return *this;
   }
@@ -966,8 +1024,6 @@ class [[nodiscard]] [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] result<void> final
   result(typename base::has_value_sigil_t s, result*& ptr) noexcept : base{s} {
     ptr = this;
   }
-  result(typename base::private_copy_t priv, const result& that)
-      : base{priv, that} {}
 };
 
 // Type trait to test if a type is a `result`.

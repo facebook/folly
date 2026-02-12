@@ -28,8 +28,6 @@ when building new features:
 
 These are sorted from "near future" to "far future".
 
-  - Make `result` copyable, see `docs/design_notes.md` for the subtleties.
-
   - I am unsure whether `result<T>` should become `fmt`- and
     `<<(ostream&)`-formattable whenever `T` is.  It's convenient, but it's not
     obvious what convention should disinguish value from non-value output,
