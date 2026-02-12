@@ -1476,6 +1476,50 @@ int IoUringBackend::cancelOne(IoSqe* ioSqe) {
   return ret;
 }
 
+int IoUringBackend::doInnerWait(struct io_uring_cqe*& cqe) noexcept {
+  if (waitingToSubmit_) {
+    submitBusyCheck(waitingToSubmit_, WaitForEventsMode::WAIT);
+    return ::io_uring_peek_cqe(&ioRing_, &cqe);
+  } else if (useReqBatching()) {
+    struct __kernel_timespec timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_nsec = options_.timeout.count() * 1000;
+    return ::io_uring_wait_cqes(
+        &ioRing_, &cqe, options_.batchSize, &timeout, nullptr);
+  } else {
+    return ::io_uring_wait_cqe(&ioRing_, &cqe);
+  }
+}
+
+int IoUringBackend::doWait(struct io_uring_cqe*& cqe) {
+  if (kIsDebug && VLOG_IS_ON(1)) {
+    auto start = std::chrono::steady_clock::now();
+    unsigned was = ::io_uring_cq_ready(&ioRing_);
+    auto was_submit = waitingToSubmit_;
+    int ret = doInnerWait(cqe);
+    auto end = std::chrono::steady_clock::now();
+    auto micros =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    if (micros.count()) {
+      VLOG(1) << "wait took " << micros.count()
+              << "us have=" << ::io_uring_cq_ready(&ioRing_) << " was=" << was
+              << " submit_len=" << was_submit;
+    }
+    return ret;
+  } else {
+    return doInnerWait(cqe);
+  }
+}
+
+int IoUringBackend::doPeek(struct io_uring_cqe*& cqe) noexcept {
+  if (usingDeferTaskrun_) {
+#if FOLLY_IO_URING_UP_TO_DATE
+    return ::io_uring_get_events(&ioRing_);
+#endif
+  }
+  return ::io_uring_peek_cqe(&ioRing_, &cqe);
+}
+
 size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
   struct io_uring_cqe* cqe;
 
@@ -1486,52 +1530,6 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
 
   SCOPE_EXIT {
     gettingEvents_ = false;
-  };
-
-  auto inner_do_wait = [&]() -> int {
-    if (waitingToSubmit_) {
-      submitBusyCheck(waitingToSubmit_, WaitForEventsMode::WAIT);
-      int ret = ::io_uring_peek_cqe(&ioRing_, &cqe);
-      return ret;
-    } else if (useReqBatching()) {
-      struct __kernel_timespec timeout;
-      timeout.tv_sec = 0;
-      timeout.tv_nsec = options_.timeout.count() * 1000;
-      int ret = ::io_uring_wait_cqes(
-          &ioRing_, &cqe, options_.batchSize, &timeout, nullptr);
-      return ret;
-    } else {
-      int ret = ::io_uring_wait_cqe(&ioRing_, &cqe);
-      return ret;
-    }
-  };
-  auto do_wait = [&]() -> int {
-    if (kIsDebug && VLOG_IS_ON(1)) {
-      std::chrono::steady_clock::time_point start;
-      start = std::chrono::steady_clock::now();
-      unsigned was = ::io_uring_cq_ready(&ioRing_);
-      auto was_submit = waitingToSubmit_;
-      int ret = inner_do_wait();
-      auto end = std::chrono::steady_clock::now();
-      std::chrono::microseconds const micros =
-          std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-      if (micros.count()) {
-        VLOG(1) << "wait took " << micros.count()
-                << "us have=" << ::io_uring_cq_ready(&ioRing_) << " was=" << was
-                << " submit_len=" << was_submit;
-      }
-      return ret;
-    } else {
-      return inner_do_wait();
-    }
-  };
-  auto do_peek = [&]() -> int {
-    if (usingDeferTaskrun_) {
-#if FOLLY_IO_URING_UP_TO_DATE
-      return ::io_uring_get_events(&ioRing_);
-#endif
-    }
-    return ::io_uring_peek_cqe(&ioRing_, &cqe);
   };
 
   int ret;
@@ -1555,13 +1553,13 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
           }
         } while (ret);
       } else {
-        ret = do_wait();
+        ret = doWait(cqe);
       }
     } else {
       if (waitingToSubmit_) {
         ret = submitBusyCheck(waitingToSubmit_, WaitForEventsMode::DONT_WAIT);
       } else {
-        ret = do_peek();
+        ret = doPeek(cqe);
       }
     }
   } while (ret == -EINTR);

@@ -818,6 +818,11 @@ class IoUringBackend : public EventBaseBackendBase {
   struct io_uring_sqe* getUntrackedSqe();
   struct io_uring_sqe* getSqe();
 
+  // Wait helpers
+  int doInnerWait(struct io_uring_cqe*& cqe) noexcept;
+  int doWait(struct io_uring_cqe*& cqe);
+  int doPeek(struct io_uring_cqe*& cqe) noexcept;
+
   /// some ring calls require being called on a single system thread, so we need
   /// to delay init of those things until the correct thread is ready
   void delayedInit();
