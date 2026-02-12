@@ -1404,23 +1404,13 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
         std::move(*this), static_cast<OnError&&>(onError));
   }
 
-  // Quasi-private, exposed only for implementing efficient short-circuiting
-  // coroutines on top of `Expected`.  Do NOT use this instead of
-  // `optional<Expected<>>`, for these reasons:
-  //   - This public ctor again become private in the future.
-  //   - It is incompatible with upcoming `std::expected`.
-  //   - It violates `folly::Expected`'s almost-never-empty guarantee.
-  //   - There's no native `empty()` test -- `uninitializedByException()` is
-  //     always `false` for some value types, and `!hasValue() && !hasError()`
-  //     is less efficient.
-  explicit Expected(expected_detail::EmptyTag tag) noexcept : Base{tag} {}
-
  private:
   friend struct expected_detail::PromiseReturn<Value, Error>;
+  using EmptyTag = expected_detail::EmptyTag;
 
+  explicit Expected(EmptyTag tag) noexcept : Base{tag} {}
   // for when coroutine promise return-object conversion is eager
-  Expected(expected_detail::EmptyTag tag, Expected*& pointer) noexcept
-      : Base{tag} {
+  Expected(EmptyTag tag, Expected*& pointer) noexcept : Base{tag} {
     pointer = this;
   }
 
