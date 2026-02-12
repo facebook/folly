@@ -110,14 +110,17 @@ folly_add_library(
   DEPS
     folly_indestructible
   EXPORTED_DEPS
-    folly_coro_coroutine
     folly_exception_wrapper
     folly_expected
     folly_lang_align
     folly_lang_rvalue_reference_wrapper
     folly_operation_cancelled
+    folly_portability
     folly_portability_gtest_prod
     folly_result_rich_error_base
+    folly_utility
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -140,6 +143,7 @@ folly_add_library(
     rich_exception_ptr.h
   DEPS
     folly_demangle
+    folly_lang_safe_assert
     folly_lang_switch
   EXPORTED_DEPS
     folly_cpp_attributes
@@ -149,6 +153,7 @@ folly_add_library(
     folly_portability_source_location
     folly_result_detail_rich_exception_ptr_storage
     folly_result_rich_error_fwd
+    folly_traits
     folly_unit
     folly_utility
 )

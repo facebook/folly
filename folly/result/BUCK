@@ -114,16 +114,17 @@ fb_dirsync_cpp_library(
         "//folly:indestructible",
     ],
     exported_deps = [
-        "fbsource//third-party/glog:glog",
         ":rich_error_base",
         "//folly:exception_wrapper",
         "//folly:expected",
         "//folly:operation_cancelled",
-        "//folly/coro:coroutine",
+        "//folly:portability",
+        "//folly:utility",
         "//folly/lang:align",
         "//folly/lang:rvalue_reference_wrapper",
         "//folly/portability:gtest_prod",
     ],
+    external_deps = ["glog"],
 )
 
 fb_dirsync_cpp_library(
@@ -151,14 +152,16 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
-        "fbsource//third-party/glog:glog",
         "//folly:demangle",
+        "//folly/lang:safe_assert",
         "//folly/lang:switch",
     ],
     exported_deps = [
+        "fbsource//third-party/fmt:fmt",
         ":rich_error_fwd",
         "//folly:cpp_attributes",
         "//folly:portability",
+        "//folly:traits",
         "//folly:unit",
         "//folly:utility",
         "//folly/lang:exception",

@@ -51,6 +51,13 @@ struct ThrowOnMove : private MoveOnly {
   }
 };
 
+// `result<void>` uses no storage for value
+static_assert(sizeof(result<void>) == sizeof(error_or_stopped));
+// `result<int>` is compact (`error_or_stopped` + padding for `int`)
+static_assert(
+    sizeof(result<int>) <= sizeof(error_or_stopped) +
+        std::max(sizeof(int), alignof(error_or_stopped)));
+
 // If you came here, you probably want `result` to have `->` or `*` operators,
 // or `.value()`, just like `folly::Try` or `std::expected`.  This comment will
 // try to dissuade you.
@@ -119,6 +126,14 @@ static_assert(
     std::is_constructible_v<result<std::string>, result<const char*>>);
 static_assert(std::is_constructible_v<result<const int&>, result<int&>>);
 
+// Conversion correctly reflects value category of Arg, not hardcoded &&.
+// `RvalueOnly(int&&)` is constructible from rvalue `int` but not lvalue.
+struct RvalueOnly {
+  explicit RvalueOnly(int&&) {}
+};
+static_assert(std::is_constructible_v<result<RvalueOnly>, result<int>&&>);
+static_assert(!std::is_constructible_v<result<RvalueOnly>, result<int>&>);
+
 // Conversions that CANNOT happen:
 
 // - `result<T>` has no default ctor (intentional), but `result<void>` does
@@ -128,12 +143,12 @@ static_assert(std::is_default_constructible_v<result<void>>);
 // - Unrelated types are properly rejected
 static_assert(!std::is_constructible_v<result<int>, std::vector<int>>);
 static_assert(!std::is_constructible_v<result<int>, int*>);
-// BUG: Should be a SFINAE failure, not instantiation failure.
-// Incompatible value types should not match the fallible conversion.
-static_assert(std::is_constructible_v<result<int>, result<std::string>>);
-// BUG: Should be a SFINAE failure, not instantiation failure.
-// Cannot silently discard values when converting to result<void>.
-static_assert(std::is_constructible_v<result<void>, result<int>>);
+
+// - Incompatible value types should not match the fallible conversion.
+static_assert(!std::is_constructible_v<result<int>, result<std::string>>);
+
+// - Cannot silently discard values when converting to result<void>.
+static_assert(!std::is_constructible_v<result<void>, result<int>>);
 
 // - Non-result types with `storage_type` member should not match.
 struct FakeResultLike {
@@ -574,15 +589,9 @@ TEST(Result, throwingMove) {
 
     EXPECT_THROW(dest = std::move(src), MyError);
 
-    // Sad trombone: our internal `folly::Expected` is empty-by-exception.
+    // After throw, dest should still be in original error state
     EXPECT_FALSE(dest.has_value());
-    if constexpr (!kIsDebug) {
-      EXPECT_TRUE(get_exception<empty_result_error>(dest.error_or_stopped()));
-    } else {
-      EXPECT_DEATH(
-          (void)dest.error_or_stopped(),
-          "`folly::result` had an empty underlying");
-    }
+    EXPECT_STREQ("initial error", get_exception<MyError>(dest)->what());
   }
   { // Move assignment: value to value, throws but stays in value state
     result src{ThrowOnNegative{42}};
@@ -607,15 +616,9 @@ TEST(Result, throwingMove) {
 
     EXPECT_THROW(r = std::move(val), MyError);
 
-    // Sad trombone: our internal `folly::Expected` is empty-by-exception.
+    // After throw, r should still be in original error state
     EXPECT_FALSE(r.has_value());
-    if constexpr (!kIsDebug) {
-      EXPECT_TRUE(get_exception<empty_result_error>(r.error_or_stopped()));
-    } else {
-      EXPECT_DEATH(
-          (void)r.error_or_stopped(),
-          "`folly::result` had an empty underlying");
-    }
+    EXPECT_STREQ("initial error", get_exception<MyError>(r)->what());
   }
 }
 
@@ -624,10 +627,10 @@ TEST(Result, throwingMove) {
 TEST(Result, throwingMoveInCoReturn) {
   auto throwingCoro = []() -> result<ThrowOnMove> {
     ThrowOnMove val{42};
-    co_return val; // This move will throw during return_value's placement new
+    co_return val; // Will throw during `return_value`'s placement `new`
   };
-  // The exception from placement new in return_value should be caught by
-  // unhandled_exception, which sets eos_ to error state.
+  // The exception from placement `new` in `return_value` should be caught by
+  // `unhandled_exception`, which sets `eos_` to error state.
   auto r = throwingCoro();
   EXPECT_FALSE(r.has_value());
   EXPECT_STREQ("move ctor", get_exception<MyError>(r)->what());
