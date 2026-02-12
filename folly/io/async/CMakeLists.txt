@@ -512,6 +512,7 @@ folly_add_library(
   HEADERS
     IoUringBackend.h
     IoUringBase.h
+    IoUringOptions.h
   DEPS
     folly_container_f14_hash
     folly_demangle

@@ -896,6 +896,7 @@ fb_dirsync_cpp_library(
     headers = [
         "IoUringBackend.h",
         "IoUringBase.h",
+        "IoUringOptions.h",
     ],
     modular_headers = False,
     use_raw_headers = True,
