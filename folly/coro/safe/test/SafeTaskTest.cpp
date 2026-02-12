@@ -18,6 +18,7 @@
 #include <folly/coro/Timeout.h>
 #include <folly/coro/safe/SafeTask.h>
 #include <folly/fibers/Semaphore.h>
+#include <folly/init/Init.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
@@ -304,3 +305,9 @@ static_assert(
 } // namespace folly::coro::detail
 
 #endif
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  folly::Init init(&argc, &argv); // `timeout` uses a `Timekeeper` singleton
+  return RUN_ALL_TESTS();
+}

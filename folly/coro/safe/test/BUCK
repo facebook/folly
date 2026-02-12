@@ -1,10 +1,8 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "captures_test",
     srcs = ["CapturesTest.cpp"],
     deps = [
@@ -14,8 +12,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "async_closure_test",
     srcs = ["AsyncClosureTest.cpp"],
     deps = [
@@ -24,11 +21,11 @@ fbcode_target(
         "//folly/coro:value_or_fatal",
         "//folly/coro/safe:async_closure",
         "//folly/fibers:semaphore",
+        "//folly/init:init",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "now_task_test",
     srcs = ["NowTaskTest.cpp"],
     deps = [
@@ -39,8 +36,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "safe_task_test",
     srcs = ["SafeTaskTest.cpp"],
     deps = [
@@ -48,6 +44,7 @@ fbcode_target(
         "//folly/coro:timeout",
         "//folly/coro/safe:safe_task",
         "//folly/fibers:semaphore",
+        "//folly/init:init",
         "//folly/portability:gtest",
     ],
 )

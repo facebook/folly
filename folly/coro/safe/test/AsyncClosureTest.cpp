@@ -19,6 +19,7 @@
 #include <folly/coro/ValueOrFatal.h>
 #include <folly/coro/safe/AsyncClosure.h>
 #include <folly/fibers/Semaphore.h>
+#include <folly/init/Init.h>
 
 #if FOLLY_HAS_IMMOVABLE_COROUTINES
 
@@ -990,3 +991,9 @@ CO_TEST(AsyncClosure, ctorCleanupDtorOrdering) {
 } // namespace folly::coro
 
 #endif
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  folly::Init init(&argc, &argv); // `timeout` uses a `Timekeeper` singleton
+  return RUN_ALL_TESTS();
+}

@@ -1,23 +1,8 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("../../../defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "async_closure",
-    raw_headers = ["AsyncClosure.h"],
-    exported_deps = [
-        ":bind_async_closure",
-        "//xplat/folly/coro:value_or_fatal",
-        "//xplat/folly/coro/safe:safe_task",
-        "//xplat/folly/detail:tuple",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "async_closure",
     headers = ["AsyncClosure.h"],
     exported_deps = [
@@ -28,23 +13,7 @@ fbcode_target(
     ],
 )
 
-###
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "bind_async_closure",
-    raw_headers = ["BindAsyncClosure.h"],
-    exported_deps = [
-        "//xplat/folly/coro/safe:bind_captures",
-        "//xplat/folly/coro/safe:captures",
-        "//xplat/folly/lang:safe_alias",
-        "//xplat/folly/lang/bind:named",
-        "//xplat/folly/lang/bind:named_to_storage",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "bind_async_closure",
     headers = ["BindAsyncClosure.h"],
     exported_deps = [
@@ -56,16 +25,7 @@ fbcode_target(
     ],
 )
 
-###
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "define_movable_deep_const_lref_copyable",
-    raw_headers = ["DefineMovableDeepConstLrefCopyable.h"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "define_movable_deep_const_lref_copyable",
     headers = ["DefineMovableDeepConstLrefCopyable.h"],
 )

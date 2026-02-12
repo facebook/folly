@@ -1,56 +1,19 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("../../defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "async_closure_fwd",
-    raw_headers = ["AsyncClosure-fwd.h"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "async_closure_fwd",
     headers = ["AsyncClosure-fwd.h"],
 )
 
-###
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "bind_captures",
-    raw_headers = ["BindCaptures.h"],
-    exported_deps = ["//xplat/folly/lang/bind:bind"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "bind_captures",
     headers = ["BindCaptures.h"],
     exported_deps = ["//folly/lang/bind:bind"],
 )
 
-###
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "captures",
-    raw_headers = ["Captures.h"],
-    exported_deps = [
-        ":async_closure_fwd",
-        "//xplat/folly:portability",
-        "//xplat/folly:traits",
-        "//xplat/folly:utility",
-        "//xplat/folly/coro/safe/detail:define_movable_deep_const_lref_copyable",
-        "//xplat/folly/detail:tuple",
-        "//xplat/folly/lang:safe_alias_fwd",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "captures",
     headers = ["Captures.h"],
     exported_deps = [
@@ -64,19 +27,7 @@ fbcode_target(
     ],
 )
 
-###
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "async_closure",
-    raw_headers = ["AsyncClosure.h"],
-    exported_deps = [
-        "//xplat/folly/coro/safe/detail:async_closure",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "async_closure",
     headers = ["AsyncClosure.h"],
     exported_deps = [
@@ -84,20 +35,7 @@ fbcode_target(
     ],
 )
 
-###
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "now_task",
-    raw_headers = ["NowTask.h"],
-    exported_deps = [
-        "//xplat/folly/coro:task_wrapper",
-        "//xplat/folly/lang:safe_alias_fwd",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "now_task",
     headers = ["NowTask.h"],
     exported_deps = [
@@ -106,21 +44,7 @@ fbcode_target(
     ],
 )
 
-###
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "safe_task",
-    raw_headers = ["SafeTask.h"],
-    exported_deps = [
-        ":now_task",
-        "//xplat/folly/coro:task_wrapper",
-        "//xplat/folly/lang:safe_alias",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "safe_task",
     headers = ["SafeTask.h"],
     exported_deps = [
