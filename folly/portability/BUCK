@@ -116,18 +116,6 @@ non_fbcode_target(
 
 non_fbcode_target(
     _kind = folly_xplat_library,
-    name = "extended",
-    exported_deps = [
-        ":builtins",
-        ":dirent",
-        ":sys_mman",
-        ":sys_resource",
-        ":time",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
     name = "fcntl",
     srcs = [
         "Fcntl.cpp",
@@ -218,18 +206,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "gtest_prod",
     raw_headers = ["GTestProd.h"],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "headers",
-    exported_deps = [
-        ":asm",
-        ":atomic",
-        ":sys_syscall",
-        ":syslog",
-        "//xplat/third-party/linker_lib:atomic",
-    ],
 )
 
 non_fbcode_target(
