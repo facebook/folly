@@ -558,13 +558,6 @@ non_fbcode_target(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "portability_headers",
-    exported_deps = ["//xplat/folly/portability:headers"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "portability_openssl",
     exported_deps = ["//xplat/folly/portability:openssl"],
 )
@@ -720,13 +713,6 @@ fb_dirsync_cpp_library(
         "//folly/detail:simple_simd_string_utils",
         "//folly/detail:split_string_simd",
     ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "portability_extended",
-    exported_deps = ["//xplat/folly/portability:extended"],
 )
 
 non_fbcode_target(
