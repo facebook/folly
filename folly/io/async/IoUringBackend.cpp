@@ -340,7 +340,7 @@ IoUringProvidedBufferRing::UniquePtr makeProvidedBufferRing(Args&&...) {
 
 #endif
 
-bool validateZeroCopyRxOptions(IoUringBackend::Options& options) {
+bool validateZeroCopyRxOptions(IoUringOptions& options) {
   if (options.zeroCopyRx &&
       (options.zcRxIfname.empty() || options.zcRxIfindex <= 0 ||
        options.zcRxQueueId == -1 || !options.resolveNapiId ||
@@ -2013,8 +2013,7 @@ static bool doKernelSupportsRecvmsgMultishot() {
 
     std::unique_ptr<S> s;
     IoUringBackend io(
-        std::move(
-            IoUringBackend::Options().setInitialProvidedBuffers(1024, 1)));
+        std::move(IoUringOptions().setInitialProvidedBuffers(1024, 1)));
     if (!io.bufferProvider()) {
       return false;
     }
