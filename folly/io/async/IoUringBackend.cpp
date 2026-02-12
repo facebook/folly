@@ -899,7 +899,11 @@ void IoUringBackend::removeSignalEvent(Event& event) {
   auto* ev = event.getEvent();
   auto iter = signals_.find(ev->ev_fd);
   if (iter != signals_.end()) {
-    getSignalRegistry().setNotifyFd(ev->ev_fd, -1);
+    iter->second.erase(&event);
+    if (iter->second.empty()) {
+      signals_.erase(iter);
+      getSignalRegistry().setNotifyFd(ev->ev_fd, -1);
+    }
   }
 }
 
