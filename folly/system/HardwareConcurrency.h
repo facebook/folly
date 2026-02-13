@@ -58,6 +58,7 @@ unsigned int available_concurrency() noexcept;
 /// hardware_concurrency
 ///
 /// An alias for available_concurrency.
+[[deprecated("use folly::available_concurrency")]]
 inline unsigned int hardware_concurrency() noexcept {
   return available_concurrency();
 }
