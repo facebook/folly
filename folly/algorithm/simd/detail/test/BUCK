@@ -81,7 +81,6 @@ fbcode_target(
     _kind = cpp_unittest,
     name = "traits_test",
     srcs = ["TraitsTest.cpp"],
-    compiler_flags = ["--std=c++17"],
     deps = [
         "//folly/algorithm/simd/detail:traits",
         "//folly/lang:bits",
