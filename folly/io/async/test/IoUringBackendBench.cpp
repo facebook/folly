@@ -160,11 +160,11 @@ class EventBaseProvider {
       }
       case IO_URING: {
         try {
-          folly::PollIoBackend::Options opts;
+          folly::IoUringOptions opts;
           opts.setCapacity(capacity).setMaxSubmit(256);
 
           auto optsPtr =
-              std::make_shared<folly::PollIoBackend::Options>(std::move(opts));
+              std::make_shared<folly::IoUringOptions>(std::move(opts));
           auto factory = [optsPtr]() mutable {
             return std::make_unique<folly::IoUringBackend>(std::move(*optsPtr));
           };
