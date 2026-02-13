@@ -293,11 +293,6 @@ class SQGroupInfoRegistry {
 
 static folly::Indestructible<SQGroupInfoRegistry> sSQGroupInfoRegistry;
 
-template <class... Args>
-IoUringProvidedBufferRing::UniquePtr makeProvidedBufferRing(Args&&... args) {
-  return IoUringProvidedBufferRing::create(std::forward<Args>(args)...);
-}
-
 bool validateZeroCopyRxOptions(IoUringOptions& options) {
   if (options.zeroCopyRx &&
       (options.zcRxIfname.empty() || options.zcRxIfindex <= 0 ||
@@ -1069,7 +1064,7 @@ void IoUringBackend::initSubmissionLinked() {
       };
       for (size_t i = 0; i < options_.providedBufRings; i++) {
         bufferProviders_.push_back(
-            makeProvidedBufferRing(this->ioRingPtr(), options));
+            IoUringProvidedBufferRing::create(this->ioRingPtr(), options));
         options.gid = nextBufferProviderGid();
       }
     } catch (const IoUringProvidedBufferRing::LibUringCallError& ex) {
