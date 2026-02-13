@@ -111,13 +111,14 @@ fbcode_target(
     srcs = [
         "MathOperation_Simple.cpp",
     ],
-    arch_compiler_flags = {
-        "x86_64": [
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
             "-mno-avx",
             "-mno-avx2",
             "-mno-sse2",
         ],
-    },
+    }),
     deps = [
         "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
@@ -132,13 +133,14 @@ fbcode_target(
     srcs = [
         "MathOperation_SSE2.cpp",
     ],
-    arch_compiler_flags = {
-        "x86_64": [
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
             "-mno-avx",
             "-mno-avx2",
             "-msse2",
         ],
-    },
+    }),
     deps = [
         "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
@@ -156,13 +158,14 @@ fbcode_target(
     srcs = [
         "MathOperation_AVX2.cpp",
     ],
-    arch_compiler_flags = {
-        "x86_64": [
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
             "-mavx",
             "-mavx2",
             "-msse2",
         ],
-    },
+    }),
     deps = [
         "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
@@ -180,13 +183,14 @@ fbcode_target(
     srcs = [
         "MathOperation_SSE2.cpp",
     ],
-    arch_compiler_flags = {
-        "x86_64": [
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
             "-mno-avx",
             "-mno-avx2",
             "-mno-sse2",
         ],
-    },
+    }),
     deps = [
         "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
@@ -204,13 +208,14 @@ fbcode_target(
     srcs = [
         "MathOperation_AVX2.cpp",
     ],
-    arch_compiler_flags = {
-        "x86_64": [
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
             "-mno-avx",
             "-mno-avx2",
             "-mno-sse2",
         ],
-    },
+    }),
     deps = [
         "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
