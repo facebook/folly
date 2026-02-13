@@ -95,7 +95,7 @@ class BackendEventBase : public EventBase {
  private:
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend(
       bool useRegisteredFds, size_t capacity) {
-    folly::PollIoBackend::Options options;
+    folly::IoUringOptions options;
     options.setCapacity(capacity)
         .setMaxSubmit(256)
         .setMaxGet(128)
