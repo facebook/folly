@@ -48,18 +48,6 @@ namespace folly {
 
 namespace {
 
-int ioUringEnableRings([[maybe_unused]] struct io_uring* ring) {
-  // Ideally this would call ::io_uring_enable_rings directly which just runs
-  // the below however this was missing from a stable version of liburing, which
-  // means that some distributions were not able to compile it. see
-  // https://github.com/axboe/liburing/issues/773
-
-  // since it is so simple, just implement it here until the fix rolls out to an
-  // acceptable number of OSS distributions.
-  return ::io_uring_register(
-      ring->ring_fd, IORING_REGISTER_ENABLE_RINGS, nullptr, 0);
-}
-
 struct SignalRegistry {
   struct SigInfo {
     struct sigaction sa_{};
@@ -1122,8 +1110,7 @@ void IoUringBackend::delayedInit() {
   needsDelayedInit_ = false;
 
   if (usingDeferTaskrun_) {
-    // usingDeferTaskrun_ is guarded already on having an up to date liburing
-    int ret = ioUringEnableRings(&ioRing_);
+    auto ret = io_uring_enable_rings(&ioRing_);
     if (ret) {
       LOG(ERROR) << "io_uring_enable_rings gave " << folly::errnoStr(-ret);
     }
