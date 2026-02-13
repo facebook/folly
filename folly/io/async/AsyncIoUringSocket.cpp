@@ -355,6 +355,13 @@ void AsyncIoUringSocket::connect(
   }
 }
 
+void AsyncIoUringSocket::cancelConnect() {
+  connectCallback_ = nullptr;
+  if (state_ == State::Connecting || state_ == State::FastOpen) {
+    closeNow();
+  }
+}
+
 void AsyncIoUringSocket::processConnectSubmit(
     struct io_uring_sqe* sqe, sockaddr_storage& storage) {
   auto len = peerAddress_.getAddress(&storage);

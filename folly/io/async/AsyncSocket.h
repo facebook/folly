@@ -655,7 +655,7 @@ class AsyncSocket
    * This does not invoke any connection related callbacks. Call this to
    * prevent any connect callback while cleaning up, etc.
    */
-  virtual void cancelConnect();
+  void cancelConnect() override;
 
   /**
    * Set the send timeout.

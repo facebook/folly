@@ -32,14 +32,14 @@ namespace folly {
 namespace coro {
 
 //
-// Handle connect for AsyncSocket
+// Handle connect for AsyncSocketTransport
 //
 
 class ConnectCallback
     : public TransportCallbackBase,
-      public folly::AsyncSocket::ConnectCallback {
+      public folly::AsyncSocketTransport::ConnectCallback {
  public:
-  explicit ConnectCallback(folly::AsyncSocket& socket)
+  explicit ConnectCallback(folly::AsyncSocketTransport& socket)
       : TransportCallbackBase(socket), socket_(socket) {}
 
  private:
@@ -51,7 +51,7 @@ class ConnectCallback
     storeException(ex);
     post();
   }
-  folly::AsyncSocket& socket_;
+  folly::AsyncSocketTransport& socket_;
 };
 
 //

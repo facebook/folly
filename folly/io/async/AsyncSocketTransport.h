@@ -73,6 +73,15 @@ class AsyncSocketTransport : public AsyncTransport {
       const std::string& ifName = "") noexcept = 0;
 
   virtual bool hangup() const = 0;
+
+  /**
+   * If a connect request is in-flight, cancels it and closes the socket
+   * immediately. Otherwise, this is a no-op.
+   *
+   * This does not invoke any connection related callbacks. Call this to
+   * prevent any connect callback while cleaning up, etc.
+   */
+  virtual void cancelConnect() = 0;
   void setPeerCertificate(
       std::unique_ptr<const AsyncTransportCertificate> cert) {
     peerCertData_ = std::move(cert);

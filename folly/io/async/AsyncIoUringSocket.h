@@ -111,6 +111,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     return connectEndTime_ - connectStartTime_;
   }
 
+  void cancelConnect() override;
+
   /*
    * This flag controls whether or not IP_BIND_ADDRESS_NO_PORT is enabled for
    * AsyncSocket sockets. This is enabled by default.
