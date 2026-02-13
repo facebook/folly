@@ -342,7 +342,6 @@ fb_dirsync_cpp_unittest(
     name = "value_only_result_test",
     srcs = ["value_only_result_test.cpp"],
     deps = [
-        "//folly/portability:gtest",
         "//folly/result:gtest_helpers",
         "//folly/result:value_only_result",
     ],

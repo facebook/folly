@@ -25,15 +25,76 @@
 
 namespace folly::test {
 
+// Test self-copy-assignment without triggering `-Wself-assign-overloaded`.
+template <typename T>
+void selfCopy(T& x) {
+  auto* p = &x;
+  x = *p;
+}
+
+// value_only_result<V>: copyable when V is, movable
+static_assert(std::is_copy_constructible_v<value_only_result<int>>);
+static_assert(std::is_copy_assignable_v<value_only_result<int>>);
+static_assert(std::is_move_constructible_v<value_only_result<int>>);
+static_assert(std::is_move_assignable_v<value_only_result<int>>);
+
+// value_only_result<V> with move-only V: not copyable, movable
+static_assert(
+    !std::is_copy_constructible_v<value_only_result<std::unique_ptr<int>>>);
+static_assert(
+    !std::is_copy_assignable_v<value_only_result<std::unique_ptr<int>>>);
+static_assert(
+    std::is_move_constructible_v<value_only_result<std::unique_ptr<int>>>);
+static_assert(
+    std::is_move_assignable_v<value_only_result<std::unique_ptr<int>>>);
+
+// value_only_result<V&>: copyable from mutable only (deep-const).
+// `is_copy_constructible_v` tests `const&`, so it's correctly FALSE here.
+static_assert(!std::is_copy_constructible_v<value_only_result<int&>>);
+static_assert(
+    std::is_constructible_v<value_only_result<int&>, value_only_result<int&>&>);
+static_assert(!std::is_constructible_v<
+              value_only_result<int&>,
+              const value_only_result<int&>&>);
+static_assert(!std::is_constructible_v<
+              value_only_result<int&>,
+              const value_only_result<int&>&&>);
+static_assert(!std::is_copy_assignable_v<value_only_result<int&>>);
+static_assert(
+    std::is_assignable_v<value_only_result<int&>&, value_only_result<int&>&>);
+static_assert(!std::is_assignable_v<
+              value_only_result<int&>&,
+              const value_only_result<int&>&>);
+static_assert(!std::is_assignable_v<
+              value_only_result<int&>&,
+              const value_only_result<int&>&&>);
+static_assert(std::is_move_constructible_v<value_only_result<int&>>);
+static_assert(std::is_move_assignable_v<value_only_result<int&>>);
+
+// value_only_result<const V&>: fully copyable
+static_assert(std::is_copy_constructible_v<value_only_result<const int&>>);
+static_assert(std::is_copy_assignable_v<value_only_result<const int&>>);
+static_assert(std::is_move_constructible_v<value_only_result<const int&>>);
+static_assert(std::is_move_assignable_v<value_only_result<const int&>>);
+
+// value_only_result<V&&>: move-only
+static_assert(!std::is_copy_constructible_v<value_only_result<int&&>>);
+static_assert(!std::is_copy_assignable_v<value_only_result<int&&>>);
+static_assert(std::is_move_constructible_v<value_only_result<int&&>>);
+static_assert(std::is_move_assignable_v<value_only_result<int&&>>);
+
+// value_only_result<void>: copyable & movable
+static_assert(std::is_copy_constructible_v<value_only_result<>>);
+static_assert(std::is_copy_assignable_v<value_only_result<>>);
+static_assert(std::is_move_constructible_v<value_only_result<>>);
+static_assert(std::is_move_assignable_v<value_only_result<>>);
+
 // Fully tests `void`-specific behaviors.  Loosely covers common features from
 // `value_only_result_crtp` -- the subsequent non-`void` tests cover them more.
 TEST(ValueOnlyResult, ofVoid) {
   // Cover the handful of things specific to the `void` specialization, plus
   // copyability & movability.
   {
-    static_assert(!std::is_copy_constructible_v<value_only_result<>>);
-    static_assert(!std::is_copy_assignable_v<value_only_result<>>);
-
     value_only_result<> r;
     static_assert(std::is_same_v<decltype(r), value_only_result<void>>);
     static_assert(std::is_void_v<decltype(r.value_or_throw())>);
@@ -46,8 +107,16 @@ TEST(ValueOnlyResult, ofVoid) {
     value_only_result<> r3;
     r3 = std::move(r2); // move-assign
 
-    r3.copy().value_or_throw();
-    r3.copy().value_only();
+    copy(r3).value_or_throw();
+    copy(r3).value_only();
+
+    { // copy-assign: value <- value
+      value_only_result<> rc;
+      rc = r3;
+      EXPECT_TRUE(rc.has_value());
+    }
+    selfCopy(r3);
+    EXPECT_TRUE(r3.has_value());
 
     EXPECT_TRUE(result<void>(r3).has_value()); // explicit conversion to result
   }
@@ -89,7 +158,7 @@ TEST(ValueOnlyResult, refCopiable) {
       std::is_same_v<
           value_only_result<std::unique_ptr<int>&>,
           decltype(mIntPtrRef1)>);
-  auto mIntPtrRef2 = mIntPtrRef1.copy();
+  auto mIntPtrRef2 = value_only_result{mIntPtrRef1};
   *(mIntPtrRef2.value_or_throw()) += 1;
   *(mIntPtrRef2.value_only()) += 10;
   EXPECT_EQ(1348, *mIntPtrRef1.value_or_throw());
@@ -99,9 +168,22 @@ TEST(ValueOnlyResult, refCopiable) {
 
 TEST(ValueOnlyResult, copyMethod) {
   value_only_result<int> r{1337};
-  auto rToo = r.copy();
+  auto rToo{r};
   EXPECT_EQ(r.value_or_throw(), rToo.value_only());
   EXPECT_TRUE(r == rToo);
+
+  // Copy assignment
+  value_only_result<int> rc{0};
+  rc = rToo;
+  EXPECT_EQ(1337, rc.value_or_throw());
+
+  // Non-trivially-copyable
+  value_only_result<std::string> rs{std::string("hi")};
+  auto rsToo{rs};
+  EXPECT_EQ("hi", rsToo.value_or_throw());
+
+  selfCopy(r);
+  EXPECT_EQ(1337, r.value_or_throw());
 }
 
 RESULT_CO_TEST(ValueOnlyResult, ofLvalueReferenceWrapper) {
@@ -145,27 +227,60 @@ RESULT_CO_TEST(Result, forbidUnsafeCopyOfResultRef) {
   value_only_result rc = std::cref(n);
   static_assert(std::is_same_v<value_only_result<const int&>, decltype(rc)>);
   { // Safe copies of ref -- `rc` has `const` inside, cannot be discarded
-    value_only_result rc2 = rc.copy();
+    value_only_result rc2{rc};
     EXPECT_EQ(42, (co_await or_unwind(rc2)));
-    value_only_result rc3 = std::as_const(rc).copy();
+    value_only_result rc3{std::as_const(rc)};
     EXPECT_EQ(42, (co_await or_unwind(rc3)));
   }
-  static_assert(requires { rc.copy(); });
-  static_assert(requires { std::as_const(rc).copy(); });
+  static_assert(
+      std::is_constructible_v<
+          value_only_result<const int&>,
+          value_only_result<const int&>&>);
+  static_assert(
+      std::is_constructible_v<
+          value_only_result<const int&>,
+          const value_only_result<const int&>&>);
+  // Copy-assign const ref result
+  {
+    int n2 = 99;
+    value_only_result<const int&> rcA = std::cref(n);
+    value_only_result<const int&> rcB = std::cref(n2);
+    rcA = rcB;
+    EXPECT_EQ(99, rcA.value_or_throw());
+    EXPECT_EQ(&n2, &rcA.value_or_throw()); // rebinding check
+  }
 
   value_only_result<int&> r = std::ref(n);
   { // Safe copy of ref -- `r` has no `const` to discard
-    value_only_result r2 = r.copy();
+    value_only_result r2{r};
     EXPECT_EQ(42, (co_await or_unwind(r2)));
   }
   // Unsafe: copying `const value_only_result<int&>` would discard the `const`
-  //   result r3 = std::as_const(r).copy();
-  // The next assert shows the above `.copy()` is SFINAE-deleted.
-  //
-  // NB: This `requires` won't compile without using a dependent type.
-  static_assert(![](const auto& r2) { return requires { r2.copy(); }; }(r));
+  static_assert(
+      !std::is_constructible_v<
+          value_only_result<int&>,
+          const value_only_result<int&>&>);
   // Copy-from-mutable still works
-  static_assert([](auto& r2) { return requires { r2.copy(); }; }(r));
+  static_assert(
+      std::is_constructible_v<
+          value_only_result<int&>,
+          value_only_result<int&>&>);
+  // Copy-assign mutable ref result (rebinding)
+  {
+    int a = 10, b = 20;
+    value_only_result<int&> ra = std::ref(a);
+    value_only_result<int&> rb = std::ref(b);
+    ra = rb;
+    EXPECT_EQ(20, ra.value_or_throw());
+    EXPECT_EQ(&b, &ra.value_or_throw()); // rebinding check
+  }
+  // Cannot copy-assign from const source for mutable ref
+  static_assert(
+      !std::is_assignable_v<
+          value_only_result<int&>&,
+          const value_only_result<int&>&>);
+  selfCopy(r);
+  EXPECT_EQ(&n, &r.value_or_throw());
 }
 
 // Check `co_await` / `.value_or_throw()` / `.value_only()` for various ways of
@@ -251,7 +366,7 @@ RESULT_CO_TEST(ValueOnlyResult, fromRefWrapperAndRefAccess) {
   T t2 = std::make_unique<int>(567);
   {
     value_only_result<T&> rLref = std::ref(t1);
-    EXPECT_EQ(321, *(co_await or_unwind(rLref.copy())));
+    EXPECT_EQ(321, *(co_await or_unwind(value_only_result{rLref})));
     EXPECT_EQ(321, *rLref.value_or_throw());
     EXPECT_EQ(321, *rLref.value_only());
     *(co_await or_unwind(rLref)) += 1;
@@ -262,7 +377,7 @@ RESULT_CO_TEST(ValueOnlyResult, fromRefWrapperAndRefAccess) {
 
   {
     value_only_result<const T&> rCref = std::cref(t1);
-    EXPECT_EQ(567, *(co_await or_unwind(rCref.copy())));
+    EXPECT_EQ(567, *(co_await or_unwind(copy(rCref))));
     EXPECT_EQ(567, *rCref.value_or_throw());
     EXPECT_EQ(567, *rCref.value_only());
     // can change the int, not the unique_ptr --
@@ -272,7 +387,7 @@ RESULT_CO_TEST(ValueOnlyResult, fromRefWrapperAndRefAccess) {
     EXPECT_TRUE(t2 == nullptr); // was moved out above
     t2 = std::make_unique<int>(42);
     rCref = std::cref(t2); // assignment uses the implict ctor
-    EXPECT_EQ(42, *(co_await or_unwind(rCref.copy())));
+    EXPECT_EQ(42, *(co_await or_unwind(copy(rCref))));
   }
 
   {

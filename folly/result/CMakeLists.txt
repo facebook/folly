@@ -206,6 +206,7 @@ folly_add_library(
     value_only_result_coro.h
   EXPORTED_DEPS
     folly_result_coro
+    folly_result_result
 )
 
 add_subdirectory(detail)

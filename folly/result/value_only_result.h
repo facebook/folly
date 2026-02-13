@@ -94,10 +94,6 @@ class value_only_result_crtp {
   template <typename>
   friend class folly::value_only_result; // The simple conversion uses `value_`
 
-  struct private_copy_t {};
-  value_only_result_crtp(private_copy_t, const Derived& that)
-      : value_(that.value_) {}
-
   template <typename V>
   value_only_result_crtp(std::in_place_t, V&& v)
       : value_(static_cast<V&&>(v)) {}
@@ -111,26 +107,31 @@ class value_only_result_crtp {
   value_only_result_crtp(value_only_result_crtp&&) = default;
   value_only_result_crtp& operator=(value_only_result_crtp&&) = default;
 
-  /// Explicit `.copy()` method instead of a standard copy constructor.
+  [[deprecated(
+      "value_only_result<T> is copyable;"
+      " use folly::copy() for explicit copies")]]
   Derived copy()
     requires(
         !std::is_rvalue_reference_v<T> &&
         (std::is_void_v<T> || std::is_copy_constructible_v<T>))
   {
-    return Derived{private_copy_t{}, static_cast<const Derived&>(*this)};
+    return static_cast<Derived&>(*this);
   }
   // The `const`-safety constraints are explained on `result::copy`.
+  [[deprecated(
+      "value_only_result<T> is copyable;"
+      " use folly::copy() for explicit copies")]]
   Derived copy() const
     requires(
         (!std::is_reference_v<T> ||
          std::is_const_v<std::remove_reference_t<T>>) &&
         (std::is_void_v<T> || std::is_copy_constructible_v<T>))
   {
-    return Derived{private_copy_t{}, static_cast<const Derived&>(*this)};
+    return static_cast<const Derived&>(*this);
   }
-  // IMPORTANT: Read the `result` copy ctor comment before touching.
-  value_only_result_crtp(const value_only_result_crtp&) = delete;
-  value_only_result_crtp& operator=(const value_only_result_crtp&) = delete;
+  // Leaf classes provide copy ctors with deep-const constraints for refs.
+  value_only_result_crtp(const value_only_result_crtp&) = default;
+  value_only_result_crtp& operator=(const value_only_result_crtp&) = default;
 
   // NB: This is currently missing the counterpart to "Fallible copy/move
   // conversion" from `result.h`.  That's because it seems very unlikely that
@@ -156,12 +157,46 @@ class [[nodiscard]]
   using base = detail::value_only_result_crtp<value_only_result<T>, T>;
   // For `T` non-`void`, we store either `T` or a ref wrapper.
   using ref_wrapped_t = typename base::storage_type;
+  // `true` for `value_only_result<V&>` where `V` is non-const.  These use
+  // deep-const copy semantics: only copyable from a mutable source.
+  static constexpr bool is_mutable_lref_v = std::is_lvalue_reference_v<T> &&
+      !std::is_const_v<std::remove_reference_t<T>>;
 
  public:
   using detail::value_only_result_crtp<value_only_result<T>, T>::
       value_only_result_crtp;
 
   /// Future: add default-constructibility iff `result` gets it.
+
+  /// Movable, copyable. See `result.h` for copy semantics.
+  value_only_result(value_only_result&&) = default;
+  value_only_result& operator=(value_only_result&&) = default;
+
+  // Copy from `const value_only_result&`: value types and const-lref types.
+  value_only_result(const value_only_result&)
+    requires(!std::is_rvalue_reference_v<T> && !is_mutable_lref_v &&
+             std::is_copy_constructible_v<ref_wrapped_t>)
+  = default;
+  // Copy from mutable `value_only_result&`: non-const lvalue refs.
+  value_only_result(value_only_result& that)
+    requires(is_mutable_lref_v)
+      : base{that} {}
+
+  // Copy-assign from `const value_only_result&`.
+  value_only_result& operator=(const value_only_result&)
+    requires(!std::is_rvalue_reference_v<T> && !is_mutable_lref_v &&
+             std::is_copy_constructible_v<ref_wrapped_t> &&
+             std::is_copy_assignable_v<ref_wrapped_t>)
+  = default;
+  // Copy-assign from mutable `value_only_result&`.
+  value_only_result& operator=(value_only_result& that)
+    requires(
+        is_mutable_lref_v &&
+        std::is_assignable_v<ref_wrapped_t&, ref_wrapped_t>)
+  {
+    this->value_ = that.value_;
+    return *this;
+  }
 
   /// Copy- & move-conversion from a reference wrapper.
   /* implicit */ value_only_result(ref_wrapped_t t) noexcept
@@ -192,8 +227,6 @@ class [[nodiscard]]
         std::is_trivially_copyable_v<T> &&
         sizeof(T) <= hardware_constructive_interference_size)
       : base{std::in_place, t} {}
-
-  /// No copy assignment, just like `result`.
 
   /// Simple copy/move conversion.
   ///
@@ -339,6 +372,11 @@ class [[nodiscard]]
   using base::value_only_result_crtp;
 
   value_only_result() : base(std::in_place, unit) {}
+
+  value_only_result(value_only_result&&) = default;
+  value_only_result& operator=(value_only_result&&) = default;
+  value_only_result(const value_only_result&) = default;
+  value_only_result& operator=(const value_only_result&) = default;
 
   void value_or_throw() const noexcept {}
   void value_only() const noexcept {}
