@@ -25,6 +25,7 @@
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
 #include <folly/io/async/IoUringBackend.h>
+#include <folly/io/async/IoUringProvidedBufferRing.h>
 #include <folly/lang/Bits.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/Sockets.h>
@@ -43,26 +44,10 @@ extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_pre_hook(uint64_t* call_time);
 extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_post_hook(
     uint64_t call_time, int ret);
 
-// there is no builtin macro we can use in liburing to tell what version we are
-// on or if features are supported. We will try and get this into the next
-// release but for now in the latest release there was also added defer_taskrun
-// - and so we can use it's pressence to suggest that we can safely use newer
-// features
-#if defined(IORING_SETUP_DEFER_TASKRUN)
-#define FOLLY_IO_URING_UP_TO_DATE 1
-#else
-#define FOLLY_IO_URING_UP_TO_DATE 0
-#endif
-
-#if FOLLY_IO_URING_UP_TO_DATE
-#include <folly/io/async/IoUringProvidedBufferRing.h>
-#endif
-
 namespace folly {
 
 namespace {
 
-#if FOLLY_IO_URING_UP_TO_DATE
 int ioUringEnableRings([[maybe_unused]] struct io_uring* ring) {
   // Ideally this would call ::io_uring_enable_rings directly which just runs
   // the below however this was missing from a stable version of liburing, which
@@ -74,7 +59,6 @@ int ioUringEnableRings([[maybe_unused]] struct io_uring* ring) {
   return ::io_uring_register(
       ring->ring_fd, IORING_REGISTER_ENABLE_RINGS, nullptr, 0);
 }
-#endif
 
 struct SignalRegistry {
   struct SigInfo {
@@ -155,12 +139,10 @@ void SignalRegistry::setNotifyFd(int sig, int fd) {
 }
 
 void checkLogOverflow([[maybe_unused]] struct io_uring* ring) {
-#if FOLLY_IO_URING_UP_TO_DATE
   if (::io_uring_cq_has_overflow(ring)) {
     FB_LOG_EVERY_MS(ERROR, 10000)
         << "IoUringBackend " << ring << " cq overflow";
   }
-#endif
 }
 
 class SQGroupInfoRegistry {
@@ -323,22 +305,10 @@ class SQGroupInfoRegistry {
 
 static folly::Indestructible<SQGroupInfoRegistry> sSQGroupInfoRegistry;
 
-#if FOLLY_IO_URING_UP_TO_DATE
-
 template <class... Args>
 IoUringProvidedBufferRing::UniquePtr makeProvidedBufferRing(Args&&... args) {
   return IoUringProvidedBufferRing::create(std::forward<Args>(args)...);
 }
-
-#else
-
-template <class... Args>
-IoUringProvidedBufferRing::UniquePtr makeProvidedBufferRing(Args&&...) {
-  throw IoUringBackend::NotAvailable(
-      "Provided buffer rings not compiled into this binary");
-}
-
-#endif
 
 bool validateZeroCopyRxOptions(IoUringOptions& options) {
   if (options.zeroCopyRx &&
@@ -541,7 +511,6 @@ IoUringBackend::IoUringBackend(Options options)
   params_.flags |= IORING_SETUP_CQSIZE;
   params_.cq_entries = options_.capacity;
 
-#if FOLLY_IO_URING_UP_TO_DATE
   if (options_.taskRunCoop) {
     params_.flags |= IORING_SETUP_COOP_TASKRUN;
   }
@@ -552,7 +521,6 @@ IoUringBackend::IoUringBackend(Options options)
     params_.flags |= IORING_SETUP_R_DISABLED;
     usingDeferTaskrun_ = true;
   }
-#endif
 
   if (options_.zeroCopyRx) {
     params_.flags |= IORING_SETUP_CQE32;
@@ -1155,15 +1123,10 @@ void IoUringBackend::delayedInit() {
 
   if (usingDeferTaskrun_) {
     // usingDeferTaskrun_ is guarded already on having an up to date liburing
-#if FOLLY_IO_URING_UP_TO_DATE
     int ret = ioUringEnableRings(&ioRing_);
     if (ret) {
       LOG(ERROR) << "io_uring_enable_rings gave " << folly::errnoStr(-ret);
     }
-#else
-    LOG(ERROR)
-        << "Unexpectedly usingDeferTaskrun_=true, but liburing does not support it?";
-#endif
     initSubmissionLinked();
   }
 
@@ -1173,11 +1136,9 @@ void IoUringBackend::delayedInit() {
 
   if (options_.registerRingFd) {
     // registering just has some perf impact, so no need to fall back
-#if FOLLY_IO_URING_UP_TO_DATE
     if (io_uring_register_ring_fd(&ioRing_) < 0) {
       LOG(ERROR) << "unable to register io_uring ring fd";
     }
-#endif
   }
 
   if (options_.arenaIndex > 0) {
@@ -1448,12 +1409,10 @@ void IoUringBackend::cancel(IoSqeBase* ioSqe) {
   auto* sqe = getUntrackedSqe();
   ::io_uring_prep_cancel64(sqe, (uint64_t)ioSqe, 0);
   ::io_uring_sqe_set_data(sqe, nullptr);
-#if FOLLY_IO_URING_UP_TO_DATE
   if (params_.features & IORING_FEAT_CQE_SKIP) {
     sqe->flags |= IOSQE_CQE_SKIP_SUCCESS;
     skip = true;
   }
-#endif
   VLOG(4) << "Cancel " << ioSqe << " skip=" << skip;
 }
 
@@ -1513,9 +1472,7 @@ int IoUringBackend::doWait(struct io_uring_cqe*& cqe) {
 
 int IoUringBackend::doPeek(struct io_uring_cqe*& cqe) noexcept {
   if (usingDeferTaskrun_) {
-#if FOLLY_IO_URING_UP_TO_DATE
     return ::io_uring_get_events(&ioRing_);
-#endif
   }
   return ::io_uring_peek_cqe(&ioRing_, &cqe);
 }
@@ -1701,7 +1658,6 @@ int IoUringBackend::submitBusyCheck(
         }
       }
     } else {
-#if FOLLY_IO_URING_UP_TO_DATE
       if (usingDeferTaskrun_) {
         // usingDeferTaskrun_ implies SUBMIT_ALL, and we definitely
         // want to do get_events() to process outstanding work
@@ -1714,9 +1670,6 @@ int IoUringBackend::submitBusyCheck(
       } else {
         res = ::io_uring_submit(&ioRing_);
       }
-#else
-      res = ::io_uring_submit(&ioRing_);
-#endif
     }
 
     if (res < 0) {
@@ -2030,7 +1983,6 @@ static bool doKernelSupportsRecvmsgMultishot() {
 }
 
 static bool doKernelSupportsDeferTaskrun() {
-#if FOLLY_IO_URING_UP_TO_DATE
   struct io_uring ring;
   int ret = io_uring_queue_init(
       1, &ring, IORING_SETUP_SINGLE_ISSUER | IORING_SETUP_DEFER_TASKRUN);
@@ -2038,14 +1990,12 @@ static bool doKernelSupportsDeferTaskrun() {
     io_uring_queue_exit(&ring);
     return true;
   }
-#endif
 
   // fallthrough
   return false;
 }
 
 static bool doKernelSupportsSendZC() {
-#if FOLLY_IO_URING_UP_TO_DATE
   struct io_uring ring;
 
   int ret = io_uring_queue_init(4, &ring, 0);
@@ -2081,10 +2031,6 @@ static bool doKernelSupportsSendZC() {
   }
 
   return (cqe->flags & IORING_CQE_F_NOTIF) || (cqe->res == -EBADF);
-#else
-  // fallthrough
-  return false;
-#endif
 }
 
 } // namespace
