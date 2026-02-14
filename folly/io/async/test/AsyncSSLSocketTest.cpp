@@ -2785,6 +2785,71 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerFiber) {
   EXPECT_FALSE(server.handshakeError_);
 }
 
+#ifdef SSL_ERROR_WANT_CLIENT_HELLO_CB
+TEST(AsyncSSLSocketTest, SSLClientHelloRetryCallback) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  serverCtx->loadPrivateKey(find_resource(kTestKey).c_str());
+  serverCtx->loadCertificate(find_resource(kTestCert).c_str());
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  clientCtx->loadTrustedCertificates(find_resource(kTestCA).c_str());
+
+  NetworkSocket fds[2];
+  getfds(fds);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+  auto* serverSockPtr = serverSock.get();
+
+  // State passed through the void* arg to the C callback
+  struct CbState {
+    bool firstCall = true;
+    EventBase* evb = nullptr;
+    AsyncSSLSocket* sock = nullptr;
+  };
+  CbState cbState;
+  cbState.evb = &eventBase;
+  cbState.sock = serverSockPtr;
+
+  // Non-capturing lambda convertible to C function pointer.
+  // State is accessed through the void* arg.
+  SSL_CTX_set_client_hello_cb(
+      serverCtx->getSSLCtx(),
+      [](SSL* /*ssl*/, int* /*al*/, void* arg) -> int {
+        auto* state = static_cast<CbState*>(arg);
+        if (state->firstCall) {
+          state->firstCall = false;
+          // Schedule restart — this runs AFTER handleReturnFromSSLAccept
+          // has set STATE_ASYNC_PENDING, because we're currently inside
+          // SSL_accept() which is inside the SSLAcceptEvbRunner's runInLoop.
+          auto* sock = state->sock;
+          state->evb->runInLoop([sock]() { sock->restartSSLAccept(); });
+          return SSL_CLIENT_HELLO_RETRY;
+        }
+        return SSL_CLIENT_HELLO_SUCCESS;
+      },
+      &cbState);
+
+  serverCtx->sslAcceptRunner(std::make_unique<SSLAcceptEvbRunner>(&eventBase));
+
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  SSLHandshakeServer server(std::move(serverSock), true, true);
+
+  eventBase.loop();
+
+  EXPECT_TRUE(client.handshakeSuccess_);
+  EXPECT_FALSE(client.handshakeError_);
+  EXPECT_TRUE(server.handshakeSuccess_);
+  EXPECT_FALSE(server.handshakeError_);
+}
+#endif
+
 static int newCloseCb(SSL* ssl, SSL_SESSION*) {
   AsyncSSLSocket::getFromSSL(ssl)->closeNow();
 

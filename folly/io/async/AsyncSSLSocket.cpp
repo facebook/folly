@@ -1103,6 +1103,9 @@ bool AsyncSSLSocket::willBlock(
 #ifdef SSL_ERROR_WANT_ASYNC // OpenSSL 1.1.0 Async API
        || error == SSL_ERROR_WANT_ASYNC
 #endif
+#ifdef SSL_ERROR_WANT_CLIENT_HELLO_CB
+       || error == SSL_ERROR_WANT_CLIENT_HELLO_CB
+#endif
        )) {
     // An asynchronous request has been kicked off. On completion, it will
     // invoke a callback to re-call handleAccept
