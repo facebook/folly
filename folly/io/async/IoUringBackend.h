@@ -891,8 +891,6 @@ class IoUringBackend : public EventBaseBackendBase {
   void doneSubmitting() noexcept { isSubmitting_--; }
   bool isSubmitting() const noexcept { return isSubmitting_; }
 };
-
-using PollIoBackend = IoUringBackend;
 } // namespace folly
 
 #endif
