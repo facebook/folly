@@ -66,8 +66,6 @@ class IoUringBackend : public EventBaseBackendBase {
   };
 
   // Type aliases for backwards compatibility
-  using ResolveNapiIdCallback = IoUringResolveNapiIdCallback;
-  using SrcPortForQueueIdCallback = IoUringSrcPortForQueueIdCallback;
   using Options = IoUringOptions;
 
   explicit IoUringBackend(Options options);

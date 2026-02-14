@@ -17,7 +17,6 @@
 #pragma once
 
 #include <chrono>
-#include <functional>
 #include <optional>
 #include <set>
 #include <string>
@@ -27,6 +26,7 @@
 #endif
 
 #include <folly/Conv.h>
+#include <folly/Function.h>
 #include <folly/IPAddress.h>
 #include <folly/io/async/IoUringZeroCopyBufferPool.h>
 
@@ -34,9 +34,9 @@ namespace folly {
 #if FOLLY_HAS_LIBURING
 
 // Callback types for IoUringBackend configuration
-using IoUringResolveNapiIdCallback =
-    std::function<int(int ifindex, uint32_t queueId)>;
-using IoUringSrcPortForQueueIdCallback = std::function<int(
+using ResolveNapiIdCallback =
+    folly::Function<int(int ifindex, uint32_t queueId)>;
+using SrcPortForQueueIdCallback = folly::Function<int(
     const folly::IPAddress& destAddr,
     uint16_t destPort,
     int targetNapiId,
@@ -215,13 +215,13 @@ struct IoUringOptions {
     return *this;
   }
 
-  IoUringOptions& setResolveNapiCallback(IoUringResolveNapiIdCallback&& v) {
+  IoUringOptions& setResolveNapiCallback(ResolveNapiIdCallback&& v) {
     resolveNapiId = std::move(v);
 
     return *this;
   }
 
-  IoUringOptions& setZcrxSrcPortCallback(IoUringSrcPortForQueueIdCallback&& v) {
+  IoUringOptions& setZcrxSrcPortCallback(SrcPortForQueueIdCallback&& v) {
     srcPortQueueId = std::move(v);
 
     return *this;
@@ -308,8 +308,8 @@ struct IoUringOptions {
   std::string zcRxIfname;
   int zcRxQueueId{-1};
   int zcRxIfindex{-1};
-  IoUringResolveNapiIdCallback resolveNapiId;
-  IoUringSrcPortForQueueIdCallback srcPortQueueId;
+  ResolveNapiIdCallback resolveNapiId;
+  SrcPortForQueueIdCallback srcPortQueueId;
   int zcRxNumPages{-1};
   int zcRxRefillEntries{-1};
 
