@@ -1,0 +1,29 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs:rust_library.bzl", "rust_library")
+
+oncall("rust_libraries")
+
+fbcode_target(
+    _kind = rust_library,
+    name = "folly_compression",
+    srcs = ["compression.rs"],
+    cpp_deps = [":compression-ffi"],
+    crate_root = "compression.rs",
+    cxx_bridge = "compression.rs",
+    deps = [
+        "fbsource//third-party/rust:cxx",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "compression-ffi",
+    srcs = ["compression.cpp"],
+    headers = ["compression.h"],
+    preferred_linkage = "static",
+    exported_deps = [
+        "fbsource//third-party/rust:cxx-core",
+        "//folly/compression:compression",
+    ],
+)
