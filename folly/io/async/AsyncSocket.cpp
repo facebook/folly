@@ -25,6 +25,7 @@
 #include <boost/preprocessor/control/if.hpp>
 
 #include <folly/Exception.h>
+#include <folly/Overload.h>
 #include <folly/Portability.h>
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
@@ -1453,7 +1454,11 @@ bool AsyncSocket::setZeroCopy(bool enable) {
 }
 
 void AsyncSocket::setZeroCopyEnableFunc(AsyncWriter::ZeroCopyEnableFunc func) {
-  zeroCopyEnableFunc_ = func;
+  zeroCopyEnablePolicy_ = std::move(func);
+}
+
+void AsyncSocket::setZeroCopyEnableThreshold(size_t threshold) {
+  zeroCopyEnablePolicy_ = threshold;
 }
 
 void AsyncSocket::setZeroCopyReenableThreshold(size_t threshold) {
@@ -1857,12 +1862,6 @@ void AsyncSocket::writeChain(
     WriteCallback* callback, unique_ptr<IOBuf>&& buf, WriteFlags flags) {
   adjustZeroCopyFlags(flags);
 
-  // adjustZeroCopyFlags can set zeroCopyEnabled_ to true
-  if (zeroCopyEnabled_ && !isSet(flags, WriteFlags::WRITE_MSG_ZEROCOPY) &&
-      zeroCopyEnableFunc_ && zeroCopyEnableFunc_(buf) && buf->isManaged()) {
-    flags |= WriteFlags::WRITE_MSG_ZEROCOPY;
-  }
-
   size_t count = buf->countChainElements();
   if (count <= kSmallIoVecSize) {
     // suppress "warning: variable length array 'vec' is used [-Wvla]"
@@ -1885,6 +1884,22 @@ void AsyncSocket::writeChainImpl(
     unique_ptr<IOBuf>&& buf,
     WriteFlags flags) {
   auto res = buf->fillIov(vec, count);
+  if (zeroCopyEnabled_ && !isSet(flags, WriteFlags::WRITE_MSG_ZEROCOPY) &&
+      buf->isManaged()) {
+    bool enableZeroCopy = std::visit(
+        folly::overload(
+            [](std::monostate) { return false; },
+            [&buf](const AsyncWriter::ZeroCopyEnableFunc& func) {
+              return func && func(buf);
+            },
+            [totalLength = res.totalLength](size_t threshold) {
+              return threshold > 0 && totalLength >= threshold;
+            }),
+        zeroCopyEnablePolicy_);
+    if (enableZeroCopy) {
+      flags |= WriteFlags::WRITE_MSG_ZEROCOPY;
+    }
+  }
   writeImpl(
       callback, vec, res.numIovecs, std::move(buf), res.totalLength, flags);
 }

@@ -21,6 +21,7 @@
 #include <chrono>
 #include <map>
 #include <memory>
+#include <variant>
 
 #include <folly/ConstructorCallbackList.h>
 #include <folly/Optional.h>
@@ -838,6 +839,8 @@ class AsyncSocket
   }
 
   void setZeroCopyEnableFunc(AsyncWriter::ZeroCopyEnableFunc func) override;
+
+  void setZeroCopyEnableThreshold(size_t threshold) override;
 
   void setZeroCopyReenableThreshold(size_t threshold);
 
@@ -1941,7 +1944,9 @@ class AsyncSocket
       int err,
       std::unique_ptr<const AsyncSocketException> exception) noexcept override;
 
-  AsyncWriter::ZeroCopyEnableFunc zeroCopyEnableFunc_;
+  using ZeroCopyEnablePolicy =
+      std::variant<std::monostate, AsyncWriter::ZeroCopyEnableFunc, size_t>;
+  ZeroCopyEnablePolicy zeroCopyEnablePolicy_;
 
   // a folly::IOBuf can be used in multiple partial requests
   // there is a that maps a buffer id to a raw folly::IOBuf ptr

@@ -199,6 +199,10 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
     transport_->setZeroCopyEnableFunc(func);
   }
 
+  void setZeroCopyEnableThreshold(size_t threshold) override {
+    transport_->setZeroCopyEnableThreshold(threshold);
+  }
+
   AsyncTransport::UniquePtr tryExchangeWrappedTransport(
       AsyncTransport::UniquePtr& transport) override {
     if (transport_) {

@@ -159,6 +159,7 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/fmt:fmt",
         ":io_uring_backend",
         "//folly:exception",
+        "//folly:overload",
         "//folly:portability",
         "//folly:string",
         "//folly/lang:checked_math",

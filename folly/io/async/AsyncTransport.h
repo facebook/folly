@@ -402,6 +402,8 @@ class AsyncWriter {
 
   virtual void setZeroCopyEnableFunc(ZeroCopyEnableFunc /*func*/) {}
 
+  virtual void setZeroCopyEnableThreshold(size_t /*threshold*/) {}
+
  protected:
   virtual ~AsyncWriter() = default;
 };
