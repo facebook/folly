@@ -465,3 +465,13 @@ fb_dirsync_cpp_library(
         "//folly/synchronization:throttled_lifo_sem",
     ],
 )
+
+fb_dirsync_cpp_library(
+    name = "atomic_bit_fields",
+    headers = ["AtomicBitFields.h"],
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        ":atomic_struct",
+        "//folly/lang:bit_fields",
+    ],
+)

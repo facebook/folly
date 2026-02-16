@@ -560,3 +560,13 @@ fbcode_target(
         "//folly/synchronization:striped_throttled_lifo_sem",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "atomic_bit_fields_test",
+    srcs = ["AtomicBitFieldsTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization:atomic_bit_fields",
+    ],
+)
