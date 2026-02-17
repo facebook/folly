@@ -522,8 +522,6 @@ class IoUringBackend : public EventBaseBackendBase {
         FileOpCallback&& cb)
         : FileOpIoSqe(backend, fd, std::move(cb)), iov_(iov), offset_(offset) {}
 
-    void processActive() override { cb_(res_); }
-
     folly::small_vector<struct iovec> iov_;
     off_t offset_;
   };
