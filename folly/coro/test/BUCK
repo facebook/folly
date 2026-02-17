@@ -85,6 +85,25 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_benchmark,
+    name = "collect_all_try_benchmark",
+    srcs = ["CollectAllTryBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:cancellation_token",
+        "//folly:exception_wrapper",
+        "//folly:try",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:collect",
+        "//folly/coro:detail_current_async_frame",
+        "//folly/coro:task",
+        "//folly/coro:via_if_async",
+        "//folly/io/async:request_context",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
     name = "coro_benchmark_allocator",
     srcs = ["CoroBenchmarkAllocator.cpp"],
     headers = [],

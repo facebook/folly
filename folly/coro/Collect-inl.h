@@ -70,6 +70,16 @@ std::vector<RTask> collectMakeInnerTaskVec(InputRange& awaitables, Make& make) {
   return tasks;
 }
 
+namespace collect_detail {
+// Detection trait for whether co_awaitTry can be applied to a type
+template <typename T>
+using detect_co_awaitTry_t = decltype(co_awaitTry(std::declval<T>()));
+
+template <typename T>
+inline constexpr bool has_co_awaitTry_v =
+    folly::is_detected_v<detect_co_awaitTry_t, T>;
+} // namespace collect_detail
+
 template <typename SemiAwaitableMover, typename Result>
 BarrierTask makeCollectAllTryTask(
     Executor::KeepAlive<> executor,
@@ -574,21 +584,29 @@ auto collectAllTryRange(InputRange awaitables)
       -> detail::BarrierTask {
     assert(index < results.size());
     auto& result = results[index];
-    try {
-      using await_result = semi_await_result_t<awaitable_type>;
-      if constexpr (std::is_void_v<await_result>) {
-        co_await co_viaIfAsync(
-            executor.get_alias(),
-            co_withCancellation(cancelToken, std::move(semiAwaitable)));
-        result.emplace();
-      } else {
-        result.emplace(
-            co_await co_viaIfAsync(
-                executor.get_alias(),
-                co_withCancellation(cancelToken, std::move(semiAwaitable))));
+    if constexpr (detail::collect_detail::has_co_awaitTry_v<awaitable_type>) {
+      // Fast path: use co_awaitTry to avoid exception rethrow overhead
+      result = co_await co_awaitTry(co_viaIfAsync(
+          executor.get_alias(),
+          co_withCancellation(cancelToken, std::move(semiAwaitable))));
+    } else {
+      // Fallback: use try-catch for awaitables without co_awaitTry support
+      try {
+        using await_result = semi_await_result_t<awaitable_type>;
+        if constexpr (std::is_void_v<await_result>) {
+          co_await co_viaIfAsync(
+              executor.get_alias(),
+              co_withCancellation(cancelToken, std::move(semiAwaitable)));
+          result.emplace();
+        } else {
+          result.emplace(
+              co_await co_viaIfAsync(
+                  executor.get_alias(),
+                  co_withCancellation(cancelToken, std::move(semiAwaitable))));
+        }
+      } catch (...) {
+        result.emplaceException(current_exception());
       }
-    } catch (...) {
-      result.emplaceException(current_exception());
     }
   };
 
