@@ -28,7 +28,6 @@
 #include <folly/Memory.h>
 #include <folly/Random.h>
 #include <folly/String.h>
-#include <folly/container/Foreach.h>
 #include <folly/memory/Arena.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
@@ -111,8 +110,8 @@ static void randomRemoval(
 
 static void sumAllValues(SkipListAccessor skipList, int64_t* sum) {
   *sum = 0;
-  FOR_EACH (it, skipList) {
-    *sum += *it;
+  for (const auto& value : skipList) {
+    *sum += value;
   }
   VLOG(20) << "sum = " << sum;
 }
@@ -121,9 +120,9 @@ static void concurrentSkip(
     const vector<ValueType>* values, SkipListAccessor skipList) {
   int64_t sum = 0;
   SkipListAccessor::Skipper skipper(skipList);
-  FOR_EACH (it, *values) {
-    if (skipper.to(*it)) {
-      sum += *it;
+  for (const auto& value : *values) {
+    if (skipper.to(value)) {
+      sum += value;
     }
   }
   VLOG(20) << "sum = " << sum;
@@ -131,11 +130,11 @@ static void concurrentSkip(
 
 bool verifyEqual(SkipListAccessor skipList, const SetType& verifier) {
   EXPECT_EQ(verifier.size(), skipList.size());
-  FOR_EACH (it, verifier) {
-    CHECK(skipList.contains(*it)) << *it;
-    SkipListType::const_iterator iter = skipList.find(*it);
+  for (const auto& value : verifier) {
+    CHECK(skipList.contains(value)) << value;
+    SkipListType::const_iterator iter = skipList.find(value);
     CHECK(iter != skipList.end());
-    EXPECT_EQ(*iter, *it);
+    EXPECT_EQ(*iter, value);
   }
   EXPECT_TRUE(std::equal(verifier.begin(), verifier.end(), skipList.begin()));
   return true;
@@ -322,8 +321,8 @@ TEST(ConcurrentSkipList, ConcurrentAdd) {
   }
 
   SetType all;
-  FOR_EACH (s, verifiers) {
-    all.insert(s->begin(), s->end());
+  for (auto& verifier : verifiers) {
+    all.insert(verifier.begin(), verifier.end());
   }
   verifyEqual(skipList, all);
 }
@@ -345,13 +344,13 @@ void testConcurrentRemoval(int numThreads, int maxValue) {
     LOG(WARNING) << "Caught " << exceptionStr(e) << ": could only create "
                  << threads.size() << " threads out of " << numThreads;
   }
-  FOR_EACH (t, threads) {
-    (*t).join();
+  for (auto& thread : threads) {
+    thread.join();
   }
 
   SetType all;
-  FOR_EACH (s, verifiers) {
-    all.insert(s->begin(), s->end());
+  for (auto& verifier : verifiers) {
+    all.insert(verifier.begin(), verifier.end());
   }
 
   CHECK_EQ(maxValue, all.size() + skipList.size());
@@ -406,8 +405,8 @@ static void testConcurrentAccess(
     }
   }
 
-  FOR_EACH (t, threads) {
-    (*t).join();
+  for (auto& thread : threads) {
+    thread.join();
   }
   // just run through it, no need to verify the correctness.
 }

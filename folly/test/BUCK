@@ -312,7 +312,6 @@ fbcode_target(
         "//folly:memory",
         "//folly:random",
         "//folly:string",
-        "//folly/container:foreach",
         "//folly/memory:arena",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
