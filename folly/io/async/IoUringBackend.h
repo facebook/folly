@@ -437,15 +437,6 @@ class IoUringBackend : public EventBaseBackendBase {
           offset);
     }
 
-    void prepRecvmsg(
-        struct io_uring_sqe* sqe,
-        int fd,
-        struct msghdr* msg,
-        bool registerFd) noexcept {
-      prepUtilFunc(
-          ::io_uring_prep_recvmsg, sqe, registerFd, fd, msg, MSG_TRUNC);
-    }
-
     template <typename Fn, typename... Args>
     void prepUtilFunc(
         Fn fn,
