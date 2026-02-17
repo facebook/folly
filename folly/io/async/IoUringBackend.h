@@ -524,7 +524,6 @@ class IoUringBackend : public EventBaseBackendBase {
 
     void processActive() override { cb_(res_); }
 
-    static constexpr size_t kNumInlineIoVec = 4;
     folly::small_vector<struct iovec> iov_;
     off_t offset_;
   };
