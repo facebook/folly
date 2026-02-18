@@ -6,3 +6,14 @@ libaio-dev
 
 [rpms.distro=centos_stream]
 libaio-devel
+
+[download]
+url = https://pagure.io/libaio/archive/libaio-0.3.113/libaio-libaio-0.3.113.tar.gz
+sha256 = 716c7059703247344eb066b54ecbc3ca2134f0103307192e6c2b7dab5f9528ab
+
+[build]
+builder = make
+subdir = libaio-libaio-0.3.113
+
+[make.install_args]
+install
