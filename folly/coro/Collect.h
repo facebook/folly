@@ -32,7 +32,6 @@
 // `collectAll(memberTask())` makes a `now_task`
 #include <folly/coro/safe/NowTask.h>
 
-#include <functional>
 #include <iterator>
 #include <tuple>
 #include <type_traits>
