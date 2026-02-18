@@ -38,6 +38,8 @@ struct BridgeFromGoogleLogging : ::google::LogSink {
   BridgeFromGoogleLogging();
   ~BridgeFromGoogleLogging() noexcept override;
 
+  using ::google::LogSink::send;
+
   void send(
       ::google::LogSeverity severity,
       const char* full_filename,
