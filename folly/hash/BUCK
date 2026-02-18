@@ -32,100 +32,86 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "farm_hash",
-    raw_headers = [
-        "FarmHash.h",
-    ],
-    deps = [
-        "//xplat/folly:external_farmhash_farmhash",
+    headers = ["FarmHash.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/external/farmhash:farmhash",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "hash",
-    raw_headers = [
-        "Hash.h",
-    ],
-    deps = [
+    headers = ["Hash.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
         ":fnv_hash",
         ":hsieh_hash",
         ":murmur_hash",
         ":spooky_hash_v1",
         ":spooky_hash_v2",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:traits",
-        "//xplat/folly:utility",
-        "//xplat/folly/functional:apply_tuple",
-        "//xplat/folly/lang:bits",
-        "//xplat/folly/lang:cstring_view",
+        "//folly:c_portability",
+        "//folly:portability",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/lang:bits",
+        "//folly/lang:cstring_view",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "murmur_hash",
-    raw_headers = [
-        "MurmurHash.h",
-    ],
-    deps = [
-        "//xplat/folly:bits",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:portability",
+    headers = ["MurmurHash.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly/lang:bits",
+        "//folly/portability:constexpr",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "rapidhash",
-    raw_headers = [
-        "rapidhash.h",
-    ],
-    deps = [
-        "//xplat/folly/external/rapidhash:rapidhash",
+    headers = ["rapidhash.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/external/rapidhash:rapidhash",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "spooky_hash_v1",
-    srcs = [
-        "SpookyHashV1.cpp",
-    ],
-    raw_headers = [
-        "SpookyHashV1.h",
-    ],
-    deps = [
-        "//xplat/folly:cpp_attributes",
-    ],
+    srcs = ["SpookyHashV1.cpp"],
+    headers = ["SpookyHashV1.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "spooky_hash_v2",
-    srcs = [
-        "SpookyHashV2.cpp",
-    ],
-    raw_headers = [
-        "SpookyHashV2.h",
-    ],
-    deps = [
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:portability",
-        "//xplat/folly/lang:c_string",
+    srcs = ["SpookyHashV2.cpp"],
+    headers = ["SpookyHashV2.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:portability",
+        "//folly/lang:c_string",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "traits",
-    raw_headers = [
-        "traits.h",
-    ],
-    deps = [
-        "//xplat/folly:traits",
+    headers = ["traits.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:traits",
     ],
 )
 
@@ -148,82 +134,6 @@ fbcode_target(
     ],
     external_deps = [
         "boost",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "farm_hash",
-    headers = ["FarmHash.h"],
-    exported_deps = [
-        "//folly/external/farmhash:farmhash",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "hash",
-    headers = ["Hash.h"],
-    exported_deps = [
-        ":fnv_hash",
-        ":hsieh_hash",
-        ":murmur_hash",
-        ":spooky_hash_v1",
-        ":spooky_hash_v2",
-        "//folly:c_portability",
-        "//folly:portability",
-        "//folly:traits",
-        "//folly:utility",
-        "//folly/lang:bits",
-        "//folly/lang:cstring_view",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "rapidhash",
-    headers = ["rapidhash.h"],
-    exported_deps = [
-        "//folly/external/rapidhash:rapidhash",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "spooky_hash_v1",
-    srcs = ["SpookyHashV1.cpp"],
-    headers = ["SpookyHashV1.h"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "spooky_hash_v2",
-    srcs = ["SpookyHashV2.cpp"],
-    headers = ["SpookyHashV2.h"],
-    exported_deps = [
-        "//folly:c_portability",
-        "//folly:portability",
-        "//folly/lang:c_string",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "traits",
-    headers = ["traits.h"],
-    exported_deps = [
-        "//folly:traits",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "murmur_hash",
-    headers = ["MurmurHash.h"],
-    exported_deps = [
-        "//folly:c_portability",
-        "//folly/lang:bits",
-        "//folly/portability:constexpr",
     ],
 )
 
