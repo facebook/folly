@@ -2697,4 +2697,4 @@ inline detail::FutureAwaiter<T>
 } // namespace folly
 #endif
 
-#include <folly/futures/Future-inl.h>
+#include <folly/futures/Future-inl.h> // IWYU pragma: export
