@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "@fbsource//xplat/folly:defs.bzl",
     "DEFAULT_APPLE_SDKS",
@@ -32,103 +33,106 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "combine",
-    raw_headers = [
+    headers = [
         "Combine.h",
         "Combine-inl.h",
     ],
-    deps = [
-        "fbsource//xplat/folly/gen:base",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [":base"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "core",
-    raw_headers = [
+    headers = [
         "Core.h",
         "Core-inl.h",
     ],
-    deps = [
-        "//xplat/folly:portability",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = ["//folly:portability"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "file",
-    raw_headers = [
+    headers = [
         "File.h",
         "File-inl.h",
     ],
-    deps = [
-        "fbsource//xplat/folly/io:iobuf",
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
         ":base",
         ":string",
-        "//xplat/folly:exception",
-        "//xplat/folly:file",
+        "//folly:exception",
+        "//folly:file",
+        "//folly/io:iobuf",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "istream",
-    raw_headers = [
+    headers = [
         "IStream.h",
     ],
-    deps = [
-        "fbsource//xplat/folly/gen:core",
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":core",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "parallel",
-    raw_headers = [
+    headers = [
         "Parallel.h",
         "Parallel-inl.h",
     ],
-    deps = [
-        "fbsource//xplat/folly/experimental:event_count",
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
         ":base",
-        "//xplat/folly:mpmc_queue",
-        "//xplat/folly:scope_guard",
+        "//folly:mpmc_queue",
+        "//folly:scope_guard",
+        "//folly/synchronization:event_count",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "parallel_map",
-    raw_headers = [
+    headers = [
         "ParallelMap.h",
         "ParallelMap-inl.h",
     ],
-    deps = [
-        "fbsource//xplat/folly/experimental:event_count",
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
         ":core",
-        "//xplat/folly:expected",
-        "//xplat/folly:mpmc_pipeline",
-        "//xplat/folly/functional:invoke",
-        "//xplat/folly/system:hardware_concurrency",
+        "//folly:expected",
+        "//folly:mpmc_pipeline",
+        "//folly/functional:invoke",
+        "//folly/synchronization:event_count",
+        "//folly/system:hardware_concurrency",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "string",
-    raw_headers = [
+    headers = [
         "String.h",
         "String-inl.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "fbsource//xplat/folly/io:iobuf",
         ":base",
-        "//xplat/folly:conv",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:string",
+        "//folly:conv",
+        "//folly:portability",
+        "//folly:range",
+        "//folly:string",
+        "//folly/io:iobuf",
     ],
 )
 
@@ -153,101 +157,5 @@ fbcode_target(
         "//folly/container:access",
         "//folly/container:f14_hash",
         "//folly/functional:invoke",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "combine",
-    headers = [
-        "Combine.h",
-        "Combine-inl.h",
-    ],
-    exported_deps = [":base"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "core",
-    headers = [
-        "Core.h",
-        "Core-inl.h",
-    ],
-    exported_deps = ["//folly:portability"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "file",
-    headers = [
-        "File.h",
-        "File-inl.h",
-    ],
-    exported_deps = [
-        ":base",
-        ":string",
-        "//folly:exception",
-        "//folly:file",
-        "//folly/io:iobuf",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "parallel",
-    headers = [
-        "Parallel.h",
-        "Parallel-inl.h",
-    ],
-    exported_deps = [
-        ":base",
-        "//folly:mpmc_queue",
-        "//folly:scope_guard",
-        "//folly/synchronization:event_count",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "parallel_map",
-    headers = [
-        "ParallelMap.h",
-        "ParallelMap-inl.h",
-    ],
-    exported_deps = [
-        ":core",
-        "//folly:expected",
-        "//folly:mpmc_pipeline",
-        "//folly/functional:invoke",
-        "//folly/synchronization:event_count",
-        "//folly/system:hardware_concurrency",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "string",
-    headers = [
-        "String.h",
-        "String-inl.h",
-    ],
-    exported_deps = [
-        ":base",
-        "//folly:conv",
-        "//folly:portability",
-        "//folly:range",
-        "//folly:string",
-        "//folly/io:iobuf",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "istream",
-    headers = [
-        "IStream.h",
-    ],
-    exported_deps = [
-        ":core",
     ],
 )
