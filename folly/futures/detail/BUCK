@@ -1,51 +1,9 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "core",
-    srcs = [
-        "Core.cpp",
-    ],
-    raw_headers = [
-        "Core.h",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/synchronization:atomic_util",
-        "fbsource//xplat/folly/synchronization:micro_spin_lock",
-        ":types",
-        "//third-party/fmt:fmt",
-        "//third-party/glog:glog",
-        "//xplat/folly:executor",
-        "//xplat/folly:function",
-        "//xplat/folly:optional",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:try",
-        "//xplat/folly:utility",
-        "//xplat/folly/io/async:request_context",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:switch",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "types",
-    raw_headers = [
-        "Types.h",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "core",
     srcs = [
         "Core.cpp",
@@ -54,6 +12,8 @@ fbcode_target(
         "Core.h",
         "Types.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/fmt:fmt",
     ],
@@ -73,8 +33,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "types",
     headers = ["Types.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
 )
