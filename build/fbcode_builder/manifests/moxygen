@@ -23,7 +23,6 @@ BUILD_TESTS = ON
 BUILD_TESTS = OFF
 
 [dependencies]
-zlib
 gperf
 folly
 fizz
