@@ -1,113 +1,57 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "bind",
-    raw_headers = ["Bind.h"],
-    exported_deps = [
-        "//xplat/folly:utility",
-        "//xplat/folly/detail:tuple",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "bind",
     headers = ["Bind.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:utility",
         "//folly/detail:tuple",
     ],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "named",
-    raw_headers = ["Named.h"],
-    exported_deps = [
-        ":bind",
-        "//xplat/folly:traits",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "named",
     headers = ["Named.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":bind",
         "//folly:traits",
     ],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "named_to_storage",
-    raw_headers = ["NamedToStorage.h"],
-    exported_deps = [
-        ":named",
-        ":to_storage",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "named_to_storage",
     headers = ["NamedToStorage.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":named",
         ":to_storage",
     ],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "to_storage",
-    raw_headers = ["ToStorage.h"],
-    exported_deps = [
-        ":bind",
-        "//xplat/folly:utility",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "to_storage",
     headers = ["ToStorage.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":bind",
         "//folly:utility",
     ],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "as_argument",
-    raw_headers = ["AsArgument.h"],
-    exported_deps = [
-        ":bind",
-        "//xplat/folly:utility",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "as_argument",
     headers = ["AsArgument.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":bind",
         "//folly:utility",
