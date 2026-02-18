@@ -1,109 +1,25 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "atomic_utils",
-    raw_headers = [
-        "AtomicUtils.h",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "hazptr_utils",
-    raw_headers = [
-        "HazptrUtils.h",
-    ],
-    exported_deps = [
-        ":sleeper",
-        "//third-party/glog:glog",
-        "//xplat/folly:portability",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "inline_function_ref",
-    raw_headers = [
-        "InlineFunctionRef.h",
-    ],
-    exported_deps = [
-        "//xplat/folly:function",
-        "//xplat/folly:traits",
-        "//xplat/folly:utility",
-        "//xplat/folly/functional:invoke",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "rcu-detail",
-    raw_headers = [
-        "ThreadCachedLists.h",
-        "ThreadCachedReaders.h",
-        "ThreadCachedTag.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:function",
-        "//xplat/folly:synchronized",
-        "//xplat/folly:thread_local",
-        "//xplat/folly/synchronization:asymmetric_thread_fence",
-        "//xplat/folly/synchronization:relaxed_atomic",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "sleeper",
-    srcs = [
-        "Sleeper.cpp",
-    ],
-    raw_headers = [
-        "Sleeper.h",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/portability:asm",
-        "fbsource//xplat/folly/portability:time",
-        "//xplat/folly:portability",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "spin",
-    raw_headers = [
-        "Spin.h",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/portability:asm",
-        "//xplat/folly/synchronization:wait_options",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "atomic_utils",
     headers = ["AtomicUtils.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/lang:assume",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "hazptr_utils",
     headers = [
         "HazptrUtils.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":sleeper",
@@ -111,14 +27,30 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
+    name = "inline_function_ref",
+    headers = [
+        "InlineFunctionRef.h",
+    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:function",
+        "//folly:traits",
+        "//folly:utility",
+        "//folly/functional:invoke",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "rcu-detail",
     headers = [
         "ThreadCachedLists.h",
         "ThreadCachedReaders.h",
         "ThreadCachedTag.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:function",
@@ -129,36 +61,24 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "sleeper",
     srcs = ["Sleeper.cpp"],
     headers = ["Sleeper.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/portability:asm",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "spin",
     headers = ["Spin.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/portability:asm",
         "//folly/synchronization:wait_options",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "inline_function_ref",
-    headers = [
-        "InlineFunctionRef.h",
-    ],
-    exported_deps = [
-        "//folly:function",
-        "//folly:traits",
-        "//folly:utility",
-        "//folly/functional:invoke",
     ],
 )
