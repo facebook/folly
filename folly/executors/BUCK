@@ -8,218 +8,201 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "global_thread_pool_list",
-    srcs = [
-        "GlobalThreadPoolList.cpp",
+    srcs = ["GlobalThreadPoolList.cpp"],
+    headers = ["GlobalThreadPoolList.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    deps = [
+        "//folly:cpp_attributes",
+        "//folly/system:thread_id",
     ],
-    raw_headers = [
-        "GlobalThreadPoolList.h",
-    ],
-    deps = ["//xplat/folly:cpp_attributes"],
     exported_deps = [
-        "//xplat/folly:indestructible",
-        "//xplat/folly:synchronized",
-        "//xplat/folly:thread_local",
+        "//folly:indestructible",
+        "//folly:synchronized",
+        "//folly:thread_local",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "async",
-    raw_headers = [
-        "Async.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/futures:core",
-        "//xplat/folly/executors:global_executor",
+    headers = ["Async.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":global_executor",
+        "//folly/futures:core",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "threaded_executor",
-    srcs = [
-        "ThreadedExecutor.cpp",
-    ],
-    raw_headers = [
-        "ThreadedExecutor.h",
-    ],
+    srcs = ["ThreadedExecutor.cpp"],
+    headers = ["ThreadedExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:executor",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/concurrency:unbounded_queue",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/executors/thread_factory:named_thread_factory",
-        "//xplat/folly/executors/thread_factory:thread_factory",
-        "//xplat/folly/system:thread_name",
+        "fbsource//third-party/glog:glog",
+        "//folly:scope_guard",
+        "//folly/executors/thread_factory:named_thread_factory",
+        "//folly/system:thread_name",
+    ],
+    exported_deps = [
+        "//folly:executor",
+        "//folly/concurrency:unbounded_queue",
+        "//folly/container:f14_hash",
+        "//folly/executors/thread_factory:thread_factory",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "function_scheduler",
-    srcs = [
-        "FunctionScheduler.cpp",
-    ],
-    raw_headers = [
-        "FunctionScheduler.h",
-    ],
+    srcs = ["FunctionScheduler.cpp"],
+    headers = ["FunctionScheduler.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "//third-party/glog:glog",
-        "//xplat/folly:conv",
-        "//xplat/folly:function",
-        "//xplat/folly:random",
-        "//xplat/folly:range",
-        "//xplat/folly:string",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/container:intrusive_heap",
-        "//xplat/folly/system:thread_name",
+        "fbsource//third-party/glog:glog",
+        "//folly:conv",
+        "//folly:random",
+        "//folly:string",
+        "//folly/system:thread_name",
+    ],
+    exported_deps = [
+        "//folly:function",
+        "//folly:range",
+        "//folly/container:f14_hash",
+        "//folly/container:intrusive_heap",
+        "//folly/hash:hash",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "future_executor",
-    raw_headers = [
-        "FutureExecutor.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/futures:core",
-        "//xplat/folly/functional:invoke",
+    headers = ["FutureExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/functional:invoke",
+        "//folly/futures:core",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "io_thread_pool_deadlock_detector_observer",
     srcs = ["IOThreadPoolDeadlockDetectorObserver.cpp"],
-    raw_headers = ["IOThreadPoolDeadlockDetectorObserver.h"],
-    deps = [
-        "//xplat/folly/system:thread_id",
-    ],
+    headers = ["IOThreadPoolDeadlockDetectorObserver.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "//xplat/folly:singleton",
-        "//xplat/folly/concurrency:deadlock_detector",
-        "//xplat/folly/executors:io_thread_pool_executor",
-        "//xplat/folly/executors:thread_pool_executor",
+        "//folly:singleton",
+        "//folly/concurrency:deadlock_detector",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/executors:thread_pool_executor",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "timekeeper_scheduled_executor",
-    srcs = [
-        "TimekeeperScheduledExecutor.cpp",
-    ],
-    raw_headers = [
-        "TimekeeperScheduledExecutor.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/futures:core",
-        "//third-party/glog:glog",
-        "//xplat/folly/executors:scheduled_executor",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "timed_drivable_executor",
-    srcs = [
-        "TimedDrivableExecutor.cpp",
-    ],
-    raw_headers = [
-        "TimedDrivableExecutor.h",
-    ],
-    deps = [
-        "//xplat/folly/concurrency:unbounded_queue",
-        "//xplat/folly/executors:drivable_executor",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "inline_executor",
-    srcs = [
-        "InlineExecutor.cpp",
-    ],
-    raw_headers = [
-        "InlineExecutor.h",
-    ],
-    deps = ["//xplat/folly:indestructible"],
+    srcs = ["TimekeeperScheduledExecutor.cpp"],
+    headers = ["TimekeeperScheduledExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "//xplat/folly:c_portability",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:executor",
+        "fbsource//third-party/glog:glog",
+        ":scheduled_executor",
+        "//folly/futures:core",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "manual_executor",
-    srcs = [
-        "ManualExecutor.cpp",
+fb_dirsync_cpp_library(
+    name = "timed_drivable_executor",
+    srcs = ["TimedDrivableExecutor.cpp"],
+    headers = ["TimedDrivableExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":drivable_executor",
+        "//folly/concurrency:unbounded_queue",
     ],
-    raw_headers = [
-        "ManualExecutor.h",
-    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "inline_executor",
+    srcs = ["InlineExecutor.cpp"],
+    headers = ["InlineExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "fbsource//xplat/folly/synchronization:lifo_sem",
-        "//xplat/folly/executors:drivable_executor",
-        "//xplat/folly/executors:scheduled_executor",
-        "//xplat/folly/executors:sequenced_executor",
+        "//folly:indestructible",
+    ],
+    exported_deps = [
+        "//folly:c_portability",
+        "//folly:cpp_attributes",
+        "//folly:executor",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "queue_observer",
-    srcs = [
-        "QueueObserver.cpp",
+fb_dirsync_cpp_library(
+    name = "manual_executor",
+    srcs = ["ManualExecutor.cpp"],
+    headers = ["ManualExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/executors:drivable_executor",
+        "//folly/executors:scheduled_executor",
+        "//folly/executors:sequenced_executor",
+        "//folly/synchronization:lifo_sem",
     ],
-    raw_headers = [
+)
+
+fb_dirsync_cpp_library(
+    name = "queue_observer",
+    srcs = ["QueueObserver.cpp"],
+    headers = [
         "QueueObserver.h",
     ],
-    deps = [
-        "fbsource//xplat/folly/portability:sys_types",
-        "//xplat/folly:portability",
-        "//xplat/folly:synchronized",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "soft_real_time_executor",
-    raw_headers = [
-        "SoftRealTimeExecutor.h",
-    ],
-    deps = [
-        "//xplat/folly:executor",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "sequenced_executor",
-    raw_headers = [
-        "SequencedExecutor.h",
-    ],
-    deps = [
-        "//xplat/folly:executor",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "serialized_executor",
-    raw_headers = [
-        "SerializedExecutor.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "//xplat/folly/executors:sequenced_executor",
+        "//folly:function",
+        "//folly:portability",
+        "//folly:synchronized",
+        "//folly/portability:sys_types",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "soft_real_time_executor",
+    srcs = ["SoftRealTimeExecutor.cpp"],
+    headers = ["SoftRealTimeExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    deps = ["fbsource//third-party/glog:glog"],
+    exported_deps = [
+        "//folly:executor",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "sequenced_executor",
+    headers = ["SequencedExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:executor",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "serialized_executor",
+    headers = ["SerializedExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":sequenced_executor",
     ],
 )
 
@@ -251,339 +234,204 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "serial_executor",
-    raw_headers = [
+    headers = [
         "SerialExecutor.h",
         "SerialExecutor-inl.h",
     ],
-    deps = [
-        "fbsource//xplat/folly/synchronization:relaxed_atomic",
-        "//third-party/glog:glog",
-        "//xplat/folly:exception_string",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/concurrency:unbounded_queue",
-        "//xplat/folly/executors:global_executor",
-        "//xplat/folly/executors:serialized_executor",
-        "//xplat/folly/io/async:request_context",
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "fbsource//third-party/glog:glog",
+        ":global_executor",
+        ":serialized_executor",
+        "//folly:exception_string",
+        "//folly:scope_guard",
+        "//folly/io/async:request_context",
+        "//folly/synchronization:distributed_mutex",
+        "//folly/synchronization:relaxed_atomic",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "strand_executor",
-    srcs = [
-        "StrandExecutor.cpp",
-    ],
-    raw_headers = [
-        "StrandExecutor.h",
-    ],
+    srcs = ["StrandExecutor.cpp"],
+    headers = ["StrandExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:exception_string",
-        "//xplat/folly:optional",
-        "//xplat/folly/concurrency:unbounded_queue",
-        "//xplat/folly/executors:global_executor",
-        "//xplat/folly/executors:serialized_executor",
-        "//xplat/folly/io/async:request_context",
+        "fbsource//third-party/glog:glog",
+        ":global_executor",
+        "//folly:exception_string",
+    ],
+    exported_deps = [
+        ":serialized_executor",
+        "//folly:optional",
+        "//folly/concurrency:unbounded_queue",
+        "//folly/io/async:request_context",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "drivable_executor",
-    raw_headers = [
-        "DrivableExecutor.h",
-    ],
-    deps = [
-        "//xplat/folly:executor",
+    headers = ["DrivableExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:executor",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "executor_with_priority",
-    srcs = [
-        "ExecutorWithPriority.cpp",
-    ],
-    raw_headers = [
+    srcs = ["ExecutorWithPriority.cpp"],
+    headers = [
         "ExecutorWithPriority.h",
         "ExecutorWithPriority-inl.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:executor",
+        "fbsource//third-party/glog:glog",
+        "//folly:executor",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "fiber_io_executor",
-    raw_headers = [
-        "FiberIOExecutor.h",
-    ],
-    deps = [
-        "//xplat/folly/executors:io_executor",
-        "//xplat/folly/fibers:fiber_manager_map",
+    headers = ["FiberIOExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":io_executor",
+        "//folly/fibers:fiber_manager_map",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "queued_immediate_executor",
-    srcs = [
-        "QueuedImmediateExecutor.cpp",
-    ],
-    raw_headers = [
-        "QueuedImmediateExecutor.h",
-    ],
+    srcs = ["QueuedImmediateExecutor.cpp"],
+    headers = ["QueuedImmediateExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "//xplat/folly:scope_guard",
+        "//folly:indestructible",
+        "//folly:scope_guard",
     ],
     exported_deps = [
-        "//xplat/folly:executor",
-        "//xplat/folly:indestructible",
-        "//xplat/folly:thread_local",
-        "//xplat/folly/executors:inline_executor",
-        "//xplat/folly/io/async:request_context",
+        ":inline_executor",
+        "//folly:executor",
+        "//folly:thread_local",
+        "//folly/io/async:request_context",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "codel",
-    srcs = [
-        "Codel.cpp",
-    ],
-    raw_headers = [
-        "Codel.h",
-    ],
+    srcs = ["Codel.cpp"],
+    headers = ["Codel.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "fbsource//xplat/folly/portability:gflags",
+        "//folly/portability:gflags",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "edf_thread_pool_executor",
-    srcs = [
-        "EDFThreadPoolExecutor.cpp",
-    ],
-    raw_headers = [
-        "EDFThreadPoolExecutor.h",
-    ],
+    srcs = ["EDFThreadPoolExecutor.cpp"],
+    headers = ["EDFThreadPoolExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "fbsource//xplat/folly/portability:gflags",
-        "fbsource//xplat/folly/synchronization:lifo_sem",
-        "fbsource//xplat/folly/synchronization:throttled_lifo_sem",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/concurrency:process_local_unique_id",
-        "//xplat/folly/executors:soft_real_time_executor",
-        "//xplat/folly/executors:thread_pool_executor",
-        "//xplat/folly/tracing:static_tracepoint",
+        "fbsource//third-party/glog:glog",
+        "//folly/concurrency:process_local_unique_id",
+        "//folly/portability:gflags",
+        "//folly/synchronization:lifo_sem",
+        "//folly/synchronization:throttled_lifo_sem",
+        "//folly/tracing:static_tracepoint",
+    ],
+    exported_deps = [
+        ":soft_real_time_executor",
+        ":thread_pool_executor",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "cpu_thread_pool_executor",
-    srcs = [
-        "CPUThreadPoolExecutor.cpp",
-    ],
-    raw_headers = [
-        "CPUThreadPoolExecutor.h",
-    ],
+    srcs = ["CPUThreadPoolExecutor.cpp"],
+    headers = ["CPUThreadPoolExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "fbsource//xplat/folly/portability:gflags",
-        "fbsource//xplat/folly/synchronization:throttled_lifo_sem",
-        "//xplat/folly:optional",
-        "//xplat/folly/executors:queue_observer",
-        "//xplat/folly/executors:thread_pool_executor",
-        "//xplat/folly/executors/task_queue:priority_lifo_sem_mpmc_queue",
-        "//xplat/folly/executors/task_queue:priority_unbounded_blocking_queue",
-        "//xplat/folly/executors/task_queue:unbounded_blocking_queue",
+        "//folly:executor",
+        "//folly:memory",
+        "//folly:optional",
+        "//folly/executors/task_queue:priority_lifo_sem_mpmc_queue",
+        "//folly/executors/task_queue:priority_unbounded_blocking_queue",
+        "//folly/executors/task_queue:unbounded_blocking_queue",
+        "//folly/portability:gflags",
+        "//folly/synchronization:throttled_lifo_sem",
+    ],
+    exported_deps = [
+        ":queue_observer",
+        ":thread_pool_executor",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "thread_pool_executor",
-    srcs = [
-        "ThreadPoolExecutor.cpp",
-    ],
-    raw_headers = [
-        "ThreadPoolExecutor.h",
-    ],
+    srcs = ["ThreadPoolExecutor.cpp"],
+    headers = ["ThreadPoolExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "fbsource//xplat/folly/synchronization:asymmetric_thread_fence",
-        "//xplat/folly/tracing:static_tracepoint",
+        "//folly/concurrency:process_local_unique_id",
+        "//folly/portability:pthread",
+        "//folly/synchronization:asymmetric_thread_fence",
+        "//folly/tracing:static_tracepoint",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/portability:gflags",
-        "fbsource//xplat/folly/portability:pthread",
-        "fbsource//xplat/folly/synchronization:atomic_struct",
-        "fbsource//xplat/folly/synchronization:baton",
-        "fbsource//xplat/folly/synchronization:relaxed_atomic",
-        "//third-party/glog:glog",
-        "//xplat/folly:default_keep_alive_executor",
-        "//xplat/folly:memory",
-        "//xplat/folly:shared_mutex",
-        "//xplat/folly/concurrency:process_local_unique_id",
-        "//xplat/folly/executors:global_thread_pool_list",
-        "//xplat/folly/executors/task_queue:lifo_sem_mpmc_queue",
-        "//xplat/folly/executors/thread_factory:named_thread_factory",
-        "//xplat/folly/io/async:request_context",
+        "fbsource//third-party/glog:glog",
+        ":global_thread_pool_list",
+        "//folly:default_keep_alive_executor",
+        "//folly:memory",
+        "//folly:shared_mutex",
+        "//folly/executors/task_queue:lifo_sem_mpmc_queue",
+        "//folly/executors/thread_factory:named_thread_factory",
+        "//folly/io/async:request_context",
+        "//folly/portability:gflags",
+        "//folly/synchronization:atomic_struct",
+        "//folly/synchronization:baton",
+        "//folly/synchronization:relaxed_atomic",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "scheduled_executor",
-    raw_headers = [
-        "ScheduledExecutor.h",
-    ],
-    deps = [
-        "//xplat/folly:executor",
-        "//xplat/folly/lang:exception",
+    headers = ["ScheduledExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:executor",
+        "//folly/lang:exception",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "io_executor",
-    raw_headers = [
-        "IOExecutor.h",
-    ],
-    deps = [
-        "//xplat/folly:executor",
+    headers = ["IOExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:executor",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "executors",
-    deps = [
-        "//xplat/folly/executors:async",
-        "//xplat/folly/executors:cpu_thread_pool_executor",
-        "//xplat/folly/executors:fiber_io_executor",
-        "//xplat/folly/executors:future_executor",
-        "//xplat/folly/executors:global_executor",
-        "//xplat/folly/executors:io_executor",
-        "//xplat/folly/executors:io_object_cache",
-        "//xplat/folly/executors:io_thread_pool_executor",
-        "//xplat/folly/executors:serial_executor",
-        "//xplat/folly/executors:thread_pool_executor",
-        "//xplat/folly/executors:threaded_executor",
-        "//xplat/folly/executors/task_queue:blocking_queue",
-        "//xplat/folly/executors/task_queue:lifo_sem_mpmc_queue",
-        "//xplat/folly/executors/task_queue:priority_lifo_sem_mpmc_queue",
-        "//xplat/folly/executors/task_queue:unbounded_blocking_queue",
-        "//xplat/folly/executors/thread_factory:named_thread_factory",
-        "//xplat/folly/executors/thread_factory:priority_thread_factory",
-        "//xplat/folly/executors/thread_factory:thread_factory",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "io_object_cache",
-    raw_headers = [
-        "IOObjectCache.h",
-    ],
-    deps = [
-        "//xplat/folly:thread_local",
-        "//xplat/folly/executors:global_executor",
-        "//xplat/folly/io/async:async_base",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "io_thread_pool_executor",
-    srcs = [
-        "IOThreadPoolExecutor.cpp",
-    ],
-    raw_headers = [
-        "IOThreadPoolExecutor.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/portability:gflags",
-        "//third-party/glog:glog",
-        "//xplat/folly/detail:memory_idler",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/synchronization:relaxed_atomic",
-        "//xplat/folly:portability",
-        "//xplat/folly/executors:io_executor",
-        "//xplat/folly/executors:queue_observer",
-        "//xplat/folly/executors:thread_pool_executor",
-        "//xplat/folly/io/async:event_base_manager",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "metered_executor",
-    raw_headers = [
-        "MeteredExecutor.h",
-        "MeteredExecutor-inl.h",
-    ],
-    exported_deps = [
-        "//xplat/folly:default_keep_alive_executor",
-        "//xplat/folly/concurrency:unbounded_queue",
-        "//xplat/folly/executors:queue_observer",
-        "//xplat/folly/io/async:async_base",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "virtual_executor",
-    raw_headers = [
-        "VirtualExecutor.h",
-    ],
-    deps = [
-        "//xplat/folly:default_keep_alive_executor",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "threaded_repeating_function_runner",
-    srcs = [
-        "ThreadedRepeatingFunctionRunner.cpp",
-    ],
-    raw_headers = [
-        "ThreadedRepeatingFunctionRunner.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:function",
-        "//xplat/folly/system:thread_name",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "execution_observer",
-    srcs = [
-        "ExecutionObserver.cpp",
-    ],
-    raw_headers = [
-        "ExecutionObserver.h",
-    ],
-    exported_deps = [
-        "//third-party/boost:boost",
-        "//xplat/folly/tracing:static_tracepoint",
-    ],
-)
-
-# !!!! fbcode/folly/executors/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "executors",
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":async",  # @manual
         ":cpu_thread_pool_executor",  # @manual
@@ -606,92 +454,93 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "async",
-    headers = ["Async.h"],
+fb_dirsync_cpp_library(
+    name = "io_object_cache",
+    headers = ["IOObjectCache.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":global_executor",
-        "//folly/futures:core",
+        "//folly:thread_local",
+        "//folly/io/async:async_base",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "codel",
-    srcs = ["Codel.cpp"],
-    headers = ["Codel.h"],
-    deps = [
-        "//folly/portability:gflags",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "cpu_thread_pool_executor",
-    srcs = ["CPUThreadPoolExecutor.cpp"],
-    headers = ["CPUThreadPoolExecutor.h"],
-    deps = [
-        "//folly:executor",
-        "//folly:memory",
-        "//folly:optional",
-        "//folly/executors/task_queue:priority_lifo_sem_mpmc_queue",
-        "//folly/executors/task_queue:priority_unbounded_blocking_queue",
-        "//folly/executors/task_queue:unbounded_blocking_queue",
-        "//folly/portability:gflags",
-        "//folly/synchronization:throttled_lifo_sem",
-    ],
-    exported_deps = [
-        ":queue_observer",
-        ":thread_pool_executor",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "drivable_executor",
-    headers = ["DrivableExecutor.h"],
-    exported_deps = [
-        "//folly:executor",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "edf_thread_pool_executor",
-    srcs = ["EDFThreadPoolExecutor.cpp"],
-    headers = ["EDFThreadPoolExecutor.h"],
+fb_dirsync_cpp_library(
+    name = "io_thread_pool_executor",
+    srcs = ["IOThreadPoolExecutor.cpp"],
+    headers = ["IOThreadPoolExecutor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
-        "//folly/concurrency:process_local_unique_id",
+        "//folly/detail:memory_idler",
         "//folly/portability:gflags",
-        "//folly/synchronization:lifo_sem",
-        "//folly/synchronization:throttled_lifo_sem",
-        "//folly/tracing:static_tracepoint",
     ],
-    exported_deps = [
-        ":soft_real_time_executor",
-        ":thread_pool_executor",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "fiber_io_executor",
-    headers = ["FiberIOExecutor.h"],
     exported_deps = [
         ":io_executor",
-        "//folly/fibers:fiber_manager_map",
+        ":queue_observer",
+        ":thread_pool_executor",
+        "//folly:portability",
+        "//folly/io/async:event_base_manager",
+        "//folly/synchronization:relaxed_atomic",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "future_executor",
-    headers = ["FutureExecutor.h"],
+fb_dirsync_cpp_library(
+    name = "metered_executor",
+    headers = [
+        "MeteredExecutor.h",
+        "MeteredExecutor-inl.h",
+    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "//folly/functional:invoke",
-        "//folly/futures:core",
+        ":queue_observer",
+        "//folly:default_keep_alive_executor",
+        "//folly/concurrency:unbounded_queue",
+        "//folly/io/async:async_base",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "virtual_executor",
+    headers = [
+        "VirtualExecutor.h",
+    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:default_keep_alive_executor",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "threaded_repeating_function_runner",
+    srcs = ["ThreadedRepeatingFunctionRunner.cpp"],
+    headers = ["ThreadedRepeatingFunctionRunner.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly/system:thread_name",
+    ],
+    exported_deps = [
+        "//folly:function",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "execution_observer",
+    srcs = ["ExecutionObserver.cpp"],
+    headers = ["ExecutionObserver.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    deps = [
+        "//folly/tracing:static_tracepoint",
+    ],
+    exported_external_deps = [
+        "boost",
     ],
 )
 
@@ -717,367 +566,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "global_thread_pool_list",
-    srcs = ["GlobalThreadPoolList.cpp"],
-    headers = ["GlobalThreadPoolList.h"],
-    deps = [
-        "//folly:cpp_attributes",
-        "//folly/system:thread_id",
-    ],
-    exported_deps = [
-        "//folly:indestructible",
-        "//folly:synchronized",
-        "//folly:thread_local",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "inline_executor",
-    srcs = ["InlineExecutor.cpp"],
-    headers = ["InlineExecutor.h"],
-    deps = [
-        "//folly:indestructible",
-    ],
-    exported_deps = [
-        "//folly:c_portability",
-        "//folly:cpp_attributes",
-        "//folly:executor",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "manual_executor",
-    srcs = ["ManualExecutor.cpp"],
-    headers = ["ManualExecutor.h"],
-    exported_deps = [
-        "//folly/executors:drivable_executor",
-        "//folly/executors:scheduled_executor",
-        "//folly/executors:sequenced_executor",
-        "//folly/synchronization:lifo_sem",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "io_executor",
-    headers = ["IOExecutor.h"],
-    exported_deps = [
-        "//folly:executor",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "io_object_cache",
-    headers = ["IOObjectCache.h"],
-    exported_deps = [
-        ":global_executor",
-        "//folly:thread_local",
-        "//folly/io/async:async_base",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "io_thread_pool_executor",
-    srcs = ["IOThreadPoolExecutor.cpp"],
-    headers = ["IOThreadPoolExecutor.h"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly/detail:memory_idler",
-        "//folly/portability:gflags",
-    ],
-    exported_deps = [
-        ":io_executor",
-        ":queue_observer",
-        ":thread_pool_executor",
-        "//folly:portability",
-        "//folly/io/async:event_base_manager",
-        "//folly/synchronization:relaxed_atomic",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "soft_real_time_executor",
-    srcs = ["SoftRealTimeExecutor.cpp"],
-    headers = ["SoftRealTimeExecutor.h"],
-    deps = ["fbsource//third-party/glog:glog"],
-    exported_deps = [
-        "//folly:executor",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "scheduled_executor",
-    headers = ["ScheduledExecutor.h"],
-    exported_deps = [
-        "//folly:executor",
-        "//folly/lang:exception",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "serial_executor",
-    headers = [
-        "SerialExecutor.h",
-        "SerialExecutor-inl.h",
-    ],
-    exported_deps = [
-        "fbsource//third-party/glog:glog",
-        ":global_executor",
-        ":serialized_executor",
-        "//folly:exception_string",
-        "//folly:scope_guard",
-        "//folly/io/async:request_context",
-        "//folly/synchronization:distributed_mutex",
-        "//folly/synchronization:relaxed_atomic",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "sequenced_executor",
-    headers = ["SequencedExecutor.h"],
-    exported_deps = [
-        "//folly:executor",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "serialized_executor",
-    headers = ["SerializedExecutor.h"],
-    exported_deps = [
-        ":sequenced_executor",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "strand_executor",
-    srcs = ["StrandExecutor.cpp"],
-    headers = ["StrandExecutor.h"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        ":global_executor",
-        "//folly:exception_string",
-    ],
-    exported_deps = [
-        ":serialized_executor",
-        "//folly:optional",
-        "//folly/concurrency:unbounded_queue",
-        "//folly/io/async:request_context",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "thread_pool_executor",
-    srcs = ["ThreadPoolExecutor.cpp"],
-    headers = ["ThreadPoolExecutor.h"],
-    deps = [
-        "//folly/concurrency:process_local_unique_id",
-        "//folly/portability:pthread",
-        "//folly/synchronization:asymmetric_thread_fence",
-        "//folly/tracing:static_tracepoint",
-    ],
-    exported_deps = [
-        "fbsource//third-party/glog:glog",
-        ":global_thread_pool_list",
-        "//folly:default_keep_alive_executor",
-        "//folly:memory",
-        "//folly:shared_mutex",
-        "//folly/executors/task_queue:lifo_sem_mpmc_queue",
-        "//folly/executors/thread_factory:named_thread_factory",
-        "//folly/io/async:request_context",
-        "//folly/portability:gflags",
-        "//folly/synchronization:atomic_struct",
-        "//folly/synchronization:baton",
-        "//folly/synchronization:relaxed_atomic",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "threaded_executor",
-    srcs = ["ThreadedExecutor.cpp"],
-    headers = ["ThreadedExecutor.h"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:scope_guard",
-        "//folly/executors/thread_factory:named_thread_factory",
-        "//folly/system:thread_name",
-    ],
-    exported_deps = [
-        "//folly:executor",
-        "//folly/concurrency:unbounded_queue",
-        "//folly/container:f14_hash",
-        "//folly/executors/thread_factory:thread_factory",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "timed_drivable_executor",
-    srcs = ["TimedDrivableExecutor.cpp"],
-    headers = ["TimedDrivableExecutor.h"],
-    exported_deps = [
-        ":drivable_executor",
-        "//folly/concurrency:unbounded_queue",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "timekeeper_scheduled_executor",
-    srcs = ["TimekeeperScheduledExecutor.cpp"],
-    headers = ["TimekeeperScheduledExecutor.h"],
-    exported_deps = [
-        "fbsource//third-party/glog:glog",
-        ":scheduled_executor",
-        "//folly/futures:core",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "queued_immediate_executor",
-    srcs = ["QueuedImmediateExecutor.cpp"],
-    headers = ["QueuedImmediateExecutor.h"],
-    deps = [
-        "//folly:indestructible",
-        "//folly:scope_guard",
-    ],
-    exported_deps = [
-        ":inline_executor",
-        "//folly:executor",
-        "//folly:thread_local",
-        "//folly/io/async:request_context",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "executor_with_priority",
-    srcs = ["ExecutorWithPriority.cpp"],
-    headers = [
-        "ExecutorWithPriority.h",
-        "ExecutorWithPriority-inl.h",
-    ],
-    exported_deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:executor",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "metered_executor",
-    headers = [
-        "MeteredExecutor.h",
-        "MeteredExecutor-inl.h",
-    ],
-    exported_deps = [
-        ":queue_observer",
-        "//folly:default_keep_alive_executor",
-        "//folly/concurrency:unbounded_queue",
-        "//folly/io/async:async_base",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "io_thread_pool_deadlock_detector_observer",
-    srcs = ["IOThreadPoolDeadlockDetectorObserver.cpp"],
-    headers = ["IOThreadPoolDeadlockDetectorObserver.h"],
-    exported_deps = [
-        "//folly:singleton",
-        "//folly/concurrency:deadlock_detector",
-        "//folly/executors:io_thread_pool_executor",
-        "//folly/executors:thread_pool_executor",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "queue_observer",
-    srcs = ["QueueObserver.cpp"],
-    headers = [
-        "QueueObserver.h",
-    ],
-    exported_deps = [
-        "//folly:function",
-        "//folly:portability",
-        "//folly:synchronized",
-        "//folly/portability:sys_types",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "virtual_executor",
-    headers = [
-        "VirtualExecutor.h",
-    ],
-    exported_deps = [
-        "//folly:default_keep_alive_executor",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "function_scheduler",
-    srcs = ["FunctionScheduler.cpp"],
-    headers = ["FunctionScheduler.h"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:conv",
-        "//folly:random",
-        "//folly:string",
-        "//folly/system:thread_name",
-    ],
-    exported_deps = [
-        "//folly:function",
-        "//folly:range",
-        "//folly/container:f14_hash",
-        "//folly/container:intrusive_heap",
-        "//folly/hash:hash",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "threaded_repeating_function_runner",
-    srcs = ["ThreadedRepeatingFunctionRunner.cpp"],
-    headers = ["ThreadedRepeatingFunctionRunner.h"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly/system:thread_name",
-    ],
-    exported_deps = [
-        "//folly:function",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "execution_observer",
-    srcs = ["ExecutionObserver.cpp"],
-    headers = ["ExecutionObserver.h"],
-    deps = [
-        "//folly/tracing:static_tracepoint",
-    ],
-    exported_external_deps = [
-        "boost",
-    ],
-)
+# !!!! fbcode/folly/executors/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
 fb_dirsync_cpp_library(
     name = "striped_edf_thread_pool_executor",
