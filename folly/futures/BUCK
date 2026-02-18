@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -24,15 +25,14 @@ non_fbcode_target(
     exported_deps = ["//xplat/folly/futures:core"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "cleanup",
-    raw_headers = [
-        "Cleanup.h",
-    ],
-    deps = [
-        ":core",
-        "//third-party/glog:glog",
+    headers = ["Cleanup.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly/futures:core",
     ],
 )
 
@@ -119,44 +119,43 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "futures",
-    deps = [
-        ":barrier",
-        ":core",
-        ":future_splitter",
-        ":shared_promise",
-        "//xplat/folly/executors:inline_executor",
-        "//xplat/folly/executors:manual_executor",
-        "//xplat/folly/executors:queued_immediate_executor",
-        "//xplat/folly/executors:scheduled_executor",
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":barrier",  # @manual
+        ":core",  # @manual
+        ":future_splitter",  # @manual
+        ":shared_promise",  # @manual
+        "//folly/executors:inline_executor",  # @manual
+        "//folly/executors:manual_executor",  # @manual
+        "//folly/executors:queued_immediate_executor",  # @manual
+        "//folly/executors:scheduled_executor",  # @manual
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "manual_timekeeper",
-    srcs = [
-        "ManualTimekeeper.cpp",
-    ],
-    raw_headers = [
-        "ManualTimekeeper.h",
-    ],
+    srcs = ["ManualTimekeeper.cpp"],
+    headers = ["ManualTimekeeper.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        ":core",
-        "//xplat/folly:synchronized",
+        "//folly/synchronization:atomic_util",
+    ],
+    exported_deps = [
+        "//folly:synchronized",
+        "//folly/futures:core",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "portability",
-    raw_headers = [
-        "Portability.h",
-    ],
-    deps = [
-        "//xplat/folly:portability",
+    headers = ["Portability.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:portability",
     ],
 )
 
@@ -271,44 +270,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "futures",
-    exported_deps = [
-        ":barrier",  # @manual
-        ":core",  # @manual
-        ":future_splitter",  # @manual
-        ":shared_promise",  # @manual
-        "//folly/executors:inline_executor",  # @manual
-        "//folly/executors:manual_executor",  # @manual
-        "//folly/executors:queued_immediate_executor",  # @manual
-        "//folly/executors:scheduled_executor",  # @manual
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "manual_timekeeper",
-    srcs = ["ManualTimekeeper.cpp"],
-    headers = ["ManualTimekeeper.h"],
-    deps = [
-        "//folly/synchronization:atomic_util",
-    ],
-    exported_deps = [
-        "//folly:synchronized",
-        "//folly/futures:core",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "portability",
-    headers = ["Portability.h"],
-    exported_deps = [
-        "//folly:portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "shared_promise",
     srcs = ["SharedPromise.cpp"],
     headers = [
@@ -320,15 +281,5 @@ fbcode_target(
         "//folly:portability",
         "//folly/executors:inline_executor",
         "//folly/lang:exception",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "cleanup",
-    headers = ["Cleanup.h"],
-    exported_deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly/futures:core",
     ],
 )
