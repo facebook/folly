@@ -1,92 +1,93 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "auto_timer",
-    raw_headers = [
-        "AutoTimer.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:conv",
-        "//xplat/folly:format",
-        "//xplat/folly:optional",
-        "//xplat/folly:string",
+    headers = ["AutoTimer.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
+        "//folly:conv",
+        "//folly:optional",
+        "//folly:string",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "file_handler_factory",
-    srcs = [
-        "FileHandlerFactory.cpp",
-    ],
-    raw_headers = [
-        "FileHandlerFactory.h",
-    ],
+    srcs = ["FileHandlerFactory.cpp"],
+    headers = ["FileHandlerFactory.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
+        ":logging",
+    ],
+    exported_deps = [
         ":log_handler",
-        ":logging",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "glog_bridge",
-    srcs = [
-        "BridgeFromGoogleLogging.cpp",
-    ],
-    raw_headers = [
-        "BridgeFromGoogleLogging.h",
-    ],
+    srcs = ["BridgeFromGoogleLogging.cpp"],
+    headers = ["BridgeFromGoogleLogging.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         ":logging",
-        "//third-party/glog:glog",
-        "//xplat/folly:utility",
+        "//folly:utility",
     ],
+    exported_deps = ["fbsource//third-party/glog:glog"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+# "init" contains code needed to configure the logging library.
+# The main initialization code in your program should normally depend
+# on this to initialize the logging library.
+fb_dirsync_cpp_library(
     name = "init",
     srcs = [
         "Init.cpp",
         "LogConfigParser.cpp",
     ],
-    raw_headers = [
+    headers = [
         "Init.h",
         "LogConfigParser.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        ":init_weak",
         ":log_name",
+        "//folly:conv",
+        "//folly:string",
+        "//folly/json:dynamic",
+        "//folly/lang:safe_assert",
+    ],
+    exported_deps = [
+        ":init_weak",  # @manual
         ":logging",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:conv",
-        "//xplat/folly:dynamic",
-        "//xplat/folly:json",
-        "//xplat/folly:range",
-        "//xplat/folly:string",
-        "//xplat/folly/lang:safe_assert",
+        "//folly:c_portability",
+        "//folly:range",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "init_weak",
     srcs = [
         "InitWeak.cpp",
     ],
+    xplat_impl = folly_xplat_library,
     deps = [
-        "//xplat/folly:c_portability",
+        "//folly:c_portability",
     ],
 )
+
+# xplat build rules
 
 non_fbcode_target(
     _kind = folly_xplat_library,
@@ -174,67 +175,63 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "log_handler",
     srcs = [
         "LogHandlerConfig.cpp",
     ],
-    raw_headers = [
+    headers = [
         "LogHandler.h",
         "LogHandlerConfig.h",
         "LogHandlerFactory.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
+        "//folly/lang:safe_assert",
+    ],
+    exported_deps = [
         ":log_level",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:optional",
-        "//xplat/folly:range",
-        "//xplat/folly/lang:safe_assert",
+        "//folly:cpp_attributes",
+        "//folly:optional",
+        "//folly:range",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "log_level",
-    srcs = [
-        "LogLevel.cpp",
-    ],
-    raw_headers = [
-        "LogLevel.h",
-    ],
+    srcs = ["LogLevel.cpp"],
+    headers = ["LogLevel.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "//xplat/folly:conv",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
+        "//folly:conv",
+    ],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:range",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "log_name",
-    srcs = [
-        "LogName.cpp",
-    ],
-    raw_headers = [
-        "LogName.h",
-    ],
-    deps = [
-        "//xplat/folly:range",
+    srcs = ["LogName.cpp"],
+    headers = ["LogName.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:range",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "rate_limiter",
-    srcs = [
-        "RateLimiter.cpp",
-    ],
-    raw_headers = [
-        "RateLimiter.h",
-    ],
-    deps = [
-        "//xplat/folly:chrono",
+    srcs = ["RateLimiter.cpp"],
+    headers = ["RateLimiter.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:chrono",
     ],
 )
 
@@ -330,139 +327,5 @@ fbcode_target(
         "//folly/detail:static_singleton_manager",
         "//folly/lang:exception",
         "//folly/lang:type_info",
-    ],
-)
-
-# "init" contains code needed to configure the logging library.
-# The main initialization code in your program should normally depend
-# on this to initialize the logging library.
-fbcode_target(
-    _kind = cpp_library,
-    name = "init",
-    srcs = [
-        "Init.cpp",
-        "LogConfigParser.cpp",
-    ],
-    headers = [
-        "Init.h",
-        "LogConfigParser.h",
-    ],
-    deps = [
-        ":log_name",
-        "//folly:conv",
-        "//folly:string",
-        "//folly/json:dynamic",
-        "//folly/lang:safe_assert",
-    ],
-    exported_deps = [
-        ":init_weak",  # @manual
-        ":logging",
-        "//folly:c_portability",
-        "//folly:range",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "init_weak",
-    srcs = [
-        "InitWeak.cpp",
-    ],
-    deps = [
-        "//folly:c_portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "file_handler_factory",
-    srcs = ["FileHandlerFactory.cpp"],
-    headers = ["FileHandlerFactory.h"],
-    deps = [
-        ":logging",
-    ],
-    exported_deps = [
-        ":log_handler",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "log_handler",
-    srcs = [
-        "LogHandlerConfig.cpp",
-    ],
-    headers = [
-        "LogHandler.h",
-        "LogHandlerConfig.h",
-        "LogHandlerFactory.h",
-    ],
-    deps = [
-        "//folly/lang:safe_assert",
-    ],
-    exported_deps = [
-        ":log_level",
-        "//folly:cpp_attributes",
-        "//folly:optional",
-        "//folly:range",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "log_level",
-    srcs = ["LogLevel.cpp"],
-    headers = ["LogLevel.h"],
-    deps = [
-        "//folly:conv",
-    ],
-    exported_deps = [
-        "//folly:portability",
-        "//folly:range",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "log_name",
-    srcs = ["LogName.cpp"],
-    headers = ["LogName.h"],
-    exported_deps = [
-        "//folly:range",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "rate_limiter",
-    srcs = ["RateLimiter.cpp"],
-    headers = ["RateLimiter.h"],
-    exported_deps = [
-        "//folly:chrono",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "glog_bridge",
-    srcs = ["BridgeFromGoogleLogging.cpp"],
-    headers = ["BridgeFromGoogleLogging.h"],
-    deps = [
-        ":logging",
-        "//folly:utility",
-    ],
-    exported_deps = ["fbsource//third-party/glog:glog"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "auto_timer",
-    headers = ["AutoTimer.h"],
-    exported_deps = [
-        "fbsource//third-party/fmt:fmt",
-        "fbsource//third-party/glog:glog",
-        "//folly:conv",
-        "//folly:optional",
-        "//folly:string",
     ],
 )
