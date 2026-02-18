@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
 load(
@@ -9,105 +7,11 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "priority_lifo_sem_mpmc_queue",
-    raw_headers = [
-        "PriorityLifoSemMPMCQueue.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/synchronization:lifo_sem",
-        "//third-party/glog:glog",
-        "//xplat/folly:executor",
-        "//xplat/folly:mpmc_queue",
-        "//xplat/folly:range",
-        "//xplat/folly/executors/task_queue:blocking_queue",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "blocking_queue",
-    raw_headers = [
-        "BlockingQueue.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:optional",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "lifo_sem_mpmc_queue",
-    raw_headers = [
-        "LifoSemMPMCQueue.h",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/synchronization:lifo_sem",
-        "//xplat/folly:mpmc_queue",
-        "//xplat/folly/executors/task_queue:blocking_queue",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "priority_unbounded_blocking_queue",
-    raw_headers = [
-        "PriorityUnboundedBlockingQueue.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/synchronization:lifo_sem",
-        "//xplat/folly:constexpr_math",
-        "//xplat/folly:executor",
-        "//xplat/folly/concurrency:priority_unbounded_queue_set",
-        "//xplat/folly/executors/task_queue:blocking_queue",
-        "//xplat/folly/lang:exception",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "unbounded_blocking_queue",
-    raw_headers = [
-        "UnboundedBlockingQueue.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/synchronization:lifo_sem",
-        "//xplat/folly/concurrency:unbounded_queue",
-        "//xplat/folly/executors/task_queue:blocking_queue",
-    ],
-)
-
-# !!!! fbcode/folly/executors/task_queue/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "blocking_queue",
-    headers = ["BlockingQueue.h"],
-    exported_deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:c_portability",
-        "//folly:optional",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "lifo_sem_mpmc_queue",
-    headers = ["LifoSemMPMCQueue.h"],
-    exported_deps = [
-        ":blocking_queue",
-        "//folly:mpmc_queue",
-        "//folly/synchronization:lifo_sem",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "priority_lifo_sem_mpmc_queue",
     headers = ["PriorityLifoSemMPMCQueue.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":blocking_queue",
@@ -118,10 +22,35 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
+    name = "blocking_queue",
+    headers = ["BlockingQueue.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly:c_portability",
+        "//folly:optional",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "lifo_sem_mpmc_queue",
+    headers = ["LifoSemMPMCQueue.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":blocking_queue",
+        "//folly:mpmc_queue",
+        "//folly/synchronization:lifo_sem",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "priority_unbounded_blocking_queue",
     headers = ["PriorityUnboundedBlockingQueue.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":blocking_queue",
         "//folly:constexpr_math",
@@ -132,10 +61,11 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "unbounded_blocking_queue",
     headers = ["UnboundedBlockingQueue.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":blocking_queue",
         "//folly/concurrency:unbounded_queue",
