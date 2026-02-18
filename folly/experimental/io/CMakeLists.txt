@@ -89,16 +89,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME io_uring_backend
-  HEADERS
-    IoUringBackend.h
-    IoUringBase.h
-  EXPORTED_DEPS
-    folly_io_async_io_uring_backend
-    folly_io_async_io_uring_provided_buffer_ring
-)
-
-folly_add_library(
   NAME io_uring_event
   HEADERS
     IoUringEvent.h
