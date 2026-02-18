@@ -1,156 +1,16 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "bucketed_time_series",
-    raw_headers = [
-        "BucketedTimeSeries.h",
-        "BucketedTimeSeries-inl.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:likely",
-        "//xplat/folly/stats/detail:bucket",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "digest_builder",
-    raw_headers = [
-        "DigestBuilder.h",
-        "DigestBuilder-inl.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/synchronization:lock",
-        "//xplat/folly:spin_lock",
-    ],
-    exported_deps = [
-        "//xplat/folly:memory",
-        "//xplat/folly/concurrency:cache_locality",
-        "//xplat/folly/lang:bits",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "histogram",
-    raw_headers = [
-        "Histogram.h",
-        "Histogram-inl.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:conv",
-        "//xplat/folly:traits",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/stats/detail:bucket",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "multi_level_time_series",
-    raw_headers = [
-        "MultiLevelTimeSeries.h",
-        "MultiLevelTimeSeries-inl.h",
-    ],
-    deps = [
-        ":bucketed_time_series",
-        "//third-party/glog:glog",
-        "//xplat/folly:constexpr_math",
-        "//xplat/folly:string",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "quantile_estimator",
-    srcs = [
-        "QuantileEstimator.cpp",
-    ],
-    raw_headers = [
-        "QuantileEstimator.h",
-        "QuantileEstimator-inl.h",
-    ],
-    deps = [
-        ":tdigest",
-        "//xplat/folly/stats/detail:buffered_stat",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "quantile_histogram",
-    raw_headers = [
-        "QuantileHistogram.h",
-        "QuantileHistogram-inl.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:conv",
-        "//xplat/folly/lang:exception",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "streaming_stats",
-    raw_headers = [
-        "StreamingStats.h",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "tdigest",
-    srcs = [
-        "TDigest.cpp",
-    ],
-    raw_headers = [
-        "TDigest.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:overload",
-        "//xplat/folly:range",
-        "//xplat/folly:utility",
-        "//xplat/folly/algorithm:binary_heap",
-        "//xplat/folly/memory:malloc",
-        "//xplat/folly/stats/detail:double_radix_sort",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "timeseries_histogram",
-    raw_headers = [
-        "TimeseriesHistogram.h",
-        "TimeseriesHistogram-inl.h",
-    ],
-    deps = [
-        ":histogram",
-        ":multi_level_time_series",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "bucketed_time_series",
     headers = [
         "BucketedTimeSeries.h",
         "BucketedTimeSeries-inl.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:likely",
@@ -158,13 +18,31 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
+    name = "digest_builder",
+    srcs = [],
+    headers = [
+        "DigestBuilder.h",
+        "DigestBuilder-inl.h",
+    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:memory",
+        "//folly:spin_lock",
+        "//folly/concurrency:cache_locality",
+        "//folly/lang:bits",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "histogram",
     headers = [
         "Histogram.h",
         "Histogram-inl.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:c_portability",
@@ -175,24 +53,14 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "streaming_stats",
-    headers = [
-        "StreamingStats.h",
-    ],
-    exported_deps = [
-        "//folly/lang:exception",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "multi_level_time_series",
     headers = [
         "MultiLevelTimeSeries.h",
         "MultiLevelTimeSeries-inl.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":bucketed_time_series",
@@ -201,8 +69,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "quantile_estimator",
     srcs = [
         "QuantileEstimator.cpp",
@@ -211,19 +78,22 @@ fbcode_target(
         "QuantileEstimator.h",
         "QuantileEstimator-inl.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":tdigest",
         "//folly/stats/detail:buffered_stat",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "quantile_histogram",
     headers = [
         "QuantileHistogram.h",
         "QuantileHistogram-inl.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:conv",
         "//folly:glog",
@@ -231,8 +101,19 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
+    name = "streaming_stats",
+    headers = [
+        "StreamingStats.h",
+    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/lang:exception",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "tdigest",
     srcs = [
         "TDigest.cpp",
@@ -240,6 +121,8 @@ fbcode_target(
     headers = [
         "TDigest.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:overload",
@@ -254,29 +137,14 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "digest_builder",
-    srcs = [],
-    headers = [
-        "DigestBuilder.h",
-        "DigestBuilder-inl.h",
-    ],
-    exported_deps = [
-        "//folly:memory",
-        "//folly:spin_lock",
-        "//folly/concurrency:cache_locality",
-        "//folly/lang:bits",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "timeseries_histogram",
     headers = [
         "TimeseriesHistogram.h",
         "TimeseriesHistogram-inl.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":histogram",
         ":multi_level_time_series",
