@@ -185,7 +185,7 @@ class AsyncLogWriter : public LogWriter {
    */
   folly::Synchronized<Data, std::mutex>::LockedPtr lockedData_;
 
-  static FOLLY_CONSTINIT std::atomic<DiscardCallback> discardCallback_;
+  static constinit std::atomic<DiscardCallback> discardCallback_;
 };
 
 } // namespace folly
