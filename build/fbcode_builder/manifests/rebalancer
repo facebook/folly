@@ -13,12 +13,13 @@ builder = cmake
 
 [dependencies]
 boost
+fbthrift
+fizz
+fmt
 folly
+gcc14
 gflags
 glog
-fbthrift
-fmt
-fizz
 googletest
 xxhash
 
@@ -28,3 +29,10 @@ REBALANCER_USE_SCIP=0
 [shipit.pathmap]
 fbcode/algopt/rebalancer/oss = .
 fbcode/algopt/rebalancer = rebalancer
+
+[dependencies.all(distro=centos_stream,distro_vers=9)]
+gcc14
+
+[cmake.defines.all(distro=centos_stream,distro_vers=9)]
+CMAKE_C_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/gcc
+CMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
