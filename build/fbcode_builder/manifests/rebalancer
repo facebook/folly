@@ -27,8 +27,9 @@ xxhash
 REBALANCER_USE_SCIP=0
 
 [shipit.pathmap]
-fbcode/algopt/rebalancer/oss = .
-fbcode/algopt/rebalancer = rebalancer
+fbcode/algopt/rebalancer/oss_root = .
+fbcode/algopt/rebalancer = algopt/rebalancer
+fbcode/algopt/lp = algopt/lp
 
 [dependencies.all(distro=centos_stream,distro_vers=9)]
 gcc14
