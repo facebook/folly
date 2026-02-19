@@ -9,7 +9,9 @@
 import glob
 import json
 import os
+import os.path
 import pathlib
+import re
 import shutil
 import stat
 import subprocess
@@ -922,6 +924,80 @@ if __name__ == "__main__":
             env=env,
         )
 
+    def _build_targets(self, targets: typing.Sequence[str]) -> None:
+        """Build one or more cmake targets in parallel.
+
+        Args:
+            targets: Sequence of target names (strings) to build
+        """
+        if not targets:
+            return
+
+        env = self._compute_env()
+        cmake = path_search(env, "cmake")
+        if cmake is None:
+            raise RuntimeError("unable to find cmake")
+
+        # Build all targets in a single cmake invocation for better parallelism
+        cmd = [
+            cmake,
+            "--build",
+            self.build_dir,
+        ]
+
+        # Add all targets
+        for target in targets:
+            cmd.extend(["--target", target])
+
+        cmd.extend(
+            [
+                "--config",
+                self.build_opts.build_type,
+                "-j",
+                str(self.num_jobs),
+            ]
+        )
+
+        self._check_cmd(cmd, env=env)
+
+    def _get_missing_test_executables(
+        self, test_filter: Optional[str], env: Env, ctest: Optional[str]
+    ) -> typing.Set[str]:
+        """Discover which test executables are missing for the given filter.
+        Returns a set of missing executable basenames (without path)."""
+        if ctest is None:
+            return set()
+
+        # Run ctest -N (show tests without running) with the filter to see which tests match
+        cmd = [ctest, "-N"]
+        if test_filter:
+            cmd += ["-R", test_filter]
+
+        try:
+            output = subprocess.check_output(
+                cmd,
+                env=dict(env.items()),
+                cwd=self.build_dir,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            # If ctest fails, it might be because executables don't exist yet
+            # Parse the error output to find the missing executables
+            output = e.output
+
+        # Parse output to find missing executable paths
+        # Look for lines like "Could not find executable /path/to/test_binary"
+        missing_executables = set()
+        for line in output.split("\n"):
+            match = re.search(r"Could not find executable (.+)", line)
+            if match:
+                exe_path = match.group(1)
+                exe_name = os.path.basename(exe_path)
+                missing_executables.add(exe_name)
+
+        return missing_executables
+
     def run_tests(
         self,
         schedule_type,
@@ -935,6 +1011,18 @@ if __name__ == "__main__":
         env = self._compute_env()
         ctest = path_search(env, "ctest")
         cmake = path_search(env, "cmake")
+
+        # Build only the missing test executables needed for the given filter.
+        # This is especially important for LocalDirFetcher projects (like fboss)
+        # where the build marker gets removed when building specific cmake targets.
+        missing_test_executables = self._get_missing_test_executables(
+            test_filter, env, ctest
+        )
+        if missing_test_executables:
+            sorted_executables = sorted(missing_test_executables)
+            print(f"Building missing test executables: {', '.join(sorted_executables)}")
+            # Build all missing executables in one cmake invocation for better parallelism
+            self._build_targets(sorted_executables)
 
         def require_command(path: Optional[str], name: str) -> str:
             if path is None:
