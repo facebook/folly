@@ -11,3 +11,6 @@ subdir = c-ares-1.34.5
 
 [cmake.defines]
 CARES_STATIC = ON
+
+[cmake.defines.shared_libs=off]
+CARES_SHARED = OFF
