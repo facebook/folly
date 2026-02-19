@@ -24,7 +24,7 @@
 #include <glog/logging.h>
 #include <folly/FileUtil.h>
 #include <folly/String.h>
-#include <folly/experimental/io/Epoll.h>
+#include <folly/io/async/Epoll.h>
 #include <folly/io/async/Liburing.h>
 #include <folly/lang/Align.h>
 #include <folly/portability/GFlags.h>

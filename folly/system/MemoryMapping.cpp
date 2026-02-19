@@ -28,7 +28,7 @@
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
-#include <folly/experimental/io/HugePages.h>
+#include <folly/io/HugePages.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/SysSyscall.h>

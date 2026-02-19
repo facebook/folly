@@ -153,7 +153,7 @@ fb_dirsync_cpp_library(
     ],
     exported_deps = [
         "//folly:range",
-        "//folly/experimental/io:fs_util",
+        "//folly/io:fs_util",
         "//folly/portability:unistd",
     ],
     external_deps = [

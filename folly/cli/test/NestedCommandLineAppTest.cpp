@@ -17,7 +17,7 @@
 #include <folly/cli/NestedCommandLineApp.h>
 
 #include <folly/Subprocess.h>
-#include <folly/experimental/io/FsUtil.h>
+#include <folly/io/FsUtil.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 

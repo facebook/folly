@@ -1884,8 +1884,8 @@ fbcode_target(
     srcs = ["AsyncIOTest.cpp"],
     supports_static_listing = False,
     deps = [
-        "//folly/experimental/io:async_io",
-        "//folly/experimental/io/test:async_base_test_lib",
+        "//folly/io/async:async_io",
+        "//folly/io/async/test:async_base_test_lib",
     ],
 )
 
@@ -1924,7 +1924,7 @@ fbcode_target(
     owner = "dmm@xmail.facebook.com",
     supports_static_listing = False,
     deps = [
-        "//folly/experimental/io:epoll_backend",
+        "//folly/io/async:epoll_backend",
         "//folly/io/async/test:async_signal_handler_test_lib",
         "//folly/io/async/test:event_base_test_lib",
     ],
@@ -1938,10 +1938,10 @@ fbcode_target(
     deps = [
         "//folly:benchmark",
         "//folly:file_util",
-        "//folly/experimental/io:async_io",
-        "//folly/experimental/io/test:async_base_test_lib",
-        "//folly/experimental/io/test:io_test_temp_file_util_lib",
+        "//folly/io/async:async_io",
         "//folly/io/async:io_uring",
+        "//folly/io/async/test:async_base_test_lib",
+        "//folly/io/async/test:io_test_temp_file_util_lib",
         "//folly/portability:gflags",
     ],
 )
@@ -1954,9 +1954,9 @@ fbcode_target(
     deps = [
         "//folly:benchmark",
         "//folly:file_util",
-        "//folly/experimental/io:epoll_backend",
         "//folly/init:init",
         "//folly/io/async:async_base",
+        "//folly/io/async:epoll_backend",
         "//folly/io/async:io_uring_backend",
         "//folly/io/async:scoped_event_base_thread",
         "//folly/portability:gflags",
@@ -1990,7 +1990,6 @@ fbcode_target(
         "//folly:file_util",
         "//folly:function",
         "//folly:string",
-        "//folly/experimental/io/test:io_test_temp_file_util_lib",
         "//folly/init:init",
         "//folly/io/async:async_base",
         "//folly/io/async:async_udp_server_socket",
@@ -1999,6 +1998,7 @@ fbcode_target(
         "//folly/io/async:io_uring_provided_buffer_ring",
         "//folly/io/async/test:async_signal_handler_test_lib",
         "//folly/io/async/test:event_base_test_lib",
+        "//folly/io/async/test:io_test_temp_file_util_lib",
         "//folly/portability:gtest",
     ],
 )
@@ -2039,9 +2039,9 @@ fbcode_target(
     owner = "dmm@xmail.facebook.com",
     supports_static_listing = False,
     deps = [
-        "//folly/experimental/io/test:async_base_test_lib",
         "//folly/init:init",
         "//folly/io/async:io_uring",
+        "//folly/io/async/test:async_base_test_lib",
     ],
 )
 
@@ -2089,8 +2089,8 @@ fbcode_target(
         "//folly:random",
         "//folly/coro:blocking_wait",
         "//folly/coro:collect",
-        "//folly/experimental/io:simple_async_io",
         "//folly/io:iobuf",
+        "//folly/io/async:simple_async_io",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
     ],
@@ -2107,7 +2107,7 @@ fbcode_target(
     ],
     exported_deps = [
         "fbsource//third-party/glog:glog",
-        "//folly/experimental/io:fs_util",
+        "//folly/io:fs_util",
         "//folly/testing:test_util",
     ],
 )
@@ -2121,9 +2121,9 @@ fbcode_target(
         "fbsource//third-party/glog:glog",
         "//folly:scope_guard",
         "//folly:string",
-        "//folly/experimental/io:async_base",
-        "//folly/experimental/io:fs_util",
-        "//folly/experimental/io/test:io_test_temp_file_util_lib",
+        "//folly/io:fs_util",
+        "//folly/io/async:async_base_class",
+        "//folly/io/async/test:io_test_temp_file_util_lib",
         "//folly/portability:gtest",
         "//folly/portability:sockets",
         "//folly/portability:unistd",
@@ -2138,8 +2138,8 @@ fbcode_target(
     link_whole = True,
     deps = [
         "//folly/executors/test:IOThreadPoolExecutorBaseTestLib",
-        "//folly/experimental/io:epoll",
-        "//folly/experimental/io:mux_io_thread_pool_executor",
+        "//folly/io/async:epoll",
+        "//folly/io/async:mux_io_thread_pool_executor",
         "//folly/portability:gtest",
         "//folly/synchronization:latch",
     ],

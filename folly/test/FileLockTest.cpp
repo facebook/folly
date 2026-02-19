@@ -23,7 +23,7 @@
 #include <folly/File.h>
 #include <folly/String.h>
 #include <folly/Subprocess.h>
-#include <folly/experimental/io/FsUtil.h>
+#include <folly/io/FsUtil.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 #include <folly/testing/TestUtil.h>

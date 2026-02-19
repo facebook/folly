@@ -39,7 +39,7 @@
 #include <folly/synchronization/Latch.h>
 
 #include <folly/Memory.h>
-#include <folly/experimental/io/FsUtil.h>
+#include <folly/io/FsUtil.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>

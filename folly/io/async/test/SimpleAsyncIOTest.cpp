@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/SimpleAsyncIO.h>
+#include <folly/io/async/SimpleAsyncIO.h>
 
 #include <bitset>
 

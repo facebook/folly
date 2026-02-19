@@ -55,7 +55,7 @@ folly_add_library(
     folly_portability_windows
     folly_string
   EXPORTED_DEPS
-    folly_experimental_io_fs_util
+    folly_io_fs_util
     folly_portability_unistd
     folly_range
   EXTERNAL_DEPS

@@ -21,7 +21,7 @@
 
 #include <boost/filesystem.hpp>
 
-#include <folly/experimental/io/FsUtil.h>
+#include <folly/io/FsUtil.h>
 #include <folly/json/dynamic.h>
 #include <folly/json/json.h>
 

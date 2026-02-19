@@ -32,7 +32,7 @@ non_fbcode_target(
         "//xplat/folly/ext/buck2:test_ext",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/experimental/io:fs_util",
+        "fbsource//xplat/folly/io:fs_util",
         "//xplat/folly:range",
         "//xplat/folly:scope_guard",
     ],
@@ -59,7 +59,7 @@ fbcode_target(
     exported_deps = [
         "//folly:range",
         "//folly:scope_guard",
-        "//folly/experimental/io:fs_util",
+        "//folly/io:fs_util",
     ],
     external_deps = [
         ("boost", None, "boost_regex"),

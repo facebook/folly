@@ -20,7 +20,7 @@
 
 #include <fmt/format.h>
 #include <folly/container/Enumerate.h>
-#include <folly/experimental/io/EpollBackend.h>
+#include <folly/io/async/EpollBackend.h>
 #include <folly/lang/Align.h>
 #include <folly/synchronization/Latch.h>
 

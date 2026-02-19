@@ -29,7 +29,7 @@ folly_add_library(
     folly_portability_fcntl
     folly_string
   EXPORTED_DEPS
-    folly_experimental_io_fs_util
+    folly_io_fs_util
     folly_range
     folly_scope_guard
   EXTERNAL_DEPS

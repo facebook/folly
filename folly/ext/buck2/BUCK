@@ -11,7 +11,7 @@ non_fbcode_target(
     link_whole = True,
     deps = ["//xplat/folly:dynamic"],
     exported_deps = [
-        "fbsource//xplat/folly/experimental/io:fs_util",
+        "fbsource//xplat/folly/io:fs_util",
         "//third-party/boost:boost_filesystem",
         "//xplat/folly:json",
         "//xplat/folly/ext:test_ext",
@@ -28,8 +28,8 @@ fbcode_target(
     # @lint-ignore BUCKLINT
     link_whole = True,
     deps = [
-        "//folly/experimental/io:fs_util",
         "//folly/ext:test_ext",
+        "//folly/io:fs_util",
         "//folly/json:dynamic",
     ],
     external_deps = [

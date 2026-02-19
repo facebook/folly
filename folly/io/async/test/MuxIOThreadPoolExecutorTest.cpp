@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/Epoll.h>
+#include <folly/io/async/Epoll.h>
 
 #if FOLLY_HAS_EPOLL
 
 #include <thread>
 
 #include <folly/executors/test/IOThreadPoolExecutorBaseTestLib.h>
-#include <folly/experimental/io/MuxIOThreadPoolExecutor.h>
+#include <folly/io/async/MuxIOThreadPoolExecutor.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Latch.h>
 

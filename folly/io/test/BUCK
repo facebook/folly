@@ -177,7 +177,7 @@ fbcode_target(
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
         "//folly:string",
-        "//folly/experimental/io:fs_util",
+        "//folly/io:fs_util",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/testing:test_util",

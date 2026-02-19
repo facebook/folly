@@ -20,7 +20,6 @@
 #include <folly/FileUtil.h>
 #include <folly/Function.h>
 #include <folly/String.h>
-#include <folly/experimental/io/test/IoTestTempFileUtil.h>
 #include <folly/init/Init.h>
 #include <folly/io/async/AsyncUDPServerSocket.h>
 #include <folly/io/async/EventHandler.h>
@@ -29,6 +28,7 @@
 #include <folly/io/async/IoUringProvidedBufferRing.h>
 #include <folly/io/async/test/AsyncSignalHandlerTestLib.h>
 #include <folly/io/async/test/EventBaseTestLib.h>
+#include <folly/io/async/test/IoTestTempFileUtil.h>
 #include <folly/portability/GTest.h>
 
 #ifndef RESOLVE_IN_ROOT

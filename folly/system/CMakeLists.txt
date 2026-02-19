@@ -73,7 +73,7 @@ folly_add_library(
   HEADERS
     MemoryMapping.h
   DEPS
-    folly_experimental_io_huge_pages
+    folly_io_huge_pages
     folly_portability
     folly_portability_gflags
     folly_portability_sys_mman

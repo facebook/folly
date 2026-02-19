@@ -127,7 +127,7 @@ folly_add_library(
     folly_small_vector
     folly_string
   EXPORTED_DEPS
-    folly_experimental_io_async_base
+    folly_io_async_async_base_class
   EXTERNAL_DEPS
     Boost::headers
 )
@@ -453,8 +453,8 @@ folly_add_library(
   HEADERS
     EventBasePoller.h
   DEPS
-    folly_experimental_io_epoll
     folly_file_util
+    folly_io_async_epoll
     folly_io_async_liburing
     folly_lang_align
     folly_portability_gflags
@@ -670,15 +670,15 @@ folly_add_library(
     MuxIOThreadPoolExecutor.h
   DEPS
     folly_container_enumerate
-    folly_experimental_io_epoll_backend
+    folly_io_async_epoll_backend
     folly_lang_align
     folly_synchronization_latch
   EXPORTED_DEPS
     folly_concurrency_unbounded_queue
     folly_executors_io_thread_pool_executor
     folly_executors_queue_observer
-    folly_experimental_io_event_base_poller
     folly_io_async_event_base_manager
+    folly_io_async_event_base_poller
     folly_portability
     folly_synchronization_baton
     folly_synchronization_relaxed_atomic
@@ -770,7 +770,7 @@ folly_add_library(
     SimpleAsyncIO.h
   DEPS
     folly_coro_baton
-    folly_experimental_io_async_io
+    folly_io_async_async_io
     folly_io_async_io_uring
     folly_io_async_liburing
     folly_portability_sockets
@@ -778,8 +778,8 @@ folly_add_library(
   EXPORTED_DEPS
     folly_coro_task
     folly_executors_global_executor
-    folly_experimental_io_async_base
     folly_io_async_async_base
+    folly_io_async_async_base_class
     folly_io_async_scoped_event_base_thread
     folly_synchronized
 )

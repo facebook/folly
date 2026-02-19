@@ -23,8 +23,8 @@
 #include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/QueueObserver.h>
-#include <folly/experimental/io/EventBasePoller.h>
 #include <folly/io/async/EventBaseManager.h>
+#include <folly/io/async/EventBasePoller.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/synchronization/ThrottledLifoSem.h>

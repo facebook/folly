@@ -33,7 +33,7 @@ non_fbcode_target(
         "ProgramOptions.h",
     ],
     deps = [
-        "fbsource//xplat/folly/experimental/io:fs_util",
+        "fbsource//xplat/folly/io:fs_util",
         "fbsource//xplat/folly/portability:gflags",
         "//third-party/boost:boost",
         "//third-party/boost:boost_program_options",
@@ -87,7 +87,7 @@ fbcode_target(
         "//folly:file_util",
         "//folly:format",
         "//folly:portability",
-        "//folly/experimental/io:fs_util",
+        "//folly/io:fs_util",
     ],
     exported_deps = [
         "//folly:c_portability",

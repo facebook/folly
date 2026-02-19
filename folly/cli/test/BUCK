@@ -18,7 +18,7 @@ fbcode_target(
         "fbsource//third-party/glog:glog",
         "//folly:subprocess",
         "//folly/cli:program_options",
-        "//folly/experimental/io:fs_util",
+        "//folly/io:fs_util",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],
@@ -53,7 +53,7 @@ fbcode_target(
         "//folly:file_util",
         "//folly:subprocess",
         "//folly/cli:program_options",
-        "//folly/experimental/io:fs_util",
+        "//folly/io:fs_util",
         "//folly/portability:gtest",
     ],
 )

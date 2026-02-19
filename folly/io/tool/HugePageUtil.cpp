@@ -20,7 +20,7 @@
 
 #include <fmt/core.h>
 #include <folly/Range.h>
-#include <folly/experimental/io/HugePages.h>
+#include <folly/io/HugePages.h>
 #include <folly/portability/GFlags.h>
 #include <folly/system/MemoryMapping.h>
 

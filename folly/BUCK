@@ -3149,7 +3149,7 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "experimental_io_huge_pages",
     exported_deps = [
-        "//xplat/folly/experimental/io:huge_pages",
+        "//xplat/folly/io:huge_pages",
     ],
 )
 
@@ -3158,7 +3158,7 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "experimental_io_fs_util",
     exported_deps = [
-        "//xplat/folly/experimental/io:fs_util",
+        "//xplat/folly/io:fs_util",
     ],
 )
 
@@ -4110,7 +4110,7 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "experimental_io_async_base",
     exported_deps = [
-        "//xplat/folly/experimental/io:async_base",
+        "//xplat/folly/io/async:async_base_class",
     ],
 )
 
@@ -4119,7 +4119,7 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "experimental_io_async_io_uring_socket",
     exported_deps = [
-        "//xplat/folly/experimental/io:async_io_uring_socket",
+        "//xplat/folly/io/async:async_io_uring_socket",
     ],
 )
 

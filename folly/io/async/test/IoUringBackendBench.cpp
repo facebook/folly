@@ -18,8 +18,8 @@
 
 #include <folly/Benchmark.h>
 #include <folly/FileUtil.h>
-#include <folly/experimental/io/EpollBackend.h>
 #include <folly/init/Init.h>
+#include <folly/io/async/EpollBackend.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/IoUringBackend.h>

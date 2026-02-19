@@ -21,7 +21,7 @@
 
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
-#include <folly/experimental/io/FsUtil.h>
+#include <folly/io/FsUtil.h>
 
 namespace folly {
 namespace test {

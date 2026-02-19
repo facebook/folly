@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/test/AsyncBaseTestLib.h>
 #include <folly/init/Init.h>
 #include <folly/io/async/IoUring.h>
+#include <folly/io/async/test/AsyncBaseTestLib.h>
 
 using folly::IoUring;
 

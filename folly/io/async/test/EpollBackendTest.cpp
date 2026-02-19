@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/EpollBackend.h>
+#include <folly/io/async/EpollBackend.h>
 
 #if FOLLY_HAS_EPOLL
 

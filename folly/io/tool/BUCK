@@ -11,7 +11,7 @@ fbcode_target(
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
         "//folly:range",
-        "//folly/experimental/io:huge_pages",
+        "//folly/io:huge_pages",
         "//folly/portability:gflags",
         "//folly/system:memory_mapping",
     ],

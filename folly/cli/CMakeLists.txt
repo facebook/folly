@@ -40,9 +40,9 @@ folly_add_library(
     ProgramOptions.h
   DEPS
     folly_conv
-    folly_experimental_io_fs_util
     folly_file_util
     folly_format
+    folly_io_fs_util
     folly_portability
   EXPORTED_DEPS
     folly_c_portability

@@ -23,7 +23,7 @@
 
 #include <folly/FileUtil.h>
 #include <folly/Format.h>
-#include <folly/experimental/io/FsUtil.h>
+#include <folly/io/FsUtil.h>
 
 namespace po = ::boost::program_options;
 

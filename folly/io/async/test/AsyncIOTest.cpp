@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/AsyncIO.h>
-#include <folly/experimental/io/test/AsyncBaseTestLib.h>
+#include <folly/io/async/AsyncIO.h>
+#include <folly/io/async/test/AsyncBaseTestLib.h>
 
 using folly::AsyncIO;
 

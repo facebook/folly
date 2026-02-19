@@ -18,7 +18,7 @@
 
 #include <glog/logging.h>
 
-#include <folly/experimental/io/FsUtil.h>
+#include <folly/io/FsUtil.h>
 #include <folly/testing/TestUtil.h>
 
 namespace folly {

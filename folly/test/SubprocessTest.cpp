@@ -30,10 +30,10 @@
 #include <folly/Memory.h>
 #include <folly/String.h>
 #include <folly/container/span.h>
-#include <folly/experimental/io/FsUtil.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/File.h>
 #include <folly/gen/String.h>
+#include <folly/io/FsUtil.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysSyscall.h>

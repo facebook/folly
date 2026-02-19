@@ -679,7 +679,7 @@ fb_dirsync_cpp_library(
         "//folly/portability:unistd",
     ],
     exported_deps = [
-        "//folly/experimental/io:async_base",
+        "//folly/io/async:async_base_class",
     ],
     external_deps = [
         "boost",
@@ -765,7 +765,7 @@ fb_dirsync_cpp_library(
     deps = [
         "//folly:string",
         "//folly/coro:baton",
-        "//folly/experimental/io:async_io",
+        "//folly/io/async:async_io",
         "//folly/io/async:io_uring",
         "//folly/io/async:liburing",
         "//folly/portability:sockets",
@@ -774,8 +774,8 @@ fb_dirsync_cpp_library(
         "//folly:synchronized",
         "//folly/coro:task",
         "//folly/executors:global_executor",
-        "//folly/experimental/io:async_base",
         "//folly/io/async:async_base",
+        "//folly/io/async:async_base_class",
         "//folly/io/async:scoped_event_base_thread",
     ],
 )
@@ -824,7 +824,7 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/glog:glog",
         "//folly:file_util",
         "//folly:string",
-        "//folly/experimental/io:epoll",
+        "//folly/io/async:epoll",
         "//folly/io/async:liburing",
         "//folly/lang:align",
         "//folly/portability:gflags",
@@ -850,7 +850,7 @@ fb_dirsync_cpp_library(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly/container:enumerate",
-        "//folly/experimental/io:epoll_backend",
+        "//folly/io/async:epoll_backend",
         "//folly/lang:align",
         "//folly/synchronization:latch",
     ],
@@ -859,8 +859,8 @@ fb_dirsync_cpp_library(
         "//folly/concurrency:unbounded_queue",
         "//folly/executors:io_thread_pool_executor",
         "//folly/executors:queue_observer",
-        "//folly/experimental/io:event_base_poller",
         "//folly/io/async:event_base_manager",
+        "//folly/io/async:event_base_poller",
         "//folly/synchronization:baton",
         "//folly/synchronization:relaxed_atomic",
         "//folly/synchronization:throttled_lifo_sem",

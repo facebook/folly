@@ -26,7 +26,7 @@
 #include <boost/operators.hpp>
 
 #include <folly/Range.h>
-#include <folly/experimental/io/FsUtil.h>
+#include <folly/io/FsUtil.h>
 #include <folly/portability/Unistd.h>
 
 namespace folly {

@@ -27,7 +27,7 @@
 #include <folly/SingletonThreadLocal.h>
 #include <folly/String.h>
 #include <folly/Synchronized.h>
-#include <folly/experimental/io/FsUtil.h>
+#include <folly/io/FsUtil.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Latch.h>

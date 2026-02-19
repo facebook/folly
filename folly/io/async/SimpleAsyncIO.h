@@ -21,7 +21,7 @@
 #include <folly/Synchronized.h>
 #include <folly/coro/Task.h>
 #include <folly/executors/GlobalExecutor.h>
-#include <folly/experimental/io/AsyncBase.h>
+#include <folly/io/async/AsyncBase.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 
