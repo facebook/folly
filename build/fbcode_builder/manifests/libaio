@@ -15,5 +15,11 @@ sha256 = 716c7059703247344eb066b54ecbc3ca2134f0103307192e6c2b7dab5f9528ab
 builder = make
 subdir = libaio-libaio-0.3.113
 
+[make.build_args.shared_libs=off]
+ENABLE_SHARED=0
+
 [make.install_args]
 install
+
+[make.install_args.shared_libs=off]
+ENABLE_SHARED=0
