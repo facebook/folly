@@ -106,52 +106,6 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
-    name = "io_uring",
-    headers = [
-        "IoUring.h",
-    ],
-    xplat_impl = folly_xplat_library,
-    exported_deps = [
-        "//folly/io/async:io_uring",
-    ],
-)
-
-fb_dirsync_cpp_library(
-    # @autodeps-skip
-    name = "io_uring_provided_buffer_ring",
-    headers = [
-        "IoUringBase.h",
-        "IoUringProvidedBufferRing.h",
-    ],
-    xplat_impl = folly_xplat_library,
-    exported_deps = [
-        "//folly/io/async:io_uring_provided_buffer_ring",
-    ],
-)
-
-fb_dirsync_cpp_library(
-    name = "io_uring_event",
-    headers = [
-        "IoUringEvent.h",
-    ],
-    xplat_impl = folly_xplat_library,
-    exported_deps = [
-        "//folly/io/async:io_uring_event",
-    ],
-)
-
-fb_dirsync_cpp_library(
-    name = "io_uring_event_base_local",
-    headers = [
-        "IoUringEventBaseLocal.h",
-    ],
-    xplat_impl = folly_xplat_library,
-    exported_deps = [
-        "//folly/io/async:io_uring_event_base_local",
-    ],
-)
-
-fb_dirsync_cpp_library(
     name = "fs_util",
     headers = [
         "FsUtil.h",
