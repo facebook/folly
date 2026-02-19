@@ -21,6 +21,7 @@ folly_add_library(
   HEADERS
     AtFork.h
   DEPS
+    folly_cpp_attributes
     folly_lang_exception
     folly_portability_pthread
     folly_scope_guard

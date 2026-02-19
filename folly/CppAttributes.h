@@ -207,3 +207,10 @@
 #else
 #define FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE_ARGUMENT
 #endif
+
+#if FOLLY_HAS_CPP_ATTRIBUTE(clang::no_thread_safety_analysis)
+#define FOLLY_ATTR_CLANG_NO_THREAD_SAFETY_ANALYSIS \
+  clang::no_thread_safety_analysis
+#else
+#define FOLLY_ATTR_CLANG_NO_THREAD_SAFETY_ANALYSIS
+#endif

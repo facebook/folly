@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <system_error>
 
+#include <folly/CppAttributes.h>
 #include <folly/ScopeGuard.h>
 #include <folly/lang/Exception.h>
 #include <folly/portability/PThread.h>
@@ -26,6 +27,9 @@
 
 namespace folly {
 
+// prepare() acquires mutex; parent()/child() release it — the analysis cannot
+// track this cross-function lock hand-off.
+[[FOLLY_ATTR_CLANG_NO_THREAD_SAFETY_ANALYSIS]]
 void AtForkList::prepare() noexcept {
   mutex.lock();
   while (true) {
@@ -48,6 +52,7 @@ void AtForkList::prepare() noexcept {
   }
 }
 
+[[FOLLY_ATTR_CLANG_NO_THREAD_SAFETY_ANALYSIS]]
 void AtForkList::parent() noexcept {
   for (auto& task : tasks) {
     if (auto& f = task.parent) {
@@ -57,6 +62,7 @@ void AtForkList::parent() noexcept {
   mutex.unlock();
 }
 
+[[FOLLY_ATTR_CLANG_NO_THREAD_SAFETY_ANALYSIS]]
 void AtForkList::child() noexcept {
   for (auto& task : tasks) {
     if (auto& f = task.child) {
