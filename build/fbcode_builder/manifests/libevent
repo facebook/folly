@@ -34,6 +34,9 @@ EVENT__DISABLE_REGRESS = ON
 [cmake.defines.shared_libs=on]
 EVENT__BUILD_SHARED_LIBRARIES = ON
 
+[cmake.defines.shared_libs=off]
+EVENT__LIBRARY_TYPE = STATIC
+
 [cmake.defines.os=windows]
 EVENT__LIBRARY_TYPE = STATIC
 
