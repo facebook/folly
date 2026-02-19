@@ -19,6 +19,10 @@
 #include <atomic>
 #include <thread>
 
+#ifndef _WIN32
+#include <sys/wait.h>
+#endif
+
 #include <iomanip>
 #include <folly/Singleton.h>
 #include <folly/portability/GFlags.h>
