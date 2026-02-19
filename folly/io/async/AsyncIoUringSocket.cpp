@@ -1191,9 +1191,15 @@ void AsyncIoUringSocket::detachEventBase() {
   readSqe_ = ReadSqe::UniquePtr(new ReadSqe(this));
   readSqe_->setReadCallback(oldReadCallback, false);
   readSqe_->setEventBase(nullptr);
-  SocketAddress remoteAddr;
-  getPeerAddress(&remoteAddr);
-  readSqe_->setUseZeroCopyRx(!remoteAddr.isLoopbackAddress());
+  if (fd_ != NetworkSocket()) {
+    try {
+      SocketAddress remoteAddr;
+      getPeerAddress(&remoteAddr);
+      readSqe_->setUseZeroCopyRx(!remoteAddr.isLoopbackAddress());
+    } catch (const std::exception& e) {
+      VLOG(2) << "Error getting peer address in detachEventBase: " << e.what();
+    }
+  }
 
   unregisterFd();
   if (!drc) {
@@ -1871,9 +1877,13 @@ void AsyncIoUringSocket::setFd(NetworkSocket ns) {
   // for a loopback socket will always hit the inefficient copy fallback path.
   // Better to simply issue normal multishot recv.
   if (readSqe_) {
-    SocketAddress remoteAddr;
-    getPeerAddress(&remoteAddr);
-    readSqe_->setUseZeroCopyRx(!remoteAddr.isLoopbackAddress());
+    try {
+      SocketAddress remoteAddr;
+      getPeerAddress(&remoteAddr);
+      readSqe_->setUseZeroCopyRx(!remoteAddr.isLoopbackAddress());
+    } catch (const std::exception& e) {
+      VLOG(2) << "Error getting peer address in setFd: " << e.what();
+    }
   }
 }
 
