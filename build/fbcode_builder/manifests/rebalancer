@@ -5,7 +5,7 @@ fbsource_path = fbcode/algopt/rebalancer/
 [git]
 # To git clone on devserver, setup fwdproxy:
 # https://www.internalfb.com/wiki/Open_Source/Maintain_a_FB_OSS_Project/Devserver_GitHub_Access/
-repo_url = git@github.com:facebookincubator/rebalancer.git
+repo_url = https://github.com/facebookincubator/rebalancer.git
 branch = richard
 
 [build]
