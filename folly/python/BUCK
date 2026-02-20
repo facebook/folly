@@ -1,10 +1,7 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cython_library.bzl", "CYTHON_DEFAULT_APPLE_SDKS", "CYTHON_DEFAULT_PLATFORMS", "cython_library")
-load(
-    "../defs.bzl",
-    "folly_xplat_library",
-)
+load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -13,6 +10,7 @@ non_fbcode_target(
     name = "gil_aware_manual_executor",
     srcs = ["GILAwareManualExecutor.cpp"],
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    enable_static_variant = False,
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = ["GILAwareManualExecutor.h"],
     deps = [
@@ -62,6 +60,7 @@ non_fbcode_target(
         "ProactorExecutor.cpp",
     ],
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    enable_static_variant = False,
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = [
         "ProactorExecutor.h",
@@ -232,6 +231,7 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "import",
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    enable_static_variant = False,
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = [
         "import.h",
@@ -278,6 +278,7 @@ non_fbcode_target(
     name = "iobuf_ext",
     srcs = ["iobuf_ext.cpp"],
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    enable_static_variant = False,
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = ["iobuf_ext.h"],
     deps = [
@@ -299,6 +300,7 @@ non_fbcode_target(
         "folly/python/iobuf_api.h": ":iobuf__iobuf_api.h",
     },
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    enable_static_variant = False,
     platforms = CYTHON_DEFAULT_PLATFORMS,
     deps = [
         ":import",
@@ -362,6 +364,7 @@ non_fbcode_target(
     name = "fibers_lib",
     srcs = ["fibers.cpp"],
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    enable_static_variant = False,
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = ["fibers.h"],
     deps = [
@@ -419,6 +422,7 @@ non_fbcode_target(
     name = "error",
     srcs = ["error.cpp"],
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    enable_static_variant = False,
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = ["error.h"],
     deps = [
@@ -998,6 +1002,7 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "weak",
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    enable_static_variant = False,
     exported_linker_flags = select({
         "DEFAULT": [],
         # These make it so linking libpython is optional

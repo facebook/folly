@@ -53,6 +53,7 @@ fb_dirsync_cpp_library(
     headers = [
         "SimpleAsyncIO.h",
     ],
+    enable_static_variant = False,
     xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:simple_async_io",
