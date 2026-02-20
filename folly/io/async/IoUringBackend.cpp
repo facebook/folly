@@ -1460,7 +1460,7 @@ int IoUringBackend::doPeek(struct io_uring_cqe*& cqe) noexcept {
 }
 
 size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
-  struct io_uring_cqe* cqe;
+  struct io_uring_cqe* cqe = nullptr;
 
   if (kIsDebug && gettingEvents_) {
     throw std::runtime_error("getting events is not reentrant");
