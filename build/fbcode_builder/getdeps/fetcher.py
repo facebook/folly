@@ -519,7 +519,7 @@ class ShipitPathMap(object):
                         change_status.record_change(name)
 
         with open(installed_name, "wb") as f:
-            for name in sorted(list(full_file_list)):
+            for name in sorted(full_file_list):
                 f.write(("%s\n" % name).encode("utf-8"))
 
         return change_status
