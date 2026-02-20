@@ -470,3 +470,38 @@ TEST_P(OpenSSLCertUtilsTest, TestGetExtension) {
     EXPECT_EQ(extensionValues[0], value);
   }
 }
+
+TEST_P(OpenSSLCertUtilsTest, TestExtendedKeyUsage) {
+  // Test cert containing clientAuth, serverAuth and custom EKU
+  const std::string testEkuCert = folly::stripLeftMargin(R"(
+  -----BEGIN CERTIFICATE-----
+  MIICMDCCAdagAwIBAgIUCUzdgkzXpPGIQKxew4JzKqB2IkQwCgYIKoZIzj0EAwIw
+  UDELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMQ0wCwYDVQQKDARBc294MSUwIwYD
+  VQQDDBxBc294IENlcnRpZmljYXRpb24gQXV0aG9yaXR5MCAXDTI2MDIxOTE2NTYx
+  OVoYDzIwNTMwNzA2MTY1NjE5WjAwMQswCQYDVQQGEwJVUzENMAsGA1UECgwEQXNv
+  eDESMBAGA1UEAwwJMTI3LjAuMC4xMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
+  Orz6ItQBUVAkxqWAQZQTxqyOAypyfQiZlUiN61j5odqoLOf/9My6E0pmK0PLo3zo
+  uTTF5stBpySztJRvgNhVm6OBqzCBqDAJBgNVHRMEAjAAMB0GA1UdDgQWBBRMFhrN
+  GOGX48wKtK9t3kDVCGOYojAfBgNVHSMEGDAWgBQQs887I7xmShY1cQPx7muFFqQ+
+  gTAxBgNVHREEKjAoghJhbm90aGVyZXhhbXBsZS5jb22CEioudGhpcmRleGFtcGxl
+  LmNvbTAoBgNVHSUEITAfBggrBgEFBQcDAQYIKwYBBQUHAwIGCSsGAQQBho0fATAK
+  BggqhkjOPQQDAgNIADBFAiEA1udXY72JyM89R40Zq3Z/gsFU8Th7LNUv1HxS81Hf
+  Kd0CIC9eZxm6/rt/uvS6sHH3u94J9DeXlQWhe3Xv7a0d4gHk
+  -----END CERTIFICATE-----
+)");
+
+  auto x509 = readCertFromData(testEkuCert);
+  std::vector<std::string> ekuValues =
+      folly::ssl::OpenSSLCertUtils::getExtendedKeyUsage(*x509);
+
+  ASSERT_EQ(ekuValues.size(), 3);
+  EXPECT_EQ(ekuValues[0], "1.3.6.1.5.5.7.3.1"); // serverAuth
+  EXPECT_EQ(ekuValues[1], "1.3.6.1.5.5.7.3.2"); // clientAuth
+  EXPECT_EQ(ekuValues[2], "1.3.6.1.4.1.99999.1"); // custom OID
+
+  ekuValues.clear();
+  x509 = readCertFromData(kTestCertWithSan);
+  ekuValues = folly::ssl::OpenSSLCertUtils::getExtendedKeyUsage(*x509);
+
+  EXPECT_EQ(ekuValues.size(), 0);
+}

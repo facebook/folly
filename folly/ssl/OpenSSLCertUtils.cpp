@@ -139,6 +139,38 @@ std::vector<std::string> OpenSSLCertUtils::getSubjectAltNames(X509& x509) {
   return ret;
 }
 
+std::vector<std::string> OpenSSLCertUtils::getExtendedKeyUsage(X509& x509) {
+  auto ekuExtension = reinterpret_cast<EXTENDED_KEY_USAGE*>(
+      X509_get_ext_d2i(&x509, NID_ext_key_usage, nullptr, nullptr));
+  if (!ekuExtension) {
+    return {};
+  }
+  SCOPE_EXIT {
+    EXTENDED_KEY_USAGE_free(ekuExtension);
+  };
+
+  std::vector<std::string> ekuOids;
+  for (int i = 0; i < sk_ASN1_OBJECT_num(ekuExtension); i++) {
+    ASN1_OBJECT* obj = sk_ASN1_OBJECT_value(ekuExtension, i);
+    // The max legitimate OID size is 586 bytes.
+    // (https://github.com/openssl/openssl/blob/f5408861fa93e44e2d6a1ba829ea43ca8be01717/crypto/objects/obj_dat.c#L436-L437)
+    constexpr size_t kBufSize = 1024;
+    std::array<char, kBufSize> buf{};
+    auto len = OBJ_obj2txt(buf.data(), buf.size(), obj, /*no_name=*/1);
+
+    if (len < 0) {
+      throw std::runtime_error("failed to convert oid to string");
+    }
+
+    if (len + 1 > static_cast<int>(kBufSize)) {
+      // This can never happen with a legitimate OID.
+      throw std::runtime_error("illegal oid");
+    }
+    ekuOids.push_back(std::string(buf.data(), len));
+  }
+  return ekuOids;
+}
+
 Optional<std::string> OpenSSLCertUtils::getSubject(X509& x509) {
   auto subject = X509_get_subject_name(&x509);
   if (!subject) {
