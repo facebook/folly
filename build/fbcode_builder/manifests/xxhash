@@ -15,16 +15,6 @@ xxhash
 [homebrew]
 xxhash
 
-[build.not(os=windows)]
-builder = make
-subdir = xxHash-0.8.2
-
-[make.build_args]
-all
-
-[make.install_args]
-install
-
-[build.os=windows]
+[build]
 builder = cmake
 subdir = xxHash-0.8.2/cmake_unofficial
