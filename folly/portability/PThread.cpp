@@ -210,7 +210,7 @@ DWORD pthread_getw32threadid_np(pthread_t thread) {
 }
 
 int pthread_setschedparam(
-    pthread_t thread, int policy, const sched_param* param) {
+    pthread_t thread, int /* policy */, const sched_param* param) {
   if (thread->detached) {
     errno = EINVAL;
     return -1;
