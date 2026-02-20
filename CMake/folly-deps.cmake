@@ -332,7 +332,16 @@ endif()
 target_link_libraries(folly_deps INTERFACE fmt::fmt)
 
 list(REMOVE_DUPLICATES FOLLY_INCLUDE_DIRECTORIES)
-target_include_directories(folly_deps INTERFACE ${FOLLY_INCLUDE_DIRECTORIES})
+if(NOT "${CMAKE_SOURCE_DIR}" STREQUAL "${PROJECT_SOURCE_DIR}")
+  # When consumed via add_subdirectory/FetchContent, wrap each include
+  # directory in BUILD_INTERFACE so absolute build-tree paths don't leak
+  # into the parent project's install-time INTERFACE_INCLUDE_DIRECTORIES.
+  foreach(_dir IN LISTS FOLLY_INCLUDE_DIRECTORIES)
+    target_include_directories(folly_deps INTERFACE $<BUILD_INTERFACE:${_dir}>)
+  endforeach()
+else()
+  target_include_directories(folly_deps INTERFACE ${FOLLY_INCLUDE_DIRECTORIES})
+endif()
 target_link_libraries(folly_deps INTERFACE
   ${FOLLY_LINK_LIBRARIES}
   ${FOLLY_SHINY_DEPENDENCIES}
