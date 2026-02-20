@@ -191,20 +191,11 @@ bool ThreadEntry::cachedInSetMatchesElementsArray(uint32_t id) {
     return true;
   }
 
-  auto& set = meta->allId2ThreadEntrySets_[id];
-  auto rlock = set.tryRLock();
+  auto rlock = meta->allId2ThreadEntrySets_[id].tryRLock();
   if (!rlock) {
     // Try lock failed. Skip checking in this case. Avoids
     // getting stuck in case this validation is called when
     // already holding the entry set lock.
-    return true;
-  }
-
-  // Check if there are pending inserts. If so, skip validation as the
-  // ThreadEntrySet may not have been updated yet due to the optimization
-  // in resetElementImplAfterSet that defers updates when the lock cannot
-  // be acquired.
-  if (set.hasPendingInserts()) {
     return true;
   }
 
@@ -278,12 +269,8 @@ class PthreadKeyUnregister {
   static PthreadKeyUnregister instance_;
 };
 
-StaticMetaBase::StaticMetaBase(
-    ThreadEntry* (*threadEntry)(), bool strict, bool allowsAccessAllThreads)
-    : nextId_(1),
-      threadEntry_(threadEntry),
-      strict_(strict),
-      allowsAccessAllThreads_(allowsAccessAllThreads) {
+StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
+    : nextId_(1), threadEntry_(threadEntry), strict_(strict) {
   int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
   checkPosixError(ret, "pthread_key_create failed");
   PthreadKeyUnregister::registerKey(pthreadKey_);
@@ -752,16 +739,7 @@ FOLLY_NOINLINE void StaticMetaBase::ensureThreadEntryIsInSet(
  * release the element @id.
  */
 void* ThreadEntry::releaseElement(uint32_t id) {
-  auto& set = meta->allId2ThreadEntrySets_[id];
-
-  // Check if there are pending inserts that need to be processed first.
-  // This must be done before calling release() to ensure synchronization.
-  if (set.hasPendingInserts()) {
-    // Acquire write lock to drain pending inserts before we proceed
-    auto wlocked = set.wlock();
-  }
-
-  auto rlocked = set.rlock();
+  auto rlocked = meta->allId2ThreadEntrySets_[id].rlock();
   auto capacity = getElementsCapacity();
   void* ptrToReturn = (capacity >= id) ? elements[id].release() : nullptr;
   auto slot = rlocked->getIndexFor(this);
@@ -790,46 +768,7 @@ void ThreadEntry::cleanupElement(uint32_t id) {
 void ThreadEntry::resetElementImplAfterSet(
     const ElementWrapper& element, uint32_t id) {
   auto& set = meta->allId2ThreadEntrySets_[id];
-
-  // Try to acquire read lock without blocking
-  auto triedRlock = set.tryRLock();
-  if (!triedRlock) {
-    // Failed to acquire the lock. If the old value is null, we can defer
-    // the ThreadEntrySet update.
-    ElementWrapper oldWrapper = elements[id];
-    // The pending inserts optimization is only useful when accessAllThreads()
-    // is available and can cause contention. Void tags don't support
-    // accessAllThreads(), so skip this optimization in that case.
-    if (!removed_ && meta->allowsAccessAllThreads_ &&
-        oldWrapper.ptr == nullptr) {
-      elements[id] = element;
-      // Defer cleanup and ThreadEntrySet update since we don't hold the lock
-      ThreadEntrySet::PendingElement pendingElement;
-      pendingElement.threadEntry = this;
-      pendingElement.wrapper = element;
-      pendingElement.oldWrapper = oldWrapper;
-      pendingElement.elementId = id;
-      set.deferInsert(pendingElement);
-      return;
-    }
-    // Fall back to acquiring the lock since we need to ensure consistency
-  }
-
-  // Acquire a regular rlock. Reuse the try lock if we have it.
-  auto rlock = triedRlock
-      ? StaticMetaBase::SynchronizedThreadEntrySet::RLockedPtr(
-            std::move(triedRlock))
-      : set.rlock();
-
-  // Drain pending inserts before cleanup. This is critical when resetting
-  // to null (!null -> null) to ensure we drain any prior pending insert
-  // for this thread before the caller deletes the element pointer.
-  if (set.hasPendingInserts()) {
-    rlock.unlock();
-    auto wlock = set.wlock(); // Drains pending inserts
-    rlock = wlock.moveFromWriteToRead();
-  }
-
+  auto rlock = set.rlock();
   cleanupElement(id);
   elements[id] = element;
   if (removed_) {
@@ -839,8 +778,6 @@ void ThreadEntry::resetElementImplAfterSet(
     return;
   }
   if (element.ptr != nullptr && !rlock->contains(this)) {
-    // Contention can occur here when upgrading from rlock to wlock.
-    // This is a common case during null -> non-null transitions.
     meta->ensureThreadEntryIsInSet(this, set, rlock);
   }
   auto slot = rlock->getIndexFor(this);

@@ -285,16 +285,6 @@ struct ThreadEntrySet {
     /* implicit */ Element(ThreadEntry* entry = nullptr) : threadEntry(entry) {}
   };
 
-  // struct for deferred insert - only used in pendingInserts.
-  struct PendingElement {
-    ThreadEntry* threadEntry{};
-    ElementDisposeInfo wrapper;
-    // Old wrapper that needs cleanup when this element is inserted
-    ElementDisposeInfo oldWrapper;
-    // Element ID for this wrapper (used when deferring cleanup)
-    uint32_t elementId{0};
-  };
-
   // Vector of ThreadEntry for fast iteration during accessAllThreads.
   using ElementVector = std::vector<Element>;
   ElementVector threadElements;
@@ -382,8 +372,7 @@ struct StaticMetaBase {
     }
   };
 
-  StaticMetaBase(
-      ThreadEntry* (*threadEntry)(), bool strict, bool allowsAccessAllThreads);
+  StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict);
 
   FOLLY_EXPORT static ThreadEntryList* getThreadEntryList();
 
@@ -413,101 +402,7 @@ struct StaticMetaBase {
 
   ElementWrapper& getElement(EntryID* ent);
 
-  /**
-   * Wrapper around Synchronized<ThreadEntrySet> that automatically drains
-   * pending inserts whenever a write lock is acquired.
-   */
-  class SynchronizedThreadEntrySet {
-   public:
-    using Base = folly::Synchronized<ThreadEntrySet>;
-    using RLockedPtr = typename Base::RLockedPtr;
-    using WLockedPtr = typename Base::WLockedPtr;
-
-    SynchronizedThreadEntrySet() = default;
-
-    // Forward rlock() to the underlying Synchronized
-    auto rlock() { return synchronized_.rlock(); }
-    auto rlock() const { return synchronized_.rlock(); }
-
-    // Forward tryRLock() to the underlying Synchronized
-    auto tryRLock() { return synchronized_.tryRLock(); }
-    auto tryRLock() const { return synchronized_.tryRLock(); }
-
-    // wlock() automatically completes pending inserts
-    auto wlock() {
-      auto lock = synchronized_.wlock();
-      completePendingInserts(*lock);
-      return lock;
-    }
-
-    bool hasPendingInserts() const { return pendingInsertsCount_.load() > 0; }
-
-    /**
-     * Add the given element to the pendingInserts_ queue to be drained later.
-     */
-    void deferInsert(const ThreadEntrySet::PendingElement& pendingElement) {
-      auto lock = pendingInserts_.wlock();
-      lock->push_back(pendingElement);
-      incrementPendingInsertsCount();
-    }
-
-   private:
-    /**
-     * Increment the pending inserts count. Called when adding to the
-     * pending inserts queue.
-     */
-    void incrementPendingInsertsCount() { pendingInsertsCount_.fetch_add(1); }
-    /**
-     * Complete pending inserts by draining the pending inserts list and
-     * updating the ThreadEntrySet. This should be called while holding
-     * the write lock on the ThreadEntrySet.
-     */
-    void completePendingInserts(ThreadEntrySet& set) {
-      // Drain pending inserts by swapping out the vector
-      std::vector<ThreadEntrySet::PendingElement> pending;
-      pendingInserts_.wlock()->swap(pending);
-
-      for (auto& pendingElement : pending) {
-        ThreadEntrySet::Element element{pendingElement.threadEntry};
-        element.wrapper = pendingElement.wrapper;
-        auto iter = set.entryToVectorSlot.find(pendingElement.threadEntry);
-        if (iter != set.entryToVectorSlot.end()) {
-          // Entry already present. Update the wrapper.
-          DCHECK_EQ(
-              element.threadEntry,
-              set.threadElements[iter->second].threadEntry);
-          set.threadElements[iter->second].wrapper = pendingElement.wrapper;
-        } else {
-          // Insert new entry
-          set.threadElements.push_back(element);
-          auto idx = set.threadElements.size() - 1;
-          set.entryToVectorSlot.insert(iter, {element.threadEntry, idx});
-        }
-
-        // The old wrapper should always be null
-        DCHECK(pendingElement.oldWrapper.ptr == nullptr);
-      }
-
-      if (!pending.empty()) {
-        [[maybe_unused]] auto oldCount =
-            pendingInsertsCount_.fetch_sub(pending.size());
-        DCHECK_GE(oldCount, pending.size());
-      }
-    }
-
-    Base synchronized_;
-    /**
-     * Holds elements that failed to acquire read lock during resetElement().
-     * This typically occurs due to contention with accessAllThreads(), which
-     * may hold the write lock for extended periods.
-     *
-     * Pending elements are drained via completePendingInserts(), which is
-     * invoked whenever the write lock is acquired on the ThreadEntrySet.
-     */
-    folly::Synchronized<std::vector<ThreadEntrySet::PendingElement>>
-        pendingInserts_;
-    folly::relaxed_atomic<size_t> pendingInsertsCount_{0};
-  };
+  using SynchronizedThreadEntrySet = folly::Synchronized<ThreadEntrySet>;
 
   /*
    * Helper inline methods to add/remove/clear ThreadEntry* from
@@ -611,7 +506,6 @@ struct StaticMetaBase {
   pthread_key_t pthreadKey_;
   ThreadEntry* (*threadEntry_)();
   bool strict_;
-  bool allowsAccessAllThreads_;
   // Total size of ElementWrapper arrays across all threads. This is meant
   // to surface the overhead of thread local tracking machinery since the array
   // can be sparse when there are lots of thread local variables under the same
@@ -684,8 +578,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
 
  public:
   StaticMeta()
-      : StaticMetaBase(
-            &StaticMeta::getThreadEntrySlow, IsAccessModeStrict, !IsTagVoid) {
+      : StaticMetaBase(&StaticMeta::getThreadEntrySlow, IsAccessModeStrict) {
     AtFork::registerHandler(
         this,
         /*prepare*/ &StaticMeta::preFork,
