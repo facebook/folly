@@ -48,6 +48,12 @@ folly_exception_tracer_get_caught_exceptions_stack_trace_stack(void)
     __attribute__((__weak__));
 typedef const StackTraceStack* (*GetCaughtExceptionStackTraceStackType)();
 GetCaughtExceptionStackTraceStackType getCaughtExceptionStackTraceStackFn;
+
+const StackTraceStack*
+folly_exception_tracer_get_uncaught_exceptions_stack_trace_stack(void)
+    __attribute__((__weak__));
+typedef const StackTraceStack* (*GetUncaughtExceptionStackTraceStackType)();
+GetUncaughtExceptionStackTraceStackType getUncaughtExceptionStackTraceStackFn;
 }
 
 } // namespace
@@ -151,6 +157,16 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
                 RTLD_NEXT,
                 "folly_exception_tracer_get_caught_exceptions_stack_trace_stack");
       }
+
+      getUncaughtExceptionStackTraceStackFn =
+          folly_exception_tracer_get_uncaught_exceptions_stack_trace_stack;
+
+      if (!getUncaughtExceptionStackTraceStackFn) {
+        getUncaughtExceptionStackTraceStackFn =
+            (GetUncaughtExceptionStackTraceStackType)dlsym(
+                RTLD_NEXT,
+                "folly_exception_tracer_get_uncaught_exceptions_stack_trace_stack");
+      }
     }
   };
   static Once once;
@@ -179,6 +195,24 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
   }
 
   const StackTrace* trace = traceStack ? traceStack->top() : nullptr;
+
+  // When libc++ is dynamically linked, the runtime's internal calls to
+  // __cxa_begin_catch (e.g. from failed_throw on uncaught exceptions) bypass
+  // our --wrap interposition, so traces remain on the uncaught stack. Fall back
+  // to uncaught traces when the caught trace stack is empty.
+  const StackTraceStack* uncaughtTraceStack = nullptr;
+  const StackTrace* uncaughtTrace = nullptr;
+  if (!trace && getUncaughtExceptionStackTraceStackFn) {
+    uncaughtTraceStack = getUncaughtExceptionStackTraceStackFn();
+    if (uncaughtTraceStack) {
+      uncaughtTrace = uncaughtTraceStack->top();
+      if (uncaughtTrace) {
+        trace = uncaughtTrace;
+        traceStack = uncaughtTraceStack;
+      }
+    }
+  }
+
   while (currentException) {
     ExceptionInfo info;
     // Dependent exceptions (thrown via std::rethrow_exception) aren't

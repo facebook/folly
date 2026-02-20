@@ -179,14 +179,21 @@ FBCODE_STATIC_LIBSTDCXX_SELECTOR = selects.and_(
     ),
 )
 
+# The dlsym(RTLD_NEXT) interposition approach is unreliable in fbcode because
+# ASAN stubs and PLT resolution can bypass folly's redefinitions. Use --wrap
+# for all fbcode builds regardless of C++ stdlib.
+FBCODE_SELECTOR = selects.cond("ovr_config//runtime/constraints:fbcode")
+
 FOLLY_SHOULD_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS = selects.or_(
     selects.cond("fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type"),
     FBCODE_STATIC_LIBSTDCXX_SELECTOR,
+    FBCODE_SELECTOR,
 )
 
 FOLLY_SHOULD_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER = selects.or_(
     selects.cond("fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type"),
     FBCODE_STATIC_LIBSTDCXX_SELECTOR,
+    FBCODE_SELECTOR,
 )
 
 EXCEPTION_TRACER_LIB_COMPILER_FLAGS = selects.if_(
@@ -332,49 +339,24 @@ fbcode_target(
     ],
 )
 
-LIBSTDCXX_BUCKIFIED_SELECTOR = selects.and_(
-    selects.cond("ovr_config//cpp:libstdc++"),
-    selects.cond("ovr_config//third-party/libgcc:11.x"),
-)
-
-STATIC_CXX_STDLIB_SELECTOR = selects.or_(
-    LIBSTDCXX_BUCKIFIED_SELECTOR,
-)
-
 fbcode_target(
     _kind = cpp_library,
     name = "exception_tracer_callbacks",
     srcs = ["ExceptionTracerLib.cpp"],
     headers = ["ExceptionTracerLib.h"],
-    compiler_flags = selects.if_(
-        STATIC_CXX_STDLIB_SELECTOR,
-        select({
-            "DEFAULT": [],
-            "ovr_config//cpp:libc++": ["-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1"],
-            "ovr_config//cpp:libstdc++": [
-                "-DFOLLY_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS=1",
-                "-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1",
-            ],
-        }),
-        [],
-    ),
-    exported_linker_flags = selects.if_(
-        STATIC_CXX_STDLIB_SELECTOR,
-        select({
-            "DEFAULT": [],
-            "ovr_config//cpp:libc++": [
-                "-Wl,--wrap=_ZSt17rethrow_exceptionSt13exception_ptr",
-            ],
-            "ovr_config//cpp:libstdc++": [
-                "-Wl,--wrap=__cxa_throw",
-                "-Wl,--wrap=__cxa_rethrow",
-                "-Wl,--wrap=__cxa_begin_catch",
-                "-Wl,--wrap=__cxa_end_catch",
-                "-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE",
-            ],
-        }),
-        [],
-    ),
+    compiler_flags = [
+        "-DFOLLY_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS=1",
+        "-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1",
+    ],
+    exported_linker_flags = [
+        "-Wl,--wrap=__cxa_throw",
+        "-Wl,--wrap=__cxa_rethrow",
+        "-Wl,--wrap=__cxa_begin_catch",
+        "-Wl,--wrap=__cxa_end_catch",
+    ] + select({
+        "DEFAULT": ["-Wl,--wrap=_ZSt17rethrow_exceptionSt13exception_ptr"],
+        "ovr_config//cpp:libstdc++": ["-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE"],
+    }),
     labels = ["EXCLUDED_FROM_LINK_GROUPS"],
     link_whole = True,
     supports_python_dlopen = True,
