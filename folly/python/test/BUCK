@@ -194,7 +194,6 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_library,
     name = "test_set_executor_cpplib",
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
-    enable_static_variant = False,
     platforms = CYTHON_DEFAULT_PLATFORMS,
     raw_headers = ["test_set_executor.h"],
     exported_deps = [

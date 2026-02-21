@@ -125,7 +125,6 @@ non_fbcode_target(
     srcs = [
         "Benchmark.cpp",
     ],
-    enable_static_variant = True,
     raw_headers = [
         "Benchmark.h",
     ],
@@ -495,7 +494,6 @@ non_fbcode_target(
     srcs = [
         "Uri.cpp",
     ],
-    enable_static_variant = False,
     force_static = False,
     raw_headers = [
         "Uri.h",
@@ -2131,7 +2129,6 @@ non_fbcode_target(
     header_namespace = "",
     apple_sdks = DEFAULT_APPLE_SDKS,
     compiler_flags = CXXFLAGS,
-    enable_static_variant = True,
     fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
     fbandroid_deps = [
         "//xplat/third-party/linker_lib:atomic",
@@ -3539,7 +3536,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "utf8_string_icu",
     apple_sdks = (IOS, MACOSX),
-    enable_static_variant = False,
     platforms = (CXX, ANDROID, APPLE),
     raw_headers = [
         "UTF8String.h",

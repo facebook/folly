@@ -130,7 +130,7 @@ def folly_xplat_library(
         force_static = True,
         apple_sdks = None,
         platforms = None,
-        enable_static_variant = True,
+        enable_static_variant = False,
         labels = (),
         **kwargs):
     """Translate a simpler declaration into the more complete library target"""

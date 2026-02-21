@@ -5,7 +5,6 @@ def folly_extended_xplat_library(name, **kwargs):
     folly_xplat_library(
         name,
         force_static = False,
-        enable_static_variant = True,
         compiler_flags = [
             "-Wno-shadow",
         ],
