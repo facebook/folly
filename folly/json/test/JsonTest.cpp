@@ -29,6 +29,12 @@ using folly::toJson;
 using folly::json::parse_error;
 using folly::json::print_error;
 
+// Create a wrapper to suppress lint warnings
+folly::dynamic fromJson5(folly::StringPiece s) {
+  // @lint-ignore CLANGTIDY clang-diagnostic-deprecated-declarations
+  return folly::parseJson5(s);
+}
+
 TEST(Json, Unicode) {
   auto val = parseJson(reinterpret_cast<const char*>(u8"\"I \u2665 UTF-8\""));
   EXPECT_EQ(reinterpret_cast<const char*>(u8"I \u2665 UTF-8"), val.asString());
@@ -1150,4 +1156,10 @@ TEST(Json, CharsToUnicodeEscape) {
       folly::json::buildExtraAsciiToEscapeBitmap("?@$!]"),
       (1ULL << 63) | (1ULL << 36) | (1ULL << 33),
       (1ULL << (64 - 64)) | (1ULL << (93 - 64)));
+}
+
+TEST(Json5, TrailingCommaAndAllowNanInf) {
+  dynamic arr = dynamic::array(1, 2);
+  EXPECT_EQ(arr, fromJson5("[1, 2,]"));
+  EXPECT_NO_THROW(fromJson5("Infinity"));
 }

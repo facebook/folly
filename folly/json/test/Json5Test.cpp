@@ -65,6 +65,7 @@ constexpr auto kPassedTests = {
     "src/arrays/lone-trailing-comma-array.js",
     "src/arrays/no-comma-array.txt",
     "src/arrays/regular-array.json",
+    "src/arrays/trailing-comma-array.json5",
     // Comments
     "src/comments/block-comment-in-string.json",
     "src/comments/inline-comment-in-string.json",
@@ -120,11 +121,10 @@ constexpr auto kPassedTests = {
     "src/objects/leading-comma-object.txt",
     "src/objects/lone-trailing-comma-object.txt",
     "src/objects/no-comma-object.txt",
+    "src/objects/trailing-comma-object.json5",
 };
 
 constexpr auto kFailedTests = {
-    // Arrays
-    "src/arrays/trailing-comma-array.json5",
     // Comments
     "src/comments/block-comment-following-array-element.json5",
     "src/comments/block-comment-following-top-level-value.json5",
@@ -176,7 +176,6 @@ constexpr auto kFailedTests = {
     "src/numbers/zero-hexadecimal.json5",
     "src/numbers/zero-octal.txt",
     // Objects
-    "src/objects/trailing-comma-object.json5",
     "src/objects/reserved-unquoted-key.json5",
     "src/objects/single-quoted-key.json5",
     "src/objects/unquoted-keys.json5",
