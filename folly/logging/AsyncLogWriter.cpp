@@ -60,7 +60,7 @@ AsyncLogWriter::~AsyncLogWriter() {
   folly::AtFork::unregisterHandler(this);
 }
 
-FOLLY_CONSTINIT std::atomic<AsyncLogWriter::DiscardCallback>
+constinit std::atomic<AsyncLogWriter::DiscardCallback>
     AsyncLogWriter::discardCallback_{};
 
 void AsyncLogWriter::setDiscardCallback(DiscardCallback callback) {
