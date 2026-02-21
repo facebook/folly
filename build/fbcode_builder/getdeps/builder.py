@@ -426,6 +426,8 @@ class AutoconfBuilder(BuilderBase):
             inst_dir,
         )
         self.args = args or []
+        if not build_opts.shared_libs and "--disable-shared" not in self.args:
+            self.args.append("--disable-shared")
         self.conf_env_args = conf_env_args or {}
 
     @property
