@@ -1090,7 +1090,7 @@ FOLLY_CONSTEVAL inline bool isXlogCategoryOverridden(T) {
  * entire .cpp file, rather than needing a separate copy for each XLOG()
  * statement.
  */
-FOLLY_CONSTINIT XlogFileScopeInfo xlogFileScopeInfo;
+constinit XlogFileScopeInfo xlogFileScopeInfo;
 } // namespace
 } // namespace custom
 
