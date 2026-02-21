@@ -687,10 +687,10 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
           ::folly::detail::custom::xlog_correct_usage>::value,               \
       "XLOG_SET_CATEGORY_NAME() should not be used within namespace scope"); \
   XLOG_SET_CATEGORY_CHECK                                                    \
-  FOLLY_CONSTEVAL inline StringPiece getXlogCategoryName(StringPiece, int) { \
+  consteval inline StringPiece getXlogCategoryName(StringPiece, int) {       \
     return category;                                                         \
   }                                                                          \
-  FOLLY_CONSTEVAL inline bool isXlogCategoryOverridden(int) {                \
+  consteval inline bool isXlogCategoryOverridden(int) {                      \
     return true;                                                             \
   }                                                                          \
   }                                                                          \
@@ -955,18 +955,18 @@ class XlogCategoryInfo<false> {
  */
 folly::StringPiece getXlogCategoryNameForFile(folly::StringPiece filename);
 
-FOLLY_CONSTEVAL bool xlogIsDirSeparator(char c) {
+consteval bool xlogIsDirSeparator(char c) {
   return c == '/' || (kIsWindows && c == '\\');
 }
 
 namespace detail {
-FOLLY_CONSTEVAL const char* xlogStripFilenameRecursive(
+consteval const char* xlogStripFilenameRecursive(
     const char* filename,
     const char* prefixes,
     size_t prefixIdx,
     size_t filenameIdx,
     bool match);
-FOLLY_CONSTEVAL const char* xlogStripFilenameMatchFound(
+consteval const char* xlogStripFilenameMatchFound(
     const char* filename,
     const char* prefixes,
     size_t prefixIdx,
@@ -978,7 +978,7 @@ FOLLY_CONSTEVAL const char* xlogStripFilenameMatchFound(
                    filename, prefixes, prefixIdx, filenameIdx + 1)
              : (filename + filenameIdx));
 }
-FOLLY_CONSTEVAL const char* xlogStripFilenameRecursive(
+consteval const char* xlogStripFilenameRecursive(
     const char* filename,
     const char* prefixes,
     size_t prefixIdx,
@@ -1026,7 +1026,7 @@ FOLLY_CONSTEVAL const char* xlogStripFilenameRecursive(
  * e.g., xlogStripFilename("/my/project/src/foo.cpp", "/tmp:/my/project")
  * would return "src/foo.cpp"
  */
-FOLLY_CONSTEVAL const char* xlogStripFilename(
+consteval const char* xlogStripFilename(
     const char* filename, const char* prefixes) {
   return detail::xlogStripFilenameRecursive(filename, prefixes, 0, 0, true);
 }
@@ -1061,8 +1061,7 @@ struct xlog_correct_usage;
  * over this one.
  */
 template <typename T>
-FOLLY_CONSTEVAL inline StringPiece getXlogCategoryName(
-    StringPiece filename, T) {
+consteval inline StringPiece getXlogCategoryName(StringPiece filename, T) {
   return filename;
 }
 
@@ -1078,7 +1077,7 @@ FOLLY_CONSTEVAL inline StringPiece getXlogCategoryName(
  * over this one.
  */
 template <typename T>
-FOLLY_CONSTEVAL inline bool isXlogCategoryOverridden(T) {
+consteval inline bool isXlogCategoryOverridden(T) {
   return false;
 }
 
