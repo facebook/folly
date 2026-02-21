@@ -20,6 +20,11 @@ set_and_check(FOLLY_CMAKE_DIR "@PACKAGE_CMAKE_INSTALL_DIR@")
 # folly's prefix directory in the FOLLY_PREFIX_DIR variable
 set(FOLLY_PREFIX_DIR "${PACKAGE_PREFIX_DIR}")
 
+# Find glog before loading targets, since targets reference the glog::glog target
+if(NOT TARGET glog::glog)
+  find_package(Glog QUIET)
+endif()
+
 # Include the folly-targets.cmake file, which is generated from our CMake rules
 if (NOT TARGET Folly::folly)
   include("${FOLLY_CMAKE_DIR}/folly-targets.cmake")

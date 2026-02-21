@@ -75,7 +75,7 @@ endif()
 
 find_package(Glog MODULE)
 set(FOLLY_HAVE_LIBGLOG ${GLOG_FOUND})
-list(APPEND FOLLY_LINK_LIBRARIES ${GLOG_LIBRARY})
+list(APPEND FOLLY_LINK_LIBRARIES glog::glog)
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${GLOG_INCLUDE_DIR})
 # Glog 0.7+ requires GLOG_USE_GLOG_EXPORT to be defined so that headers
 # include glog/export.h which defines GLOG_EXPORT.

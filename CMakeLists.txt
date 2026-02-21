@@ -449,7 +449,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       follybenchmark
       folly
       ${LIBGMOCK_LIBRARIES}
-      ${GLOG_LIBRARY}
+      glog::glog
   )
   apply_folly_compile_options_to_target(folly_test_support)
 
