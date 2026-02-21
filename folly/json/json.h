@@ -135,6 +135,9 @@ struct serialization_opts {
   // value 127. Some specific characters in this range are always escaped
   // regardless of the bitmask - namely characters less than 0x20, \, and ".
   std::array<uint64_t, 2> extra_ascii_to_escape_bitmap{};
+
+  // Allow json5 string. This implies allowing trailing comma, nan, inf, etc.
+  bool allow_json5_experimental{false};
 };
 
 /**
@@ -209,6 +212,9 @@ using metadata_map = std::unordered_map<dynamic const*, parse_metadata>;
  */
 dynamic parseJson(StringPiece, json::serialization_opts const&);
 dynamic parseJson(StringPiece);
+
+[[deprecated("This is an experimental feature. Do not use in production.")]]
+dynamic parseJson5(StringPiece);
 
 dynamic parseJsonWithMetadata(StringPiece range, json::metadata_map* map);
 dynamic parseJsonWithMetadata(

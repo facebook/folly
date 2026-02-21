@@ -1066,6 +1066,12 @@ dynamic parseJson(StringPiece range) {
   return parseJson(range, json::serialization_opts());
 }
 
+dynamic parseJson5(StringPiece range) {
+  json::serialization_opts opts;
+  opts.allow_json5_experimental = true;
+  return parseJson(range, opts);
+}
+
 dynamic parseJson(StringPiece range, json::serialization_opts const& opts) {
   json::Input in(range, &opts);
 

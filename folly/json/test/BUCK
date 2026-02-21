@@ -146,3 +146,17 @@ fb_dirsync_cpp_unittest(
         "//folly/test:json_test_util",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "json5_test",
+    srcs = ["Json5Test.cpp"],
+    headers = [],
+    resources = {"json5-tests": "fbsource//third-party/json5-tests/master:test_data"},
+    deps = [
+        "//folly:dynamic",
+        "//folly:file_util",
+        "//folly/portability:gtest",
+        "//folly/testing:test_util",
+    ],
+)
