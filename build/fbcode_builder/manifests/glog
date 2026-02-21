@@ -13,9 +13,14 @@ subdir = glog-0.5.0
 gflags
 
 [cmake.defines]
-BUILD_SHARED_LIBS=ON
 BUILD_TESTING=NO
 WITH_PKGCONFIG=ON
+
+[cmake.defines.os=windows]
+BUILD_SHARED_LIBS=ON
+
+[cmake.defines.shared_libs=on]
+BUILD_SHARED_LIBS=ON
 
 [cmake.defines.os=freebsd]
 HAVE_TR1_UNORDERED_MAP=OFF
