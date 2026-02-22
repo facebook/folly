@@ -24,6 +24,7 @@
 
 using folly::dynamic;
 using folly::parseJson;
+using folly::parseJson5;
 using folly::parseJsonWithMetadata;
 using folly::toJson;
 using folly::json::parse_error;
@@ -1189,4 +1190,21 @@ TEST(Json5, UnquotedKeys) {
 
   // Without json5 flag, unquoted keys should fail
   EXPECT_THROW(parseJson("{hello: \"world\"}"), std::exception);
+}
+
+TEST(Json5, SingleQuotedStrings) {
+  EXPECT_EQ(fromJson5("'hello world'"), "hello world");
+  EXPECT_EQ(fromJson5("'say \"hello\"'"), "say \"hello\""); // contains "
+  EXPECT_EQ(fromJson5(R"('I can\'t wait')"), "I can't wait"); // contains '
+  EXPECT_EQ(fromJson5(R"('line1\nline2')"), "line1\nline2"); // contains \n
+  EXPECT_EQ(fromJson5("'\\u0041'"), "A"); // contains escape sequences
+  EXPECT_EQ(fromJson5("''"), ""); // empty
+
+  // Mix single and double quoted string in object
+  auto obj = fromJson5(R"({' ': "mixed", "mixed": '\n'})");
+  EXPECT_EQ(obj[" "], "mixed");
+  EXPECT_EQ(obj["mixed"], "\n");
+
+  // Without json5 flag, single quoted string should fail
+  EXPECT_THROW(parseJson("'hello'"), std::exception);
 }

@@ -82,6 +82,9 @@ constexpr auto kPassedTests = {
     // Misc
     "src/misc/empty.txt",
     "src/misc/npm-package.json",
+    "src/misc/npm-package.json5",
+    // Objects - single-quoted keys
+    "src/objects/single-quoted-key.json5",
     // New lines
     "src/new-lines/comment-cr.json5",
     "src/new-lines/comment-crlf.json5",
@@ -135,11 +138,13 @@ constexpr auto kPassedTests = {
     "src/objects/reserved-unquoted-key.json5",
     "src/objects/trailing-comma-object.json5",
     "src/objects/unquoted-keys.json5",
+    // Strings
+    "src/strings/escaped-single-quoted-string.json5",
+    "src/strings/single-quoted-string.json5",
 };
 
 constexpr auto kFailedTests = {
     // Misc
-    "src/misc/npm-package.json5",
     "src/misc/readme-example.json5",
     "src/misc/valid-whitespace.json5",
     // New lines
@@ -177,12 +182,8 @@ constexpr auto kFailedTests = {
     "src/numbers/zero-float-leading-decimal-point.json5",
     "src/numbers/zero-hexadecimal.json5",
     "src/numbers/zero-octal.txt",
-    // Objects
-    "src/objects/single-quoted-key.json5",
     // Strings
-    "src/strings/escaped-single-quoted-string.json5",
     "src/strings/multi-line-string.json5",
-    "src/strings/single-quoted-string.json5",
     "src/strings/unescaped-multi-line-string.txt",
 };
 
