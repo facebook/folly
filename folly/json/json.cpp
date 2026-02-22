@@ -353,7 +353,7 @@ struct Input {
     });
   }
 
-  void skipWhitespace() {
+  bool skipWhitespaceOnly() {
     unsigned index = 0;
     while (true) {
       while (index < range_.size() && range_[index] == ' ') {
@@ -374,6 +374,48 @@ struct Input {
     }
     range_.advance(index);
     storeCurrent();
+    return index;
+  }
+
+  bool skipComment() {
+    if (!opts_.allow_json5_experimental) {
+      return false;
+    }
+    if (consume("//")) {
+      // Single-line comment: skip until CR or LF.
+      char prev = 0;
+      skipWhile([&prev](char curr) {
+        if (prev == '\r' || prev == '\n') {
+          return false;
+        }
+        prev = curr;
+        return true;
+      });
+      return true;
+    }
+    if (consume("/*")) {
+      // Block comment: skip until closing "*/".
+      char prev = 0;
+      skipWhile([&prev](char curr) {
+        if (prev == '*' && curr == '/') {
+          return false;
+        }
+        prev = curr;
+        return true;
+      });
+      if (consume("/")) {
+        return true;
+      }
+      error("unterminated block comment");
+    }
+    return false;
+  }
+
+  void skipWhitespace() {
+    do {
+      skipWhitespaceOnly();
+      // Loop to handle adjacent comments, e.g. `/*a*//*b*/`.
+    } while (skipComment());
   }
 
   void expect(char c) {

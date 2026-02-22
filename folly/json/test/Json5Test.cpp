@@ -67,14 +67,25 @@ constexpr auto kPassedTests = {
     "src/arrays/regular-array.json",
     "src/arrays/trailing-comma-array.json5",
     // Comments
+    "src/comments/block-comment-following-array-element.json5",
+    "src/comments/block-comment-following-top-level-value.json5",
     "src/comments/block-comment-in-string.json",
+    "src/comments/block-comment-preceding-top-level-value.json5",
+    "src/comments/block-comment-with-asterisks.json5",
+    "src/comments/inline-comment-following-array-element.json5",
+    "src/comments/inline-comment-following-top-level-value.json5",
     "src/comments/inline-comment-in-string.json",
+    "src/comments/inline-comment-preceding-top-level-value.json5",
     "src/comments/top-level-block-comment.txt",
     "src/comments/top-level-inline-comment.txt",
     "src/comments/unterminated-block-comment.txt",
     // Misc
     "src/misc/empty.txt",
     "src/misc/npm-package.json",
+    // New lines
+    "src/new-lines/comment-cr.json5",
+    "src/new-lines/comment-crlf.json5",
+    "src/new-lines/comment-lf.json5",
     // Numbers
     "src/numbers/float.json",
     "src/numbers/float-leading-zero.json",
@@ -125,22 +136,11 @@ constexpr auto kPassedTests = {
 };
 
 constexpr auto kFailedTests = {
-    // Comments
-    "src/comments/block-comment-following-array-element.json5",
-    "src/comments/block-comment-following-top-level-value.json5",
-    "src/comments/block-comment-preceding-top-level-value.json5",
-    "src/comments/block-comment-with-asterisks.json5",
-    "src/comments/inline-comment-following-array-element.json5",
-    "src/comments/inline-comment-following-top-level-value.json5",
-    "src/comments/inline-comment-preceding-top-level-value.json5",
     // Misc
     "src/misc/npm-package.json5",
     "src/misc/readme-example.json5",
     "src/misc/valid-whitespace.json5",
     // New lines
-    "src/new-lines/comment-cr.json5",
-    "src/new-lines/comment-crlf.json5",
-    "src/new-lines/comment-lf.json5",
     "src/new-lines/escaped-cr.json5",
     "src/new-lines/escaped-crlf.json5",
     "src/new-lines/escaped-lf.json5",
