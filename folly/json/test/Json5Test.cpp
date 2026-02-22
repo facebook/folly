@@ -132,7 +132,9 @@ constexpr auto kPassedTests = {
     "src/objects/leading-comma-object.txt",
     "src/objects/lone-trailing-comma-object.txt",
     "src/objects/no-comma-object.txt",
+    "src/objects/reserved-unquoted-key.json5",
     "src/objects/trailing-comma-object.json5",
+    "src/objects/unquoted-keys.json5",
 };
 
 constexpr auto kFailedTests = {
@@ -176,9 +178,7 @@ constexpr auto kFailedTests = {
     "src/numbers/zero-hexadecimal.json5",
     "src/numbers/zero-octal.txt",
     // Objects
-    "src/objects/reserved-unquoted-key.json5",
     "src/objects/single-quoted-key.json5",
-    "src/objects/unquoted-keys.json5",
     // Strings
     "src/strings/escaped-single-quoted-string.json5",
     "src/strings/multi-line-string.json5",

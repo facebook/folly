@@ -1163,3 +1163,30 @@ TEST(Json5, TrailingCommaAndAllowNanInf) {
   EXPECT_EQ(arr, fromJson5("[1, 2,]"));
   EXPECT_NO_THROW(fromJson5("Infinity"));
 }
+
+TEST(Json5, UnquotedKeys) {
+  auto obj = fromJson5(R"({
+    hello: "world",    // basic
+    _$_: 1,            // startswith _
+    $foo: 2,           // startswith $
+    "> <": 3,          // mixed with quoted keys
+    a1b2: 4,           // has numbers
+    outer: {inner: 5}, // nested
+  })");
+
+  EXPECT_EQ(obj["hello"], "world");
+  EXPECT_EQ(obj["_$_"], 1);
+  EXPECT_EQ(obj["$foo"], 2);
+  EXPECT_EQ(obj["> <"], 3);
+  EXPECT_EQ(obj["a1b2"], 4);
+  EXPECT_EQ(obj["outer"]["inner"], 5);
+
+  // Illegal: key starting with digit should fail
+  EXPECT_THROW(fromJson5("{1abc: 1}"), std::exception);
+
+  // Illegal: key with special symbol should fail
+  EXPECT_THROW(fromJson5("{a-b: 1}"), std::exception);
+
+  // Without json5 flag, unquoted keys should fail
+  EXPECT_THROW(parseJson("{hello: \"world\"}"), std::exception);
+}

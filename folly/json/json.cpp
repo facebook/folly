@@ -61,6 +61,17 @@ bool allowNanInf(json::serialization_opts const& opts) {
   return opts.allow_nan_inf || opts.allow_json5_experimental;
 }
 
+// JSON5 uses ECMAScript 5.1 IdentifierName for unquoted keys.
+// For ASCII, this means: start with [a-zA-Z_$], continue with [a-zA-Z0-9_$].
+bool isIdentifierStart(char c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' ||
+      c == '$';
+}
+
+bool isIdentifierPart(char c) {
+  return isIdentifierStart(c) || (c >= '0' && c <= '9');
+}
+
 struct Printer {
   // Context class is allows to restore the path to element that we are about to
   // print so that if error happens we can throw meaningful exception.
@@ -547,7 +558,9 @@ dynamic parseObject(Input& in, json::metadata_map* map) {
     if (allowTrailingComma(opts) && *in == '}') {
       break;
     }
-    dynamic key = parseValue(in, map);
+    dynamic key = opts.allow_json5_experimental && isIdentifierStart(*in)
+        ? in.skipWhile(isIdentifierPart)
+        : parseValue(in, map);
     if (opts.convert_int_keys && key.isInt()) {
       key = key.asString();
     } else if (!opts.allow_non_string_keys && !key.isString()) {
