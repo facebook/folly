@@ -352,6 +352,7 @@ non_fbcode_target(
     raw_headers = ["StdBitset.h"],
     exported_deps = [
         "//xplat/folly:c_portability",
+        "//xplat/folly:likely",
         "//xplat/folly:portability",
     ],
 )
@@ -771,6 +772,7 @@ fbcode_target(
     headers = ["StdBitset.h"],
     exported_deps = [
         "//folly:c_portability",
+        "//folly:likely",
         "//folly:portability",
     ],
 )

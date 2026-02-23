@@ -326,6 +326,7 @@ folly_add_library(
     StdBitset.h
   EXPORTED_DEPS
     folly_c_portability
+    folly_likely
     folly_portability
 )
 
