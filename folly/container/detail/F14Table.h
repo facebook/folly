@@ -732,12 +732,15 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
 
 #if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
 
-  SparseMaskIter tagMatchIter(uint8x16_t needleV, svbool_t pred) const {
-    svuint8_t tagV = svld1_u8(pred, &tags_[0]);
+  SparseMaskIter tagMatchIter(
+      uint8x16_t needleV, svbool_t inPred, svbool_t& outPred) const {
+    svuint8_t tagV = svld1_u8(inPred, &tags_[0]);
     auto eqV =
         svset_neonq_u8(svundef_u8(), vceqq_u8(svget_neonq(tagV), needleV));
+    // test if any match is found
+    outPred = svmatch_u8(inPred, tagV, svset_neonq_u8(svundef_u8(), needleV));
     // preserve only bits 0 and 4 of each byte
-    eqV = svand_n_u8_x(pred, eqV, 17);
+    eqV = svand_n_u8_x(inPred, eqV, 17);
     // get info from every byte into the bottom half of every uint16_t
     // by shifting right 4, then round to get it into a 64-bit vector
     uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(svget_neonq(eqV)), 4);
@@ -1704,18 +1707,24 @@ class F14Table : public Policy {
         prefetchAddr(chunk->itemAddr(8));
       }
 #if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
-      auto hits = chunk->tagMatchIter(needleV, pred);
+      svbool_t outPred;
+      auto hits = chunk->tagMatchIter(needleV, pred, outPred);
+      bool nonzero = svptest_any(pred, outPred);
+      FOLLY_SAFE_DCHECK(nonzero == hits.hasNext());
 #else
       auto hits = chunk->tagMatchIter(needleV);
+      bool nonzero = hits.hasNext();
 #endif
-      while (hits.hasNext()) {
-        auto i = hits.next();
-        if (FOLLY_LIKELY(this->keyMatchesItem(key, chunk->item(i)))) {
-          // Tag match and key match were both successful.  The chance
-          // of a false tag match is 1/128 for each key in the chunk
-          // (with a proper hash function).
-          return ItemIter{chunk, i};
-        }
+      if (nonzero) {
+        do {
+          auto i = hits.next();
+          if (FOLLY_LIKELY(this->keyMatchesItem(key, chunk->item(i)))) {
+            // Tag match and key match were both successful.  The chance
+            // of a false tag match is 1/128 for each key in the chunk
+            // (with a proper hash function).
+            return ItemIter{chunk, i};
+          }
+        } while (hits.hasNext());
       }
       if (FOLLY_LIKELY(chunk->outboundOverflowCount() == 0)) {
         // No keys that wanted to be placed in this chunk were denied
@@ -1814,16 +1823,22 @@ class F14Table : public Policy {
         prefetchAddr(chunk->itemAddr(8));
       }
 #if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
-      auto hits = chunk->tagMatchIter(needleV, pred);
+      svbool_t outPred;
+      auto hits = chunk->tagMatchIter(needleV, pred, outPred);
+      bool nonzero = svptest_any(pred, outPred);
+      FOLLY_SAFE_DCHECK(nonzero == hits.hasNext());
 #else
       auto hits = chunk->tagMatchIter(needleV);
+      bool nonzero = hits.hasNext();
 #endif
-      while (hits.hasNext()) {
-        auto i = hits.next();
-        if (FOLLY_LIKELY(
-                func(this->keyForValue(this->valueAtItem(chunk->item(i)))))) {
-          return ItemIter{chunk, i};
-        }
+      if (nonzero) {
+        do {
+          auto i = hits.next();
+          if (FOLLY_LIKELY(
+                  func(this->keyForValue(this->valueAtItem(chunk->item(i)))))) {
+            return ItemIter{chunk, i};
+          }
+        } while (hits.hasNext());
       }
       if (FOLLY_LIKELY(chunk->outboundOverflowCount() == 0)) {
         break;
