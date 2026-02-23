@@ -89,6 +89,9 @@ constexpr auto kPassedTests = {
     "src/new-lines/comment-cr.json5",
     "src/new-lines/comment-crlf.json5",
     "src/new-lines/comment-lf.json5",
+    "src/new-lines/escaped-cr.json5",
+    "src/new-lines/escaped-crlf.json5",
+    "src/new-lines/escaped-lf.json5",
     // Numbers
     "src/numbers/float.json",
     "src/numbers/float-leading-zero.json",
@@ -140,6 +143,7 @@ constexpr auto kPassedTests = {
     "src/objects/unquoted-keys.json5",
     // Strings
     "src/strings/escaped-single-quoted-string.json5",
+    "src/strings/multi-line-string.json5",
     "src/strings/single-quoted-string.json5",
 };
 
@@ -147,10 +151,6 @@ constexpr auto kFailedTests = {
     // Misc
     "src/misc/readme-example.json5",
     "src/misc/valid-whitespace.json5",
-    // New lines
-    "src/new-lines/escaped-cr.json5",
-    "src/new-lines/escaped-crlf.json5",
-    "src/new-lines/escaped-lf.json5",
     // Numbers
     "src/numbers/float-leading-decimal-point.json5",
     "src/numbers/hexadecimal.json5",
@@ -183,7 +183,6 @@ constexpr auto kFailedTests = {
     "src/numbers/zero-hexadecimal.json5",
     "src/numbers/zero-octal.txt",
     // Strings
-    "src/strings/multi-line-string.json5",
     "src/strings/unescaped-multi-line-string.txt",
 };
 

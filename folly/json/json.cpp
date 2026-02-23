@@ -748,8 +748,16 @@ std::string parseString(Input& in, char quoteChar) {
     }
     if (*in == '\\') {
       ++in;
-      if (json5 && in.consume("'")) {
-        ret += "'";
+
+      bool consumed = false;
+      for (auto next : {"\r\n", "\r", "\n", "'"}) {
+        if (json5 && in.consume(next)) {
+          consumed = true;
+          ret += next;
+          break;
+        }
+      }
+      if (consumed) {
         continue;
       }
       switch (*in) {

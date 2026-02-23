@@ -1208,3 +1208,13 @@ TEST(Json5, SingleQuotedStrings) {
   // Without json5 flag, single quoted string should fail
   EXPECT_THROW(parseJson("'hello'"), std::exception);
 }
+
+TEST(Json5Test, MultiLineStrings) {
+  EXPECT_EQ(fromJson5("\"line1\\\nline2\""), "line1\nline2");
+  EXPECT_EQ(fromJson5("\"line1\\\rline2\""), "line1\rline2");
+  EXPECT_EQ(fromJson5("\"line1\\\r\nline2\""), "line1\r\nline2");
+
+  // Multi-line string in object value
+  auto obj = fromJson5("{\"key\": \"hello\\\nworld\"}");
+  EXPECT_EQ(obj["key"], "hello\nworld");
+}
