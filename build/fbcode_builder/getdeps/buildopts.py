@@ -113,10 +113,6 @@ class BuildOptions(object):
         self.lfs_path = lfs_path
         self.shared_libs = shared_libs
         self.free_up_disk = free_up_disk
-
-        if build_type is None:
-            build_type = "RelWithDebInfo"
-
         self.build_type = build_type
 
         lib_path = None
