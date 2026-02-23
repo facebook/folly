@@ -22,4 +22,12 @@ folly_add_library(
     folly_lang_builtin
 )
 
+folly_add_library(
+  NAME stable_radix_sort
+  HEADERS
+    StableRadixSort.h
+  EXPORTED_DEPS
+    folly_traits
+)
+
 add_subdirectory(simd)

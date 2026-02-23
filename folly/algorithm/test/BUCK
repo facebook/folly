@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -11,5 +12,32 @@ fbcode_target(
     deps = [
         "//folly/algorithm:binary_heap",
         "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "stable_radix_sort_test",
+    srcs = ["StableRadixSortTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/algorithm:stable_radix_sort",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "stable_radix_sort_benchmark",
+    srcs = ["StableRadixSortBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/algorithm:stable_radix_sort",
+        "//folly/init:init",
+        "//folly/stats/detail:double_radix_sort",
+    ],
+    external_deps = [
+        ("boost", None, "boost_sort"),
     ],
 )

@@ -15,3 +15,13 @@ fb_dirsync_cpp_library(
         "//folly/lang:builtin",
     ],
 )
+
+fb_dirsync_cpp_library(
+    name = "stable_radix_sort",
+    headers = ["StableRadixSort.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:traits",
+    ],
+)
