@@ -355,10 +355,11 @@ struct Input {
     return skipWhile([](char c) { return c >= '0' && c <= '9'; });
   }
 
-  StringPiece skipMinusAndDigits() {
+  StringPiece skipSignAndDigits() {
     bool firstChar = true;
     return skipWhile([&firstChar](char c) {
-      bool result = (c >= '0' && c <= '9') || (firstChar && c == '-');
+      bool result =
+          (c >= '0' && c <= '9') || (firstChar && (c == '-' || c == '+'));
       firstChar = false;
       return result;
     });
@@ -622,6 +623,17 @@ dynamic parseArray(Input& in, json::metadata_map* map) {
 }
 
 dynamic parseNumber(Input& in) {
+  bool const json5 = in.getOpts().allow_json5_experimental;
+  bool const positive = *in == '+';
+  if (positive && !json5) {
+    in.error("expected json value");
+  }
+  if (positive && in.consume("+Infinity")) {
+    if (in.getOpts().parse_numbers_as_strings) {
+      return "+Infinity";
+    }
+    return std::numeric_limits<double>::infinity();
+  }
   bool const negative = (*in == '-');
   if (negative && in.consume("-Infinity")) {
     if (in.getOpts().parse_numbers_as_strings) {
@@ -631,7 +643,10 @@ dynamic parseNumber(Input& in) {
     }
   }
 
-  auto integral = in.skipMinusAndDigits();
+  auto integral = in.skipSignAndDigits();
+  if (positive && integral.size() < 2) {
+    in.error("expected digits after `+'");
+  }
   if (negative && integral.size() < 2) {
     in.error("expected digits after `-'");
   }
@@ -811,6 +826,7 @@ dynamic parseValue(Input& in, json::metadata_map* map) {
       *in == '\"' ? parseString(in) :
       (*in == '\'' && json5) ?  parseString(in, '\'') :
       (*in == '-' || (*in >= '0' && *in <= '9')) ? parseNumber(in) :
+      (*in == '+' && json5) ? parseNumber(in) :
       in.consume("true") ? true :
       in.consume("false") ? false :
       in.consume("null") ? nullptr :

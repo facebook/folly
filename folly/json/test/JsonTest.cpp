@@ -1218,3 +1218,29 @@ TEST(Json5Test, MultiLineStrings) {
   auto obj = fromJson5("{\"key\": \"hello\\\nworld\"}");
   EXPECT_EQ(obj["key"], "hello\nworld");
 }
+
+TEST(Json5, PositivePrefix) {
+  auto arr = fromJson5("[+12, +1.2, {\"x\": +42}]");
+  EXPECT_EQ(arr[0], 12);
+  EXPECT_EQ(arr[1], 1.2);
+  EXPECT_EQ(arr[2]["x"], 42);
+
+  EXPECT_EQ(fromJson5("+0"), 0);
+  EXPECT_EQ(fromJson5("+0.0"), 0.0);
+  EXPECT_EQ(fromJson5("+0.10"), 0.1);
+  EXPECT_EQ(fromJson5("+Infinity"), std::numeric_limits<double>::infinity());
+
+  folly::json::serialization_opts numberAsString{
+      .parse_numbers_as_strings = true, .allow_json5_experimental = true};
+  EXPECT_EQ(parseJson("+0", numberAsString), "+0");
+  EXPECT_EQ(parseJson("+0.10", numberAsString), "+0.10");
+  EXPECT_EQ(parseJson("+Infinity", numberAsString), "+Infinity");
+
+  // Error: plus with nothing
+  EXPECT_THROW(fromJson5("+"), std::exception);
+  EXPECT_THROW(fromJson5("+-1"), std::exception);
+  EXPECT_THROW(fromJson5("-+1"), std::exception);
+
+  // Without json5 flag, positive prefix should fail
+  EXPECT_THROW(parseJson("+15"), std::exception);
+}
