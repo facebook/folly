@@ -39,7 +39,7 @@ using ResolveNapiIdCallback =
 using SrcPortForQueueIdCallback = folly::Function<int(
     const folly::IPAddress& destAddr,
     uint16_t destPort,
-    int targetNapiId,
+    int targetQueueId,
     const char* ifname)>;
 
 struct IoUringOptions {

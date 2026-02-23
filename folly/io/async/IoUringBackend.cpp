@@ -1870,7 +1870,7 @@ int IoUringBackend::computeSrcPortForQueueId(
   }
 
   return options_.srcPortQueueId(
-      destAddr, destPort, napiId_, options_.zcRxIfname.c_str());
+      destAddr, destPort, options_.zcRxQueueId, options_.zcRxIfname.c_str());
 }
 
 void IoUringBackend::processFileOp(IoSqe* sqe, int res) noexcept {
