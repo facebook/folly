@@ -12,7 +12,7 @@ fbcode_target(
     srcs = ["ExceptionCounterTest.cpp"],
     deps = [
         "//folly/debugging/exception_tracer:exception_counter",
-        "//folly/debugging/exception_tracer:exception_counter_static_registration",
+        "//folly/debugging/exception_tracer:exception_counter_static_registration",  # @manual
         "//folly/portability:gtest",
     ],
 )
@@ -91,7 +91,6 @@ fbcode_target(
     name = "smart_exception_tracer_benchmark",
     srcs = ["SmartExceptionTracerBenchmark.cpp"],
     deps = [
-        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:exception_wrapper",
         "//folly/debugging/exception_tracer:smart_exception_stack_trace_hooks",  # @manual
