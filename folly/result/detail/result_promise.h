@@ -85,6 +85,14 @@ struct result_promise_base {
   }
 
   result_promise_return<T> get_return_object() noexcept { return *this; }
+
+  // Only permit `or_unwind` awaitables.  See the rationale on
+  // `result_or_unwind_crtp::or_unwind_awaitable`.
+  template <typename U>
+    requires requires { typename std::remove_cvref_t<U>::or_unwind_awaitable; }
+  U&& await_transform(U&& u) noexcept {
+    return static_cast<U&&>(u);
+  }
 };
 
 template <typename T>

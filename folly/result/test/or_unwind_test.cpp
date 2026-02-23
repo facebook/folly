@@ -81,6 +81,28 @@ TEST(OrUnwind, temporaryDangles) {
   co_yield 1;
 }
 
+// `result` promises reject non-`or_unwind` awaitables via `await_transform`.
+// Test the detection marker directly.
+template <typename T>
+constexpr bool kHasOrUnwindAwaitable = requires {
+  typename T::or_unwind_awaitable;
+};
+static_assert(kHasOrUnwindAwaitable<or_unwind<result<int>&>>);
+static_assert(kHasOrUnwindAwaitable<or_unwind_owning<result<int>>>);
+static_assert(!kHasOrUnwindAwaitable<std::suspend_always>);
+
+[[maybe_unused]] coro::TaskWithExecutor<int> makeTaskWithExecutor();
+
+// Per the doc on `result_or_unwind_crtp::or_unwind_awaitable`, `result` coros
+// must refuse to await non-`or_unwind` awaitables at compile time.
+[[maybe_unused]] result<> noTaskWithExecutorInResult() {
+  result<int> r{42};
+  (void)co_await or_unwind(r); // OK
+#if 0 // Manual test: no matching member function for call to 'await_transform'
+  co_await makeTaskWithExecutor();
+#endif
+}
+
 // Check that an awaitable's `await_resume()` returns the expected type.
 template <typename Expected, typename Awaitable>
 consteval void checkAwaitResumeType() {

@@ -170,6 +170,18 @@ class result_or_unwind_crtp : public result_or_unwind_base<Derived, Storage> {
   using Base::await_resume;
   using Base::Base;
 
+  // A `result`-like coro is designed for "short-circuiting" -- it expects the
+  // frame to be destroyed on suspend.  This marker lets its `await_transform`
+  // accept **only** `or_unwind` awaitables.
+  //
+  // The coro return object lives on the caller (`result_promise_return`).  A
+  // truly suspending `co_await`, e.g.  into `TaskWithExecutor<> f()`, would
+  // immediately return to the caller with an uninitialized result.  Meanwhile,
+  // `f()` could continue to run on another thread, potentially resuming the
+  // result coroutine **after** the caller exited & destroyed its stack.  The
+  // `return_value()` would then write into already-freed `*value_`.
+  using or_unwind_awaitable = void;
+
   [[nodiscard]] bool await_ready() const noexcept {
     if constexpr (Base::kIsErrorOrStopped) {
       return false;
