@@ -80,7 +80,8 @@ void doResizeWithoutInit(
   valid.resize(newSize);
   auto after = validData(target, valid);
   if (oldSize <= newSize) {
-    EXPECT_EQ(before, after);
+    EXPECT_TRUE(
+        std::equal(after.begin(), after.end(), before.begin(), before.end()));
   } else {
     EXPECT_GE(before.size(), after.size());
     EXPECT_TRUE(std::equal(after.begin(), after.end(), before.begin()));
@@ -107,7 +108,8 @@ void doResize(T& target, std::vector<bool>& valid, std::size_t newSize) {
   }
   auto after = validData(target, valid);
   if (oldSize == newSize) {
-    EXPECT_EQ(before, after);
+    EXPECT_TRUE(
+        std::equal(after.begin(), after.end(), before.begin(), before.end()));
   } else if (oldSize < newSize) {
     EXPECT_LT(before.size(), after.size());
     EXPECT_TRUE(std::equal(before.begin(), before.end(), after.begin()));
@@ -283,7 +285,7 @@ TEST(UninitializedMemoryHacks, simpleStringWChar) {
 }
 
 TEST(UninitializedMemoryHacks, simpleStringSChar) {
-  testSimple<std::basic_string<signed char>>();
+  testSimple<std::basic_string<char8_t>>();
 }
 
 TEST(UninitializedMemoryHacks, simpleVectorChar) {
@@ -307,7 +309,7 @@ TEST(UninitializedMemoryHacks, randomStringWChar) {
 }
 
 TEST(UninitializedMemoryHacks, randomStringSChar) {
-  testRandom<std::basic_string<signed char>>();
+  testRandom<std::basic_string<char8_t>>();
 }
 
 TEST(UninitializedMemoryHacks, randomVectorChar) {
@@ -323,5 +325,5 @@ TEST(UninitializedMemoryHacks, randomVectorInt) {
 }
 
 // We are deliberately putting this at the bottom to make sure it can follow use
-FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(signed char)
+FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(char8_t)
 FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(int)
