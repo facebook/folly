@@ -1244,3 +1244,33 @@ TEST(Json5, PositivePrefix) {
   // Without json5 flag, positive prefix should fail
   EXPECT_THROW(parseJson("+15"), std::exception);
 }
+
+TEST(Json5, LeadingDecimalPoint) {
+  // Basic leading decimal point
+  EXPECT_EQ(fromJson5(".123"), 0.123);
+  EXPECT_EQ(fromJson5(".0"), 0.0);
+
+  // With sign
+  EXPECT_EQ(fromJson5("+.123"), 0.123);
+  EXPECT_EQ(fromJson5("-.123"), -0.123);
+  EXPECT_EQ(fromJson5("+.0"), 0.0);
+  EXPECT_EQ(fromJson5("-.0"), -0.0);
+
+  // In object and array
+  auto obj = fromJson5("{\"val\": .5}");
+  EXPECT_EQ(obj["val"], 0.5);
+  auto arr = fromJson5("[.0, .1, +.2, -.3, +.04e1]");
+  EXPECT_EQ(arr[0], 0.0);
+  EXPECT_EQ(arr[1], 0.1);
+  EXPECT_EQ(arr[2], 0.2);
+  EXPECT_EQ(arr[3], -0.3);
+  EXPECT_EQ(arr[4], 0.4);
+
+  folly::json::serialization_opts numberAsString{
+      .parse_numbers_as_strings = true, .allow_json5_experimental = true};
+  EXPECT_EQ(parseJson("+.12e-3", numberAsString), "+.12e-3");
+  EXPECT_EQ(parseJson("-.10", numberAsString), "-.10");
+
+  // Without json5 flag, leading decimal point should fail
+  EXPECT_THROW(parseJson(".5"), std::exception);
+}

@@ -644,10 +644,10 @@ dynamic parseNumber(Input& in) {
   }
 
   auto integral = in.skipSignAndDigits();
-  if (positive && integral.size() < 2) {
+  if (positive && integral.size() < 2 && (*in != '.' || !json5)) {
     in.error("expected digits after `+'");
   }
-  if (negative && integral.size() < 2) {
+  if (negative && integral.size() < 2 && (*in != '.' || !json5)) {
     in.error("expected digits after `-'");
   }
 
@@ -827,6 +827,7 @@ dynamic parseValue(Input& in, json::metadata_map* map) {
       (*in == '\'' && json5) ?  parseString(in, '\'') :
       (*in == '-' || (*in >= '0' && *in <= '9')) ? parseNumber(in) :
       (*in == '+' && json5) ? parseNumber(in) :
+      (*in == '.' && json5) ? parseNumber(in) :
       in.consume("true") ? true :
       in.consume("false") ? false :
       in.consume("null") ? nullptr :
