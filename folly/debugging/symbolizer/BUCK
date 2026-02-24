@@ -117,6 +117,7 @@ non_fbcode_target(
         "//xplat/folly/tracing:async_stack",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:c_portability",
         "fbsource//xplat/folly/portability:libunwind",
         "fbsource//xplat/folly/portability:sys_types",
     ],
@@ -277,6 +278,7 @@ fbcode_target(
         "//folly/tracing:async_stack",
     ],
     exported_deps = [
+        "//folly:c_portability",
         "//folly/portability:sys_types",
     ],
 )

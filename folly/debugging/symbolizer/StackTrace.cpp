@@ -329,7 +329,8 @@ WalkAsyncStackResult walkAsyncStack(
 }
 } // namespace
 
-ssize_t getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses) {
+FOLLY_NOINLINE ssize_t
+getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses) {
   size_t numFrames = 0;
   const auto* asyncStackRoot = tryGetCurrentAsyncStackRoot();
   if (asyncStackRoot == nullptr) {

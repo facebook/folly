@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include <folly/CPortability.h>
 #include <folly/portability/SysTypes.h>
 
 namespace folly {
@@ -78,7 +79,8 @@ ssize_t getStackTraceHeap(uintptr_t* addresses, size_t maxAddresses);
  *
  * Async-signal-safe, but likely slower.
  */
-ssize_t getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses);
+FOLLY_NOINLINE ssize_t
+getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses);
 
 } // namespace symbolizer
 } // namespace folly

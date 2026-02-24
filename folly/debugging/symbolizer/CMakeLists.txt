@@ -122,6 +122,7 @@ folly_add_library(
     folly_portability_libunwind
     folly_tracing_async_stack
   EXPORTED_DEPS
+    folly_c_portability
     folly_portability_sys_types
 )
 
