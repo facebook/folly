@@ -490,7 +490,7 @@ void SingletonVault::startShutdownTimer() {
   sig.sigev_notify_function = fireShutdownSignalHelper;
   sig.sigev_value.sival_ptr = this;
   sig.sigev_notify_attributes = nullptr;
-  timer_t timerId;
+  timer_t timerId = nullptr;
   PCHECK(timer_create(CLOCK_MONOTONIC, &sig, &timerId) == 0);
 
   struct itimerspec newValue, oldValue;
