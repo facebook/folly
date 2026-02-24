@@ -156,6 +156,18 @@ class SparseMaskIter {
     unsigned i =
         kIsArchAArch64 ? findLastSetNonZero(mask_) : findFirstSetNonZero(mask_);
     mask_ &= kIsArchAArch64 ? (lo63 >> i) : (mask_ - 1);
+    if constexpr (kIsArchAArch64 && (kMaskSpacing == 4)) {
+      // The result of this function is often used as an index on an 8-byte
+      // element array. In this case, the index needs to be shifted left by 3 to
+      // access the desired memory position. The return statement of this
+      // function contains i >> 2. The compiler is simplifying the shifts by
+      // only issuing a lsl 1 while ommitting the lsr 2. However, it then ANDs
+      // the shifted value by 0xf8, to ensure correctness when i is not a
+      // multiple of 4. We do know that i will always be a multiple of 4. We add
+      // the assume clause so the compiler avoids emitting the &0xf8
+      auto loadIndex = i << 1;
+      assume(loadIndex == (loadIndex & 0xf8));
+    }
     return i / kMaskSpacing;
   }
 };
