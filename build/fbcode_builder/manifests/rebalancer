@@ -26,6 +26,9 @@ xxhash
 [cmake.defines.os=darwin]
 REBALANCER_USE_SCIP=0
 
+[shipit.strip]
+^.*/fb/.*$
+
 [shipit.pathmap]
 fbcode/algopt/rebalancer/oss_root = .
 fbcode/algopt/rebalancer = algopt/rebalancer
