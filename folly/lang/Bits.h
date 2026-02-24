@@ -650,13 +650,33 @@ inline void storeUnaligned(void* p, T value) {
   FOLLY_BUILTIN_MEMCPY(p, &value, sizeof(T));
 }
 
+namespace detail {
+
 template <typename T>
-T bitReverse(T n) {
+T bitReverseFallback(T n) {
   auto m = static_cast<typename std::make_unsigned<T>::type>(n);
   m = ((m & 0xAAAAAAAAAAAAAAAA) >> 1) | ((m & 0x5555555555555555) << 1);
   m = ((m & 0xCCCCCCCCCCCCCCCC) >> 2) | ((m & 0x3333333333333333) << 2);
   m = ((m & 0xF0F0F0F0F0F0F0F0) >> 4) | ((m & 0x0F0F0F0F0F0F0F0F) << 4);
   return static_cast<T>(Endian::swap(m));
+}
+
+} // namespace detail
+
+template <typename T>
+T bitReverse(T n) {
+#if FOLLY_HAS_BUILTIN(__builtin_bitreverse64)
+  if constexpr (sizeof(T) == 8) {
+    return __builtin_bitreverse64(n);
+  } else if constexpr (sizeof(T) == 4) {
+    return __builtin_bitreverse32(n);
+  } else if constexpr (sizeof(T) == 2) {
+    return __builtin_bitreverse16(n);
+  } else if constexpr (sizeof(T) == 1) {
+    return __builtin_bitreverse8(n);
+  }
+#endif
+  return detail::bitReverseFallback(n);
 }
 
 } // namespace folly

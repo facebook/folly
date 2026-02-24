@@ -283,6 +283,17 @@ TEST(Bits, BitReverse) {
   }
 }
 
+TEST(Bits, BitReverseFallback) {
+  EXPECT_EQ(folly::detail::bitReverseFallback<uint8_t>(0), 0);
+  EXPECT_EQ(folly::detail::bitReverseFallback<uint8_t>(1), 128);
+  for (int i = 0; i < 100; i++) {
+    uint64_t v = folly::Random::rand64();
+    EXPECT_EQ(folly::detail::bitReverseFallback(v), reverse_simple(v));
+    uint32_t b = folly::Random::rand32();
+    EXPECT_EQ(folly::detail::bitReverseFallback(b), reverse_simple(b) >> 32);
+  }
+}
+
 static_assert(std::is_trivial_v<Unaligned<uint64_t>>);
 static_assert(std::is_trivially_copy_assignable_v<Unaligned<uint64_t>>);
 static_assert(std::is_nothrow_constructible_v<Unaligned<uint64_t>, uint64_t>);
