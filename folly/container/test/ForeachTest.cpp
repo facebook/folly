@@ -318,9 +318,8 @@ TEST(ForEach, FetchTestPreferIterator) {
 template <typename...>
 struct LargeTuple {};
 template <size_t I, typename... T>
-folly::traits_detail::type_pack_element_fallback<I, T...>& get(
-    LargeTuple<T...>&) {
-  using Elem = folly::traits_detail::type_pack_element_fallback<I, T...>;
+auto& get(LargeTuple<T...>&) {
+  using Elem = folly::type_pack_element_t<I, T...>;
   static Elem elem;
   return elem;
 }
