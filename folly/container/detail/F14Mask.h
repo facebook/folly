@@ -43,6 +43,16 @@ FOLLY_ALWAYS_INLINE static unsigned findFirstSetNonZero(T mask) {
   }
 }
 
+template <typename T>
+FOLLY_ALWAYS_INLINE static unsigned findLastSetNonZero(T mask) {
+  assume(mask != 0);
+  if (sizeof(mask) == sizeof(unsigned)) {
+    return __builtin_clz(static_cast<unsigned>(mask));
+  } else {
+    return __builtin_clzll(mask);
+  }
+}
+
 #if FOLLY_NEON
 using MaskType = uint64_t;
 
@@ -130,14 +140,22 @@ class SparseMaskIter {
   MaskType mask_;
 
  public:
+
+#if FOLLY_AARCH64
+  explicit SparseMaskIter(MaskType mask) : mask_{bitReverse(mask)} {}
+#else
   explicit SparseMaskIter(MaskType mask) : mask_{mask} {}
+#endif
 
   bool hasNext() { return mask_ != 0; }
 
   unsigned next() {
     FOLLY_SAFE_DCHECK(hasNext(), "");
-    unsigned i = findFirstSetNonZero(mask_);
-    mask_ &= (mask_ - 1);
+    constexpr uint64_t lo63 = 0x7FFFFFFFFFFFFFFFull;
+    static_assert(lo63 == (~0ull >> 1));
+    unsigned i =
+        kIsArchAArch64 ? findLastSetNonZero(mask_) : findFirstSetNonZero(mask_);
+    mask_ &= kIsArchAArch64 ? (lo63 >> i) : (mask_ - 1);
     return i / kMaskSpacing;
   }
 };
