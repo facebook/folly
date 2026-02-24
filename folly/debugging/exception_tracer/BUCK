@@ -151,6 +151,7 @@ non_fbcode_target(
         "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
         "//xplat/folly/debugging/exception_tracer:exception_tracer_callbacks",
         "//xplat/folly/debugging/exception_tracer:stacktrace",
+        "//xplat/folly/lang:exception",
     ],
 )
 
@@ -302,6 +303,7 @@ fbcode_target(
         ":exception_tracer_callbacks",
         ":stacktrace",
         "//folly:utility",
+        "//folly/lang:exception",
     ],
     exported_deps = [
         ":exception_tracer_callbacks",

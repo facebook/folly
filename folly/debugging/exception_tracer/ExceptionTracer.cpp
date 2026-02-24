@@ -46,8 +46,12 @@ extern "C" {
 const StackTraceStack*
 folly_exception_tracer_get_caught_exceptions_stack_trace_stack(void)
     __attribute__((__weak__));
-typedef const StackTraceStack* (*GetCaughtExceptionStackTraceStackType)();
-GetCaughtExceptionStackTraceStackType getCaughtExceptionStackTraceStackFn;
+const StackTraceStack*
+folly_exception_tracer_get_uncaught_exceptions_stack_trace_stack(void)
+    __attribute__((__weak__));
+typedef const StackTraceStack* (*GetExceptionStackTraceStackType)();
+GetExceptionStackTraceStackType getCaughtExceptionStackTraceStackFn;
+GetExceptionStackTraceStackType getUncaughtExceptionStackTraceStackFn;
 }
 
 } // namespace
@@ -147,9 +151,19 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
       if (!getCaughtExceptionStackTraceStackFn) {
         // Nope, see if it's in a shared library
         getCaughtExceptionStackTraceStackFn =
-            (GetCaughtExceptionStackTraceStackType)dlsym(
+            (GetExceptionStackTraceStackType)dlsym(
                 RTLD_NEXT,
                 "folly_exception_tracer_get_caught_exceptions_stack_trace_stack");
+      }
+
+      getUncaughtExceptionStackTraceStackFn =
+          folly_exception_tracer_get_uncaught_exceptions_stack_trace_stack;
+
+      if (!getUncaughtExceptionStackTraceStackFn) {
+        getUncaughtExceptionStackTraceStackFn =
+            (GetExceptionStackTraceStackType)dlsym(
+                RTLD_NEXT,
+                "folly_exception_tracer_get_uncaught_exceptions_stack_trace_stack");
       }
     }
   };
@@ -179,6 +193,20 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
   }
 
   const StackTrace* trace = traceStack ? traceStack->top() : nullptr;
+  // Fallback: if the caught trace stack is empty but there are caught
+  // exceptions, the C++ runtime's internal __cxa_begin_catch call may have
+  // bypassed our hook (e.g., libc++abi calls __cxa_begin_catch from within
+  // __cxa_throw for uncaught exceptions, and that intra-DSO call is not
+  // intercepted by symbol interposition). Try the uncaught trace stack.
+  if (traceStack && !trace && currentException &&
+      getUncaughtExceptionStackTraceStackFn) {
+    if (auto uncaughtTraceStack = getUncaughtExceptionStackTraceStackFn()) {
+      if (uncaughtTraceStack->top()) {
+        traceStack = uncaughtTraceStack;
+        trace = traceStack->top();
+      }
+    }
+  }
   while (currentException) {
     ExceptionInfo info;
     // Dependent exceptions (thrown via std::rethrow_exception) aren't

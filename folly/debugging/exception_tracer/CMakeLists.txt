@@ -70,6 +70,7 @@ folly_add_library(
     folly_debugging_exception_tracer_exception_tracer_base
     folly_debugging_exception_tracer_exception_tracer_callbacks
     folly_debugging_exception_tracer_stacktrace
+    folly_lang_exception
     folly_utility
   EXPORTED_DEPS
     folly_debugging_exception_tracer_exception_tracer_callbacks

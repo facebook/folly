@@ -22,6 +22,7 @@
 #include <folly/debugging/exception_tracer/ExceptionTracer.h>
 #include <folly/debugging/exception_tracer/ExceptionTracerLib.h>
 #include <folly/debugging/exception_tracer/StackTrace.h>
+#include <folly/lang/Exception.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
@@ -88,9 +89,32 @@ static auto get_caught_exceptions_handler_count() {
 
 namespace {
 
+size_t stackDepth(const StackTraceStack& stack) {
+  size_t depth = 0;
+  auto* p = stack.top();
+  while (p) {
+    ++depth;
+    p = stack.next(p);
+  }
+  return depth;
+}
+
 void addActiveException() {
   // Capture stack trace
   if (!invalid) {
+    // When __cxa_begin_catch is bypassed (e.g. ASAN stubs or libc++ internal
+    // calls that don't go through --wrap), traces can accumulate on the
+    // uncaught stack without being moved to the caught stack or freed. Drain
+    // any orphaned entries by comparing our stack depth with the actual
+    // uncaught count. Our callback fires before __real___cxa_throw increments
+    // the count, so the expected depth equals std::uncaught_exceptions().
+    auto expected = static_cast<size_t>(folly::uncaught_exceptions());
+    auto depth = stackDepth(uncaughtExceptions);
+    while (depth > expected) {
+      uncaughtExceptions.pop();
+      --depth;
+    }
+
     if (!uncaughtExceptions.pushCurrent()) {
       uncaughtExceptions.clear();
       caughtExceptions.clear();
