@@ -813,10 +813,13 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   }
 #endif
 
-  DenseMaskIter occupiedIter() const {
-    return DenseMaskIter{&tags_[0], this->occupiedMask()};
+  auto occupiedIter() const {
+    if constexpr (kIsArchAArch64) {
+      return SparseMaskIter{this->occupiedMask()};
+    } else {
+      return DenseMaskIter{&tags_[0], this->occupiedMask()};
+    }
   }
-
   MaskRangeIter occupiedRangeIter() const {
     return MaskRangeIter{this->occupiedMask()};
   }
