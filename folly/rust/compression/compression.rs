@@ -52,16 +52,9 @@ mod bridge {
 }
 
 /// Error returned by compression/decompression operations.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
+#[error("{0}")]
 pub struct CompressionError(String);
-
-impl fmt::Display for CompressionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl std::error::Error for CompressionError {}
 
 impl From<cxx::Exception> for CompressionError {
     fn from(e: cxx::Exception) -> Self {

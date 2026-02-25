@@ -14,6 +14,7 @@ fbcode_target(
     deps = [
         "fbsource//third-party/rust:bytes",
         "fbsource//third-party/rust:cxx",
+        "fbsource//third-party/rust:thiserror",
         "fbsource//xplat/folly/rust/iobuf:iobuf",
     ],
 )
