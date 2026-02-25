@@ -99,6 +99,7 @@ folly_add_library(
     folly_json_dynamic
     folly_map_util
     folly_overload
+    folly_random
     folly_stats_streaming_stats
     folly_string
   EXPORTED_DEPS

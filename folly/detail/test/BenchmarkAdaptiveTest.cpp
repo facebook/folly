@@ -117,7 +117,7 @@ TEST(SortedSamplesTest, PercentileCIRequiresTwoSamples) {
 TEST(StabilityStatsTest, StableWithIdenticalHalves) {
   // Same values in both halves -> stable
   std::vector<double> samples = {10, 10, 10, 10};
-  auto stats = computeStabilityStats(samples, 50.0);
+  auto stats = computeStabilityStats(samples, 50.0, 0.01);
   EXPECT_TRUE(stats.isStable);
   EXPECT_DOUBLE_EQ(stats.firstHalf.estimate, stats.secondHalf.estimate);
 }
@@ -125,22 +125,39 @@ TEST(StabilityStatsTest, StableWithIdenticalHalves) {
 TEST(StabilityStatsTest, UnstableWithDisjointHalves) {
   // Completely disjoint halves -> unstable
   std::vector<double> samples = {1, 2, 100, 101};
-  auto stats = computeStabilityStats(samples, 50.0);
+  auto stats = computeStabilityStats(samples, 50.0, 0.01);
   EXPECT_FALSE(stats.isStable);
 }
 
 TEST(StabilityStatsTest, RequiresFourSamples) {
   std::vector<double> samples = {1, 2, 3};
   EXPECT_DEATH(
-      computeStabilityStats(samples, 50.0),
+      computeStabilityStats(samples, 50.0, 0.01),
       "computeStabilityStats requires at least 4 samples");
 }
 
 TEST(StabilityStatsTest, EpsilonToleranceForSubNsValues) {
   // Sub-picosecond differences should be considered stable due to epsilon
   std::vector<double> samples = {0.0001, 0.0001, 0.0002, 0.0002};
-  auto stats = computeStabilityStats(samples, 50.0);
+  auto stats = computeStabilityStats(samples, 50.0, 0.01);
   EXPECT_TRUE(stats.isStable);
+}
+
+TEST(StabilityStatsTest, StableWhenDriftBelowTargetPrecision) {
+  // Many samples with tiny systematic drift (~0.05% of estimate).
+  // With a tight absolute epsilon this would be "unstable", but the relative
+  // epsilon tied to `targetPrecisionPct` makes it stable.
+  std::vector<double> samples;
+  for (int i = 0; i < 500; ++i) {
+    samples.push_back(2780.0); // first half: ~2780
+  }
+  for (int i = 0; i < 500; ++i) {
+    samples.push_back(2778.5); // second half: ~2778.5, drift ~0.05%
+  }
+  // With 0.4% target precision, drift of 0.05% is well within budget.
+  EXPECT_TRUE(computeStabilityStats(samples, 50.0, 0.4).isStable);
+  // With 0.01% target precision, the same drift exceeds the budget.
+  EXPECT_FALSE(computeStabilityStats(samples, 50.0, 0.01).isStable);
 }
 
 // --- runBenchmarksAdaptive integration tests ---
@@ -244,9 +261,8 @@ TEST(AdaptiveTest, BaselineSubtractionClampsToZero) {
   EXPECT_EQ(result.results[0].timeInNs, 0.0);
 }
 
-TEST(AdaptiveTest, RoundRobinOrder) {
-  // Verify that all benchmarks are called the same number of times
-  // (round-robin)
+TEST(AdaptiveTest, EqualSamplingAcrossBenchmarks) {
+  // Verify that all benchmarks are sampled the same number of times per round
   auto opts = defaultTestOptions();
   opts.minSamples = 10;
 

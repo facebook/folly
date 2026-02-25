@@ -101,10 +101,6 @@ class SortedSamples {
   std::vector<double> samples_;
 };
 
-// Epsilon for stability comparisons (1 picosecond).
-// Avoids spurious instability from floating-point precision on sub-ns values.
-constexpr double kStabilityEpsilonNs = 0.001;
-
 // Split-half stability stats for detecting oscillation.
 struct StabilityStats {
   PercentileCI firstHalf;
@@ -115,7 +111,11 @@ struct StabilityStats {
 // Compute split-half stability: are the first-half and second-half estimates
 // within each other's CIs (with epsilon tolerance)?  Needs at least 4 samples.
 StabilityStats computeStabilityStats(
-    const std::vector<double>& samples, double percentile);
+    const std::vector<double>& samples,
+    double percentile,
+    // Determines epsilon -- inter-half drift below 1/2 of the target precision
+    // does not meaningfully affect the final answer.
+    double targetPrecisionPct);
 
 struct AdaptiveOptions {
   int64_t sliceUsec;

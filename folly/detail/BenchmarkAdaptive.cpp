@@ -16,10 +16,12 @@
 
 #include <folly/detail/BenchmarkAdaptive.h>
 
+#include <algorithm>
 #include <chrono>
 #include <iomanip>
 #include <sstream>
 
+#include <folly/Random.h>
 #include <folly/String.h>
 
 namespace folly {
@@ -30,7 +32,9 @@ using namespace std::chrono;
 // Compute split-half stability: are the first-half and second-half estimates
 // within each other's CIs (with epsilon tolerance)?  Needs at least 4 samples.
 StabilityStats computeStabilityStats(
-    const std::vector<double>& samples, double percentile) {
+    const std::vector<double>& samples,
+    double percentile,
+    double targetPrecisionPct) {
   size_t n = samples.size();
   CHECK_GE(n, 4) << "computeStabilityStats requires at least 4 samples";
 
@@ -40,14 +44,22 @@ StabilityStats computeStabilityStats(
   auto ci1 = SortedSamples(std::move(firstHalf)).percentileCI(percentile);
   auto ci2 = SortedSamples(std::move(secondHalf)).percentileCI(percentile);
 
+  double epsilonNs = std::max(
+      // 1 picosecond is below typical CPU clock resolution, so any
+      // "instability" of that amount is spurious.
+      0.001,
+      // Inter-half drift below 1/2 of the target precision can't push the
+      // final estimate outside the precision budget.
+      targetPrecisionPct / 100.0 * 0.5 * std::min(ci1.estimate, ci2.estimate));
+
   // Check if each estimate is within the other's CI, with epsilon tolerance
   return {
       .firstHalf = ci1,
       .secondHalf = ci2,
-      .isStable = (ci1.estimate >= ci2.lo - kStabilityEpsilonNs) &&
-          (ci1.estimate <= ci2.hi + kStabilityEpsilonNs) &&
-          (ci2.estimate >= ci1.lo - kStabilityEpsilonNs) &&
-          (ci2.estimate <= ci1.hi + kStabilityEpsilonNs),
+      .isStable = (ci1.estimate >= ci2.lo - epsilonNs) &&
+          (ci1.estimate <= ci2.hi + epsilonNs) &&
+          (ci2.estimate >= ci1.lo - epsilonNs) &&
+          (ci2.estimate <= ci1.hi + epsilonNs),
   };
 }
 
@@ -80,7 +92,7 @@ namespace {
 FOLLY_NOINLINE std::string formatSampleStats(
     const char* name,
     const std::vector<double>& samples,
-    double percentile,
+    const AdaptiveOptions& opts,
     nanoseconds elapsed) {
   std::ostringstream oss;
   oss << std::fixed << std::setprecision(2);
@@ -92,14 +104,15 @@ FOLLY_NOINLINE std::string formatSampleStats(
   }
 
   SortedSamples sorted(samples);
-  auto ci = sorted.percentileCI(percentile);
-  oss << "p" << percentile << "=" << readableTime(ci.estimate / 1e9, 1)
-      << " to " << ci.relWidth() << "%"
+  auto ci = sorted.percentileCI(opts.targetPercentile);
+  oss << "p" << opts.targetPercentile << "="
+      << readableTime(ci.estimate / 1e9, 1) << " to " << ci.relWidth() << "%"
       << ", " << samples.size() << " samples"
       << ", " << duration_cast<seconds>(elapsed).count() << "s";
 
   if (samples.size() >= 4) {
-    auto ss = computeStabilityStats(samples, percentile);
+    auto ss = computeStabilityStats(
+        samples, opts.targetPercentile, opts.targetPrecisionPct);
     if (!ss.isStable) {
       oss << "\n    " << kANSIBoldYellow << "[unstable]" << kANSIReset
           << " 1st=" << ss.firstHalf.estimate << " [" << ss.firstHalf.lo << ", "
@@ -178,7 +191,9 @@ struct BenchState {
 
   bool isStable() const {
     return samples.size() >= 4 &&
-        computeStabilityStats(timings(), opts->targetPercentile).isStable;
+        computeStabilityStats(
+            timings(), opts->targetPercentile, opts->targetPrecisionPct)
+            .isStable;
   }
 
   bool checkDone() {
@@ -213,8 +228,7 @@ struct BenchState {
   }
 
   std::string formatStats() const {
-    return formatSampleStats(
-        name.c_str(), timings(), opts->targetPercentile, elapsed);
+    return formatSampleStats(name.c_str(), timings(), *opts, elapsed);
   }
 };
 
@@ -318,8 +332,8 @@ FOLLY_NOINLINE std::string formatIntermediateReport(
     }
   }
 
-  return "\n\n" + benchmarkResultsToString(tableResults, "  ", annotations) +
-      stats + "\n\n";
+  return (stats.empty() ? "\n" : stats + "\n\n") +
+      benchmarkResultsToString(tableResults, "  ", annotations) + "\n";
 }
 
 // Encapsulates the sampling loop state and logic.
@@ -352,6 +366,12 @@ struct SamplingLoop {
 
   // Run sampling loop until all benchmarks are done.
   FOLLY_NOINLINE void run() {
+    std::vector<size_t> order(states.size());
+    for (size_t i = 0; i < order.size(); ++i) {
+      order[i] = i;
+    }
+    ThreadLocalPRNG rng;
+
     while (true) {
       // Sample baseline periodically (cheap, every 8 rounds)
       if (round % kBaselineSampleInterval == 0) {
@@ -366,8 +386,10 @@ struct SamplingLoop {
                 suspenderBaselineFun, totalElapsed);
       }
 
-      // Run benchmarks (skip done ones), using cached baseline values
-      for (auto& s : states) {
+      // Run a slice of each unconverged benchmark, in random order
+      std::shuffle(order.begin(), order.end(), rng);
+      for (size_t i : order) {
+        auto& s = states[i];
         if (s.done) {
           continue;
         }

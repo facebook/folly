@@ -7,7 +7,7 @@ observed time. Works on quiet systems. On noisy VMs, it fails — benchmark `A`
 runs during a slow period, `B` during a fast one, distorting their relative
 performance.
 
-`--bm_mode=adaptive` interleaves short slices of all benchmarks round-robin. All
+`--bm_mode=adaptive` interleaves short slices of all benchmarks in random order. All
 benchmarks see the same system states. It runs until results are both *stable*
 (not oscillating) and *precise* (confidence interval narrow enough).
 
@@ -233,7 +233,7 @@ TLB misses) that could lock `iterCount` at 1 for the entire run.
 while not converged:
   measure baseline (every 8 rounds)
   measure suspender baseline (every 2 rounds)
-  for each benchmark:
+  for each benchmark (random order):
     measure calibrated iterations, record sample, recalibrate
   check convergence every 150ms
 ```
