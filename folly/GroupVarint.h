@@ -148,13 +148,13 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
     uint8_t b2key = key(c);
     uint8_t b3key = key(d);
     *p++ = (b3key << 6) | (b2key << 4) | (b1key << 2) | b0key;
-    storeUnaligned(p, a);
+    storeUnaligned<uint32_t>(p, a);
     p += b0key + 1;
-    storeUnaligned(p, b);
+    storeUnaligned<uint32_t>(p, b);
     p += b1key + 1;
-    storeUnaligned(p, c);
+    storeUnaligned<uint32_t>(p, c);
     p += b2key + 1;
-    storeUnaligned(p, d);
+    storeUnaligned<uint32_t>(p, d);
     p += b3key + 1;
     return p;
   }
@@ -363,15 +363,15 @@ class GroupVarint<uint64_t> : public detail::GroupVarintBase<uint64_t> {
             (b4key << 12) | (b3key << 9) | (b2key << 6) | (b1key << 3) |
             b0key));
     p += 2;
-    storeUnaligned(p, a);
+    storeUnaligned<uint64_t>(p, a);
     p += b0key + 1;
-    storeUnaligned(p, b);
+    storeUnaligned<uint64_t>(p, b);
     p += b1key + 1;
-    storeUnaligned(p, c);
+    storeUnaligned<uint64_t>(p, c);
     p += b2key + 1;
-    storeUnaligned(p, d);
+    storeUnaligned<uint64_t>(p, d);
     p += b3key + 1;
-    storeUnaligned(p, e);
+    storeUnaligned<uint64_t>(p, e);
     p += b4key + 1;
     return p;
   }

@@ -1703,7 +1703,7 @@ class QueueAppender : public Writable<QueueAppender> {
     if (FOLLY_UNLIKELY(length() < sizeof(T))) {
       ensureSlowNoinline(sizeof(T));
     }
-    storeUnaligned(queueCache_.writableData(), value);
+    storeUnaligned<T>(queueCache_.writableData(), value);
     queueCache_.appendUnsafe(n);
   }
 
