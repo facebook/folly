@@ -12,7 +12,9 @@ fbcode_target(
     crate_root = "compression.rs",
     cxx_bridge = "compression.rs",
     deps = [
+        "fbsource//third-party/rust:bytes",
         "fbsource//third-party/rust:cxx",
+        "fbsource//xplat/folly/rust/iobuf:iobuf",
     ],
 )
 
@@ -25,5 +27,6 @@ fbcode_target(
     exported_deps = [
         "fbsource//third-party/rust:cxx-core",
         "//folly/compression:compression",
+        "//folly/io:iobuf",
     ],
 )

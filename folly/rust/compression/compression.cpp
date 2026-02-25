@@ -14,32 +14,39 @@
  * limitations under the License.
  */
 
+#include <folly/compression/Compression.h>
 #include <folly/rust/compression/compression.h>
 
 namespace facebook::folly_rust::compression {
 
-using folly::StringPiece;
 using folly::compression::CodecType;
 
 bool has_codec(int32_t codec_type) {
   return folly::compression::hasCodec(static_cast<CodecType>(codec_type));
 }
 
-std::unique_ptr<std::string> compress_bytes(
-    int32_t codec_type, rust::Slice<const uint8_t> data) {
-  auto codec = folly::compression::getCodec(static_cast<CodecType>(codec_type));
-  return std::make_unique<std::string>(codec->compress(
-      StringPiece(reinterpret_cast<const char*>(data.data()), data.size())));
+std::unique_ptr<folly::compression::Codec> create_codec(int32_t codec_type) {
+  return folly::compression::getCodec(static_cast<CodecType>(codec_type));
 }
 
-std::unique_ptr<std::string> uncompress_bytes(
-    int32_t codec_type,
+std::unique_ptr<folly::IOBuf> compress(
+    folly::compression::Codec& codec, rust::Slice<const uint8_t> data) {
+  auto input = folly::IOBuf::wrapBuffer(data.data(), data.size());
+  return codec.compress(input.get());
+}
+
+std::unique_ptr<folly::IOBuf> uncompress(
+    folly::compression::Codec& codec, rust::Slice<const uint8_t> data) {
+  auto input = folly::IOBuf::wrapBuffer(data.data(), data.size());
+  return codec.uncompress(input.get());
+}
+
+std::unique_ptr<folly::IOBuf> uncompress_length(
+    folly::compression::Codec& codec,
     rust::Slice<const uint8_t> data,
     uint64_t uncompressed_length) {
-  auto codec = folly::compression::getCodec(static_cast<CodecType>(codec_type));
-  return std::make_unique<std::string>(codec->uncompress(
-      StringPiece(reinterpret_cast<const char*>(data.data()), data.size()),
-      uncompressed_length));
+  auto input = folly::IOBuf::wrapBuffer(data.data(), data.size());
+  return codec.uncompress(input.get(), uncompressed_length);
 }
 
 } // namespace facebook::folly_rust::compression

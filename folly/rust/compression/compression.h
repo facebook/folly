@@ -17,20 +17,25 @@
 #pragma once
 
 #include <memory>
-#include <string>
 
 #include <folly/compression/Compression.h>
+#include <folly/io/IOBuf.h>
 #include "rust/cxx.h"
 
 namespace facebook::folly_rust::compression {
 
 bool has_codec(int32_t codec_type);
 
-std::unique_ptr<std::string> compress_bytes(
-    int32_t codec_type, rust::Slice<const uint8_t> data);
+std::unique_ptr<folly::compression::Codec> create_codec(int32_t codec_type);
 
-std::unique_ptr<std::string> uncompress_bytes(
-    int32_t codec_type,
+std::unique_ptr<folly::IOBuf> compress(
+    folly::compression::Codec& codec, rust::Slice<const uint8_t> data);
+
+std::unique_ptr<folly::IOBuf> uncompress(
+    folly::compression::Codec& codec, rust::Slice<const uint8_t> data);
+
+std::unique_ptr<folly::IOBuf> uncompress_length(
+    folly::compression::Codec& codec,
     rust::Slice<const uint8_t> data,
     uint64_t uncompressed_length);
 
