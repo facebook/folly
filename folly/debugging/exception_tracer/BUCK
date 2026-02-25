@@ -339,8 +339,18 @@ LIBSTDCXX_BUCKIFIED_SELECTOR = selects.and_(
     selects.cond("ovr_config//third-party/libgcc:11.x"),
 )
 
+LIBCXX_BUCKIFIED_SELECTOR = selects.and_(
+    selects.cond("ovr_config//cpp:libc++"),
+    selects.or_(
+        selects.cond("ovr_config//third-party/libcxx:17"),
+        selects.cond("ovr_config//third-party/libcxx:19"),
+        selects.cond("ovr_config//third-party/libcxx:21"),
+    ),
+)
+
 STATIC_CXX_STDLIB_SELECTOR = selects.or_(
     LIBSTDCXX_BUCKIFIED_SELECTOR,
+    LIBCXX_BUCKIFIED_SELECTOR,
 )
 
 fbcode_target(
@@ -352,7 +362,10 @@ fbcode_target(
         STATIC_CXX_STDLIB_SELECTOR,
         select({
             "DEFAULT": [],
-            "ovr_config//cpp:libc++": ["-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1"],
+            "ovr_config//cpp:libc++": [
+                "-DFOLLY_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS=1",
+                "-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1",
+            ],
             "ovr_config//cpp:libstdc++": [
                 "-DFOLLY_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS=1",
                 "-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1",
@@ -365,6 +378,10 @@ fbcode_target(
         select({
             "DEFAULT": [],
             "ovr_config//cpp:libc++": [
+                "-Wl,--wrap=__cxa_throw",
+                "-Wl,--wrap=__cxa_rethrow",
+                "-Wl,--wrap=__cxa_begin_catch",
+                "-Wl,--wrap=__cxa_end_catch",
                 "-Wl,--wrap=_ZSt17rethrow_exceptionSt13exception_ptr",
             ],
             "ovr_config//cpp:libstdc++": [
