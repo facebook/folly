@@ -125,6 +125,7 @@ struct AdaptiveOptions {
   double minSecs;
   int32_t maxSecs;
   bool verbose;
+  bool quiet;
 
   std::string toString() const {
     std::ostringstream oss;

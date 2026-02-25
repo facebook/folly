@@ -76,34 +76,37 @@ namespace {
 // and the potential benefit is cleaner measurements. The most important uses
 // are on SamplingLoop::run() and checkAllDone() which bound the hot path.
 
-// Format sample statistics with CI and split-half stability.
+// Format sample statistics concisely.
 FOLLY_NOINLINE std::string formatSampleStats(
-    const char* name, const std::vector<double>& samples, double percentile) {
+    const char* name,
+    const std::vector<double>& samples,
+    double percentile,
+    nanoseconds elapsed) {
   std::ostringstream oss;
   oss << std::fixed << std::setprecision(2);
   oss << kANSIBold << name << kANSIReset << ": ";
 
   if (samples.size() < 2) {
-    oss << "samples=" << samples.size();
+    oss << samples.size() << " samples";
     return oss.str();
   }
 
   SortedSamples sorted(samples);
   auto ci = sorted.percentileCI(percentile);
-  oss << "p" << percentile << "=" << ci.estimate << "ns"
-      << " CI=[" << ci.lo << ", " << ci.hi << "] (" << ci.relWidth() << "%)"
-      << " samples=" << samples.size();
+  oss << "p" << percentile << "=" << readableTime(ci.estimate / 1e9, 1)
+      << " to " << ci.relWidth() << "%"
+      << ", " << samples.size() << " samples"
+      << ", " << duration_cast<seconds>(elapsed).count() << "s";
 
   if (samples.size() >= 4) {
     auto ss = computeStabilityStats(samples, percentile);
-    oss << "\n    "
-        << (ss.isStable
-                ? "[stable]"
-                : (std::string(kANSIBoldYellow) + "[unstable]" + kANSIReset))
-        << " 1st=" << ss.firstHalf.estimate << " [" << ss.firstHalf.lo << ", "
-        << ss.firstHalf.hi << "]"
-        << " 2nd=" << ss.secondHalf.estimate << " [" << ss.secondHalf.lo << ", "
-        << ss.secondHalf.hi << "]";
+    if (!ss.isStable) {
+      oss << "\n    " << kANSIBoldYellow << "[unstable]" << kANSIReset
+          << " 1st=" << ss.firstHalf.estimate << " [" << ss.firstHalf.lo << ", "
+          << ss.firstHalf.hi << "]"
+          << " 2nd=" << ss.secondHalf.estimate << " [" << ss.secondHalf.lo
+          << ", " << ss.secondHalf.hi << "]";
+    }
   }
   return oss.str();
 }
@@ -133,7 +136,7 @@ struct BenchState {
     auto target = duration_cast<nanoseconds>(microseconds(opts->sliceUsec));
     size_t prev = iterCount;
     iterCount = folly::detail::recalibrateIterCount(iterCount, target, dur);
-    if (dur > 2 * target && prev > 1) {
+    if (!opts->quiet && dur > 2 * target && prev > 1) {
       LOG(WARNING) << kANSIBoldYellow << "Unstable calibration: " << kANSIReset
                    << name << " took " << dur.count() << "ns (target "
                    << target.count() << "ns)";
@@ -210,7 +213,8 @@ struct BenchState {
   }
 
   std::string formatStats() const {
-    return formatSampleStats(name.c_str(), timings(), opts->targetPercentile);
+    return formatSampleStats(
+        name.c_str(), timings(), opts->targetPercentile, elapsed);
   }
 };
 
@@ -267,6 +271,57 @@ FOLLY_NOINLINE void verboseLogFinal(
   LOG(INFO) << oss.str();
 }
 
+// Build the table + detailed stats for benchmarks that haven't converged.
+// Returns empty string if all benchmarks have converged and baselines are
+// stable. Used by the periodic intermediate warning.
+FOLLY_NOINLINE std::string formatIntermediateReport(
+    const std::vector<BenchState>& states,
+    const AdaptiveOptions& opts,
+    const BenchState& baselineState,
+    const BenchState& suspenderBaselineState) {
+  std::vector<BenchmarkResult> tableResults;
+  std::vector<std::string> annotations;
+  std::string stats;
+  bool anyNonConverged = false;
+
+  for (const auto& s : states) {
+    if (s.samples.empty()) {
+      continue;
+    }
+    SortedSamples sorted(s.timings());
+    double pctile = sorted.percentile(opts.targetPercentile);
+    tableResults.push_back(
+        {s.reg->file, s.name, pctile, s.countersForEstimate(pctile)});
+
+    bool converged = s.samples.size() >= opts.minSamples && s.isStable() &&
+        sorted.percentileCIRelWidth(opts.targetPercentile) <=
+            opts.targetPrecisionPct;
+    if (converged) {
+      annotations.emplace_back();
+    } else {
+      anyNonConverged = true;
+      annotations.push_back(s.isStable() ? "[imprecise]" : "[unstable]");
+      if (s.samples.size() >= opts.minSamples) {
+        stats += "\n  " + s.formatStats();
+      }
+    }
+  }
+
+  if (!anyNonConverged) {
+    return "";
+  }
+
+  // Add unstable baseline stats
+  for (const auto* bs : {&baselineState, &suspenderBaselineState}) {
+    if (!bs->isStable() && bs->samples.size() >= opts.minSamples) {
+      stats += "\n  " + bs->formatStats();
+    }
+  }
+
+  return "\n\n" + benchmarkResultsToString(tableResults, "  ", annotations) +
+      stats + "\n\n";
+}
+
 // Encapsulates the sampling loop state and logic.
 // Methods are noinline to keep the hot loop compact and isolated.
 struct SamplingLoop {
@@ -290,10 +345,10 @@ struct SamplingLoop {
 
   // Convergence check state
   nanoseconds lastCheck{0};
-  nanoseconds lastOscillationWarning{0};
+  nanoseconds lastIntermediateResult{0};
 
   static constexpr auto kCheckInterval = milliseconds(150);
-  static constexpr auto kOscillationWarningInterval = seconds(10);
+  static constexpr auto kIntermediateResultInterval = seconds(5);
 
   // Run sampling loop until all benchmarks are done.
   FOLLY_NOINLINE void run() {
@@ -335,48 +390,33 @@ struct SamplingLoop {
     }
     lastCheck = totalElapsed;
 
-    // Warn periodically about benchmarks/baselines that are oscillating
-    if (totalElapsed - lastOscillationWarning >= kOscillationWarningInterval) {
-      std::string msg;
-      // Check baselines first
-      for (const auto* bs : {&baselineState, &suspenderBaselineState}) {
-        if (!bs->isStable() && bs->samples.size() >= opts.minSamples) {
-          msg += "\n  " + bs->formatStats();
-        }
-      }
-      // Then benchmarks
-      for (const auto& s : states) {
-        if (s.done) {
-          continue;
-        }
-        if (!s.isStable() && s.samples.size() >= opts.minSamples) {
-          auto benchSecs = duration_cast<seconds>(s.elapsed).count();
-          msg += fmt::format("\n  {} ({}s own)", s.formatStats(), benchSecs);
-        }
-      }
-      if (!msg.empty()) {
-        LOG(WARNING) << "Still oscillating after "
-                     << duration_cast<seconds>(totalElapsed).count()
-                     << "s total:" << msg << "\n\n";
-        lastOscillationWarning = totalElapsed;
+    // Warn periodically about non-converged benchmarks
+    if (!opts.quiet &&
+        totalElapsed - lastIntermediateResult >= kIntermediateResultInterval) {
+      auto report = formatIntermediateReport(
+          states, opts, baselineState, suspenderBaselineState);
+      if (!report.empty()) {
+        LOG(WARNING) << "After " << duration_cast<seconds>(totalElapsed).count()
+                     << "s of trials:" << report;
+        lastIntermediateResult = totalElapsed;
       }
     }
 
     // Check done and collect newly-done benchmarks by category
-    std::string converged, timedOutOscillating, timedOutWideCI;
+    std::string converged, timedOutUnstable, timedOutImprecise;
     bool allDone = true;
     for (auto& s : states) {
       bool wasDone = s.done;
       if (!s.checkDone()) {
         allDone = false;
-      } else if (!wasDone && opts.verbose) {
+      } else if (!wasDone && opts.verbose && !opts.quiet) {
         bool exceeded = s.elapsed >= seconds(opts.maxSecs);
         if (!exceeded) {
           converged += "\n  " + s.formatStats();
         } else if (!s.isStable()) {
-          timedOutOscillating += "\n  " + s.formatStats();
+          timedOutUnstable += "\n  " + s.formatStats();
         } else {
-          timedOutWideCI += "\n  " + s.formatStats();
+          timedOutImprecise += "\n  " + s.formatStats();
         }
       }
     }
@@ -385,19 +425,19 @@ struct SamplingLoop {
       msg += fmt::format(
           "\n{}→ Converged:{}{}", kANSIBoldGreen, kANSIReset, converged);
     }
-    if (!timedOutOscillating.empty()) {
+    if (!timedOutUnstable.empty()) {
       msg += fmt::format(
-          "\n{}→ Exceeded max_secs (still oscillating):{}{}",
+          "\n{}→ Exceeded max_secs (unstable):{}{}",
           kANSIBoldYellow,
           kANSIReset,
-          timedOutOscillating);
+          timedOutUnstable);
     }
-    if (!timedOutWideCI.empty()) {
+    if (!timedOutImprecise.empty()) {
       msg += fmt::format(
-          "\n{}→ Exceeded max_secs (CI too wide):{}{}",
+          "\n{}→ Exceeded max_secs (imprecise):{}{}",
           kANSIBoldYellow,
           kANSIReset,
-          timedOutWideCI);
+          timedOutImprecise);
     }
     if (!msg.empty()) {
       LOG(INFO) << msg;
@@ -484,8 +524,7 @@ AdaptiveResult runBenchmarksAdaptive(
       }
     }
     if (!msg.empty()) {
-      LOG(ERROR) << kANSIBoldRed
-                 << "Did not converge or become stable:" << kANSIReset << msg;
+      LOG(ERROR) << kANSIBoldRed << "Did not converge:" << kANSIReset << msg;
     }
   }
 

@@ -24,6 +24,7 @@
 #include <map>
 #include <memory>
 #include <numeric>
+#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -165,8 +166,11 @@ FOLLY_GFLAGS_DEFINE_string(
 FOLLY_GFLAGS_DEFINE_bool(
     bm_verbose,
     false,
-    "Log diagnostic details: convergence progress and baseline "
+    "Log more diagnostic details: convergence progress and baseline "
     "stats (adaptive), measurement phases (best-of).");
+
+FOLLY_GFLAGS_DEFINE_bool(
+    bm_quiet, false, "Silence non-actionable diagnostics.");
 
 // === Output & comparison (mode-agnostic) ===
 
@@ -486,9 +490,11 @@ static string humanReadable(
   return stringPrintf("%.*f%s", decimals, scaledValue, scale->suffix);
 }
 
-static string readableTime(double n, unsigned int decimals) {
+namespace detail {
+string readableTime(double n, unsigned int decimals) {
   return humanReadable(n, decimals, kTimeSuffixes);
 }
+} // namespace detail
 
 static string metricReadable(double n, unsigned int decimals) {
   return humanReadable(n, decimals, kMetricSuffixes);
@@ -498,81 +504,75 @@ namespace {
 
 constexpr std::string_view kUnitHeaders = "relative  time/iter   iters/s";
 constexpr std::string_view kUnitHeadersPadding = "     ";
-void printHeaderContents(std::string_view file) {
-  printf(
+
+std::string headerContents(std::string_view file, size_t columns) {
+  const size_t maxFileNameChars =
+      columns - kUnitHeaders.size() - kUnitHeadersPadding.size();
+  std::string fname(file);
+  if (fname.size() > maxFileNameChars) {
+    constexpr std::string_view overflowFilePrefix = "[...]";
+    fname.erase(0, fname.size() - maxFileNameChars);
+    fname.replace(0, overflowFilePrefix.size(), overflowFilePrefix);
+  }
+  return stringPrintf(
       "%-.*s%*s%*s",
-      static_cast<int>(file.size()),
-      file.data(),
+      static_cast<int>(fname.size()),
+      fname.c_str(),
       static_cast<int>(kUnitHeadersPadding.size()),
       kUnitHeadersPadding.data(),
       static_cast<int>(kUnitHeaders.size()),
       kUnitHeaders.data());
 }
 
-void printDefaultHeaderContents(std::string_view file, size_t columns) {
-  const size_t maxFileNameChars =
-      columns - kUnitHeaders.size() - kUnitHeadersPadding.size();
-
-  if (file.size() <= maxFileNameChars) {
-    printHeaderContents(file);
-  } else {
-    std::string truncatedFile = std::string(file.begin(), file.end());
-    constexpr std::string_view overflowFilePrefix = "[...]";
-    const auto overflow = truncatedFile.size() - maxFileNameChars;
-    truncatedFile.erase(0, overflow);
-    truncatedFile.replace(0, overflowFilePrefix.size(), overflowFilePrefix);
-    printHeaderContents(truncatedFile);
-  }
-}
-
-void printSeparator(char pad, unsigned int columns) {
-  puts(string(columns, pad).c_str());
-}
-
 class BenchmarkResultsPrinter {
  public:
-  BenchmarkResultsPrinter() : columns_(FLAGS_bm_result_width_chars) {}
-  explicit BenchmarkResultsPrinter(std::set<std::string> counterNames)
+  explicit BenchmarkResultsPrinter(
+      std::set<std::string> counterNames = {},
+      std::ostream* os = &std::cout,
+      std::string_view indent = "",
+      size_t columnsAdjust = 0)
       : counterNames_(std::move(counterNames)),
         namesLength_{std::accumulate(
             counterNames_.begin(),
             counterNames_.end(),
             size_t{0},
             [](size_t acc, auto&& name) { return acc + 2 + name.length(); })},
-        columns_(FLAGS_bm_result_width_chars + namesLength_) {}
+        os_(os),
+        indent_(indent),
+        columns_(FLAGS_bm_result_width_chars + namesLength_ - columnsAdjust) {}
 
-  void separator(char pad) { printSeparator(pad, columns_); }
+  void separator(char pad) { line(string(columns_, pad)); }
 
   void header(std::string_view file) {
     separator('=');
-    printDefaultHeaderContents(file, columns_ - namesLength_);
-
+    std::string h = headerContents(file, columns_ - namesLength_);
     for (auto const& name : counterNames_) {
-      printf("  %s", name.c_str());
+      h += "  ";
+      h += name;
     }
-    printf("\n");
+    line(h);
     separator('=');
   }
 
-  void print(const vector<detail::BenchmarkResult>& data) {
-    for (auto& datum : data) {
+  void print(
+      const vector<detail::BenchmarkResult>& data,
+      const std::vector<std::string>& annotations = {}) {
+    for (size_t i = 0; i < data.size(); ++i) {
+      auto& datum = data[i];
       auto file = datum.file;
       if (file != lastFile_) {
-        // New file starting
         header(file);
         lastFile_ = file;
       }
 
       string s = datum.name;
       if (s == "-") {
-        // Simply draw a line across the benchmark results
         separator('-');
         continue;
       }
       if (s[0] == '"') {
-        // Simply print some text. Strips implied quote characters
-        // from the beginning and end of the name.
-        printf("%s\n", s.substr(1, s.length() - 2).c_str());
+        // Strips quote characters from the beginning and end of the name.
+        line(s.substr(1, s.length() - 2));
         continue;
       }
       bool useBaseline = false;
@@ -591,24 +591,22 @@ class BenchmarkResultsPrinter {
       const auto itersPerSec = (secPerIter == 0)
           ? std::numeric_limits<double>::infinity()
           : (1 / secPerIter);
+      std::string row;
       if (!useBaseline) {
-        // Print without baseline
-        printf(
+        row = stringPrintf(
             "%*s%8.8s  %9.9s  %8.8s",
             static_cast<int>(s.size()),
             s.c_str(),
             "", // Padding for "relative" header.
-            readableTime(secPerIter, 2).c_str(),
+            detail::readableTime(secPerIter, 2).c_str(),
             metricReadable(itersPerSec, 2).c_str());
       } else {
-        // Print with baseline
-        const auto rel = baselineNsPerIter_ / nsPerIter * 100.0;
-        printf(
+        row = stringPrintf(
             "%*s%#7.5g%%  %9.9s  %8.8s",
             static_cast<int>(s.size()),
             s.c_str(),
-            rel,
-            readableTime(secPerIter, 2).c_str(),
+            baselineNsPerIter_ / nsPerIter * 100.0,
+            detail::readableTime(secPerIter, 2).c_str(),
             metricReadable(itersPerSec, 2).c_str());
       }
       for (auto const& name : counterNames_) {
@@ -618,15 +616,15 @@ class BenchmarkResultsPrinter {
             // implicit cast from long to double when formatting the output
             case UserMetric::Type::TIME:
               folly::variant_match(ptr->value, [&](auto value) {
-                printf(
+                row += stringPrintf(
                     "  %*s",
                     int(name.length()),
-                    readableTime(value, 2).c_str());
+                    detail::readableTime(value, 2).c_str());
               });
               break;
             case UserMetric::Type::METRIC:
               folly::variant_match(ptr->value, [&](auto value) {
-                printf(
+                row += stringPrintf(
                     "  %*s",
                     int(name.length()),
                     metricReadable(value, 2).c_str());
@@ -635,17 +633,23 @@ class BenchmarkResultsPrinter {
             case UserMetric::Type::CUSTOM:
             default:
               folly::variant_match(ptr->value, [&](auto value) {
-                printf(
+                row += stringPrintf(
                     "  %*" PRId64,
                     int(name.length()),
                     static_cast<int64_t>(value));
               });
           }
         } else {
-          printf("  %*s", int(name.length()), "NaN");
+          row += stringPrintf("  %*s", int(name.length()), "NaN");
         }
       }
-      printf("\n");
+      if (i < annotations.size() && !annotations[i].empty()) {
+        row += indent_;
+        row += detail::kANSIBoldYellow;
+        row += annotations[i];
+        row += detail::kANSIReset;
+      }
+      line(row);
     }
   }
 
@@ -654,8 +658,12 @@ class BenchmarkResultsPrinter {
     return baselineNsPerIter_ != numeric_limits<double>::max();
   }
 
+  void line(std::string_view s) { *os_ << indent_ << s << std::endl; }
+
   std::set<std::string> counterNames_;
   size_t namesLength_{0};
+  std::ostream* os_;
+  std::string indent_;
   size_t columns_{0};
   double baselineNsPerIter_{numeric_limits<double>::max()};
   string lastFile_;
@@ -722,11 +730,12 @@ void printResultComparison(
   // Width available
   const size_t columns = FLAGS_bm_result_width_chars;
 
+  auto sep = [&](char pad) { puts(string(columns, pad).c_str()); };
+
   auto header = [&](const string_view& file) {
-    printSeparator('=', columns);
-    printDefaultHeaderContents(file, columns);
-    printf("\n");
-    printSeparator('=', columns);
+    sep('=');
+    printf("%s\n", headerContents(file, columns).c_str());
+    sep('=');
   };
 
   string lastFile;
@@ -743,7 +752,7 @@ void printResultComparison(
 
     string s = datum.name;
     if (s == "-") {
-      printSeparator('-', columns);
+      sep('-');
       continue;
     }
     if (s[0] == '%') {
@@ -761,7 +770,7 @@ void printResultComparison(
           "%*s           %9s  %7s\n",
           static_cast<int>(s.size()),
           s.c_str(),
-          readableTime(secPerIter, 2).c_str(),
+          detail::readableTime(secPerIter, 2).c_str(),
           metricReadable(itersPerSec, 2).c_str());
     } else {
       // Print with baseline
@@ -771,11 +780,11 @@ void printResultComparison(
           static_cast<int>(s.size()),
           s.c_str(),
           rel,
-          readableTime(secPerIter, 2).c_str(),
+          detail::readableTime(secPerIter, 2).c_str(),
           metricReadable(itersPerSec, 2).c_str());
     }
   }
-  printSeparator('=', columns);
+  sep('=');
 }
 
 void checkRunMode() {
@@ -917,7 +926,8 @@ auto runAdaptiveMode(
        .minSamples = static_cast<size_t>(FLAGS_bm_min_samples),
        .minSecs = FLAGS_bm_min_secs,
        .maxSecs = FLAGS_bm_max_secs,
-       .verbose = FLAGS_bm_verbose});
+       .verbose = FLAGS_bm_verbose,
+       .quiet = FLAGS_bm_quiet});
 
   if (printer != nullptr) {
     ShouldDrawLineTracker lineTracker(toRun.separatorsAfter);
@@ -993,7 +1003,7 @@ void validateFlagCombinations() {
     if (userSetGflag("bm_min_samples")) {
       fatal("--bm_min_samples requires --bm_mode=adaptive.");
     }
-    if (FLAGS_bm_estimate_time) {
+    if (FLAGS_bm_estimate_time && !FLAGS_bm_quiet) {
       LOG(WARNING)
           << detail::kANSIBoldYellow
           << "--bm_estimate_time is slow, with odd semantics (geometric mean "
@@ -1240,6 +1250,31 @@ std::vector<BenchmarkResult> BenchmarkingStateBase::runBenchmarksWithResults()
 
 std::vector<BenchmarkResult> runBenchmarksWithResults() {
   return globalBenchmarkState().runBenchmarksWithResults();
+}
+
+std::string benchmarkResultsToString(
+    const std::vector<BenchmarkResult>& results,
+    std::string_view indent,
+    const std::vector<std::string>& annotations) {
+  size_t maxAnnotationWidth = 0;
+  for (const auto& a : annotations) {
+    if (!a.empty()) {
+      maxAnnotationWidth =
+          std::max(maxAnnotationWidth, indent.size() + a.size());
+    }
+  }
+  std::set<std::string> counterNames;
+  for (const auto& r : results) {
+    for (const auto& [key, _] : r.counters) {
+      counterNames.insert(key);
+    }
+  }
+  std::ostringstream oss;
+  BenchmarkResultsPrinter printer(
+      std::move(counterNames), &oss, indent, maxAnnotationWidth);
+  printer.print(results, annotations);
+  printer.separator('=');
+  return oss.str();
 }
 
 } // namespace detail

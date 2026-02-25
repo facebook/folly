@@ -42,6 +42,7 @@
 #include <glog/logging.h>
 
 FOLLY_GFLAGS_DECLARE_bool(benchmark);
+FOLLY_GFLAGS_DECLARE_bool(bm_quiet);
 FOLLY_GFLAGS_DECLARE_uint32(bm_result_width_chars);
 FOLLY_GFLAGS_DECLARE_int32(bm_min_iters);
 FOLLY_GFLAGS_DECLARE_int64(bm_max_iters);
@@ -338,6 +339,17 @@ BenchmarkingState<std::chrono::high_resolution_clock>& globalBenchmarkState();
  * Usually used when customized printing of results is desired.
  */
 std::vector<BenchmarkResult> runBenchmarksWithResults();
+
+// Format benchmark results as a human-readable table string.
+// Shares formatting logic with the default results printer.
+// `annotations[i]` is appended to the corresponding row.
+std::string benchmarkResultsToString(
+    const std::vector<BenchmarkResult>& results,
+    std::string_view indent = "",
+    const std::vector<std::string>& annotations = {});
+
+// Format a time value (in seconds) as a human-readable string, e.g. "8.5us".
+std::string readableTime(double n, unsigned int decimals);
 
 /**
  * Adds a benchmark wrapped in a std::function.
