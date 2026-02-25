@@ -51,6 +51,7 @@ fbcode_target(
     srcs = [
         "memset-advsimd.S",
         "memset-mops.S",
+        "memset-sve.S",
     ],
     headers = [
         "asmdefs.h",
@@ -66,6 +67,7 @@ fbcode_target(
     srcs = [
         "memset-advsimd.S",
         "memset-mops.S",
+        "memset-sve.S",
     ],
     headers = [
         "asmdefs.h",

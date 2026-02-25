@@ -51,6 +51,7 @@ folly_add_library(
   SRCS
     memset-advsimd.S
     memset-mops.S
+    memset-sve.S
   HEADERS
     asmdefs.h
 )
@@ -60,6 +61,7 @@ folly_add_library(
   SRCS
     memset-advsimd.S
     memset-mops.S
+    memset-sve.S
   HEADERS
     asmdefs.h
   COMPILE_OPTIONS

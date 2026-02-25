@@ -39,6 +39,7 @@ extern "C" {
 
 void* __folly_memset_aarch64_mops(void* dest, int ch, std::size_t count);
 void* __folly_memset_aarch64_simd(void* dest, int ch, std::size_t count);
+void* __folly_memset_aarch64_sve(void* dest, int ch, std::size_t count);
 
 [[gnu::no_sanitize_address]]
 decltype(&__folly_memset_aarch64_simd) __folly_detail_memset_resolve(
@@ -51,6 +52,10 @@ decltype(&__folly_memset_aarch64_simd) __folly_detail_memset_resolve(
     }
   }
 #endif
+
+  if (hwcaps & HWCAP_SVE) {
+    return __folly_memset_aarch64_sve;
+  }
 
   return __folly_memset_aarch64_simd;
 }
