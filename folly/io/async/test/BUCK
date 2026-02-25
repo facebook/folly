@@ -541,7 +541,7 @@ non_fbcode_target(
 #     ],
 #     deps = [
 #         ":util",
-#         "//xplat/folly:portability_gtest",
+#         "//xplat/folly/portability:gtest",
 #         "//xplat/folly:random",
 #         "//xplat/folly/io/async:async_base",
 #     ],
