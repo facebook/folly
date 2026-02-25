@@ -146,7 +146,6 @@ non_fbcode_target(
     exported_deps = [
         ":benchmark_util",
         ":portability",
-        ":portability_gflags",
         ":preprocessor",
         ":range",
         ":scope_guard",
@@ -154,6 +153,7 @@ non_fbcode_target(
         "//third-party/boost:boost",
         "//third-party/glog:glog",
         "//xplat/folly/functional:invoke",
+        "//xplat/folly/portability:gflags",
     ],
 )
 
@@ -370,18 +370,18 @@ non_fbcode_target(
     deps = [
         ":exception",
         ":file_util",
-        ":portability_fcntl",
-        ":portability_fmt_compile",
-        ":portability_sys_file",
         ":scope_guard",
         "//third-party/glog:glog",
+        "//xplat/folly/portability:fcntl",
+        "//xplat/folly/portability:fmt_compile",
+        "//xplat/folly/portability:sys_file",
     ],
     exported_deps = [
         ":exception_wrapper",
         ":expected",
         ":portability",
-        ":portability_unistd",
         ":range",
+        "//xplat/folly/portability:unistd",
     ],
 )
 
@@ -462,15 +462,15 @@ non_fbcode_target(
         "fbsource//xplat/folly/portability:dirent",
         ":conv",
         ":logging_logging",
-        ":portability_fcntl",
-        ":portability_sockets",
-        ":portability_stdlib",
-        ":portability_sys_syscall",
-        ":portability_unistd",
         ":scope_guard",
         ":string",
         "//third-party/boost:boost_range",
         "//xplat/folly/lang:assume",
+        "//xplat/folly/portability:fcntl",
+        "//xplat/folly/portability:sockets",
+        "//xplat/folly/portability:stdlib",
+        "//xplat/folly/portability:sys_syscall",
+        "//xplat/folly/portability:unistd",
         "//xplat/folly/system:at_fork",
         "//xplat/folly/system:shell",
     ],
@@ -484,11 +484,11 @@ non_fbcode_target(
         ":map_util",
         ":optional",
         ":portability",
-        ":portability_sys_resource",
         ":range",
         "//third-party/boost:boost",
         "//third-party/boost:boost_container",
         "//xplat/folly/container:span",
+        "//xplat/folly/portability:sys_resource",
     ],
 )
 
@@ -1495,10 +1495,10 @@ non_fbcode_target(
     ],
     exported_deps = [
         ":portability",
-        ":portability_sys_mman",
-        ":portability_unistd",
         ":synchronization_atomic_struct",
         "//xplat/folly/concurrency:cache_locality",
+        "//xplat/folly/portability:sys_mman",
+        "//xplat/folly/portability:unistd",
     ],
 )
 
@@ -1730,8 +1730,8 @@ non_fbcode_target(
     ],
     exported_deps = [
         ":chrono",
-        ":portability_time",
         ":utility",
+        "//xplat/folly/portability:time",
     ],
 )
 
@@ -3102,11 +3102,11 @@ non_fbcode_target(
         ":function",
         ":operation_cancelled",
         ":optional",
-        ":portability_memory",
         ":scope_guard",
         ":synchronization_detail_sleeper",
         "//third-party/glog:glog",
         "//xplat/folly/lang:new",
+        "//xplat/folly/portability:memory",
     ],
 )
 
@@ -3306,7 +3306,7 @@ non_fbcode_target(
     deps = [
         ":c_portability",
         ":likely",
-        ":portability_time",
+        "//xplat/folly/portability:time",
         "//xplat/third-party/linker_lib:dl",
     ],
 )
@@ -3344,9 +3344,9 @@ non_fbcode_target(
     ],
     deps = [
         ":portability",
-        ":portability_sys_types",
         ":traits",
         "//third-party/boost:boost",
+        "//xplat/folly/portability:sys_types",
     ],
 )
 
@@ -3487,12 +3487,12 @@ non_fbcode_target(
     ],
     deps = [
         ":portability",
-        ":portability_builtins",
         ":range",
         "//third-party/glog:glog",
         "//xplat/folly/container:array",
         "//xplat/folly/detail:group_varint_detail",
         "//xplat/folly/lang:bits",
+        "//xplat/folly/portability:builtins",
     ],
 )
 
@@ -3992,13 +3992,13 @@ non_fbcode_target(
     deps = [
         ":conv",
         ":likely",
-        ":portability_sys_mman",
-        ":portability_unistd",
         ":random",
         ":scope_guard",
         ":traits",
         "//xplat/folly/detail:atomic_unordered_map_utils",
         "//xplat/folly/lang:bits",
+        "//xplat/folly/portability:sys_mman",
+        "//xplat/folly/portability:unistd",
     ],
 )
 
