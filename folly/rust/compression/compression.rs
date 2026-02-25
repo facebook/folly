@@ -70,24 +70,24 @@ pub enum CodecType {
     ZstdFast = 12,
 }
 
-impl CodecType {
-    /// Convert from the raw integer value used in C++.
-    /// Returns `None` for unrecognized values.
-    pub fn from_i32(value: i32) -> Option<Self> {
+impl TryFrom<i32> for CodecType {
+    type Error = i32;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
-            1 => Some(CodecType::NoCompression),
-            2 => Some(CodecType::Lz4),
-            3 => Some(CodecType::Snappy),
-            4 => Some(CodecType::Zlib),
-            5 => Some(CodecType::Lz4VarintSize),
-            6 => Some(CodecType::Lzma2),
-            7 => Some(CodecType::Lzma2VarintSize),
-            8 => Some(CodecType::Zstd),
-            9 => Some(CodecType::Gzip),
-            10 => Some(CodecType::Lz4Frame),
-            11 => Some(CodecType::Bzip2),
-            12 => Some(CodecType::ZstdFast),
-            _ => None,
+            1 => Ok(CodecType::NoCompression),
+            2 => Ok(CodecType::Lz4),
+            3 => Ok(CodecType::Snappy),
+            4 => Ok(CodecType::Zlib),
+            5 => Ok(CodecType::Lz4VarintSize),
+            6 => Ok(CodecType::Lzma2),
+            7 => Ok(CodecType::Lzma2VarintSize),
+            8 => Ok(CodecType::Zstd),
+            9 => Ok(CodecType::Gzip),
+            10 => Ok(CodecType::Lz4Frame),
+            11 => Ok(CodecType::Bzip2),
+            12 => Ok(CodecType::ZstdFast),
+            _ => Err(value),
         }
     }
 }
@@ -129,13 +129,13 @@ mod tests {
     }
 
     #[test]
-    fn test_codec_type_from_i32() {
-        assert_eq!(CodecType::from_i32(1), Some(CodecType::NoCompression));
-        assert_eq!(CodecType::from_i32(8), Some(CodecType::Zstd));
-        assert_eq!(CodecType::from_i32(12), Some(CodecType::ZstdFast));
-        assert_eq!(CodecType::from_i32(0), None);
-        assert_eq!(CodecType::from_i32(99), None);
-        assert_eq!(CodecType::from_i32(-1), None);
+    fn test_codec_type_try_from() {
+        assert_eq!(CodecType::try_from(1), Ok(CodecType::NoCompression));
+        assert_eq!(CodecType::try_from(8), Ok(CodecType::Zstd));
+        assert_eq!(CodecType::try_from(12), Ok(CodecType::ZstdFast));
+        assert_eq!(CodecType::try_from(0), Err(0));
+        assert_eq!(CodecType::try_from(99), Err(99));
+        assert_eq!(CodecType::try_from(-1), Err(-1));
     }
 
     #[test]
