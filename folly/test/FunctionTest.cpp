@@ -53,7 +53,7 @@ template <>
 struct check_invocable_base<true, true> {};
 template <bool Triv, bool NxCopy, size_t Size, size_t Align>
 struct check_invocable : check_invocable_base<Triv, NxCopy> {
-  std::aligned_storage_t<Size, Align> storage;
+  folly::aligned_storage_t<Size, Align> storage;
   using check_invocable_base<Triv, NxCopy>::check_invocable_base;
   void operator()() const noexcept {}
 };

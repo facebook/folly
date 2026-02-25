@@ -161,7 +161,7 @@ class Fiber {
   folly::AtomicIntrusiveLinkedListHook<Fiber> nextRemoteReady_;
 
   static constexpr size_t kUserBufferSize = 256;
-  std::aligned_storage<kUserBufferSize>::type userBuffer_;
+  folly::aligned_storage_t<kUserBufferSize, cacheline_align_v> userBuffer_;
 
   void* getUserBuffer();
 
@@ -191,7 +191,7 @@ class Fiber {
     FOLLY_NOINLINE T& getSlow();
 
     static constexpr size_t kBufferSize = 128;
-    using Buffer = std::aligned_storage<kBufferSize, cacheline_align_v>::type;
+    using Buffer = folly::aligned_storage_t<kBufferSize, cacheline_align_v>;
     struct VTable {
       std::type_info const* type;
       // on-heap

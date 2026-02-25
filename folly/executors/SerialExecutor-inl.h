@@ -249,7 +249,7 @@ class SerialExecutorMPSCQueue {
     // We avoid any padding to minimize memory usage, but at least we can
     // separate write and read index by interposing the payloads.
     relaxed_atomic<size_t> writeIdx = 0;
-    std::aligned_storage_t<sizeof(Task), alignof(Task)> tasks[kSegmentSize];
+    folly::aligned_storage_for_t<Task> tasks[kSegmentSize];
     relaxed_atomic<size_t> readIdx = 0;
     Segment* next = nullptr;
   };

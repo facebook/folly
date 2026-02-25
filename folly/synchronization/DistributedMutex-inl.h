@@ -524,9 +524,8 @@ class TaskWithBigReturnValue {
   using ReturnType = folly::invoke_result_t<const Func&>;
   static const auto kReturnValueAlignment = folly::constexpr_max(
       alignof(ReturnType), folly::hardware_destructive_interference_size);
-  using StorageType = std::aligned_storage_t<
-      sizeof(std::aligned_storage_t<sizeof(ReturnType), kReturnValueAlignment>),
-      kReturnValueAlignment>;
+  using StorageType =
+      folly::aligned_storage_t<sizeof(ReturnType), kReturnValueAlignment>;
 
   explicit TaskWithBigReturnValue(Func func, Waiter&)
       : func_{std::move(func)} {}

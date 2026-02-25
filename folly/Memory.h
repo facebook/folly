@@ -146,7 +146,7 @@ void rawOverAlignedImpl(Alloc const& alloc, size_t n, void*& raw) {
   // we can get it naturally, otherwise it is aligned as max_align_t.
   // kBaseAlign is both the alignment and size of this type.
   constexpr size_t kBaseAlign = constexpr_min(kAlign, alignof(max_align_t));
-  using BaseType = std::aligned_storage_t<kBaseAlign, kBaseAlign>;
+  using BaseType = folly::aligned_storage_t<kBaseAlign, kBaseAlign>;
   using BaseAllocTraits =
       typename AllocTraits::template rebind_traits<BaseType>;
   using BaseAlloc = typename BaseAllocTraits::allocator_type;

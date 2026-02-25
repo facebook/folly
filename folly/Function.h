@@ -242,7 +242,7 @@ union Data {
 
   void* big;
   BigTrivialLayout bigt;
-  std::aligned_storage<6 * sizeof(void*)>::type tiny;
+  folly::aligned_storage_t<6 * sizeof(void*)> tiny;
 };
 
 struct CoerceTag {};

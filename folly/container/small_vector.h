@@ -1420,8 +1420,7 @@ class small_vector
 
   // This value should we multiple of word size.
   static size_t constexpr kHeapifyCapacitySize = sizeof(
-      typename std::
-          aligned_storage<sizeof(InternalSizeType), alignof(value_type)>::type);
+      folly::aligned_storage_t<sizeof(InternalSizeType), alignof(value_type)>);
 
   struct AllocationSize {
     auto operator()(void* ptr) const {

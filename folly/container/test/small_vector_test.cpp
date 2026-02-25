@@ -117,7 +117,7 @@ static_assert(
     "std::unique_ptr<> is trivially copyable");
 
 static_assert(
-    alignof(small_vector<std::aligned_storage<32, 32>::type, 4>) == 32,
+    alignof(small_vector<folly::aligned_storage_t<32, 32>, 4>) == 32,
     "small_vector not aligned correctly");
 
 namespace {

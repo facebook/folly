@@ -73,7 +73,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
   using CallArg = function::CallArg<Arg>;
 
   using Storage =
-      std::aligned_storage_t<Size - sizeof(uintptr_t), sizeof(uintptr_t)>;
+      folly::aligned_storage_t<Size - sizeof(uintptr_t), sizeof(uintptr_t)>;
   using Call = ReturnType (*)(CallArg<Args>..., const Storage&);
 
   struct InSituTag {};

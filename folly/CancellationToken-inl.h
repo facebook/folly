@@ -317,8 +317,8 @@ CancellationState::addTokenReference() noexcept {
 
 // This `alignas()` is here because "create" will going to allocate this
 // back-to-back with our `CancellationCallback` array.
-class alignas(CancellationCallback) MergingCancellationState
-    : public CancellationState {
+class alignas(CancellationState) alignas(CancellationCallback)
+    MergingCancellationState : public CancellationState {
   // There's a noticeable perf gain from specializing the constructors
   struct CopyTag {};
   struct MoveTag {};
