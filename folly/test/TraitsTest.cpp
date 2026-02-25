@@ -431,6 +431,60 @@ TEST(Traits, alignedStorageForT) {
   EXPECT_TRUE(std::is_standard_layout<storage>::value);
 }
 
+TEST(Traits, alignedStorageTDefaultAlign) {
+  // Default alignment matches std::aligned_storage: the most stringent
+  // fundamental alignment for any type whose size is no greater than Len.
+  // On all platforms, fundamental alignments are powers of 2 up to
+  // alignof(max_align_t).
+  constexpr auto kMaxAlign = alignof(std::max_align_t);
+
+  // Helper: the expected default alignment for a given Len is the largest
+  // power of 2 that is <= min(Len, alignof(max_align_t)).
+  constexpr auto expected = [](std::size_t len) {
+    std::size_t a = kMaxAlign;
+    while (a > len) {
+      a >>= 1;
+    }
+    return a ? a : 1;
+  };
+
+  // Small sizes: default alignment is the largest power of 2 <= Len.
+  EXPECT_EQ(expected(1), alignof(folly::aligned_storage_t<1>));
+  EXPECT_EQ(expected(2), alignof(folly::aligned_storage_t<2>));
+  EXPECT_EQ(expected(3), alignof(folly::aligned_storage_t<3>));
+  EXPECT_EQ(expected(4), alignof(folly::aligned_storage_t<4>));
+  EXPECT_EQ(expected(5), alignof(folly::aligned_storage_t<5>));
+  EXPECT_EQ(expected(6), alignof(folly::aligned_storage_t<6>));
+  EXPECT_EQ(expected(7), alignof(folly::aligned_storage_t<7>));
+  EXPECT_EQ(expected(8), alignof(folly::aligned_storage_t<8>));
+  EXPECT_EQ(expected(9), alignof(folly::aligned_storage_t<9>));
+  EXPECT_EQ(expected(15), alignof(folly::aligned_storage_t<15>));
+  EXPECT_EQ(expected(16), alignof(folly::aligned_storage_t<16>));
+
+  // Sizes beyond alignof(max_align_t): clamped to alignof(max_align_t).
+  EXPECT_EQ(kMaxAlign, alignof(folly::aligned_storage_t<17>));
+  EXPECT_EQ(kMaxAlign, alignof(folly::aligned_storage_t<32>));
+  EXPECT_EQ(kMaxAlign, alignof(folly::aligned_storage_t<64>));
+  EXPECT_EQ(kMaxAlign, alignof(folly::aligned_storage_t<256>));
+  EXPECT_EQ(kMaxAlign, alignof(folly::aligned_storage_t<4096>));
+
+  // Size is at least Len, rounded up to default alignment.
+  EXPECT_EQ(1, sizeof(folly::aligned_storage_t<1>));
+  EXPECT_EQ(48, sizeof(folly::aligned_storage_t<48>));
+  EXPECT_GE(sizeof(folly::aligned_storage_t<3>), 3);
+  EXPECT_GE(sizeof(folly::aligned_storage_t<5>), 5);
+  EXPECT_EQ(0, sizeof(folly::aligned_storage_t<3>) % expected(3));
+  EXPECT_EQ(0, sizeof(folly::aligned_storage_t<5>) % expected(5));
+
+  // Explicit alignment overrides the default.
+  EXPECT_EQ(1, alignof(folly::aligned_storage_t<64, 1>));
+  EXPECT_EQ(64, alignof(folly::aligned_storage_t<1, 64>));
+
+  // Type properties.
+  EXPECT_TRUE(std::is_trivial<folly::aligned_storage_t<16>>::value);
+  EXPECT_TRUE(std::is_standard_layout<folly::aligned_storage_t<16>>::value);
+}
+
 TEST(Traits, removeCvref) {
   using folly::remove_cvref;
   using folly::remove_cvref_t;

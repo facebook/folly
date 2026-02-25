@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <limits>
@@ -627,9 +628,41 @@ inline constexpr bool is_detected_v =
 template <template <typename...> class T, typename... A>
 struct is_detected : detected_or<nonesuch, T, A...>::value_t {};
 
+namespace detail {
+constexpr std::size_t aligned_storage_default_align(std::size_t len) {
+  // Match std::aligned_storage default: the most stringent fundamental
+  // alignment for any type whose size is no greater than len.
+  // Compute bit_floor(min(len, alignof(max_align_t))): propagate the highest
+  // set bit to all lower positions, then isolate it. O(log(bits)) steps.
+  len = len < alignof(std::max_align_t) ? len : alignof(std::max_align_t);
+  len |= len >> 1;
+  len |= len >> 2;
+  len |= len >> 4;
+  len |= len >> 8;
+  if constexpr (sizeof(std::size_t) > 2) {
+    len |= len >> 16;
+  }
+  if constexpr (sizeof(std::size_t) > 4) {
+    len |= len >> 32;
+  }
+  return len - (len >> 1);
+}
+
+template <std::size_t Len, std::size_t Align>
+struct aligned_storage {
+  struct type {
+    alignas(Align) std::byte data[Len];
+  };
+};
+} // namespace detail
+
+template <
+    std::size_t Len,
+    std::size_t Align = detail::aligned_storage_default_align(Len)>
+using aligned_storage_t = typename detail::aligned_storage<Len, Align>::type;
+
 template <typename T>
-using aligned_storage_for_t =
-    typename std::aligned_storage<sizeof(T), alignof(T)>::type;
+using aligned_storage_for_t = aligned_storage_t<sizeof(T), alignof(T)>;
 
 //  ----
 
