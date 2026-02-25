@@ -54,7 +54,18 @@ decltype(&__folly_memset_aarch64_simd) __folly_detail_memset_resolve(
 #endif
 
   if (hwcaps & HWCAP_SVE) {
-    return __folly_memset_aarch64_sve;
+    uint64_t zva_val;
+
+    asm volatile(
+        "mrs	%[zva_val], dczid_el0\t\n"
+        "and	%[zva_val], %[zva_val], 31\t\n"
+        : [zva_val] "=r"(zva_val)
+        :
+        :);
+
+    if (zva_val == 4) {
+      return __folly_memset_aarch64_sve;
+    }
   }
 
   return __folly_memset_aarch64_simd;

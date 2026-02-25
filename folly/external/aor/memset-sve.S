@@ -68,12 +68,6 @@ L(set_long):
 	tst	valw, 255
 	b.ne	L(no_zva)
 
-#ifndef SKIP_ZVA_CHECK
-	mrs	zva_val, dczid_el0
-	and	zva_val, zva_val, 31
-	cmp	zva_val, 4		/* ZVA size is 64 bytes.  */
-	b.ne	L(no_zva)
-#endif
 	str	q0, [dstin]
 	str	q0, [dst, 16]
 	bic	dst, dstin, 31
