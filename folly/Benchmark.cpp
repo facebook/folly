@@ -943,6 +943,66 @@ bool userSetGflag([[maybe_unused]] const char* name) {
 #endif
 }
 
+// Check that no mode-incompatible flags were explicitly set.
+void validateFlagCombinations() {
+  // Log a user-facing error and exit without a stack trace.
+  auto fatal = [](const std::string& msg) {
+    LOG(ERROR) << detail::kANSIBoldRed << msg << detail::kANSIReset;
+    exit(1);
+  };
+
+  if (FLAGS_bm_mode != "best-of" && FLAGS_bm_mode != "adaptive") {
+    fatal(
+        fmt::format(
+            "Unknown --bm_mode='{}'. Must be 'best-of' or 'adaptive'.",
+            FLAGS_bm_mode));
+  }
+
+  if (FLAGS_bm_mode == "adaptive") {
+    if (userSetGflag("bm_min_iters")) {
+      fatal("--bm_min_iters is only useful in --bm_mode=best-of.");
+    }
+    if (userSetGflag("bm_max_iters")) {
+      fatal("--bm_max_iters is only useful in --bm_mode=best-of.");
+    }
+    if (userSetGflag("bm_max_trials")) {
+      fatal("--bm_max_trials is only useful in --bm_mode=best-of.");
+    }
+    if (userSetGflag("bm_estimate_time")) {
+      fatal(
+          "--bm_estimate_time is incompatible with adaptive mode. "
+          "Adaptive already targets a configurable percentile "
+          "(--bm_target_percentile).");
+    }
+    if (userSetGflag("bm_profile")) {
+      fatal(
+          "--bm_profile is not supported in adaptive mode. "
+          "Use --bm_perf_args to attach perf in any mode.");
+    }
+  } else {
+    // Best-of mode
+    if (userSetGflag("bm_target_percentile")) {
+      fatal("--bm_target_percentile requires --bm_mode=adaptive.");
+    }
+    if (userSetGflag("bm_target_precision_pct")) {
+      fatal("--bm_target_precision_pct requires --bm_mode=adaptive.");
+    }
+    if (userSetGflag("bm_min_secs")) {
+      fatal("--bm_min_secs requires --bm_mode=adaptive.");
+    }
+    if (userSetGflag("bm_min_samples")) {
+      fatal("--bm_min_samples requires --bm_mode=adaptive.");
+    }
+    if (FLAGS_bm_estimate_time) {
+      LOG(WARNING)
+          << detail::kANSIBoldYellow
+          << "--bm_estimate_time is slow, with odd semantics (geometric mean "
+          << "of p25-p75). Consider --bm_mode=adaptive (BenchmarkAdaptive.md)."
+          << detail::kANSIReset;
+    }
+  }
+}
+
 // Resolve `--bm_slice_usec` / `--bm_min_usec` (deprecated alias).
 int64_t resolveSliceUsec() {
   bool minUsecSet = userSetGflag("bm_min_usec");
@@ -976,6 +1036,8 @@ runBenchmarksWithPrinterImpl(
                  << " is below 1000; benchmark harness overhead may "
                  << "interfere with results." << detail::kANSIReset;
   }
+
+  validateFlagCombinations();
 
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
 
