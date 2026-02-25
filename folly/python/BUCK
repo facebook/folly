@@ -986,6 +986,18 @@ fbcode_target(
     }),
 )
 
+fbcode_target(
+    _kind = cpp_library,
+    name = "scoped_gil_release",
+    headers = [
+        "ScopedGILRelease.h",
+    ],
+    visibility = ["PUBLIC"],
+    exported_deps = [
+        ":weak",
+    ],
+)
+
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "weak",
