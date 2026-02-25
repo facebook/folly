@@ -128,6 +128,10 @@ fn iobuf_to_bytes(iobuf: UniquePtr<IOBuf>) -> Bytes {
     Bytes::from(IOBufShared::from(iobuf))
 }
 
+// SAFETY: The underlying folly::compression::Codec is a heap-allocated object
+// with no thread affinity.
+unsafe impl Send for Codec {}
+
 impl Codec {
     pub fn new(codec_type: CodecType) -> Result<Self, CompressionError> {
         let inner = bridge::create_codec(codec_type as i32)?;
