@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
 #if 0
 
 On Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz
-$ buck run @mode/opt folly/coro/test:shared_mutex_benchmark -- --bm_min_usec 50000
+$ buck run @mode/opt folly/coro/test:shared_mutex_benchmark -- --bm_slice_usec 50000
 ============================================================================
 [...]ly/coro/test/SharedMutexBenchmark.cpp     relative  time/iter   iters/s
 ============================================================================

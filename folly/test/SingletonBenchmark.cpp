@@ -171,7 +171,7 @@ BENCHMARK(FollyLeakySingleton4Threads, n) {
 int main(int argc, char** argv) {
   folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::gflags::SetCommandLineOptionWithMode(
-      "bm_min_usec", "100000", folly::gflags::SET_FLAG_IF_DEFAULT);
+      "bm_slice_usec", "100000", folly::gflags::SET_FLAG_IF_DEFAULT);
 
   folly::SingletonVault::singleton<BenchmarkTag>()->registrationComplete();
   folly::runBenchmarks();

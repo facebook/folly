@@ -170,7 +170,7 @@ BENCHMARK(Encode) {
 
 #if 0
 // Intel(R) Xeon(R) CPU E5-2678 v3 @ 2.50GHz (turbo on),
-// Using GCC 5 with --bm_min_usec 100000.
+// Using GCC 5 with --bm_slice_usec 100000.
 V1008 12:32:25.863286 101188 Instructions.h:161] Will use folly::compression::instructions::Haswell
 ============================================================================
 folly/experimental/test/BitVectorCodingTest.cpp relative  time/iter  iters/s

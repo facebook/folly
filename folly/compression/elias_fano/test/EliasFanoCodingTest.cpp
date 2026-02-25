@@ -369,7 +369,7 @@ BENCHMARK(slowDefaultNumLowerBits, iters) {
 
 #if 0
 // Intel(R) Xeon(R) CPU E5-2678 v3 @ 2.50GHz, Clang 8.0.
-// $ eliasfano_test --benchmark --bm_min_usec 200000
+// $ eliasfano_test --benchmark --bm_slice_usec 200000
 ============================================================================
 folly/experimental/test/EliasFanoCodingTest.cpp relative  time/iter  iters/s
 ============================================================================

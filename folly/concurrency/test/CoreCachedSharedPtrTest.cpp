@@ -336,7 +336,7 @@ int main(int argc, char** argv) {
 
 #if 0
 // On Intel(R) Xeon(R) Gold 6138 CPU @ 2.00GHz, 2 sockets, 40 cores, 80 threads.
-$ buck-out/gen/folly/concurrency/test/core_cached_shared_ptr_test --benchmark --bm_min_usec 500000
+$ buck-out/gen/folly/concurrency/test/core_cached_shared_ptr_test --benchmark --bm_slice_usec 500000
 
 ============================================================================
 [...]ency/test/CoreCachedSharedPtrTest.cpp     relative  time/iter   iters/s

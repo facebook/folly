@@ -187,7 +187,7 @@ int main(int argc, char** argv) {
 
 #if 0
 AMD EPYC 9000 series CPU
-$ hash_benchmark --bm_min_usec=100000
+$ hash_benchmark --bm_slice_usec=100000
 ============================================================================
 fbcode/folly/hash/test/HashBenchmark.cpp     relative  time/iter   iters/s
 ============================================================================

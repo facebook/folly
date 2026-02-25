@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
 
 /*
 Intel(R) Xeon(R) Gold 6138 CPU @ 2.00GHz
-$ checksum_benchmark --bm_min_usec=10000
+$ checksum_benchmark --bm_slice_usec=10000
 ============================================================================
 folly/hash/test/ChecksumBenchmark.cpp           relative  time/iter  iters/s
 ============================================================================

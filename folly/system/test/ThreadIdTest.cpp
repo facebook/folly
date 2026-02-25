@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
 }
 
 #if 0
-$ buck2 run @mode/opt folly/system/test:thread_id_test -- --benchmark --bm_min_usec 500000
+$ buck2 run @mode/opt folly/system/test:thread_id_test -- --benchmark --bm_slice_usec 500000
 ============================================================================
 fbcode/folly/system/test/ThreadIdTest.cpp     relative  time/iter   iters/s
 ============================================================================

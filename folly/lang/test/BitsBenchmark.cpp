@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
 }
 
 /*
-Benchmarks run on Intel Xeon CPU E5-2678 v3 @ 2.50GHz with --bm_min_usec=500000
+Run on Intel Xeon CPU E5-2678 v3 @ 2.50GHz with --bm_slice_usec=500000
 
 ============================================================================
 folly/lang/test/BitsBenchmark.cpp               relative  time/iter  iters/s

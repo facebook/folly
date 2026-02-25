@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
 
 #if 0
 // On Intel(R) Xeon(R) Gold 6138 CPU @ 2.00GHz
-$ buck2 run @mode/opt folly/fibers/test:timed_mutex_benchmark  -- --bm_min_usec 500000
+$ buck2 run @mode/opt folly/fibers/test:timed_mutex_benchmark  -- --bm_slice_usec 500000
 ============================================================================
 [...]y/fibers/test/TimedMutexBenchmark.cpp     relative  time/iter   iters/s
 ============================================================================
