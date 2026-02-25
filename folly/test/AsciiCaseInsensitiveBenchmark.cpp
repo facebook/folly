@@ -18,6 +18,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Range.h>
+#include <folly/init/Init.h>
 
 using namespace std;
 using namespace folly;
@@ -115,11 +116,8 @@ BENCHMARK(CurrentCaseInsensitiveCheck, iters) {
 }
 
 int main(int argc, char** argv) {
-  folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::Init init(&argc, &argv);
   folly::runBenchmarks();
-  if (FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
   return 0;
 }
 

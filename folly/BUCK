@@ -124,9 +124,12 @@ non_fbcode_target(
     name = "benchmark",
     srcs = [
         "Benchmark.cpp",
+        # Colocated here to avoid circular dep (Adaptive needs Benchmark types).
+        "detail/BenchmarkAdaptive.cpp",
     ],
     raw_headers = [
         "Benchmark.h",
+        "detail/BenchmarkAdaptive.h",
     ],
     deps = [
         ":file_util",
@@ -138,6 +141,7 @@ non_fbcode_target(
         "//xplat/folly/container:foreach",
         "//xplat/folly/detail:perf_scoped",
         "//xplat/folly/lang:hint",
+        "//xplat/folly/stats:streaming_stats",
     ],
     exported_deps = [
         ":benchmark_util",
@@ -4250,8 +4254,15 @@ fbcode_target(
 fbcode_target(
     _kind = cpp_library,
     name = "benchmark",
-    srcs = ["Benchmark.cpp"],
-    headers = ["Benchmark.h"],
+    srcs = [
+        "Benchmark.cpp",
+        # Colocated here to avoid circular dep (Adaptive needs Benchmark types).
+        "detail/BenchmarkAdaptive.cpp",
+    ],
+    headers = [
+        "Benchmark.h",
+        "detail/BenchmarkAdaptive.h",
+    ],
     deps = [
         ":file_util",
         ":map_util",
@@ -4259,6 +4270,7 @@ fbcode_target(
         ":string",
         "//folly/detail:perf_scoped",
         "//folly/json:dynamic",
+        "//folly/stats:streaming_stats",
     ],
     exported_deps = [
         "fbsource//third-party/glog:glog",

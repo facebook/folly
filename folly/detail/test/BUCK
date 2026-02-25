@@ -150,3 +150,13 @@ fbcode_target(
         "//folly/portability:gtest",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "benchmark_adaptive_test",
+    srcs = ["BenchmarkAdaptiveTest.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/portability:gtest",
+    ],
+)

@@ -31,6 +31,7 @@
 #include <folly/MapUtil.h>
 #include <folly/Overload.h>
 #include <folly/String.h>
+#include <folly/detail/BenchmarkAdaptive.h>
 #include <folly/detail/PerfScoped.h>
 #include <folly/json/json.h>
 
@@ -46,6 +47,73 @@ using namespace std;
 FOLLY_GFLAGS_DEFINE_bool(benchmark, false, "Run benchmarks.");
 
 FOLLY_GFLAGS_DEFINE_bool(json, false, "Output in JSON format.");
+
+FOLLY_GFLAGS_DEFINE_string(
+    bm_mode,
+    "best-of",
+    "'best-of' (default) or 'adaptive'. "
+    "Adaptive interleaves samples across all benchmarks to cancel "
+    "correlated noise, and runs until the target percentile estimate "
+    "is both stable and precise. "
+    "Set --bm_max_secs=20-30 for reliable results. "
+    "See BenchmarkAdaptive.md.");
+
+FOLLY_GFLAGS_DEFINE_double(
+    bm_target_percentile,
+    33.3,
+    "Adaptive: which percentile of per-slice iteration timings to report. "
+    "Default 33.3 approximates the median of good runs, rejecting transient "
+    "slowdowns. Higher values (e.g. 90) capture tail behavior. "
+    "For comparison, best-of mode always reports the minimum (p0).");
+
+FOLLY_GFLAGS_DEFINE_double(
+    bm_target_precision_pct,
+    0.4,
+    "Adaptive: measurement precision target. A benchmark converges "
+    "when the 95% confidence interval around the target percentile "
+    "is narrower than this percentage of the estimate. E.g. 0.4 "
+    "means the CI for a 100ns benchmark must be under 0.4ns wide. "
+    "Tighter values (e.g. 0.1) need longer --bm_max_secs or a "
+    "quieter system.");
+
+FOLLY_GFLAGS_DEFINE_int32(
+    bm_max_secs,
+    1,
+    "Maximum seconds per benchmark. Adaptive: set to 20-30 for "
+    "robust results on noisy systems. Default 1s is for quick "
+    "iteration.");
+
+FOLLY_GFLAGS_DEFINE_double(
+    bm_min_secs,
+    0.1,
+    "Adaptive: minimum seconds of measurement time per benchmark "
+    "before it can converge. Ensures enough elapsed time to observe "
+    "system jitter.");
+
+FOLLY_GFLAGS_DEFINE_uint32(
+    bm_min_samples,
+    20,
+    "Adaptive: minimum samples per benchmark before it can converge. "
+    "Ensures enough data points for stable percentile and CI "
+    "estimates.");
+
+FOLLY_GFLAGS_DEFINE_bool(
+    bm_verbose,
+    false,
+    "Log diagnostic details: convergence progress and baseline "
+    "stats (adaptive), measurement phases (best-of).");
+
+FOLLY_GFLAGS_DEFINE_int64(
+    bm_slice_usec,
+    1000,
+    "Both adaptive and best-of modes take contiguous measurement "
+    "slices of this duration. Values below 1000 risk harness "
+    "interference affecting results.");
+
+FOLLY_GFLAGS_DEFINE_int64(
+    bm_min_usec,
+    1000,
+    "Deprecated: use --bm_slice_usec (same meaning, same units).");
 
 FOLLY_GFLAGS_DEFINE_bool(
     bm_estimate_time,
@@ -93,11 +161,6 @@ FOLLY_GFLAGS_DEFINE_string(
     "",
     "Only benchmarks whose filenames match this regex will be run.");
 
-FOLLY_GFLAGS_DEFINE_int64(
-    bm_min_usec,
-    100,
-    "Minimum # of microseconds we'll accept for each benchmark.");
-
 FOLLY_GFLAGS_DEFINE_int32(
     bm_min_iters, 1, "Minimum # of iterations we'll try for each benchmark.");
 
@@ -105,9 +168,6 @@ FOLLY_GFLAGS_DEFINE_int64(
     bm_max_iters,
     1 << 30,
     "Maximum # of iterations we'll try for each benchmark.");
-
-FOLLY_GFLAGS_DEFINE_int32(
-    bm_max_secs, 1, "Maximum # of seconds we'll spend on each benchmark.");
 
 FOLLY_GFLAGS_DEFINE_uint32(
     bm_result_width_chars, 76, "Width of results table in characters");
@@ -163,7 +223,7 @@ BENCHMARK(FB_FOLLY_GLOBAL_BENCHMARK_SUSPENDER_BASELINE) {
 #undef FB_FOLLY_GLOBAL_BENCHMARK_BASELINE
 
 static std::pair<double, UserCounters> runBenchmarkGetNSPerIteration(
-    const BenchmarkFun& fun, const double globalBaseline) {
+    const BenchmarkFun& fun, const double globalBaseline, int64_t sliceUsec) {
   using std::chrono::duration_cast;
   using std::chrono::high_resolution_clock;
   using std::chrono::microseconds;
@@ -179,8 +239,8 @@ static std::pair<double, UserCounters> runBenchmarkGetNSPerIteration(
   // We choose a minimum minimum (sic) of 100,000 nanoseconds, but if
   // the clock resolution is worse than that, it will be larger. In
   // essence we're aiming at making the quantization noise 0.01%.
-  static const auto minNanoseconds = std::max<nanoseconds>(
-      nanoseconds(100000), microseconds(FLAGS_bm_min_usec));
+  const auto minNanoseconds =
+      std::max<nanoseconds>(nanoseconds(100000), microseconds(sliceUsec));
 
   // We establish a total time budget as we don't want a measurement
   // to take too long. This will curtail the number of actual trials.
@@ -691,9 +751,10 @@ void printResultComparison(
 
 void checkRunMode() {
   if (folly::kIsDebug || folly::kIsSanitize) {
-    std::cerr << "WARNING: Benchmark running "
-              << (folly::kIsDebug ? "in DEBUG mode" : "with SANITIZERS")
-              << std::endl;
+    std::cerr
+        << detail::kANSIBoldYellow << "WARNING: " << detail::kANSIReset
+        << "Benchmark running "
+        << (folly::kIsDebug ? "in DEBUG mode" : "with SANITIZERS") << std::endl;
   }
 }
 
@@ -779,15 +840,21 @@ void maybeRunWarmUpIteration(const BenchmarksToRun& toRun) {
     return;
   }
 
+  if (FLAGS_bm_verbose) {
+    LOG(INFO) << "Running warmup for all benchmarks...";
+  }
   for (const auto* bm : toRun.benchmarks) {
     bm->func(1);
+  }
+  if (FLAGS_bm_verbose) {
+    LOG(INFO) << "Warmup complete";
   }
 }
 
 class ShouldDrawLineTracker {
  public:
-  explicit ShouldDrawLineTracker(const BenchmarksToRun& toRun)
-      : separatorsAfter_(&toRun.separatorsAfter) {}
+  explicit ShouldDrawLineTracker(const std::vector<size_t>& separatorsAfter)
+      : separatorsAfter_(&separatorsAfter) {}
 
   bool operator()() {
     std::size_t i = curI_++;
@@ -808,6 +875,65 @@ class ShouldDrawLineTracker {
   std::size_t drawAfterI_ = 0;
 };
 
+// Helper for adaptive mode
+auto runAdaptiveMode(
+    auto* printer, const BenchmarksToRun& toRun, int64_t sliceUsec) {
+  auto rrResult = detail::runBenchmarksAdaptive(
+      toRun.benchmarks,
+      toRun.baseline->func,
+      toRun.suspenderBaseline->func,
+      {.sliceUsec = sliceUsec,
+       .targetPercentile = FLAGS_bm_target_percentile,
+       .targetPrecisionPct = FLAGS_bm_target_precision_pct,
+       .minSamples = static_cast<size_t>(FLAGS_bm_min_samples),
+       .minSecs = FLAGS_bm_min_secs,
+       .maxSecs = FLAGS_bm_max_secs,
+       .verbose = FLAGS_bm_verbose});
+
+  if (printer != nullptr) {
+    ShouldDrawLineTracker lineTracker(toRun.separatorsAfter);
+    for (const auto& r : rrResult.results) {
+      printer->print({{r.file, r.name, r.timeInNs, r.counters}});
+      if (lineTracker()) {
+        printer->separator('-');
+      }
+    }
+  }
+
+  return std::pair{std::set<std::string>{}, std::move(rrResult.results)};
+}
+
+// Returns true when a user overrode a gflag on the command line.
+bool userSetGflag([[maybe_unused]] const char* name) {
+#if FOLLY_HAVE_LIBGFLAGS && __has_include(<gflags/gflags.h>)
+  return !gflags::GetCommandLineFlagInfoOrDie(name).is_default;
+#else
+  // No libgflags means we just have global vars, without CLI args.
+  // Falling back to false is fine since we only use this for warnings.
+  return false;
+#endif
+}
+
+// Resolve `--bm_slice_usec` / `--bm_min_usec` (deprecated alias).
+int64_t resolveSliceUsec() {
+  bool minUsecSet = userSetGflag("bm_min_usec");
+  bool sliceUsecSet = userSetGflag("bm_slice_usec");
+  if (minUsecSet && sliceUsecSet) {
+    LOG(ERROR)
+        << detail::kANSIBoldRed
+        << "Cannot set both --bm_min_usec and --bm_slice_usec. "
+        << "Use --bm_slice_usec only (--bm_min_usec is deprecated)."
+        << detail::kANSIReset;
+    exit(1);
+  }
+  if (minUsecSet) {
+    LOG(ERROR) << detail::kANSIBoldRed << "--bm_min_usec is deprecated; "
+               << "use --bm_slice_usec instead." << detail::kANSIReset;
+    return FLAGS_bm_min_usec;
+  }
+  return FLAGS_bm_slice_usec;
+}
+
 std::pair<std::set<std::string>, std::vector<detail::BenchmarkResult>>
 runBenchmarksWithPrinterImpl(
     BenchmarkResultsPrinter* FOLLY_NULLABLE printer,
@@ -815,20 +941,63 @@ runBenchmarksWithPrinterImpl(
   vector<detail::BenchmarkResult> results;
   results.reserve(toRun.benchmarks.size());
 
+  auto const sliceUsec = resolveSliceUsec();
+  if (sliceUsec < 1000) {
+    LOG(WARNING) << detail::kANSIBoldYellow << "--bm_slice_usec=" << sliceUsec
+                 << " is below 1000; benchmark harness overhead may "
+                 << "interfere with results." << detail::kANSIReset;
+  }
+
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
 
-  auto const globalBaseline =
-      runBenchmarkGetNSPerIteration(toRun.baseline->func, 0);
+  // Adaptive mode: interleaved sampling with paired correction for both
+  // baseline and suspender overhead. Does NOT set suspenderOverhead static;
+  // instead uses late correction based on suspensionCount.
+  if (FLAGS_bm_mode == "adaptive") {
+    return runAdaptiveMode(printer, toRun, sliceUsec);
+  }
+  // Encourage users to try `adaptive` when `--bm_mode` was not passed.
+  if (!userSetGflag("bm_mode")) {
+    std::cerr
+        << "NOTE: Default may change to " << detail::kANSIBold
+        << "faster & more robust `--bm_mode=adaptive`." << detail::kANSIReset
+        << "\n"
+        << "      Details in BenchmarkAdaptive.md.\n"
+        << "Pass `--bm_mode=best-of` to keep current behavior -- report trial "
+        << "with lowest\n"
+        << "iteration cost, each `1-2 * bm_slice_usec` long, repeated per "
+        << "benchmark up to\n"
+        << "`bm_max_trials` or `bm_max_secs`.\n";
+  }
 
-  auto const globalSuspenderBaseline =
-      runBenchmarkGetNSPerIteration(toRun.suspenderBaseline->func, 0);
+  // Best-of mode: measure suspender overhead upfront and set static for
+  // immediate correction in tally().
+  if (FLAGS_bm_verbose) {
+    LOG(INFO) << "Measuring suspenderBaseline...";
+  }
+  auto const globalSuspenderBaseline = runBenchmarkGetNSPerIteration(
+      toRun.suspenderBaseline->func, 0, sliceUsec);
 
   BenchmarkSuspender::suspenderOverhead = chrono::nanoseconds(
       static_cast<chrono::high_resolution_clock::rep>(
           globalSuspenderBaseline.first));
 
+  if (FLAGS_bm_verbose) {
+    LOG(INFO) << "suspenderOverhead=" << globalSuspenderBaseline.first
+              << " ns/iter";
+  }
+
+  if (FLAGS_bm_verbose) {
+    LOG(INFO) << "Measuring globalBaseline...";
+  }
+  auto const globalBaseline =
+      runBenchmarkGetNSPerIteration(toRun.baseline->func, 0, sliceUsec);
+  if (FLAGS_bm_verbose) {
+    LOG(INFO) << "globalBaseline=" << globalBaseline.first << " ns/iter";
+  }
+
   std::set<std::string> counterNames;
-  ShouldDrawLineTracker shouldDrawLineTracker(toRun);
+  ShouldDrawLineTracker shouldDrawLineTracker(toRun.separatorsAfter);
   for (std::size_t i = 0; i != toRun.benchmarks.size(); ++i) {
     std::pair<double, UserCounters> elapsed;
     const detail::BenchmarkRegistration& bm = *toRun.benchmarks[i];
@@ -839,7 +1008,8 @@ runBenchmarksWithPrinterImpl(
     } else {
       elapsed = FLAGS_bm_estimate_time
           ? runBenchmarkGetNSPerIterationEstimate(bm.func, globalBaseline.first)
-          : runBenchmarkGetNSPerIteration(bm.func, globalBaseline.first);
+          : runBenchmarkGetNSPerIteration(
+                bm.func, globalBaseline.first, sliceUsec);
     }
 
     // if customized user counters is used, it cannot print the result in real
@@ -903,6 +1073,7 @@ bool operator==(const BenchmarkResult& x, const BenchmarkResult& y) {
 std::chrono::high_resolution_clock::duration BenchmarkSuspenderBase::timeSpent;
 std::chrono::high_resolution_clock::duration
     BenchmarkSuspenderBase::suspenderOverhead;
+size_t BenchmarkSuspenderBase::suspensionCount;
 
 void BenchmarkingStateBase::addBenchmarkImpl(
     std::string file, std::string name, BenchmarkFun fun, bool useCounter) {
@@ -958,6 +1129,9 @@ PerfScoped BenchmarkingStateBase::setUpPerfScoped() const {
 template <typename Printer>
 std::pair<std::set<std::string>, std::vector<BenchmarkResult>>
 BenchmarkingStateBase::runBenchmarksWithPrinter(Printer* printer) const {
+  if (FLAGS_bm_verbose) {
+    LOG(INFO) << "Benchmark run starting...";
+  }
   std::lock_guard guard(mutex_);
   BenchmarksToRun toRun = selectBenchmarksToRun(benchmarks_);
   maybeRunWarmUpIteration(toRun);

@@ -6,6 +6,9 @@ executing benchmarks. Currently the framework targets only
 single-threaded testing (though you can internally use fork-join
 parallelism and measure total run time).
 
+Also read `docs/BenchmarkAdaptive.md`, which describes`--bm_mode=adaptive`, an
+easier & quicker way to get reliable timings for your `BENCHMARK`s.
+
 ### Overview
 ***
 

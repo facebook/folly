@@ -99,6 +99,7 @@ struct TimeIterData {
   std::chrono::high_resolution_clock::duration duration;
   unsigned int niter;
   UserCounters userCounters;
+  size_t suspensionCount = 0;
 };
 
 using BenchmarkFun = std::function<TimeIterData(unsigned int)>;
@@ -129,7 +130,16 @@ struct BenchmarkSuspenderBase {
    * Accumulates time spent outside benchmark.
    */
   static std::chrono::high_resolution_clock::duration timeSpent;
+  /**
+   * Overhead per suspension (set once at startup for best-of mode,
+   * left at 0 for adaptive mode which does late correction).
+   */
   static std::chrono::high_resolution_clock::duration suspenderOverhead;
+  /**
+   * Number of suspensions in the current benchmark invocation.
+   * Reset before each benchmark call, used for late overhead correction.
+   */
+  static size_t suspensionCount;
 };
 
 template <typename Clock>
@@ -196,6 +206,7 @@ struct BenchmarkSuspender : BenchmarkSuspenderBase {
   void tally() {
     auto end = Clock::now();
     timeSpent += (end - start) + suspenderOverhead;
+    ++suspensionCount;
     start = end;
   }
 
@@ -244,6 +255,7 @@ class BenchmarkingState : public BenchmarkingStateBase {
   addBenchmark(std::string file, std::string name, Lambda&& lambda) {
     auto execute = [=](unsigned int times) {
       BenchmarkSuspender<Clock>::timeSpent = {};
+      BenchmarkSuspender<Clock>::suspensionCount = 0;
       unsigned int niter;
 
       // CORE MEASUREMENT STARTS
@@ -254,7 +266,8 @@ class BenchmarkingState : public BenchmarkingStateBase {
       return detail::TimeIterData{
           (end - start) - BenchmarkSuspender<Clock>::timeSpent,
           niter,
-          UserCounters{}};
+          UserCounters{},
+          BenchmarkSuspender<Clock>::suspensionCount};
     };
 
     this->addBenchmarkImpl(
@@ -279,6 +292,7 @@ class BenchmarkingState : public BenchmarkingStateBase {
   addBenchmark(std::string file, std::string name, Lambda&& lambda) {
     auto execute = [=](unsigned int times) {
       BenchmarkSuspender<Clock>::timeSpent = {};
+      BenchmarkSuspender<Clock>::suspensionCount = 0;
       unsigned int niter;
 
       // CORE MEASUREMENT STARTS
@@ -290,7 +304,8 @@ class BenchmarkingState : public BenchmarkingStateBase {
       return detail::TimeIterData{
           (end - start) - BenchmarkSuspender<Clock>::timeSpent,
           niter,
-          counters};
+          counters,
+          BenchmarkSuspender<Clock>::suspensionCount};
     };
 
     this->addBenchmarkImpl(

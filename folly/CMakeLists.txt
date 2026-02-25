@@ -89,14 +89,17 @@ folly_add_library(
   EXCLUDE_FROM_MONOLITH
   SRCS
     Benchmark.cpp
+    detail/BenchmarkAdaptive.cpp
   HEADERS
     Benchmark.h
+    detail/BenchmarkAdaptive.h
   DEPS
     folly_detail_perf_scoped
     folly_file_util
     folly_json_dynamic
     folly_map_util
     folly_overload
+    folly_stats_streaming_stats
     folly_string
   EXPORTED_DEPS
     folly_benchmark_util
