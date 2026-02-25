@@ -44,9 +44,11 @@
 
 using namespace std;
 
+// === For benchmark+test combos that gate on `FLAGS_benchmark` ===
+
 FOLLY_GFLAGS_DEFINE_bool(benchmark, false, "Run benchmarks.");
 
-FOLLY_GFLAGS_DEFINE_bool(json, false, "Output in JSON format.");
+// === Mode ===
 
 FOLLY_GFLAGS_DEFINE_string(
     bm_mode,
@@ -57,6 +59,21 @@ FOLLY_GFLAGS_DEFINE_string(
     "is both stable and precise. "
     "Set --bm_max_secs=20-30 for reliable results. "
     "See BenchmarkAdaptive.md.");
+
+// === Benchmark selection ===
+
+FOLLY_GFLAGS_DEFINE_string(
+    bm_regex, "", "Only run benchmarks whose names match this regex.");
+
+FOLLY_GFLAGS_DEFINE_string(
+    bm_file_regex,
+    "",
+    "Only run benchmarks whose source filenames match this regex.");
+
+FOLLY_GFLAGS_DEFINE_bool(
+    bm_list, false, "Print benchmark names and exit without running.");
+
+// === Adaptive: convergence target ===
 
 FOLLY_GFLAGS_DEFINE_double(
     bm_target_percentile,
@@ -76,6 +93,8 @@ FOLLY_GFLAGS_DEFINE_double(
     "Tighter values (e.g. 0.1) need longer --bm_max_secs or a "
     "quieter system.");
 
+// === How long to measure ===
+
 FOLLY_GFLAGS_DEFINE_int32(
     bm_max_secs,
     1,
@@ -86,9 +105,8 @@ FOLLY_GFLAGS_DEFINE_int32(
 FOLLY_GFLAGS_DEFINE_double(
     bm_min_secs,
     0.1,
-    "Adaptive: minimum seconds of measurement time per benchmark "
-    "before it can converge. Ensures enough elapsed time to observe "
-    "system jitter.");
+    "Adaptive: minimum seconds per benchmark before it can converge. "
+    "Ensures enough elapsed time to observe system jitter.");
 
 FOLLY_GFLAGS_DEFINE_uint32(
     bm_min_samples,
@@ -97,90 +115,101 @@ FOLLY_GFLAGS_DEFINE_uint32(
     "Ensures enough data points for stable percentile and CI "
     "estimates.");
 
-FOLLY_GFLAGS_DEFINE_bool(
-    bm_verbose,
-    false,
-    "Log diagnostic details: convergence progress and baseline "
-    "stats (adaptive), measurement phases (best-of).");
+// Best-of mode only:
+
+FOLLY_GFLAGS_DEFINE_int32(
+    bm_min_iters,
+    1,
+    "Best-of: minimum iterations per measurement. The inner loop "
+    "doubles from this until duration exceeds --bm_slice_usec.");
+
+FOLLY_GFLAGS_DEFINE_int64(
+    bm_max_iters, 1 << 30, "Best-of: maximum iterations per measurement.");
+
+FOLLY_GFLAGS_DEFINE_uint32(
+    bm_max_trials,
+    1000,
+    "Best-of: maximum number of measurement trials (epochs). "
+    "The best (minimum-time) trial is reported.");
+
+// === Measurement slice duration ===
 
 FOLLY_GFLAGS_DEFINE_int64(
     bm_slice_usec,
     1000,
-    "Both adaptive and best-of modes take contiguous measurement "
-    "slices of this duration. Values below 1000 risk harness "
-    "interference affecting results.");
+    "Duration in microseconds of each contiguous measurement slice. "
+    "Values below 1000 risk harness interference affecting results.");
 
 FOLLY_GFLAGS_DEFINE_int64(
     bm_min_usec,
     1000,
     "Deprecated: use --bm_slice_usec (same meaning, same units).");
 
+// === Instrumentation & diagnostics (mode-agnostic) ===
+
 FOLLY_GFLAGS_DEFINE_bool(
-    bm_estimate_time,
+    bm_warm_up_iteration,
     false,
-    "Estimate running time by returning the geometric mean of latency values between p25 and p75.");
+    "Run one iteration of each benchmark before measuring, to warm "
+    "caches and trigger lazy initialization. Automatically enabled "
+    "when --bm_perf_args is set.");
 
 #if FOLLY_PERF_IS_SUPPORTED
 FOLLY_GFLAGS_DEFINE_string(
     bm_perf_args,
     "",
-    "Run selected benchmarks while attaching `perf` profiling tool."
-    "Advantage over attaching perf externally is that this skips "
-    "initialization. The first iteration of the benchmark is also "
-    "skipped to allow for all statics to be set up. This requires perf "
-    " to be available on the system. Example: --bm_perf_args=\"record -g\"");
+    "Attach `perf` during measurement (skips the first iteration "
+    "for setup). Example: --bm_perf_args=\"record -g\"");
 #endif
 
 FOLLY_GFLAGS_DEFINE_bool(
-    bm_profile, false, "Run benchmarks with constant number of iterations");
-
-FOLLY_GFLAGS_DEFINE_int64(
-    bm_profile_iters, 1000, "Number of iterations for profiling");
-
-FOLLY_GFLAGS_DEFINE_string(
-    bm_relative_to,
-    "",
-    "Print benchmark results relative to an earlier dump (via --bm_json_verbose)");
-
-FOLLY_GFLAGS_DEFINE_bool(
-    bm_warm_up_iteration,
+    bm_verbose,
     false,
-    "Run one iteration of the benchmarks before measuring. Always true if `bm_perf_args` is passed");
+    "Log diagnostic details: convergence progress and baseline "
+    "stats (adaptive), measurement phases (best-of).");
+
+// === Output & comparison (mode-agnostic) ===
+
+FOLLY_GFLAGS_DEFINE_bool(json, false, "Print results in JSON format.");
 
 FOLLY_GFLAGS_DEFINE_string(
     bm_json_verbose,
     "",
-    "File to write verbose JSON format (for BenchmarkCompare / --bm_relative_to). "
-    "NOTE: this file is written regardless of options --json and --bm_relative_to.");
+    "Write verbose JSON to this file (for BenchmarkCompare or "
+    "--bm_relative_to). Written regardless of --json.");
 
 FOLLY_GFLAGS_DEFINE_string(
-    bm_regex, "", "Only benchmarks whose names match this regex will be run.");
-
-FOLLY_GFLAGS_DEFINE_string(
-    bm_file_regex,
+    bm_relative_to,
     "",
-    "Only benchmarks whose filenames match this regex will be run.");
-
-FOLLY_GFLAGS_DEFINE_int32(
-    bm_min_iters, 1, "Minimum # of iterations we'll try for each benchmark.");
-
-FOLLY_GFLAGS_DEFINE_int64(
-    bm_max_iters,
-    1 << 30,
-    "Maximum # of iterations we'll try for each benchmark.");
+    "Print results relative to a previous JSON dump "
+    "(produced by --bm_json_verbose).");
 
 FOLLY_GFLAGS_DEFINE_uint32(
-    bm_result_width_chars, 76, "Width of results table in characters");
+    bm_result_width_chars, 76, "Width of the results table in characters.");
 
-FOLLY_GFLAGS_DEFINE_uint32(
-    bm_max_trials,
-    1000,
-    "Maximum number of trials (iterations) executed for each benchmark.");
+// === Profiling with constant iterations (best-of mode only) ===
 
 FOLLY_GFLAGS_DEFINE_bool(
-    bm_list,
+    bm_profile,
     false,
-    "Print out list of all benchmark test names without running them.");
+    "Best-of: run each benchmark with a fixed iteration count "
+    "(--bm_profile_iters) for external profiling. Results will be "
+    "jittery -- not for measurement.");
+
+FOLLY_GFLAGS_DEFINE_int64(
+    bm_profile_iters,
+    1000,
+    "Best-of: number of iterations when --bm_profile is set.");
+
+// === Avoid ===
+
+FOLLY_GFLAGS_DEFINE_bool(
+    bm_estimate_time,
+    false,
+    "Best-of: alternative measurement strategy that reports the "
+    "geometric mean of p25-p75 latencies. Slower than best-of mode, "
+    "with unclear benefits. "
+    "Prefer --bm_mode=adaptive for noise-robust measurements.");
 
 namespace folly {
 namespace detail {
