@@ -218,7 +218,8 @@ void AsyncIoUringSocket::connect(
     std::chrono::milliseconds timeout,
     SocketOptionMap const& options,
     const folly::SocketAddress& bindAddr,
-    const std::string& ifName) noexcept {
+    const std::string& ifName,
+    NetworkSocket boundFd) noexcept {
   VLOG(4) << "AsyncIoUringSocket::connect() this=" << this << " to=" << address
           << " fastopen=" << enableTFO_;
   evb_->dcheckIsInEventBaseThread();
@@ -229,11 +230,13 @@ void AsyncIoUringSocket::connect(
     connectSqe_ = std::make_unique<ConnectSqe>(this);
   }
   if (connectSqe_->inFlight()) {
+    fileops::close(boundFd.toFd());
     callback->connectErr(AsyncSocketException(
         AsyncSocketException::NOT_OPEN, "connection in flight", -1));
     return;
   }
   if (fd_ != NetworkSocket{}) {
+    fileops::close(boundFd.toFd());
     callback->connectErr(AsyncSocketException(
         AsyncSocketException::NOT_OPEN, "connection is connected", -1));
     return;
@@ -241,7 +244,22 @@ void AsyncIoUringSocket::connect(
   connectCallback_ = callback;
   peerAddress_ = address;
 
-  setFd(makeConnectSocket(address));
+  if (boundFd != NetworkSocket{}) {
+    struct sockaddr_storage peerAddr{};
+    socklen_t peerLen = sizeof(peerAddr);
+    if (::getpeername(
+            boundFd.toFd(),
+            reinterpret_cast<struct sockaddr*>(&peerAddr),
+            &peerLen) == 0) {
+      fileops::close(boundFd.toFd());
+      callback->connectErr(AsyncSocketException(
+          AsyncSocketException::INVALID_STATE, "boundFd is already connected"));
+      return;
+    }
+    setFd(boundFd);
+  } else {
+    setFd(makeConnectSocket(address));
+  }
 
   {
     auto result =
@@ -267,8 +285,8 @@ void AsyncIoUringSocket::connect(
     return;
   }
 
-  // bind the socket
-  if (bindAddr != anyAddress()) {
+  // bind the socket, unless already provided
+  if (bindAddr != anyAddress() && boundFd == NetworkSocket()) {
     sockaddr_storage addrStorage;
     auto saddr = reinterpret_cast<sockaddr*>(&addrStorage);
 

@@ -70,7 +70,8 @@ class AsyncSocketTransport : public AsyncTransport {
       int timeout = 0,
       SocketOptionMap const& options = emptySocketOptionMap,
       const folly::SocketAddress& bindAddr = anyAddress(),
-      const std::string& ifName = "") noexcept = 0;
+      const std::string& ifName = "",
+      NetworkSocket boundFd = NetworkSocket()) noexcept = 0;
 
   virtual bool hangup() const = 0;
 

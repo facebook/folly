@@ -709,6 +709,176 @@ TEST_P(AsyncIoUringSocketTest, ConnectSuccessStateEstablished) {
   EXPECT_TRUE(isGood);
 }
 
+TEST_P(AsyncIoUringSocketTest, ConnectWithBoundFd) {
+  MAYBE_SKIP();
+
+  struct ConnectCB : AsyncSocket::ConnectCallback {
+    explicit ConnectCB(AsyncIoUringSocket* s) : socket(s) {}
+    void connectSuccess() noexcept override { prom.setValue(socket->good()); }
+    void connectErr(const AsyncSocketException& ex) noexcept override {
+      prom.setException(ex);
+    }
+
+    Promise<bool> prom;
+    AsyncIoUringSocket* socket;
+  };
+
+  int sockfd = ::socket(serverAddress.getFamily(), SOCK_STREAM, 0);
+
+  uint16_t boundPort = 0;
+  for (uint16_t port = 1024; port <= 65535; port++) {
+    struct sockaddr_storage bindStorage = {};
+    socklen_t bindLen;
+    if (serverAddress.getFamily() == AF_INET6) {
+      auto* sa = reinterpret_cast<struct sockaddr_in6*>(&bindStorage);
+      sa->sin6_family = AF_INET6;
+      sa->sin6_port = htons(port);
+      sa->sin6_addr = in6addr_any;
+      bindLen = sizeof(struct sockaddr_in6);
+    } else {
+      auto* sa = reinterpret_cast<struct sockaddr_in*>(&bindStorage);
+      sa->sin_family = AF_INET;
+      sa->sin_port = htons(port);
+      sa->sin_addr.s_addr = INADDR_ANY;
+      bindLen = sizeof(struct sockaddr_in);
+    }
+    if (::bind(
+            sockfd,
+            reinterpret_cast<struct sockaddr*>(&bindStorage),
+            bindLen) == 0) {
+      boundPort = port;
+      break;
+    }
+  }
+  if (boundPort == 0) {
+    GTEST_SKIP() << "Unable to find a free port to bind() to";
+  }
+
+  AsyncIoUringSocket::UniquePtr socket(
+      new AsyncIoUringSocket(base.get(), ioUringSocketOptions()));
+  ConnectCB cb(socket.get());
+  socket->connect(
+      &cb,
+      serverAddress,
+      std::chrono::milliseconds(0),
+      folly::emptySocketOptionMap,
+      folly::AsyncSocketTransport::anyAddress(),
+      std::string(),
+      NetworkSocket(sockfd));
+
+  auto fd =
+      fdPromise.getFuture().within(kTimeout).via(base.get()).getVia(base.get());
+  fdPromise = {};
+  auto server = AsyncSocket::newSocket(base.get(), fd);
+
+  auto isGood =
+      cb.prom.getSemiFuture()
+          .within(kTimeout)
+          .via(base.get())
+          .getVia(base.get());
+  EXPECT_TRUE(isGood);
+
+  SocketAddress localAddr;
+  socket->getLocalAddress(&localAddr);
+  EXPECT_EQ(localAddr.getPort(), boundPort);
+}
+
+TEST_P(AsyncIoUringSocketTest, ConnectWithUnboundFd) {
+  MAYBE_SKIP();
+
+  struct ConnectCB : AsyncSocket::ConnectCallback {
+    explicit ConnectCB(AsyncIoUringSocket* s) : socket(s) {}
+    void connectSuccess() noexcept override { prom.setValue(socket->good()); }
+    void connectErr(const AsyncSocketException& ex) noexcept override {
+      prom.setException(ex);
+    }
+
+    Promise<bool> prom;
+    AsyncIoUringSocket* socket;
+  };
+
+  int sockfd = ::socket(serverAddress.getFamily(), SOCK_STREAM, 0);
+  ASSERT_GE(sockfd, 0);
+
+  AsyncIoUringSocket::UniquePtr socket(
+      new AsyncIoUringSocket(base.get(), ioUringSocketOptions()));
+  ConnectCB cb(socket.get());
+  socket->connect(
+      &cb,
+      serverAddress,
+      std::chrono::milliseconds(0),
+      folly::emptySocketOptionMap,
+      folly::AsyncSocketTransport::anyAddress(),
+      std::string(),
+      NetworkSocket(sockfd));
+
+  auto fd =
+      fdPromise.getFuture().within(kTimeout).via(base.get()).getVia(base.get());
+  fdPromise = {};
+  auto server = AsyncSocket::newSocket(base.get(), fd);
+
+  auto isGood =
+      cb.prom.getSemiFuture()
+          .within(kTimeout)
+          .via(base.get())
+          .getVia(base.get());
+  EXPECT_TRUE(isGood);
+
+  SocketAddress localAddr;
+  socket->getLocalAddress(&localAddr);
+  EXPECT_GT(localAddr.getPort(), 0);
+}
+
+TEST_P(AsyncIoUringSocketTest, ConnectWithAlreadyConnectedFd) {
+  MAYBE_SKIP();
+
+  struct ConnectCB : AsyncSocket::ConnectCallback {
+    void connectSuccess() noexcept override {
+      prom.setValue(makeExpected<AsyncSocketException>(Unit{}));
+    }
+    void connectErr(const AsyncSocketException& ex) noexcept override {
+      prom.setValue(makeUnexpected(ex));
+    }
+
+    Promise<Expected<Unit, AsyncSocketException>> prom;
+  };
+
+  int connectedFd = ::socket(serverAddress.getFamily(), SOCK_STREAM, 0);
+  struct sockaddr_storage ss{};
+  serverAddress.getAddress(&ss);
+  ASSERT_EQ(
+      ::connect(
+          connectedFd, (struct sockaddr*)&ss, serverAddress.getActualSize()),
+      0);
+
+  auto acceptedFd =
+      fdPromise.getFuture().within(kTimeout).via(base.get()).getVia(base.get());
+  fdPromise = {};
+  ::close(acceptedFd.toFd());
+
+  AsyncIoUringSocket::UniquePtr socket(
+      new AsyncIoUringSocket(base.get(), ioUringSocketOptions()));
+  ConnectCB cb;
+  socket->connect(
+      &cb,
+      serverAddress,
+      std::chrono::milliseconds(0),
+      folly::emptySocketOptionMap,
+      folly::AsyncSocketTransport::anyAddress(),
+      std::string(),
+      NetworkSocket(connectedFd));
+
+  auto res =
+      cb.prom.getSemiFuture()
+          .within(kTimeout)
+          .via(base.get())
+          .getVia(base.get());
+  ASSERT_FALSE(res);
+  EXPECT_EQ(res.error().getType(), AsyncSocketException::INVALID_STATE);
+  EXPECT_EQ(fcntl(connectedFd, F_GETFD), -1);
+  EXPECT_EQ(errno, EBADF);
+}
+
 TEST_P(AsyncIoUringSocketTest, ReadCallbackSetDuringConnect) {
   MAYBE_SKIP();
 

@@ -898,7 +898,8 @@ void AsyncSocket::connect(
     int timeout,
     const SocketOptionMap& options,
     const folly::SocketAddress& bindAddr,
-    const std::string& ifName) noexcept {
+    const std::string& ifName,
+    NetworkSocket boundFd) noexcept {
   DestructorGuard dg(this);
   eventBase_->dcheckIsInEventBaseThread();
 
@@ -906,6 +907,7 @@ void AsyncSocket::connect(
 
   // Make sure we're in the uninitialized state
   if (state_ != StateEnum::UNINIT) {
+    netops_->close(boundFd);
     return invalidState(callback);
   }
 
@@ -923,18 +925,33 @@ void AsyncSocket::connect(
   auto saddr = reinterpret_cast<sockaddr*>(&addrStorage);
 
   try {
-    // Create the socket
-    // Technically the first parameter should actually be a protocol family
-    // constant (PF_xxx) rather than an address family (AF_xxx), but the
-    // distinction is mainly just historical.  In pretty much all
-    // implementations the PF_foo and AF_foo constants are identical.
-    fd_ = netops_->socket(address.getFamily(), SOCK_STREAM, 0);
-    if (fd_ == NetworkSocket()) {
-      auto errnoCopy = errno;
-      throw AsyncSocketException(
-          AsyncSocketException::INTERNAL_ERROR,
-          withAddr("failed to create socket"),
-          errnoCopy);
+    if (boundFd != NetworkSocket()) {
+      struct sockaddr_storage peerAddr{};
+      socklen_t peerLen = sizeof(peerAddr);
+      if (netops_->getpeername(
+              boundFd,
+              reinterpret_cast<struct sockaddr*>(&peerAddr),
+              &peerLen) == 0) {
+        netops_->close(boundFd);
+        throw AsyncSocketException(
+            AsyncSocketException::INVALID_STATE,
+            withAddr("boundFd is already connected"));
+      }
+      fd_ = boundFd;
+    } else {
+      // Create the socket
+      // Technically the first parameter should actually be a protocol family
+      // constant (PF_xxx) rather than an address family (AF_xxx), but the
+      // distinction is mainly just historical.  In pretty much all
+      // implementations the PF_foo and AF_foo constants are identical.
+      fd_ = netops_->socket(address.getFamily(), SOCK_STREAM, 0);
+      if (fd_ == NetworkSocket()) {
+        auto errnoCopy = errno;
+        throw AsyncSocketException(
+            AsyncSocketException::INTERNAL_ERROR,
+            withAddr("failed to create socket"),
+            errnoCopy);
+      }
     }
 
     disableTransparentFunctions(fd_, noTransparentTls_, noTSocks_);
@@ -1002,8 +1019,8 @@ void AsyncSocket::connect(
     (void)ifName;
 #endif
 
-    // bind the socket
-    if (bindAddr != anyAddress()) {
+    // bind the socket, unless already provided
+    if (bindAddr != anyAddress() && boundFd == NetworkSocket()) {
       int one = 1;
 #if defined(IP_BIND_ADDRESS_NO_PORT) && !FOLLY_MOBILE && !defined(_WIN32) && \
     !defined(__APPLE__)

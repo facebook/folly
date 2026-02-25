@@ -89,7 +89,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
       SocketOptionMap const& options = emptySocketOptionMap,
       const SocketAddress& bindAddr = anyAddress(),
-      const std::string& ifName = std::string()) noexcept;
+      const std::string& ifName = std::string(),
+      NetworkSocket boundFd = NetworkSocket()) noexcept;
 
   void connect(
       ConnectCallback* callback,
@@ -97,14 +98,16 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       int timeout,
       SocketOptionMap const& options,
       const SocketAddress& bindAddr,
-      const std::string& ifName) noexcept override {
+      const std::string& ifName,
+      NetworkSocket boundFd) noexcept override {
     connect(
         callback,
         address,
         std::chrono::milliseconds(timeout),
         options,
         bindAddr,
-        ifName);
+        ifName,
+        boundFd);
   }
 
   std::chrono::nanoseconds getConnectTime() const {

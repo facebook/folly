@@ -526,6 +526,115 @@ TEST_P(AsyncSocketTest, Connect) {
       socket->getConnectionEstablishTime().value());
 }
 
+TEST_P(AsyncSocketTest, ConnectWithBoundFd) {
+  TestServer server;
+  EventBase& evb = getEventBase();
+  const auto& serverAddr = server.getAddress();
+  int sockfd = ::socket(serverAddr.getFamily(), SOCK_STREAM, 0);
+
+  uint16_t boundPort = 0;
+  for (uint16_t port = 1024; port <= 65535; port++) {
+    struct sockaddr_storage bindStorage{};
+    socklen_t bindLen;
+    if (serverAddr.getFamily() == AF_INET6) {
+      auto* sa = reinterpret_cast<struct sockaddr_in6*>(&bindStorage);
+      sa->sin6_family = AF_INET6;
+      sa->sin6_port = htons(port);
+      sa->sin6_addr = in6addr_any;
+      bindLen = sizeof(struct sockaddr_in6);
+    } else {
+      auto* sa = reinterpret_cast<struct sockaddr_in*>(&bindStorage);
+      sa->sin_family = AF_INET;
+      sa->sin_port = htons(port);
+      sa->sin_addr.s_addr = INADDR_ANY;
+      bindLen = sizeof(struct sockaddr_in);
+    }
+    if (::bind(sockfd, (struct sockaddr*)&bindStorage, bindLen) == 0) {
+      boundPort = port;
+      break;
+    }
+  }
+  if (boundPort == 0) {
+    GTEST_SKIP() << "Unable to find a free port to bind() to";
+  }
+
+  ConnCallback cb;
+  auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+  socket->connect(
+      &cb,
+      serverAddr,
+      30,
+      folly::emptySocketOptionMap,
+      folly::AsyncSocketTransport::anyAddress(),
+      "",
+      folly::NetworkSocket(sockfd));
+
+  evb.loop();
+
+  ASSERT_EQ(cb.state, STATE_SUCCEEDED);
+  folly::SocketAddress localAddr;
+  socket->getLocalAddress(&localAddr);
+  EXPECT_EQ(localAddr.getPort(), boundPort);
+}
+
+TEST_P(AsyncSocketTest, ConnectWithUnboundFd) {
+  TestServer server;
+  EventBase& evb = getEventBase();
+  const auto& serverAddr = server.getAddress();
+  int sockfd = ::socket(serverAddr.getFamily(), SOCK_STREAM, 0);
+  ASSERT_GE(sockfd, 0);
+
+  ConnCallback cb;
+  auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+  socket->connect(
+      &cb,
+      serverAddr,
+      30,
+      folly::emptySocketOptionMap,
+      folly::AsyncSocketTransport::anyAddress(),
+      "",
+      folly::NetworkSocket(sockfd));
+
+  evb.loop();
+
+  ASSERT_EQ(cb.state, STATE_SUCCEEDED);
+  folly::SocketAddress localAddr;
+  socket->getLocalAddress(&localAddr);
+  EXPECT_GT(localAddr.getPort(), 0);
+}
+
+TEST_P(AsyncSocketTest, ConnectWithAlreadyConnectedFd) {
+  TestServer server;
+  EventBase& evb = getEventBase();
+  const auto& serverAddr = server.getAddress();
+
+  int connectedFd = ::socket(serverAddr.getFamily(), SOCK_STREAM, 0);
+  ASSERT_GE(connectedFd, 0);
+  struct sockaddr_storage ss{};
+  serverAddr.getAddress(&ss);
+  ASSERT_EQ(
+      ::connect(connectedFd, (struct sockaddr*)&ss, serverAddr.getActualSize()),
+      0);
+
+  ConnCallback cb;
+  auto socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+  socket->connect(
+      &cb,
+      serverAddr,
+      30,
+      folly::emptySocketOptionMap,
+      folly::AsyncSocketTransport::anyAddress(),
+      "",
+      folly::NetworkSocket(connectedFd));
+
+  evb.loop();
+
+  ASSERT_EQ(cb.state, STATE_FAILED);
+  EXPECT_EQ(cb.exception.getType(), AsyncSocketException::INVALID_STATE);
+  EXPECT_EQ(fcntl(connectedFd, F_GETFD), -1);
+  EXPECT_EQ(errno, EBADF);
+}
+
 /**
  * Test connecting to a server, then move the socket.¸
  */
