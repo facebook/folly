@@ -157,9 +157,9 @@ template <typename Ex, typename... Args, typename Str>
 terminate_with_fmt_format_(Str str, Args&&... args) noexcept {
   auto what = [&] { return fmt::format(str, static_cast<Args&&>(args)...); };
   if constexpr (std::is_constructible_v<Ex, std::string&&>) {
-    throw_exception<Ex>(what());
+    terminate_with<Ex>(what());
   } else {
-    throw_exception<Ex>(what().c_str());
+    terminate_with<Ex>(what().c_str());
   }
 }
 
