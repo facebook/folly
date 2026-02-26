@@ -17,7 +17,6 @@
 #pragma once
 
 #include <folly/io/async/AsyncIoUringSocket.h>
-#include <folly/io/async/AsyncSocketTransport.h>
 #include <folly/io/async/Liburing.h>
 
 namespace folly {
@@ -65,12 +64,15 @@ class AsyncIoUringSocketFactory {
   }
 
   /**
-   * Bind an existing async transport socket to a source port for partial
-   * Toeplitz hash collisions. This should be called after socket creation but
-   * before connect().
+   * Create a socket bound to a source port that hashes to the ZC-RX queue.
+   * Iterates ports in [1024, 32768) to find one that hashes to the target
+   * queue and is available for binding. The returned socket can be passed as
+   * the boundFd parameter to connect().
+   *
+   * Returns an invalid NetworkSocket on failure.
    */
-  static bool bindSocketForZcRx(
-      AsyncSocketTransport& transport,
+  static NetworkSocket createBoundSocketForZcRx(
+      folly::EventBase* evb,
       const folly::IPAddress& destAddr,
       uint16_t destPort);
 };

@@ -85,7 +85,11 @@ class IoUringBackend : public EventBaseBackendBase {
   bool supportAsyncSocket() { return options_.nativeAsyncSocketSupport; }
 
   int computeSrcPortForQueueId(
-      const folly::IPAddress& destAddr, uint16_t destPort);
+      const folly::IPAddress& destAddr,
+      uint16_t destPort,
+      uint16_t startPort,
+      uint16_t minPort,
+      uint16_t maxPort);
 
   // from EventBaseBackendBase
   int getPollableFd() const override { return ioRing_.ring_fd; }

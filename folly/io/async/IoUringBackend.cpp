@@ -1864,13 +1864,23 @@ void IoUringBackend::queueRecvZc(
 }
 
 int IoUringBackend::computeSrcPortForQueueId(
-    const folly::IPAddress& destAddr, uint16_t destPort) {
+    const folly::IPAddress& destAddr,
+    uint16_t destPort,
+    uint16_t startPort,
+    uint16_t minPort,
+    uint16_t maxPort) {
   if (!options_.srcPortQueueId || napiId_ < 0) {
     return -1;
   }
 
   return options_.srcPortQueueId(
-      destAddr, destPort, options_.zcRxQueueId, options_.zcRxIfname.c_str());
+      destAddr,
+      destPort,
+      options_.zcRxQueueId,
+      options_.zcRxIfname.c_str(),
+      startPort,
+      minPort,
+      maxPort);
 }
 
 void IoUringBackend::processFileOp(IoSqe* sqe, int res) noexcept {

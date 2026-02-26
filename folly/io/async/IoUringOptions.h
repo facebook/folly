@@ -40,7 +40,10 @@ using SrcPortForQueueIdCallback = folly::Function<int(
     const folly::IPAddress& destAddr,
     uint16_t destPort,
     int targetQueueId,
-    const char* ifname)>;
+    const char* ifname,
+    uint16_t startPort,
+    uint16_t minPort,
+    uint16_t maxPort)>;
 
 struct IoUringOptions {
   enum Flags {
