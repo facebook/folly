@@ -431,10 +431,10 @@ class AtomicHashMap {
   static const uintptr_t kLockedPtr_ = 0x88ULL << 48; // invalid pointer
 
   struct SimpleRetT {
-    uint32_t i;
     size_t j;
+    uint32_t i;
     bool success;
-    SimpleRetT(uint32_t ii, size_t jj, bool s) : i(ii), j(jj), success(s) {}
+    SimpleRetT(uint32_t ii, size_t jj, bool s) : j(jj), i(ii), success(s) {}
     SimpleRetT() = default;
   };
 
