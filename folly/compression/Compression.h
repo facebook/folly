@@ -538,6 +538,14 @@ bool hasCodec(CodecType type);
 bool hasStreamCodec(CodecType type);
 
 /**
+ * Convert a folly abstract compression level (COMPRESSION_LEVEL_FASTEST,
+ * COMPRESSION_LEVEL_DEFAULT, COMPRESSION_LEVEL_BEST) to a raw ZSTD
+ * compression level (1-22). Passes through raw levels in [1, ZSTD_maxCLevel()]
+ * unchanged. Throws std::invalid_argument for out-of-range levels.
+ */
+int zstdConvertLevel(int level);
+
+/**
  * Added here so users of folly can figure out whether the header
  * folly/compression/CompressionContextPoolSingletons.h is present, and
  * therefore whether it can be included.

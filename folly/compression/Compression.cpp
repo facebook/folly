@@ -1391,6 +1391,8 @@ bool LZMA2StreamCodec::doUncompressStream(
 
 #if FOLLY_HAVE_LIBZSTD
 
+} // namespace
+
 int zstdConvertLevel(int level) {
   switch (level) {
     case COMPRESSION_LEVEL_FASTEST:
@@ -1406,6 +1408,8 @@ int zstdConvertLevel(int level) {
   }
   return level;
 }
+
+namespace {
 
 int zstdFastConvertLevel(int level) {
   switch (level) {
