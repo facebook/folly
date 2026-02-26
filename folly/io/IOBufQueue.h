@@ -630,9 +630,22 @@ class IOBufQueue {
   IOBufQueue(IOBufQueue&&) noexcept;
   IOBufQueue& operator=(IOBufQueue&&) noexcept;
 
+  /**
+   * @brief Set a custom IOBufFactory for buffer allocations.
+   * @methodset Configuration
+   *
+   * When set, all internal buffer allocations will use this factory
+   * instead of IOBuf::create. The caller is responsible for ensuring
+   * the factory outlives the IOBufQueue.
+   */
+  void setIOBufFactory(IOBufFactory* factory) { factory_ = factory; }
+
   static constexpr size_t kMaxPackCopy = 4096;
 
  private:
+  std::unique_ptr<folly::IOBuf> createBuf(std::size_t capacity) const {
+    return factory_ ? (*factory_)(capacity) : folly::IOBuf::create(capacity);
+  }
   std::unique_ptr<folly::IOBuf> split(size_t n, bool throwOnUnderflow);
 
   static const size_t kChainLengthNotCached = (size_t)-1;
@@ -642,10 +655,6 @@ class IOBufQueue {
 
   Options options_;
 
-  // NOTE that chainLength_ is still updated even if !options_.cacheChainLength
-  // because doing it unchecked in postallocate() is faster (no (mis)predicted
-  // branch)
-  mutable size_t chainLength_{0};
   /**
    * Everything that has been appended but not yet discarded or moved out
    * Note: anything that needs to operate on a tail should either call
@@ -653,9 +662,16 @@ class IOBufQueue {
    */
   std::unique_ptr<folly::IOBuf> head_;
 
+  IOBufFactory* factory_{nullptr};
+
   mutable uint8_t* tailStart_{nullptr};
   WritableRangeCacheData* cachePtr_{nullptr};
   WritableRangeCacheData localCache_;
+
+  // NOTE that chainLength_ is still updated even if !options_.cacheChainLength
+  // because doing it unchecked in postallocate() is faster (no (mis)predicted
+  // branch)
+  mutable size_t chainLength_{0};
 
   void dcheckCacheIntegrity() const noexcept {
     // Tail start should always be less than tail end.

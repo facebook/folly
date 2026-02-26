@@ -86,12 +86,13 @@ IOBufQueue::IOBufQueue(IOBufQueue&& other) noexcept
   other.clearWritableRangeCache();
 
   head_ = std::move(other.head_);
-  chainLength_ = std::exchange(other.chainLength_, 0);
+  factory_ = std::exchange(other.factory_, nullptr);
 
   tailStart_ = std::exchange(other.tailStart_, nullptr);
   localCache_.cachedRange =
       std::exchange(other.localCache_.cachedRange, {nullptr, nullptr});
   localCache_.attached = true;
+  chainLength_ = std::exchange(other.chainLength_, 0);
 }
 
 IOBufQueue& IOBufQueue::operator=(IOBufQueue&& other) noexcept {
@@ -101,12 +102,13 @@ IOBufQueue& IOBufQueue::operator=(IOBufQueue&& other) noexcept {
 
     options_ = other.options_;
     head_ = std::move(other.head_);
-    chainLength_ = std::exchange(other.chainLength_, 0);
+    factory_ = std::exchange(other.factory_, nullptr);
 
     tailStart_ = std::exchange(other.tailStart_, nullptr);
     localCache_.cachedRange =
         std::exchange(other.localCache_.cachedRange, {nullptr, nullptr});
     localCache_.attached = true;
+    chainLength_ = std::exchange(other.chainLength_, 0);
   }
   return *this;
 }
@@ -245,8 +247,7 @@ void IOBufQueue::append(const void* buf, size_t len) {
         (head_->prev()->tailroom() == 0)) {
       appendToChain(
           head_,
-          IOBuf::create(
-              std::max(MIN_ALLOC_SIZE, std::min(len, MAX_ALLOC_SIZE))),
+          createBuf(std::max(MIN_ALLOC_SIZE, std::min(len, MAX_ALLOC_SIZE))),
           false);
     }
     IOBuf* last = head_->prev();
@@ -275,7 +276,7 @@ pair<void*, std::size_t> IOBufQueue::preallocateSlow(
   // Avoid grabbing update guard, since we're manually setting the cache ptrs.
   flushCache();
   // Allocate a new buffer of the requested max size.
-  unique_ptr<IOBuf> newBuf(IOBuf::create(std::max(min, newAllocationSize)));
+  unique_ptr<IOBuf> newBuf(createBuf(std::max(min, newAllocationSize)));
 
   tailStart_ = newBuf->writableTail();
   cachePtr_->cachedRange = std::pair<uint8_t*, uint8_t*>(
@@ -337,7 +338,7 @@ unique_ptr<IOBuf> IOBufQueue::split(size_t n, bool throwOnUnderflow) {
     }
   }
   if (FOLLY_UNLIKELY(result == nullptr)) {
-    return IOBuf::create(0);
+    return createBuf(0);
   }
   return result;
 }
