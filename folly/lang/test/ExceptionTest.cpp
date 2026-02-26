@@ -173,6 +173,64 @@ TEST_F(ExceptionTest, throw_exception_variadic) {
   }
 }
 
+struct non_copyable {
+  std::string s = "hello world";
+
+  non_copyable() = default;
+  non_copyable(non_copyable const&) = delete;
+  non_copyable& operator=(non_copyable const&) = delete;
+  non_copyable(non_copyable&&) = default;
+  non_copyable& operator=(non_copyable&&) = default;
+};
+
+template <>
+struct fmt::formatter<non_copyable> {
+  constexpr auto parse(format_parse_context& ctx) -> decltype(ctx.begin()) {
+    return ctx.begin();
+  }
+  auto format(const non_copyable& val, format_context& ctx) const
+      -> decltype(ctx.out()) {
+    return fmt::format_to(ctx.out(), "{}", val.s);
+  }
+};
+
+TEST_F(ExceptionTest, throw_exception_fmt_format_string) {
+  try {
+    folly::throw_exception_fmt_format<std::runtime_error>(
+        "{}, {}, {}", non_copyable{}, 42, "foo");
+  } catch (std::runtime_error const& ex) {
+    EXPECT_STREQ("hello world, 42, foo", ex.what());
+  }
+  try {
+    non_copyable nc;
+    int i = 42;
+    auto& foo = "foo";
+    folly::throw_exception_fmt_format<std::runtime_error>(
+        "{}, {}, {}", nc, i, foo);
+  } catch (std::runtime_error const& ex) {
+    EXPECT_STREQ("hello world, 42, foo", ex.what());
+  }
+
+  try {
+    const non_copyable nc;
+    const int i = 42;
+    const auto& foo = "foo";
+    folly::throw_exception_fmt_format<std::runtime_error>(
+        "{}, {}, {}", nc, i, foo);
+  } catch (std::runtime_error const& ex) {
+    EXPECT_STREQ("hello world, 42, foo", ex.what());
+  }
+  try {
+    const non_copyable nc;
+    const int i = 42;
+    const auto& foo = "foo";
+    folly::throw_exception_fmt_format<std::runtime_error>(
+        "{}, {}, {}", std::move(nc), std::move(i), std::move(foo));
+  } catch (std::runtime_error const& ex) {
+    EXPECT_STREQ("hello world, 42, foo", ex.what());
+  }
+}
+
 TEST_F(ExceptionTest, throw_exception_fmt_format_c_str) {
   try {
     folly::throw_exception_fmt_format<MyFmtFormatCStrException>(

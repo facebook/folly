@@ -92,8 +92,10 @@ template <typename R>
 using throw_exception_arg_t =
     typename throw_exception_arg_<R>::template apply<R>;
 template <typename R>
-using throw_exception_arg_fmt_t =
-    remove_cvref_t<typename throw_exception_arg_<R>::template apply<R>>;
+using throw_exception_arg_fmt_t = conditional_t<
+    std::is_rvalue_reference_v<throw_exception_arg_t<R>>,
+    std::remove_reference_t<throw_exception_arg_t<R>>,
+    throw_exception_arg_t<R>>;
 
 template <typename Ex, typename... Args>
 [[noreturn, FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE void throw_exception_(
@@ -143,7 +145,7 @@ namespace detail {
 
 template <typename Ex, typename... Args, typename Str>
 [[noreturn, FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE void
-throw_exception_fmt_format_(Str str, Args&&... args) {
+throw_exception_fmt_format_(Str str, Args... args) {
   auto what = [&] { return fmt::format(str, static_cast<Args&&>(args)...); };
   if constexpr (std::is_constructible_v<Ex, std::string&&>) {
     throw_exception<Ex>(what());
@@ -154,7 +156,7 @@ throw_exception_fmt_format_(Str str, Args&&... args) {
 
 template <typename Ex, typename... Args, typename Str>
 [[noreturn, FOLLY_ATTR_GNU_COLD]] FOLLY_NOINLINE void
-terminate_with_fmt_format_(Str str, Args&&... args) noexcept {
+terminate_with_fmt_format_(Str str, Args... args) noexcept {
   auto what = [&] { return fmt::format(str, static_cast<Args&&>(args)...); };
   if constexpr (std::is_constructible_v<Ex, std::string&&>) {
     terminate_with<Ex>(what());
