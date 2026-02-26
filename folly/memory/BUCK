@@ -235,6 +235,16 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "iobuf_arena_factory",
+    headers = ["IOBufArenaFactory.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/io:iobuf",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "shared_from_this_ptr",
     headers = ["shared_from_this_ptr.h"],
     use_raw_headers = True,

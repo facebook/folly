@@ -162,3 +162,17 @@ fbcode_target(
         "//folly/portability:gtest",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "iobuf_arena_factory_test",
+    srcs = ["IOBufArenaFactoryTest.cpp"],
+    headers = [],
+    allocator = "jemalloc",
+    deps = [
+        "//folly/memory:io_uring_arena",
+        "//folly/memory:iobuf_arena_factory",
+        "//folly/memory:jemalloc_huge_page_allocator",
+        "//folly/portability:gtest",
+    ],
+)

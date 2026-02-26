@@ -2454,6 +2454,8 @@ Container IOBuf::to() const {
   return result;
 }
 
+using IOBufFactory = Function<std::unique_ptr<IOBuf>(size_t capacity)>;
+
 } // namespace folly
 
 FOLLY_POP_WARNING

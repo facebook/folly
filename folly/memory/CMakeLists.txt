@@ -49,6 +49,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME iobuf_arena_factory
+  HEADERS
+    IOBufArenaFactory.h
+  EXPORTED_DEPS
+    folly_io_iobuf
+)
+
+folly_add_library(
   NAME jemalloc_huge_page_allocator
   SRCS
     JemallocHugePageAllocator.cpp
