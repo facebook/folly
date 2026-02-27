@@ -18,8 +18,8 @@ non_fbcode_target(
         "-DLZ4_HC_STATIC_LINKING_ONLY",
         "-DLZ4F_STATIC_LINKING_ONLY",
     ],
+    fbcode_deps = ["fbsource//third-party/glog:glog"],
     fbcode_external_deps = [
-        "glog",
         "snappy",
         ("bzip2", None, "bz2"),
         ("xz", None, "lzma"),

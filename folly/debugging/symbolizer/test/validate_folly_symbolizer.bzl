@@ -104,9 +104,7 @@ def customized_unittest(
                                 "//folly/portability:unistd",
                                 "//folly/synchronization:baton",
                                 "//folly/test:test_utils",
-                            ],
-                            external_deps = [
-                                "glog",
+                                "fbsource//third-party/glog:glog",
                             ],
                         )
 

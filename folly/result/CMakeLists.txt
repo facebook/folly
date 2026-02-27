@@ -119,8 +119,6 @@ folly_add_library(
     folly_portability_gtest_prod
     folly_result_rich_error_base
     folly_utility
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
