@@ -65,6 +65,11 @@ class result_promise_return {
   }
 };
 
+// (Defined in epitaph.cpp) Captures the current call stack and wraps the
+// current exception with a stack epitaph, assigning the result into `eos`.
+// Must be called from within a catch handler.
+void stack_epitaph_for_unhandled_exception(error_or_stopped& eos) noexcept;
+
 template <typename T>
 struct result_promise_base {
   result<T>* value_ = nullptr;
@@ -78,10 +83,18 @@ struct result_promise_base {
 
   std::suspend_never initial_suspend() const noexcept { return {}; }
   std::suspend_never final_suspend() const noexcept { return {}; }
-  void unhandled_exception() noexcept {
+  // Always-inline so we don't have to skip this stack frame.  Tradeoff:
+  // `coroFn` shows as having this line # due to DWARF limitations.
+  //
+  // Future: One way to improve this would be to `FOLLY_NOINLINE` this, and
+  // skip the `unhandled_exception` frame iff it's not optimized away.
+  FOLLY_ALWAYS_INLINE void unhandled_exception() noexcept {
     // Directly set `eos_` -- using `result` assignment would try to destroy
     // uninitialized `value_` (UB since we start in "has value" sigil state).
-    value_->eos_ = error_or_stopped::from_current_exception();
+    //
+    // Wrap the exception with a stack-trace epitaph so that the throw
+    // location is visible when the error is logged.
+    stack_epitaph_for_unhandled_exception(value_->eos_);
   }
 
   result_promise_return<T> get_return_object() noexcept { return *this; }

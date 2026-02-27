@@ -330,6 +330,20 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
+    name = "stack_epitaph_test",
+    srcs = ["stack_epitaph_test.cpp"],
+    deps = [
+        ":common",
+        "//folly:benchmark",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/result:coro",
+        "//folly/result:epitaph",
+        "//folly/result:gtest_helpers",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
     name = "try_test",
     srcs = ["try_test.cpp"],
     deps = [

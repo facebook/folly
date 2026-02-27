@@ -50,6 +50,7 @@ folly_add_library(
     result_promise.h
   EXPORTED_DEPS
     folly_coro_coroutine
+    folly_result_epitaph
     folly_result_result
 )
 

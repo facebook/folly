@@ -37,10 +37,18 @@ fb_dirsync_cpp_library(
     headers = ["epitaph.h"],
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
+    deps = [
+        "//folly:demangle",
+        "//folly/debugging/symbolizer:symbolizer",
+        "//folly/portability:config",
+    ],
     exported_deps = [
         ":result",
         ":rich_error",
+        ":rich_error_base",
+        "//folly:cpp_attributes",
         "//folly:portability",
+        "//folly/debugging/symbolizer:stack_trace",
         "//folly/lang:safe_assert",
         "//folly/result:rich_msg",
     ],

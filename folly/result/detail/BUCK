@@ -54,6 +54,7 @@ non_fbcode_target(
     raw_headers = ["result_promise.h"],
     exported_deps = [
         "//xplat/folly/coro:coroutine",
+        "//xplat/folly/result:epitaph",
         "//xplat/folly/result:result",
     ],
 )
@@ -64,6 +65,7 @@ fbcode_target(
     headers = ["result_promise.h"],
     exported_deps = [
         "//folly/coro:coroutine",
+        "//folly/result:epitaph",
         "//folly/result:result",
     ],
 )

@@ -44,11 +44,18 @@ folly_add_library(
     epitaph.cpp
   HEADERS
     epitaph.h
+  DEPS
+    folly_debugging_symbolizer_symbolizer
+    folly_demangle
+    folly_portability_config
   EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_debugging_symbolizer_stack_trace
     folly_lang_safe_assert
     folly_portability
     folly_result_result
     folly_result_rich_error
+    folly_result_rich_error_base
     folly_result_rich_msg
 )
 

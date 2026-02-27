@@ -45,7 +45,8 @@ namespace folly {
 class rich_error_code_query;
 
 namespace detail {
-class epitaph_non_value;
+template <typename>
+class epitaph_impl;
 template <typename>
 class immortal_rich_error_storage;
 template <typename>
@@ -265,7 +266,8 @@ class rich_error_base {
     return underlying_ptr_;
   }
   class underlying_error_private_t {
-    friend class detail::epitaph_non_value; // Sets `underlying_ptr_`
+    template <typename>
+    friend class detail::epitaph_impl; // Sets `underlying_ptr_`
     // Needs mutable access for `get_mutable_exception`.
     template <typename, typename>
     friend class detail::rich_exception_ptr_impl;

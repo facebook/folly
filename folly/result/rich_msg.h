@@ -65,6 +65,8 @@ class format_string_and_location {
       const char* str, source_location loc = source_location::current())
       : loc_{std::move(loc)}, fmt_str_{str}, lit_str_{str} {}
 
+  constexpr source_location location() const { return loc_; }
+
   constexpr exception_shared_string as_exception_shared_string(Args const&...)
     requires(sizeof...(Args) == 0)
   {
@@ -133,6 +135,9 @@ class rich_msg {
 
   constexpr const source_location& location() const noexcept { return loc_; }
   constexpr const char* message() const noexcept { return msg_.what(); }
+  exception_shared_string&& shared_string() && noexcept {
+    return std::move(msg_);
+  }
 };
 
 } // namespace folly

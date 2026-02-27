@@ -16,7 +16,13 @@
 
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+
+#include <folly/CppAttributes.h>
 #include <folly/Portability.h> // FOLLY_HAS_RESULT
+#include <folly/debugging/symbolizer/StackTrace.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/result/result.h>
 #include <folly/result/rich_error.h>
@@ -29,31 +35,113 @@ namespace folly {
 
 namespace detail {
 
-// `detail::epitaph_non_value` is the error type that wraps user errors to
-// capture their provenance.
+// -- Location storage policies for epitaph_impl --
+
+// Source location (the regular epitaph case).
+struct epitaph_source_location {
+  static constexpr bool has_stack = false;
+  source_location loc_{};
+
+  epitaph_source_location() = default;
+  explicit epitaph_source_location(source_location loc)
+      : loc_{std::move(loc)} {} // NOLINT(performance-move-const-arg)
+};
+
+// Options for stack_epitaph's inline frame storage.
 //
-// NOTE: We don't forward any `rich_error_base` APIs to the underlying error,
-// since this would cause weird duplication in the formatted output, and ...
-// in any case, the user can only observe the wrapping error instance via the
-// "low-visibility" API of `get_outer_exception`.
+// Usage:
+//   stack_epitaph(eos)                          // default (256 max, 17 inline)
+//   stack_epitaph<{.max_frames = 64}>(eos)      // custom
+//   stack_epitaph<{.max_frames = 64, .inline_frames = 8}>(eos)  // spill
 //
-// IMPORTANT: We should NEVER support adding codes via "transparent" epitaphs.
+// When `inline_frames < max_frames`, frames beyond the inline capacity
+// spill to a ref-counted heap allocation, keeping the inline object small.
+struct stack_epitaph_opts {
+  size_t max_frames = 256;
+  // Frames stored inline.  When `inline_frames < max_frames`, excess
+  // frames spill to a ref-counted heap allocation.
+  size_t inline_frames = 17;
+  // Capture buffer for `getStackTrace()`: `max_frames` visible frames
+  // plus 2 internal frames (`getStackTrace` + caller) that are skipped.
+  constexpr size_t buffer_size() const { return max_frames + 2; }
+};
+
+// Inline stack frames captured via getStackTrace.  Zero-terminated.
+// When `Opt.inline_frames < Opt.max_frames`, frames that exceed the
+// inline capacity are stored in a ref-counted heap allocation.  The
+// initial frames always go inline; only the tail spills to the heap.
+template <stack_epitaph_opts Opt>
+struct epitaph_stack_location {
+  static constexpr bool has_stack = true;
+  static constexpr size_t kInline = std::min(Opt.inline_frames, Opt.max_frames);
+  static constexpr bool kFramesMayUseHeap = kInline < Opt.max_frames;
+
+  // Zero-terminated: frames_[i] == 0 marks end.  Valid IPs are never 0.
+  uintptr_t frames_[kInline + 1]{};
+
+  // Heap storage for the tail beyond inline capacity.  Zero-terminated.
+  struct no_heap_ {};
+  [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]]
+  std::conditional_t<kFramesMayUseHeap, std::shared_ptr<uintptr_t[]>, no_heap_>
+      heap_{};
+
+  epitaph_stack_location() = default;
+  epitaph_stack_location(const uintptr_t* addrs, size_t count) {
+    auto n = std::min(count, Opt.max_frames);
+    auto inline_n = std::min(n, kInline);
+    std::copy(addrs, addrs + inline_n, frames_);
+    frames_[inline_n] = 0;
+    if constexpr (kFramesMayUseHeap) {
+      if (n > kInline) {
+        auto heap_n = n - kInline;
+        heap_ = std::shared_ptr<uintptr_t[]>(new uintptr_t[heap_n + 1]());
+        std::copy(addrs + kInline, addrs + n, heap_.get());
+        heap_[heap_n] = 0;
+      }
+    }
+  }
+};
+
+// Symbolize and format a zero-terminated stack frame array.
+// `heap_frames` is the spilled tail (nullptr if all frames are inline).
+void format_epitaph_stack(
+    fmt::appender& out,
+    const char* msg,
+    const uintptr_t* frames,
+    const uintptr_t* heap_frames = nullptr);
+
+// Common epitaph implementation parameterized on location storage.
 //
-// The rationale is the same as why we work hard to expose only the underlying
-// error's dynamic type (e.g. `get_rich_error` returns `nullptr` when given a
-// epitaph wrapper around a non-rich error).
+//   `epitaph_source_location`: regular epitaph (message + `source_location`)
+//   `epitaph_stack_location<Opt>`: stack epitaph (message + inline frames)
 //
-// Specifically, codes often direct program control flow, whereas epitaphs
-// are inherently discardable.  There is simply no way for us to guarantee that
-// codes added via the "epitaphs" mechanism would not be accidentally
-// discarded, be it by throwing, by using `std::exception_ptr`, or by
-// deliberately accessing the underlying error.
-class epitaph_non_value : public rich_error_base {
+// IMPORTANT: Epitaphs should NEVER support adding codes.  Codes often direct
+// program control flow, whereas epitaphs are inherently discardable.  There
+// is no way to guarantee that codes added via epitaphs would not be
+// accidentally discarded (by throwing, by using `exception_ptr`, or by
+// deliberately accessing the underlying error).
+template <typename Location>
+class epitaph_impl : public rich_error_base {
  private:
   rich_exception_ptr next_;
-  rich_msg msg_;
+  exception_shared_string msg_;
+  [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] Location location_;
 
-  void set_underlying_error_on_copy_from(const epitaph_non_value& other) {
+  void setup_underlying() {
+    // An empty `next_` suggests user error — normal `result` usage never
+    // creates empty exception pointers.
+    FOLLY_SAFE_DCHECK(next_ != rich_exception_ptr{});
+    if (auto* rex = next_.get_outer_exception<rich_error_base>()) {
+      underlying_error_private_t priv;
+      if (auto* underlying = rex->mutable_underlying_error(priv)) {
+        set_underlying_error(priv, underlying);
+        return;
+      }
+    }
+    set_underlying_error(underlying_error_private_t{}, &next_);
+  }
+
+  void setup_underlying_on_copy(const epitaph_impl& other) {
     FOLLY_SAFE_DCHECK(other.underlying_error());
     if (other.underlying_error() == &other.next_) {
       set_underlying_error(underlying_error_private_t{}, &next_);
@@ -77,47 +165,90 @@ class epitaph_non_value : public rich_error_base {
   }
 
  public:
-  ~epitaph_non_value() override = default;
+  ~epitaph_impl() override = default;
   // IMPORTANT: Custom ctors are required because `underlying_ptr_` points into
   // `this` or data-owned-by-`this`, and thus must be relocated each time.
-  epitaph_non_value(const epitaph_non_value& other)
-      : next_{other.next_}, msg_{other.msg_} {
-    set_underlying_error_on_copy_from(other);
+  epitaph_impl(const epitaph_impl& other)
+      : next_{other.next_}, msg_{other.msg_}, location_{other.location_} {
+    setup_underlying_on_copy(other);
   }
-  epitaph_non_value(epitaph_non_value&& other) noexcept
-      : next_{std::move(other.next_)}, msg_{std::move(other.msg_)} {
-    set_underlying_error_on_copy_from(other);
+  epitaph_impl(epitaph_impl&& other) noexcept
+      : next_{std::move(other.next_)},
+        msg_{std::move(other.msg_)},
+        location_{std::move(other.location_)} {
+    setup_underlying_on_copy(other);
   }
-  // These could be implemented (carefully!), but weren't yet needed.
-  epitaph_non_value& operator=(const epitaph_non_value&) = delete;
-  epitaph_non_value& operator=(epitaph_non_value&&) = delete;
+  epitaph_impl& operator=(const epitaph_impl&) = delete;
+  epitaph_impl& operator=(epitaph_impl&&) = delete;
 
-  // Construct only via `epitaph()`!
-  explicit epitaph_non_value(rich_exception_ptr&& next, rich_msg msg)
-      : next_{std::move(next)}, msg_{std::move(msg)} {
-    // This class should work with an empty `next_`, but it suggests user
-    // error -- normal `result` usage never creates empty exception pointers.
-    FOLLY_SAFE_DCHECK(next_ != rich_exception_ptr{});
-    // Here, we store a pointer into `this`, or something owned-by-`this`.
-    // This is only safe because of the special copy/move ctors above.
-    if (auto* rex = next_.get_outer_exception<rich_error_base>()) {
-      underlying_error_private_t priv;
-      // Same note re `mutable_...` as in `set_underlying_error_on_copy_from`.
-      if (auto* underlying = rex->mutable_underlying_error(priv)) {
-        set_underlying_error(priv, underlying);
-        return;
-      }
+  explicit epitaph_impl(rich_exception_ptr&& next, rich_msg msg)
+    requires(!Location::has_stack)
+      : next_{std::move(next)},
+        msg_{std::move(msg).shared_string()},
+        // NOLINTNEXTLINE(bugprone-use-after-move)
+        location_{msg.location()} {
+    setup_underlying();
+  }
+
+  explicit epitaph_impl(
+      rich_exception_ptr&& next,
+      exception_shared_string msg,
+      const uintptr_t* addrs,
+      size_t count)
+    requires(Location::has_stack)
+      : next_{std::move(next)}, msg_{std::move(msg)}, location_{addrs, count} {
+    setup_underlying();
+  }
+
+  folly::source_location source_location() const noexcept override {
+    if constexpr (Location::has_stack) {
+      return {};
+    } else {
+      return location_.loc_;
     }
-    set_underlying_error(underlying_error_private_t{}, &next_);
   }
 
-  folly::source_location source_location() const noexcept override;
-  const char* partial_message() const noexcept override;
+  const char* partial_message() const noexcept override { return msg_.what(); }
 
-  const rich_exception_ptr* next_error_for_epitaph() const noexcept override;
+  const rich_exception_ptr* next_error_for_epitaph() const noexcept override {
+    return &next_;
+  }
 
-  using folly_get_exception_hint_types = rich_error_hints<epitaph_non_value>;
+  void format_to(fmt::appender& out) const override {
+    if constexpr (Location::has_stack) {
+      const uintptr_t* heap = nullptr;
+      if constexpr (Location::kFramesMayUseHeap) {
+        if (location_.heap_) {
+          heap = location_.heap_.get();
+        }
+      }
+      format_epitaph_stack(out, msg_.what(), location_.frames_, heap);
+    } else {
+      rich_error_base::format_to(out);
+    }
+  }
+
+  using folly_get_exception_hint_types = rich_error_hints<epitaph_impl>;
 };
+
+using epitaph_non_value = epitaph_impl<epitaph_source_location>;
+
+// Wrap an error_or_stopped with a stack epitaph from already-captured frames.
+template <stack_epitaph_opts Opt>
+error_or_stopped make_stack_epitaph(
+    error_or_stopped eos,
+    exception_shared_string msg,
+    const uintptr_t* addrs,
+    ssize_t n) {
+  auto count = static_cast<size_t>(std::max(ssize_t{0}, n));
+  // Skip `getStackTrace` (1) + its direct caller (1).
+  auto skip = std::min(size_t{2}, count);
+  return error_or_stopped{rich_error<epitaph_impl<epitaph_stack_location<Opt>>>{
+      std::move(eos).release_rich_exception_ptr(),
+      std::move(msg),
+      addrs + skip,
+      count - skip}};
+}
 
 } // namespace detail
 
@@ -170,6 +301,9 @@ class epitaph_non_value : public rich_error_base {
 ///
 /// Future: `epitaphs.md` has pointers on how the epitaphs support
 /// should evolve (for better perf & usability).
+///
+/// Does not throw when no format args are used (literal or empty message).
+/// Else, `fmt` may throw `bad_alloc` -- but not `make_exception_ptr_with`.
 template <typename... Args>
 error_or_stopped epitaph(
     error_or_stopped eos,
@@ -177,9 +311,6 @@ error_or_stopped epitaph(
     ext::format_string_and_location<std::type_identity_t<Args>...> snl = "",
     Args const&... args) {
   return error_or_stopped{rich_error<detail::epitaph_non_value>{
-      // No exception handling since `exception_ptr` creation currently is
-      // `noexcept`, meaning that it either succeeds by using some "reserved
-      // memory" if provided by the `std` implementation, or terminates.
       std::move(eos).release_rich_exception_ptr(),
       rich_msg{std::move(snl), args...}}};
 }
@@ -194,6 +325,74 @@ result<T> epitaph(
     return r;
   }
   return epitaph(std::move(r).error_or_stopped(), std::move(snl), args...);
+}
+
+/// stack_epitaph
+///
+/// Captures the current call stack (as raw instruction pointers) and wraps an
+/// error with a stack-trace epitaph.  Symbolization is deferred to format
+/// time, so the capture cost is just a libunwind walk.
+///
+/// Cost: ~10ns per stack frame for the libunwind walk.  At typical depths (~20
+/// frames), ~200ns — negligible vs throw+catch (~2us).  Uses ~2KB of transient
+/// stack space (default `max_frames=256`).
+///
+/// Memory: 192 bytes (3 cache lines, +8B on Windows) per epitaph besides
+/// overhead.  First 17 frames stored inline; overflow spills to a ref-counted
+/// heap allocation.
+///
+/// Semantics (same as regular `epitaph()`):
+///   - May allocate a new `std::exception_ptr`.
+///   - Discarded when the error is re-thrown or converted to plain eptr.
+///   - Transparent: `get_exception<T>()` and `get_rich_error_code()` see
+///     through epitaphs to the underlying error.
+///   - Value inputs are returned unchanged (1 branch).
+///
+/// Used automatically by `result_promise::unhandled_exception()`, and also
+/// available for user `catch` clauses:
+///
+///   } catch (...) {
+///     co_return stack_epitaph(
+///         error_or_stopped::from_current_exception(), "context msg");
+///   }
+///
+/// Non-throwing when both are true:
+///   - No format args are used (literal or empty message), AND
+///   - Captured frames fit inline:
+///       min(count, Opt.max_frames) <= Opt.inline_frames
+/// Conversely: `fmt` string allocation may throw.  When frames exceed inline
+/// capacity, the heap spill allocation may throw.
+template <
+    detail::stack_epitaph_opts Opt = detail::stack_epitaph_opts{},
+    typename... Args>
+FOLLY_NOINLINE error_or_stopped stack_epitaph(
+    error_or_stopped eos,
+    ext::format_string_and_location<std::type_identity_t<Args>...> snl = "",
+    Args const&... args) {
+  uintptr_t addrs[Opt.buffer_size()];
+  auto n = symbolizer::getStackTrace(addrs, Opt.buffer_size());
+  return detail::make_stack_epitaph<Opt>(
+      std::move(eos), snl.as_exception_shared_string(args...), addrs, n);
+}
+
+template <
+    detail::stack_epitaph_opts Opt = detail::stack_epitaph_opts{},
+    typename T,
+    typename... Args>
+FOLLY_NOINLINE result<T> stack_epitaph(
+    result<T> r,
+    ext::format_string_and_location<std::type_identity_t<Args>...> snl = "",
+    Args const&... args) {
+  if (r.has_value()) {
+    return r;
+  }
+  uintptr_t addrs[Opt.buffer_size()];
+  auto n = symbolizer::getStackTrace(addrs, Opt.buffer_size());
+  return detail::make_stack_epitaph<Opt>(
+      std::move(r).error_or_stopped(),
+      snl.as_exception_shared_string(args...),
+      addrs,
+      n);
 }
 
 } // namespace folly

@@ -26,23 +26,17 @@ when building new features:
   - Get expert review, especially when touching bit-discriminated variant code,
     which is (by necessity) teetering on the edge of "acceptable UB".
 
-These are sorted from "near future" to "far future".
+These are *roughly* sorted from "near future" to "far future".
 
   - I am unsure whether `result<T>` should become `fmt`- and
     `<<(ostream&)`-formattable whenever `T` is.  It's convenient, but it's not
     obvious what convention should disinguish value from non-value output,
     which may just mean it's bad to sugar this.
 
-  - Automatic epitaphs for `result` coroutines as in `epitaphs.md`.
-    I'm thinking of symbolizing the stack and attaching it to the exception in
-    `unhandled_exception`.  Perf-wise this should be "fine" since `throw` is
-    already stupid-expensive.  Update docs, since this is Very Useful.
-      * This would likely be implemented as a public helper function, so that
-        user `catch` clauses can also do this.  We probably don't want to
-        integrate `folly/experimental/exception_tracer`, but the implementation
-        is instructive.  Also see https://fburl.com/cpp_debug_only_stack_trace.
-      * A further extension would be to also add epitaphs to the error with
-        the coroutine stack (see `AsyncStack` code in `folly/coro`).
+  - Extend `stack_epitaph` to also capture the coroutine async stack via
+    `getAsyncStackTraceSafe()` (see `AsyncStack` code in `folly/coro`).
+    This would show the full coroutine call chain, not just the native stack
+    at the point of `unhandled_exception`.  See `StacksInEpitaphs.md`.
 
   - Thoughtfully add `in_place` / `in_place_t` support to the public API as
     appropriate.  When `result` gets it, clean up `TEST(Result, throwingMove)`
@@ -75,9 +69,6 @@ These are sorted from "near future" to "far future".
     Before doing this, make sure the default output style is broadly readable &
     useful -- with time, automation will rely on parsing that, so it will be
     hard to change.
-
-  - `rich_exception_ptr` should also be formattable, but since it's not (very)
-    user-visible, this is lower-priority than `result` / `error_or_stopped`..
 
   - We already have `epitaph.h` and `nestable_coded_rich_error.h`,
     but neither is a direct counterpart to `std::nested_exception`. We
@@ -112,6 +103,11 @@ These are sorted from "near future" to "far future".
       * They use as much as 120-160 bytes (x86 / ARM) of heap for data (e.g.
         most of `__cxa_exception`) that result-oriented programs won't need.
       * They won't work in no-exceptions codebases (see next bullet).
+    When planning this, be aware that Clang & GCC have an emergency allocation
+    pool for `__cxa_allocate_exception` calls that back `eptr` to increase OOM
+    resilience.  It's a benefit to `throw` reliability for us NOT to use that
+    fallback for storing `result` errors under OOM, but we may want to support
+    a similar fallback pool for `result`s.
 
   - In order for `result` to become the backing implementation of `Try`,
     we must support no-RTTI / no-exceptions codebases.  This is both feasible
