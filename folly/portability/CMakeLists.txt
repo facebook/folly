@@ -65,7 +65,7 @@ folly_add_library(
     Dirent.cpp
   HEADERS
     Dirent.h
-  EXPORTED_DEPS
+  DEPS
     folly_portability_windows
 )
 
@@ -85,10 +85,11 @@ folly_add_library(
     Fcntl.cpp
   HEADERS
     Fcntl.h
-  EXPORTED_DEPS
-    folly_portability
+  DEPS
     folly_portability_sockets
     folly_portability_sys_stat
+  EXPORTED_DEPS
+    folly_portability
     folly_portability_windows
 )
 
