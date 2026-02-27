@@ -1341,6 +1341,7 @@ void AsyncSocket::setReadCB(ReadCallback* callback) {
     immediateReadHandler_.cancelLoopCallback();
   }
 
+  DestructorGuard dg(this);
   if (shutdownFlags_ & SHUT_READ) {
     // Reads have already been shut down on this socket.
     //
@@ -1359,7 +1360,6 @@ void AsyncSocket::setReadCB(ReadCallback* callback) {
     return;
   }
 
-  DestructorGuard dg(this);
   eventBase_->dcheckIsInEventBaseThread();
   // This new callback might support zero copy reads, so reset the
   // zerocopyReadDisabled_ flag to its default value so we will
@@ -4573,12 +4573,12 @@ void AsyncSocket::invokeConnectAttempt() {
 
 void AsyncSocket::invalidState(ReadCallback* callback) {
   VLOG(4) << "AsyncSocket(this=" << this << ", fd=" << fd_
-          << "): setReadCallback(" << callback << ") called in invalid state "
+          << "): setReadCB(" << callback << ") called in invalid state "
           << state_;
 
   AsyncSocketException ex(
       AsyncSocketException::NOT_OPEN,
-      "setReadCallback() called with socket in "
+      "setReadCB() called with socket in "
       "invalid state");
   if (state_ == StateEnum::CLOSED || state_ == StateEnum::ERROR) {
     if (callback) {
