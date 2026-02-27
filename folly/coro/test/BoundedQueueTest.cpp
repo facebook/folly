@@ -263,7 +263,7 @@ TEST(BoundedQueueTest, UnorderedEnqueueCompletion) {
     while (turn < 3) {
     }
     ++turn;
-    ASSERT_TRUE(queue.try_enqueue(SlowMover(true)));
+    ASSERT_TRUE(queue.try_enqueue(std::optional(SlowMover(true))));
   });
   std::thread producer2([&] {
     ++turn;
@@ -271,7 +271,7 @@ TEST(BoundedQueueTest, UnorderedEnqueueCompletion) {
     }
     /* sleep override */ std::this_thread::sleep_for(
         std::chrono::milliseconds(1));
-    ASSERT_TRUE(queue.try_enqueue(SlowMover(false)));
+    ASSERT_TRUE(queue.try_enqueue(std::optional(SlowMover(false))));
   });
 
   producer1.join();
@@ -284,8 +284,8 @@ TEST(BoundedQueueTest, UnorderedDequeueCompletion) {
   // default-constructed values.
   folly::coro::BoundedQueue<std::optional<SlowMover>> queue(2);
 
-  ASSERT_TRUE(queue.try_enqueue(SlowMover(true)));
-  ASSERT_TRUE(queue.try_enqueue(SlowMover(false)));
+  ASSERT_TRUE(queue.try_enqueue(std::optional(SlowMover(true))));
+  ASSERT_TRUE(queue.try_enqueue(std::optional(SlowMover(false))));
 
   std::vector<std::thread> consumers;
   for (size_t i = 0; i < 3; ++i) {
@@ -298,7 +298,7 @@ TEST(BoundedQueueTest, UnorderedDequeueCompletion) {
   // be in the process of dequeuing, so the producer needs to block until it
   // finishes and the slot becomes available.
   std::thread producer([&] {
-    folly::coro::blockingWait(queue.enqueue(SlowMover(false)));
+    folly::coro::blockingWait(queue.enqueue(std::optional(SlowMover(false))));
   });
 
   producer.join();
