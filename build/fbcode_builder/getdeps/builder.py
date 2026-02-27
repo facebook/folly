@@ -1460,7 +1460,7 @@ class Boost(BuilderBase):
                 + [
                     "link=%s" % link,
                     "runtime-link=shared",
-                    "variant=release",
+                    f"variant={self.build_opts.build_type.lower()}",
                     "threading=multi",
                     "debug-symbols=on",
                     "visibility=global",
