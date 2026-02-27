@@ -34,8 +34,6 @@ folly_add_library(
   NAME immutables
   SRCS
     Immutables.cpp
-  HEADERS
-    Immutables.h
   DEPS
     folly_indestructible
     folly_synchronized
@@ -99,8 +97,6 @@ folly_add_library(
   NAME types
   SRCS
     Types.cpp
-  HEADERS
-    Types.h
   EXPORTED_DEPS
     folly_conv
     folly_expected

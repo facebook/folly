@@ -89,6 +89,7 @@ folly_add_library(
     folly_fbstring
     folly_fbvector
     folly_function
+    folly_io_IOBufFactory
     folly_lang_bits
     folly_lang_checked_math
     folly_lang_exception
