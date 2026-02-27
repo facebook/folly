@@ -644,8 +644,10 @@ constexpr T constexprPartialLoadUnaligned(const S* s, std::size_t l) {
 /**
  * Write an unaligned value of type T.
  */
-template <class T>
-inline void storeUnaligned(void* p, T value) {
+template <class T, class..., class V>
+inline void storeUnaligned(void* p, V value) {
+  static_assert(
+      std::is_same_v<T, V>, "the type of value does not match the type param");
   static_assert(std::is_trivial_v<T>);
   FOLLY_BUILTIN_MEMCPY(p, &value, sizeof(T));
 }
