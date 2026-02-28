@@ -229,6 +229,9 @@ class IoUringBackend : public EventBaseBackendBase {
   bool hasBufferProvider() { return bufferProviders_.size() > 0; }
   uint16_t nextBufferProviderGid() { return bufferProviderGidNext_++; }
   IoUringZeroCopyBufferPool* zcBufferPool() { return zcBufferPool_.get(); }
+  bool createZcBufferPool();
+  bool importZcBufferPool(IoUringZeroCopyBufferPool::ExportHandle handle);
+  IoUringZeroCopyBufferPool::ExportHandle exportZcBufferPool();
 
  protected:
   enum class WaitForEventsMode { WAIT, DONT_WAIT };

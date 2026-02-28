@@ -260,12 +260,6 @@ struct IoUringOptions {
     return *this;
   }
 
-  IoUringOptions& setBufferPoolHandle(
-      IoUringZeroCopyBufferPool::ExportHandle&& v) {
-    bufferPoolHandle = std::move(v);
-    return *this;
-  }
-
   IoUringOptions& setArenaRegion(void* base, size_t size, uint32_t index) {
     arenaRegion.iov_base = base;
     arenaRegion.iov_len = size;
@@ -321,9 +315,6 @@ struct IoUringOptions {
   bool useHugePages{false};
 
   bool nativeAsyncSocketSupport{false};
-
-  std::optional<IoUringZeroCopyBufferPool::ExportHandle> bufferPoolHandle =
-      std::nullopt;
 
   struct iovec arenaRegion{};
   uint32_t arenaIndex{0};

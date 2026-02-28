@@ -1076,23 +1076,39 @@ void IoUringBackend::initSubmissionLinked() {
       throw NotAvailable(ex.what());
     }
   }
+}
 
-  if (options_.zeroCopyRx) {
-    if (options_.bufferPoolHandle.has_value()) {
-      zcBufferPool_ = IoUringZeroCopyBufferPool::importHandle(
-          std::move(options_.bufferPoolHandle.value()), this->ioRingPtr());
-    } else {
-      IoUringZeroCopyBufferPool::Params params = {
-          .ring = this->ioRingPtr(),
-          .numPages = static_cast<size_t>(options_.zcRxNumPages),
-          .pageSize = kZeroCopyPageSize,
-          .rqEntries = static_cast<uint32_t>(options_.zcRxRefillEntries),
-          .ifindex = static_cast<uint32_t>(options_.zcRxIfindex),
-          .queueId = static_cast<uint16_t>(options_.zcRxQueueId),
-      };
-      zcBufferPool_ = IoUringZeroCopyBufferPool::create(params);
-    }
+bool IoUringBackend::createZcBufferPool() {
+  if (zcBufferPool_) {
+    LOG(WARNING) << "Buffer pool already exists";
+    return false;
   }
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = this->ioRingPtr(),
+      .numPages = static_cast<size_t>(options_.zcRxNumPages),
+      .pageSize = kZeroCopyPageSize,
+      .rqEntries = static_cast<uint32_t>(options_.zcRxRefillEntries),
+      .ifindex = static_cast<uint32_t>(options_.zcRxIfindex),
+      .queueId = static_cast<uint16_t>(options_.zcRxQueueId),
+  };
+  zcBufferPool_ = IoUringZeroCopyBufferPool::create(params);
+  return zcBufferPool_ != nullptr;
+}
+
+bool IoUringBackend::importZcBufferPool(
+    IoUringZeroCopyBufferPool::ExportHandle handle) {
+  if (zcBufferPool_) {
+    LOG(WARNING) << "Buffer pool already exists";
+    return false;
+  }
+  zcBufferPool_ = IoUringZeroCopyBufferPool::importHandle(
+      std::move(handle), this->ioRingPtr());
+  return zcBufferPool_ != nullptr;
+}
+
+IoUringZeroCopyBufferPool::ExportHandle IoUringBackend::exportZcBufferPool() {
+  CHECK(zcBufferPool_) << "No buffer pool to export";
+  return zcBufferPool_->exportHandle();
 }
 
 void IoUringBackend::delayedInit() {
