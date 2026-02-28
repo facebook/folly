@@ -431,9 +431,8 @@ typename std::enable_if<
 toAppend(Src value, Tgt* result) {
   // Treat null pointers like an empty string, as in:
   // operator<<(std::ostream&, const char*).
-  const char* c = value;
-  if (c) {
-    result->append(value);
+  if (const char* c = value) {
+    result->append(c);
   }
 }
 
