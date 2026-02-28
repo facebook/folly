@@ -51,6 +51,7 @@ SCHEMA = {
             "shipit_fbcode_builder": OPTIONAL,
             "use_shipit": OPTIONAL,
             "shipit_external_branch": OPTIONAL,
+            "shipit_strip_marker": OPTIONAL,
         },
     },
     "dependencies": {"optional_section": True, "allow_values": False},
@@ -258,6 +259,9 @@ class ManifestParser(object):
         self.shipit_project = self.get("manifest", "shipit_project")
         self.shipit_fbcode_builder = self.get("manifest", "shipit_fbcode_builder")
         self.resolved_system_packages = {}
+        self.shipit_strip_marker = self.get(
+            "manifest", "shipit_strip_marker", defval="@fb-only"
+        )
 
         if self.name != os.path.basename(file_name):
             raise Exception(

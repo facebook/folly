@@ -380,6 +380,31 @@ def copy_if_different(src_name, dest_name) -> bool:
     return True
 
 
+def filter_strip_marker(dest_name, marker) -> None:
+    """Strip lines/blocks tagged with the given marker from a file."""
+    try:
+        with open(dest_name, "r") as f:
+            content = f.read()
+    except (UnicodeDecodeError, PermissionError):
+        return
+
+    if marker not in content:
+        return
+
+    escaped = re.escape(marker)
+    block_re = re.compile(
+        r"[^\n]*" + escaped + r"-start[^\n]*\n.*?[^\n]*" + escaped + r"-end[^\n]*\n?",
+        re.DOTALL,
+    )
+    line_re = re.compile(r".*" + escaped + r".*\n?")
+
+    filtered = block_re.sub("", content)
+    filtered = line_re.sub("", filtered)
+    if filtered != content:
+        with open(dest_name, "w") as f:
+            f.write(filtered)
+
+
 def list_files_under_dir_newer_than_timestamp(dir_to_scan, ts):
     for root, _dirs, files in os.walk(dir_to_scan):
         for src_file in files:
@@ -394,6 +419,7 @@ class ShipitPathMap(object):
         self.roots = []
         self.mapping = []
         self.exclusion = []
+        self.strip_marker = "@fb-only"
 
     def add_mapping(self, fbsource_dir, target_dir) -> None:
         """Add a posix path or pattern.  We cannot normpath the input
@@ -492,6 +518,7 @@ class ShipitPathMap(object):
                     if target_name:
                         full_file_list.add(target_name)
                         if copy_if_different(full_name, target_name):
+                            filter_strip_marker(target_name, self.strip_marker)
                             change_status.record_change(target_name)
                             if update_count < 10:
                                 print("Updated %s -> %s" % (full_name, target_name))
@@ -679,6 +706,8 @@ class SimpleShipitTransformerFetcher(Fetcher):
             )
         for pattern in self.manifest.get_section_as_args("shipit.strip", self.ctx):
             mapping.add_exclusion(pattern)
+
+        mapping.strip_marker = self.manifest.shipit_strip_marker
 
         return mapping.mirror(self.build_options.fbsource_dir, self.repo_dir)
 
