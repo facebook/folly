@@ -1037,3 +1037,25 @@ fb_dirsync_cpp_library(
         "//folly/io/async:liburing",
     ],
 )
+
+fb_dirsync_cpp_library(
+    name = "io_uring_buffer_pool_sharing",
+    srcs = [
+        "IoUringBufferPoolSharing.cpp",
+    ],
+    headers = [
+        "IoUringBufferPoolSharing.h",
+    ],
+    modular_headers = False,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    deps = [
+        ":io_uring_backend",
+    ],
+    exported_deps = [
+        "//folly/executors:io_thread_pool_executor",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
