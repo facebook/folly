@@ -17,8 +17,10 @@
 #include <folly/json/json.h>
 
 #include <algorithm>
+#include <charconv>
 #include <functional>
 #include <iterator>
+#include <limits>
 #include <sstream>
 #include <type_traits>
 
@@ -70,6 +72,54 @@ bool isIdentifierStart(char c) {
 
 bool isIdentifierPart(char c) {
   return isIdentifierStart(c) || (c >= '0' && c <= '9');
+}
+
+constexpr uint8_t hexDecodeDigitRaw(char c) {
+  // TODO: switch to folly::hex_decode_digit_raw(c)
+  if ('0' <= c && c <= '9') {
+    return c - '0';
+  }
+  if ('A' <= c && c <= 'F') {
+    return c - 'A' + 10;
+  }
+  if ('a' <= c && c <= 'f') {
+    return c - 'a' + 10;
+  }
+  folly::assume_unreachable();
+}
+
+std::optional<dynamic> parseHexInteger(
+    StringPiece str, bool isNegative, bool doubleFallback) {
+  uint64_t uval = 0;
+  auto [ptr, ec] =
+      std::from_chars(str.data(), str.data() + str.size(), uval, 16);
+
+  if (ec != std::errc::result_out_of_range) {
+    constexpr auto kMinAsUnsigned =
+        static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) + 1;
+    if (uval == kMinAsUnsigned && isNegative) {
+      return std::numeric_limits<int64_t>::min();
+    }
+    if (uval <= std::numeric_limits<int64_t>::max()) {
+      return isNegative
+          ? -static_cast<int64_t>(uval)
+          : static_cast<int64_t>(uval);
+    }
+  }
+
+  if (doubleFallback) {
+    // std::from_chars for floating-point with hex format is not available
+    // on all platforms (iOS < 26.0, Android), so use handwritten loop instead.
+    double dval = 0;
+    for (char c : str) {
+      dval = dval * 16 + hexDecodeDigitRaw(c);
+    }
+    if (std::isfinite(dval)) {
+      return isNegative ? -dval : dval;
+    }
+  }
+
+  return std::nullopt;
 }
 
 struct Printer {
@@ -649,6 +699,28 @@ dynamic parseNumber(Input& in) {
   }
   if (negative && integral.size() < 2 && (*in != '.' || !json5)) {
     in.error("expected digits after `-'");
+  }
+
+  const bool isIntegralZero =
+      (integral == "0" || integral == "+0" || integral == "-0");
+
+  if (json5 && isIntegralZero && (in.consume("x") || in.consume("X"))) {
+    auto hexDigits = in.skipWhile([](char c) {
+      return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+          (c >= 'A' && c <= 'F');
+    });
+    if (hexDigits.empty()) {
+      in.error("expected hex digits after '0x'");
+    }
+    if (in.getOpts().parse_numbers_as_strings) {
+      return range(integral.begin(), hexDigits.end());
+    }
+    if (auto result = parseHexInteger(
+            hexDigits, negative, in.getOpts().double_fallback)) {
+      in.skipWhitespace();
+      return *result;
+    }
+    in.error("hex literal out of range");
   }
 
   auto const wasE = *in == 'e' || *in == 'E';

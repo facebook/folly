@@ -1274,3 +1274,87 @@ TEST(Json5, LeadingDecimalPoint) {
   // Without json5 flag, leading decimal point should fail
   EXPECT_THROW(parseJson(".5"), std::exception);
 }
+
+TEST(Json5, HexNumbers) {
+  EXPECT_EQ(fromJson5("0x0"), 0x0);
+  EXPECT_EQ(fromJson5("0x00"), 0x00);
+  EXPECT_EQ(fromJson5("0xFF"), 0xFF);
+  EXPECT_EQ(fromJson5("0xdead"), 0xDEAD);
+  EXPECT_EQ(fromJson5("0XDEAD"), 0xDEAD);
+  EXPECT_EQ(fromJson5("0xDeAd"), 0xDEAD);
+  EXPECT_EQ(fromJson5("+0xDEAD"), 0xDEAD);
+  EXPECT_EQ(fromJson5("-0xDEAD"), -0xDEAD);
+
+  // In array/object
+  auto arr = fromJson5("[0x1, 0xA, {color: 0xFF00FF}]");
+  EXPECT_EQ(arr[0], 1);
+  EXPECT_EQ(arr[1], 0xA);
+  EXPECT_EQ(arr[2]["color"], 0xFF00FF);
+
+  folly::json::serialization_opts numberAsString{
+      .parse_numbers_as_strings = true, .allow_json5_experimental = true};
+  EXPECT_EQ(parseJson("0x00", numberAsString), "0x00");
+  EXPECT_EQ(parseJson("+0x00", numberAsString), "+0x00");
+  EXPECT_EQ(parseJson("-0x00", numberAsString), "-0x00");
+
+  EXPECT_THROW(fromJson5("0x"), std::exception);
+  EXPECT_THROW(fromJson5("x0"), std::exception);
+  EXPECT_THROW(fromJson5("00x0"), std::exception);
+  EXPECT_THROW(fromJson5("0 x0"), std::exception);
+  EXPECT_THROW(fromJson5("0x 0"), std::exception);
+  EXPECT_THROW(fromJson5("0Y0"), std::exception);
+  EXPECT_THROW(fromJson5("0xfg"), std::exception);
+  EXPECT_THROW(fromJson5("0x1.0"), std::exception);
+  EXPECT_THROW(fromJson5("0x1.0p1"), std::exception);
+
+  // Without json5 flag, hex should fail
+  EXPECT_THROW(parseJson("0x0"), std::exception);
+}
+
+TEST(Json5, MinMaxHexNumbers) {
+  folly::json::serialization_opts numberAsString{
+      .parse_numbers_as_strings = true, .allow_json5_experimental = true};
+  folly::json::serialization_opts doubleFallback{
+      .double_fallback = true, .allow_json5_experimental = true};
+
+  auto max = fmt::format("0x{:x}", std::numeric_limits<std::int64_t>::max());
+  auto maxPlusOne = fmt::format(
+      "0x{:x}",
+      static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) + 1);
+
+  auto min = '-' + maxPlusOne;
+  auto minMinusOne = fmt::format(
+      "-0x{:x}",
+      static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) + 2);
+
+  EXPECT_EQ(fromJson5(max), std::numeric_limits<std::int64_t>::max());
+  EXPECT_EQ(fromJson5(min), std::numeric_limits<std::int64_t>::min());
+  EXPECT_THROW(fromJson5(maxPlusOne), std::exception);
+  EXPECT_THROW(fromJson5(minMinusOne), std::exception);
+  EXPECT_EQ(parseJson(maxPlusOne, numberAsString), maxPlusOne);
+  EXPECT_EQ(parseJson(minMinusOne, numberAsString), minMinusOne);
+
+  EXPECT_EQ(
+      parseJson(maxPlusOne, doubleFallback),
+      double(std::numeric_limits<std::int64_t>::max()) + 1);
+  EXPECT_EQ(
+      parseJson(minMinusOne, doubleFallback),
+      double(std::numeric_limits<std::int64_t>::min()) - 1);
+
+  auto maxDouble =
+      std::string("0x") + std::string(13, 'f') + "b" + std::string(242, 'f');
+  auto maxDoublePlusOne =
+      std::string("0x") + std::string(13, 'f') + "c" + std::string(242, '0');
+  auto minDouble = "-" + maxDouble;
+  auto minDoubleMinusOne = "-" + maxDoublePlusOne;
+
+  EXPECT_EQ(
+      parseJson(maxDouble, doubleFallback), std::numeric_limits<double>::max());
+  EXPECT_EQ(
+      parseJson(minDouble, doubleFallback),
+      -std::numeric_limits<double>::max());
+  EXPECT_THROW(parseJson(maxDoublePlusOne, doubleFallback), std::exception);
+  EXPECT_THROW(parseJson(minDoubleMinusOne, doubleFallback), std::exception);
+  EXPECT_EQ(parseJson(maxDoublePlusOne, numberAsString), maxDoublePlusOne);
+  EXPECT_EQ(parseJson(minDoubleMinusOne, numberAsString), minDoubleMinusOne);
+}
