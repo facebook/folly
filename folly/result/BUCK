@@ -35,21 +35,32 @@ fb_dirsync_cpp_library(
     name = "epitaph",
     srcs = ["epitaph.cpp"],
     headers = ["epitaph.h"],
+    # TODO: Remove the `select`s and link the symbolizer unconditionally once
+    # the Messenger APK SO-module layout tolerates the extra transitive deps.
+    preprocessor_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:android": ["-DFOLLY_EPITAPH_USE_SYMBOLIZER=0"],
+    }),
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:demangle",
-        "//folly/debugging/symbolizer:symbolizer",
-        "//folly/portability:config",
-    ],
+    ] + select({
+        "DEFAULT": [
+            "//folly/debugging/symbolizer:stack_trace",
+            "//folly/debugging/symbolizer:symbolizer",
+        ],
+        "ovr_config//os:android": [],
+    }),
     exported_deps = [
         ":result",
         ":rich_error",
         ":rich_error_base",
         "//folly:cpp_attributes",
         "//folly:portability",
-        "//folly/debugging/symbolizer:stack_trace",
         "//folly/lang:safe_assert",
+        "//folly/portability:config",
+        "//folly/portability:sys_types",
         "//folly/result:rich_msg",
     ],
 )

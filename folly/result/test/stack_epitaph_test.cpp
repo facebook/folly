@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+// Validates the forward declaration in epitaph.h matches the real signature.
+#include <folly/debugging/symbolizer/StackTrace.h> // @manual
 #include <folly/result/epitaph.h>
 
 #include <folly/Benchmark.h>

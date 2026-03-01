@@ -19,15 +19,39 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <folly/portability/SysTypes.h>
 
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h> // FOLLY_HAS_RESULT
-#include <folly/debugging/symbolizer/StackTrace.h>
 #include <folly/lang/SafeAssert.h>
+#include <folly/portability/Config.h> // FOLLY_HAVE_ELF, FOLLY_HAVE_DWARF
 #include <folly/result/result.h>
 #include <folly/result/rich_error.h>
 #include <folly/result/rich_exception_ptr.h>
 #include <folly/result/rich_msg.h>
+
+// Forward declaration of `getStackTrace` — for dep-weight and
+// android-packaging reasons, it is critical NOT to take an exported dep on the
+// symbolizer lib from any prod header in `folly/result`.  The forward
+// declaration is kept in sync by a compile-time check in
+// stack_epitaph_test.cpp (which includes StackTrace.h directly).
+//
+// BUCK sets FOLLY_EPITAPH_USE_SYMBOLIZER=0 on Android to cut the symbolizer
+// link-time dep that disrupts APK SO-module packaging (T257592212).
+// On other platforms, defaults to FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF.
+#ifndef FOLLY_EPITAPH_USE_SYMBOLIZER
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+#define FOLLY_EPITAPH_USE_SYMBOLIZER 1
+#else
+#define FOLLY_EPITAPH_USE_SYMBOLIZER 0
+#endif
+#endif
+
+#if FOLLY_EPITAPH_USE_SYMBOLIZER
+namespace folly::symbolizer {
+ssize_t getStackTrace(uintptr_t* addresses, size_t maxAddresses);
+} // namespace folly::symbolizer
+#endif
 
 #if FOLLY_HAS_RESULT
 
@@ -370,7 +394,11 @@ FOLLY_NOINLINE error_or_stopped stack_epitaph(
     ext::format_string_and_location<std::type_identity_t<Args>...> snl = "",
     Args const&... args) {
   uintptr_t addrs[Opt.buffer_size()];
+#if FOLLY_EPITAPH_USE_SYMBOLIZER
   auto n = symbolizer::getStackTrace(addrs, Opt.buffer_size());
+#else
+  ssize_t n = 0;
+#endif
   return detail::make_stack_epitaph<Opt>(
       std::move(eos), snl.as_exception_shared_string(args...), addrs, n);
 }
@@ -387,7 +415,11 @@ FOLLY_NOINLINE result<T> stack_epitaph(
     return r;
   }
   uintptr_t addrs[Opt.buffer_size()];
+#if FOLLY_EPITAPH_USE_SYMBOLIZER
   auto n = symbolizer::getStackTrace(addrs, Opt.buffer_size());
+#else
+  ssize_t n = 0;
+#endif
   return detail::make_stack_epitaph<Opt>(
       std::move(r).error_or_stopped(),
       snl.as_exception_shared_string(args...),

@@ -17,10 +17,23 @@
 #include <folly/result/epitaph.h>
 
 #include <folly/Portability.h> // FOLLY_HAS_RESULT
+
+// Enabled by default on platforms with ELF+DWARF; BUCK sets this to 0 on
+// Android to cut the symbolizer link-time dep that disrupts APK SO-module
+// packaging (T257592212).
 #include <folly/portability/Config.h> // FOLLY_HAVE_ELF, FOLLY_HAVE_DWARF
 
+#ifndef FOLLY_EPITAPH_USE_SYMBOLIZER
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+#define FOLLY_EPITAPH_USE_SYMBOLIZER 1
+#else
+#define FOLLY_EPITAPH_USE_SYMBOLIZER 0
+#endif
+#endif
+
+#if FOLLY_EPITAPH_USE_SYMBOLIZER
 #include <folly/Demangle.h>
+#include <folly/debugging/symbolizer/StackTrace.h>
 #include <folly/debugging/symbolizer/Symbolizer.h>
 #endif
 
@@ -51,7 +64,7 @@ void format_epitaph_stack(
     return;
   }
   fmt::format_to(out, "[stack:");
-#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+#if FOLLY_EPITAPH_USE_SYMBOLIZER
   // Symbolize on demand — only paid at format/log time.
   folly::symbolizer::Symbolizer symbolizer;
   std::vector<folly::symbolizer::SymbolizedFrame> symFrames(all.size());
@@ -90,7 +103,11 @@ void stack_epitaph_for_unhandled_exception(error_or_stopped& eos) noexcept {
       sizeof(void*) != 8 || sizeof(rich_exception_ptr) != 8 ||
       sizeof(epitaph_impl<epitaph_stack_location<opts>>) == 192);
   uintptr_t addrs[opts.buffer_size()];
+#if FOLLY_EPITAPH_USE_SYMBOLIZER
   auto n = symbolizer::getStackTrace(addrs, opts.buffer_size());
+#else
+  ssize_t n = 0;
+#endif
   eos = make_stack_epitaph<opts>(
       error_or_stopped::from_current_exception(),
       exception_shared_string{literal_c_str{""}},
