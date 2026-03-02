@@ -23,6 +23,7 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":result",
+        "//folly:cpp_attributes",
         "//folly/coro:coroutine",
         "//folly/coro:error",
         "//folly/lang:must_use_immediately",
@@ -45,9 +46,9 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:demangle",
+        "//folly/portability:config",
     ] + select({
         "DEFAULT": [
-            "//folly/debugging/symbolizer:stack_trace",
             "//folly/debugging/symbolizer:symbolizer",
         ],
         "ovr_config//os:android": [],
@@ -58,9 +59,8 @@ fb_dirsync_cpp_library(
         ":rich_error_base",
         "//folly:cpp_attributes",
         "//folly:portability",
+        "//folly/debugging/symbolizer:stack_trace",
         "//folly/lang:safe_assert",
-        "//folly/portability:config",
-        "//folly/portability:sys_types",
         "//folly/result:rich_msg",
     ],
 )
@@ -94,6 +94,8 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":rich_error_base",
+        "//folly:portability",
+        "//folly:traits",
         "//folly/result/detail:ptr_immortal_exception_storage",
         "//folly/result/detail:rich_error_common",
     ],
@@ -108,6 +110,7 @@ fb_dirsync_cpp_library(
         ":coded_rich_error",
         ":rich_error",
         ":rich_error_base",
+        "//folly:portability",
         "//folly/result:rich_msg",
     ],
 )
@@ -152,8 +155,10 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        ":rich_error_base",
+        ":rich_error_fwd",
         "//folly:portability",
+        "//folly/lang:exception",
+        "//folly/lang:pretty",
         "//folly/result/detail:rich_error_common",
     ],
 )
@@ -201,6 +206,7 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/fmt:fmt",
         ":rich_error_base",
         "//folly:portability",
+        "//folly/lang:pretty",
     ],
 )
 

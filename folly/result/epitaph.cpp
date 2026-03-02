@@ -33,7 +33,6 @@
 
 #if FOLLY_EPITAPH_USE_SYMBOLIZER
 #include <folly/Demangle.h>
-#include <folly/debugging/symbolizer/StackTrace.h>
 #include <folly/debugging/symbolizer/Symbolizer.h>
 #endif
 
@@ -103,11 +102,7 @@ void stack_epitaph_for_unhandled_exception(error_or_stopped& eos) noexcept {
       sizeof(void*) != 8 || sizeof(rich_exception_ptr) != 8 ||
       sizeof(epitaph_impl<epitaph_stack_location<opts>>) == 192);
   uintptr_t addrs[opts.buffer_size()];
-#if FOLLY_EPITAPH_USE_SYMBOLIZER
   auto n = symbolizer::getStackTrace(addrs, opts.buffer_size());
-#else
-  ssize_t n = 0;
-#endif
   eos = make_stack_epitaph<opts>(
       error_or_stopped::from_current_exception(),
       exception_shared_string{literal_c_str{""}},

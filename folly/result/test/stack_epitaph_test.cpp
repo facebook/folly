@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-// Validates the forward declaration in epitaph.h matches the real signature.
-#include <folly/debugging/symbolizer/StackTrace.h> // @manual
 #include <folly/result/epitaph.h>
 
 #include <folly/Benchmark.h>
@@ -170,6 +168,24 @@ TEST(StackEpitaphTest, composesWithRegularEpitaph) {
 
 TEST(StackEpitaphTest, valuePassthrough) {
   EXPECT_EQ(42, stack_epitaph(result<int>{42}).value_or_throw());
+}
+
+// Addresses outside any loaded object can't be symbolized — the formatter
+// must fall back to printing hex values.
+TEST(StackEpitaphTest, unsymbolizableAddressesFormatAsHex) {
+  uintptr_t addrs[] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee};
+  auto eos = detail::make_stack_epitaph<stack_epitaph_opts{}>(
+      error_or_stopped{std::runtime_error{"test"}},
+      exception_shared_string{literal_c_str{""}},
+      addrs,
+      ssize_t(5));
+  // make_stack_epitaph skips 2 internal frames.
+  EXPECT_EQ(
+      fmt::format("{}", get_exception<std::runtime_error>(eos)),
+      "std::runtime_error: test [via] [stack:"
+      "\n  #0 0xcc"
+      "\n  #1 0xdd"
+      "\n  #2 0xee]");
 }
 
 FOLLY_NOINLINE result<int> throwAtDepth(int depth) {

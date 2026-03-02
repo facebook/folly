@@ -335,7 +335,6 @@ fb_dirsync_cpp_unittest(
     deps = [
         ":common",
         "//folly:benchmark",
-        "//folly/debugging/symbolizer:stack_trace",  # @manual compile-time fwd-decl check
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/result:coro",
