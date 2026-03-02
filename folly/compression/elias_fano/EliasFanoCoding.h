@@ -23,7 +23,9 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <cstring>
 #include <limits>
+#include <new>
 #include <type_traits>
 
 #include <glog/logging.h>
@@ -885,6 +887,35 @@ class EliasFanoReader {
   ValueType value_;
   const uint8_t numLowerBits_;
 };
+
+// Trailing bytes that must be readable past the end of each bit sequence,
+// required by loadUnaligned<uint64_t> reads in the upper/lower accessors.
+constexpr size_t kUpperTrailingBytes = 7;
+constexpr size_t kLowerTrailingBytes = 8;
+
+template <typename MutableCompressedList, bool kUpperFirst>
+MutableCompressedList copyCompressedList(const MutableCompressedList& src) {
+  size_t dataSize = src.data.size();
+  // The last sequence in the buffer needs trailing padding for safe reads.
+  // When kUpperFirst, lower is last and needs kLowerTrailingBytes; otherwise
+  // upper is last and needs kUpperTrailingBytes.
+  const size_t extra = kUpperFirst ? kLowerTrailingBytes : kUpperTrailingBytes;
+  uint8_t* buf = static_cast<uint8_t*>(std::malloc(dataSize + extra));
+  if (FOLLY_UNLIKELY(buf == nullptr)) {
+    throw std::bad_alloc();
+  }
+  std::memcpy(buf, src.data.data(), dataSize);
+
+  MutableCompressedList dst(src);
+  const auto origBase = src.data.data();
+  auto rebase = [&](const uint8_t* ptr) { return buf + (ptr - origBase); };
+  dst.data = folly::Range<uint8_t*>(buf, dataSize);
+  dst.skipPointers = rebase(src.skipPointers);
+  dst.forwardPointers = rebase(src.forwardPointers);
+  dst.lower = rebase(src.lower);
+  dst.upper = rebase(src.upper);
+  return dst;
+}
 
 } // namespace compression
 } // namespace folly

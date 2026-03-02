@@ -231,6 +231,82 @@ TEST_F(EliasFanoCodingTest, BugLargeGapInUpperBits) { // t16274876
   list.free();
 }
 
+TEST(CopyCompressedList, BasicCopy) {
+  using Encoder = EliasFanoEncoder<uint32_t, uint32_t, 128, 128, false>;
+  using Reader = EliasFanoReader<Encoder>;
+
+  const std::vector<uint32_t> data = {1, 5, 10, 50, 100, 500, 1000};
+  auto src = Encoder::encode(data.begin(), data.end());
+  auto dst = copyCompressedList<Encoder::MutableCompressedList, false>(src);
+
+  Reader reader(dst);
+  for (size_t i = 0; i < data.size(); ++i) {
+    ASSERT_TRUE(reader.next());
+    EXPECT_EQ(data[i], reader.value());
+  }
+  EXPECT_FALSE(reader.next());
+
+  dst.free();
+  src.free();
+}
+
+TEST(CopyCompressedList, BasicCopyUpperFirst) {
+  using Encoder = EliasFanoEncoder<uint32_t, uint32_t, 128, 128, true>;
+  using Reader = EliasFanoReader<Encoder>;
+
+  const std::vector<uint32_t> data = {1, 5, 10, 50, 100, 500, 1000};
+  auto src = Encoder::encode(data.begin(), data.end());
+  auto dst = copyCompressedList<Encoder::MutableCompressedList, true>(src);
+
+  Reader reader(dst);
+  for (size_t i = 0; i < data.size(); ++i) {
+    ASSERT_TRUE(reader.next());
+    EXPECT_EQ(data[i], reader.value());
+  }
+  EXPECT_FALSE(reader.next());
+
+  dst.free();
+  src.free();
+}
+
+TEST(CopyCompressedList, CopyIsIndependent) {
+  using Encoder = EliasFanoEncoder<uint32_t, uint32_t, 0, 0, false>;
+  using Reader = EliasFanoReader<Encoder>;
+
+  const std::vector<uint32_t> data = {2, 4, 6, 8, 10};
+  auto src = Encoder::encode(data.begin(), data.end());
+  auto dst = copyCompressedList<Encoder::MutableCompressedList, false>(src);
+  src.free();
+
+  Reader reader(dst);
+  for (size_t i = 0; i < data.size(); ++i) {
+    ASSERT_TRUE(reader.next());
+    EXPECT_EQ(data[i], reader.value());
+  }
+  EXPECT_FALSE(reader.next());
+
+  dst.free();
+}
+
+TEST(CopyCompressedList, CopyPreservesMetadata) {
+  using Encoder = EliasFanoEncoder<uint32_t, uint32_t, 128, 128, false>;
+
+  const std::vector<uint32_t> data = {10, 20, 30, 40, 50};
+  auto src = Encoder::encode(data.begin(), data.end());
+  auto dst = copyCompressedList<Encoder::MutableCompressedList, false>(src);
+
+  EXPECT_EQ(src.size, dst.size);
+  EXPECT_EQ(src.numLowerBits, dst.numLowerBits);
+  EXPECT_EQ(src.upperSizeBytes, dst.upperSizeBytes);
+  EXPECT_EQ(src.data.size(), dst.data.size());
+
+  // Verify the data buffers are distinct allocations.
+  EXPECT_NE(src.data.data(), dst.data.data());
+
+  dst.free();
+  src.free();
+}
+
 namespace bm {
 
 using Encoder = EliasFanoEncoder<uint32_t, uint32_t, 128, 128>;
