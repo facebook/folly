@@ -1053,7 +1053,7 @@ fb_dirsync_cpp_library(
         ":io_uring_backend",
     ],
     exported_deps = [
-        "//folly/executors:io_thread_pool_executor",
+        ":async_base",
     ],
     external_deps = [
         "glog",

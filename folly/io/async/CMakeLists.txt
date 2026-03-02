@@ -559,7 +559,7 @@ folly_add_library(
   DEPS
     folly_io_async_io_uring_backend
   EXPORTED_DEPS
-    folly_executors_io_thread_pool_executor
+    folly_io_async_async_base
   EXTERNAL_DEPS
     ${GLOG_LIBRARIES}
 )

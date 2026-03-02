@@ -20,6 +20,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Function.h>
 #include <folly/io/async/Liburing.h>
 
 #if FOLLY_HAS_LIBURING
@@ -28,25 +29,32 @@
 
 namespace folly {
 
-bool setupIoUringBufferPoolSharing(
-    IOThreadPoolExecutorBase& executor,
+namespace {
+
+bool setupIoUringBufferPoolSharingImpl(
+    size_t count,
+    folly::FunctionRef<folly::EventBase*(size_t)> getEventBase,
     size_t numHwQueues,
     size_t startQueueId) {
 #if !FOLLY_HAS_LIBURING
-  (void)executor;
+  (void)count;
+  (void)getEventBase;
   (void)numHwQueues;
   (void)startQueueId;
   LOG(FATAL) << "Buffer pool sharing is only supported on Linux";
 #else
+  CHECK_GT(count, 0) << "eventBases cannot be empty";
   CHECK_GT(numHwQueues, startQueueId)
       << "numHwQueues (" << numHwQueues << ") must be > startQueueId ("
       << startQueueId << ")";
-  auto eventBases = executor.getAllEventBases();
-  CHECK(!eventBases.empty()) << "executor has no EventBases";
+
+  // Validate all backends upfront to avoid leaving things in a half-setup
+  // state.
   std::vector<IoUringBackend*> backends;
-  backends.reserve(eventBases.size());
-  for (size_t i = 0; i < eventBases.size(); ++i) {
-    auto* backend = dynamic_cast<IoUringBackend*>(eventBases[i]->getBackend());
+  backends.reserve(count);
+  for (size_t i = 0; i < count; ++i) {
+    auto* backend =
+        dynamic_cast<IoUringBackend*>(getEventBase(i)->getBackend());
     CHECK(backend) << "EventBase at index " << i
                    << " does not have IoUringBackend";
     backends.push_back(backend);
@@ -73,7 +81,7 @@ bool setupIoUringBufferPoolSharing(
 
   // Export handles from owner pools and import into remaining backends.
   for (size_t i = numZcQueues; i < backends.size(); ++i) {
-    size_t ownerIdx = (i - numZcQueues) % numZcQueues;
+    size_t ownerIdx = (i - numZcQueues) % numOwners;
     auto handle = backends[ownerIdx]->exportZcBufferPool();
     CHECK(backends[i]->importZcBufferPool(std::move(handle)))
         << "Failed to import buffer pool handle into EventBase at index " << i
@@ -82,6 +90,30 @@ bool setupIoUringBufferPoolSharing(
 
   return true;
 #endif
+}
+
+} // namespace
+
+bool setupIoUringBufferPoolSharing(
+    std::vector<std::unique_ptr<folly::EventBase>>& eventBases,
+    size_t numHwQueues,
+    size_t startQueueId) {
+  return setupIoUringBufferPoolSharingImpl(
+      eventBases.size(),
+      [&](size_t i) { return eventBases[i].get(); },
+      numHwQueues,
+      startQueueId);
+}
+
+bool setupIoUringBufferPoolSharing(
+    std::vector<folly::EventBase*>& eventBases,
+    size_t numHwQueues,
+    size_t startQueueId) {
+  return setupIoUringBufferPoolSharingImpl(
+      eventBases.size(),
+      [&](size_t i) { return eventBases[i]; },
+      numHwQueues,
+      startQueueId);
 }
 
 } // namespace folly
