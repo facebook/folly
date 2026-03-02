@@ -559,6 +559,12 @@ FOLLY_POP_WARNING
 #define BENCHMARK_PARAM(name, param) BENCHMARK_NAMED_PARAM(name, param, param)
 
 /**
+ * Like BENCHMARK_PARAM, but passes a UserCounters& parameter.
+ */
+#define BENCHMARK_COUNTERS_PARAM(name, param) \
+  BENCHMARK_COUNTERS_NAMED_PARAM(name, param, param)
+
+/**
  * Same as BENCHMARK_PARAM, but allows one to return the actual number of
  * iterations that have been run.
  */
@@ -596,6 +602,21 @@ FOLLY_POP_WARNING
       unsigned,                                                        \
       iters) {                                                         \
     name(iters, ##__VA_ARGS__);                                        \
+  }
+
+/**
+ * Like BENCHMARK_NAMED_PARAM, but passes a UserCounters& parameter to the
+ * benchmark function for recording custom counters.
+ */
+#define BENCHMARK_COUNTERS_NAMED_PARAM(name, param_name, ...)          \
+  BENCHMARK_IMPL_COUNTERS(                                             \
+      FB_CONCATENATE(name, FB_CONCATENATE(_, param_name)),             \
+      FOLLY_PP_STRINGIZE(name) "(" FOLLY_PP_STRINGIZE(param_name) ")", \
+      counters,                                                        \
+      iters,                                                           \
+      unsigned,                                                        \
+      iters) {                                                         \
+    name(counters, iters, ##__VA_ARGS__);                              \
   }
 
 /**
