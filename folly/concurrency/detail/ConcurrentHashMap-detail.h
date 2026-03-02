@@ -32,6 +32,13 @@
 #if FOLLY_AARCH64 && FOLLY_F14_CRC_INTRINSIC_AVAILABLE
 #include <arm_acle.h>
 #include <arm_neon.h>
+
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+#include <arm_sve.h>
+
+#include <arm_neon_sve_bridge.h> // @manual
+#endif
+
 #elif FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
 #include <nmmintrin.h>
 #endif
@@ -1010,6 +1017,32 @@ class alignas(64) SIMDTable {
 
 #ifdef __aarch64__
 
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+
+    ////////
+    // Tag filtering using SVE intrinsics
+
+    SparseMaskIter tagMatchIter(std::size_t needle, svbool_t& outPred) const {
+      FOLLY_SAFE_DCHECK(needle >= 0x80 && needle < 0x100, "");
+      uint64_t low = tags_low_.load(std::memory_order_acquire);
+      uint64_t hi = tags_hi_.load(std::memory_order_acquire);
+      svuint8_t needleV = svdup_n_u8(static_cast<uint8_t>(needle));
+      svbool_t pred = svwhilelt_b8_u32(0, kCapacity);
+      uint64x2_t vec;
+      vec[0] = low;
+      vec[1] = hi;
+      // test if any match is found
+      outPred = svmatch_u8(pred, svset_neonq_u8(svundef_u8(), vec), needleV);
+      // get info from every byte into the bottom half of every uint16_t
+      // by shifting right 4, then round to get it into a 64-bit vector
+      uint8x8_t maskV = vshrn_n_u16(
+          vreinterpretq_u16_u8(svget_neonq(svdup_n_u8_z(outPred, 17))), 4);
+      uint64_t mask = vreinterpret_u64_u8(maskV)[0];
+      return SparseMaskIter{mask};
+    }
+
+#else
+
     ////////
     // Tag filtering using NEON intrinsics
 
@@ -1026,6 +1059,8 @@ class alignas(64) SIMDTable {
       uint64_t mask = vget_lane_u64(vreinterpret_u64_u8(maskV), 0) & kFullMask;
       return SparseMaskIter{mask};
     }
+
+#endif
 
     MaskType occupiedMask() const {
       uint64_t low = tags_low_.load(std::memory_order_relaxed);
@@ -1459,16 +1494,26 @@ class alignas(64) SIMDTable {
     auto& chunk_idx = hp.first;
     for (size_t tries = 0; tries < ccount; ++tries) {
       Chunk* chunk = chunks->getChunk(chunk_idx, ccount);
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+      svbool_t outPred;
+      auto hits = chunk->tagMatchIter(hp.second, outPred);
+      bool hasHits = svptest_any(outPred, outPred);
+      FOLLY_SAFE_DCHECK(hasHits == hits.hasNext());
+#else
       auto hits = chunk->tagMatchIter(hp.second);
-      while (hits.hasNext()) {
-        size_t tag_idx = hits.next();
-        Node* node = hazz.protect(chunk->item(tag_idx));
-        if (FOLLY_LIKELY(node && KeyEqual()(k, node->getItem().first))) {
-          chunk_idx = chunk_idx & (ccount - 1);
-          res.setNode(node, chunks, ccount, chunk_idx, tag_idx);
-          return true;
-        }
-        hazz.reset_protection();
+      bool hasHits = hits.hasNext();
+#endif
+      if (hasHits) {
+        do {
+          size_t tag_idx = hits.next();
+          Node* node = hazz.protect(chunk->item(tag_idx));
+          if (FOLLY_LIKELY(node && KeyEqual()(k, node->getItem().first))) {
+            chunk_idx = chunk_idx & (ccount - 1);
+            res.setNode(node, chunks, ccount, chunk_idx, tag_idx);
+            return true;
+          }
+          hazz.reset_protection();
+        } while (hits.hasNext());
       }
 
       if (FOLLY_LIKELY(chunk->outboundOverflowCount() == 0)) {
@@ -1603,14 +1648,24 @@ class alignas(64) SIMDTable {
 
     for (size_t tries = 0; tries < ccount; ++tries) {
       Chunk* chunk = chunks->getChunk(chunk_idx, ccount);
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+      svbool_t outPred;
+      auto hits = chunk->tagMatchIter(hp.second, outPred);
+      bool hasHits = svptest_any(outPred, outPred);
+      FOLLY_SAFE_DCHECK(hasHits == hits.hasNext());
+#else
       auto hits = chunk->tagMatchIter(hp.second);
-      while (hits.hasNext()) {
-        tag_idx = hits.next();
-        Node* node = chunk->item(tag_idx).load(std::memory_order_acquire);
-        if (FOLLY_LIKELY(node && KeyEqual()(k, node->getItem().first))) {
-          chunk_idx = (chunk_idx & (ccount - 1));
-          return node;
-        }
+      bool hasHits = hits.hasNext();
+#endif
+      if (hasHits) {
+        do {
+          tag_idx = hits.next();
+          Node* node = chunk->item(tag_idx).load(std::memory_order_acquire);
+          if (FOLLY_LIKELY(node && KeyEqual()(k, node->getItem().first))) {
+            chunk_idx = (chunk_idx & (ccount - 1));
+            return node;
+          }
+        } while (hits.hasNext());
       }
       if (FOLLY_LIKELY(chunk->outboundOverflowCount() == 0)) {
         break;
