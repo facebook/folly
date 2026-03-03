@@ -5,6 +5,8 @@
 
 # pyre-unsafe
 
+from __future__ import annotations
+
 import os
 import select
 import subprocess
@@ -17,6 +19,53 @@ from .platform import is_windows
 
 class RunCommandError(Exception):
     pass
+
+
+def make_memory_limit_preexec_fn(
+    job_weight_mib: int,
+) -> object | None:
+    """Create a preexec_fn that sets a per-process virtual memory limit.
+
+    When getdeps spawns build commands (cmake -> ninja -> N compiler processes),
+    the parallelism is computed from available RAM divided by job_weight_mib.
+    However, there is no enforcement of that budget: if a compiler or linker
+    process exceeds its expected memory usage, the system can run out of RAM
+    and the Linux OOM killer may terminate arbitrary processes — including the
+    user's shell or terminal.
+
+    This function returns a callable suitable for subprocess.Popen's preexec_fn
+    parameter. It runs in each child process after fork() but before exec(),
+    setting RLIMIT_AS (virtual address space limit) so that a runaway process
+    gets a failed allocation (std::bad_alloc / ENOMEM) instead of triggering
+    the OOM killer. The limit is inherited by all descendant processes (ninja,
+    compiler invocations, etc.).
+
+    The per-process limit is set to job_weight_mib * 10. The 10x multiplier
+    accounts for the fact that RLIMIT_AS caps virtual address space, which is
+    typically 2-4x larger than resident (physical) memory for C++ compilers
+    due to memory-mapped files, shared libraries, and address space reservations
+    that don't consume physical RAM. The multiplier is intentionally generous:
+    the goal is a safety net that catches genuine runaways before the OOM killer
+    fires, not a tight per-job budget.
+
+    Only applies on Linux, where the OOM killer is the problem. Returns None
+    on other platforms.
+    """
+    if sys.platform != "linux":
+        return None
+
+    # Each job is budgeted job_weight_mib of physical RAM. Virtual address
+    # space is typically 2-4x RSS. Use 10x as a generous safety net: tight
+    # enough to stop a runaway process before the OOM killer fires, but loose
+    # enough to avoid false positives from normal virtual memory overhead.
+    limit_bytes = job_weight_mib * 10 * 1024 * 1024
+
+    def _set_memory_limit():
+        import resource
+
+        resource.setrlimit(resource.RLIMIT_AS, (limit_bytes, limit_bytes))
+
+    return _set_memory_limit
 
 
 def _print_env_diff(env, log_fn) -> None:
@@ -48,7 +97,9 @@ def check_cmd(cmd, **kwargs) -> None:
         raise RuntimeError(f"Failure exit code {rc} for command {cmd}")
 
 
-def run_cmd(cmd, env=None, cwd=None, allow_fail: bool = False, log_file=None) -> int:
+def run_cmd(
+    cmd, env=None, cwd=None, allow_fail: bool = False, log_file=None, preexec_fn=None
+) -> int:
     def log_to_stdout(msg):
         sys.stdout.buffer.write(msg.encode(errors="surrogateescape"))
 
@@ -60,15 +111,25 @@ def run_cmd(cmd, env=None, cwd=None, allow_fail: bool = False, log_file=None) ->
                 log_to_stdout(msg)
 
             return _run_cmd(
-                cmd, env=env, cwd=cwd, allow_fail=allow_fail, log_fn=log_function
+                cmd,
+                env=env,
+                cwd=cwd,
+                allow_fail=allow_fail,
+                log_fn=log_function,
+                preexec_fn=preexec_fn,
             )
     else:
         return _run_cmd(
-            cmd, env=env, cwd=cwd, allow_fail=allow_fail, log_fn=log_to_stdout
+            cmd,
+            env=env,
+            cwd=cwd,
+            allow_fail=allow_fail,
+            log_fn=log_to_stdout,
+            preexec_fn=preexec_fn,
         )
 
 
-def _run_cmd(cmd, env, cwd, allow_fail, log_fn) -> int:
+def _run_cmd(cmd, env, cwd, allow_fail, log_fn, preexec_fn=None) -> int:
     log_fn("---\n")
     try:
         cmd_str = " \\\n+      ".join(shellquote(arg) for arg in cmd)
@@ -106,7 +167,12 @@ def _run_cmd(cmd, env, cwd, allow_fail, log_fn) -> int:
 
     try:
         p = subprocess.Popen(
-            cmd, env=env, cwd=cwd, stdout=stdout, stderr=subprocess.STDOUT
+            cmd,
+            env=env,
+            cwd=cwd,
+            stdout=stdout,
+            stderr=subprocess.STDOUT,
+            preexec_fn=preexec_fn,
         )
     except (TypeError, ValueError, OSError) as exc:
         log_fn("error running `%s`: %s" % (cmd_str, exc))

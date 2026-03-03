@@ -24,7 +24,7 @@ from .copytree import rmtree_more, simple_copytree
 from .dyndeps import create_dyn_dep_munger
 from .envfuncs import add_path_entry, Env, path_search
 from .fetcher import copy_if_different, is_public_commit
-from .runcmd import run_cmd
+from .runcmd import make_memory_limit_preexec_fn, run_cmd
 
 if typing.TYPE_CHECKING:
     from .buildopts import BuildOptions
@@ -100,6 +100,7 @@ class BuilderBase(object):
         env=None,
         use_cmd_prefix: bool = True,
         allow_fail: bool = False,
+        preexec_fn=None,
     ) -> int:
         if env:
             e = self.env.copy()
@@ -120,6 +121,7 @@ class BuilderBase(object):
             cwd=cwd or self.build_dir,
             log_file=log_file,
             allow_fail=allow_fail,
+            preexec_fn=preexec_fn,
         )
 
     def _reconfigure(self, reconfigure: bool) -> bool:
@@ -229,7 +231,7 @@ class BuilderBase(object):
             dep_munger.emit_dev_run_script(script_path, dep_dirs)
 
     @property
-    def num_jobs(self) -> int:
+    def _job_weight_mib(self) -> int:
         # This is a hack, but we don't have a "defaults manifest" that we can
         # customize per platform.
         # TODO: Introduce some sort of defaults config that can select by
@@ -241,13 +243,24 @@ class BuilderBase(object):
             # 1.5 GiB is a lot to assume, but it's typical of Facebook-style C++.
             # Some manifests are even heavier and should override.
             default_job_weight = 1536
-        return self.build_opts.get_num_jobs(
-            int(
-                self.manifest.get(
-                    "build", "job_weight_mib", default_job_weight, ctx=self.ctx
-                )
+        return int(
+            self.manifest.get(
+                "build", "job_weight_mib", default_job_weight, ctx=self.ctx
             )
         )
+
+    @property
+    def num_jobs(self) -> int:
+        return self.build_opts.get_num_jobs(self._job_weight_mib)
+
+    @property
+    def memory_limit_preexec_fn(self):
+        """Return a preexec_fn that caps per-process virtual memory.
+
+        Uses the same job_weight_mib that controls parallelism, so the memory
+        limit is consistent with the parallelism budget.
+        """
+        return make_memory_limit_preexec_fn(self._job_weight_mib)
 
     def run_tests(
         self,
@@ -933,6 +946,7 @@ if __name__ == "__main__":
                 str(self.num_jobs),
             ],
             env=env,
+            preexec_fn=self.memory_limit_preexec_fn,
         )
 
     def _build_targets(self, targets: typing.Sequence[str]) -> None:
@@ -969,7 +983,7 @@ if __name__ == "__main__":
             ]
         )
 
-        self._check_cmd(cmd, env=env)
+        self._check_cmd(cmd, env=env, preexec_fn=self.memory_limit_preexec_fn)
 
     def _get_missing_test_executables(
         self, test_filter: Optional[str], env: Env, ctest: Optional[str]
