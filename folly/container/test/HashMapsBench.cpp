@@ -148,8 +148,9 @@ void benchmarkFilledMap(int runs, int size, const Test& test, int div = 1) {
   });
 }
 
-static auto getRNG() {
-  return folly::Random::create();
+static auto& getRNG() {
+  static std::mt19937 rng{42};
+  return rng;
 }
 
 template <template <class, class> class Map, class K, class V, class Test>
