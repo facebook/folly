@@ -129,7 +129,8 @@ struct BitVectorEncoder {
       while (skipPointersSize_ < nextSkipPointerSize) {
         auto pos = skipPointersSize_++;
         folly::storeUnaligned<SkipValueType>(
-            skipPointers_ + pos * sizeof(SkipValueType), size_);
+            skipPointers_ + pos * sizeof(SkipValueType),
+            static_cast<SkipValueType>(size_));
       }
     }
 
@@ -137,7 +138,8 @@ struct BitVectorEncoder {
       if (size_ != 0 && (size_ % forwardQuantum == 0)) {
         const auto pos = size_ / forwardQuantum - 1;
         folly::storeUnaligned<SkipValueType>(
-            forwardPointers_ + pos * sizeof(SkipValueType), value);
+            forwardPointers_ + pos * sizeof(SkipValueType),
+            static_cast<SkipValueType>(value));
       }
     }
 
