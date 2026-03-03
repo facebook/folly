@@ -3,13 +3,16 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-unsafe
+# pyre-strict
+
+from __future__ import annotations
 
 import re
 import shlex
+from collections.abc import Callable
 
 
-def parse_expr(expr_text, valid_variables):
+def parse_expr(expr_text: str, valid_variables: set[str]) -> ExprNode:
     """parses the simple criteria expression syntax used in
     dependency specifications.
     Returns an ExprNode instance that can be evaluated like this:
@@ -38,13 +41,13 @@ def parse_expr(expr_text, valid_variables):
     return p.parse()
 
 
-class ExprNode(object):
-    def eval(self, ctx) -> bool:
+class ExprNode:
+    def eval(self, ctx: dict[str, str | None]) -> bool:
         return False
 
 
 class TrueExpr(ExprNode):
-    def eval(self, ctx) -> bool:
+    def eval(self, ctx: dict[str, str | None]) -> bool:
         return True
 
     def __str__(self) -> str:
@@ -52,10 +55,10 @@ class TrueExpr(ExprNode):
 
 
 class NotExpr(ExprNode):
-    def __init__(self, node) -> None:
-        self._node = node
+    def __init__(self, node: ExprNode) -> None:
+        self._node: ExprNode = node
 
-    def eval(self, ctx) -> bool:
+    def eval(self, ctx: dict[str, str | None]) -> bool:
         return not self._node.eval(ctx)
 
     def __str__(self) -> str:
@@ -63,58 +66,58 @@ class NotExpr(ExprNode):
 
 
 class AllExpr(ExprNode):
-    def __init__(self, nodes) -> None:
-        self._nodes = nodes
+    def __init__(self, nodes: list[ExprNode]) -> None:
+        self._nodes: list[ExprNode] = nodes
 
-    def eval(self, ctx) -> bool:
+    def eval(self, ctx: dict[str, str | None]) -> bool:
         for node in self._nodes:
             if not node.eval(ctx):
                 return False
         return True
 
     def __str__(self) -> str:
-        items = []
+        items: list[str] = []
         for node in self._nodes:
             items.append(str(node))
         return "all(%s)" % ",".join(items)
 
 
 class AnyExpr(ExprNode):
-    def __init__(self, nodes) -> None:
-        self._nodes = nodes
+    def __init__(self, nodes: list[ExprNode]) -> None:
+        self._nodes: list[ExprNode] = nodes
 
-    def eval(self, ctx) -> bool:
+    def eval(self, ctx: dict[str, str | None]) -> bool:
         for node in self._nodes:
             if node.eval(ctx):
                 return True
         return False
 
     def __str__(self) -> str:
-        items = []
+        items: list[str] = []
         for node in self._nodes:
             items.append(str(node))
         return "any(%s)" % ",".join(items)
 
 
 class EqualExpr(ExprNode):
-    def __init__(self, key, value) -> None:
-        self._key = key
-        self._value = value
+    def __init__(self, key: str, value: str) -> None:
+        self._key: str = key
+        self._value: str = value
 
-    def eval(self, ctx):
+    def eval(self, ctx: dict[str, str | None]) -> bool:
         return ctx.get(self._key) == self._value
 
     def __str__(self) -> str:
         return "%s=%s" % (self._key, self._value)
 
 
-class Parser(object):
-    def __init__(self, text, valid_variables) -> None:
-        self.text = text
-        self.lex = shlex.shlex(text)
-        self.valid_variables = valid_variables
+class Parser:
+    def __init__(self, text: str, valid_variables: set[str]) -> None:
+        self.text: str = text
+        self.lex: shlex.shlex = shlex.shlex(text)
+        self.valid_variables: set[str] = valid_variables
 
-    def parse(self):
+    def parse(self) -> ExprNode:
         expr = self.top()
         garbage = self.lex.get_token()
         if garbage != "":
@@ -123,12 +126,12 @@ class Parser(object):
             )
         return expr
 
-    def top(self):
+    def top(self) -> ExprNode:
         name = self.ident()
         op = self.lex.get_token()
 
         if op == "(":
-            parsers = {
+            parsers: dict[str, Callable[[], ExprNode]] = {
                 "not": self.parse_not,
                 "any": self.parse_any,
                 "all": self.parse_all,
@@ -142,7 +145,10 @@ class Parser(object):
             if name not in self.valid_variables:
                 raise Exception("unknown variable %r in expression" % (name,))
             # remove shell quote from value so can test things with period in them, e.g "18.04"
-            unquoted = " ".join(shlex.split(self.lex.get_token()))
+            token = self.lex.get_token()
+            if token is None:
+                raise Exception("unexpected end of expression in %s" % self.text)
+            unquoted = " ".join(shlex.split(token))
             return EqualExpr(name, unquoted)
 
         raise Exception(
@@ -151,10 +157,8 @@ class Parser(object):
 
     def ident(self) -> str:
         ident = self.lex.get_token()
-        # pyre-fixme[6]: For 2nd argument expected `str` but got `Optional[str]`.
-        if not re.match("[a-zA-Z]+", ident):
+        if ident is None or not re.match("[a-zA-Z]+", ident):
             raise Exception("expected identifier found %s" % ident)
-        # pyre-fixme[7]: Expected `str` but got `Optional[str]`.
         return ident
 
     def parse_not(self) -> NotExpr:
@@ -166,7 +170,7 @@ class Parser(object):
         return expr
 
     def parse_any(self) -> AnyExpr:
-        nodes = []
+        nodes: list[ExprNode] = []
         while True:
             nodes.append(self.top())
             tok = self.lex.get_token()
@@ -177,7 +181,7 @@ class Parser(object):
         return AnyExpr(nodes)
 
     def parse_all(self) -> AllExpr:
-        nodes = []
+        nodes: list[ExprNode] = []
         while True:
             nodes.append(self.top())
             tok = self.lex.get_token()

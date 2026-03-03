@@ -3,23 +3,30 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-unsafe
+# pyre-strict
+from __future__ import annotations
 
 import base64
 import copy
 import hashlib
 import os
+import typing
+from collections.abc import Iterator
 
 from . import fetcher
 from .envfuncs import path_search
 from .errors import ManifestNotFound
 from .manifest import ManifestParser
 
+if typing.TYPE_CHECKING:
+    from .buildopts import BuildOptions
+    from .manifest import ContextGenerator, ManifestContext
 
-class Loader(object):
+
+class Loader:
     """The loader allows our tests to patch the load operation"""
 
-    def _list_manifests(self, build_opts):
+    def _list_manifests(self, build_opts: BuildOptions) -> Iterator[str]:
         """Returns a generator that iterates all the available manifests"""
         for path, _, files in os.walk(build_opts.manifests_dir):
             for name in files:
@@ -29,10 +36,12 @@ class Loader(object):
 
                 yield os.path.join(path, name)
 
-    def _load_manifest(self, path):
+    def _load_manifest(self, path: str) -> ManifestParser:
         return ManifestParser(path)
 
-    def load_project(self, build_opts, project_name):
+    def load_project(
+        self, build_opts: BuildOptions, project_name: str
+    ) -> ManifestParser:
         if "/" in project_name or "\\" in project_name:
             # Assume this is a path already
             return ManifestParser(project_name)
@@ -43,8 +52,8 @@ class Loader(object):
 
         raise ManifestNotFound(project_name)
 
-    def load_all(self, build_opts):
-        manifests_by_name = {}
+    def load_all(self, build_opts: BuildOptions) -> dict[str, ManifestParser]:
+        manifests_by_name: dict[str, ManifestParser] = {}
 
         for manifest in self._list_manifests(build_opts):
             m = self._load_manifest(manifest)
@@ -58,14 +67,14 @@ class Loader(object):
 
 
 class ResourceLoader(Loader):
-    def __init__(self, namespace, manifests_dir) -> None:
-        self.namespace = namespace
-        self.manifests_dir = manifests_dir
+    def __init__(self, namespace: str, manifests_dir: str) -> None:
+        self.namespace: str = namespace
+        self.manifests_dir: str = manifests_dir
 
-    def _list_manifests(self, _build_opts):
+    def _list_manifests(self, build_opts: BuildOptions) -> Iterator[str]:
         import pkg_resources
 
-        dirs = [self.manifests_dir]
+        dirs: list[str] = [self.manifests_dir]
 
         while dirs:
             current = dirs.pop(0)
@@ -77,43 +86,47 @@ class ResourceLoader(Loader):
                 else:
                     yield "%s/%s" % (current, name)
 
-    def _find_manifest(self, project_name):
+    def _find_manifest(self, project_name: str) -> str:
+        # pyre-fixme[20]: Call `ResourceLoader._list_manifests` expects argument `build_opts`.
         for name in self._list_manifests():
             if name.endswith("/%s" % project_name):
                 return name
 
         raise ManifestNotFound(project_name)
 
-    def _load_manifest(self, path: str):
+    def _load_manifest(self, path: str) -> ManifestParser:
         import pkg_resources
 
         contents = pkg_resources.resource_string(self.namespace, path).decode("utf8")
         return ManifestParser(file_name=path, fp=contents)
 
-    def load_project(self, build_opts, project_name):
+    def load_project(
+        self, build_opts: BuildOptions, project_name: str
+    ) -> ManifestParser:
         project_name = self._find_manifest(project_name)
+        # pyre-fixme[16]: `ResourceLoader` has no attribute `_load_resource_manifest`.
         return self._load_resource_manifest(project_name)
 
 
-LOADER = Loader()
+LOADER: Loader = Loader()
 
 
-def patch_loader(namespace, manifests_dir: str = "manifests") -> None:
+def patch_loader(namespace: str, manifests_dir: str = "manifests") -> None:
     global LOADER
     LOADER = ResourceLoader(namespace, manifests_dir)
 
 
-def load_project(build_opts, project_name):
+def load_project(build_opts: BuildOptions, project_name: str) -> ManifestParser:
     """given the name of a project or a path to a manifest file,
     load up the ManifestParser instance for it and return it"""
     return LOADER.load_project(build_opts, project_name)
 
 
-def load_all_manifests(build_opts):
+def load_all_manifests(build_opts: BuildOptions) -> dict[str, ManifestParser]:
     return LOADER.load_all(build_opts)
 
 
-class ManifestLoader(object):
+class ManifestLoader:
     """ManifestLoader stores information about project manifest relationships for a
     given set of (build options + platform) configuration.
 
@@ -121,30 +134,32 @@ class ManifestLoader(object):
     relationships and project hash values for this build configuration.
     """
 
-    def __init__(self, build_opts, ctx_gen=None) -> None:
-        self._loader = LOADER
-        self.build_opts = build_opts
+    def __init__(
+        self, build_opts: BuildOptions, ctx_gen: ContextGenerator | None = None
+    ) -> None:
+        self._loader: Loader = LOADER
+        self.build_opts: BuildOptions = build_opts
         if ctx_gen is None:
-            self.ctx_gen = self.build_opts.get_context_generator()
+            self.ctx_gen: ContextGenerator = self.build_opts.get_context_generator()
         else:
             self.ctx_gen = ctx_gen
 
-        self.manifests_by_name = {}
-        self._loaded_all = False
-        self._project_hashes = {}
-        self._fetcher_overrides = {}
-        self._build_dir_overrides = {}
-        self._install_dir_overrides = {}
-        self._install_prefix_overrides = {}
+        self.manifests_by_name: dict[str, ManifestParser] = {}
+        self._loaded_all: bool = False
+        self._project_hashes: dict[str, str] = {}
+        self._fetcher_overrides: dict[str, fetcher.LocalDirFetcher] = {}
+        self._build_dir_overrides: dict[str, str] = {}
+        self._install_dir_overrides: dict[str, str] = {}
+        self._install_prefix_overrides: dict[str, str] = {}
 
-    def load_manifest(self, name):
+    def load_manifest(self, name: str) -> ManifestParser:
         manifest = self.manifests_by_name.get(name)
         if manifest is None:
             manifest = self._loader.load_project(self.build_opts, name)
             self.manifests_by_name[name] = manifest
         return manifest
 
-    def load_all_manifests(self):
+    def load_all_manifests(self) -> dict[str, ManifestParser]:
         if not self._loaded_all:
             all_manifests_by_name = self._loader.load_all(self.build_opts)
             if self.manifests_by_name:
@@ -159,7 +174,7 @@ class ManifestLoader(object):
 
         return self.manifests_by_name
 
-    def dependencies_of(self, manifest):
+    def dependencies_of(self, manifest: ManifestParser) -> list[ManifestParser]:
         """Returns the dependencies of the given project, not including the project itself, in topological order."""
         return [
             dep
@@ -167,7 +182,9 @@ class ManifestLoader(object):
             if dep != manifest
         ]
 
-    def manifests_in_dependency_order(self, manifest=None):
+    def manifests_in_dependency_order(
+        self, manifest: ManifestParser | None = None
+    ) -> list[ManifestParser]:
         """Compute all dependencies of the specified project.  Returns a list of the
         dependencies plus the project itself, in topologically sorted order.
 
@@ -179,17 +196,17 @@ class ManifestLoader(object):
         manifests_in_dependency_order() this will return a global dependency ordering of
         all projects."""
         # The list of deps that have been fully processed
-        seen = set()
+        seen: set[str] = set()
         # The list of deps which have yet to be evaluated.  This
         # can potentially contain duplicates.
         if manifest is None:
-            deps = list(self.manifests_by_name.values())
+            deps: list[ManifestParser] = list(self.manifests_by_name.values())
         else:
             assert manifest.name in self.manifests_by_name
             deps = [manifest]
         # The list of manifests in dependency order
-        dep_order = []
-        system_packages = {}
+        dep_order: list[ManifestParser] = []
+        system_packages: dict[str, list[str]] = {}
 
         while len(deps) > 0:
             m = deps.pop(0)
@@ -201,10 +218,10 @@ class ManifestLoader(object):
             # a correct order even if they aren't sorted, but we prefer
             # to produce the same order regardless of how they are listed
             # in the project manifest files.
-            ctx = self.ctx_gen.get_context(m.name)
-            dep_list = m.get_dependencies(ctx)
+            ctx: ManifestContext = self.ctx_gen.get_context(m.name)
+            dep_list: list[str] = m.get_dependencies(ctx)
 
-            dep_count = 0
+            dep_count: int = 0
             for dep_name in dep_list:
                 # If we're not sure whether it is done, queue it up
                 if dep_name not in seen:
@@ -229,57 +246,61 @@ class ManifestLoader(object):
                 self.build_opts.allow_system_packages
                 and self.build_opts.host_type.get_package_manager()
             ):
-                packages = m.get_required_system_packages(ctx)
+                packages: dict[str, list[str]] = m.get_required_system_packages(ctx)
                 for pkg_type, v in packages.items():
-                    merged = system_packages.get(pkg_type, [])
+                    merged: list[str] = system_packages.get(pkg_type, [])
                     if v not in merged:
                         merged += v
                     system_packages[pkg_type] = merged
                 # A manifest depends on all system packages in it dependencies as well
+                # pyre-fixme[8]: Attribute has type `Dict[str, str]`; used as
+                #  `Dict[str, List[str]]`.
                 m.resolved_system_packages = copy.copy(system_packages)
             dep_order.append(m)
 
         return dep_order
 
-    def set_project_src_dir(self, project_name, path) -> None:
+    def set_project_src_dir(self, project_name: str, path: str) -> None:
         self._fetcher_overrides[project_name] = fetcher.LocalDirFetcher(path)
 
-    def set_project_build_dir(self, project_name, path) -> None:
+    def set_project_build_dir(self, project_name: str, path: str) -> None:
         self._build_dir_overrides[project_name] = path
 
-    def set_project_install_dir(self, project_name, path) -> None:
+    def set_project_install_dir(self, project_name: str, path: str) -> None:
         self._install_dir_overrides[project_name] = path
 
-    def set_project_install_prefix(self, project_name, path) -> None:
+    def set_project_install_prefix(self, project_name: str, path: str) -> None:
         self._install_prefix_overrides[project_name] = path
 
-    def create_fetcher(self, manifest):
+    def create_fetcher(
+        self, manifest: ManifestParser
+    ) -> fetcher.Fetcher | fetcher.LocalDirFetcher:
         override = self._fetcher_overrides.get(manifest.name)
         if override is not None:
             return override
 
-        ctx = self.ctx_gen.get_context(manifest.name)
+        ctx: ManifestContext = self.ctx_gen.get_context(manifest.name)
         return manifest.create_fetcher(self.build_opts, self, ctx)
 
-    def get_project_hash(self, manifest):
+    def get_project_hash(self, manifest: ManifestParser) -> str:
         h = self._project_hashes.get(manifest.name)
         if h is None:
             h = self._compute_project_hash(manifest)
             self._project_hashes[manifest.name] = h
         return h
 
-    def _compute_project_hash(self, manifest) -> str:
+    def _compute_project_hash(self, manifest: ManifestParser) -> str:
         """This recursive function computes a hash for a given manifest.
         The hash takes into account some environmental factors on the
         host machine and includes the hashes of its dependencies.
         No caching of the computation is performed, which is theoretically
         wasteful but the computation is fast enough that it is not required
         to cache across multiple invocations."""
-        ctx = self.ctx_gen.get_context(manifest.name)
+        ctx: ManifestContext = self.ctx_gen.get_context(manifest.name)
 
         hasher = hashlib.sha256()
         # Some environmental and configuration things matter
-        env = {}
+        env: dict[str, str | None] = {}
         env["install_dir"] = self.build_opts.install_dir
         env["scratch_dir"] = self.build_opts.scratch_dir
         env["vcvars_path"] = self.build_opts.vcvars_path
@@ -301,8 +322,10 @@ class ManifestLoader(object):
         for name in manifest.get_section_as_args("depends.environment", ctx):
             env[name] = os.environ.get(name)
 
-        fetcher = self.create_fetcher(manifest)
-        env["fetcher.hash"] = fetcher.hash()
+        fetcher_inst: fetcher.Fetcher | fetcher.LocalDirFetcher = self.create_fetcher(
+            manifest
+        )
+        env["fetcher.hash"] = fetcher_inst.hash()
 
         for name in sorted(env.keys()):
             hasher.update(name.encode("utf-8"))
@@ -316,25 +339,25 @@ class ManifestLoader(object):
         manifest.update_hash(hasher, ctx)
 
         # If a patchfile is specified, include its contents in the hash
-        patchfile = manifest.get("build", "patchfile", ctx=ctx)
+        patchfile: str | None = manifest.get("build", "patchfile", ctx=ctx)
         if patchfile:
-            patchfile_path = os.path.join(
+            patchfile_path: str = os.path.join(
                 self.build_opts.fbcode_builder_dir, "patches", patchfile
             )
             if os.path.exists(patchfile_path):
                 with open(patchfile_path, "rb") as f:
                     hasher.update(f.read())
 
-        dep_list = manifest.get_dependencies(ctx)
+        dep_list: list[str] = manifest.get_dependencies(ctx)
         for dep in dep_list:
-            dep_manifest = self.load_manifest(dep)
-            dep_hash = self.get_project_hash(dep_manifest)
+            dep_manifest: ManifestParser = self.load_manifest(dep)
+            dep_hash: str = self.get_project_hash(dep_manifest)
             hasher.update(dep_hash.encode("utf-8"))
 
         # Use base64 to represent the hash, rather than the simple hex digest,
         # so that the string is shorter.  Use the URL-safe encoding so that
         # the hash can also be safely used as a filename component.
-        h = base64.urlsafe_b64encode(hasher.digest()).decode("ascii")
+        h: str = base64.urlsafe_b64encode(hasher.digest()).decode("ascii")
         # ... and because cmd.exe is troublesome with `=` signs, nerf those.
         # They tend to be padding characters at the end anyway, so we can
         # safely discard them.
@@ -342,35 +365,37 @@ class ManifestLoader(object):
 
         return h
 
-    def _get_project_dir_name(self, manifest):
+    def _get_project_dir_name(self, manifest: ManifestParser) -> str:
         if manifest.is_first_party_project():
             return manifest.name
         else:
-            project_hash = self.get_project_hash(manifest)
+            project_hash: str = self.get_project_hash(manifest)
             return "%s-%s" % (manifest.name, project_hash)
 
-    def get_project_install_dir(self, manifest):
+    def get_project_install_dir(self, manifest: ManifestParser) -> str:
         override = self._install_dir_overrides.get(manifest.name)
         if override:
             return override
 
-        project_dir_name = self._get_project_dir_name(manifest)
+        project_dir_name: str = self._get_project_dir_name(manifest)
         return os.path.join(self.build_opts.install_dir, project_dir_name)
 
-    def get_project_build_dir(self, manifest):
+    def get_project_build_dir(self, manifest: ManifestParser) -> str:
         override = self._build_dir_overrides.get(manifest.name)
         if override:
             return override
 
-        project_dir_name = self._get_project_dir_name(manifest)
+        project_dir_name: str = self._get_project_dir_name(manifest)
         return os.path.join(self.build_opts.scratch_dir, "build", project_dir_name)
 
-    def get_project_install_prefix(self, manifest):
+    def get_project_install_prefix(self, manifest: ManifestParser) -> str | None:
         return self._install_prefix_overrides.get(manifest.name)
 
-    def get_project_install_dir_respecting_install_prefix(self, manifest):
-        inst_dir = self.get_project_install_dir(manifest)
-        prefix = self.get_project_install_prefix(manifest)
+    def get_project_install_dir_respecting_install_prefix(
+        self, manifest: ManifestParser
+    ) -> str:
+        inst_dir: str = self.get_project_install_dir(manifest)
+        prefix: str | None = self.get_project_install_prefix(manifest)
         if prefix:
             return inst_dir + prefix
         return inst_dir

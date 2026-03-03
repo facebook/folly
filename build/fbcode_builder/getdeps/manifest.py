@@ -3,13 +3,16 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-unsafe
+# pyre-strict
+
+from __future__ import annotations
 
 import configparser
+import hashlib
 import io
 import os
 import sys
-from typing import List
+import typing
 
 from .builder import (
     AutoconfBuilder,
@@ -26,7 +29,7 @@ from .builder import (
     SqliteBuilder,
 )
 from .cargo import CargoBuilder
-from .expr import parse_expr
+from .expr import ExprNode, parse_expr
 from .fetcher import (
     ArchiveFetcher,
     GitFetcher,
@@ -38,10 +41,16 @@ from .fetcher import (
 )
 from .py_wheel_builder import PythonWheelBuilder
 
-REQUIRED = "REQUIRED"
-OPTIONAL = "OPTIONAL"
+if typing.TYPE_CHECKING:
+    from .builder import BuilderBase
+    from .buildopts import BuildOptions
+    from .fetcher import Fetcher
+    from .load import ManifestLoader
 
-SCHEMA = {
+REQUIRED: str = "REQUIRED"
+OPTIONAL: str = "OPTIONAL"
+
+SCHEMA: dict[str, dict[str, object]] = {
     "manifest": {
         "optional_section": False,
         "fields": {
@@ -131,7 +140,7 @@ SCHEMA = {
 
 # These sections are allowed to vary for different platforms
 # using the expression syntax to enable/disable sections
-ALLOWED_EXPR_SECTIONS = [
+ALLOWED_EXPR_SECTIONS: list[str] = [
     "autoconf.args",
     "autoconf.envcmd.LDFLAGS",
     "build",
@@ -154,12 +163,17 @@ ALLOWED_EXPR_SECTIONS = [
 ]
 
 
-def parse_conditional_section_name(name, section_def):
+def parse_conditional_section_name(name: str, section_def: str) -> ExprNode:
     expr = name[len(section_def) + 1 :]
     return parse_expr(expr, ManifestContext.ALLOWED_VARIABLES)
 
 
-def validate_allowed_fields(file_name, section, config, allowed_fields):
+def validate_allowed_fields(
+    file_name: str,
+    section: str,
+    config: configparser.RawConfigParser,
+    allowed_fields: dict[str, str],
+) -> None:
     for field in config.options(section):
         if not allowed_fields.get(field):
             raise Exception(
@@ -175,7 +189,9 @@ def validate_allowed_fields(file_name, section, config, allowed_fields):
             )
 
 
-def validate_allow_values(file_name, section, config):
+def validate_allow_values(
+    file_name: str, section: str, config: configparser.RawConfigParser
+) -> None:
     for field in config.options(section):
         value = config.get(section, field)
         if value is not None:
@@ -189,7 +205,9 @@ def validate_allow_values(file_name, section, config):
             )
 
 
-def validate_section(file_name, section, config):
+def validate_section(
+    file_name: str, section: str, config: configparser.RawConfigParser
+) -> str:
     section_def = SCHEMA.get(section)
     if not section_def:
         for name in ALLOWED_EXPR_SECTIONS:
@@ -214,18 +232,20 @@ def validate_section(file_name, section, config):
 
     allowed_fields = section_def.get("fields")
     if allowed_fields:
+        # pyre-ignore[6]: Expected `dict[str, str]` but got `object`.
         validate_allowed_fields(file_name, section, config, allowed_fields)
     elif not section_def.get("allow_values", True):
         validate_allow_values(file_name, section, config)
+    # pyre-fixme[61]: `canonical_section_name` is undefined, or not always defined.
     return canonical_section_name
 
 
-class ManifestParser(object):
-    def __init__(self, file_name, fp=None):
+class ManifestParser:
+    def __init__(self, file_name: str, fp: str | typing.IO[str] | None = None) -> None:
         # allow_no_value enables listing parameters in the
         # autoconf.args section one per line
         config = configparser.RawConfigParser(allow_no_value=True)
-        config.optionxform = str  # make it case sensitive
+        config.optionxform = str  # type: ignore[assignment]  # make it case sensitive
         if fp is None:
             with open(file_name, "r") as fp:
                 config.read_file(fp)
@@ -237,7 +257,7 @@ class ManifestParser(object):
             config.read_file(fp)
 
         # validate against the schema
-        seen_sections = set()
+        seen_sections: set[str] = set()
 
         for section in config.sections():
             seen_sections.add(validate_section(file_name, section, config))
@@ -253,13 +273,15 @@ class ManifestParser(object):
                     % (file_name, section)
                 )
 
-        self._config = config
-        self.name = config.get("manifest", "name")
-        self.fbsource_path = self.get("manifest", "fbsource_path")
-        self.shipit_project = self.get("manifest", "shipit_project")
-        self.shipit_fbcode_builder = self.get("manifest", "shipit_fbcode_builder")
-        self.resolved_system_packages = {}
-        self.shipit_strip_marker = self.get(
+        self._config: configparser.RawConfigParser = config
+        self.name: str = config.get("manifest", "name")
+        self.fbsource_path: str | None = self.get("manifest", "fbsource_path")
+        self.shipit_project: str | None = self.get("manifest", "shipit_project")
+        self.shipit_fbcode_builder: str | None = self.get(
+            "manifest", "shipit_fbcode_builder"
+        )
+        self.resolved_system_packages: dict[str, str] = {}
+        self.shipit_strip_marker: str | None = self.get(
             "manifest", "shipit_strip_marker", defval="@fb-only"
         )
 
@@ -274,7 +296,13 @@ class ManifestParser(object):
                 f"manifest name ({self.name}) must not contain the '.' character (it is incompatible with github actions)"
             )
 
-    def get(self, section, key, defval=None, ctx=None):
+    def get(
+        self,
+        section: str,
+        key: str,
+        defval: str | None = None,
+        ctx: ManifestContext | dict[str, str | None] | None = None,
+    ) -> str | None:
         ctx = ctx or {}
 
         for s in self._config.sections():
@@ -285,6 +313,9 @@ class ManifestParser(object):
 
             if s.startswith(section + "."):
                 expr = parse_conditional_section_name(s, section)
+                # pyre-fixme[6]: For 1st argument expected `Dict[str,
+                #  Optional[str]]` but got `Union[Dict[str, Optional[str]],
+                #  ManifestContext]`.
                 if not expr.eval(ctx):
                     continue
 
@@ -293,7 +324,7 @@ class ManifestParser(object):
 
         return defval
 
-    def get_dependencies(self, ctx):
+    def get_dependencies(self, ctx: ManifestContext) -> list[str]:
         dep_list = list(self.get_section_as_dict("dependencies", ctx).keys())
         dep_list.sort()
         builder = self.get("build", "builder", ctx=ctx)
@@ -311,14 +342,18 @@ class ManifestParser(object):
 
         return dep_list
 
-    def get_section_as_args(self, section, ctx=None) -> List[str]:
+    def get_section_as_args(
+        self,
+        section: str,
+        ctx: ManifestContext | dict[str, str | None] | None = None,
+    ) -> list[str]:
         """Intended for use with the make.[build_args/install_args] and
         autoconf.args sections, this method collects the entries and returns an
         array of strings.
         If the manifest contains conditional sections, ctx is used to
         evaluate the condition and merge in the values.
         """
-        args = []
+        args: list[str] = []
         ctx = ctx or {}
 
         for s in self._config.sections():
@@ -326,6 +361,9 @@ class ManifestParser(object):
                 if not s.startswith(section + "."):
                     continue
                 expr = parse_conditional_section_name(s, section)
+                # pyre-fixme[6]: For 1st argument expected `Dict[str,
+                #  Optional[str]]` but got `Union[Dict[str, Optional[str]],
+                #  ManifestContext]`.
                 if not expr.eval(ctx):
                     continue
             for field in self._config.options(s):
@@ -336,10 +374,14 @@ class ManifestParser(object):
                     args.append("%s=%s" % (field, value))
         return args
 
-    def get_section_as_ordered_pairs(self, section, ctx=None):
+    def get_section_as_ordered_pairs(
+        self,
+        section: str,
+        ctx: ManifestContext | dict[str, str | None] | None = None,
+    ) -> list[tuple[str, str | None]]:
         """Used for eg: shipit.pathmap which has strong
         ordering requirements"""
-        res = []
+        res: list[tuple[str, str | None]] = []
         ctx = ctx or {}
 
         for s in self._config.sections():
@@ -347,6 +389,9 @@ class ManifestParser(object):
                 if not s.startswith(section + "."):
                     continue
                 expr = parse_conditional_section_name(s, section)
+                # pyre-fixme[6]: For 1st argument expected `Dict[str,
+                #  Optional[str]]` but got `Union[Dict[str, Optional[str]],
+                #  ManifestContext]`.
                 if not expr.eval(ctx):
                     continue
 
@@ -355,14 +400,21 @@ class ManifestParser(object):
                 res.append((key, value))
         return res
 
-    def get_section_as_dict(self, section, ctx):
-        d = {}
+    def get_section_as_dict(
+        self,
+        section: str,
+        ctx: ManifestContext | dict[str, str | None] | None,
+    ) -> dict[str, str | None]:
+        d: dict[str, str | None] = {}
 
         for s in self._config.sections():
             if s != section:
                 if not s.startswith(section + "."):
                     continue
                 expr = parse_conditional_section_name(s, section)
+                # pyre-fixme[6]: For 1st argument expected `Dict[str,
+                #  Optional[str]]` but got `Union[None, Dict[str, Optional[str]],
+                #  ManifestContext]`.
                 if not expr.eval(ctx):
                     continue
             for field in self._config.options(s):
@@ -370,7 +422,7 @@ class ManifestParser(object):
                 d[field] = value
         return d
 
-    def update_hash(self, hasher, ctx):
+    def update_hash(self, hasher: hashlib._Hash, ctx: ManifestContext) -> None:
         """Compute a hash over the configuration for the given
         context.  The goal is for the hash to change if the config
         for that context changes, but not if a change is made to
@@ -396,11 +448,13 @@ class ManifestParser(object):
                 if value is not None:
                     hasher.update(value.encode("utf-8"))
 
-    def is_first_party_project(self):
+    def is_first_party_project(self) -> bool:
         """returns true if this is an FB first-party project"""
         return self.shipit_project is not None
 
-    def get_required_system_packages(self, ctx):
+    def get_required_system_packages(
+        self, ctx: ManifestContext
+    ) -> dict[str, list[str]]:
         """Returns dictionary of packager system -> list of packages"""
         return {
             "rpm": self.get_section_as_args("rpms", ctx),
@@ -409,7 +463,7 @@ class ManifestParser(object):
             "pacman-package": self.get_section_as_args("pps", ctx),
         }
 
-    def _is_satisfied_by_preinstalled_environment(self, ctx):
+    def _is_satisfied_by_preinstalled_environment(self, ctx: ManifestContext) -> bool:
         envs = self.get_section_as_args("preinstalled.env", ctx)
         if not envs:
             return False
@@ -426,10 +480,12 @@ class ManifestParser(object):
 
         return True
 
-    def get_repo_url(self, ctx):
+    def get_repo_url(self, ctx: ManifestContext) -> str | None:
         return self.get("git", "repo_url", ctx=ctx)
 
-    def _create_fetcher(self, build_options, ctx):
+    def _create_fetcher(
+        self, build_options: BuildOptions, ctx: ManifestContext
+    ) -> Fetcher:
         real_shipit_available = ShipitTransformerFetcher.available(build_options)
         use_real_shipit = real_shipit_available and (
             build_options.use_shipit
@@ -453,6 +509,8 @@ class ManifestParser(object):
             return ShipitTransformerFetcher(
                 build_options,
                 self.shipit_project,
+                # pyre-fixme[6]: For 3rd argument expected `str` but got
+                #  `Optional[str]`.
                 self.get("manifest", "shipit_external_branch"),
             )
 
@@ -464,18 +522,23 @@ class ManifestParser(object):
         # Can we satisfy this dep with system packages?
         if (repo_url is None and url is None) or build_options.allow_system_packages:
             if self._is_satisfied_by_preinstalled_environment(ctx):
+                # pyre-fixme[7]: Expected `Fetcher` but got `PreinstalledNopFetcher`.
                 return PreinstalledNopFetcher()
 
             if build_options.host_type.get_package_manager():
                 packages = self.get_required_system_packages(ctx)
                 package_fetcher = SystemPackageFetcher(build_options, packages)
                 if package_fetcher.packages_are_installed():
+                    # pyre-fixme[7]: Expected `Fetcher` but got `SystemPackageFetcher`.
                     return package_fetcher
 
         if repo_url:
             rev = self.get("git", "rev")
             depth = self.get("git", "depth")
             branch = self.get("git", "branch")
+            # pyre-fixme[6]: For 4th argument expected `str` but got `Optional[str]`.
+            # pyre-fixme[6]: For 5th argument expected `int` but got `Optional[str]`.
+            # pyre-fixme[6]: For 6th argument expected `str` but got `Optional[str]`.
             return GitFetcher(build_options, self, repo_url, rev, depth, branch)
 
         if url:
@@ -485,33 +548,50 @@ class ManifestParser(object):
                 from .facebook.lfs import LFSCachingArchiveFetcher
 
                 return LFSCachingArchiveFetcher(
-                    build_options, self, url, self.get("download", "sha256", ctx=ctx)
+                    build_options,
+                    self,
+                    url,
+                    # pyre-fixme[6]: For 4th argument expected `str` but got
+                    #  `Optional[str]`.
+                    self.get("download", "sha256", ctx=ctx),
                 )
             except ImportError:
                 # This FB internal module isn't shippped to github,
                 # so just use its base class
                 return ArchiveFetcher(
-                    build_options, self, url, self.get("download", "sha256", ctx=ctx)
+                    build_options,
+                    self,
+                    url,
+                    # pyre-fixme[6]: For 4th argument expected `str` but got
+                    #  `Optional[str]`.
+                    self.get("download", "sha256", ctx=ctx),
                 )
 
         raise KeyError(
             f"project {self.name} has no fetcher configuration or system packages matching {ctx} - have you run `getdeps.py install-system-deps --recursive`?"
         )
 
-    def create_fetcher(self, build_options, loader, ctx):
+    def create_fetcher(
+        self,
+        build_options: BuildOptions,
+        loader: ManifestLoader,
+        ctx: ManifestContext,
+    ) -> Fetcher:
         fetcher = self._create_fetcher(build_options, ctx)
         subprojects = self.get_section_as_ordered_pairs("subprojects", ctx)
         if subprojects:
-            subs = []
+            subs: list[tuple[Fetcher, str | None]] = []
             for project, subdir in subprojects:
                 submanifest = loader.load_manifest(project)
                 subfetcher = submanifest.create_fetcher(build_options, loader, ctx)
                 subs.append((subfetcher, subdir))
+            # pyre-fixme[6]: For 2nd argument expected `List[Tuple[Fetcher, str]]`
+            #  but got `List[Tuple[Fetcher, Optional[str]]]`.
             return SubFetcher(fetcher, subs)
         else:
             return fetcher
 
-    def get_builder_name(self, ctx):
+    def get_builder_name(self, ctx: ManifestContext) -> str:
         builder = self.get("build", "builder", ctx=ctx)
         if not builder:
             raise Exception("project %s has no builder for %r" % (self.name, ctx))
@@ -519,18 +599,18 @@ class ManifestParser(object):
 
     def create_builder(  # noqa:C901
         self,
-        build_options,
-        src_dir,
-        build_dir,
-        inst_dir,
-        ctx,
-        loader,
-        dep_manifests,
-        final_install_prefix=None,
-        extra_cmake_defines=None,
-        cmake_targets=None,
-        extra_b2_args=None,
-    ):
+        build_options: BuildOptions,
+        src_dir: str,
+        build_dir: str,
+        inst_dir: str,
+        ctx: ManifestContext,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        final_install_prefix: str | None = None,
+        extra_cmake_defines: dict[str, str] | None = None,
+        cmake_targets: list[str] | None = None,
+        extra_b2_args: list[str] | None = None,
+    ) -> BuilderBase:
         builder = self.get_builder_name(ctx)
         build_in_src_dir = self.get("build", "build_in_src_dir", "false", ctx=ctx)
         if build_in_src_dir == "true":
@@ -555,6 +635,7 @@ class ManifestParser(object):
                     ctx,
                     self,
                     src_dir,
+                    # pyre-fixme[6]: For 7th argument expected `str` but got `None`.
                     None,
                     inst_dir,
                     build_args,
@@ -569,6 +650,7 @@ class ManifestParser(object):
                     ctx,
                     self,
                     src_dir,
+                    # pyre-fixme[6]: For 7th argument expected `str` but got `None`.
                     None,
                     inst_dir,
                     build_args,
@@ -578,7 +660,7 @@ class ManifestParser(object):
 
         if builder == "autoconf":
             args = self.get_section_as_args("autoconf.args", ctx)
-            conf_env_args = {}
+            conf_env_args: dict[str, list[str]] = {}
             ldflags_cmd = self.get_section_as_args("autoconf.envcmd.LDFLAGS", ctx)
             if ldflags_cmd:
                 conf_env_args["LDFLAGS"] = ldflags_cmd
@@ -622,6 +704,8 @@ class ManifestParser(object):
                 src_dir,
                 build_dir,
                 inst_dir,
+                # pyre-fixme[6]: For 9th argument expected `Optional[Dict[str,
+                #  str]]` but got `Dict[str, Optional[str]]`.
                 defines,
                 final_install_prefix,
                 extra_cmake_defines,
@@ -732,16 +816,16 @@ class ManifestParser(object):
 
     def create_prepare_builders(
         self,
-        build_options,
-        ctx,
-        src_dir,
-        build_dir,
-        inst_dir,
-        loader,
-        dep_manifests,
-    ):
+        build_options: BuildOptions,
+        ctx: ManifestContext,
+        src_dir: str,
+        build_dir: str,
+        inst_dir: str,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+    ) -> list[BuilderBase]:
         """Create builders that have a prepare step run, e.g. to write config files"""
-        prepare_builders = []
+        prepare_builders: list[BuilderBase] = []
         builder = self.get_builder_name(ctx)
         cargo = self.get_section_as_dict("cargo", ctx)
         if not builder == "cargo" and cargo:
@@ -758,8 +842,16 @@ class ManifestParser(object):
         return prepare_builders
 
     def create_cargo_builder(
-        self, loader, dep_manifests, build_options, ctx, src_dir, build_dir, inst_dir
-    ):
+        self,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        build_options: BuildOptions,
+        ctx: ManifestContext,
+        src_dir: str,
+        build_dir: str,
+        inst_dir: str,
+    ) -> CargoBuilder:
+        # pyre-fixme[6]: For 3rd argument expected `Optional[str]` but got `bool`.
         build_doc = self.get("cargo", "build_doc", False, ctx)
         workspace_dir = self.get("cargo", "workspace_dir", None, ctx)
         manifests_to_build = self.get("cargo", "manifests_to_build", None, ctx)
@@ -773,6 +865,7 @@ class ManifestParser(object):
             src_dir,
             build_dir,
             inst_dir,
+            # pyre-fixme[6]: For 9th argument expected `bool` but got `Optional[str]`.
             build_doc,
             workspace_dir,
             manifests_to_build,
@@ -780,14 +873,14 @@ class ManifestParser(object):
         )
 
 
-class ManifestContext(object):
+class ManifestContext:
     """ProjectContext contains a dictionary of values to use when evaluating boolean
     expressions in a project manifest.
 
     This object should be passed as the `ctx` parameter in ManifestParser.get() calls.
     """
 
-    ALLOWED_VARIABLES = {
+    ALLOWED_VARIABLES: set[str] = {
         "os",
         "distro",
         "distro_vers",
@@ -797,48 +890,50 @@ class ManifestContext(object):
         "shared_libs",
     }
 
-    def __init__(self, ctx_dict):
+    def __init__(self, ctx_dict: dict[str, str | None]) -> None:
         assert set(ctx_dict.keys()) == self.ALLOWED_VARIABLES
-        self.ctx_dict = ctx_dict
+        self.ctx_dict: dict[str, str | None] = ctx_dict
 
-    def get(self, key):
+    def get(self, key: str) -> str | None:
         return self.ctx_dict[key]
 
-    def set(self, key, value):
+    def set(self, key: str, value: str | None) -> None:
         assert key in self.ALLOWED_VARIABLES
         self.ctx_dict[key] = value
 
-    def copy(self):
+    def copy(self) -> ManifestContext:
         return ManifestContext(dict(self.ctx_dict))
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = ", ".join(
             "%s=%s" % (key, value) for key, value in sorted(self.ctx_dict.items())
         )
         return "{" + s + "}"
 
 
-class ContextGenerator(object):
+class ContextGenerator:
     """ContextGenerator allows creating ManifestContext objects on a per-project basis.
     This allows us to evaluate different projects with slightly different contexts.
 
     For instance, this can be used to only enable tests for some projects."""
 
-    def __init__(self, default_ctx):
-        self.default_ctx = ManifestContext(default_ctx)
-        self.ctx_by_project = {}
+    def __init__(self, default_ctx: dict[str, str | None]) -> None:
+        self.default_ctx: ManifestContext = ManifestContext(default_ctx)
+        self.ctx_by_project: dict[str, ManifestContext] = {}
 
-    def set_value_for_project(self, project_name, key, value):
+    def set_value_for_project(
+        self, project_name: str, key: str, value: str | None
+    ) -> None:
         project_ctx = self.ctx_by_project.get(project_name)
         if project_ctx is None:
             project_ctx = self.default_ctx.copy()
             self.ctx_by_project[project_name] = project_ctx
         project_ctx.set(key, value)
 
-    def set_value_for_all_projects(self, key, value):
+    def set_value_for_all_projects(self, key: str, value: str | None) -> None:
         self.default_ctx.set(key, value)
         for ctx in self.ctx_by_project.values():
             ctx.set(key, value)
 
-    def get_context(self, project_name):
+    def get_context(self, project_name: str) -> ManifestContext:
         return self.ctx_by_project.get(project_name, self.default_ctx)

@@ -3,38 +3,54 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-unsafe
+# pyre-strict
+
+from __future__ import annotations
+
+import argparse
+from collections.abc import Callable
 
 
-class SubCmd(object):
-    NAME = None
-    HELP = None
+class SubCmd:
+    NAME: str | None = None
+    HELP: str | None = None
 
-    def run(self, args) -> int:
+    def run(self, args: argparse.Namespace) -> int:
         """perform the command"""
         return 0
 
-    def setup_parser(self, parser) -> None:
+    def setup_parser(self, parser: argparse.ArgumentParser) -> None:
         # Subclasses should override setup_parser() if they have any
         # command line options or arguments.
         pass
 
 
-CmdTable = []
+CmdTable: list[type[SubCmd]] = []
 
 
-def add_subcommands(parser, common_args, cmd_table=CmdTable) -> None:
+def add_subcommands(
+    parser: argparse._SubParsersAction[argparse.ArgumentParser],
+    common_args: argparse.ArgumentParser,
+    cmd_table: list[type[SubCmd]] = CmdTable,
+) -> None:
     """Register parsers for the defined commands with the provided parser"""
     for cls in cmd_table:
         command = cls()
         command_parser = parser.add_parser(
-            command.NAME, help=command.HELP, parents=[common_args]
+            # pyre-fixme[6]: For 1st argument expected `str` but got `Optional[str]`.
+            command.NAME,
+            help=command.HELP,
+            parents=[common_args],
         )
         command.setup_parser(command_parser)
         command_parser.set_defaults(func=command.run)
 
 
-def cmd(name, help=None, cmd_table=CmdTable):
+def cmd(
+    name: str,
+    help: str | None = None,
+    cmd_table: list[type[SubCmd]] = CmdTable,
+) -> Callable[[type[SubCmd]], type[SubCmd]]:
     """
     @cmd() is a decorator that can be used to help define Subcmd instances
 
@@ -47,12 +63,16 @@ def cmd(name, help=None, cmd_table=CmdTable):
                 pass
     """
 
-    def wrapper(cls):
+    def wrapper(cls: type[SubCmd]) -> type[SubCmd]:
         class SubclassedCmd(cls):
             NAME = name
             HELP = help
 
+        # pyre-fixme[6]: For 1st argument expected `Type[SubCmd]` but got
+        #  `Type[SubclassedCmd]`.
+        # pyre-fixme[16]: Callable `cmd` has no attribute `wrapper`.
         cmd_table.append(SubclassedCmd)
+        # pyre-fixme[7]: Expected `Type[SubCmd]` but got `Type[SubclassedCmd]`.
         return SubclassedCmd
 
     return wrapper

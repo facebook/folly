@@ -206,6 +206,7 @@ foo = bar
 
     def test_parse_common_manifests(self) -> None:
         patch_loader(__name__)
+        # pyre-fixme[6]: For 1st argument expected `BuildOptions` but got `None`.
         manifests = load_all_manifests(None)
         self.assertNotEqual(0, len(manifests), msg="parsed some number of manifests")
 
@@ -226,6 +227,7 @@ name = bar
         patch_loader(__name__, "fixtures/duplicate")
 
         with self.assertRaisesRegex(Exception, "found duplicate manifest 'foo'"):
+            # pyre-fixme[6]: For 1st argument expected `BuildOptions` but got `None`.
             load_all_manifests(None)
 
     if sys.version_info < (3, 2):

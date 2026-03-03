@@ -3,21 +3,24 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-unsafe
+# pyre-strict
+
+from __future__ import annotations
 
 import os
 import shutil
 import stat
 import subprocess
+from collections.abc import Callable
 
 from .platform import is_windows
 from .runcmd import run_cmd
 
 
-PREFETCHED_DIRS = set()
+PREFETCHED_DIRS: set[str] = set()
 
 
-def containing_repo_type(path):
+def containing_repo_type(path: str) -> tuple[str | None, str | None]:
     while True:
         if os.path.exists(os.path.join(path, ".git")):
             return ("git", path)
@@ -30,7 +33,7 @@ def containing_repo_type(path):
         path = parent
 
 
-def find_eden_root(dirpath):
+def find_eden_root(dirpath: str) -> str | None:
     """If the specified directory is inside an EdenFS checkout, returns
     the canonical absolute path to the root of that checkout.
 
@@ -49,7 +52,7 @@ def find_eden_root(dirpath):
         return None
 
 
-def prefetch_dir_if_eden(dirpath) -> None:
+def prefetch_dir_if_eden(dirpath: str) -> None:
     """After an amend/rebase, Eden may need to fetch a large number
     of trees from the servers.  The simplistic single threaded walk
     performed by copytree makes this more expensive than is desirable
@@ -67,7 +70,7 @@ def prefetch_dir_if_eden(dirpath) -> None:
     PREFETCHED_DIRS.add(dirpath)
 
 
-def simple_copytree(src_dir, dest_dir, symlinks=False):
+def simple_copytree(src_dir: str, dest_dir: str, symlinks: bool = False) -> str:
     """A simple version of shutil.copytree() that can delegate to native tools if faster"""
     if is_windows():
         os.makedirs(dest_dir, exist_ok=True)
@@ -100,7 +103,13 @@ def simple_copytree(src_dir, dest_dir, symlinks=False):
         return shutil.copytree(src_dir, dest_dir, symlinks=symlinks)
 
 
-def _remove_readonly_and_try_again(func, path, exc_info):
+def _remove_readonly_and_try_again(
+    func: Callable[..., object],
+    path: str,
+    # pyre-fixme[24]: Generic type `type` expects 1 type parameter, use
+    #  `typing.Type[<base type>]` to avoid runtime subscripting errors.
+    exc_info: tuple[type, BaseException, object],
+) -> None:
     """
     Error handler for shutil.rmtree.
     If the error is due to an access error (read only file)
@@ -122,7 +131,7 @@ def _remove_readonly_and_try_again(func, path, exc_info):
         raise exc_info[1]
 
 
-def rmtree_more(path):
+def rmtree_more(path: str) -> None:
     """Wrapper around shutil.rmtree() that makes it remove readonly files as well.
     Useful when git on windows decides to make some files readonly on checkout"""
     shutil.rmtree(path, onerror=_remove_readonly_and_try_again)

@@ -3,30 +3,32 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-unsafe
+# pyre-strict
+
+from __future__ import annotations
 
 import os
 import shlex
 import sys
-from typing import Optional
+from collections.abc import ItemsView, Iterator, KeysView, Mapping, ValuesView
 
 
-class Env(object):
-    def __init__(self, src=None) -> None:
-        self._dict = {}
+class Env:
+    def __init__(self, src: Mapping[str, str] | None = None) -> None:
+        self._dict: dict[str, str] = {}
         if src is None:
             self.update(os.environ)
         else:
             self.update(src)
 
-    def update(self, src) -> None:
+    def update(self, src: Mapping[str, str]) -> None:
         for k, v in src.items():
             self.set(k, v)
 
-    def copy(self) -> "Env":
+    def copy(self) -> Env:
         return Env(self._dict)
 
-    def _key(self, key):
+    def _key(self, key: str) -> str | None:
         # The `str` cast may not appear to be needed, but without it we run
         # into issues when passing the environment to subprocess.  The main
         # issue is that in python2 `os.environ` (which is the initial source
@@ -55,33 +57,33 @@ class Env(object):
             return key
         return None
 
-    def get(self, key, defval=None):
-        key = self._key(key)
-        if key is None:
+    def get(self, key: str, defval: str | None = None) -> str | None:
+        resolved_key = self._key(key)
+        if resolved_key is None:
             return defval
-        return self._dict[key]
+        return self._dict[resolved_key]
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> str:
         val = self.get(key)
-        if key is None:
+        if val is None:
             raise KeyError(key)
         return val
 
-    def unset(self, key) -> None:
+    def unset(self, key: str) -> None:
         if key is None:
             raise KeyError("attempting to unset env[None]")
 
-        key = self._key(key)
-        if key:
-            del self._dict[key]
+        resolved_key = self._key(key)
+        if resolved_key:
+            del self._dict[resolved_key]
 
-    def __delitem__(self, key) -> None:
+    def __delitem__(self, key: str) -> None:
         self.unset(key)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self._dict)
 
-    def set(self, key, value) -> None:
+    def set(self, key: str, value: str) -> None:
         if key is None:
             raise KeyError("attempting to assign env[None] = %r" % value)
 
@@ -102,50 +104,50 @@ class Env(object):
         self.unset(key)
         self._dict[key] = value
 
-    def __setitem__(self, key, value) -> None:
+    def __setitem__(self, key: str, value: str) -> None:
         self.set(key, value)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return self._dict.__iter__()
 
     def __len__(self) -> int:
         return len(self._dict)
 
-    def keys(self):
+    def keys(self) -> KeysView[str]:
         return self._dict.keys()
 
-    def values(self):
+    def values(self) -> ValuesView[str]:
         return self._dict.values()
 
-    def items(self):
+    def items(self) -> ItemsView[str, str]:
         return self._dict.items()
 
 
 def add_path_entry(
-    env, name, item, append: bool = True, separator: str = os.pathsep
+    env: Env, name: str, item: str, append: bool = True, separator: str = os.pathsep
 ) -> None:
     """Cause `item` to be added to the path style env var named
     `name` held in the `env` dict.  `append` specifies whether
     the item is added to the end (the default) or should be
     prepended if `name` already exists."""
     val = env.get(name, "")
-    if len(val) > 0:
-        val = val.split(separator)
+    if val is not None and len(val) > 0:
+        val_list = val.split(separator)
     else:
-        val = []
+        val_list = []
     if append:
-        val.append(item)
+        val_list.append(item)
     else:
-        val.insert(0, item)
-    env.set(name, separator.join(val))
+        val_list.insert(0, item)
+    env.set(name, separator.join(val_list))
 
 
-def add_flag(env, name, flag: str, append: bool = True) -> None:
+def add_flag(env: Env, name: str, flag: str, append: bool = True) -> None:
     """Cause `flag` to be added to the CXXFLAGS-style env var named
     `name` held in the `env` dict.  `append` specifies whether the
     flag is added to the end (the default) or should be prepended if
     `name` already exists."""
-    val = shlex.split(env.get(name, ""))
+    val = shlex.split(env.get(name, "") or "")
     if append:
         val.append(flag)
     else:
@@ -153,15 +155,17 @@ def add_flag(env, name, flag: str, append: bool = True) -> None:
     env.set(name, " ".join(val))
 
 
-_path_search_cache = {}
-_not_found = object()
+_path_search_cache: dict[object, str | None] = {}
+_not_found: object = object()
 
 
 def tpx_path() -> str:
     return "xplat/testinfra/tpx/ctp.tpx"
 
 
-def path_search(env, exename: str, defval: Optional[str] = None) -> Optional[str]:
+def path_search(
+    env: Mapping[str, str], exename: str, defval: str | None = None
+) -> str | None:
     """Search for exename in the PATH specified in env.
     exename is eg: `ninja` and this function knows to append a .exe
     to the end on windows.
@@ -180,10 +184,11 @@ def path_search(env, exename: str, defval: Optional[str] = None) -> Optional[str
     if result is _not_found:
         result = _perform_path_search(path, exename)
         _path_search_cache[cache_key] = result
+    # pyre-fixme[7]: Expected `Optional[str]` but got `Optional[object]`.
     return result
 
 
-def _perform_path_search(path, exename: str) -> Optional[str]:
+def _perform_path_search(path: str, exename: str) -> str | None:
     is_win = sys.platform.startswith("win")
     if is_win:
         exename = "%s.exe" % exename

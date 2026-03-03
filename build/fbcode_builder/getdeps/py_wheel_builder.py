@@ -3,15 +3,16 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-unsafe
+# pyre-strict
+from __future__ import annotations
 
 import codecs
 import collections
 import email
+import email.message
 import os
 import re
 import stat
-from typing import Dict, List
 
 from .builder import BuilderBase, CMakeBuilder
 
@@ -103,7 +104,7 @@ class PythonWheelBuilder(BuilderBase):
     # pyre-fixme[13]: Attribute `dist_info_dir` is never initialized.
     dist_info_dir: str
     # pyre-fixme[13]: Attribute `template_format_dict` is never initialized.
-    template_format_dict: Dict[str, str]
+    template_format_dict: dict[str, str]
 
     def _build(self, reconfigure: bool) -> None:
         # When we are invoked, self.src_dir contains the unpacked wheel contents.
@@ -149,7 +150,7 @@ class PythonWheelBuilder(BuilderBase):
         }
 
         # Find sources from the root directory
-        path_mapping = {}
+        path_mapping: dict[str, str] = {}
         for entry in os.listdir(self.src_dir):
             if entry == data_dir_name:
                 continue
@@ -191,7 +192,9 @@ class PythonWheelBuilder(BuilderBase):
         )
         cmake_builder.build(reconfigure=reconfigure)
 
-    def _write_cmakelists(self, path_mapping: Dict[str, str], dependencies) -> None:
+    def _write_cmakelists(
+        self, path_mapping: dict[str, str], dependencies: list[str]
+    ) -> None:
         cmake_path = os.path.join(self.build_dir, "CMakeLists.txt")
         with open(cmake_path, "w") as f:
             f.write(CMAKE_HEADER.format(**self.template_format_dict))
@@ -224,7 +227,7 @@ class PythonWheelBuilder(BuilderBase):
             f.write(CMAKE_CONFIG_FILE.format(**self.template_format_dict))
 
     def _add_sources(
-        self, path_mapping: Dict[str, str], src_path: str, install_path: str
+        self, path_mapping: dict[str, str], src_path: str, install_path: str
     ) -> None:
         s = os.lstat(src_path)
         if not stat.S_ISDIR(s.st_mode):
@@ -274,13 +277,14 @@ class PythonWheelBuilder(BuilderBase):
             platform=match.group("platform"),
         )
 
-    def _read_wheel_metadata(self, wheel_name):
+    # pyre-fixme[24]: Generic type `email.message.Message` expects 2 type parameters.
+    def _read_wheel_metadata(self, wheel_name: WheelNameInfo) -> email.message.Message:
         metadata_path = os.path.join(self.dist_info_dir, "WHEEL")
         with codecs.open(metadata_path, "r", encoding="utf-8") as f:
             return email.message_from_file(f)
 
 
-def _to_cmake_path(path):
+def _to_cmake_path(path: str) -> str:
     # CMake always uses forward slashes to separate paths in CMakeLists.txt files,
     # even on Windows.  It treats backslashes as character escapes, so using
     # backslashes in the path will cause problems.  Therefore replace all path

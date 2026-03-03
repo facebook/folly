@@ -3,8 +3,10 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-unsafe
+# pyre-strict
+from __future__ import annotations
 
+import argparse
 import errno
 import glob
 import ntpath
@@ -12,7 +14,8 @@ import os
 import subprocess
 import sys
 import tempfile
-from typing import Mapping, Optional
+import typing
+from collections.abc import Mapping
 
 from .copytree import containing_repo_type
 from .envfuncs import add_flag, add_path_entry, Env
@@ -20,16 +23,21 @@ from .fetcher import get_fbsource_repo_data, homebrew_package_prefix
 from .manifest import ContextGenerator
 from .platform import get_available_ram, HostType, is_windows
 
+if typing.TYPE_CHECKING:
+    from .load import ManifestLoader
+    from .manifest import ManifestContext, ManifestParser
 
-GITBASH_TMP = "c:\\tools\\fb.gitbash\\tmp"
+
+GITBASH_TMP: str = "c:\\tools\\fb.gitbash\\tmp"
 
 
-def detect_project(path):
+def detect_project(path: str) -> tuple[str | None, str | None]:
     repo_type, repo_root = containing_repo_type(path)
     if repo_type is None:
         return None, None
 
     # Look for a .projectid file.  If it exists, read the project name from it.
+    # pyre-fixme[6]: For 1st argument expected `LiteralString` but got `Optional[str]`.
     project_id_path = os.path.join(repo_root, ".projectid")
     try:
         with open(project_id_path, "r") as f:
@@ -42,22 +50,22 @@ def detect_project(path):
     return repo_root, None
 
 
-class BuildOptions(object):
+class BuildOptions:
     def __init__(
         self,
-        fbcode_builder_dir,
-        scratch_dir,
-        host_type,
-        install_dir=None,
+        fbcode_builder_dir: str,
+        scratch_dir: str,
+        host_type: HostType,
+        install_dir: str | None = None,
         num_jobs: int = 0,
         use_shipit: bool = False,
-        vcvars_path=None,
+        vcvars_path: str | None = None,
         allow_system_packages: bool = False,
-        lfs_path=None,
+        lfs_path: str | None = None,
         shared_libs: bool = False,
-        facebook_internal=None,
+        facebook_internal: bool | None = None,
         free_up_disk: bool = False,
-        build_type: Optional[str] = None,
+        build_type: str | None = None,
     ) -> None:
         """fbcode_builder_dir - the path to either the in-fbsource fbcode_builder dir,
                              or for shipit-transformed repos, the build dir that
@@ -79,7 +87,7 @@ class BuildOptions(object):
         if not install_dir:
             install_dir = os.path.join(scratch_dir, "installed")
 
-        self.project_hashes = None
+        self.project_hashes: str | None = None
         for p in ["../deps/github_hashes", "../project_hashes"]:
             hashes = os.path.join(fbcode_builder_dir, p)
             if os.path.exists(hashes):
@@ -87,12 +95,13 @@ class BuildOptions(object):
                 break
 
         # Detect what repository and project we are being run from.
+        # pyre-fixme[4]: Attribute must be annotated.
         self.repo_root, self.repo_project = detect_project(os.getcwd())
 
         # If we are running from an fbsource repository, set self.fbsource_dir
         # to allow the ShipIt-based fetchers to use it.
         if self.repo_project == "fbsource":
-            self.fbsource_dir: Optional[str] = self.repo_root
+            self.fbsource_dir: str | None = self.repo_root
         else:
             self.fbsource_dir = None
 
@@ -102,20 +111,20 @@ class BuildOptions(object):
             else:
                 facebook_internal = False
 
-        self.facebook_internal = facebook_internal
-        self.specified_num_jobs = num_jobs
-        self.scratch_dir = scratch_dir
-        self.install_dir = install_dir
-        self.fbcode_builder_dir = fbcode_builder_dir
-        self.host_type = host_type
-        self.use_shipit = use_shipit
-        self.allow_system_packages = allow_system_packages
-        self.lfs_path = lfs_path
-        self.shared_libs = shared_libs
-        self.free_up_disk = free_up_disk
-        self.build_type = build_type
+        self.facebook_internal: bool = facebook_internal
+        self.specified_num_jobs: int = num_jobs
+        self.scratch_dir: str = scratch_dir
+        self.install_dir: str = install_dir
+        self.fbcode_builder_dir: str = fbcode_builder_dir
+        self.host_type: HostType = host_type
+        self.use_shipit: bool = use_shipit
+        self.allow_system_packages: bool = allow_system_packages
+        self.lfs_path: str | None = lfs_path
+        self.shared_libs: bool = shared_libs
+        self.free_up_disk: bool = free_up_disk
+        self.build_type: str | None = build_type
 
-        lib_path = None
+        lib_path: str | None = None
         if self.is_darwin():
             lib_path = "DYLD_LIBRARY_PATH"
         elif self.is_linux():
@@ -124,7 +133,7 @@ class BuildOptions(object):
             lib_path = "PATH"
         else:
             lib_path = None
-        self.lib_path = lib_path
+        self.lib_path: str | None = lib_path
 
         if vcvars_path is None and is_windows():
 
@@ -132,7 +141,7 @@ class BuildOptions(object):
                 # Allow a site-specific vcvarsall path.
                 from .facebook.vcvarsall import build_default_vcvarsall
             except ImportError:
-                vcvarsall = []
+                vcvarsall: list[str] = []
             else:
                 vcvarsall = (
                     build_default_vcvarsall(self.fbsource_dir)
@@ -181,28 +190,28 @@ class BuildOptions(object):
             vcvars_path = vcvarsall[0]
             print(f"Using vcvarsall.bat from {vcvars_path}", file=sys.stderr)
 
-        self.vcvars_path = vcvars_path
+        self.vcvars_path: str | None = vcvars_path
 
     @property
-    def manifests_dir(self):
+    def manifests_dir(self) -> str:
         return os.path.join(self.fbcode_builder_dir, "manifests")
 
-    def is_darwin(self):
+    def is_darwin(self) -> bool:
         return self.host_type.is_darwin()
 
-    def is_windows(self):
+    def is_windows(self) -> bool:
         return self.host_type.is_windows()
 
-    def is_arm(self):
+    def is_arm(self) -> bool:
         return self.host_type.is_arm()
 
-    def get_vcvars_path(self):
+    def get_vcvars_path(self) -> str | None:
         return self.vcvars_path
 
-    def is_linux(self):
+    def is_linux(self) -> bool:
         return self.host_type.is_linux()
 
-    def is_freebsd(self):
+    def is_freebsd(self) -> bool:
         return self.host_type.is_freebsd()
 
     def get_num_jobs(self, job_weight: int) -> int:
@@ -216,7 +225,9 @@ class BuildOptions(object):
 
         return max(1, min(multiprocessing.cpu_count(), available_ram // job_weight))
 
-    def get_context_generator(self, host_tuple=None):
+    def get_context_generator(
+        self, host_tuple: str | HostType | None = None
+    ) -> ContextGenerator:
         """Create a manifest ContextGenerator for the specified target platform."""
         if host_tuple is None:
             host_type = self.host_type
@@ -238,8 +249,13 @@ class BuildOptions(object):
         )
 
     def compute_env_for_install_dirs(
-        self, loader, dep_manifests, ctx, env=None, manifest=None
-    ):  # noqa: C901
+        self,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        ctx: ManifestContext,
+        env: Env | None = None,
+        manifest: ManifestParser | None = None,
+    ) -> Env:  # noqa: C901
         if env is not None:
             env = env.copy()
         else:
@@ -293,7 +309,12 @@ class BuildOptions(object):
                 # Try extra hard to find openssl, needed with homebrew on macOS
                 if found and p.startswith("openssl"):
                     candidate = homebrew_package_prefix("openssl@1.1")
+                    # pyre-fixme[6]: For 1st argument expected
+                    #  `Union[PathLike[bytes], PathLike[str], bytes, int, str]` but got
+                    #  `Optional[str]`.
                     if os.path.exists(candidate):
+                        # pyre-fixme[6]: For 2nd argument expected `str` but got
+                        #  `Optional[str]`.
                         os.environ["OPENSSL_ROOT_DIR"] = candidate
                         env["OPENSSL_ROOT_DIR"] = os.environ["OPENSSL_ROOT_DIR"]
 
@@ -303,14 +324,25 @@ class BuildOptions(object):
             )
             yarn_exe = "yarn.bat" if self.is_windows() else "yarn"
             env["YARN_PATH"] = os.path.join(
-                self.fbsource_dir, "xplat/third-party/yarn/", yarn_exe
+                # pyre-fixme[6]: For 1st argument expected `LiteralString` but got
+                #  `Optional[str]`.
+                self.fbsource_dir,
+                "xplat/third-party/yarn/",
+                yarn_exe,
             )
             node_exe = "node-win-x64.exe" if self.is_windows() else "node"
             env["NODE_BIN"] = os.path.join(
-                self.fbsource_dir, "xplat/third-party/node/bin/", node_exe
+                # pyre-fixme[6]: For 1st argument expected `LiteralString` but got
+                #  `Optional[str]`.
+                self.fbsource_dir,
+                "xplat/third-party/node/bin/",
+                node_exe,
             )
             env["RUST_VENDORED_CRATES_DIR"] = os.path.join(
-                self.fbsource_dir, "third-party/rust/vendor"
+                # pyre-fixme[6]: For 1st argument expected `LiteralString` but got
+                #  `Optional[str]`.
+                self.fbsource_dir,
+                "third-party/rust/vendor",
             )
             hash_data = get_fbsource_repo_data(self)
             env["FBSOURCE_HASH"] = hash_data.hash
@@ -331,7 +363,7 @@ class BuildOptions(object):
                 )
 
         # Linux is always system openssl
-        system_openssl = self.is_linux()
+        system_openssl: bool = self.is_linux()
 
         # For other systems lets see if package is requested
         if not system_openssl and manifest and manifest.resolved_system_packages:
@@ -354,7 +386,7 @@ class BuildOptions(object):
 
         return env
 
-    def add_homebrew_package_to_env(self, package, env) -> bool:
+    def add_homebrew_package_to_env(self, package: str, env: Env) -> bool:
         prefix = homebrew_package_prefix(package)
         if prefix and os.path.exists(prefix):
             return self.add_prefix_to_env(
@@ -364,16 +396,16 @@ class BuildOptions(object):
 
     def add_prefix_to_env(
         self,
-        d,
-        env,
+        d: str,
+        env: Env,
         append: bool = True,
         add_library_path: bool = False,
         is_direct_dep: bool = False,
     ) -> bool:  # noqa: C901
-        bindir = os.path.join(d, "bin")
-        found = False
-        has_pkgconfig = False
-        pkgconfig = os.path.join(d, "lib", "pkgconfig")
+        bindir: str = os.path.join(d, "bin")
+        found: bool = False
+        has_pkgconfig: bool = False
+        pkgconfig: str = os.path.join(d, "lib", "pkgconfig")
         if os.path.exists(pkgconfig):
             found = True
             has_pkgconfig = True
@@ -388,16 +420,16 @@ class BuildOptions(object):
         add_path_entry(env, "CMAKE_PREFIX_PATH", d, append=append)
 
         # Tell the thrift compiler about includes it needs to consider
-        thriftdir = os.path.join(d, "include", "thrift-files")
+        thriftdir: str = os.path.join(d, "include", "thrift-files")
         if os.path.exists(thriftdir):
             found = True
             add_path_entry(env, "THRIFT_INCLUDE_PATH", thriftdir, append=append)
 
         # module detection for python is old fashioned and needs flags
-        includedir = os.path.join(d, "include")
+        includedir: str = os.path.join(d, "include")
         if os.path.exists(includedir):
             found = True
-            ncursesincludedir = os.path.join(d, "include", "ncurses")
+            ncursesincludedir: str = os.path.join(d, "include", "ncurses")
             if os.path.exists(ncursesincludedir):
                 add_path_entry(env, "C_INCLUDE_PATH", ncursesincludedir, append=append)
                 add_flag(env, "CPPFLAGS", f"-I{includedir}", append=append)
@@ -415,16 +447,16 @@ class BuildOptions(object):
                 )
 
             # The thrift compiler's built-in includes are installed directly to the include dir
-            includethriftdir = os.path.join(d, "include", "thrift")
+            includethriftdir: str = os.path.join(d, "include", "thrift")
             if os.path.exists(includethriftdir):
                 add_path_entry(env, "THRIFT_INCLUDE_PATH", includedir, append=append)
 
         # Map from FB python manifests to PYTHONPATH
-        pydir = os.path.join(d, "lib", "fb-py-libs")
+        pydir: str = os.path.join(d, "lib", "fb-py-libs")
         if os.path.exists(pydir):
             found = True
-            manifest_ext = ".manifest"
-            pymanifestfiles = [
+            manifest_ext: str = ".manifest"
+            pymanifestfiles: list[str] = [
                 f
                 for f in os.listdir(pydir)
                 if f.endswith(manifest_ext) and os.path.isfile(os.path.join(pydir, f))
@@ -440,9 +472,11 @@ class BuildOptions(object):
         # so we need to give it an assist)
         if self.lib_path:
             for lib in ["lib", "lib64"]:
-                libdir = os.path.join(d, lib)
+                libdir: str = os.path.join(d, lib)
                 if os.path.exists(libdir):
                     found = True
+                    # pyre-fixme[6]: For 2nd argument expected `str` but got
+                    #  `Optional[str]`.
                     add_path_entry(env, self.lib_path, libdir, append=append)
                     # module detection for python is old fashioned and needs flags
                     if "/ncurses-" in d:
@@ -468,9 +502,9 @@ class BuildOptions(object):
         # If rustc is present in the `bin` directory, set RUSTC to prevent
         # cargo uses the rustc installed in the system.
         if self.is_windows():
-            cargo_path = os.path.join(bindir, "cargo.exe")
-            rustc_path = os.path.join(bindir, "rustc.exe")
-            rustdoc_path = os.path.join(bindir, "rustdoc.exe")
+            cargo_path: str = os.path.join(bindir, "cargo.exe")
+            rustc_path: str = os.path.join(bindir, "rustc.exe")
+            rustdoc_path: str = os.path.join(bindir, "rustdoc.exe")
         else:
             cargo_path = os.path.join(bindir, "cargo")
             rustc_path = os.path.join(bindir, "rustc")
@@ -481,7 +515,7 @@ class BuildOptions(object):
             env["RUSTC"] = rustc_path
             env["RUSTDOC"] = rustdoc_path
 
-        openssl_include = os.path.join(d, "include", "openssl")
+        openssl_include: str = os.path.join(d, "include", "openssl")
         if os.path.isdir(openssl_include) and any(
             os.path.isfile(os.path.join(d, "lib", libcrypto))
             for libcrypto in ("libcrypto.lib", "libcrypto.so", "libcrypto.a")
@@ -492,11 +526,11 @@ class BuildOptions(object):
         return found
 
 
-def list_win32_subst_letters():
+def list_win32_subst_letters() -> dict[str, str]:
     output = subprocess.check_output(["subst"]).decode("utf-8")
     # The output is a set of lines like: `F:\: => C:\open\some\where`
     lines = output.strip().split("\r\n")
-    mapping = {}
+    mapping: dict[str, str] = {}
     for line in lines:
         fields = line.split(": => ")
         if len(fields) != 2:
@@ -511,7 +545,7 @@ def list_win32_subst_letters():
 def find_existing_win32_subst_for_path(
     path: str,
     subst_mapping: Mapping[str, str],
-) -> Optional[str]:
+) -> str | None:
     path = ntpath.normcase(ntpath.normpath(path))
     for letter, target in subst_mapping.items():
         if ntpath.normcase(target) == path:
@@ -519,21 +553,24 @@ def find_existing_win32_subst_for_path(
     return None
 
 
-def find_unused_drive_letter():
+def find_unused_drive_letter() -> str | None:
     import ctypes
 
     buffer_len = 256
     blen = ctypes.c_uint(buffer_len)
     rv = ctypes.c_uint()
     bufs = ctypes.create_string_buffer(buffer_len)
+    # pyre-fixme[16]: Module `ctypes` has no attribute `windll`.
     rv = ctypes.windll.kernel32.GetLogicalDriveStringsA(blen, bufs)
     if rv > buffer_len:
         raise Exception("GetLogicalDriveStringsA result too large for buffer")
     nul = "\x00".encode("ascii")
 
-    used = [drive.decode("ascii")[0] for drive in bufs.raw.strip(nul).split(nul)]
-    possible = [c for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"]
-    available = sorted(list(set(possible) - set(used)))
+    used: list[str] = [
+        drive.decode("ascii")[0] for drive in bufs.raw.strip(nul).split(nul)
+    ]
+    possible: list[str] = [c for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"]
+    available: list[str] = sorted(list(set(possible) - set(used)))
     if len(available) == 0:
         return None
     # Prefer to assign later letters rather than earlier letters
@@ -571,9 +608,9 @@ def map_subst_path(path: str) -> str:
     raise Exception("failed to set up a subst path for %s" % path)
 
 
-def _check_host_type(args, host_type):
+def _check_host_type(args: argparse.Namespace, host_type: HostType | None) -> HostType:
     if host_type is None:
-        host_tuple_string = getattr(args, "host_type", None)
+        host_tuple_string: str | None = getattr(args, "host_type", None)
         if host_tuple_string:
             host_type = HostType.from_tuple_string(host_tuple_string)
         else:
@@ -583,11 +620,15 @@ def _check_host_type(args, host_type):
     return host_type
 
 
-def setup_build_options(args, host_type=None) -> BuildOptions:
+def setup_build_options(
+    args: argparse.Namespace, host_type: HostType | None = None
+) -> BuildOptions:
     """Create a BuildOptions object based on the arguments"""
 
-    fbcode_builder_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    scratch_dir = args.scratch_path
+    fbcode_builder_dir: str = os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))
+    )
+    scratch_dir: str | None = args.scratch_path
     if not scratch_dir:
         # TODO: `mkscratch` doesn't currently know how best to place things on
         # sandcastle, so whip up something reasonable-ish
@@ -600,7 +641,7 @@ def setup_build_options(args, host_type=None) -> BuildOptions:
                     )
                 )
 
-            disk_temp = os.environ["DISK_TEMP"]
+            disk_temp: str = os.environ["DISK_TEMP"]
             if is_windows():
                 # force use gitbash tmp dir for windows, as its less likely to have a tmp cleaner
                 # that removes extracted prior dated source files
@@ -627,12 +668,12 @@ def setup_build_options(args, host_type=None) -> BuildOptions:
                     raise
                 # This system doesn't have mkscratch so we fall back to
                 # something local.
-                munged = fbcode_builder_dir.replace("Z", "zZ")
+                munged: str = fbcode_builder_dir.replace("Z", "zZ")
                 for s in ["/", "\\", ":"]:
                     munged = munged.replace(s, "Z")
 
                 if is_windows() and os.path.isdir("c:/open"):
-                    temp = "c:/open/scratch"
+                    temp: str = "c:/open/scratch"
                 else:
                     temp = tempfile.gettempdir()
 
@@ -669,7 +710,7 @@ def setup_build_options(args, host_type=None) -> BuildOptions:
 
     host_type = _check_host_type(args, host_type)
 
-    build_args = {
+    build_args: dict[str, object] = {
         k: v
         for (k, v) in vars(args).items()
         if k
@@ -691,5 +732,8 @@ def setup_build_options(args, host_type=None) -> BuildOptions:
         host_type,
         install_dir=args.install_prefix,
         facebook_internal=args.facebook_internal,
+        # pyre-fixme[6]: For 6th argument expected `Optional[str]` but got `object`.
+        # pyre-fixme[6]: For 6th argument expected `bool` but got `object`.
+        # pyre-fixme[6]: For 6th argument expected `int` but got `object`.
         **build_args,
     )

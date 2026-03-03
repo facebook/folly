@@ -4,7 +4,8 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-unsafe
+# pyre-strict
+from __future__ import annotations
 
 import os
 import re
@@ -17,23 +18,25 @@ from .copytree import rmtree_more, simple_copytree
 
 if typing.TYPE_CHECKING:
     from .buildopts import BuildOptions
+    from .load import ManifestLoader
+    from .manifest import ManifestContext, ManifestParser
 
 
 class CargoBuilder(BuilderBase):
     def __init__(
         self,
-        loader,
-        dep_manifests,  # manifests of dependencies
-        build_opts: "BuildOptions",
-        ctx,
-        manifest,
-        src_dir,
-        build_dir,
-        inst_dir,
-        build_doc,
-        workspace_dir,
-        manifests_to_build,
-        cargo_config_file,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],  # manifests of dependencies
+        build_opts: BuildOptions,
+        ctx: ManifestContext,
+        manifest: ManifestParser,
+        src_dir: str,
+        build_dir: str,
+        inst_dir: str,
+        build_doc: bool,
+        workspace_dir: str | None,
+        manifests_to_build: str | None,
+        cargo_config_file: str | None,
     ) -> None:
         super(CargoBuilder, self).__init__(
             loader,
@@ -46,12 +49,21 @@ class CargoBuilder(BuilderBase):
             inst_dir,
         )
         self.build_doc = build_doc
-        self.ws_dir = workspace_dir
-        self.manifests_to_build = manifests_to_build and manifests_to_build.split(",")
-        self.loader = loader
-        self.cargo_config_file_subdir = cargo_config_file
+        self.ws_dir: str | None = workspace_dir
+        # pyre-fixme[8]: Attribute has type `Optional[List[str]]`; used as
+        #  `Union[None, List[str], str]`.
+        self.manifests_to_build: list[str] | None = (
+            manifests_to_build and manifests_to_build.split(",")
+        )
+        self.loader: ManifestLoader = loader
+        self.cargo_config_file_subdir: str | None = cargo_config_file
 
-    def run_cargo(self, install_dirs, operation, args=None) -> None:
+    def run_cargo(
+        self,
+        install_dirs: list[str],
+        operation: str,
+        args: list[str] | None = None,
+    ) -> None:
         args = args or []
         env = self._compute_env()
         # Enable using nightly features with stable compiler
@@ -65,16 +77,16 @@ class CargoBuilder(BuilderBase):
         ] + args
         self._check_cmd(cmd, cwd=self.workspace_dir(), env=env)
 
-    def build_source_dir(self):
+    def build_source_dir(self) -> str:
         return os.path.join(self.build_dir, "source")
 
-    def workspace_dir(self):
+    def workspace_dir(self) -> str:
         return os.path.join(self.build_source_dir(), self.ws_dir or "")
 
-    def manifest_dir(self, manifest):
+    def manifest_dir(self, manifest: str) -> str:
         return os.path.join(self.build_source_dir(), manifest)
 
-    def recreate_dir(self, src, dst) -> None:
+    def recreate_dir(self, src: str, dst: str) -> None:
         if os.path.isdir(dst):
             if os.path.islink(dst):
                 os.remove(dst)
@@ -82,7 +94,7 @@ class CargoBuilder(BuilderBase):
                 rmtree_more(dst)
         simple_copytree(src, dst)
 
-    def recreate_linked_dir(self, src, dst) -> None:
+    def recreate_linked_dir(self, src: str, dst: str) -> None:
         if os.path.isdir(dst):
             if os.path.islink(dst):
                 os.remove(dst)
@@ -90,14 +102,14 @@ class CargoBuilder(BuilderBase):
                 shutil.rmtree(dst)
         os.symlink(src, dst)
 
-    def cargo_config_file(self):
+    def cargo_config_file(self) -> str:
         build_source_dir = self.build_dir
         if self.cargo_config_file_subdir:
             return os.path.join(build_source_dir, self.cargo_config_file_subdir)
         else:
             return os.path.join(build_source_dir, ".cargo", "config.toml")
 
-    def _create_cargo_config(self):
+    def _create_cargo_config(self) -> dict[str, dict[str, str]]:
         cargo_config_file = self.cargo_config_file()
         cargo_config_dir = os.path.dirname(cargo_config_file)
         if not os.path.isdir(cargo_config_dir):
@@ -163,7 +175,7 @@ opt-level = "{}"
 
         return dep_to_git
 
-    def _prepare(self, reconfigure) -> None:
+    def _prepare(self, reconfigure: bool) -> None:
         build_source_dir = self.build_source_dir()
         self.recreate_dir(self.src_dir, build_source_dir)
 
@@ -172,7 +184,7 @@ opt-level = "{}"
         if self.ws_dir is not None:
             self._patchup_workspace(dep_to_git)
 
-    def _build(self, reconfigure) -> None:
+    def _build(self, reconfigure: bool) -> None:
         # _prepare has been run already. Actually do the build
         build_source_dir = self.build_source_dir()
 
@@ -192,6 +204,7 @@ opt-level = "{}"
                 build_args,
             )
         else:
+            # pyre-fixme[16]: Optional type has no attribute `__iter__`.
             for manifest in self.manifests_to_build:
                 self.run_cargo(
                     self.install_dirs,
@@ -209,15 +222,15 @@ opt-level = "{}"
 
     def run_tests(
         self,
-        schedule_type,
-        owner,
-        test_filter,
-        test_exclude,
-        retry,
-        no_testpilot,
-        timeout=None,
+        schedule_type: str,
+        owner: str | None,
+        test_filter: str | None,
+        test_exclude: str | None,
+        retry: int,
+        no_testpilot: bool,
+        timeout: int | None = None,
     ) -> None:
-        build_args = []
+        build_args: list[str] = []
         if self.build_opts.build_type != "Debug":
             build_args.append("--release")
 
@@ -231,6 +244,7 @@ opt-level = "{}"
             if self.build_doc and not filter_args:
                 self.run_cargo(self.install_dirs, "doc", ["--no-deps"])
         else:
+            # pyre-fixme[16]: Optional type has no attribute `__iter__`.
             for manifest in self.manifests_to_build:
                 margs = ["--manifest-path", self.manifest_dir(manifest)]
                 self.run_cargo(
@@ -239,7 +253,7 @@ opt-level = "{}"
                 if self.build_doc and not filter_args:
                     self.run_cargo(self.install_dirs, "doc", ["--no-deps"] + margs)
 
-    def _patchup_workspace(self, dep_to_git) -> None:
+    def _patchup_workspace(self, dep_to_git: dict[str, dict[str, str]]) -> None:
         """
         This method makes some assumptions about the state of the project and
         its cargo dependendies:
@@ -287,7 +301,7 @@ version = "0.0.0"
 [lib]
 path = "{null_file}"
 """
-            config = []
+            config: list[str] = []
             for git_url, crates_to_patch_path in git_url_to_crates_and_paths.items():
                 crates_patches = [
                     '{} = {{ path = "{}" }}'.format(
@@ -308,7 +322,9 @@ path = "{null_file}"
                     )
                     f.write(new_content)
 
-    def _resolve_config(self, dep_to_git) -> typing.Dict[str, typing.Dict[str, str]]:
+    def _resolve_config(
+        self, dep_to_git: dict[str, dict[str, str]]
+    ) -> dict[str, dict[str, str]]:
         """
         Returns a configuration to be put inside root Cargo.toml file which
         patches the dependencies git code with local getdeps versions.
@@ -316,7 +332,7 @@ path = "{null_file}"
         """
         dep_to_crates = self._resolve_dep_to_crates(self.build_source_dir(), dep_to_git)
 
-        git_url_to_crates_and_paths = {}
+        git_url_to_crates_and_paths: dict[str, dict[str, str]] = {}
         for dep_name in sorted(dep_to_git.keys()):
             git_conf = dep_to_git[dep_name]
             req_crates = sorted(dep_to_crates.get(dep_name, []))
@@ -329,6 +345,8 @@ path = "{null_file}"
                 crates_to_patch_path = git_url_to_crates_and_paths.get(git_url, {})
                 for c in req_crates:
                     if c in crate_source_map and c not in crates_to_patch_path:
+                        # pyre-fixme[6]: For 1st argument expected `Union[slice[Any,
+                        #  Any, Any], SupportsIndex]` but got `str`.
                         crates_to_patch_path[c] = crate_source_map[c]
                         print(
                             f"{self.manifest.name}: Patching crate {c} via virtual manifest in {self.workspace_dir()}",
@@ -339,7 +357,7 @@ path = "{null_file}"
 
         return git_url_to_crates_and_paths
 
-    def _resolve_dep_to_git(self):
+    def _resolve_dep_to_git(self) -> dict[str, dict[str, str]]:
         """
         For each direct dependency of the currently build manifest check if it
         is also cargo-builded and if yes then extract it's git configs and
@@ -347,9 +365,9 @@ path = "{null_file}"
         """
         dependencies = self.manifest.get_dependencies(self.ctx)
         if not dependencies:
-            return []
+            return {}
 
-        dep_to_git = {}
+        dep_to_git: dict[str, dict[str, str]] = {}
         for dep in dependencies:
             dep_manifest = self.loader.load_manifest(dep)
             dep_builder = dep_manifest.get("build", "builder", ctx=self.ctx)
@@ -380,11 +398,12 @@ path = "{null_file}"
                 fetcher = self.loader.create_fetcher(dep_manifest)
                 dep_source_dir = fetcher.get_src_dir()
 
-            crate_source_map = {}
+            crate_source_map: dict[str, str] = {}
             if dep_crate_map:
                 for crate, subpath in dep_crate_map.items():
                     if crate not in crate_source_map:
                         if self.build_opts.is_windows():
+                            # pyre-fixme[16]: Optional type has no attribute `replace`.
                             subpath = subpath.replace("/", "\\")
                         crate_path = os.path.join(dep_source_dir, subpath)
                         print(
@@ -409,6 +428,8 @@ path = "{null_file}"
                                     )
                                     crate_source_map[crate] = crate_root
 
+            # pyre-fixme[6]: For 2nd argument expected `Optional[str]` but got
+            #  `Dict[str, str]`.
             git_conf["crate_source_map"] = crate_source_map
 
             if not dep_crate_map and dep_cargo_conf:
@@ -419,10 +440,16 @@ path = "{null_file}"
                     dep_cargo_dir = os.path.join(dep_cargo_dir, dep_ws_dir)
                 git_conf["cargo_vendored_sources"] = dep_cargo_dir
 
+            # pyre-fixme[6]: For 2nd argument expected `Dict[str, str]` but got
+            #  `Dict[str, Optional[str]]`.
             dep_to_git[dep] = git_conf
         return dep_to_git
 
-    def _resolve_dep_to_crates(self, build_source_dir, dep_to_git):
+    def _resolve_dep_to_crates(
+        self,
+        build_source_dir: str,
+        dep_to_git: dict[str, dict[str, str]],
+    ) -> dict[str, set[str]]:
         """
         This function traverse the build_source_dir in search of Cargo.toml
         files, extracts the crate names from them using _extract_crates
@@ -432,10 +459,11 @@ path = "{null_file}"
         if not dep_to_git:
             return {}  # no deps, so don't waste time traversing files
 
-        dep_to_crates = {}
+        dep_to_crates: dict[str, set[str]] = {}
 
         # First populate explicit crate paths from dependencies
         for name, git_conf in dep_to_git.items():
+            # pyre-fixme[16]: `str` has no attribute `keys`.
             crates = git_conf["crate_source_map"].keys()
             if crates:
                 dep_to_crates.setdefault(name, set()).update(crates)
@@ -456,17 +484,21 @@ path = "{null_file}"
                                     file=sys.stderr,
                                 )
                                 existing_crates.add(c)
+                        # pyre-fixme[61]: `name` is undefined, or not always defined.
                         dep_to_crates.setdefault(name, set()).update(existing_crates)
         return dep_to_crates
 
     @staticmethod
-    def _extract_crates_used(cargo_toml_file, dep_to_git):
+    def _extract_crates_used(
+        cargo_toml_file: str,
+        dep_to_git: dict[str, dict[str, str]],
+    ) -> dict[str, set[str]]:
         """
         This functions reads content of provided cargo toml file and extracts
         crate names per each dependency. The extraction is done by a heuristic
         so it might be incorrect.
         """
-        deps_to_crates = {}
+        deps_to_crates: dict[str, set[str]] = {}
         with open(cargo_toml_file, "r") as f:
             for line in f.readlines():
                 if line.startswith("#") or "git = " not in line:
@@ -486,7 +518,11 @@ path = "{null_file}"
                         )
         return deps_to_crates
 
-    def _resolve_crate_to_path(self, crate, crate_source_map):
+    def _resolve_crate_to_path(
+        self,
+        crate: str,
+        crate_source_map: dict[str, str],
+    ) -> str:
         """
         Tries to find <crate> in source_dir by searching a [package]
         keyword followed by name = "<crate>".

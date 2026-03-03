@@ -3,14 +3,14 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-unsafe
+# pyre-strict
+from __future__ import annotations
 
 import os
 import platform
 import re
 import shlex
 import sys
-from typing import Optional, Tuple
 
 
 def is_windows() -> bool:
@@ -19,14 +19,14 @@ def is_windows() -> bool:
     return sys.platform.startswith("win")
 
 
-def get_linux_type() -> Tuple[Optional[str], Optional[str], Optional[str]]:
+def get_linux_type() -> tuple[str | None, str | None, str | None]:
     try:
         with open("/etc/os-release") as f:
             data = f.read()
     except EnvironmentError:
         return (None, None, None)
 
-    os_vars = {}
+    os_vars: dict[str, str] = {}
     for line in data.splitlines():
         parts = line.split("=", 1)
         if len(parts) != 2:
@@ -198,8 +198,13 @@ def is_current_host_arm() -> bool:
         return "arm" in machine or "aarch" in machine
 
 
-class HostType(object):
-    def __init__(self, ostype=None, distro=None, distrovers=None) -> None:
+class HostType:
+    def __init__(
+        self,
+        ostype: str | None = None,
+        distro: str | None = None,
+        distrovers: str | None = None,
+    ) -> None:
         # Maybe we should allow callers to indicate whether this machine uses
         # an ARM architecture, but we need to change HostType serialization
         # and deserialization in that case and hunt down anywhere that is
@@ -224,17 +229,17 @@ class HostType(object):
             isarm = is_current_host_arm()
 
         # The operating system type
-        self.ostype = ostype
+        self.ostype: str | None = ostype
         # The distribution, if applicable
-        self.distro = distro
+        self.distro: str | None = distro
         # The OS/distro version if known
-        self.distrovers = distrovers
+        self.distrovers: str | None = distrovers
         # Does the CPU use an ARM architecture? ARM includes Apple Silicon
         # Macs as well as other ARM systems that might be running Linux or
         # something.
-        self.isarm = isarm
+        self.isarm: bool = isarm
 
-    def is_windows(self):
+    def is_windows(self) -> bool:
         return self.ostype == "windows"
 
     # is_arm is kinda half implemented at the moment. This method is only
@@ -244,16 +249,16 @@ class HostType(object):
     # information about machine types that we may or may not be running on)
     # the result could be nonsense (under the current implementation its always
     # false.)
-    def is_arm(self):
+    def is_arm(self) -> bool:
         return self.isarm
 
-    def is_darwin(self):
+    def is_darwin(self) -> bool:
         return self.ostype == "darwin"
 
-    def is_linux(self):
+    def is_linux(self) -> bool:
         return self.ostype == "linux"
 
-    def is_freebsd(self):
+    def is_freebsd(self) -> bool:
         return self.ostype == "freebsd"
 
     def as_tuple_string(self) -> str:
@@ -263,25 +268,29 @@ class HostType(object):
             self.distrovers or "none",
         )
 
-    def get_package_manager(self):
+    def get_package_manager(self) -> str | None:
         if not self.is_linux() and not self.is_darwin():
             return None
         if self.is_darwin():
             return "homebrew"
         if self.distro in ("fedora", "centos", "centos_stream", "rocky"):
             return "rpm"
-        if self.distro.startswith(("debian", "ubuntu", "pop!_os", "mint")):
+        if self.distro is not None and self.distro.startswith(
+            ("debian", "ubuntu", "pop!_os", "mint")
+        ):
             return "deb"
         if self.distro == "arch":
             return "pacman-package"
         return None
 
     @staticmethod
-    def from_tuple_string(s) -> "HostType":
+    def from_tuple_string(s: str) -> HostType:
         ostype, distro, distrovers = s.split("-")
         return HostType(ostype=ostype, distro=distro, distrovers=distrovers)
 
-    def __eq__(self, b):
+    def __eq__(self, b: object) -> bool:
+        if not isinstance(b, HostType):
+            return False
         return (
             self.ostype == b.ostype
             and self.distro == b.distro

@@ -243,7 +243,7 @@ class ProjectCmdBase(SubCmd):
         return os.path.exists(built_marker)
 
 
-class CachedProject(object):
+class CachedProject:
     """A helper that allows calling the cache logic for a project
     from both the build and the fetch code"""
 

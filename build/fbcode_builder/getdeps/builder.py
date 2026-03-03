@@ -4,7 +4,9 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# pyre-unsafe
+# pyre-strict
+
+from __future__ import annotations
 
 import glob
 import json
@@ -17,8 +19,8 @@ import stat
 import subprocess
 import sys
 import typing
+from collections.abc import Callable, Sequence
 from shlex import quote as shellquote
-from typing import Optional
 
 from .copytree import rmtree_more, simple_copytree
 from .dyndeps import create_dyn_dep_munger
@@ -28,44 +30,53 @@ from .runcmd import make_memory_limit_preexec_fn, run_cmd
 
 if typing.TYPE_CHECKING:
     from .buildopts import BuildOptions
+    from .dyndeps import DepBase
+    from .load import ManifestLoader
+    from .manifest import ManifestContext, ManifestParser
 
 
-class BuilderBase(object):
+class BuilderBase:
     def __init__(
         self,
-        loader,
-        dep_manifests,  # manifests of dependencies
-        build_opts: "BuildOptions",
-        ctx,
-        manifest,
-        src_dir,
-        build_dir,
-        inst_dir,
-        env=None,
-        final_install_prefix=None,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        build_opts: BuildOptions,
+        ctx: ManifestContext,
+        manifest: ManifestParser,
+        src_dir: str,
+        build_dir: str | None,
+        inst_dir: str,
+        env: Env | None = None,
+        final_install_prefix: str | None = None,
     ) -> None:
-        self.env = Env()
+        self.env: Env = Env()
         if env:
+            # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got
+            #  `Env`.
             self.env.update(env)
 
-        subdir = manifest.get("build", "subdir", ctx=ctx)
+        subdir: str | None = manifest.get("build", "subdir", ctx=ctx)
         if subdir:
             src_dir = os.path.join(src_dir, subdir)
 
-        self.patchfile = manifest.get("build", "patchfile", ctx=ctx)
-        self.patchfile_opts = manifest.get("build", "patchfile_opts", ctx=ctx) or ""
-        self.ctx = ctx
-        self.src_dir = src_dir
-        self.build_dir = build_dir or src_dir
-        self.inst_dir = inst_dir
-        self.build_opts = build_opts
-        self.manifest = manifest
-        self.final_install_prefix = final_install_prefix
-        self.loader = loader
-        self.dep_manifests = dep_manifests
-        self.install_dirs = [loader.get_project_install_dir(m) for m in dep_manifests]
+        self.patchfile: str | None = manifest.get("build", "patchfile", ctx=ctx)
+        self.patchfile_opts: str = (
+            manifest.get("build", "patchfile_opts", ctx=ctx) or ""
+        )
+        self.ctx: ManifestContext = ctx
+        self.src_dir: str = src_dir
+        self.build_dir: str = build_dir or src_dir
+        self.inst_dir: str = inst_dir
+        self.build_opts: BuildOptions = build_opts
+        self.manifest: ManifestParser = manifest
+        self.final_install_prefix: str | None = final_install_prefix
+        self.loader: ManifestLoader = loader
+        self.dep_manifests: list[ManifestParser] = dep_manifests
+        self.install_dirs: list[str] = [
+            loader.get_project_install_dir(m) for m in dep_manifests
+        ]
 
-    def _get_cmd_prefix(self):
+    def _get_cmd_prefix(self) -> list[str]:
         if self.build_opts.is_windows():
             vcvarsall = self.build_opts.get_vcvars_path()
             if vcvarsall is not None:
@@ -87,23 +98,28 @@ class BuilderBase(object):
                 return [wrapper, "&&"]
         return []
 
-    def _check_cmd(self, cmd, **kwargs) -> None:
+    def _check_cmd(self, cmd: list[str], **kwargs: object) -> None:
         """Run the command and abort on failure"""
+        # pyre-fixme[6]: For 2nd argument expected `Optional[Env]` but got `object`.
+        # pyre-fixme[6]: For 2nd argument expected `Optional[str]` but got `object`.
+        # pyre-fixme[6]: For 2nd argument expected `bool` but got `object`.
         rc = self._run_cmd(cmd, **kwargs)
         if rc != 0:
             raise RuntimeError(f"Failure exit code {rc} for command {cmd}")
 
     def _run_cmd(
         self,
-        cmd,
-        cwd=None,
-        env=None,
+        cmd: list[str],
+        cwd: str | None = None,
+        env: Env | None = None,
         use_cmd_prefix: bool = True,
         allow_fail: bool = False,
-        preexec_fn=None,
+        preexec_fn: Callable[[], None] | None = None,
     ) -> int:
         if env:
             e = self.env.copy()
+            # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got
+            #  `Env`.
             e.update(env)
             env = e
         else:
@@ -150,7 +166,11 @@ class BuilderBase(object):
             pass  # not a git repo, stay in src_dir
         print(f"Patching {self.manifest.name} with {self.patchfile} in {os.getcwd()}")
         patchfile = os.path.join(
-            self.build_opts.fbcode_builder_dir, "patches", self.patchfile
+            self.build_opts.fbcode_builder_dir,
+            "patches",
+            # pyre-fixme[6]: For 3rd argument expected `Union[PathLike[str], str]`
+            #  but got `Optional[str]`.
+            self.patchfile,
         )
         patchcmd = ["git", "apply", "--ignore-space-change"]
         if self.patchfile_opts:
@@ -245,7 +265,7 @@ class BuilderBase(object):
             default_job_weight = 1536
         return int(
             self.manifest.get(
-                "build", "job_weight_mib", default_job_weight, ctx=self.ctx
+                "build", "job_weight_mib", str(default_job_weight), ctx=self.ctx
             )
         )
 
@@ -254,7 +274,7 @@ class BuilderBase(object):
         return self.build_opts.get_num_jobs(self._job_weight_mib)
 
     @property
-    def memory_limit_preexec_fn(self):
+    def memory_limit_preexec_fn(self) -> Callable[[], None] | None:
         """Return a preexec_fn that caps per-process virtual memory.
 
         Uses the same job_weight_mib that controls parallelism, so the memory
@@ -264,32 +284,32 @@ class BuilderBase(object):
 
     def run_tests(
         self,
-        schedule_type,
-        owner,
-        test_filter,
-        test_exclude,
-        retry,
-        no_testpilot,
-        timeout=None,
+        schedule_type: str,
+        owner: str | None,
+        test_filter: str | None,
+        test_exclude: str | None,
+        retry: int,
+        no_testpilot: bool,
+        timeout: int | None = None,
     ) -> None:
         """Execute any tests that we know how to run.  If they fail,
         raise an exception."""
         pass
 
-    def _prepare(self, reconfigure) -> None:
+    def _prepare(self, reconfigure: bool) -> None:
         """Prepare the build. Useful when need to generate config,
         but builder is not the primary build system.
         e.g. cargo when called from cmake"""
         pass
 
-    def _build(self, reconfigure) -> None:
+    def _build(self, reconfigure: bool) -> None:
         """Perform the build.
         reconfigure will be set to true if the fetcher determined
         that the sources have changed in such a way that the build
         system needs to regenerate its rules."""
         pass
 
-    def _compute_env(self, env=None) -> Env:
+    def _compute_env(self, env: Env | None = None) -> Env:
         if env is None:
             env = self.env
         # CMAKE_PREFIX_PATH is only respected when passed through the
@@ -302,33 +322,36 @@ class BuilderBase(object):
             manifest=self.manifest,
         )
 
-    def get_dev_run_script_path(self):
+    def get_dev_run_script_path(self) -> str:
         assert self.build_opts.is_windows()
         return os.path.join(self.build_dir, "run.ps1")
 
-    def get_dev_run_extra_path_dirs(self, dep_munger=None):
+    def get_dev_run_extra_path_dirs(
+        self, dep_munger: DepBase | None = None
+    ) -> list[str]:
         assert self.build_opts.is_windows()
         if dep_munger is None:
             dep_munger = create_dyn_dep_munger(
                 self.build_opts, self._compute_env(), self.install_dirs
             )
+        # pyre-fixme[16]: Optional type has no attribute `compute_dependency_paths`.
         return dep_munger.compute_dependency_paths(self.build_dir)
 
 
 class MakeBuilder(BuilderBase):
     def __init__(
         self,
-        loader,
-        dep_manifests,
-        build_opts,
-        ctx,
-        manifest,
-        src_dir,
-        build_dir,
-        inst_dir,
-        build_args,
-        install_args,
-        test_args,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        build_opts: BuildOptions,
+        ctx: ManifestContext,
+        manifest: ManifestParser,
+        src_dir: str,
+        build_dir: str,
+        inst_dir: str,
+        build_args: list[str] | None,
+        install_args: list[str] | None,
+        test_args: list[str] | None,
     ) -> None:
         super(MakeBuilder, self).__init__(
             loader,
@@ -340,18 +363,18 @@ class MakeBuilder(BuilderBase):
             build_dir,
             inst_dir,
         )
-        self.build_args = build_args or []
-        self.install_args = install_args or []
-        self.test_args = test_args
+        self.build_args: list[str] = build_args or []
+        self.install_args: list[str] = install_args or []
+        self.test_args: list[str] | None = test_args
 
     @property
-    def _make_binary(self):
+    def _make_binary(self) -> str | None:
         return self.manifest.get("build", "make_binary", "make", ctx=self.ctx)
 
-    def _get_prefix(self):
+    def _get_prefix(self) -> list[str]:
         return ["PREFIX=" + self.inst_dir, "prefix=" + self.inst_dir]
 
-    def _build(self, reconfigure) -> None:
+    def _build(self, reconfigure: bool) -> None:
 
         env = self._compute_env()
 
@@ -363,9 +386,13 @@ class MakeBuilder(BuilderBase):
             + self.build_args
             + self._get_prefix()
         )
+        # pyre-fixme[6]: For 1st argument expected `List[str]` but got
+        #  `List[Optional[str]]`.
         self._check_cmd(cmd, env=env)
 
         install_cmd = [self._make_binary] + self.install_args + self._get_prefix()
+        # pyre-fixme[6]: For 1st argument expected `List[str]` but got
+        #  `List[Optional[str]]`.
         self._check_cmd(install_cmd, env=env)
 
         # bz2's Makefile doesn't install its .so properly
@@ -378,13 +405,13 @@ class MakeBuilder(BuilderBase):
 
     def run_tests(
         self,
-        schedule_type,
-        owner,
-        test_filter,
-        test_exclude,
-        retry,
-        no_testpilot,
-        timeout=None,
+        schedule_type: str,
+        owner: str | None,
+        test_filter: str | None,
+        test_exclude: str | None,
+        retry: int,
+        no_testpilot: bool,
+        timeout: int | None = None,
     ) -> None:
         if not self.test_args:
             return
@@ -396,8 +423,10 @@ class MakeBuilder(BuilderBase):
             env["GETDEPS_TEST_FILTER"] = ""
 
         if retry:
+            # pyre-fixme[6]: Expected `str` but got `int`.
             env["GETDEPS_TEST_RETRY"] = retry
         else:
+            # pyre-fixme[6]: Expected `str` but got `int`.
             env["GETDEPS_TEST_RETRY"] = 0
 
         if timeout is not None:
@@ -405,14 +434,18 @@ class MakeBuilder(BuilderBase):
 
         cmd = (
             [self._make_binary, "-j%s" % self.num_jobs]
+            # pyre-fixme[58]: `+` is not supported for operand types
+            #  `list[Optional[str]]` and `Optional[list[str]]`.
             + self.test_args
             + self._get_prefix()
         )
+        # pyre-fixme[6]: For 1st argument expected `List[str]` but got
+        #  `List[Optional[str]]`.
         self._check_cmd(cmd, allow_fail=False, env=env)
 
 
 class CMakeBootStrapBuilder(MakeBuilder):
-    def _build(self, reconfigure) -> None:
+    def _build(self, reconfigure: bool) -> None:
         self._check_cmd(
             [
                 "./bootstrap",
@@ -426,16 +459,16 @@ class CMakeBootStrapBuilder(MakeBuilder):
 class AutoconfBuilder(BuilderBase):
     def __init__(
         self,
-        loader,
-        dep_manifests,
-        build_opts,
-        ctx,
-        manifest,
-        src_dir,
-        build_dir,
-        inst_dir,
-        args,
-        conf_env_args,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        build_opts: BuildOptions,
+        ctx: ManifestContext,
+        manifest: ManifestParser,
+        src_dir: str,
+        build_dir: str,
+        inst_dir: str,
+        args: list[str] | None,
+        conf_env_args: dict[str, list[str]] | None,
     ) -> None:
         super(AutoconfBuilder, self).__init__(
             loader,
@@ -447,16 +480,16 @@ class AutoconfBuilder(BuilderBase):
             build_dir,
             inst_dir,
         )
-        self.args = args or []
+        self.args: list[str] = args or []
         if not build_opts.shared_libs and "--disable-shared" not in self.args:
             self.args.append("--disable-shared")
-        self.conf_env_args = conf_env_args or {}
+        self.conf_env_args: dict[str, list[str]] = conf_env_args or {}
 
     @property
-    def _make_binary(self):
+    def _make_binary(self) -> str | None:
         return self.manifest.get("build", "make_binary", "make", ctx=self.ctx)
 
-    def _build(self, reconfigure) -> None:
+    def _build(self, reconfigure: bool) -> None:
         configure_path = os.path.join(self.src_dir, "configure")
         autogen_path = os.path.join(self.src_dir, "autogen.sh")
 
@@ -492,7 +525,11 @@ class AutoconfBuilder(BuilderBase):
         self._check_cmd(configure_cmd, env=env)
         only_install = self.manifest.get("build", "only_install", ctx=self.ctx)
         if not only_install or only_install.lower() == "false":
+            # pyre-fixme[6]: For 1st argument expected `List[str]` but got
+            #  `List[Optional[str]]`.
             self._check_cmd([self._make_binary, "-j%s" % self.num_jobs], env=env)
+        # pyre-fixme[6]: For 1st argument expected `List[str]` but got
+        #  `List[Union[str, None, str]]`.
         self._check_cmd([self._make_binary, "install"], env=env)
 
 
@@ -503,14 +540,14 @@ class Iproute2Builder(BuilderBase):
     # lastly, also copy include from build_dir to inst_dir
     def __init__(
         self,
-        loader,
-        dep_manifests,
-        build_opts,
-        ctx,
-        manifest,
-        src_dir,
-        build_dir,
-        inst_dir,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        build_opts: BuildOptions,
+        ctx: ManifestContext,
+        manifest: ManifestParser,
+        src_dir: str,
+        build_dir: str,
+        inst_dir: str,
     ) -> None:
         super(Iproute2Builder, self).__init__(
             loader,
@@ -523,7 +560,7 @@ class Iproute2Builder(BuilderBase):
             inst_dir,
         )
 
-    def _build(self, reconfigure) -> None:
+    def _build(self, reconfigure: bool) -> None:
         configure_path = os.path.join(self.src_dir, "configure")
         env = self.env.copy()
         self._check_cmd([configure_path], env=env)
@@ -546,14 +583,14 @@ class MesonBuilder(BuilderBase):
     # the machine.
     def __init__(
         self,
-        loader,
-        dep_manifests,
-        build_opts,
-        ctx,
-        manifest,
-        src_dir,
-        build_dir,
-        inst_dir,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        build_opts: BuildOptions,
+        ctx: ManifestContext,
+        manifest: ManifestParser,
+        src_dir: str,
+        build_dir: str,
+        inst_dir: str,
     ) -> None:
         super(MesonBuilder, self).__init__(
             loader,
@@ -566,9 +603,10 @@ class MesonBuilder(BuilderBase):
             inst_dir,
         )
 
-    def _build(self, reconfigure) -> None:
+    def _build(self, reconfigure: bool) -> None:
         env = self._compute_env()
-        meson = path_search(env, "meson")
+        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
+        meson: str | None = path_search(env, "meson")
         if meson is None:
             raise Exception("Failed to find Meson")
 
@@ -714,18 +752,18 @@ if __name__ == "__main__":
 
     def __init__(
         self,
-        loader,
-        dep_manifests,
-        build_opts,
-        ctx,
-        manifest,
-        src_dir,
-        build_dir,
-        inst_dir,
-        defines,
-        final_install_prefix=None,
-        extra_cmake_defines=None,
-        cmake_targets=None,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        build_opts: BuildOptions,
+        ctx: ManifestContext,
+        manifest: ManifestParser,
+        src_dir: str,
+        build_dir: str,
+        inst_dir: str,
+        defines: dict[str, str] | None,
+        final_install_prefix: str | None = None,
+        extra_cmake_defines: dict[str, str] | None = None,
+        cmake_targets: list[str] | None = None,
     ) -> None:
         super(CMakeBuilder, self).__init__(
             loader,
@@ -738,10 +776,10 @@ if __name__ == "__main__":
             inst_dir,
             final_install_prefix=final_install_prefix,
         )
-        self.defines = defines or {}
+        self.defines: dict[str, str] = defines or {}
         if extra_cmake_defines:
             self.defines.update(extra_cmake_defines)
-        self.cmake_targets = cmake_targets or ["install"]
+        self.cmake_targets: list[str] = cmake_targets or ["install"]
 
         if build_opts.is_windows():
             try:
@@ -775,7 +813,8 @@ if __name__ == "__main__":
                 return True
         return False
 
-    def _write_build_script(self, **kwargs) -> None:
+    def _write_build_script(self, **kwargs: object) -> None:
+        # pyre-fixme[16]: `object` has no attribute `items`.
         env_lines = ["    {!r}: {!r},".format(k, v) for k, v in kwargs["env"].items()]
         kwargs["env_str"] = "\n".join(["{"] + env_lines + ["}"])
 
@@ -787,6 +826,7 @@ if __name__ == "__main__":
             kwargs["dev_run_script"] = ""
 
         define_arg_lines = ["["]
+        # pyre-fixme[16]: `object` has no attribute `__iter__`.
         for arg in kwargs["define_args"]:
             # Replace the CMAKE_INSTALL_PREFIX argument to use the INSTALL_DIR
             # variable that we define in the MANUAL_BUILD_SCRIPT code.
@@ -809,7 +849,7 @@ if __name__ == "__main__":
             f.write(script_contents.encode())
         os.chmod(build_script_path, 0o755)
 
-    def _compute_cmake_define_args(self, env):
+    def _compute_cmake_define_args(self, env: Env) -> list[str]:
         defines = {
             "CMAKE_INSTALL_PREFIX": self.final_install_prefix or self.inst_dir,
             "BUILD_SHARED_LIBS": "OFF",
@@ -824,6 +864,8 @@ if __name__ == "__main__":
             # We sometimes see intermittent ccache related breakages on some
             # of the FB internal CI hosts, so we prefer to disable ccache
             # when running in that environment.
+            # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got
+            #  `Env`.
             ccache = path_search(env, "ccache")
             if ccache:
                 defines["CMAKE_CXX_COMPILER_LAUNCHER"] = ccache
@@ -854,6 +896,7 @@ if __name__ == "__main__":
             # separator, so translate the runtime path to something
             # that cmake will parse
             defines["CMAKE_INSTALL_RPATH"] = ";".join(
+                # pyre-fixme[16]: Optional type has no attribute `split`.
                 env.get("DYLD_LIBRARY_PATH", "").split(":")
             )
             # Tell cmake that we want to set the rpath in the tree
@@ -874,7 +917,7 @@ if __name__ == "__main__":
 
         return define_args
 
-    def _run_include_rewriter(self):
+    def _run_include_rewriter(self) -> None:
         """Run include path rewriting on source files before building."""
         from .include_rewriter import rewrite_includes_from_manifest
 
@@ -893,9 +936,10 @@ if __name__ == "__main__":
 
     def _build(self, reconfigure: bool) -> None:
         # Check if include rewriting is enabled
-        rewrite_includes = self.manifest.get(
+        rewrite_includes: str | None = self.manifest.get(
             "build", "rewrite_includes", "false", ctx=self.ctx
         )
+        # pyre-fixme[16]: Optional type has no attribute `lower`.
         if rewrite_includes.lower() == "true":
             self._run_include_rewriter()
 
@@ -906,6 +950,7 @@ if __name__ == "__main__":
             env["DESTDIR"] = self.inst_dir
 
         # Resolve the cmake that we installed
+        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
         cmake = path_search(env, "cmake")
         if cmake is None:
             raise Exception("Failed to find CMake")
@@ -923,6 +968,8 @@ if __name__ == "__main__":
             self._write_build_script(
                 cmd_prefix=self._get_cmd_prefix(),
                 cmake=cmake,
+                # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but
+                #  got `Env`.
                 ctest=path_search(env, "ctest"),
                 env=env,
                 define_args=define_args,
@@ -937,6 +984,8 @@ if __name__ == "__main__":
             self._check_cmd([cmake, self.src_dir] + define_args, env=env)
 
         self._check_cmd(
+            # pyre-fixme[6]: For 1st argument expected `List[str]` but got
+            #  `List[Optional[str]]`.
             [cmake, "--build", self.build_dir, "--target"]
             + self.cmake_targets
             + [
@@ -949,7 +998,7 @@ if __name__ == "__main__":
             preexec_fn=self.memory_limit_preexec_fn,
         )
 
-    def _build_targets(self, targets: typing.Sequence[str]) -> None:
+    def _build_targets(self, targets: Sequence[str]) -> None:
         """Build one or more cmake targets in parallel.
 
         Args:
@@ -959,6 +1008,7 @@ if __name__ == "__main__":
             return
 
         env = self._compute_env()
+        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
         cmake = path_search(env, "cmake")
         if cmake is None:
             raise RuntimeError("unable to find cmake")
@@ -975,6 +1025,8 @@ if __name__ == "__main__":
             cmd.extend(["--target", target])
 
         cmd.extend(
+            # pyre-fixme[6]: For 1st argument expected `Iterable[str]` but got
+            #  `Iterable[Union[str, str, None, str]]`.
             [
                 "--config",
                 self.build_opts.build_type,
@@ -986,8 +1038,8 @@ if __name__ == "__main__":
         self._check_cmd(cmd, env=env, preexec_fn=self.memory_limit_preexec_fn)
 
     def _get_missing_test_executables(
-        self, test_filter: Optional[str], env: Env, ctest: Optional[str]
-    ) -> typing.Set[str]:
+        self, test_filter: str | None, env: Env, ctest: str | None
+    ) -> set[str]:
         """Discover which test executables are missing for the given filter.
         Returns a set of missing executable basenames (without path)."""
         if ctest is None:
@@ -1025,16 +1077,18 @@ if __name__ == "__main__":
 
     def run_tests(
         self,
-        schedule_type,
-        owner,
-        test_filter,
-        test_exclude,
+        schedule_type: str,
+        owner: str | None,
+        test_filter: str | None,
+        test_exclude: str | None,
         retry: int,
-        no_testpilot,
-        timeout=None,
+        no_testpilot: bool,
+        timeout: int | None = None,
     ) -> None:
         env = self._compute_env()
-        ctest = path_search(env, "ctest")
+        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
+        ctest: str | None = path_search(env, "ctest")
+        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
         cmake = path_search(env, "cmake")
 
         # Build only the missing test executables needed for the given filter.
@@ -1049,7 +1103,7 @@ if __name__ == "__main__":
             # Build all missing executables in one cmake invocation for better parallelism
             self._build_targets(sorted_executables)
 
-        def require_command(path: Optional[str], name: str) -> str:
+        def require_command(path: str | None, name: str) -> str:
             if path is None:
                 raise RuntimeError("unable to find command `{}`".format(name))
             return path
@@ -1071,7 +1125,9 @@ if __name__ == "__main__":
         # running the tests.
         use_cmd_prefix = False
 
-        def get_property(test, propname, defval=None):
+        def get_property(
+            test: dict[str, object], propname: str, defval: object = None
+        ) -> object:
             """extracts a named property from a cmake test info json blob.
             The properties look like:
             [{"name": "WORKING_DIRECTORY"},
@@ -1080,12 +1136,15 @@ if __name__ == "__main__":
             listed more than once.
             """
             props = test.get("properties", [])
+            # pyre-fixme[16]: `object` has no attribute `__iter__`.
             for p in props:
                 if p.get("name", None) == propname:
                     return p.get("value", defval)
             return defval
 
-        def list_tests():
+        # pyre-fixme[53]: Captured variable `cmake` is not annotated.
+        # pyre-fixme[53]: Captured variable `env` is not annotated.
+        def list_tests() -> list[dict[str, object]]:
             output = subprocess.check_output(
                 [require_command(ctest, "ctest"), "--show-only=json-v1"],
                 env=env,
@@ -1120,8 +1179,6 @@ if __name__ == "__main__":
                         working_dir,
                     ] + command
 
-                import os
-
                 tests.append(
                     {
                         "type": "custom",
@@ -1152,14 +1209,17 @@ if __name__ == "__main__":
         try:
             from .facebook.testinfra import start_run
 
+            # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got
+            #  `Env`.
             tpx = path_search(env, "tpx")
         except ImportError:
             # internal testinfra not available
             pass
 
         if tpx and not no_testpilot:
-            buck_test_info = list_tests()
             import os
+
+            buck_test_info = list_tests()
 
             buck_test_info_name = os.path.join(self.build_dir, ".buck-test-info.json")
             with open(buck_test_info_name, "w") as f:
@@ -1258,8 +1318,8 @@ if __name__ == "__main__":
             if timeout is not None:
                 args += ["--timeout", str(timeout)]
 
-            count = 0
-            retcode = -1
+            count: int = 0
+            retcode: int | None = -1
             while count <= retry:
                 # FIXME: What is this trying to accomplish? Should it fail on first or >=1 errors?
                 retcode = self._check_cmd(
@@ -1281,14 +1341,14 @@ if __name__ == "__main__":
 class NinjaBootstrap(BuilderBase):
     def __init__(
         self,
-        loader,
-        dep_manifests,
-        build_opts,
-        ctx,
-        manifest,
-        build_dir,
-        src_dir,
-        inst_dir,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        build_opts: BuildOptions,
+        ctx: ManifestContext,
+        manifest: ManifestParser,
+        build_dir: str,
+        src_dir: str,
+        inst_dir: str,
     ) -> None:
         super(NinjaBootstrap, self).__init__(
             loader,
@@ -1301,7 +1361,7 @@ class NinjaBootstrap(BuilderBase):
             inst_dir,
         )
 
-    def _build(self, reconfigure) -> None:
+    def _build(self, reconfigure: bool) -> None:
         self._check_cmd(
             [sys.executable, "configure.py", "--bootstrap"], cwd=self.src_dir
         )
@@ -1317,14 +1377,14 @@ class NinjaBootstrap(BuilderBase):
 class OpenSSLBuilder(BuilderBase):
     def __init__(
         self,
-        loader,
-        dep_manifests,
-        build_opts,
-        ctx,
-        manifest,
-        build_dir,
-        src_dir,
-        inst_dir,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        build_opts: BuildOptions,
+        ctx: ManifestContext,
+        manifest: ManifestParser,
+        build_dir: str,
+        src_dir: str,
+        inst_dir: str,
     ) -> None:
         super(OpenSSLBuilder, self).__init__(
             loader,
@@ -1337,7 +1397,7 @@ class OpenSSLBuilder(BuilderBase):
             inst_dir,
         )
 
-    def _build(self, reconfigure) -> None:
+    def _build(self, reconfigure: bool) -> None:
         configure = os.path.join(self.src_dir, "Configure")
 
         # prefer to resolve the perl that we installed from
@@ -1348,6 +1408,7 @@ class OpenSSLBuilder(BuilderBase):
             bindir = os.path.join(self.loader.get_project_install_dir(m), "bin")
             add_path_entry(env, "PATH", bindir, append=False)
 
+        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
         perl = typing.cast(str, path_search(env, "perl", "perl"))
 
         make_j_args = []
@@ -1404,15 +1465,15 @@ class OpenSSLBuilder(BuilderBase):
 class Boost(BuilderBase):
     def __init__(
         self,
-        loader,
-        dep_manifests,
-        build_opts,
-        ctx,
-        manifest,
-        src_dir,
-        build_dir,
-        inst_dir,
-        b2_args,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        build_opts: BuildOptions,
+        ctx: ManifestContext,
+        manifest: ManifestParser,
+        src_dir: str,
+        build_dir: str,
+        inst_dir: str,
+        b2_args: list[str],
     ) -> None:
         children = os.listdir(src_dir)
         assert len(children) == 1, "expected a single directory entry: %r" % (children,)
@@ -1429,11 +1490,11 @@ class Boost(BuilderBase):
             build_dir,
             inst_dir,
         )
-        self.b2_args = b2_args
+        self.b2_args: list[str] = b2_args
 
-    def _build(self, reconfigure) -> None:
+    def _build(self, reconfigure: bool) -> None:
         env = self._compute_env()
-        linkage = ["static"]
+        linkage: list[str] = ["static"]
         if self.build_opts.is_windows() or self.build_opts.shared_libs:
             linkage.append("shared")
 
@@ -1488,7 +1549,14 @@ class Boost(BuilderBase):
 
 class NopBuilder(BuilderBase):
     def __init__(
-        self, loader, dep_manifests, build_opts, ctx, manifest, src_dir, inst_dir
+        self,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        build_opts: BuildOptions,
+        ctx: ManifestContext,
+        manifest: ManifestParser,
+        src_dir: str,
+        inst_dir: str,
     ) -> None:
         super(NopBuilder, self).__init__(
             loader, dep_manifests, build_opts, ctx, manifest, src_dir, None, inst_dir
@@ -1507,6 +1575,8 @@ class NopBuilder(BuilderBase):
             for src_name, dest_name in self.manifest.get_section_as_ordered_pairs(
                 "install.files", self.ctx
             ):
+                # pyre-fixme[6]: For 2nd argument expected `Union[PathLike[str],
+                #  str]` but got `Optional[str]`.
                 full_dest = os.path.join(self.inst_dir, dest_name)
                 full_src = os.path.join(self.src_dir, src_name)
 
@@ -1522,6 +1592,8 @@ class NopBuilder(BuilderBase):
                     # This is a bit gross, but the mac ninja.zip doesn't
                     # give ninja execute permissions, so force them on
                     # for things that look like they live in a bin dir
+                    # pyre-fixme[6]: For 1st argument expected `PathLike[AnyStr]`
+                    #  but got `Optional[str]`.
                     if os.path.dirname(dest_name) == "bin":
                         st = os.lstat(full_dest)
                         os.chmod(full_dest, st.st_mode | stat.S_IXUSR)
@@ -1531,11 +1603,12 @@ class NopBuilder(BuilderBase):
 
 
 class SetupPyBuilder(BuilderBase):
-    def _build(self, reconfigure) -> None:
+    def _build(self, reconfigure: bool) -> None:
         env = self._compute_env()
 
         setup_env = self.manifest.get_section_as_dict("setup-py.env", self.ctx)
         for key, value in setup_env.items():
+            # pyre-fixme[6]: For 2nd argument expected `str` but got `Optional[str]`.
             env[key] = value
 
         setup_py_path = os.path.join(self.src_dir, "setup.py")
@@ -1544,6 +1617,10 @@ class SetupPyBuilder(BuilderBase):
             raise RuntimeError(f"setup.py script not found at {setup_py_path}")
 
         self._check_cmd(
+            # pyre-fixme[6]: For 1st argument expected `List[str]` but got
+            #  `List[Union[str, None, str]]`.
+            # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got
+            #  `Env`.
             [path_search(env, "python3"), setup_py_path, "install"],
             cwd=self.src_dir,
             env=env,
@@ -1558,13 +1635,13 @@ class SetupPyBuilder(BuilderBase):
 
     def run_tests(
         self,
-        schedule_type,
-        owner,
-        test_filter,
-        test_exclude,
-        retry,
-        no_testpilot,
-        timeout=None,
+        schedule_type: str,
+        owner: str | None,
+        test_filter: str | None,
+        test_exclude: str | None,
+        retry: int,
+        no_testpilot: bool,
+        timeout: int | None = None,
     ) -> None:
         # setup.py actually no longer has a standard command for running tests.
         # Instead we let manifest files specify an arbitrary Python file to run
@@ -1586,14 +1663,14 @@ class SetupPyBuilder(BuilderBase):
 class SqliteBuilder(BuilderBase):
     def __init__(
         self,
-        loader,
-        dep_manifests,
-        build_opts,
-        ctx,
-        manifest,
-        src_dir,
-        build_dir,
-        inst_dir,
+        loader: ManifestLoader,
+        dep_manifests: list[ManifestParser],
+        build_opts: BuildOptions,
+        ctx: ManifestContext,
+        manifest: ManifestParser,
+        src_dir: str,
+        build_dir: str,
+        inst_dir: str,
     ) -> None:
         super(SqliteBuilder, self).__init__(
             loader,
@@ -1606,7 +1683,7 @@ class SqliteBuilder(BuilderBase):
             inst_dir,
         )
 
-    def _build(self, reconfigure) -> None:
+    def _build(self, reconfigure: bool) -> None:
         for f in ["sqlite3.c", "sqlite3.h", "sqlite3ext.h"]:
             src = os.path.join(self.src_dir, f)
             dest = os.path.join(self.build_dir, f)
@@ -1648,10 +1725,15 @@ install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
         env = self._compute_env()
 
         # Resolve the cmake that we installed
+        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
         cmake = path_search(env, "cmake")
 
+        # pyre-fixme[6]: For 1st argument expected `List[str]` but got
+        #  `List[Optional[str]]`.
         self._check_cmd([cmake, self.build_dir] + define_args, env=env)
         self._check_cmd(
+            # pyre-fixme[6]: For 1st argument expected `List[str]` but got
+            #  `List[Union[str, str, str, str, str, None, str]]`.
             [
                 cmake,
                 "--build",
