@@ -187,6 +187,8 @@ struct FOLLY_MSVC_DECLSPEC(empty_bases) BasePolicy
       typename AllocTraits::pointer>::template rebind<Chunk>;
   using ItemIter = F14ItemIter<ChunkPtr>;
 
+  static constexpr std::size_t kChunkAllocAlignment = alignof(Chunk);
+
   static constexpr bool kIsMap = !std::is_same<Key, Value>::value;
   static_assert(
       kIsMap == !std::is_void<MappedTypeOrVoid>::value,
@@ -333,11 +335,11 @@ struct FOLLY_MSVC_DECLSPEC(empty_bases) BasePolicy
       P&& /*rhs*/) {}
 
   std::size_t alignedAllocSize(std::size_t n) const {
-    if (kRequiredVectorAlignment <= alignof(max_align_t) ||
+    if (kChunkAllocAlignment <= alignof(max_align_t) ||
         std::is_same<ByteAlloc, std::allocator<uint8_t>>::value) {
       return n;
     } else {
-      return n + kRequiredVectorAlignment;
+      return n + kChunkAllocAlignment;
     }
   }
 
@@ -347,9 +349,8 @@ struct FOLLY_MSVC_DECLSPEC(empty_bases) BasePolicy
       std::size_t /*newCapacity*/,
       std::size_t chunkAllocSize,
       BytePtr& outChunkAllocation) {
-    outChunkAllocation =
-        allocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
-            ByteAlloc{alloc()}, chunkAllocSize);
+    outChunkAllocation = allocateOverAligned<ByteAlloc, kChunkAllocAlignment>(
+        ByteAlloc{alloc()}, chunkAllocSize);
     return false;
   }
 
@@ -363,7 +364,7 @@ struct FOLLY_MSVC_DECLSPEC(empty_bases) BasePolicy
       std::size_t chunkAllocSize) {
     // on success, this will be the old allocation, on failure the new one
     if (chunkAllocation != nullptr) {
-      deallocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+      deallocateOverAligned<ByteAlloc, kChunkAllocAlignment>(
           ByteAlloc{alloc()}, chunkAllocation, chunkAllocSize);
     }
   }
@@ -379,7 +380,7 @@ struct FOLLY_MSVC_DECLSPEC(empty_bases) BasePolicy
       std::size_t /*capacity*/,
       BytePtr chunkAllocation,
       std::size_t chunkAllocSize) {
-    deallocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+    deallocateOverAligned<ByteAlloc, kChunkAllocAlignment>(
         ByteAlloc{alloc()}, chunkAllocation, chunkAllocSize);
   }
 
@@ -528,6 +529,7 @@ class ValueContainerPolicy
   using Hasher = typename Super::Hasher;
   using Mapped = typename Super::Mapped;
 
+  using Super::kChunkAllocAlignment;
   static constexpr bool kDefaultConstructIsNoexcept =
       Super::kDefaultConstructIsNoexcept;
   static constexpr bool kAllocIsAlwaysEqual = Super::kAllocIsAlwaysEqual;
@@ -650,7 +652,7 @@ class ValueContainerPolicy
       V&& visitor) const {
     if (chunkAllocSize > 0) {
       visitor(
-          allocationBytesForOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+          allocationBytesForOverAligned<ByteAlloc, kChunkAllocAlignment>(
               chunkAllocSize),
           1);
     }
@@ -781,6 +783,7 @@ class NodeContainerPolicy
  private:
   using ByteAlloc = typename Super::ByteAlloc;
 
+  using Super::kChunkAllocAlignment;
   using Super::kIsMap;
 
  public:
@@ -885,7 +888,7 @@ class NodeContainerPolicy
       V&& visitor) const {
     if (chunkAllocSize > 0) {
       visitor(
-          allocationBytesForOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+          allocationBytesForOverAligned<ByteAlloc, kChunkAllocAlignment>(
               chunkAllocSize),
           1);
     }
@@ -1031,6 +1034,11 @@ class VectorContainerPolicy
 
  private:
   using Super::kIsMap;
+
+  // Allocation alignment must satisfy both chunk alignment (for SIMD tag
+  // loads) and value alignment (values are placed after chunks).
+  static constexpr std::size_t kAllocAlignment =
+      constexpr_max(Super::kChunkAllocAlignment, alignof(Value));
 
  public:
   static constexpr bool kEnableItemIteration = false;
@@ -1350,9 +1358,8 @@ class VectorContainerPolicy
             newCapacity <= (std::numeric_limits<Item>::max)(),
         "");
 
-    outChunkAllocation =
-        allocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
-            ByteAlloc{Super::alloc()}, allocSize(chunkAllocSize, newCapacity));
+    outChunkAllocation = allocateOverAligned<ByteAlloc, kAllocAlignment>(
+        ByteAlloc{Super::alloc()}, allocSize(chunkAllocSize, newCapacity));
 
     ValuePtr before = values_;
     ValuePtr after = std::pointer_traits<ValuePtr>::pointer_to(
@@ -1392,7 +1399,7 @@ class VectorContainerPolicy
     // on success, chunkAllocation is the old allocation, on failure it is the
     // new one
     if (chunkAllocation != nullptr) {
-      deallocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+      deallocateOverAligned<ByteAlloc, kAllocAlignment>(
           ByteAlloc{Super::alloc()},
           chunkAllocation,
           allocSize(chunkAllocSize, (success ? oldCapacity : newCapacity)));
@@ -1418,7 +1425,7 @@ class VectorContainerPolicy
       BytePtr chunkAllocation,
       std::size_t chunkAllocSize) {
     if (chunkAllocation != nullptr) {
-      deallocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+      deallocateOverAligned<ByteAlloc, kAllocAlignment>(
           ByteAlloc{Super::alloc()},
           chunkAllocation,
           allocSize(chunkAllocSize, capacity));
@@ -1435,7 +1442,7 @@ class VectorContainerPolicy
     FOLLY_SAFE_DCHECK((chunkAllocSize == 0) == (capacity == 0), "");
     if (chunkAllocSize > 0) {
       visitor(
-          allocationBytesForOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+          allocationBytesForOverAligned<ByteAlloc, kAllocAlignment>(
               allocSize(chunkAllocSize, capacity)),
           1);
     }
