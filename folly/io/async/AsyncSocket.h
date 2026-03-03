@@ -633,18 +633,18 @@ class AsyncSocket
    * @param timeout   A timeout value, in milliseconds.  If the connection
    *                  does not succeed within this period,
    *                  callback->connectError() will be invoked.
-   * @param boundFd   A socket with an address already bound to it via bind().
-   *                  Ownership is transferred from the caller to this
-   *                  AsyncSocket.
+   * @param bindOptions Either a SocketAddress to bind to, or a NetworkSocket
+   *                  with an address already bound to it via bind().
+   *                  Ownership of a NetworkSocket is transferred from the
+   *                  caller to this AsyncSocket.
    */
   virtual void connect(
       ConnectCallback* callback,
       const folly::SocketAddress& address,
       int timeout = 0,
       const SocketOptionMap& options = emptySocketOptionMap,
-      const folly::SocketAddress& bindAddr = anyAddress(),
-      const std::string& ifName = "",
-      NetworkSocket boundFd = NetworkSocket()) noexcept override;
+      const BindOptions& bindOptions = anyAddress(),
+      const std::string& ifName = "") noexcept override;
 
   void connect(
       ConnectCallback* callback,

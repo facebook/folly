@@ -88,26 +88,23 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
       const folly::SocketAddress& address,
       std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
       SocketOptionMap const& options = emptySocketOptionMap,
-      const SocketAddress& bindAddr = anyAddress(),
-      const std::string& ifName = std::string(),
-      NetworkSocket boundFd = NetworkSocket()) noexcept;
+      const BindOptions& bindOptions = anyAddress(),
+      const std::string& ifName = std::string()) noexcept;
 
   void connect(
       ConnectCallback* callback,
       const folly::SocketAddress& address,
       int timeout,
       SocketOptionMap const& options,
-      const SocketAddress& bindAddr,
-      const std::string& ifName,
-      NetworkSocket boundFd) noexcept override {
+      const BindOptions& bindOptions,
+      const std::string& ifName) noexcept override {
     connect(
         callback,
         address,
         std::chrono::milliseconds(timeout),
         options,
-        bindAddr,
-        ifName,
-        boundFd);
+        bindOptions,
+        ifName);
   }
 
   std::chrono::nanoseconds getConnectTime() const {

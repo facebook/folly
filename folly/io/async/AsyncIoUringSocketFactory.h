@@ -67,7 +67,7 @@ class AsyncIoUringSocketFactory {
    * Create a socket bound to a source port that hashes to the ZC-RX queue.
    * Iterates ports in [1024, 32768) to find one that hashes to the target
    * queue and is available for binding. The returned socket can be passed as
-   * the boundFd parameter to connect().
+   * the BindOptions parameter to connect().
    *
    * Returns an invalid NetworkSocket on failure.
    */

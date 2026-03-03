@@ -217,9 +217,8 @@ void AsyncIoUringSocket::connect(
     const folly::SocketAddress& address,
     std::chrono::milliseconds timeout,
     SocketOptionMap const& options,
-    const folly::SocketAddress& bindAddr,
-    const std::string& ifName,
-    NetworkSocket boundFd) noexcept {
+    const BindOptions& bindOptions,
+    const std::string& ifName) noexcept {
   VLOG(4) << "AsyncIoUringSocket::connect() this=" << this << " to=" << address
           << " fastopen=" << enableTFO_;
   evb_->dcheckIsInEventBaseThread();
@@ -230,13 +229,17 @@ void AsyncIoUringSocket::connect(
     connectSqe_ = std::make_unique<ConnectSqe>(this);
   }
   if (connectSqe_->inFlight()) {
-    fileops::close(boundFd.toFd());
+    if (auto* fd = std::get_if<NetworkSocket>(&bindOptions)) {
+      fileops::close(fd->toFd());
+    }
     callback->connectErr(AsyncSocketException(
         AsyncSocketException::NOT_OPEN, "connection in flight", -1));
     return;
   }
   if (fd_ != NetworkSocket{}) {
-    fileops::close(boundFd.toFd());
+    if (auto* fd = std::get_if<NetworkSocket>(&bindOptions)) {
+      fileops::close(fd->toFd());
+    }
     callback->connectErr(AsyncSocketException(
         AsyncSocketException::NOT_OPEN, "connection is connected", -1));
     return;
@@ -244,19 +247,19 @@ void AsyncIoUringSocket::connect(
   connectCallback_ = callback;
   peerAddress_ = address;
 
-  if (boundFd != NetworkSocket{}) {
+  if (auto* boundFd = std::get_if<NetworkSocket>(&bindOptions)) {
     struct sockaddr_storage peerAddr{};
     socklen_t peerLen = sizeof(peerAddr);
     if (::getpeername(
-            boundFd.toFd(),
+            boundFd->toFd(),
             reinterpret_cast<struct sockaddr*>(&peerAddr),
             &peerLen) == 0) {
-      fileops::close(boundFd.toFd());
+      fileops::close(boundFd->toFd());
       callback->connectErr(AsyncSocketException(
           AsyncSocketException::INVALID_STATE, "boundFd is already connected"));
       return;
     }
-    setFd(boundFd);
+    setFd(*boundFd);
   } else {
     setFd(makeConnectSocket(address));
   }
@@ -285,8 +288,9 @@ void AsyncIoUringSocket::connect(
     return;
   }
 
-  // bind the socket, unless already provided
-  if (bindAddr != anyAddress() && boundFd == NetworkSocket()) {
+  // bind the socket
+  if (auto* bindAddr = std::get_if<folly::SocketAddress>(&bindOptions);
+      bindAddr && *bindAddr != anyAddress()) {
     sockaddr_storage addrStorage;
     auto saddr = reinterpret_cast<sockaddr*>(&addrStorage);
 
@@ -299,14 +303,14 @@ void AsyncIoUringSocket::connect(
     // ports.  Using the IP_BIND_ADDRESS_NO_PORT delays assigning a port until
     // connect expanding the available port range, unless
     // setBindAddressNoPort() is called.
-    if (bindAddr.getPort() == 0) {
+    if (bindAddr->getPort() == 0) {
       if (bindAddressNoPort_ &&
           setSockOpt(IPPROTO_IP, IP_BIND_ADDRESS_NO_PORT, &one, sizeof(one))) {
         auto errnoCopy = errno;
         callback->connectErr(AsyncSocketException(
             AsyncSocketException::NOT_OPEN,
             "failed to setsockopt IP_BIND_ADDRESS_NO_PORT prior to bind on " +
-                bindAddr.describe(),
+                bindAddr->describe(),
             errnoCopy));
         return;
       }
@@ -319,19 +323,19 @@ void AsyncIoUringSocket::connect(
         callback->connectErr(AsyncSocketException(
             AsyncSocketException::NOT_OPEN,
             "failed to setsockopt SO_REUSEADDR prior to bind on " +
-                bindAddr.describe(),
+                bindAddr->describe(),
             errnoCopy));
         return;
       }
     }
 
-    bindAddr.getAddress(&addrStorage);
+    bindAddr->getAddress(&addrStorage);
 
-    if (::bind(fd_.toFd(), saddr, bindAddr.getActualSize()) != 0) {
+    if (::bind(fd_.toFd(), saddr, bindAddr->getActualSize()) != 0) {
       auto errnoCopy = errno;
       callback->connectErr(AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
-          "failed to bind to async io_uring socket: " + bindAddr.describe(),
+          "failed to bind to async io_uring socket: " + bindAddr->describe(),
           errnoCopy));
       return;
     }

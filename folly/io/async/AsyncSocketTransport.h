@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <variant>
+
 #include <folly/SocketAddress.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/SocketOptionMap.h>
@@ -64,14 +66,22 @@ class AsyncSocketTransport : public AsyncTransport {
 
   static const folly::SocketAddress& anyAddress();
 
+  /**
+   * Options for binding a socket before connecting. The two alternatives are
+   * mutually exclusive:
+   *  - SocketAddress: bind to a local address before connecting.
+   *  - NetworkSocket: use a pre-bound (or pre-created) socket fd. Ownership
+   *    of the fd is transferred to the AsyncSocketTransport.
+   */
+  using BindOptions = std::variant<folly::SocketAddress, NetworkSocket>;
+
   virtual void connect(
       ConnectCallback* callback,
       const folly::SocketAddress& address,
       int timeout = 0,
       SocketOptionMap const& options = emptySocketOptionMap,
-      const folly::SocketAddress& bindAddr = anyAddress(),
-      const std::string& ifName = "",
-      NetworkSocket boundFd = NetworkSocket()) noexcept = 0;
+      const BindOptions& bindOptions = anyAddress(),
+      const std::string& ifName = "") noexcept = 0;
 
   virtual bool hangup() const = 0;
 

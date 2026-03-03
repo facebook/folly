@@ -37,18 +37,16 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
        const folly::SocketAddress&,
        int,
        const folly::SocketOptionMap&,
-       const folly::SocketAddress&,
-       const std::string&,
-       NetworkSocket));
+       const BindOptions&,
+       const std::string&));
   void connect(
       AsyncSocket::ConnectCallback* callback,
       const folly::SocketAddress& address,
       int timeout,
       const folly::SocketOptionMap& options,
-      const folly::SocketAddress& bindAddr,
-      const std::string& ifName,
-      NetworkSocket boundFd) noexcept override {
-    connect_(callback, address, timeout, options, bindAddr, ifName, boundFd);
+      const BindOptions& bindOptions,
+      const std::string& ifName) noexcept override {
+    connect_(callback, address, timeout, options, bindOptions, ifName);
   }
 
   MOCK_METHOD(void, getLocalAddress, (folly::SocketAddress*), (const));

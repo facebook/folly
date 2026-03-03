@@ -762,9 +762,7 @@ TEST_P(AsyncIoUringSocketTest, ConnectWithBoundFd) {
       serverAddress,
       std::chrono::milliseconds(0),
       folly::emptySocketOptionMap,
-      folly::AsyncSocketTransport::anyAddress(),
-      std::string(),
-      NetworkSocket(sockfd));
+      folly::AsyncSocketTransport::BindOptions{NetworkSocket(sockfd)});
 
   auto fd =
       fdPromise.getFuture().within(kTimeout).via(base.get()).getVia(base.get());
@@ -808,9 +806,7 @@ TEST_P(AsyncIoUringSocketTest, ConnectWithUnboundFd) {
       serverAddress,
       std::chrono::milliseconds(0),
       folly::emptySocketOptionMap,
-      folly::AsyncSocketTransport::anyAddress(),
-      std::string(),
-      NetworkSocket(sockfd));
+      folly::AsyncSocketTransport::BindOptions{NetworkSocket(sockfd)});
 
   auto fd =
       fdPromise.getFuture().within(kTimeout).via(base.get()).getVia(base.get());
@@ -864,9 +860,7 @@ TEST_P(AsyncIoUringSocketTest, ConnectWithAlreadyConnectedFd) {
       serverAddress,
       std::chrono::milliseconds(0),
       folly::emptySocketOptionMap,
-      folly::AsyncSocketTransport::anyAddress(),
-      std::string(),
-      NetworkSocket(connectedFd));
+      folly::AsyncSocketTransport::BindOptions{NetworkSocket(connectedFd)});
 
   auto res =
       cb.prom.getSemiFuture()

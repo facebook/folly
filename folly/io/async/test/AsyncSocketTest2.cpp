@@ -565,9 +565,7 @@ TEST_P(AsyncSocketTest, ConnectWithBoundFd) {
       serverAddr,
       30,
       folly::emptySocketOptionMap,
-      folly::AsyncSocketTransport::anyAddress(),
-      "",
-      folly::NetworkSocket(sockfd));
+      folly::AsyncSocketTransport::BindOptions{folly::NetworkSocket(sockfd)});
 
   evb.loop();
 
@@ -591,9 +589,7 @@ TEST_P(AsyncSocketTest, ConnectWithUnboundFd) {
       serverAddr,
       30,
       folly::emptySocketOptionMap,
-      folly::AsyncSocketTransport::anyAddress(),
-      "",
-      folly::NetworkSocket(sockfd));
+      folly::AsyncSocketTransport::BindOptions{folly::NetworkSocket(sockfd)});
 
   evb.loop();
 
@@ -623,9 +619,8 @@ TEST_P(AsyncSocketTest, ConnectWithAlreadyConnectedFd) {
       serverAddr,
       30,
       folly::emptySocketOptionMap,
-      folly::AsyncSocketTransport::anyAddress(),
-      "",
-      folly::NetworkSocket(connectedFd));
+      folly::AsyncSocketTransport::BindOptions{
+          folly::NetworkSocket(connectedFd)});
 
   evb.loop();
 
