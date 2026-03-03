@@ -119,7 +119,7 @@ class Fetcher(object):
         the src dir"""
         pass
 
-    def hash(self) -> None:
+    def hash(self) -> str:
         """Returns a hash that identifies the version of the code in the
         working copy.  For a git repo this is commit hash for the working
         copy.  For other Fetchers this should relate to the version of
@@ -316,7 +316,7 @@ class GitFetcher(Fetcher):
         if os.path.exists(self.repo_dir):
             run_cmd(["git", "clean", "-fxd"], cwd=self.repo_dir)
 
-    def hash(self):
+    def hash(self) -> str:
         return self.rev
 
     def get_src_dir(self):
@@ -711,7 +711,6 @@ class SimpleShipitTransformerFetcher(Fetcher):
 
         return mapping.mirror(self.build_options.fbsource_dir, self.repo_dir)
 
-    # pyre-fixme[15]: `hash` overrides method defined in `Fetcher` inconsistently.
     def hash(self) -> str:
         # We return a fixed non-hash string for in-fbsource builds.
         # We're relying on the `update` logic to correctly invalidate
@@ -746,10 +745,11 @@ class SubFetcher(Fetcher):
         for fetcher, _ in self.subs:
             fetcher.clean()
 
-    def hash(self) -> None:
-        hash = self.base.hash()
+    def hash(self) -> str:
+        my_hash = self.base.hash()
         for fetcher, _ in self.subs:
-            hash += fetcher.hash()
+            my_hash += fetcher.hash()
+        return my_hash
 
     def get_src_dir(self):
         return self.base.get_src_dir()
@@ -838,7 +838,6 @@ class ShipitTransformerFetcher(Fetcher):
             self.clean()
             raise
 
-    # pyre-fixme[15]: `hash` overrides method defined in `Fetcher` inconsistently.
     def hash(self) -> str:
         # We return a fixed non-hash string for in-fbsource builds.
         return "fbsource"
@@ -1075,7 +1074,7 @@ class ArchiveFetcher(Fetcher):
 
         return ChangeStatus(True)
 
-    def hash(self):
+    def hash(self) -> str:
         return self.sha256
 
     def get_src_dir(self):
