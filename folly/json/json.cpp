@@ -431,6 +431,11 @@ struct Input {
           index++;
           continue;
         }
+        if (opts_.allow_json5_experimental &&
+            (range_[index] == '\f' || range_[index] == '\v')) {
+          index++;
+          continue;
+        }
       }
       break;
     }

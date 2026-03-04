@@ -84,6 +84,7 @@ constexpr auto kPassedTests = {
     "src/misc/npm-package.json",
     "src/misc/npm-package.json5",
     "src/misc/readme-example.json5",
+    "src/misc/valid-whitespace.json5",
     // Objects - single-quoted keys
     "src/objects/single-quoted-key.json5",
     // New lines
@@ -169,8 +170,6 @@ constexpr auto kPassedTests = {
 };
 
 constexpr auto kFailedTests = {
-    // Misc
-    "src/misc/valid-whitespace.json5",
     // Numbers
     "src/numbers/negative-noctal.js",
     "src/numbers/negative-octal.txt",

@@ -1358,3 +1358,37 @@ TEST(Json5, MinMaxHexNumbers) {
   EXPECT_EQ(parseJson(maxDoublePlusOne, numberAsString), maxDoublePlusOne);
   EXPECT_EQ(parseJson(minDoubleMinusOne, numberAsString), minDoubleMinusOne);
 }
+
+TEST(Json5, FormFeedWhitespace) {
+  // Form feed (\f = 0x0c) as whitespace
+  EXPECT_EQ(fromJson5("{\f\"a\":\ftrue\f}")["a"], true);
+  EXPECT_EQ(fromJson5("[\f1\f,\f2\f]")[0], 1);
+  EXPECT_EQ(fromJson5("\f42\f"), 42);
+
+  // Vertical tab (\v = 0x0b) as whitespace
+  EXPECT_EQ(fromJson5("{\v\"a\":\vtrue\v}")["a"], true);
+  EXPECT_EQ(fromJson5("\v42\v"), 42);
+
+  // Mixed with other whitespace
+  EXPECT_EQ(fromJson5("{ \f\v\t\n\"a\" : true }")["a"], true);
+
+  // Vertical tab and form feed between array elements
+  auto arr = fromJson5("[\v1\v,\f2\f,\v3\v]");
+  EXPECT_EQ(arr[0], 1);
+  EXPECT_EQ(arr[1], 2);
+  EXPECT_EQ(arr[2], 3);
+
+  // Form feed between object key-value pairs
+  auto obj = fromJson5("{\"a\":\f1\f,\f\"b\":\f2}");
+  EXPECT_EQ(obj["a"], 1);
+  EXPECT_EQ(obj["b"], 2);
+
+  // Vertical tab before/after string values
+  EXPECT_EQ(fromJson5("\v\"hello\"\v"), "hello");
+
+  // Form feed only (no value) should fail
+  EXPECT_THROW(fromJson5("\f"), std::exception);
+
+  // Without json5 flag, form feed should fail
+  EXPECT_THROW(parseJson("\f42"), std::exception);
+}
