@@ -1160,6 +1160,11 @@ class Writable {
   template <class T>
   typename std::enable_if<std::is_arithmetic<T>::value>::type write(
       T value, size_t n = sizeof(T)) {
+    this->write(tag<T>, value, n);
+  }
+  template <class T>
+  typename std::enable_if<std::is_arithmetic<T>::value>::type write(
+      tag_t<T>, T value, size_t n = sizeof(T)) {
     assert(n <= sizeof(T));
     const uint8_t* u8 = reinterpret_cast<const uint8_t*>(&value);
     Derived* d = static_cast<Derived*>(this);
@@ -1176,8 +1181,12 @@ class Writable {
    */
   template <class T>
   void writeBE(T value) {
+    this->writeBE<T>(tag<T>, value);
+  }
+  template <class T>
+  void writeBE(tag_t<T>, T value) {
     Derived* d = static_cast<Derived*>(this);
-    d->write(Endian::big(value));
+    d->write(tag<T>, Endian::big(value));
   }
 
   /**
@@ -1190,8 +1199,12 @@ class Writable {
    */
   template <class T>
   void writeLE(T value) {
+    this->writeLE(tag<T>, value);
+  }
+  template <class T>
+  void writeLE(tag_t<T>, T value) {
     Derived* d = static_cast<Derived*>(this);
-    d->write(Endian::little(value));
+    d->write(tag<T>, Endian::little(value));
   }
 
   /**
@@ -1698,6 +1711,11 @@ class QueueAppender : public Writable<QueueAppender> {
   template <class T>
   typename std::enable_if<std::is_arithmetic<T>::value>::type write(
       T value, size_t n = sizeof(T)) {
+    this->write(tag<T>, value, n);
+  }
+  template <class T>
+  typename std::enable_if<std::is_arithmetic<T>::value>::type write(
+      tag_t<T>, T value, size_t n = sizeof(T)) {
     // We can't fail.
     assert(n <= sizeof(T));
     if (FOLLY_UNLIKELY(length() < sizeof(T))) {
