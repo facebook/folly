@@ -229,6 +229,9 @@ int EpollBackend::eb_event_base_loop(int flags) {
     if (eb_poll_loop_pre_hook) {
       eb_poll_loop_pre_hook(&call_time);
     }
+    if (pollLoopHook_.preLoopHook) {
+      pollLoopHook_.preLoopHook(pollLoopHook_.hookCtx);
+    }
 
     int numEvents;
     do {
@@ -238,6 +241,9 @@ int EpollBackend::eb_event_base_loop(int flags) {
 
     if (eb_poll_loop_post_hook) {
       eb_poll_loop_post_hook(call_time, numEvents);
+    }
+    if (pollLoopHook_.postLoopHook) {
+      pollLoopHook_.postLoopHook(pollLoopHook_.hookCtx, numEvents);
     }
 
     if (numEvents < 0) {

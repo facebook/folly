@@ -114,6 +114,23 @@ class EventBaseBackendBase {
       std::function<std::unique_ptr<folly::EventBaseBackendBase>()>;
   using RecvZcCallback = folly::Function<void(ssize_t)>;
 
+  // Per-EventBase hooks invoked around the poll syscall (epoll_wait /
+  // io_uring CQE reaping).  Only EpollBackend and IoUringBackend invoke
+  // these hooks; other backends (e.g. LibeventBackend) do not.
+  //
+  // prePollLoopHook is called immediately before the poll syscall.
+  // postPollLoopHook is called immediately after, receiving the number of
+  // events returned by the syscall.
+  // Both hooks share a single opaque context pointer.
+  using PrePollLoopHook = void (*)(void* ctx);
+  using PostPollLoopHook = void (*)(void* ctx, int numEvents);
+
+  struct PollLoopHook {
+    PrePollLoopHook preLoopHook = nullptr;
+    PostPollLoopHook postLoopHook = nullptr;
+    void* hookCtx = nullptr;
+  };
+
   EventBaseBackendBase() = default;
   virtual ~EventBaseBackendBase() = default;
 
@@ -129,6 +146,10 @@ class EventBaseBackendBase {
       unsigned long /*nbytes*/,
       RecvZcCallback&& /*callback*/) {}
 
+  void setPollLoopHook(PollLoopHook pollLoopHook) {
+    pollLoopHook_ = pollLoopHook;
+  }
+
   virtual event_base* getEventBase() = 0;
   virtual int eb_event_base_loop(int flags) = 0;
   virtual int eb_event_base_loopbreak() = 0;
@@ -139,6 +160,9 @@ class EventBaseBackendBase {
   virtual bool eb_event_active(Event& event, int res) = 0;
 
   virtual bool setEdgeTriggered(Event& /* event */) { return false; }
+
+ protected:
+  PollLoopHook pollLoopHook_;
 };
 
 } // namespace folly

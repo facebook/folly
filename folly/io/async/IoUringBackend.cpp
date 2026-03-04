@@ -1183,12 +1183,19 @@ int IoUringBackend::eb_event_base_loop(int flags) {
     if (eb_poll_loop_pre_hook) {
       eb_poll_loop_pre_hook(&call_time);
     }
+    if (pollLoopHook_.preLoopHook) {
+      pollLoopHook_.preLoopHook(pollLoopHook_.hookCtx);
+    }
 
     // do not wait for events if EVLOOP_NONBLOCK is set
     size_t processedEvents = getActiveEvents(waitForEvents);
 
     if (eb_poll_loop_post_hook) {
       eb_poll_loop_post_hook(call_time, static_cast<int>(processedEvents));
+    }
+    if (pollLoopHook_.postLoopHook) {
+      pollLoopHook_.postLoopHook(
+          pollLoopHook_.hookCtx, static_cast<int>(processedEvents));
     }
 
     size_t numProcessedTimers = 0;

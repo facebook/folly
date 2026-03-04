@@ -1931,6 +1931,18 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_unittest,
+    name = "poll_loop_hooks_test",
+    srcs = ["PollLoopHooksTest.cpp"],
+    owner = "dmm@xmail.facebook.com",
+    deps = [
+        "//folly/io/async:async_base",
+        "//folly/io/async:epoll_backend",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_binary,
     name = "io_benchmark",
     srcs = ["IOBenchmark.cpp"],
