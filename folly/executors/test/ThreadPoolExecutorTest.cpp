@@ -635,7 +635,7 @@ TEST(ThreadPoolExecutorTest, NoThreadPriorityInheritance) {
   // If minThreads == maxThreads, no threads should be created on add(), and
   // thus they should not inherit the parent thread's priority. Instead, all
   // threads should inherit the priority at the time of construction.
-  CPUThreadPoolExecutor exe{std::make_pair(kNumThreads, kNumThreads)};
+  CPUThreadPoolExecutor exe{std::pair(kNumThreads, kNumThreads)};
 
   // Nice the current thread.
   setpriority(PRIO_PROCESS, 0, 19);
@@ -669,7 +669,7 @@ TEST(ThreadPoolExecutorTest, NoTimeoutInNonDynamicPool) {
   // If minThreads == maxThreads, only non-timeout take() should be used on the
   // queue.
   CPUThreadPoolExecutor exe{
-      std::make_pair(kNumThreads, kNumThreads),
+      std::pair(kNumThreads, kNumThreads),
       std::make_unique<
           NoTimeoutBlockingQueue<CPUThreadPoolExecutor::CPUTask>>()};
   exe.add([] {});
