@@ -198,8 +198,8 @@ inline auto gtestLogCurrentException(Out&& out) {
     void TestBody() override;                                                 \
     folly::coro::Task<void> co_TestBody();                                    \
   };                                                                          \
-  static bool gtest_##CaseName##_##TestName##_registered_ [[maybe_unused]] =  \
-      ::testing::internal::TypeParameterizedTest<                             \
+  static const bool gtest_##CaseName##_##TestName##_registered_               \
+      [[maybe_unused]] = ::testing::internal::TypeParameterizedTest<          \
           CaseName,                                                           \
           ::testing::internal::TemplateSel<GTEST_TEST_CLASS_NAME_(            \
               CaseName, TestName)>,                                           \
