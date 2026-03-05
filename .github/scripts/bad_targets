@@ -37,8 +37,6 @@ root//folly/docs/examples/folly/coro:task_demo
 root//folly/docs/examples/folly/coro:with_cancellation_demo
 root//folly/docs/examples/folly/hash:hash_demo
 root//folly/docs/examples/folly/io:i_o_buf_demo
-root//folly/experimental/io:async_io
-root//folly/experimental/io:simple_async_io
 root//folly/logging/example:example
 root//folly/python:executor_lib
 root//folly/python:fibers_lib

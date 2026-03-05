@@ -2134,7 +2134,7 @@ fbcode_target(
         "//folly:scope_guard",
         "//folly:string",
         "//folly/io:fs_util",
-        "//folly/io/async:async_base_class",
+        "//folly/io/async:async_base",
         "//folly/io/async/test:io_test_temp_file_util_lib",
         "//folly/portability:gtest",
         "//folly/portability:sockets",
