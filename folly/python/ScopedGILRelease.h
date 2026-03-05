@@ -22,8 +22,12 @@ namespace folly::python {
 
 /**
  * RAII helper to release the Python GIL for the duration of a scope.
- * Only releases if Python is linked, initialized, and the current thread holds
- * the GIL. Safe to use in code that may or may not be called from Python.
+ * Only releases if Python is linked, initialized, not finalizing, the current
+ * thread has a Python thread state, and the current thread holds the GIL.
+ * Safe to use in code that may or may not be called from Python, including
+ * non-Python threads in services that embed Python (e.g., C++ services
+ * receiving Thrift RPCs that also link Python for subinterpreters or other
+ * purposes).
  *
  * Example usage:
  *   void expensiveBlockingOperation() {
@@ -36,7 +40,8 @@ class ScopedGILRelease {
  public:
   ScopedGILRelease()
       : tState_(
-            (isLinked() && (Py_IsInitialized() != 0) &&
+            (isLinked() && (Py_IsInitialized() != 0) && !Py_IsFinalizing() &&
+             (PyGILState_GetThisThreadState() != nullptr) &&
              (PyGILState_Check() != 0))
                 ? PyEval_SaveThread()
                 : nullptr) {}
