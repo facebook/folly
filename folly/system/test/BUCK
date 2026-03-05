@@ -121,6 +121,7 @@ fb_dirsync_cpp_unittest(
     feature = triage_InfrastructureSupermoduleOptou,
     deps = [
         "//folly/portability:gtest",
+        "//folly/system:env_util",
         "//folly/system:hardware_concurrency",
     ],
 )

@@ -16,9 +16,12 @@
 
 #include <folly/system/HardwareConcurrency.h>
 
+#include <algorithm>
 #include <atomic>
+#include <cstdlib>
 #include <thread>
 
+#include <folly/Conv.h>
 #include <folly/Utility.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/Sched.h>
@@ -124,12 +127,24 @@ cpu_set_state::~cpu_set_state() {
 #endif
 
 unsigned int available_concurrency() noexcept {
+  unsigned int count;
 #if defined(__linux__) && !defined(__ANDROID__)
   cpu_set_t stackset;
-  return to_narrow(cpu_set_state::ask(&stackset).cpu_count());
+  count = to_narrow(cpu_set_state::ask(&stackset).cpu_count());
+#else
+  count = std::thread::hardware_concurrency();
 #endif
 
-  return std::thread::hardware_concurrency();
+  // Allow overriding via environment variable. The returned value is capped to
+  // the smaller of the env var and the OS-reported count.
+  if (auto const* env = std::getenv(available_concurrency_max_env.c_str())) {
+    auto val = folly::tryTo<unsigned int>(env).value_or(0);
+    if (val > 0) {
+      count = std::min(count, val);
+    }
+  }
+
+  return count;
 }
 
 } // namespace folly

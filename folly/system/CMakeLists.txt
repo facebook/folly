@@ -62,9 +62,12 @@ folly_add_library(
   HEADERS
     HardwareConcurrency.h
   DEPS
+    folly_conv
     folly_lang_safe_assert
     folly_portability_sched
     folly_utility
+  EXPORTED_DEPS
+    folly_lang_cstring_view
 )
 
 folly_add_library(

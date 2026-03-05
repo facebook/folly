@@ -16,9 +16,36 @@
 
 #include <folly/system/HardwareConcurrency.h>
 
+#include <cstdlib>
+
 #include <folly/portability/GTest.h>
+#include <folly/system/EnvUtil.h>
 
 TEST(HardwareConcurrency, ReturnsNonzero) {
   auto concurrency = folly::available_concurrency();
   EXPECT_GT(concurrency, 0u);
+}
+
+TEST(HardwareConcurrency, EnvVarOverride) {
+  folly::test::EnvVarSaver saver;
+  ::setenv(folly::available_concurrency_max_env.c_str(), "1", 1);
+  EXPECT_EQ(folly::available_concurrency(), 1u);
+}
+
+TEST(HardwareConcurrency, EnvVarInvalidIgnored) {
+  folly::test::EnvVarSaver saver;
+  ::setenv(folly::available_concurrency_max_env.c_str(), "garbage", 1);
+  EXPECT_GT(folly::available_concurrency(), 0u);
+}
+
+TEST(HardwareConcurrency, EnvVarZeroIgnored) {
+  folly::test::EnvVarSaver saver;
+  ::setenv(folly::available_concurrency_max_env.c_str(), "0", 1);
+  EXPECT_GT(folly::available_concurrency(), 0u);
+}
+
+TEST(HardwareConcurrency, EnvVarUnsetNormalBehavior) {
+  folly::test::EnvVarSaver saver;
+  ::unsetenv(folly::available_concurrency_max_env.c_str());
+  EXPECT_GT(folly::available_concurrency(), 0u);
 }

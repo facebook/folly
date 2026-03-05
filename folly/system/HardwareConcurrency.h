@@ -18,7 +18,13 @@
 
 #include <utility>
 
+#include <folly/lang/cstring_view.h>
+
 namespace folly {
+
+/// The environment variable name used to cap available_concurrency().
+inline constexpr cstring_view available_concurrency_max_env =
+    "FOLLY_AVAILABLE_CONCURRENCY_MAX";
 
 /// available_concurrency
 ///
@@ -50,6 +56,9 @@ namespace folly {
 /// * The result of std::thread::hardware_concurrency (all).
 /// * The result of get_nprocs, get_nprocs_conf, or sysconf as noted above.
 /// * The result of sched_getaffinity (linux but not android).
+/// * The FOLLY_AVAILABLE_CONCURRENCY_MAX environment variable, if set to a
+///   valid positive integer. The returned value is capped to the minimum of
+///   this and the OS-reported count.
 /// * Unspecified others....
 ///
 /// mimic: std::thread::hardware_concurrency
