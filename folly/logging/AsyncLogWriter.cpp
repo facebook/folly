@@ -16,9 +16,6 @@
 
 #include <folly/logging/AsyncLogWriter.h>
 
-#include <folly/Exception.h>
-#include <folly/FileUtil.h>
-#include <folly/Portability.h>
 #include <folly/logging/LoggerDB.h>
 #include <folly/system/AtFork.h>
 #include <folly/system/ThreadName.h>
