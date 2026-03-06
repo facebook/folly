@@ -432,7 +432,6 @@ folly_add_library(
     folly_net_detail_socket_file_descriptor_map
     folly_portability_sockets
     folly_portability_windows
-    folly_scope_guard
   EXPORTED_DEPS
     folly_portability
     folly_portability_sys_types

@@ -18,7 +18,6 @@
 // otherwise they will conflict with what we're getting from ntstatus.h
 #define UMDF_USING_NTSTATUS
 
-#include <folly/ScopeGuard.h>
 #include <folly/portability/Unistd.h>
 
 #if defined(__APPLE__)

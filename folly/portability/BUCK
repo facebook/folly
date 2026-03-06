@@ -944,7 +944,6 @@ fbcode_target(
     deps = [
         ":sockets",
         ":windows",
-        "//folly:scope_guard",
         "//folly/net/detail:socket_file_descriptor_map",
     ],
     exported_deps = [
