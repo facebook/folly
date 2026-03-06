@@ -19,7 +19,6 @@
 #include <folly/debugging/symbolizer/SignalHandler.h>
 
 #include <signal.h>
-#include <sys/types.h>
 
 #include <atomic>
 #include <cerrno>
