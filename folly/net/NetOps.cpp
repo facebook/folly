@@ -24,10 +24,10 @@
 #endif
 
 #include <cstddef>
-#include <stdexcept>
+#include <stdexcept> // IWYU pragma: keep -- used in __EMSCRIPTEN__ blocks
 
 #include <folly/CPortability.h>
-#include <folly/ScopeGuard.h>
+#include <folly/ScopeGuard.h> // IWYU pragma: keep -- used in _WIN32 blocks
 #include <folly/Utility.h>
 #include <folly/net/detail/SocketFileDescriptorMap.h>
 
