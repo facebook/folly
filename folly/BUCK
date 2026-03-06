@@ -83,6 +83,16 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "optional",
     headers = ["Optional.h"],
+    # Without modules, the `-Wextra` flag added in BUILD_MODE.bzl only affected
+    # the cpp files under `folly`, but with modules it also ends up getting
+    # baked into the PCM files of header units.
+    #
+    # This is a workaround specifically for the comparison operators of
+    # `Optional`, since those trigger `-Wsign-compare` warnings too often.
+    compiler_flags = select({
+        "DEFAULT": ["-Wno-error=sign-compare"],
+        "ovr_config//compiler:cl": ["/wd4018"],
+    }),
     fbobjc_complete_nullability = True,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
