@@ -21,7 +21,6 @@
 
 #include <algorithm>
 #include <cerrno>
-#include <system_error>
 #include <utility>
 
 #include <fmt/core.h>
