@@ -25,7 +25,6 @@
 #include <memory>
 #include <utility>
 
-#include <folly/Format.h>
 #include <folly/Indestructible.h>
 #include <folly/SocketAddress.h>
 #include <folly/SpinLock.h>
@@ -34,7 +33,6 @@
 #include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ssl/BasicTransportCertificate.h>
-#include <folly/lang/Bits.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
 #include <folly/ssl/SSLSession.h>

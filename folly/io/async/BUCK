@@ -282,7 +282,6 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_cxx_library,
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:format",
         "//folly:indestructible",
         "//folly:network_address",
         "//folly:spin_lock",

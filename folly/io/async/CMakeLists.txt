@@ -286,7 +286,6 @@ folly_add_library(
   HEADERS
     AsyncSSLSocket.h
   DEPS
-    folly_format
     folly_indestructible
     folly_io_async_ssl_basic_transport_certificate
     folly_network_address
