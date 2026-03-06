@@ -1,21 +1,8 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("../../defs.bzl", "folly_xplat_cxx_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "immortal_exception_storage",
-    raw_headers = ["immortal_exception_storage.h"],
-    exported_deps = [
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/result:rich_error_fwd",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "immortal_exception_storage",
     headers = ["immortal_exception_storage.h"],
     exported_deps = [
@@ -24,20 +11,7 @@ fbcode_target(
     ],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "ptr_immortal_exception_storage",
-    raw_headers = ["ptr_immortal_exception_storage.h"],
-    exported_deps = [
-        "//xplat/folly/lang:safe_assert",
-        "//xplat/folly/result:rich_error_base",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "ptr_immortal_exception_storage",
     headers = ["ptr_immortal_exception_storage.h"],
     exported_deps = [
@@ -46,21 +20,7 @@ fbcode_target(
     ],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "result_promise",
-    raw_headers = ["result_promise.h"],
-    exported_deps = [
-        "//xplat/folly/coro:coroutine",
-        "//xplat/folly/result:epitaph",
-        "//xplat/folly/result:result",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "result_promise",
     headers = ["result_promise.h"],
     exported_deps = [
@@ -70,23 +30,7 @@ fbcode_target(
     ],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "result_or_unwind",
-    raw_headers = ["result_or_unwind.h"],
-    exported_deps = [
-        ":result_promise",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly/coro:error",
-        "//xplat/folly/lang:must_use_immediately",
-        "//xplat/folly/result:result",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "result_or_unwind",
     headers = ["result_or_unwind.h"],
     exported_deps = [
@@ -98,21 +42,7 @@ fbcode_target(
     ],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "rich_error_common",
-    raw_headers = ["rich_error_common.h"],
-    exported_deps = [
-        "//xplat/folly:traits",
-        "//xplat/folly/lang:pretty",
-        "//xplat/folly/result:rich_error_base",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "rich_error_common",
     headers = ["rich_error_common.h"],
     exported_deps = [
@@ -122,24 +52,7 @@ fbcode_target(
     ],
 )
 
-### this line is a hint for source control merge
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "rich_exception_ptr_storage",
-    srcs = ["rich_exception_ptr_storage.cpp"],
-    raw_headers = ["rich_exception_ptr_storage.h"],
-    deps = [
-        "//third-party/glog:glog",
-    ],
-    exported_deps = [
-        ":immortal_exception_storage",
-        "//xplat/folly:portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "rich_exception_ptr_storage",
     srcs = ["rich_exception_ptr_storage.cpp"],
     headers = ["rich_exception_ptr_storage.h"],
