@@ -22,9 +22,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/test/Barrier.h>
 
-#include <glog/logging.h>
-#include <folly/synchronization/test/Barrier.h>
-
 #include <atomic>
 #include <iomanip>
 #include <thread>

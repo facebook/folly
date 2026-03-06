@@ -79,7 +79,6 @@ fbcode_target(
     srcs = ["SingleWriterFixedHashMapTest.cpp"],
     headers = [],
     deps = [
-        "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly/concurrency/container:single_writer_fixed_hash_map",
         "//folly/container:array",
