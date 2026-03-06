@@ -30,9 +30,7 @@
 #include <folly/Synchronized.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
-#include <folly/init/Init.h>
 #include <folly/lang/SafeAssert.h>
-#include <folly/logging/Init.h>
 #include <folly/logging/LoggerDB.h>
 #include <folly/logging/xlog.h>
 #include <folly/portability/Config.h>
@@ -42,7 +40,6 @@
 #include <folly/portability/Unistd.h>
 #include <folly/system/ThreadId.h>
 #include <folly/system/ThreadName.h>
-#include <folly/test/TestUtils.h>
 #include <folly/testing/TestUtil.h>
 
 DEFINE_int64(

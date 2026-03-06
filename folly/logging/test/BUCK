@@ -20,9 +20,7 @@ fbcode_target(
         "//folly:string",
         "//folly:synchronized",
         "//folly/futures:core",
-        "//folly/init:init",
         "//folly/lang:safe_assert",
-        "//folly/logging:init",
         "//folly/logging:logging",
         "//folly/portability:config",
         "//folly/portability:gflags",
@@ -31,7 +29,6 @@ fbcode_target(
         "//folly/portability:unistd",
         "//folly/system:thread_id",
         "//folly/system:thread_name",
-        "//folly/test:test_utils",
         "//folly/testing:test_util",
     ],
 )
