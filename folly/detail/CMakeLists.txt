@@ -169,6 +169,11 @@ folly_add_library(
     folly_mpmc_queue
 )
 
+set(FOLLY_DETAIL_PERF_SCOPED_SELECT_DEPS)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  list(APPEND FOLLY_DETAIL_PERF_SCOPED_SELECT_DEPS folly_subprocess)
+endif()
+
 folly_add_library(
   NAME perf_scoped
   SRCS
@@ -179,6 +184,7 @@ folly_add_library(
     folly_conv
     folly_system_pid
     folly_testing_test_util
+    ${FOLLY_DETAIL_PERF_SCOPED_SELECT_DEPS}
   EXTERNAL_DEPS
     Boost::regex
 )
