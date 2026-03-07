@@ -23,7 +23,7 @@
 #include <folly/Random.h>
 #include <folly/external/fast-crc32/avx512_crc32c_v8s3x4.h>
 #include <folly/external/fast-crc32/neon_crc32c_v3s4x2e_v2.h>
-#include <folly/external/fast-crc32/neon_eor3_crc32c_v8s2x4_s3.h>
+#include <folly/external/fast-crc32/neon_eor3_crc32c_v8s2x4e_s2x1.h>
 #include <folly/external/fast-crc32/sse_crc32c_v8s3x3.h>
 #include <folly/hash/Hash.h>
 #include <folly/hash/detail/ChecksumDetail.h>
@@ -268,7 +268,7 @@ TEST(Checksum, crc32cContinuationHardwareNeon) {
 
 TEST(Checksum, crc32cHardwareNeonEor3Sha3) {
   if (folly::detail::crc32c_hw_supported_neon_eor3_sha3()) {
-    testCRC32C(folly::detail::neon_eor3_crc32c_v8s2x4_s3);
+    testCRC32C(folly::detail::neon_eor3_crc32c_v8s2x4e_s2x1);
   } else {
 #if FOLLY_AARCH64
     LOG(WARNING) << "skipping NEON+EOR3+SHA3 hardware-accelerated CRC-32C tests"
@@ -281,7 +281,7 @@ TEST(Checksum, crc32cHardwareEqNeonEor3Sha3) {
   if (folly::detail::crc32c_hw_supported_neon_eor3_sha3()) {
     for (size_t i = 0; i < 1000; i++) {
       auto sw = folly::detail::crc32c_sw(buffer, i, 0);
-      auto hw = folly::detail::neon_eor3_crc32c_v8s2x4_s3(buffer, i, 0);
+      auto hw = folly::detail::neon_eor3_crc32c_v8s2x4e_s2x1(buffer, i, 0);
       ASSERT_EQ(sw, hw);
     }
   } else {
@@ -294,7 +294,7 @@ TEST(Checksum, crc32cHardwareEqNeonEor3Sha3) {
 
 TEST(Checksum, crc32cContinuationHardwareNeonEor3Sha3) {
   if (folly::detail::crc32c_hw_supported_neon_eor3_sha3()) {
-    testCRC32CContinuation(folly::detail::neon_eor3_crc32c_v8s2x4_s3);
+    testCRC32CContinuation(folly::detail::neon_eor3_crc32c_v8s2x4e_s2x1);
   } else {
 #if FOLLY_AARCH64
     LOG(WARNING) << "skipping NEON+EOR3+SHA3 hardware-accelerated CRC-32C tests"
@@ -331,7 +331,7 @@ TEST(Checksum, crc32clargeBuffers) {
   }
   if (folly::detail::crc32c_hw_supported_neon_eor3_sha3()) {
     auto crcHw =
-        folly::detail::neon_eor3_crc32c_v8s2x4_s3(bufp, kLargeBufSz, ~0);
+        folly::detail::neon_eor3_crc32c_v8s2x4e_s2x1(bufp, kLargeBufSz, ~0);
     ASSERT_EQ(kCrc, crcHw);
   }
 }

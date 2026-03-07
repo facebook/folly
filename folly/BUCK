@@ -1880,7 +1880,7 @@ non_fbcode_target(
     name = "external_fastcrc32_neon_eor3_sha3",
     srcs = [
         "external/fast-crc32/neon_eor3_crc32_v8s2x4e_s1x2.cpp",
-        "external/fast-crc32/neon_eor3_crc32c_v8s2x4_s3.cpp",
+        "external/fast-crc32/neon_eor3_crc32c_v8s2x4e_s2x1.cpp",
     ],
     compiler_flags = select({
         "DEFAULT": [],
@@ -1888,7 +1888,7 @@ non_fbcode_target(
     }),
     raw_headers = [
         "external/fast-crc32/neon_eor3_crc32_v8s2x4e_s1x2.h",
-        "external/fast-crc32/neon_eor3_crc32c_v8s2x4_s3.h",
+        "external/fast-crc32/neon_eor3_crc32c_v8s2x4e_s2x1.h",
     ],
     exported_deps = [
         ":portability",
