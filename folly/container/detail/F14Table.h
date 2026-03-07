@@ -841,12 +841,16 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     return static_cast<TagVector const*>(static_cast<void const*>(&tags_[0]));
   }
 
-  SparseMaskIter tagMatchIter(__m128i needleV) const {
+  auto tagMatchIter(__m128i needleV) const {
     auto tagV = _mm_load_si128(tagVector());
 
     auto eqV = _mm_cmpeq_epi8(tagV, needleV);
-    auto mask = _mm_movemask_epi8(eqV) & kFullMask;
-    return SparseMaskIter{mask};
+    uint32_t mask = _mm_movemask_epi8(eqV);
+    if constexpr (kIsArchAmd64) {
+      return BoundedMaskIter<kCapacity>{mask};
+    } else {
+      return SparseMaskIter{mask & kFullMask};
+    }
   }
 
   MaskType occupiedMask() const {

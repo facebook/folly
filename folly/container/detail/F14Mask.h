@@ -172,6 +172,29 @@ class SparseMaskIter {
   }
 };
 
+// A variant of SparseMaskIter but using tzcnt (x86-64/bmi1) which is more
+// efficient.
+template <unsigned BitCount>
+class BoundedMaskIter {
+  MaskType mask_;
+
+ public:
+  explicit BoundedMaskIter(MaskType mask) : mask_{mask} {}
+
+  bool hasNext() {
+    unsigned firstSet =
+        mask_ == 0 ? (sizeof(MaskType) * 8) : findFirstSetNonZero(mask_);
+    return firstSet < BitCount;
+  }
+
+  unsigned next() {
+    FOLLY_SAFE_DCHECK(hasNext());
+    unsigned i = findFirstSetNonZero(mask_);
+    mask_ &= mask_ - 1;
+    return i;
+  }
+};
+
 // Iterates a mask, optimized for the case that most bits are set
 class DenseMaskIter {
   MaskType mask_;
