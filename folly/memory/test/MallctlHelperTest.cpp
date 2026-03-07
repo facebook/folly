@@ -16,10 +16,7 @@
 
 #include <folly/memory/MallctlHelper.h>
 
-#include <folly/CPortability.h>
-#include <folly/memory/Malloc.h>
 #include <folly/portability/GTest.h>
-#include <folly/portability/SysTypes.h>
 
 #if defined(FOLLY_USE_JEMALLOC) && (!defined(FOLLY_SANITIZE) || !FOLLY_SANITIZE)
 #include <jemalloc/jemalloc.h>

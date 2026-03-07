@@ -31,11 +31,8 @@ fbcode_target(
     supports_static_listing = False,
     deps = [
         "fbsource//third-party/jemalloc:headers",
-        "//folly:c_portability",
         "//folly/memory:mallctl_helper",
-        "//folly/memory:malloc",
         "//folly/portability:gtest",
-        "//folly/portability:sys_types",
     ],
 )
 
