@@ -353,7 +353,7 @@ class Waiter {
     // knowledge of the return type and can apply the appropriate
     // reinterpret_cast and launder operation to safely retrieve the data from
     // this buffer
-    std::aligned_storage_t<48, 8> storage_;
+    folly::aligned_storage_t<48, 8> storage_;
   };
   std::array<std::uint8_t, hardware_destructive_interference_size> padding2;
 };
