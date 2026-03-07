@@ -255,24 +255,34 @@ class [[nodiscard]] AsyncGenerator {
 
   class [[nodiscard]] CleanupAwaitable {
    public:
-    bool await_ready() noexcept { return !scopeExit_; }
+    struct Awaiter {
+      bool await_ready() noexcept { return !scopeExit_; }
 
-    template <typename Promise>
-    FOLLY_NOINLINE auto await_suspend(
-        coroutine_handle<Promise> continuation) noexcept {
-      asyncFrame_.setReturnAddress();
-      scopeExit_.promise().setContext(
-          continuation, &asyncFrame_, executor_.get_alias());
-      if constexpr (detail::promiseHasAsyncFrame_v<Promise>) {
-        folly::pushAsyncStackFrameCallerCallee(
-            continuation.promise().getAsyncFrame(), asyncFrame_);
-        return scopeExit_;
-      } else {
-        folly::resumeCoroutineWithNewAsyncStackRoot(scopeExit_);
+      template <typename Promise>
+      FOLLY_NOINLINE auto await_suspend(
+          coroutine_handle<Promise> continuation) noexcept {
+        asyncFrame_.setReturnAddress();
+        scopeExit_.promise().setContext(
+            continuation, &asyncFrame_, executor_.get_alias());
+        if constexpr (detail::promiseHasAsyncFrame_v<Promise>) {
+          folly::pushAsyncStackFrameCallerCallee(
+              continuation.promise().getAsyncFrame(), asyncFrame_);
+          return scopeExit_;
+        } else {
+          folly::resumeCoroutineWithNewAsyncStackRoot(scopeExit_);
+        }
       }
-    }
 
-    void await_resume() noexcept {}
+      void await_resume() noexcept {}
+
+      coroutine_handle<detail::ScopeExitTaskPromiseBase> scopeExit_;
+      folly::Executor::KeepAlive<> executor_;
+      folly::AsyncStackFrame asyncFrame_;
+    };
+
+    Awaiter operator co_await() && noexcept {
+      return Awaiter{scopeExit_, std::move(executor_), {}};
+    }
 
    private:
     friend CleanupSemiAwaitable;
@@ -288,7 +298,6 @@ class [[nodiscard]] AsyncGenerator {
     }
 
     coroutine_handle<detail::ScopeExitTaskPromiseBase> scopeExit_;
-    folly::AsyncStackFrame asyncFrame_;
     folly::Executor::KeepAlive<> executor_;
   };
 
@@ -784,7 +793,7 @@ class AsyncGeneratorPromise final
     executor_ = {};
     cancelToken_ = {};
     hasCancelTokenOverride_ = false;
-    asyncFrame_ = {};
+    asyncFrame_.clear();
   }
 
   friend coroutine_handle<ScopeExitTaskPromiseBase> tag_invoke(

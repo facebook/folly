@@ -39,7 +39,6 @@ fb_dirsync_cpp_library(
         "//folly/coro:auto_cleanup_fwd",
         "//folly/coro:base_promise",
         "//folly/coro:coroutine",
-        "//folly/coro:current_executor",
         "//folly/coro:detail_malloc",
         "//folly/coro:detail_manual_lifetime",
         "//folly/coro:invoke",
@@ -191,6 +190,7 @@ fb_dirsync_cpp_library(
         "//folly/coro:via_if_async",
         "//folly/coro:with_async_stack",
         "//folly/executors:manual_executor",
+        "//folly/executors:sequenced_executor",
         "//folly/fibers:core",
         "//folly/lang:must_use_immediately",
         "//folly/synchronization:baton",
@@ -481,6 +481,7 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
+        ":blocking_wait",
         "//folly/coro:coroutine",
         "//folly/coro:gtest_helpers",
         "//folly/coro:result",
@@ -590,6 +591,10 @@ fb_dirsync_cpp_library(
     exported_deps = [
         ":task_wrapper",
         ":via_if_async",
+        "//folly:unit",
+        "//folly/lang:assume",
+        "//folly/result:result",
+        "//folly/result:try",
         "//folly/result:value_only_result",
     ],
 )
@@ -605,6 +610,7 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/glog:glog",
         ":via_if_async",
         "//folly:exception_wrapper",
+        "//folly:portability",
     ],
 )
 
@@ -838,7 +844,6 @@ fb_dirsync_cpp_library(
         "//folly:try",
         "//folly/coro:base_promise",
         "//folly/coro:coroutine",
-        "//folly/coro:current_executor",
         "//folly/coro:detail_malloc",
         "//folly/coro:detail_traits",
         "//folly/coro:inline_task",

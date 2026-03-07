@@ -317,6 +317,13 @@ void deactivateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept;
 struct AsyncStackFrame {
  public:
   AsyncStackFrame() = default;
+  ~AsyncStackFrame() = default;
+  AsyncStackFrame(const AsyncStackFrame&) = delete;
+  AsyncStackFrame(AsyncStackFrame&&) = delete;
+  AsyncStackFrame& operator=(const AsyncStackFrame&) = delete;
+  AsyncStackFrame& operator=(AsyncStackFrame&&) = delete;
+
+  void clear() noexcept;
 
   // The parent frame is the frame of the async operation that is logically
   // the caller of this frame.
@@ -343,6 +350,9 @@ struct AsyncStackFrame {
   void* getReturnAddress() const noexcept;
 
  private:
+  struct MakeDetachedRootFrame {};
+  explicit AsyncStackFrame(MakeDetachedRootFrame) noexcept;
+
   friend AsyncStackRoot;
 
   friend AsyncStackFrame& getDetachedRootAsyncStackFrame() noexcept;
@@ -414,6 +424,13 @@ struct AsyncStackFrame {
 // list of contexts) is obtained by calling getCurrentAsyncStackRoot().
 struct AsyncStackRoot {
  public:
+  AsyncStackRoot() = default;
+  ~AsyncStackRoot() = default;
+  AsyncStackRoot(const AsyncStackRoot&) = delete;
+  AsyncStackRoot(AsyncStackRoot&&) = delete;
+  AsyncStackRoot& operator=(const AsyncStackRoot&) = delete;
+  AsyncStackRoot& operator=(AsyncStackRoot&&) = delete;
+
   // Sets the top-frame to be 'frame' and also updates the cached
   // 'frame.stackRoot' to be 'this'.
   //

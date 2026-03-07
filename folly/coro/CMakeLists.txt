@@ -34,7 +34,6 @@ folly_add_library(
     folly_coro_auto_cleanup_fwd
     folly_coro_base_promise
     folly_coro_coroutine
-    folly_coro_current_executor
     folly_coro_detail_malloc
     folly_coro_detail_manual_lifetime
     folly_coro_invoke
@@ -149,6 +148,7 @@ folly_add_library(
     folly_coro_via_if_async
     folly_coro_with_async_stack
     folly_executors_manual_executor
+    folly_executors_sequenced_executor
     folly_fibers_core
     folly_lang_must_use_immediately
     folly_synchronization_baton
@@ -371,6 +371,7 @@ folly_add_library(
   HEADERS
     GmockHelpers.h
   EXPORTED_DEPS
+    folly_coro_blocking_wait
     folly_coro_coroutine
     folly_coro_gtest_helpers
     folly_coro_result
@@ -455,6 +456,7 @@ folly_add_library(
   EXPORTED_DEPS
     folly_coro_via_if_async
     folly_exception_wrapper
+    folly_portability
 )
 
 folly_add_library(
@@ -625,7 +627,6 @@ folly_add_library(
     folly_cancellation_token
     folly_coro_base_promise
     folly_coro_coroutine
-    folly_coro_current_executor
     folly_coro_detail_malloc
     folly_coro_detail_traits
     folly_coro_inline_task
@@ -742,7 +743,11 @@ folly_add_library(
   EXPORTED_DEPS
     folly_coro_task_wrapper
     folly_coro_via_if_async
+    folly_lang_assume
+    folly_result_result
+    folly_result_try
     folly_result_value_only_result
+    folly_unit
 )
 
 folly_add_library(

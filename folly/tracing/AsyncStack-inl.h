@@ -102,6 +102,12 @@ inline void AsyncStackFrame::setParentFrame(AsyncStackFrame& frame) noexcept {
   parentFrame = &frame;
 }
 
+inline void AsyncStackFrame::clear() noexcept {
+  parentFrame = nullptr;
+  instructionPointer = nullptr;
+  stackRoot = nullptr;
+}
+
 inline AsyncStackRoot* AsyncStackFrame::getStackRoot() noexcept {
   return stackRoot;
 }

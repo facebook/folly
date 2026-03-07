@@ -181,16 +181,13 @@ AsyncStackRoot& getCurrentAsyncStackRoot() noexcept {
   return *root;
 }
 
-static AsyncStackFrame makeDetachedRootFrame() noexcept {
-  AsyncStackFrame frame;
-  frame.setReturnAddress(detached_task());
-  return frame;
+AsyncStackFrame::AsyncStackFrame(MakeDetachedRootFrame) noexcept {
+  setReturnAddress(detached_task());
 }
 
-static AsyncStackFrame detachedRootFrame = makeDetachedRootFrame();
-
 AsyncStackFrame& getDetachedRootAsyncStackFrame() noexcept {
-  return detachedRootFrame;
+  static auto frame = AsyncStackFrame{AsyncStackFrame::MakeDetachedRootFrame{}};
+  return frame;
 }
 
 #if FOLLY_HAS_COROUTINES
