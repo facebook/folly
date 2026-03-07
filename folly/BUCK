@@ -3696,24 +3696,6 @@ non_fbcode_target(
     exported_deps = ["//xplat/folly/futures:futures"],
 )
 
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_io_async_base",
-    exported_deps = [
-        "//xplat/folly/io/async:async_base_class",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_io_async_io_uring_socket",
-    exported_deps = [
-        "//xplat/folly/io/async:async_io_uring_socket",
-    ],
-)
-
 # This adds the symbol __folly_memcpy through FollyMemcpy.h, but does not
 # replace the default memcpy.
 # NOTE: for mobile, this is a no-op. we have this here for symmetry with fbcode
