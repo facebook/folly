@@ -30,3 +30,5 @@ builder = nop
 # as we still want to use system linker and assembler etc
 [autoconf.args]
 --enable-install-libiberty
+CFLAGS=-fPIC -O2
+PICFLAG=-fPIC

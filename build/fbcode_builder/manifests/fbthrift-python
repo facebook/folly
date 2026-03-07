@@ -45,9 +45,8 @@ xxhash
 # dependency to avoid duplication.
 
 [dependencies.os=linux]
-libaio
+libaio-python
 libevent-python
-proxygen-python
 
 [shipit.pathmap]
 xplat/thrift/public_tld = .

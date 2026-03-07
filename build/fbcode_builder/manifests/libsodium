@@ -37,3 +37,4 @@ libsodium/x64/Release/v143/dynamic/libsodium.pdb = lib/libsodium.pdb
 libsodium/include = include
 
 [autoconf.args]
+--with-pic

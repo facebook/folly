@@ -48,7 +48,7 @@ openssl
 zlib
 
 [dependencies.os=linux]
-libaio
+libaio-python
 libiberty-python
 libunwind
 
