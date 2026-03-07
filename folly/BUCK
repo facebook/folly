@@ -671,15 +671,6 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "assume",
-    deps = [
-        "//xplat/folly/lang:assume",
-    ],
-)
-
 fb_dirsync_cpp_library(
     name = "bits",
     headers = ["Bits.h"],
