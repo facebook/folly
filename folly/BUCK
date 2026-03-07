@@ -801,15 +801,6 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "f14_mask",
-    deps = [
-        "//xplat/folly/container/detail:f14_mask",
-    ],
-)
-
-non_fbcode_target(
     _kind = folly_xplat_library,
     name = "indestructible",
     compiler_flags = [
@@ -821,15 +812,6 @@ non_fbcode_target(
     exported_deps = [
         "//xplat/folly:traits",
         "//xplat/folly:utility",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "evicting_cache_map",
-    deps = [
-        "//xplat/folly/container:evicting_cache_map",
     ],
 )
 
@@ -875,15 +857,6 @@ non_fbcode_target(
     platforms = (CXX, ANDROID, APPLE, WINDOWS, FBCODE),
     exported_deps = [
         "fbsource//xplat/folly/portability:gtest",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "safe_assert",
-    deps = [
-        "//xplat/folly/lang:safe_assert",
     ],
 )
 
@@ -2895,40 +2868,8 @@ non_fbcode_target(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "quantile_histogram",
-    exported_deps = ["//xplat/folly/stats:quantile_histogram"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "stats_streaming_stats",
     exported_deps = ["//xplat/folly/stats:streaming_stats"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_io_huge_pages",
-    exported_deps = [
-        "//xplat/folly/io:huge_pages",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_io_fs_util",
-    exported_deps = [
-        "//xplat/folly/io:fs_util",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_cleanup",
-    exported_deps = ["//xplat/folly/futures:cleanup"],
 )
 
 non_fbcode_target(
@@ -3015,13 +2956,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "hash_farm_hash",
     exported_deps = ["//xplat/folly/hash:farm_hash"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "hash_rapidhash",
-    exported_deps = ["//xplat/folly/hash:rapidhash"],
 )
 
 non_fbcode_target(
@@ -3380,20 +3314,6 @@ non_fbcode_target(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "experimental_env_util",
-    exported_deps = ["//xplat/folly/system:env_util"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_program_options",
-    exported_deps = ["//xplat/folly/cli:program_options"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "experimental_symbolizer_detail_debug",
     exported_deps = ["//xplat/folly/experimental/symbolizer/detail:debug"],
 )
@@ -3403,13 +3323,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "experimental_symbolizer_line_reader",
     exported_deps = ["//xplat/folly/experimental/symbolizer:line_reader"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_auto_timer",
-    exported_deps = ["//xplat/folly/logging:auto_timer"],
 )
 
 non_fbcode_target(
@@ -3470,13 +3383,6 @@ non_fbcode_target(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "experimental_symbolized_frame",
-    exported_deps = ["//xplat/folly/experimental/symbolizer:symbolized_frame"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "experimental_event_count",
     exported_deps = [
         "//xplat/folly/experimental:event_count",
@@ -3524,13 +3430,6 @@ non_fbcode_target(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "experimental_symbolizer_symbolizer_detail",
-    exported_deps = ["//xplat/folly/experimental/symbolizer/detail:debug"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "experimental_symbolizer_symbolizer",
     exported_deps = ["//xplat/folly/experimental/symbolizer:symbolizer"],
 )
@@ -3548,15 +3447,6 @@ non_fbcode_target(
     name = "logging_file_handler_factory",
     exported_deps = [
         "//xplat/folly/logging:file_handler_factory",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_dynamic_parser",
-    exported_deps = [
-        "//xplat/folly/json:dynamic_parser",
     ],
 )
 
@@ -3761,17 +3651,6 @@ non_fbcode_target(
     name = "synchronization_example_hazptr_wide_cas",
     exported_deps = [
         "//xplat/folly/synchronization/example:hazptr_wide_cas",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "json_schema",
-    apple_sdks = (IOS, MACOSX),
-    platforms = (APPLE, CXX, FBCODE, WINDOWS),
-    exported_deps = [
-        "//xplat/folly/json:json_schema",
     ],
 )
 
