@@ -169,6 +169,11 @@ folly_add_library(
     folly_mpmc_queue
 )
 
+set(FOLLY_PERF_SCOPED_DEPS folly_conv folly_system_pid folly_testing_test_util)
+if (NOT WIN32)
+  list(APPEND FOLLY_PERF_SCOPED_DEPS folly_subprocess)
+endif()
+
 folly_add_library(
   NAME perf_scoped
   SRCS
@@ -176,9 +181,7 @@ folly_add_library(
   HEADERS
     PerfScoped.h
   DEPS
-    folly_conv
-    folly_system_pid
-    folly_testing_test_util
+    ${FOLLY_PERF_SCOPED_DEPS}
   EXTERNAL_DEPS
     Boost::regex
 )
