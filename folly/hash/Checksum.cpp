@@ -244,8 +244,13 @@ uint32_t crc32c(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
 
 uint32_t crc32(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
 #if FOLLY_AARCH64
-  if (nbytes >= 2048 && detail::crc32_hw_supported_neon_eor3_sha3()) {
-    return detail::neon_eor3_crc32_v8s2x4e_s1x2(data, nbytes, startingChecksum);
+  if (detail::crc32_hw_supported_neon_eor3_sha3()) {
+    if (nbytes < 1536) {
+      return detail::neon_eor3_crc32_small(data, nbytes, startingChecksum);
+    } else {
+      return detail::neon_eor3_crc32_v8s2x4e_s1x2(
+          data, nbytes, startingChecksum);
+    }
   }
 #endif
 

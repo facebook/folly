@@ -25,6 +25,10 @@ CRC_EXPORT uint32_t neon_eor3_crc32_v8s2x4e_s1x2(const uint8_t*, size_t, uint32_
   abort(); // not implemented on this platform
 }
 
+CRC_EXPORT uint32_t neon_eor3_crc32_small(const uint8_t*, size_t, uint32_t) {
+  abort(); // not implemented on this platform
+}
+
 CRC_EXPORT bool has_neon_eor3_crc32_v8s2x4e_s1x2() {
   return false;
 }
@@ -83,6 +87,75 @@ CRC_EXPORT bool has_neon_eor3_crc32_v8s2x4e_s1x2() {
 
   return caps.aarch64_fp() && caps.aarch64_asimd() && caps.aarch64_pmull() &&
       caps.aarch64_crc32() && caps.aarch64_sha3();
+}
+
+// Mix v2s1x2 and s1x2
+CRC_EXPORT uint32_t neon_eor3_crc32_small(const uint8_t* buf, size_t len, uint32_t crc0) {
+  for (; len && ((uintptr_t)buf & 7); --len) {
+    crc0 = __crc32b(crc0, *buf++);
+  }
+  if (len > 384) {
+    if (((uintptr_t)buf & 8)) {
+      crc0 = __crc32d(crc0, *(const uint64_t*)buf);
+      buf += 8;
+      len -= 8;
+    }
+    size_t blk = (len - 0) / 48;
+    size_t klen = blk * 16;
+    const uint8_t* buf2 = buf + klen;
+    uint64x2_t vc0;
+    uint64_t vc;
+    /* First vector chunk. */
+    uint64x2_t x0 = vld1q_u64((const uint64_t*)buf2), y0;
+    uint64x2_t x1 = vld1q_u64((const uint64_t*)(buf2 + 16)), y1;
+    uint64x2_t k;
+    { static const uint64_t CRC_ALIGN(16) k_[] = {0xf1da05aa, 0x81256527}; k = vld1q_u64(k_); }
+    buf2 += 32;
+    len -= 48;
+    /* Main loop. */
+    do {
+      y0 = clmul_lo(x0, k), x0 = clmul_hi(x0, k);
+      y1 = clmul_lo(x1, k), x1 = clmul_hi(x1, k);
+      x0 = veor3q_u64(x0, y0, vld1q_u64((const uint64_t*)buf2));
+      x1 = veor3q_u64(x1, y1, vld1q_u64((const uint64_t*)(buf2 + 16)));
+      crc0 = __crc32d(crc0, *(const uint64_t*)buf);
+      crc0 = __crc32d(crc0, *(const uint64_t*)(buf + 8));
+      buf += 16;
+      buf2 += 32;
+      len -= 48;
+    } while (len >= 48);
+    /* Reduce x0 ... x1 to just x0. */
+    { static const uint64_t CRC_ALIGN(16) k_[] = {0xae689191, 0xccaa009e}; k = vld1q_u64(k_); }
+    y0 = clmul_lo(x0, k), x0 = clmul_hi(x0, k);
+    x0 = veor3q_u64(x0, y0, x1);
+    /* Final scalar chunk. */
+    crc0 = __crc32d(crc0, *(const uint64_t*)buf);
+    crc0 = __crc32d(crc0, *(const uint64_t*)(buf + 8));
+    vc0 = crc_shift(crc0, 0 + blk * 32);
+    vc = vgetq_lane_u64(vc0, 0);
+    /* Reduce 128 bits to 32 bits, and multiply by x^32. */
+    crc0 = __crc32d(0, vgetq_lane_u64(x0, 0));
+    crc0 = __crc32d(crc0, vc ^ vgetq_lane_u64(x0, 1));
+    buf = buf2;
+  }
+  if (len >= 16) {
+    /* Main loop. */
+    do {
+      crc0 = __crc32d(crc0, *(const uint64_t*)buf);
+      crc0 = __crc32d(crc0, *(const uint64_t*)(buf + 8));
+      buf += 16;
+      len -= 16;
+    } while (len >= 16);
+  }
+  if (len >= 8) {
+    crc0 = __crc32d(crc0, *(const uint64_t*)buf);
+    len -= 8;
+    buf += 8;
+  }
+  for (; len; --len) {
+    crc0 = __crc32b(crc0, *buf++);
+  }
+  return crc0;
 }
 
 CRC_EXPORT uint32_t neon_eor3_crc32_v8s2x4e_s1x2(const uint8_t* buf, size_t len, uint32_t crc0) {
