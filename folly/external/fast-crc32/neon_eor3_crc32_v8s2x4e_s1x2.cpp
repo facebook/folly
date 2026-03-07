@@ -2,7 +2,7 @@
 /* ./generate -i neon_eor3 -p crc32 -a v9s3x2e_s3 */
 /* MIT licensed */
 
-#include "folly/external/fast-crc32/neon_eor3_crc32_v9s3x2e_s3.h"
+#include "folly/external/fast-crc32/neon_eor3_crc32_v8s2x4e_s1x2.h"
 #include <folly/system/AuxVector.h>
 #include <folly/Portability.h>
 
@@ -21,11 +21,11 @@ namespace folly::detail {
 #if !(FOLLY_AARCH64 && FOLLY_NEON && FOLLY_ARM_FEATURE_CRYPTO && FOLLY_ARM_FEATURE_CRC32 && FOLLY_ARM_FEATURE_SHA3)
 #include <stdlib.h>
 namespace folly::detail {
-CRC_EXPORT uint32_t neon_eor3_crc32_v9s3x2e_s3(const uint8_t*, size_t, uint32_t) {
+CRC_EXPORT uint32_t neon_eor3_crc32_v8s2x4e_s1x2(const uint8_t*, size_t, uint32_t) {
   abort(); // not implemented on this platform
 }
 
-CRC_EXPORT bool has_neon_eor3_crc32_v9s3x2e_s3() {
+CRC_EXPORT bool has_neon_eor3_crc32_v8s2x4e_s1x2() {
   return false;
 }
 }
@@ -78,14 +78,14 @@ CRC_AINLINE uint64x2_t crc_shift(uint32_t crc, size_t nbytes) {
 }
 
 FOLLY_TARGET_ATTRIBUTE("+crc")
-CRC_EXPORT bool has_neon_eor3_crc32_v9s3x2e_s3() {
+CRC_EXPORT bool has_neon_eor3_crc32_v8s2x4e_s1x2() {
   auto caps = hwcaps();
 
   return caps.aarch64_fp() && caps.aarch64_asimd() && caps.aarch64_pmull() &&
       caps.aarch64_crc32() && caps.aarch64_sha3();
 }
 
-CRC_EXPORT uint32_t neon_eor3_crc32_v9s3x2e_s3(const uint8_t* buf, size_t len, uint32_t crc0) {
+CRC_EXPORT uint32_t neon_eor3_crc32_v8s2x4e_s1x2(const uint8_t* buf, size_t len, uint32_t crc0) {
   for (; len && ((uintptr_t)buf & 7); --len) {
     crc0 = __crc32b(crc0, *buf++);
   }
@@ -97,14 +97,12 @@ CRC_EXPORT uint32_t neon_eor3_crc32_v9s3x2e_s3(const uint8_t* buf, size_t len, u
   if (len >= 192) {
     const uint8_t* end = buf + len;
     size_t blk = (len - 0) / 192;
-    size_t klen = blk * 16;
-    const uint8_t* buf2 = buf + klen * 3;
-    const uint8_t* limit = buf + klen - 32;
+    size_t klen = blk * 32;
+    const uint8_t* buf2 = buf + klen * 2;
+    const uint8_t* limit = buf + klen - 64;
     uint32_t crc1 = 0;
-    uint32_t crc2 = 0;
     uint64x2_t vc0;
     uint64x2_t vc1;
-    uint64x2_t vc2;
     uint64_t vc;
     /* First vector chunk. */
     uint64x2_t x0 = vld1q_u64((const uint64_t*)buf2), y0;
@@ -115,10 +113,9 @@ CRC_EXPORT uint32_t neon_eor3_crc32_v9s3x2e_s3(const uint8_t* buf, size_t len, u
     uint64x2_t x5 = vld1q_u64((const uint64_t*)(buf2 + 80)), y5;
     uint64x2_t x6 = vld1q_u64((const uint64_t*)(buf2 + 96)), y6;
     uint64x2_t x7 = vld1q_u64((const uint64_t*)(buf2 + 112)), y7;
-    uint64x2_t x8 = vld1q_u64((const uint64_t*)(buf2 + 128)), y8;
     uint64x2_t k;
-    { static const uint64_t CRC_ALIGN(16) k_[] = {0x26b70c3d, 0x3f41287a}; k = vld1q_u64(k_); }
-    buf2 += 144;
+    { static const uint64_t CRC_ALIGN(16) k_[] = {0x33fff533, 0x910eeec1}; k = vld1q_u64(k_); }
+    buf2 += 128;
     /* Main loop. */
     while (buf <= limit) {
       y0 = clmul_lo(x0, k), x0 = clmul_hi(x0, k);
@@ -129,7 +126,6 @@ CRC_EXPORT uint32_t neon_eor3_crc32_v9s3x2e_s3(const uint8_t* buf, size_t len, u
       y5 = clmul_lo(x5, k), x5 = clmul_hi(x5, k);
       y6 = clmul_lo(x6, k), x6 = clmul_hi(x6, k);
       y7 = clmul_lo(x7, k), x7 = clmul_hi(x7, k);
-      y8 = clmul_lo(x8, k), x8 = clmul_hi(x8, k);
       x0 = veor3q_u64(x0, y0, vld1q_u64((const uint64_t*)buf2));
       x1 = veor3q_u64(x1, y1, vld1q_u64((const uint64_t*)(buf2 + 16)));
       x2 = veor3q_u64(x2, y2, vld1q_u64((const uint64_t*)(buf2 + 32)));
@@ -138,21 +134,19 @@ CRC_EXPORT uint32_t neon_eor3_crc32_v9s3x2e_s3(const uint8_t* buf, size_t len, u
       x5 = veor3q_u64(x5, y5, vld1q_u64((const uint64_t*)(buf2 + 80)));
       x6 = veor3q_u64(x6, y6, vld1q_u64((const uint64_t*)(buf2 + 96)));
       x7 = veor3q_u64(x7, y7, vld1q_u64((const uint64_t*)(buf2 + 112)));
-      x8 = veor3q_u64(x8, y8, vld1q_u64((const uint64_t*)(buf2 + 128)));
       crc0 = __crc32d(crc0, *(const uint64_t*)buf);
       crc1 = __crc32d(crc1, *(const uint64_t*)(buf + klen));
-      crc2 = __crc32d(crc2, *(const uint64_t*)(buf + klen * 2));
       crc0 = __crc32d(crc0, *(const uint64_t*)(buf + 8));
       crc1 = __crc32d(crc1, *(const uint64_t*)(buf + klen + 8));
-      crc2 = __crc32d(crc2, *(const uint64_t*)(buf + klen * 2 + 8));
-      buf += 16;
-      buf2 += 144;
+      crc0 = __crc32d(crc0, *(const uint64_t*)(buf + 16));
+      crc1 = __crc32d(crc1, *(const uint64_t*)(buf + klen + 16));
+      crc0 = __crc32d(crc0, *(const uint64_t*)(buf + 24));
+      crc1 = __crc32d(crc1, *(const uint64_t*)(buf + klen + 24));
+      buf += 32;
+      buf2 += 128;
     }
-    /* Reduce x0 ... x8 to just x0. */
+    /* Reduce x0 ... x7 to just x0. */
     { static const uint64_t CRC_ALIGN(16) k_[] = {0xae689191, 0xccaa009e}; k = vld1q_u64(k_); }
-    y0 = clmul_lo(x0, k), x0 = clmul_hi(x0, k);
-    x0 = veor3q_u64(x0, y0, x1);
-    x1 = x2, x2 = x3, x3 = x4, x4 = x5, x5 = x6, x6 = x7, x7 = x8;
     y0 = clmul_lo(x0, k), x0 = clmul_hi(x0, k);
     y2 = clmul_lo(x2, k), x2 = clmul_hi(x2, k);
     y4 = clmul_lo(x4, k), x4 = clmul_hi(x4, k);
@@ -172,46 +166,34 @@ CRC_EXPORT uint32_t neon_eor3_crc32_v9s3x2e_s3(const uint8_t* buf, size_t len, u
     /* Final scalar chunk. */
     crc0 = __crc32d(crc0, *(const uint64_t*)buf);
     crc1 = __crc32d(crc1, *(const uint64_t*)(buf + klen));
-    crc2 = __crc32d(crc2, *(const uint64_t*)(buf + klen * 2));
     crc0 = __crc32d(crc0, *(const uint64_t*)(buf + 8));
     crc1 = __crc32d(crc1, *(const uint64_t*)(buf + klen + 8));
-    crc2 = __crc32d(crc2, *(const uint64_t*)(buf + klen * 2 + 8));
-    vc0 = crc_shift(crc0, klen * 2 + blk * 144);
-    vc1 = crc_shift(crc1, klen + blk * 144);
-    vc2 = crc_shift(crc2, 0 + blk * 144);
-    vc = vgetq_lane_u64(veor3q_u64(vc0, vc1, vc2), 0);
+    crc0 = __crc32d(crc0, *(const uint64_t*)(buf + 16));
+    crc1 = __crc32d(crc1, *(const uint64_t*)(buf + klen + 16));
+    crc0 = __crc32d(crc0, *(const uint64_t*)(buf + 24));
+    crc1 = __crc32d(crc1, *(const uint64_t*)(buf + klen + 24));
+    vc0 = crc_shift(crc0, klen + blk * 128);
+    vc1 = crc_shift(crc1, 0 + blk * 128);
+    vc = vgetq_lane_u64(veorq_u64(vc0, vc1), 0);
     /* Reduce 128 bits to 32 bits, and multiply by x^32. */
     crc0 = __crc32d(0, vgetq_lane_u64(x0, 0));
     crc0 = __crc32d(crc0, vc ^ vgetq_lane_u64(x0, 1));
     buf = buf2;
     len = end - buf;
   }
-  if (len >= 32) {
-    size_t klen = ((len - 8) / 24) * 8;
-    uint32_t crc1 = 0;
-    uint32_t crc2 = 0;
-    uint64x2_t vc0;
-    uint64x2_t vc1;
-    uint64_t vc;
+  if (len >= 16) {
     /* Main loop. */
     do {
       crc0 = __crc32d(crc0, *(const uint64_t*)buf);
-      crc1 = __crc32d(crc1, *(const uint64_t*)(buf + klen));
-      crc2 = __crc32d(crc2, *(const uint64_t*)(buf + klen * 2));
-      buf += 8;
-      len -= 24;
-    } while (len >= 32);
-    vc0 = crc_shift(crc0, klen * 2 + 8);
-    vc1 = crc_shift(crc1, klen + 8);
-    vc = vgetq_lane_u64(veorq_u64(vc0, vc1), 0);
-    /* Final 8 bytes. */
-    buf += klen * 2;
-    crc0 = crc2;
-    crc0 = __crc32d(crc0, *(const uint64_t*)buf ^ vc), buf += 8;
-    len -= 8;
+      crc0 = __crc32d(crc0, *(const uint64_t*)(buf + 8));
+      buf += 16;
+      len -= 16;
+    } while (len >= 16);
   }
-  for (; len >= 8; buf += 8, len -= 8) {
+  if (len >= 8) {
     crc0 = __crc32d(crc0, *(const uint64_t*)buf);
+    len -= 8;
+    buf += 8; 
   }
   for (; len; --len) {
     crc0 = __crc32b(crc0, *buf++);

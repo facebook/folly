@@ -77,12 +77,12 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "neon_eor3_crc32_v9s3x2e_s3",
+    name = "neon_eor3_crc32_v8s2x4e_s1x2",
     srcs = [
-        "neon_eor3_crc32_v9s3x2e_s3.cpp",
+        "neon_eor3_crc32_v8s2x4e_s1x2.cpp",
     ],
     headers = [
-        "neon_eor3_crc32_v9s3x2e_s3.h",
+        "neon_eor3_crc32_v8s2x4e_s1x2.h",
     ],
     deps = [
         "//folly:portability",

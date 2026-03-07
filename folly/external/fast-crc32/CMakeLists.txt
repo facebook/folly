@@ -77,11 +77,11 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME neon_eor3_crc32_v9s3x2e_s3
+  NAME neon_eor3_crc32_v8s2x4e_s1x2
   SRCS
-    neon_eor3_crc32_v9s3x2e_s3.cpp
+    neon_eor3_crc32_v8s2x4e_s1x2.cpp
   HEADERS
-    neon_eor3_crc32_v9s3x2e_s3.h
+    neon_eor3_crc32_v8s2x4e_s1x2.h
   DEPS
     folly_portability
     folly_system_aux_vector

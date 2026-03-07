@@ -1915,7 +1915,7 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "external_fastcrc32_neon_eor3_sha3",
     srcs = [
-        "external/fast-crc32/neon_eor3_crc32_v9s3x2e_s3.cpp",
+        "external/fast-crc32/neon_eor3_crc32_v8s2x4e_s1x2.cpp",
         "external/fast-crc32/neon_eor3_crc32c_v8s2x4_s3.cpp",
     ],
     compiler_flags = select({
@@ -1923,7 +1923,7 @@ non_fbcode_target(
         "ovr_config//os:android-arm64": ["-march=armv8.2-a+crypto+sha3"],
     }),
     raw_headers = [
-        "external/fast-crc32/neon_eor3_crc32_v9s3x2e_s3.h",
+        "external/fast-crc32/neon_eor3_crc32_v8s2x4e_s1x2.h",
         "external/fast-crc32/neon_eor3_crc32c_v8s2x4_s3.h",
     ],
     exported_deps = [

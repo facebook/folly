@@ -26,7 +26,7 @@ folly_add_library(
     folly_detail_traponavx512
     folly_external_fast-crc32_avx512_crc32c_v8s3x4
     folly_external_fast-crc32_neon_crc32c_v3s4x2e_v2
-    folly_external_fast-crc32_neon_eor3_crc32_v9s3x2e_s3
+    folly_external_fast-crc32_neon_eor3_crc32_v8s2x4e_s1x2
     folly_external_fast-crc32_neon_eor3_crc32c_v8s2x4_s3
     folly_external_fast-crc32_sse_crc32c_v8s3x3
     folly_hash_detail_checksum_detail
@@ -37,7 +37,7 @@ target_link_libraries(folly_hash_checksum_obj PRIVATE
   folly_external_fast-crc32_avx512_crc32c_v8s3x4_obj
   folly_external_fast-crc32_sse_crc32c_v8s3x3_obj
   folly_external_fast-crc32_neon_crc32c_v3s4x2e_v2_obj
-  folly_external_fast-crc32_neon_eor3_crc32_v9s3x2e_s3_obj
+  folly_external_fast-crc32_neon_eor3_crc32_v8s2x4e_s1x2_obj
   folly_external_fast-crc32_neon_eor3_crc32c_v8s2x4_s3_obj)
 
 folly_add_library(
