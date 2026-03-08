@@ -161,7 +161,7 @@ class Fiber {
   folly::AtomicIntrusiveLinkedListHook<Fiber> nextRemoteReady_;
 
   static constexpr size_t kUserBufferSize = 256;
-  folly::aligned_storage_t<kUserBufferSize, cacheline_align_v> userBuffer_;
+  folly::aligned_storage_t<kUserBufferSize> userBuffer_;
 
   void* getUserBuffer();
 
