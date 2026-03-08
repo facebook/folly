@@ -435,13 +435,12 @@ boost::container::flat_set<int> getOpenFds() {
   auto pid = getpid();
   auto dirname = to<std::string>("/proc/", pid, "/fd");
 
-  boost::container::flat_set<int> fds;
+  std::vector<int> fdVec;
   for (fs::directory_iterator it(dirname); it != fs::directory_iterator();
        ++it) {
-    int fd = to<int>(it->path().filename().native());
-    fds.insert(fd);
+    fdVec.push_back(to<int>(it->path().filename().native()));
   }
-  return fds;
+  return boost::container::flat_set<int>(fdVec.begin(), fdVec.end());
 }
 
 template <class Runnable>
