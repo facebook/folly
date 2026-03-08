@@ -319,13 +319,13 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
 #if FOLLY_SSE_PREREQ(4, 2)
     // SSE4.2 CRC
     std::size_t c = _mm_crc32_u64(0, hash);
-    tag = (hash + c) | 0x80;
-    hash = c;
+    tag = (c >> 24) | 0x80;
+    hash += c;
 #else
     // CRC is optional on armv8 (-march=armv8-a+crc), standard on armv8.1
     std::size_t c = __crc32cd(0, hash);
-    tag = (hash + c) | 0x80;
-    hash = c;
+    tag = (c >> 24) | 0x80;
+    hash += c;
 #endif
 #else
     // The mixer below is not fully avalanching for all 64 bits of
@@ -365,7 +365,11 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
     // In some places we also rely on the top bit
     // being 1 for all non-empty values.
     if (ShouldAssume32BitHash<Hasher>::value) {
-      tag = (hash >> 24) | 0x80;
+      tag = ((hash >> 24) | 0x80) & 0xFF;
+      // Explicitly mask off the top 32-bits so that the compiler can
+      // optimize away whatever is populating the top 32-bits, which is likely
+      // just the lower 32-bits duplicated.
+      hash = hash & 0xFFFF'FFFF;
     } else {
       tag = (hash >> 56) | 0x80;
     }
@@ -1764,7 +1768,7 @@ class F14Table : public Policy {
 #elif FOLLY_SSE >= 2
     return _mm_set1_epi8(static_cast<uint8_t>(needle));
 #else
-    return needle & 0xff;
+    return needle;
 #endif
   }
 
@@ -1773,7 +1777,7 @@ class F14Table : public Policy {
   template <typename K>
   FOLLY_ALWAYS_INLINE ItemIter
   findImpl(HashPair hp, K const& key, Prefetch prefetch) const {
-    FOLLY_SAFE_DCHECK((hp.second & 0xff) >= 0x80, "");
+    FOLLY_SAFE_DCHECK(hp.second >= 0x80 && hp.second < 0x100, "");
 #if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
     svbool_t pred = svwhilelt_b8_u32(0, Chunk::kCapacity);
 #endif
@@ -2013,7 +2017,7 @@ class F14Table : public Policy {
     }
     unsigned itemIndex = fullness[index]++;
     FOLLY_SAFE_DCHECK(!chunk->occupied(itemIndex), "");
-    chunk->setTag(itemIndex, hp.second & 0xff);
+    chunk->setTag(itemIndex, hp.second);
     chunk->adjustHostedOverflowCount(hostedOp);
     return ItemIter{chunk, itemIndex};
   }
@@ -2206,7 +2210,7 @@ class F14Table : public Policy {
           auto&& srcArg = std::forward<T>(src).buildArgForItem(srcItem);
           auto const& srcKey = src.keyForValue(srcArg);
           auto hp = computeHash(srcKey);
-          FOLLY_SAFE_CHECK((hp.second & 0xff) == srcChunk->tag(i), "");
+          FOLLY_SAFE_CHECK(hp.second == srcChunk->tag(i), "");
           insertAtBlank(
               allocateTag(fullness, hp),
               hp,
@@ -2480,7 +2484,7 @@ class F14Table : public Policy {
           Item& srcItem = srcChunk->item(srcI);
           auto hp = splitHash(
               this->computeItemHash(const_cast<Item const&>(srcItem)));
-          FOLLY_SAFE_CHECK((hp.second & 0xff) == srcChunk->tag(srcI), "");
+          FOLLY_SAFE_CHECK(hp.second == srcChunk->tag(srcI), "");
 
           auto dstIter = allocateTag(fullness, hp);
           this->moveItemDuringRehash(dstIter.itemAddr(), srcItem);
@@ -2635,7 +2639,7 @@ class F14Table : public Policy {
 
     debugModePerturbSlotInsertOrder(chunk, itemIndex);
 
-    chunk->setTag(itemIndex, hp.second & 0xff);
+    chunk->setTag(itemIndex, hp.second);
     ItemIter iter{chunk, itemIndex};
 
     // insertAtBlank will clear the tag if the constructor throws
@@ -2894,7 +2898,7 @@ class F14Table : public Policy {
         {
           auto& item = chunk->citem(ii);
           auto hp = splitHash(this->computeItemHash(item));
-          FOLLY_SAFE_DCHECK(chunk->tag(ii) == (hp.second & 0xff), "");
+          FOLLY_SAFE_DCHECK(chunk->tag(ii) == hp.second, "");
 
           std::size_t dist = 1;
           std::size_t index = hp.first;
