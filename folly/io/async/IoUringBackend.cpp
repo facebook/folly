@@ -96,8 +96,8 @@ void SignalRegistry::setNotifyFd(int sig, int fd) {
     // switch the fd
     notifyFd_.store(fd);
 
-    auto iter = (*map_).find(sig);
-    if (iter != (*map_).end()) {
+    auto iter = map_->find(sig);
+    if (iter != map_->end()) {
       iter->second.refs_++;
     } else {
       auto& entry = (*map_)[sig];
@@ -108,17 +108,17 @@ void SignalRegistry::setNotifyFd(int sig, int fd) {
       ::sigfillset(&sa.sa_mask);
 
       if (::sigaction(sig, &sa, &entry.sa_) == -1) {
-        (*map_).erase(sig);
+        map_->erase(sig);
       }
     }
   } else {
     notifyFd_.store(fd);
 
     if (map_) {
-      auto iter = (*map_).find(sig);
-      if ((iter != (*map_).end()) && (--iter->second.refs_ == 0)) {
+      auto iter = map_->find(sig);
+      if ((iter != map_->end()) && (--iter->second.refs_ == 0)) {
         auto entry = iter->second;
-        (*map_).erase(iter);
+        map_->erase(iter);
         // just restore
         ::sigaction(sig, &entry.sa_, nullptr);
       }
@@ -143,7 +143,7 @@ class SQGroupInfoRegistry {
       size_t count{0};
 
       void add(int fd) {
-        CHECK(fds.find(fd) == fds.end());
+        CHECK(!fds.count(fd));
         fds.insert(fd);
         ++count;
       }
@@ -158,11 +158,8 @@ class SQGroupInfoRegistry {
       }
     };
 
-    SQGroupInfo(size_t num, std::set<uint32_t> const& cpus) : subGroups(num) {
-      for (const uint32_t cpu : cpus) {
-        nextCpu.emplace_back(cpu);
-      }
-    }
+    SQGroupInfo(size_t num, std::set<uint32_t> const& cpus)
+        : subGroups(num), nextCpu(cpus.begin(), cpus.end()) {}
 
     // returns the least loaded subgroup
     SQSubGroupInfo* getNextSubgroup() {
@@ -181,8 +178,8 @@ class SQGroupInfoRegistry {
     }
 
     size_t add(int fd, SQSubGroupInfo* sg) {
-      CHECK(fdSgMap.find(fd) == fdSgMap.end());
-      fdSgMap.insert(std::make_pair(fd, sg));
+      CHECK(!fdSgMap.count(fd));
+      fdSgMap.emplace(fd, sg);
       sg->add(fd);
       ++count;
 
@@ -191,7 +188,7 @@ class SQGroupInfoRegistry {
 
     size_t remove(int fd) {
       auto iter = fdSgMap.find(fd);
-      CHECK(fdSgMap.find(fd) != fdSgMap.end());
+      CHECK(iter != fdSgMap.end());
       iter->second->remove(fd);
       fdSgMap.erase(iter);
       --count;
@@ -233,31 +230,20 @@ class SQGroupInfoRegistry {
 
     std::lock_guard g(mutex_);
 
-    SQGroupInfo::SQSubGroupInfo* sg = nullptr;
-    SQGroupInfo* info = nullptr;
-    auto iter = map_.find(groupName);
-    if (iter != map_.end()) {
-      info = &iter->second;
-    } else {
-      // First use of this group.
-      SQGroupInfo gr(groupNumThreads, cpus);
-      info =
-          &map_.insert(std::make_pair(groupName, std::move(gr))).first->second;
-    }
-    sg = info->getNextSubgroup();
+    auto [iter, inserted] = map_.try_emplace(groupName, groupNumThreads, cpus);
+    auto& info = iter->second;
+    auto* sg = info.getNextSubgroup();
     if (sg->count) {
       // we're adding to a non empty subgroup
       params.wq_fd = *(sg->fds.begin());
       params.flags |= IORING_SETUP_ATTACH_WQ;
-    } else {
+    } else if (!info.nextCpu.empty()) {
       // First use of this subgroup, pin thread to CPU if specified.
-      if (info->nextCpu.size()) {
-        uint32_t cpu = info->nextCpu[info->nextCpuIndex];
-        info->nextCpuIndex = (info->nextCpuIndex + 1) % info->nextCpu.size();
+      auto cpu = info.nextCpu[info.nextCpuIndex];
+      info.nextCpuIndex = (info.nextCpuIndex + 1) % info.nextCpu.size();
 
-        params.sq_thread_cpu = cpu;
-        params.flags |= IORING_SETUP_SQ_AFF;
-      }
+      params.sq_thread_cpu = cpu;
+      params.flags |= IORING_SETUP_SQ_AFF;
     }
 
     auto fd = createFd(params);
@@ -265,7 +251,7 @@ class SQGroupInfoRegistry {
       return 0;
     }
 
-    return info->add(fd, sg);
+    return info.add(fd, sg);
   }
 
   size_t removeFrom(const std::string& groupName, int fd, FDCloseFunc& func) {

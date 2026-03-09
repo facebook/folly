@@ -217,7 +217,7 @@ class IoUringBackend : public EventBaseBackendBase {
         [bufferProviderIdx_++ & (bufferProviders_.size() - 1)]
             .get();
   }
-  bool hasBufferProvider() { return bufferProviders_.size() > 0; }
+  bool hasBufferProvider() { return !bufferProviders_.empty(); }
   uint16_t nextBufferProviderGid() { return bufferProviderGidNext_++; }
   IoUringZeroCopyBufferPool* zcBufferPool() { return zcBufferPool_.get(); }
   bool createZcBufferPool();
