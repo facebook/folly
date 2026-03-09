@@ -1293,7 +1293,7 @@ static void runRemoteUnlock(
 
           // blockingWrite is emplace-like, so this automatically adds
           // another level of wrapping
-          queuePtr->blockingWrite(maybeToken);
+          queuePtr->blockingWrite(std::make_optional(maybeToken));
         }
         if (--*pendingSendersPtr == 0) {
           queuePtr->blockingWrite(std::nullopt);
