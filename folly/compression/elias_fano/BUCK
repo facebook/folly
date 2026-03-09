@@ -1,61 +1,13 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "bit_vector_coding",
-    raw_headers = [
-        "BitVectorCoding.h",
-    ],
-    deps = [
-        ":coding_detail",
-        "//third-party/glog:glog",
-        "//xplat/folly:likely",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly/compression:instructions",
-        "//xplat/folly/compression:select64",
-        "//xplat/folly/lang:bits",
-        "//xplat/folly/lang:bits_class",
-    ],
-)
-
 fb_dirsync_cpp_library(
-    name = "coding_detail",
-    headers = ["CodingDetail.h"],
-    use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "elias_fano_coding",
-    raw_headers = [
-        "EliasFanoCoding.h",
-    ],
-    deps = [
-        ":coding_detail",
-        "//third-party/glog:glog",
-        "//xplat/folly:likely",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly/compression:instructions",
-        "//xplat/folly/compression:select64",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/lang:bits",
-    ],
-)
-
-# !!!! fbcode/folly/compression/elias_fano/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
     name = "bit_vector_coding",
     headers = ["BitVectorCoding.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:likely",
@@ -69,10 +21,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
+    name = "coding_detail",
+    headers = ["CodingDetail.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+)
+
+fb_dirsync_cpp_library(
     name = "elias_fano_coding",
     headers = ["EliasFanoCoding.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:likely",
