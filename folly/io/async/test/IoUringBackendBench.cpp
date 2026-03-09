@@ -187,8 +187,7 @@ class EventBaseProvider {
       }
     }
 
-    CHECK(false);
-    return nullptr;
+    LOG(FATAL) << "invalid backend type";
   }
 };
 

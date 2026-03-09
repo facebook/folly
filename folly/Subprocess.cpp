@@ -752,8 +752,6 @@ pid_t Subprocess::spawnInternalDoFork(SpawnRawArgs const& args) {
   errnoValue = runChild(args);
   // If we get here, exec() failed.
   childError(args, kExecFailure, errnoValue);
-
-  return 0; // unreachable
 }
 FOLLY_POP_WARNING
 

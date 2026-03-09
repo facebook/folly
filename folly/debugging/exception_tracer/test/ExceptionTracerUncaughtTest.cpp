@@ -22,5 +22,4 @@ __attribute__((noinline)) [[noreturn]] void foo() {
 
 int main() {
   foo();
-  return 0;
 }

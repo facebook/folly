@@ -720,12 +720,11 @@ ssize_t AsyncUDPSocket::writev(
   }
 #else
   CHECK_LT(options.gso, 1) << "GSO not supported";
-#endif
-
 #ifdef _WIN32
   return netops::wsaSendMsgDirect(fd_, msg.getMsg());
 #else
   return sendmsg(fd_, msg.getMsg(), 0);
+#endif
 #endif
 }
 

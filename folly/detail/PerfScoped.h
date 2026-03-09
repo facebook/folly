@@ -45,11 +45,6 @@ class PerfScoped {
   // Actually starts perf
   // Output is for testing, if passed, perf output will be
   // put there.
-  //
-  // NOTE: noretrun has to be here to ignore a warning
-#if !FOLLY_PERF_IS_SUPPORTED
-  [[noreturn]]
-#endif
   explicit PerfScoped(
       const std::vector<std::string>& args, std::string* output = nullptr);
 

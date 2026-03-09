@@ -156,9 +156,9 @@ struct formatter<ToStringFailure> : formatter<std::string> {
 
 template <>
 struct formatter<FormattableButNoToString> : formatter<std::string> {
-  auto format(FormattableButNoToString, format_context& ctx) const {
+  auto format(FormattableButNoToString, format_context& ctx) const
+      -> decltype(ctx.out()) {
     throw std::runtime_error("test");
-    return ctx.out();
   }
 };
 } // namespace fmt

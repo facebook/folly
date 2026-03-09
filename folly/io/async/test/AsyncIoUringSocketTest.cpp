@@ -437,7 +437,6 @@ TEST_P(AsyncIoUringSocketTest, ConnectTimeout) {
     // In this case the connect will fail immediately rather than timing out.
     // Just skip the test in this case.
     GTEST_SKIP() << "do not have a routable but unreachable IP address";
-    return;
   }
   EXPECT_EQ(res.error().getType(), AsyncSocketException::TIMED_OUT)
       << res.error().what();

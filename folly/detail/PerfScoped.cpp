@@ -115,7 +115,7 @@ PerfScoped::PerfScoped(
 
 class PerfScoped::PerfScopedImpl {};
 
-[[noreturn]] PerfScoped::PerfScoped(
+PerfScoped::PerfScoped(
     const std::vector<std::string>& args, std::string* output) {
   (void)args;
   (void)output;

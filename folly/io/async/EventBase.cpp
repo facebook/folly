@@ -524,7 +524,7 @@ bool EventBase::isSuccess(LoopStatus status) {
     case LoopStatus::kError:
       return false;
     case LoopStatus::kSuspended:
-      DCHECK(false) << "Reached suspension when not allowed";
+      LOG(DFATAL) << "Reached suspension when not allowed";
       return false;
   }
   assume_unreachable();
@@ -925,7 +925,7 @@ void EventBase::runInEventBaseThread(Func fn) noexcept {
 
   // We try not to schedule nullptr callbacks
   if (!fn) {
-    DLOG(FATAL) << "EventBase " << this
+    LOG(DFATAL) << "EventBase " << this
                 << ": Scheduling nullptr callbacks is not allowed";
     return;
   }

@@ -314,7 +314,7 @@ json_patch::apply(dynamic& obj) const {
         break;
       }
       case op_code::invalid: {
-        DCHECK(false);
+        LOG(DFATAL) << "opcode is op_code::invalid";
         return makeUnexpected(error{error_code::other, index});
       }
     }
