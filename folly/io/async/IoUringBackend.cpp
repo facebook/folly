@@ -126,7 +126,7 @@ void SignalRegistry::setNotifyFd(int sig, int fd) {
   }
 }
 
-void checkLogOverflow([[maybe_unused]] struct io_uring* ring) {
+void checkLogOverflow([[maybe_unused]] io_uring* ring) {
   if (::io_uring_cq_has_overflow(ring)) {
     FB_LOG_EVERY_MS(ERROR, 10000)
         << "IoUringBackend " << ring << " cq overflow";
@@ -329,7 +329,7 @@ IoUringBackend::SocketPair::~SocketPair() {
   }
 }
 
-IoUringBackend::FdRegistry::FdRegistry(struct io_uring& ioRing, size_t n)
+IoUringBackend::FdRegistry::FdRegistry(io_uring& ioRing, size_t n)
     : ioRing_(ioRing), files_(n, -1), inUse_(n), records_(n) {
   if (n > std::numeric_limits<int>::max()) {
     throw std::runtime_error("too many registered files");
@@ -400,8 +400,8 @@ bool IoUringBackend::FdRegistry::free(IoUringFdRegistrationRecord* record) {
   return false;
 }
 
-FOLLY_ALWAYS_INLINE struct io_uring_sqe* IoUringBackend::getUntrackedSqe() {
-  struct io_uring_sqe* ret = ::io_uring_get_sqe(&ioRing_);
+FOLLY_ALWAYS_INLINE io_uring_sqe* IoUringBackend::getUntrackedSqe() {
+  io_uring_sqe* ret = ::io_uring_get_sqe(&ioRing_);
   // if running with SQ poll enabled
   // we might have to wait for an sq entry to available
   // before we can submit another one
@@ -420,12 +420,12 @@ FOLLY_ALWAYS_INLINE struct io_uring_sqe* IoUringBackend::getUntrackedSqe() {
   return ret;
 }
 
-FOLLY_ALWAYS_INLINE struct io_uring_sqe* IoUringBackend::getSqe() {
+FOLLY_ALWAYS_INLINE io_uring_sqe* IoUringBackend::getSqe() {
   ++numInsertedEvents_;
   return getUntrackedSqe();
 }
 
-void IoSqeBase::internalSubmit(struct io_uring_sqe* sqe) noexcept {
+void IoSqeBase::internalSubmit(io_uring_sqe* sqe) noexcept {
   if (inFlight_) {
     LOG(ERROR) << "cannot resubmit an IoSqe. type="
                << folly::demangle(typeid(*this));
@@ -620,7 +620,7 @@ void IoUringBackend::cleanup() {
   // wait for the outstanding events to finish
   processSubmitList();
   while (isWaitingToSubmit() || numInsertedEvents_ > numInternalEvents_) {
-    struct io_uring_cqe* cqe = nullptr;
+    io_uring_cqe* cqe = nullptr;
     processSubmitList();
     int ret = submitEager();
     if (ret == -EEXIST) {
@@ -728,7 +728,7 @@ void IoUringBackend::scheduleTimeout() {
 }
 
 void IoUringBackend::scheduleTimeout(const std::chrono::microseconds& us) {
-  struct itimerspec val;
+  itimerspec val;
   timerSet_ = us.count() != 0;
   val.it_interval = {0, 0};
   val.it_value.tv_sec =
@@ -753,8 +753,7 @@ void timerUserDataFreeFunction(void* v) {
 
 } // namespace
 
-void IoUringBackend::addTimerEvent(
-    Event& event, const struct timeval* timeout) {
+void IoUringBackend::addTimerEvent(Event& event, const timeval* timeout) {
   auto getTimerExpireTime = [](const auto& timeout2) {
     using namespace std::chrono;
     auto now = steady_clock::now();
@@ -1246,7 +1245,7 @@ int IoUringBackend::eb_event_base_loopbreak() {
   return 0;
 }
 
-int IoUringBackend::eb_event_add(Event& event, const struct timeval* timeout) {
+int IoUringBackend::eb_event_add(Event& event, const timeval* timeout) {
   VLOG(4) << "Add event " << &event;
   auto* ev = event.getEvent();
   CHECK(ev);
@@ -1436,7 +1435,7 @@ int IoUringBackend::cancelOne(IoSqe* ioSqe) {
   return ret;
 }
 
-int IoUringBackend::doInnerWait(struct io_uring_cqe*& cqe) noexcept {
+int IoUringBackend::doInnerWait(io_uring_cqe*& cqe) noexcept {
   if (waitingToSubmit_) {
     submitBusyCheck(waitingToSubmit_, WaitForEventsMode::WAIT);
     return ::io_uring_peek_cqe(&ioRing_, &cqe);
@@ -1451,7 +1450,7 @@ int IoUringBackend::doInnerWait(struct io_uring_cqe*& cqe) noexcept {
   }
 }
 
-int IoUringBackend::doWait(struct io_uring_cqe*& cqe) {
+int IoUringBackend::doWait(io_uring_cqe*& cqe) {
   if (kIsDebug && VLOG_IS_ON(1)) {
     auto start = std::chrono::steady_clock::now();
     unsigned was = ::io_uring_cq_ready(&ioRing_);
@@ -1471,7 +1470,7 @@ int IoUringBackend::doWait(struct io_uring_cqe*& cqe) {
   }
 }
 
-int IoUringBackend::doPeek(struct io_uring_cqe*& cqe) noexcept {
+int IoUringBackend::doPeek(io_uring_cqe*& cqe) noexcept {
   if (usingDeferTaskrun_) {
     return ::io_uring_get_events(&ioRing_);
   }
@@ -1479,7 +1478,7 @@ int IoUringBackend::doPeek(struct io_uring_cqe*& cqe) noexcept {
 }
 
 size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
-  struct io_uring_cqe* cqe = nullptr;
+  io_uring_cqe* cqe = nullptr;
 
   if (kIsDebug && gettingEvents_) {
     throw std::runtime_error("getting events is not reentrant");
@@ -1541,7 +1540,7 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
 
 unsigned int IoUringBackend::internalProcessCqe(
     unsigned int maxGet, InternalProcessCqeMode mode) noexcept {
-  struct io_uring_cqe* cqe;
+  io_uring_cqe* cqe;
 
   unsigned int count_more = 0;
   unsigned int count = 0;
@@ -1633,7 +1632,7 @@ int IoUringBackend::submitBusyCheck(
         res = ::io_uring_submit(&ioRing_);
       } else {
         if (useReqBatching()) {
-          struct io_uring_cqe* cqe;
+          io_uring_cqe* cqe;
           struct __kernel_timespec timeout;
           timeout.tv_sec = 0;
           timeout.tv_nsec = options_.timeout.count() * 1000;
@@ -1698,7 +1697,7 @@ int IoUringBackend::submitBusyCheck(
     // if polling the CQ, busy wait for one entry
     if (waitForEvents == WaitForEventsMode::WAIT &&
         options_.flags & Options::Flags::POLL_CQ && i == num) {
-      struct io_uring_cqe* cqe = nullptr;
+      io_uring_cqe* cqe = nullptr;
       while (!cqe) {
         ::io_uring_peek_cqe(&ioRing_, &cqe);
       }
@@ -1732,7 +1731,7 @@ size_t IoUringBackend::prepList(IoSqeBaseList& ioSqes) {
 
 void IoUringBackend::queueRead(
     int fd, void* buf, unsigned int nbytes, off_t offset, FileOpCallback&& cb) {
-  struct iovec iov{buf, nbytes};
+  iovec iov{buf, nbytes};
   auto* ioSqe = new ReadIoSqe(this, fd, &iov, offset, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
 
@@ -1745,7 +1744,7 @@ void IoUringBackend::queueWrite(
     unsigned int nbytes,
     off_t offset,
     FileOpCallback&& cb) {
-  struct iovec iov{const_cast<void*>(buf), nbytes};
+  iovec iov{const_cast<void*>(buf), nbytes};
   auto* ioSqe = new WriteIoSqe(this, fd, &iov, offset, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
 
@@ -1753,10 +1752,7 @@ void IoUringBackend::queueWrite(
 }
 
 void IoUringBackend::queueReadv(
-    int fd,
-    Range<const struct iovec*> iovecs,
-    off_t offset,
-    FileOpCallback&& cb) {
+    int fd, Range<const iovec*> iovecs, off_t offset, FileOpCallback&& cb) {
   auto* ioSqe = new ReadvIoSqe(this, fd, iovecs, offset, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
 
@@ -1764,10 +1760,7 @@ void IoUringBackend::queueReadv(
 }
 
 void IoUringBackend::queueWritev(
-    int fd,
-    Range<const struct iovec*> iovecs,
-    off_t offset,
-    FileOpCallback&& cb) {
+    int fd, Range<const iovec*> iovecs, off_t offset, FileOpCallback&& cb) {
   auto* ioSqe = new WritevIoSqe(this, fd, iovecs, offset, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
 
@@ -1798,7 +1791,7 @@ void IoUringBackend::queueOpenat(
 }
 
 void IoUringBackend::queueOpenat2(
-    int dfd, const char* path, struct open_how* how, FileOpCallback&& cb) {
+    int dfd, const char* path, open_how* how, FileOpCallback&& cb) {
   auto* ioSqe = new FOpenAt2IoSqe(this, dfd, path, how, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
 
@@ -1855,7 +1848,7 @@ void IoUringBackend::queueFallocate(
 }
 
 void IoUringBackend::queueSendmsg(
-    int fd, const struct msghdr* msg, unsigned int flags, FileOpCallback&& cb) {
+    int fd, const msghdr* msg, unsigned int flags, FileOpCallback&& cb) {
   auto* ioSqe = new SendmsgIoSqe(this, fd, msg, flags, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
 
@@ -1863,7 +1856,7 @@ void IoUringBackend::queueSendmsg(
 }
 
 void IoUringBackend::queueRecvmsg(
-    int fd, struct msghdr* msg, unsigned int flags, FileOpCallback&& cb) {
+    int fd, msghdr* msg, unsigned int flags, FileOpCallback&& cb) {
   auto* ioSqe = new RecvmsgIoSqe(this, fd, msg, flags, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
 
@@ -1952,7 +1945,7 @@ static bool doKernelSupportsRecvmsgMultishot() {
           fileops::close(fd);
         }
       }
-      void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+      void processSubmit(io_uring_sqe* sqe) noexcept override {
         io_uring_prep_recvmsg_multishot(sqe, fd, &msg, 0);
 
         sqe->buf_group = bp_->gid();
@@ -1969,7 +1962,7 @@ static bool doKernelSupportsRecvmsgMultishot() {
 
       IoUringProvidedBufferRing* bp_;
       bool supported = false;
-      struct msghdr msg;
+      msghdr msg;
       int fd = -1;
     };
 
@@ -1994,7 +1987,7 @@ static bool doKernelSupportsRecvmsgMultishot() {
 }
 
 static bool doKernelSupportsDeferTaskrun() {
-  struct io_uring ring;
+  io_uring ring;
   int ret = io_uring_queue_init(
       1, &ring, IORING_SETUP_SINGLE_ISSUER | IORING_SETUP_DEFER_TASKRUN);
   if (ret == 0) {
@@ -2007,7 +2000,7 @@ static bool doKernelSupportsDeferTaskrun() {
 }
 
 static bool doKernelSupportsSendZC() {
-  struct io_uring ring;
+  io_uring ring;
 
   int ret = io_uring_queue_init(4, &ring, 0);
   if (ret) {
@@ -2031,7 +2024,7 @@ static bool doKernelSupportsSendZC() {
     return false;
   }
 
-  struct io_uring_cqe* cqe = nullptr;
+  io_uring_cqe* cqe = nullptr;
   ret = ::io_uring_wait_cqe(&ring, &cqe);
   if (ret) {
     return false;

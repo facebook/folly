@@ -77,8 +77,8 @@ class IoUringBackend : public EventBaseBackendBase {
   bool isWaitingToSubmit() const {
     return waitingToSubmit_ || !submitList_.empty();
   }
-  struct io_uring* ioRingPtr() { return &ioRing_; }
-  struct io_uring_params const& params() const { return params_; }
+  io_uring* ioRingPtr() { return &ioRing_; }
+  io_uring_params const& params() const { return params_; }
   bool useReqBatching() const {
     return options_.timeout.count() > 0 && options_.batchSize > 0;
   }
@@ -103,7 +103,7 @@ class IoUringBackend : public EventBaseBackendBase {
   int eb_event_base_loop(int flags) override;
   int eb_event_base_loopbreak() override;
 
-  int eb_event_add(Event& event, const struct timeval* timeout) override;
+  int eb_event_add(Event& event, const timeval* timeout) override;
   int eb_event_del(Event& event) override;
 
   bool eb_event_active(Event&, int) override { return false; }
@@ -154,16 +154,10 @@ class IoUringBackend : public EventBaseBackendBase {
       FileOpCallback&& cb);
 
   void queueReadv(
-      int fd,
-      Range<const struct iovec*> iovecs,
-      off_t offset,
-      FileOpCallback&& cb);
+      int fd, Range<const iovec*> iovecs, off_t offset, FileOpCallback&& cb);
 
   void queueWritev(
-      int fd,
-      Range<const struct iovec*> iovecs,
-      off_t offset,
-      FileOpCallback&& cb);
+      int fd, Range<const iovec*> iovecs, off_t offset, FileOpCallback&& cb);
 
   // there is no ordering between the prev submitted write
   // requests and the sync ops
@@ -177,7 +171,7 @@ class IoUringBackend : public EventBaseBackendBase {
       int dfd, const char* path, int flags, mode_t mode, FileOpCallback&& cb);
 
   void queueOpenat2(
-      int dfd, const char* path, struct open_how* how, FileOpCallback&& cb);
+      int dfd, const char* path, open_how* how, FileOpCallback&& cb);
 
   void queueClose(int fd, FileOpCallback&& cb);
 
@@ -202,13 +196,10 @@ class IoUringBackend : public EventBaseBackendBase {
 
   // sendmgs/recvmsg
   void queueSendmsg(
-      int fd,
-      const struct msghdr* msg,
-      unsigned int flags,
-      FileOpCallback&& cb);
+      int fd, const msghdr* msg, unsigned int flags, FileOpCallback&& cb);
 
   void queueRecvmsg(
-      int fd, struct msghdr* msg, unsigned int flags, FileOpCallback&& cb);
+      int fd, msghdr* msg, unsigned int flags, FileOpCallback&& cb);
 
   void submit(IoSqeBase& ioSqe) {
     // todo verify that the sqe is valid!
@@ -299,7 +290,7 @@ class IoUringBackend : public EventBaseBackendBase {
   bool addTimerFd();
   void scheduleTimeout();
   void scheduleTimeout(const std::chrono::microseconds& us);
-  void addTimerEvent(Event& event, const struct timeval* timeout);
+  void addTimerEvent(Event& event, const timeval* timeout);
   void removeTimerEvent(Event& event);
   size_t processTimers();
   void setProcessTimers();
@@ -344,7 +335,7 @@ class IoUringBackend : public EventBaseBackendBase {
 
   struct FdRegistry {
     FdRegistry() = delete;
-    FdRegistry(struct io_uring& ioRing, size_t n);
+    FdRegistry(io_uring& ioRing, size_t n);
 
     IoUringFdRegistrationRecord* alloc(int fd) noexcept;
     bool free(IoUringFdRegistrationRecord* record);
@@ -353,7 +344,7 @@ class IoUringBackend : public EventBaseBackendBase {
     size_t update();
 
     bool err_{false};
-    struct io_uring& ioRing_;
+    io_uring& ioRing_;
     std::vector<int> files_;
     size_t inUse_;
     std::vector<IoUringFdRegistrationRecord> records_;
@@ -396,7 +387,7 @@ class IoUringBackend : public EventBaseBackendBase {
       }
     }
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       auto* ev = event_->getEvent();
       if (ev) {
         prepPollAdd(sqe, ev->ev_fd, getPollFlags(ev->ev_events));
@@ -405,17 +396,16 @@ class IoUringBackend : public EventBaseBackendBase {
 
     virtual void processActive() {}
 
-    void prepPollAdd(
-        struct io_uring_sqe* sqe, int fd, uint32_t events) noexcept {
+    void prepPollAdd(io_uring_sqe* sqe, int fd, uint32_t events) noexcept {
       CHECK(sqe);
       ::io_uring_prep_poll_add(sqe, fd, events);
       ::io_uring_sqe_set_data(sqe, this);
     }
 
     void prepRead(
-        struct io_uring_sqe* sqe,
+        io_uring_sqe* sqe,
         int fd,
-        const struct iovec* iov,
+        const iovec* iov,
         off_t offset,
         bool registerFd) noexcept {
       prepUtilFunc(
@@ -429,9 +419,9 @@ class IoUringBackend : public EventBaseBackendBase {
     }
 
     void prepWrite(
-        struct io_uring_sqe* sqe,
+        io_uring_sqe* sqe,
         int fd,
-        const struct iovec* iov,
+        const iovec* iov,
         off_t offset,
         bool registerFd) noexcept {
       prepUtilFunc(
@@ -446,11 +436,7 @@ class IoUringBackend : public EventBaseBackendBase {
 
     template <typename Fn, typename... Args>
     void prepUtilFunc(
-        Fn fn,
-        struct io_uring_sqe* sqe,
-        bool registerFd,
-        int fd,
-        Args... args) {
+        Fn fn, io_uring_sqe* sqe, bool registerFd, int fd, Args... args) {
       CHECK(sqe);
       if (registerFd && !fdRecord_) {
         fdRecord_ = backend_->registerFd(fd);
@@ -466,8 +452,7 @@ class IoUringBackend : public EventBaseBackendBase {
       ::io_uring_sqe_set_data(sqe, this);
     }
 
-    void prepRecvmsgMultishot(
-        struct io_uring_sqe* sqe, int fd, struct msghdr* msg) noexcept {
+    void prepRecvmsgMultishot(io_uring_sqe* sqe, int fd, msghdr* msg) noexcept {
       CHECK(sqe);
       ::io_uring_prep_recvmsg_multishot(sqe, fd, msg, MSG_TRUNC);
       if (IoUringProvidedBufferRing* bp = backend_->bufferProvider()) {
@@ -477,8 +462,7 @@ class IoUringBackend : public EventBaseBackendBase {
       ::io_uring_sqe_set_data(sqe, this);
     }
 
-    FOLLY_ALWAYS_INLINE void prepCancel(
-        struct io_uring_sqe* sqe, IoSqe* cancel_sqe) {
+    FOLLY_ALWAYS_INLINE void prepCancel(io_uring_sqe* sqe, IoSqe* cancel_sqe) {
       CHECK(sqe);
       ::io_uring_prep_cancel(sqe, UserData{cancel_sqe}, 0);
       ::io_uring_sqe_set_data(sqe, this);
@@ -505,7 +489,7 @@ class IoUringBackend : public EventBaseBackendBase {
     ReadWriteIoSqe(
         IoUringBackend* backend,
         int fd,
-        const struct iovec* iov,
+        const iovec* iov,
         off_t offset,
         FileOpCallback&& cb)
         : FileOpIoSqe(backend, fd, std::move(cb)),
@@ -515,19 +499,19 @@ class IoUringBackend : public EventBaseBackendBase {
     ReadWriteIoSqe(
         IoUringBackend* backend,
         int fd,
-        Range<const struct iovec*> iov,
+        Range<const iovec*> iov,
         off_t offset,
         FileOpCallback&& cb)
         : FileOpIoSqe(backend, fd, std::move(cb)), iov_(iov), offset_(offset) {}
 
-    folly::small_vector<struct iovec> iov_;
+    folly::small_vector<iovec> iov_;
     off_t offset_;
   };
 
   struct ReadIoSqe : public ReadWriteIoSqe {
     using ReadWriteIoSqe::ReadWriteIoSqe;
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       prepRead(sqe, fd_, iov_.data(), offset_, false);
     }
   };
@@ -535,7 +519,7 @@ class IoUringBackend : public EventBaseBackendBase {
   struct WriteIoSqe : public ReadWriteIoSqe {
     using ReadWriteIoSqe::ReadWriteIoSqe;
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       prepWrite(sqe, fd_, iov_.data(), offset_, false);
     }
   };
@@ -543,7 +527,7 @@ class IoUringBackend : public EventBaseBackendBase {
   struct ReadvIoSqe : public ReadWriteIoSqe {
     using ReadWriteIoSqe::ReadWriteIoSqe;
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_readv(
           sqe, fd_, iov_.data(), (unsigned int)iov_.size(), offset_);
       ::io_uring_sqe_set_data(sqe, this);
@@ -553,7 +537,7 @@ class IoUringBackend : public EventBaseBackendBase {
   struct WritevIoSqe : public ReadWriteIoSqe {
     using ReadWriteIoSqe::ReadWriteIoSqe;
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_writev(
           sqe, fd_, iov_.data(), (unsigned int)iov_.size(), offset_);
       ::io_uring_sqe_set_data(sqe, this);
@@ -570,7 +554,7 @@ class IoUringBackend : public EventBaseBackendBase {
         IoUringBackend* backend, int fd, FSyncFlags flags, FileOpCallback&& cb)
         : FileOpIoSqe(backend, fd, std::move(cb)), flags_(flags) {}
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       unsigned int fsyncFlags = 0;
       switch (flags_) {
         case FSyncFlags::FLAGS_FSYNC:
@@ -601,7 +585,7 @@ class IoUringBackend : public EventBaseBackendBase {
           flags_(flags),
           mode_(mode) {}
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_openat(sqe, fd_, path_.c_str(), flags_, mode_);
       ::io_uring_sqe_set_data(sqe, this);
     }
@@ -616,23 +600,23 @@ class IoUringBackend : public EventBaseBackendBase {
         IoUringBackend* backend,
         int dfd,
         const char* path,
-        struct open_how* how,
+        open_how* how,
         FileOpCallback&& cb)
         : FileOpIoSqe(backend, dfd, std::move(cb)), path_(path), how_(*how) {}
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_openat2(sqe, fd_, path_.c_str(), &how_);
       ::io_uring_sqe_set_data(sqe, this);
     }
 
     std::string path_;
-    struct open_how how_;
+    open_how how_;
   };
 
   struct FCloseIoSqe : public FileOpIoSqe {
     using FileOpIoSqe::FileOpIoSqe;
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_close(sqe, fd_);
       ::io_uring_sqe_set_data(sqe, this);
     }
@@ -653,7 +637,7 @@ class IoUringBackend : public EventBaseBackendBase {
           mask_(mask),
           statxbuf_(statxbuf) {}
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_statx(sqe, fd_, path_, flags_, mask_, statxbuf_);
       ::io_uring_sqe_set_data(sqe, this);
     }
@@ -674,7 +658,7 @@ class IoUringBackend : public EventBaseBackendBase {
           oldPath_(oldPath),
           newPath_(newPath) {}
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_rename(sqe, oldPath_, newPath_);
       ::io_uring_sqe_set_data(sqe, this);
     }
@@ -694,7 +678,7 @@ class IoUringBackend : public EventBaseBackendBase {
           path_(path),
           flags_(flags) {}
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_unlinkat(sqe, fd_, path_, flags_);
       ::io_uring_sqe_set_data(sqe, this);
     }
@@ -716,7 +700,7 @@ class IoUringBackend : public EventBaseBackendBase {
           offset_(offset),
           len_(len) {}
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_fallocate(sqe, fd_, mode_, offset_, len_);
       ::io_uring_sqe_set_data(sqe, this);
     }
@@ -730,17 +714,17 @@ class IoUringBackend : public EventBaseBackendBase {
     SendmsgIoSqe(
         IoUringBackend* backend,
         int fd,
-        const struct msghdr* msg,
+        const msghdr* msg,
         unsigned int flags,
         FileOpCallback&& cb)
         : FileOpIoSqe(backend, fd, std::move(cb)), msg_(msg), flags_(flags) {}
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_sendmsg(sqe, fd_, msg_, flags_);
       ::io_uring_sqe_set_data(sqe, this);
     }
 
-    const struct msghdr* msg_;
+    const msghdr* msg_;
     unsigned int flags_;
   };
 
@@ -748,24 +732,24 @@ class IoUringBackend : public EventBaseBackendBase {
     RecvmsgIoSqe(
         IoUringBackend* backend,
         int fd,
-        struct msghdr* msg,
+        msghdr* msg,
         unsigned int flags,
         FileOpCallback&& cb)
         : FileOpIoSqe(backend, fd, std::move(cb)), msg_(msg), flags_(flags) {}
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_recvmsg(sqe, fd_, msg_, flags_);
       ::io_uring_sqe_set_data(sqe, this);
     }
 
-    struct msghdr* msg_;
+    msghdr* msg_;
     unsigned int flags_;
   };
 
   struct RecvzcIoSqe : public ReadWriteIoSqe {
     using ReadWriteIoSqe::ReadWriteIoSqe;
 
-    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+    void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_rw(
           IORING_OP_RECV_ZC, sqe, fd_, nullptr, iov_.data()->iov_len, 0);
       ::io_uring_sqe_set_data(sqe, this);
@@ -808,13 +792,13 @@ class IoUringBackend : public EventBaseBackendBase {
 
   void cleanup();
 
-  struct io_uring_sqe* getUntrackedSqe();
-  struct io_uring_sqe* getSqe();
+  io_uring_sqe* getUntrackedSqe();
+  io_uring_sqe* getSqe();
 
   // Wait helpers
-  int doInnerWait(struct io_uring_cqe*& cqe) noexcept;
-  int doWait(struct io_uring_cqe*& cqe);
-  int doPeek(struct io_uring_cqe*& cqe) noexcept;
+  int doInnerWait(io_uring_cqe*& cqe) noexcept;
+  int doWait(io_uring_cqe*& cqe);
+  int doPeek(io_uring_cqe*& cqe) noexcept;
 
   /// some ring calls require being called on a single system thread, so we need
   /// to delay init of those things until the correct thread is ready
@@ -864,8 +848,8 @@ class IoUringBackend : public EventBaseBackendBase {
   size_t numPooledIoSqeInUse_{0};
 
   // io_uring related
-  struct io_uring_params params_;
-  struct io_uring ioRing_;
+  io_uring_params params_;
+  io_uring ioRing_;
 
   FdRegistry fdRegistry_;
 
