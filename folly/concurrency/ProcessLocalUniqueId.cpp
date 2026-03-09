@@ -23,7 +23,7 @@
 namespace folly {
 
 uint64_t processLocalUniqueId() {
-  FOLLY_CONSTINIT static relaxed_atomic<uint64_t> nextEpoch{0};
+  constinit static relaxed_atomic<uint64_t> nextEpoch{0};
   // Id format is <epoch: 48 bits> <counter: 16 bits>.
   // Ephemeral threads, if any, can waste a whole epoch, so we keep epochs
   // relatively small, but large enough to amortize the atomic epoch increment.
