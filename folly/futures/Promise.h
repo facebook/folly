@@ -58,7 +58,7 @@ class FOLLY_EXPORT FutureAlreadyRetrieved : public PromiseException {
 class FOLLY_EXPORT BrokenPromise : public PromiseException {
  private:
   template <typename T>
-  static FOLLY_CONSTEVAL auto make_error_message() {
+  static consteval auto make_error_message() {
     constexpr auto prefix =
         detail::pretty_carray_from("Broken promise for type name `");
     constexpr auto prefix_size = std::size(prefix.data);
