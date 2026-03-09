@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -23,12 +24,11 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "coding_detail",
-    raw_headers = [
-        "CodingDetail.h",
-    ],
+    headers = ["CodingDetail.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
 )
 
 non_fbcode_target(
@@ -51,12 +51,6 @@ non_fbcode_target(
 )
 
 # !!!! fbcode/folly/compression/elias_fano/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "coding_detail",
-    headers = ["CodingDetail.h"],
-)
 
 fbcode_target(
     _kind = cpp_library,
