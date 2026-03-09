@@ -414,7 +414,7 @@ class IoUringBackend : public EventBaseBackendBase {
           registerFd,
           fd,
           iov->iov_base,
-          (unsigned int)iov->iov_len,
+          static_cast<unsigned int>(iov->iov_len),
           offset);
     }
 
@@ -430,7 +430,7 @@ class IoUringBackend : public EventBaseBackendBase {
           registerFd,
           fd,
           iov->iov_base,
-          (unsigned int)iov->iov_len,
+          static_cast<unsigned int>(iov->iov_len),
           offset);
     }
 
@@ -529,7 +529,11 @@ class IoUringBackend : public EventBaseBackendBase {
 
     void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_readv(
-          sqe, fd_, iov_.data(), (unsigned int)iov_.size(), offset_);
+          sqe,
+          fd_,
+          iov_.data(),
+          static_cast<unsigned int>(iov_.size()),
+          offset_);
       ::io_uring_sqe_set_data(sqe, this);
     }
   };
@@ -539,7 +543,11 @@ class IoUringBackend : public EventBaseBackendBase {
 
     void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_writev(
-          sqe, fd_, iov_.data(), (unsigned int)iov_.size(), offset_);
+          sqe,
+          fd_,
+          iov_.data(),
+          static_cast<unsigned int>(iov_.size()),
+          offset_);
       ::io_uring_sqe_set_data(sqe, this);
     }
   };

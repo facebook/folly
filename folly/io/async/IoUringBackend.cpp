@@ -342,7 +342,7 @@ int IoUringBackend::FdRegistry::init() {
 
     if (!ret) {
       // build and set the free list head if we succeed
-      for (int i = 0; i < (int)records_.size(); i++) {
+      for (int i = 0; i < static_cast<int>(records_.size()); i++) {
         records_[i].idx_ = i;
         free_.push_front(records_[i]);
       }
@@ -748,7 +748,7 @@ struct TimerUserData {
 };
 
 void timerUserDataFreeFunction(void* v) {
-  delete (TimerUserData*)(v);
+  delete static_cast<TimerUserData*>(v);
 }
 
 } // namespace
@@ -765,7 +765,7 @@ void IoUringBackend::addTimerEvent(Event& event, const timeval* timeout) {
 
   auto expire = getTimerExpireTime(*timeout);
 
-  TimerUserData* td = (TimerUserData*)event.getUserData();
+  TimerUserData* td = static_cast<TimerUserData*>(event.getUserData());
   VLOG(6) << "addTimerEvent this=" << this << " event=" << &event << " td="
           << td << " changed_=" << timerChanged_ << " u=" << timeout->tv_usec;
   if (td) {
@@ -788,7 +788,7 @@ void IoUringBackend::addTimerEvent(Event& event, const timeval* timeout) {
 }
 
 void IoUringBackend::removeTimerEvent(Event& event) {
-  TimerUserData* td = (TimerUserData*)event.getUserData();
+  TimerUserData* td = static_cast<TimerUserData*>(event.getUserData());
   VLOG(6) << "removeTimerEvent this=" << this << " event=" << &event
           << " td=" << td;
   CHECK(td && event.getFreeFunction() == timerUserDataFreeFunction);
@@ -815,7 +815,7 @@ size_t IoUringBackend::processTimers() {
     }
     timerChanged_ = true;
     Event* e = it->second;
-    TimerUserData* td = (TimerUserData*)e->getUserData();
+    TimerUserData* td = static_cast<TimerUserData*>(e->getUserData());
     VLOG(5) << "processTimer " << e << " td=" << td;
     CHECK(td && e->getFreeFunction() == timerUserDataFreeFunction);
     td->iter = timers_.end();
@@ -824,7 +824,8 @@ size_t IoUringBackend::processTimers() {
     ev->ev_res = EV_TIMEOUT;
     event_ref_flags(ev).get() = EVLIST_INIT;
     // might change the lists
-    (*event_ref_callback(ev))((int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
+    (*event_ref_callback(ev))(
+        static_cast<int>(ev->ev_fd), ev->ev_res, event_ref_arg(ev));
     ++ret;
   }
 
@@ -876,7 +877,7 @@ size_t IoUringBackend::processSignals() {
           ev->ev_res = 0;
           event_ref_flags(ev) |= EVLIST_ACTIVE;
           (*event_ref_callback(ev))(
-              (int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
+              static_cast<int>(ev->ev_fd), ev->ev_res, event_ref_arg(ev));
           event_ref_flags(ev) &= ~EVLIST_ACTIVE;
         }
       }
@@ -978,7 +979,7 @@ size_t IoUringBackend::processActiveEvents() {
       // this can happen during high load on process startup
       if (ev->ev_res) {
         (*event_ref_callback(ev))(
-            (int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
+            static_cast<int>(ev->ev_fd), ev->ev_res, event_ref_arg(ev));
       }
       // get the event again
       event = ioSqe->event_;
@@ -1407,7 +1408,7 @@ void IoUringBackend::cancel(IoSqeBase* ioSqe) {
   bool skip = false;
   ioSqe->markCancelled();
   auto* sqe = getUntrackedSqe();
-  ::io_uring_prep_cancel64(sqe, (uint64_t)ioSqe, 0);
+  ::io_uring_prep_cancel64(sqe, reinterpret_cast<uint64_t>(ioSqe), 0);
   ::io_uring_sqe_set_data(sqe, nullptr);
   if (params_.features & IORING_FEAT_CQE_SKIP) {
     sqe->flags |= IOSQE_CQE_SKIP_SUCCESS;
@@ -1613,7 +1614,7 @@ int IoUringBackend::submitEager() {
   } while (res == -EINTR);
   VLOG(2) << "IoUringBackend::submitEager() " << waitingToSubmit_;
   if (res >= 0) {
-    DCHECK((int)waitingToSubmit_ >= res);
+    DCHECK(static_cast<int>(waitingToSubmit_) >= res);
     waitingToSubmit_ -= res;
   }
   return res;
@@ -1704,7 +1705,7 @@ int IoUringBackend::submitBusyCheck(
     }
   }
 
-  DCHECK((int)waitingToSubmit_ >= i);
+  DCHECK(static_cast<int>(waitingToSubmit_) >= i);
   waitingToSubmit_ -= i;
   return num;
 }
@@ -1905,7 +1906,8 @@ void IoUringBackend::processFileOp(IoSqe* sqe, int res) noexcept {
 void IoUringBackend::processRecvZc(
     IoSqe* sqe, const io_uring_cqe* cqe) noexcept {
   RecvzcIoSqe* ioSqe = reinterpret_cast<RecvzcIoSqe*>(sqe);
-  const io_uring_zcrx_cqe* rcqe = (io_uring_zcrx_cqe*)(cqe + 1);
+  const io_uring_zcrx_cqe* rcqe =
+      reinterpret_cast<const io_uring_zcrx_cqe*>(cqe + 1);
 
   auto iov = ioSqe->iov_.data();
   if (cqe->res == 0 && cqe->flags == 0) {
