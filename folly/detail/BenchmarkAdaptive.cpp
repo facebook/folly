@@ -314,7 +314,7 @@ FOLLY_NOINLINE std::string formatIntermediateReport(
       annotations.emplace_back();
     } else {
       anyNonConverged = true;
-      annotations.push_back(s.isStable() ? "[imprecise]" : "[unstable]");
+      annotations.emplace_back(s.isStable() ? "[imprecise]" : "[unstable]");
       if (s.samples.size() >= opts.minSamples) {
         stats += "\n  " + s.formatStats();
       }
