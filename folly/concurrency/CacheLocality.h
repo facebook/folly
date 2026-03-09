@@ -273,7 +273,7 @@ struct AccessSpreader : private detail::AccessSpreaderBase {
 
  public:
   FOLLY_EXPORT static GlobalState& state() {
-    static FOLLY_CONSTINIT GlobalState state{};
+    static constinit GlobalState state{};
     if (FOLLY_UNLIKELY(!state.getcpu.load(std::memory_order_acquire))) {
       initialize(state);
     }
