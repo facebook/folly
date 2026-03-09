@@ -34,7 +34,7 @@ class UniqueInstance {
     static constexpr Ptr const ptrs[] = {
         FOLLY_TYPE_INFO_OF(tag_t<Key>)...,
         FOLLY_TYPE_INFO_OF(tag_t<Mapped>)...};
-    static FOLLY_CONSTINIT Arg arg{
+    static constinit Arg arg{
         {tmpl, ptrs, sizeof...(Key), sizeof...(Mapped)},
         {tag<Value, key_t<Z, Key...>>}};
     enforce(arg);
