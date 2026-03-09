@@ -523,41 +523,37 @@ IoUringBackend::IoUringBackend(Options options)
     params_.sq_thread_idle = options_.sqIdle.count();
   }
 
-  SQGroupInfoRegistry::FDCreateFunc func = [&](struct io_uring_params& params) {
+  SQGroupInfoRegistry::FDCreateFunc func = [&](io_uring_params& params) {
     while (true) {
       // allocate entries both for poll add and cancel
-      size_t sqeSize =
+      auto sqeSize =
           options_.sqeSize > 0 ? options_.sqeSize : 2 * options_.maxSubmit;
       int ret = ::io_uring_queue_init_params(sqeSize, &ioRing_, &params);
-      if (ret) {
-        options_.capacity /= 2;
-        if (options_.minCapacity &&
-            (options_.capacity >= options_.minCapacity)) {
-          LOG(INFO)
-              << "io_uring_queue_init_params(" << 2 * options_.maxSubmit << ","
-              << params.cq_entries << ") " << "failed errno = " << errno
-              << ":\"" << folly::errnoStr(errno) << "\" " << this
-              << " retrying with capacity = " << options_.capacity;
-
-          params_.cq_entries = options_.capacity;
-          numEntries_ = options_.capacity;
-        } else {
-          LOG(ERROR) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
-                     << "," << params.cq_entries << ") " << "failed ret = "
-                     << ret << ":\"" << folly::errnoStr(ret) << "\" " << this;
-
-          if (ret == -ENOMEM) {
-            throw std::runtime_error("io_uring_queue_init error out of memory");
-          }
-          throw NotAvailable("io_uring_queue_init error");
-        }
-      } else {
-        // success - break
-        break;
+      if (ret == 0) {
+        return ioRing_.ring_fd;
       }
-    }
 
-    return ioRing_.ring_fd;
+      options_.capacity /= 2;
+      if (options_.minCapacity && (options_.capacity >= options_.minCapacity)) {
+        LOG(INFO) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
+                  << "," << params.cq_entries << ") failed errno = " << errno
+                  << ":\"" << folly::errnoStr(errno) << "\" " << this
+                  << " retrying with capacity = " << options_.capacity;
+
+        params_.cq_entries = options_.capacity;
+        numEntries_ = options_.capacity;
+        continue;
+      }
+
+      LOG(ERROR) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
+                 << "," << params.cq_entries << ") failed ret = " << ret
+                 << ":\"" << folly::errnoStr(ret) << "\" " << this;
+
+      if (ret == -ENOMEM) {
+        throw std::runtime_error("io_uring_queue_init error out of memory");
+      }
+      throw NotAvailable("io_uring_queue_init error");
+    }
   };
 
   auto ret = sSQGroupInfoRegistry->addTo(
