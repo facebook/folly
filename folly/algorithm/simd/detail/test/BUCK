@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load("../../../../defs.bzl", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -18,35 +19,37 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "simd_for_each_test",
     srcs = ["SimdForEachTest.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/algorithm/simd/detail:simd_for_each",
+        "//folly/algorithm/simd/detail:simd_for_each",
+        "//folly/portability:gtest",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "traits_test",
     srcs = ["TraitsTest.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gmock",
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/algorithm/simd/detail:traits",
-        "//xplat/folly/lang:bits",
+        "//folly/algorithm/simd/detail:traits",
+        "//folly/lang:bits",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "unroll_utils_test",
-    srcs = ["UnrollUtilsTest.cpp"],
+    srcs = [
+        "UnrollUtilsTest.cpp",
+    ],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/algorithm/simd/detail:unroll_utils",
+        "//folly/algorithm/simd/detail:unroll_utils",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -63,40 +66,6 @@ fbcode_target(
         "//folly/algorithm/simd/detail:simd_any_of",
         "//folly/algorithm/simd/detail:simd_platform",
         "//folly/container:span",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "simd_for_each_test",
-    srcs = ["SimdForEachTest.cpp"],
-    deps = [
-        "//folly/algorithm/simd/detail:simd_for_each",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "traits_test",
-    srcs = ["TraitsTest.cpp"],
-    deps = [
-        "//folly/algorithm/simd/detail:traits",
-        "//folly/lang:bits",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "unroll_utils_test",
-    srcs = [
-        "UnrollUtilsTest.cpp",
-    ],
-    deps = [
-        "//folly/algorithm/simd/detail:unroll_utils",
         "//folly/portability:gtest",
     ],
 )
