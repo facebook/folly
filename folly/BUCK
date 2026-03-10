@@ -299,7 +299,7 @@ non_fbcode_target(
         "//xplat/folly/memory:sanitize_leak",
     ] + select({
         "DEFAULT": [],
-        "ovr_config//os:linux": ["//xplat/folly:experimental_symbolizer_symbolizer"],
+        "ovr_config//os:linux": ["//xplat/folly/experimental/symbolizer:symbolizer"],
     }),
 )
 
@@ -3425,13 +3425,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "gen_parallel",
     exported_deps = ["//xplat/folly/gen:parallel"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_symbolizer_symbolizer",
-    exported_deps = ["//xplat/folly/experimental/symbolizer:symbolizer"],
 )
 
 non_fbcode_target(
