@@ -1,24 +1,26 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "atomic_grow_array",
-    raw_headers = [
+    headers = [
         "atomic_grow_array.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "//xplat/folly:c_portability",
-        "//xplat/folly:constexpr_math",
-        "//xplat/folly:likely",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/container:span",
-        "//xplat/folly/lang:align",
-        "//xplat/folly/lang:bits",
-        "//xplat/folly/lang:new",
+        "//folly:c_portability",
+        "//folly:constexpr_math",
+        "//folly:likely",
+        "//folly:scope_guard",
+        "//folly/container:span",
+        "//folly/lang:align",
+        "//folly/lang:bits",
+        "//folly/lang:new",
     ],
 )
 
@@ -81,24 +83,6 @@ non_fbcode_target(
 )
 
 # !!!! fbcode/folly/concurrency/container/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "atomic_grow_array",
-    headers = [
-        "atomic_grow_array.h",
-    ],
-    exported_deps = [
-        "//folly:c_portability",
-        "//folly:constexpr_math",
-        "//folly:likely",
-        "//folly:scope_guard",
-        "//folly/container:span",
-        "//folly/lang:align",
-        "//folly/lang:bits",
-        "//folly/lang:new",
-    ],
-)
 
 fbcode_target(
     _kind = cpp_library,
