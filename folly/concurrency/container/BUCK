@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../../defs.bzl", "folly_xplat_library")
 
@@ -24,88 +22,24 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "flat_combining_priority_queue",
-    raw_headers = [
-        "FlatCombiningPriorityQueue.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:optional",
-        "//xplat/folly/detail:futex",
-        "//xplat/folly/experimental/flat_combining:flat_combining",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "lock_free_ring_buffer",
-    raw_headers = [
-        "LockFreeRingBuffer.h",
-    ],
+    headers = ["FlatCombiningPriorityQueue.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "fbsource//xplat/folly/portability:unistd",
-        "//xplat/folly:portability",
-        "//xplat/folly:traits",
-        "//xplat/folly/detail:turn_sequencer",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "relaxed_concurrent_priority_queue",
-    raw_headers = [
-        "RelaxedConcurrentPriorityQueue.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/synchronization:hazptr",
-        "fbsource//xplat/folly/synchronization:wait_options",
-        "fbsource//xplat/folly/synchronization/detail:spin",
-        "//xplat/folly:random",
-        "//xplat/folly:spin_lock",
-        "//xplat/folly:thread_local",
-        "//xplat/folly/detail:futex",
-        "//xplat/folly/lang:align",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "single_writer_fixed_hash_map",
-    raw_headers = [
-        "SingleWriterFixedHashMap.h",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly/lang:bits",
-    ],
-)
-
-# !!!! fbcode/folly/concurrency/container/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "relaxed_concurrent_priority_queue",
-    headers = [
-        "RelaxedConcurrentPriorityQueue.h",
-    ],
-    exported_deps = [
-        "//folly:random",
-        "//folly:spin_lock",
-        "//folly:thread_local",
+        "fbsource//third-party/glog:glog",
+        "//folly:optional",
         "//folly/detail:futex",
-        "//folly/lang:align",
-        "//folly/synchronization:hazptr",
-        "//folly/synchronization:wait_options",
-        "//folly/synchronization/detail:spin",
+        "//folly/synchronization:flat_combining",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "lock_free_ring_buffer",
     headers = ["LockFreeRingBuffer.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
         "//folly:traits",
@@ -118,24 +52,32 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "flat_combining_priority_queue",
-    headers = ["FlatCombiningPriorityQueue.h"],
+fb_dirsync_cpp_library(
+    name = "relaxed_concurrent_priority_queue",
+    headers = [
+        "RelaxedConcurrentPriorityQueue.h",
+    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:optional",
+        "//folly:random",
+        "//folly:spin_lock",
+        "//folly:thread_local",
         "//folly/detail:futex",
-        "//folly/synchronization:flat_combining",
+        "//folly/lang:align",
+        "//folly/synchronization:hazptr",
+        "//folly/synchronization:wait_options",
+        "//folly/synchronization/detail:spin",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "single_writer_fixed_hash_map",
     headers = [
         "SingleWriterFixedHashMap.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly/lang:bits",
