@@ -8,13 +8,14 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "base64_common",
-    raw_headers = ["Base64Common.h"],
-    deps = [
-        "//xplat/folly:utility",
-        "//xplat/folly/detail/base64_detail:base64_constants",
+    headers = ["Base64Common.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":base64_constants",
+        "//folly:utility",
     ],
 )
 
@@ -25,49 +26,53 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_library,
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "base64_hidden_constants",
-    raw_headers = ["Base64HiddenConstants.h"],
-    deps = [
-        "//xplat/folly/detail/base64_detail:base64_constants",
+    headers = ["Base64HiddenConstants.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":base64_constants",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "base64_scalar",
-    raw_headers = ["Base64Scalar.h"],
-    deps = [
-        "fbsource//xplat/folly/portability:constexpr",
-        "//xplat/folly:utility",
-        "//xplat/folly/detail/base64_detail:base64_common",
-        "//xplat/folly/detail/base64_detail:base64_constants",
-        "//xplat/folly/memory:uninitialized_memory_hacks",
+    headers = ["Base64Scalar.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":base64_common",
+        ":base64_constants",
+        "//folly:utility",
+        "//folly/memory:uninitialized_memory_hacks",
+        "//folly/portability:constexpr",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "base64_simd",
-    raw_headers = ["Base64Simd.h"],
-    deps = [
-        "//xplat/folly:c_portability",
-        "//xplat/folly/detail/base64_detail:base64_common",
-        "//xplat/folly/detail/base64_detail:base64_constants",
-        "//xplat/folly/detail/base64_detail:base64_hidden_constants",
-        "//xplat/folly/detail/base64_detail:base64_scalar",
-        "//xplat/folly/detail/base64_detail:base64_swar",
+    headers = ["Base64Simd.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":base64_common",
+        ":base64_constants",
+        ":base64_hidden_constants",
+        ":base64_scalar",
+        ":base64_swar",
+        "//folly:c_portability",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "base64_sse4_2_platform",
-    raw_headers = ["Base64_SSE4_2_Platform.h"],
-    deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly/detail/base64_detail:base64_hidden_constants",
+    headers = ["Base64_SSE4_2_Platform.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":base64_hidden_constants",
+        "//folly:portability",
     ],
 )
 
@@ -105,31 +110,12 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "base64_api",
-    srcs = ["Base64Api.cpp"],
-    raw_headers = ["Base64Api.h"],
-    deps = [
-        "//xplat/folly/detail/base64_detail:base64_common",
-        "//xplat/folly/detail/base64_detail:base64_scalar",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/portability:constexpr",
-        "//xplat/folly:cpu_id",
-        "//xplat/folly:portability",
-        "//xplat/folly/detail/base64_detail:base64_sse4_2",
-        "//xplat/folly/detail/base64_detail:base64_swar",
-    ],
-)
-
-# !!!! fbcode/folly/detail/base64_detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "base64_api",
     srcs = ["Base64Api.cpp"],
     headers = ["Base64Api.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         ":base64_sse4_2",
         ":base64_swar",
@@ -143,61 +129,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "base64_common",
-    headers = ["Base64Common.h"],
-    exported_deps = [
-        ":base64_constants",
-        "//folly:utility",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "base64_hidden_constants",
-    headers = ["Base64HiddenConstants.h"],
-    exported_deps = [
-        ":base64_constants",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "base64_scalar",
-    headers = ["Base64Scalar.h"],
-    exported_deps = [
-        ":base64_common",
-        ":base64_constants",
-        "//folly:utility",
-        "//folly/memory:uninitialized_memory_hacks",
-        "//folly/portability:constexpr",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "base64_simd",
-    headers = ["Base64Simd.h"],
-    exported_deps = [
-        ":base64_common",
-        ":base64_constants",
-        ":base64_hidden_constants",
-        ":base64_scalar",
-        ":base64_swar",
-        "//folly:c_portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "base64_sse4_2_platform",
-    headers = ["Base64_SSE4_2_Platform.h"],
-    exported_deps = [
-        ":base64_hidden_constants",
-        "//folly:portability",
-    ],
-)
+# !!!! fbcode/folly/detail/base64_detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
 fbcode_target(
     _kind = cpp_library,
