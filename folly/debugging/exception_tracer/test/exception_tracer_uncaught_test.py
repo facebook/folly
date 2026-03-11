@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pyre-strict
 
 import os
 import signal
@@ -21,13 +22,14 @@ import unittest
 
 
 class ExceptionTracerUncaughtTest(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.helper = os.environ.get("EXCEPTION_TRACER_TEST_BIN")
         self.assertIsNotNone(
             self.helper, "EXCEPTION_TRACER_TEST_BIN env var must be set"
         )
 
-    def test_uncaught_exception(self):
+    def test_uncaught_exception(self) -> None:
+        assert self.helper is not None
         p = subprocess.Popen(
             [self.helper], stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
