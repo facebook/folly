@@ -1,20 +1,21 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load("../../defs.bzl", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "hex_test",
     srcs = ["hex_test.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gmock",
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:likely",
-        "//xplat/folly/codec:hex",
-        "//xplat/folly/lang:keep",
+        "//folly:likely",
+        "//folly/codec:hex",
+        "//folly/lang:keep",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -27,19 +28,6 @@ non_fbcode_target(
         "//third-party/fmt:fmt",
         "//xplat/folly:random",
         "//xplat/folly/codec:uuid",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "hex_test",
-    srcs = ["hex_test.cpp"],
-    deps = [
-        "//folly:likely",
-        "//folly/codec:hex",
-        "//folly/lang:keep",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
