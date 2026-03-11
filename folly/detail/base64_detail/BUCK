@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "../../defs.bzl",
     "folly_xplat_library",
@@ -17,10 +18,11 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "base64_constants",
-    raw_headers = ["Base64Constants.h"],
+    headers = ["Base64Constants.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
 )
 
 non_fbcode_target(
@@ -86,19 +88,20 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "base64_swar",
     srcs = ["Base64SWAR.cpp"],
-    raw_headers = ["Base64SWAR.h"],
+    headers = ["Base64SWAR.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "//xplat/folly/detail/base64_detail:base64_common",
-        "//xplat/folly/detail/base64_detail:base64_constants",
-        "//xplat/folly/detail/base64_detail:base64_hidden_constants",
-        "//xplat/folly/detail/base64_detail:base64_scalar",
+        ":base64_constants",
+        ":base64_hidden_constants",
+        ":base64_scalar",
+        "//folly:portability",
     ],
     exported_deps = [
-        "//xplat/folly:portability",
+        ":base64_common",
     ],
 )
 
@@ -148,12 +151,6 @@ fbcode_target(
         ":base64_constants",
         "//folly:utility",
     ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "base64_constants",
-    headers = ["Base64Constants.h"],
 )
 
 fbcode_target(
@@ -218,21 +215,5 @@ fbcode_target(
     exported_deps = [
         ":base64_common",
         "//folly:portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "base64_swar",
-    srcs = ["Base64SWAR.cpp"],
-    headers = ["Base64SWAR.h"],
-    deps = [
-        ":base64_constants",
-        ":base64_hidden_constants",
-        ":base64_scalar",
-        "//folly:portability",
-    ],
-    exported_deps = [
-        ":base64_common",
     ],
 )
