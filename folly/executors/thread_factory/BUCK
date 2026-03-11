@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "../../defs.bzl",
     "folly_xplat_library",
@@ -51,26 +52,11 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "named_thread_factory",
-    raw_headers = [
-        "NamedThreadFactory.h",
-    ],
-    exported_deps = [
-        "//xplat/folly:conv",
-        "//xplat/folly:range",
-        "//xplat/folly/executors/thread_factory:thread_factory",
-        "//xplat/folly/system:thread_name",
-    ],
-)
-
-# !!!! fbcode/folly/executors/thread_factory/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "named_thread_factory",
     headers = ["NamedThreadFactory.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":thread_factory",
         "//folly:conv",
@@ -78,6 +64,8 @@ fbcode_target(
         "//folly/system:thread_name",
     ],
 )
+
+# !!!! fbcode/folly/executors/thread_factory/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
 fbcode_target(
     _kind = cpp_library,
