@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pyre-unsafe
+# pyre-strict
 
 import asyncio
 import itertools
@@ -25,7 +25,9 @@ import folly.python.test.request_context_helper as frc_helper
 from folly import request_context
 
 
-async def get_Context(pass_ctx) -> request_context.Context | None:
+async def get_Context(
+    pass_ctx: request_context.Context,
+) -> request_context.Context | None:
     ctx = request_context.get_from_contextvar()
     assert pass_ctx == ctx, f"Expected {pass_ctx} but got {ctx}"
     for _ in range(25):
@@ -85,10 +87,12 @@ class RequestContextTest(IsolatedAsyncioTestCase):
 
     async def test_multiple_ctx_copies_memory_leak(self) -> None:
         tasks = []
+        ctx1: request_context.Context
         with request_context.active() as ctx1:
             for _ in range(20):
                 tasks.append(asyncio.create_task(get_Context(ctx1)))
 
+        ctx2: request_context.Context
         with request_context.active() as ctx2:
             for _ in range(28):
                 tasks.append(asyncio.create_task(get_Context(ctx2)))
@@ -192,7 +196,7 @@ class RequestContextTest(IsolatedAsyncioTestCase):
         # This is simulating some code setting the context in C++ land
         frc_helper.setContext()
         # Lets get a Context wrapper object to represent this var
-        set_ctx = request_context.save()
+        set_ctx: request_context.Context = request_context.save()
 
         # Without observing setContext calls we can't automatically update the contextvar
         expected = request_context.get_from_contextvar()
@@ -200,14 +204,14 @@ class RequestContextTest(IsolatedAsyncioTestCase):
 
         touched = 0
 
-        async def test_context():
+        async def test_context() -> None:
             await asyncio.sleep(0)
             nonlocal touched
             ctx = request_context.save()
             self.assertEqual(ctx, set_ctx)
             touched += 1
 
-        async def set_context():
+        async def set_context() -> None:
             nonlocal touched
             frc_helper.setContext()
             # Moved this to the most problematic spot if something was going to change it during task switching
