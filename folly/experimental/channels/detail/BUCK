@@ -1,54 +1,35 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../../../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "atomic_queue",
-    raw_headers = [
-        "AtomicQueue.h",
-    ],
-    exported_deps = [
-        "//xplat/folly/channels/detail:atomic_queue",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "channel_bridge",
-    raw_headers = [
-        "ChannelBridge.h",
-    ],
-    exported_deps = [
-        "//xplat/folly/channels/detail:channel_bridge",
-    ],
-)
-
-# !!!! fbcode/folly/experimental/channels/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "atomic_queue",
     headers = [
         "AtomicQueue.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/channels/detail:atomic_queue",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "channel_bridge",
     headers = [
         "ChannelBridge.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/channels/detail:channel_bridge",
     ],
 )
+
+# !!!! fbcode/folly/experimental/channels/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
 fbcode_target(
     _kind = cpp_library,

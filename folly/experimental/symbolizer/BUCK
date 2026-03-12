@@ -1,68 +1,87 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
 # xplat build rules
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "dwarf",
-    raw_headers = [
+    headers = [
         "Dwarf.h",
         "DwarfImpl.h",
         "DwarfLineNumberVM.h",
         "DwarfSection.h",
         "DwarfUtil.h",
     ],
-    exported_deps = ["//xplat/folly/debugging/symbolizer:dwarf"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/debugging/symbolizer:dwarf",
+    ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "elf",
-    raw_headers = [
+    headers = [
         "Elf.h",
         "Elf-inl.h",
     ],
-    exported_deps = ["//xplat/folly/debugging/symbolizer:elf"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/debugging/symbolizer:elf",
+    ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "elf_cache",
-    raw_headers = [
+    headers = [
         "ElfCache.h",
     ],
-    exported_deps = ["//xplat/folly/debugging/symbolizer:elf_cache"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/debugging/symbolizer:elf_cache",
+    ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "line_reader",
-    raw_headers = [
+    headers = [
         "LineReader.h",
     ],
-    exported_deps = ["//xplat/folly/debugging/symbolizer:line_reader"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/debugging/symbolizer:line_reader",
+    ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "stack_trace",
-    raw_headers = [
+    headers = [
         "StackTrace.h",
     ],
-    exported_deps = ["//xplat/folly/debugging/symbolizer:stack_trace"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/debugging/symbolizer:stack_trace",
+    ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "symbolized_frame",
-    raw_headers = [
+    headers = [
         "SymbolizedFrame.h",
     ],
-    exported_deps = ["//xplat/folly/debugging/symbolizer:symbolized_frame"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/debugging/symbolizer:symbolized_frame",
+    ],
 )
 
 non_fbcode_target(
@@ -77,77 +96,6 @@ non_fbcode_target(
 )
 
 # fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "dwarf",
-    headers = [
-        "Dwarf.h",
-        "DwarfImpl.h",
-        "DwarfLineNumberVM.h",
-        "DwarfSection.h",
-        "DwarfUtil.h",
-    ],
-    exported_deps = [
-        "//folly/debugging/symbolizer:dwarf",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "elf",
-    headers = [
-        "Elf.h",
-        "Elf-inl.h",
-    ],
-    exported_deps = [
-        "//folly/debugging/symbolizer:elf",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "symbolized_frame",
-    headers = [
-        "SymbolizedFrame.h",
-    ],
-    exported_deps = [
-        "//folly/debugging/symbolizer:symbolized_frame",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "line_reader",
-    headers = [
-        "LineReader.h",
-    ],
-    exported_deps = [
-        "//folly/debugging/symbolizer:line_reader",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "stack_trace",
-    headers = [
-        "StackTrace.h",
-    ],
-    exported_deps = [
-        "//folly/debugging/symbolizer:stack_trace",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "elf_cache",
-    headers = [
-        "ElfCache.h",
-    ],
-    exported_deps = [
-        "//folly/debugging/symbolizer:elf_cache",
-    ],
-)
 
 fbcode_target(
     _kind = cpp_library,
