@@ -3,6 +3,7 @@ load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../../../defs.bzl", "folly_xplat_cxx_binary", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 load("../../../io/async/test/certs/defs.bzl", "alias_pem")
 
@@ -45,31 +46,33 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "tfo_util",
     srcs = [
         "TFOUtil.cpp",
     ],
-    raw_headers = [
+    headers = [
         "TFOUtil.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
-        "//xplat/folly/detail:socket_fast_open",
+        "//folly/detail:socket_fast_open",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "async_signal_handler_test_lib",
-    raw_headers = [
+    headers = [
         "AsyncSignalHandlerTestLib.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        "fbsource//xplat/folly/portability:gtest",
         ":util",
-        "//xplat/folly/io/async:async_base",
-        "//xplat/folly/io/async:async_signal_handler",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_signal_handler",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -384,32 +387,39 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "blocking_socket",
-    raw_headers = ["BlockingSocket.h"],
+    headers = ["BlockingSocket.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        "//xplat/folly:optional",
-        "//xplat/folly/io/async:async_socket",
-        "//xplat/folly/io/async:async_ssl_socket",
-        "//xplat/folly/io/async:ssl_context",
-        "//xplat/folly/net:network_socket",
+        "//folly:optional",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:async_ssl_socket",
+        "//folly/io/async:ssl_context",
+        "//folly/net:network_socket",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "callback_state_enum",
-    raw_headers = ["CallbackStateEnum.h"],
+    headers = [
+        "CallbackStateEnum.h",
+    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "conn_callback",
-    raw_headers = ["ConnCallback.h"],
+    headers = [
+        "ConnCallback.h",
+    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":callback_state_enum",
-        "//xplat/folly/io/async:async_socket",
+        "//folly/io/async:async_socket",
     ],
 )
 
@@ -516,17 +526,18 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_library(
     name = "event_base_thread_test",
     srcs = ["EventBaseThreadTest.cpp"],
-    raw_headers = [],
+    headers = [],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "fbsource//xplat/folly/synchronization:baton",
-        "//xplat/folly/io/async:event_base_manager",
-        "//xplat/folly/io/async:event_base_thread",
-        "//xplat/folly/system:thread_name",
+        "//folly/io/async:event_base_manager",
+        "//folly/io/async:event_base_thread",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+        "//folly/system:thread_name",
     ],
 )
 
@@ -584,50 +595,54 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "mock_server_socket",
-    raw_headers = ["MockAsyncServerSocket.h"],
+    headers = ["MockAsyncServerSocket.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        "fbsource//xplat/folly/portability:gmock",
-        "//xplat/folly/io/async:async_base",
-        "//xplat/folly/io/async:server_socket",
+        "//folly/io/async:async_base",
+        "//folly/io/async:server_socket",
+        "//folly/portability:gmock",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_library(
     name = "notification_queue_test",
     srcs = ["NotificationQueueTest.cpp"],
-    raw_headers = [],
+    headers = [],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "fbsource//xplat/folly/synchronization:baton",
-        "//xplat/folly/io/async:async_base",
-        "//xplat/folly/io/async:scoped_event_base_thread",
+        "//folly/io/async:async_base",
+        "//folly/io/async:scoped_event_base_thread",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_library(
     name = "atomic_notification_queue_test",
     srcs = ["AtomicNotificationQueueTest.cpp"],
-    raw_headers = [],
+    headers = [],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/io/async:async_base",
+        "//folly/io/async:async_base",
+        "//folly/portability:gtest",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_binary,
+fb_dirsync_cpp_library(
     name = "notification_queue_benchmark",
     srcs = ["NotificationQueueBenchmark.cpp"],
-    raw_headers = [],
+    headers = [],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_binary,
     deps = [
-        "fbsource//xplat/folly/synchronization:baton",
-        "//xplat/folly:benchmark",
-        "//xplat/folly/io/async:async_base",
+        "//folly:benchmark",
+        "//folly/io/async:async_base",
+        "//folly/synchronization:baton",
     ],
 )
 
@@ -646,43 +661,47 @@ non_fbcode_target(
     exported_deps = ["//xplat/folly/io/async:request_context"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "scoped_bound_port",
     srcs = ["ScopedBoundPort.cpp"],
-    raw_headers = ["ScopedBoundPort.h"],
+    headers = ["ScopedBoundPort.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
-        "//xplat/folly:memory",
-        "//xplat/folly/io/async:scoped_event_base_thread",
-        "//xplat/folly/io/async:server_socket",
+        "//folly:memory",
+        "//folly/io/async:scoped_event_base_thread",
+        "//folly/io/async:server_socket",
     ],
-    exported_deps = ["//xplat/folly:network_address"],
+    exported_deps = [
+        "//folly:network_address",
+    ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_library(
     name = "scoped_event_base_thread_test",
     srcs = ["ScopedEventBaseThreadTest.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/futures:core",
-        "fbsource//xplat/folly/portability:gtest",
-        "fbsource//xplat/folly/synchronization:baton",
-        "//xplat/folly:optional",
-        "//xplat/folly/io/async:event_base_manager",
-        "//xplat/folly/io/async:scoped_event_base_thread",
-        "//xplat/folly/system:thread_name",
+        "//folly:optional",
+        "//folly/futures:core",
+        "//folly/io/async:event_base_manager",
+        "//folly/io/async:scoped_event_base_thread",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
+        "//folly/system:thread_name",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_binary,
+fb_dirsync_cpp_library(
     name = "socket_client",
     srcs = ["SocketClient.cpp"],
-    raw_headers = [],
+    headers = [],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_binary,
     deps = [
-        "fbsource//xplat/folly/portability:gflags",
         ":blocking_socket",
-        "//xplat/folly:exception_wrapper",
+        "//folly:exception_wrapper",
+        "//folly/portability:gflags",
     ],
 )
 
@@ -711,15 +730,15 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_library(
     name = "time_util_test",
     srcs = ["TimeUtilTest.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "fbsource//xplat/folly/portability:unistd",
+        "fbsource//third-party/glog:glog",
         ":util",
-        "//third-party/glog:glog",
+        "//folly/portability:gtest",
+        "//folly/portability:unistd",
     ],
 )
 
@@ -766,108 +785,119 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "ssl_util",
-    srcs = ["SSLUtil.cpp"],
-    raw_headers = [
+    srcs = [
+        "SSLUtil.cpp",
+    ],
+    headers = [
         "SSLUtil.h",
     ],
-    exported_deps = ["//xplat/folly/ssl:openssl_ptr_types"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        "//folly/ssl:openssl_ptr_types",
+    ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "util",
     srcs = [
         "SocketPair.cpp",
         "TimeUtil.cpp",
     ],
-    raw_headers = [
+    headers = [
         "SocketPair.h",
         "TimeUtil.h",
         "UndelayedDestruction.h",
         "Util.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
-        "fbsource//xplat/folly/portability:fcntl",
-        "fbsource//xplat/folly/portability:sockets",
-        "fbsource//xplat/folly/portability:unistd",
-        "//third-party/glog:glog",
-        "//xplat/folly:conv",
-        "//xplat/folly:portability",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:string",
-        "//xplat/folly/net:net_ops",
-        "//xplat/folly/system:thread_id",
+        "fbsource//third-party/glog:glog",
+        "//folly:conv",
+        "//folly:portability",
+        "//folly:scope_guard",
+        "//folly:string",
+        "//folly/net:net_ops",
+        "//folly/portability:fcntl",
+        "//folly/portability:sockets",
+        "//folly/portability:unistd",
+        "//folly/system:thread_id",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "fbsource//xplat/folly/portability:sys_types",
-        "//xplat/folly:test_test_utils",
-        "//xplat/folly/net:network_socket",
+        "//folly/net:network_socket",
+        "//folly/portability:gtest",
+        "//folly/portability:sys_types",
+        "//folly/test:test_utils",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_library(
     name = "write_chain_async_transport_wrapper_test",
     srcs = ["WriteChainAsyncTransportWrapperTest.cpp"],
-    raw_headers = [],
+    headers = [],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gmock",
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/io/async:async_transport",
-        "//xplat/folly/io/async:decorated_async_transport_wrapper",
+        "//folly/io/async:async_transport",
+        "//folly/io/async:decorated_async_transport_wrapper",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_library(
     name = "write_flags_test",
     srcs = ["WriteFlagsTest.cpp"],
-    raw_headers = [],
+    headers = [],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/io/async:async_transport",
+        "//folly/io/async:async_transport",
+        "//folly/portability:gtest",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "zero_copy_lib",
     srcs = ["ZeroCopy.cpp"],
-    raw_headers = ["ZeroCopy.h"],
+    headers = ["ZeroCopy.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        "fbsource//xplat/folly/io:iobuf",
-        "//xplat/folly:exception_wrapper",
-        "//xplat/folly:network_address",
-        "//xplat/folly/io/async:async_base",
-        "//xplat/folly/io/async:async_socket",
-        "//xplat/folly/io/async:server_socket",
+        "//folly:exception_wrapper",
+        "//folly:network_address",
+        "//folly/io:iobuf",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:server_socket",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_library(
     name = "zero_copy_test",
     srcs = ["ZeroCopyTest.cpp"],
-    raw_headers = [],
+    headers = [],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
         ":zero_copy_lib",
+        "//folly/portability:gtest",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_binary,
+fb_dirsync_cpp_library(
     name = "zero_copy_benchmark",
     srcs = ["ZeroCopyBenchmark.cpp"],
-    raw_headers = [],
+    headers = [],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_binary,
     deps = [
-        "fbsource//xplat/folly/portability:gflags",
         ":zero_copy_lib",
-        "//xplat/folly:benchmark",
+        "//folly:benchmark",
+        "//folly/portability:gflags",
     ],
 )
 
@@ -921,34 +951,6 @@ fbcode_target(
         "//folly/portability:sockets",
         "//folly/portability:unistd",
         "//folly/testing:test_util",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "tfo_util",
-    srcs = [
-        "TFOUtil.cpp",
-    ],
-    headers = [
-        "TFOUtil.h",
-    ],
-    deps = [
-        "//folly/detail:socket_fast_open",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "async_signal_handler_test_lib",
-    headers = [
-        "AsyncSignalHandlerTestLib.h",
-    ],
-    exported_deps = [
-        ":util",
-        "//folly/io/async:async_base",
-        "//folly/io/async:async_signal_handler",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -1294,39 +1296,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_library,
-    name = "blocking_socket",
-    headers = ["BlockingSocket.h"],
-    exported_deps = [
-        "//folly:optional",
-        "//folly/io/async:async_socket",
-        "//folly/io/async:async_ssl_socket",
-        "//folly/io/async:ssl_context",
-        "//folly/net:network_socket",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "callback_state_enum",
-    headers = [
-        "CallbackStateEnum.h",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "conn_callback",
-    headers = [
-        "ConnCallback.h",
-    ],
-    exported_deps = [
-        ":callback_state_enum",
-        "//folly/io/async:async_socket",
-    ],
-)
-
-fbcode_target(
     _kind = cpp_unittest,
     name = "delayed_destruction_base_test",
     srcs = ["DelayedDestructionBaseTest.cpp"],
@@ -1436,20 +1405,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
-    name = "event_base_thread_test",
-    srcs = ["EventBaseThreadTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/io/async:event_base_manager",
-        "//folly/io/async:event_base_thread",
-        "//folly/portability:gtest",
-        "//folly/synchronization:baton",
-        "//folly/system:thread_name",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
     name = "hhwheel_timer_slow_test",
     srcs = ["HHWheelTimerSlowTests.cpp"],
     headers = [],
@@ -1506,53 +1461,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_library,
-    name = "mock_server_socket",
-    headers = ["MockAsyncServerSocket.h"],
-    exported_deps = [
-        "//folly/io/async:async_base",
-        "//folly/io/async:server_socket",
-        "//folly/portability:gmock",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "notification_queue_test",
-    srcs = ["NotificationQueueTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/io/async:async_base",
-        "//folly/io/async:scoped_event_base_thread",
-        "//folly/portability:gtest",
-        "//folly/synchronization:baton",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "atomic_notification_queue_test",
-    srcs = ["AtomicNotificationQueueTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/io/async:async_base",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_binary,
-    name = "notification_queue_benchmark",
-    srcs = ["NotificationQueueBenchmark.cpp"],
-    headers = [],
-    deps = [
-        "//folly:benchmark",
-        "//folly/io/async:async_base",
-        "//folly/synchronization:baton",
-    ],
-)
-
-fbcode_target(
     _kind = cpp_benchmark,
     name = "request_context_benchmark",
     srcs = ["RequestContextBenchmark.cpp"],
@@ -1587,36 +1495,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_library,
-    name = "scoped_bound_port",
-    srcs = ["ScopedBoundPort.cpp"],
-    headers = ["ScopedBoundPort.h"],
-    deps = [
-        "//folly:memory",
-        "//folly/io/async:scoped_event_base_thread",
-        "//folly/io/async:server_socket",
-    ],
-    exported_deps = [
-        "//folly:network_address",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "scoped_event_base_thread_test",
-    srcs = ["ScopedEventBaseThreadTest.cpp"],
-    deps = [
-        "//folly:optional",
-        "//folly/futures:core",
-        "//folly/io/async:event_base_manager",
-        "//folly/io/async:scoped_event_base_thread",
-        "//folly/portability:gtest",
-        "//folly/synchronization:baton",
-        "//folly/system:thread_name",
-    ],
-)
-
-fbcode_target(
     _kind = cpp_unittest,
     name = "terminate_cancellation_token_test",
     srcs = ["TerminateCancellationTokenTest.cpp"],
@@ -1624,18 +1502,6 @@ fbcode_target(
         "//folly/io/async:terminate_cancellation_token",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_binary,
-    name = "socket_client",
-    srcs = ["SocketClient.cpp"],
-    headers = [],
-    deps = [
-        ":blocking_socket",
-        "//folly:exception_wrapper",
-        "//folly/portability:gflags",
     ],
 )
 
@@ -1660,18 +1526,6 @@ fbcode_target(
         "//folly/ssl:ssl_session",
         "//folly/ssl/detail:openssl_session",
         "//folly/testing:test_util",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "time_util_test",
-    srcs = ["TimeUtilTest.cpp"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        ":util",
-        "//folly/portability:gtest",
-        "//folly/portability:unistd",
     ],
 )
 
@@ -1731,20 +1585,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_library,
-    name = "ssl_util",
-    srcs = [
-        "SSLUtil.cpp",
-    ],
-    headers = [
-        "SSLUtil.h",
-    ],
-    exported_deps = [
-        "//folly/ssl:openssl_ptr_types",
-    ],
-)
-
-fbcode_target(
     _kind = cpp_unittest,
     name = "timerfd_timeout_manager_test",
     srcs = ["TimerFDTimeoutManagerTest.cpp"],
@@ -1754,101 +1594,6 @@ fbcode_target(
         "//folly/io/async:timerfd",
         "//folly/io/async/test:util",
         "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "util",
-    srcs = [
-        "SocketPair.cpp",
-        "TimeUtil.cpp",
-    ],
-    headers = [
-        "SocketPair.h",
-        "TimeUtil.h",
-        "UndelayedDestruction.h",
-        "Util.h",
-    ],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:conv",
-        "//folly:portability",
-        "//folly:scope_guard",
-        "//folly:string",
-        "//folly/net:net_ops",
-        "//folly/portability:fcntl",
-        "//folly/portability:sockets",
-        "//folly/portability:unistd",
-        "//folly/system:thread_id",
-    ],
-    exported_deps = [
-        "//folly/net:network_socket",
-        "//folly/portability:gtest",
-        "//folly/portability:sys_types",
-        "//folly/test:test_utils",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "write_chain_async_transport_wrapper_test",
-    srcs = ["WriteChainAsyncTransportWrapperTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/io/async:async_transport",
-        "//folly/io/async:decorated_async_transport_wrapper",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "write_flags_test",
-    srcs = ["WriteFlagsTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/io/async:async_transport",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "zero_copy_lib",
-    srcs = ["ZeroCopy.cpp"],
-    headers = ["ZeroCopy.h"],
-    exported_deps = [
-        "//folly:exception_wrapper",
-        "//folly:network_address",
-        "//folly/io:iobuf",
-        "//folly/io/async:async_base",
-        "//folly/io/async:async_socket",
-        "//folly/io/async:server_socket",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "zero_copy_test",
-    srcs = ["ZeroCopyTest.cpp"],
-    headers = [],
-    deps = [
-        ":zero_copy_lib",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_binary,
-    name = "zero_copy_benchmark",
-    srcs = ["ZeroCopyBenchmark.cpp"],
-    headers = [],
-    deps = [
-        ":zero_copy_lib",
-        "//folly:benchmark",
-        "//folly/portability:gflags",
     ],
 )
 
@@ -2134,7 +1879,7 @@ fbcode_target(
         "//folly:scope_guard",
         "//folly:string",
         "//folly/io:fs_util",
-        "//folly/io/async:async_base",
+        "//folly/io/async:async_base_class",
         "//folly/io/async/test:io_test_temp_file_util_lib",
         "//folly/portability:gtest",
         "//folly/portability:sockets",

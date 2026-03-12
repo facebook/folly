@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../../../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -35,22 +36,12 @@ non_fbcode_target(
 
 ### this line is a hint for source control merge
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "socket_fds",
-    srcs = ["SocketFds.cpp"],
-    raw_headers = ["SocketFds.h"],
-    exported_deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:file",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "socket_fds",
     srcs = ["SocketFds.cpp"],
     headers = ["SocketFds.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:file",

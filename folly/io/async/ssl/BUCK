@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../../../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -30,45 +31,52 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "openssl_utils",
     srcs = ["OpenSSLUtils.cpp"],
-    raw_headers = ["OpenSSLUtils.h"],
+    headers = ["OpenSSLUtils.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
-        "fbsource//xplat/folly/portability:unistd",
-        "//third-party/glog:glog",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/ssl/detail:openssl_session",
+        "fbsource//third-party/glog:glog",
+        "//folly:scope_guard",
+        "//folly/portability:unistd",
+        "//folly/ssl/detail:openssl_session",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/portability:openssl",
-        "fbsource//xplat/folly/portability:sockets",
-        "//xplat/folly:range",
-        "//xplat/folly/io/async:async_socket_exception",
-        "//xplat/folly/net:network_socket",
-        "//xplat/folly/ssl:openssl_ptr_types",
-        "//xplat/folly/ssl:ssl_session",
+        "//folly:range",
+        "//folly/io/async:async_socket_exception",
+        "//folly/net:network_socket",
+        "//folly/portability:openssl",
+        "//folly/portability:sockets",
+        "//folly/ssl:openssl_ptr_types",
+        "//folly/ssl:ssl_session",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "ssl_errors",
     srcs = ["SSLErrors.cpp"],
-    raw_headers = ["SSLErrors.h"],
+    headers = ["SSLErrors.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
-        "fbsource//xplat/folly/portability:openssl",
-        "//xplat/folly:range",
+        "//folly:range",
+        "//folly/portability:openssl",
     ],
-    exported_deps = ["//xplat/folly/io/async:async_socket_exception"],
+    exported_deps = [
+        "//folly/io/async:async_socket_exception",
+    ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "tls_definitions",
-    raw_headers = ["TLSDefinitions.h"],
-    exported_deps = ["fbsource//xplat/folly/io:iobuf"],
+    headers = ["TLSDefinitions.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        "//folly/io:iobuf",
+    ],
 )
 
 # !!!! fbcode/folly/io/async/ssl/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
@@ -99,50 +107,5 @@ fbcode_target(
         "//folly/io/async:async_transport_certificate",
         "//folly/portability:openssl",
         "//folly/ssl:openssl_ptr_types",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "openssl_utils",
-    srcs = ["OpenSSLUtils.cpp"],
-    headers = ["OpenSSLUtils.h"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:scope_guard",
-        "//folly/portability:unistd",
-        "//folly/ssl/detail:openssl_session",
-    ],
-    exported_deps = [
-        "//folly:range",
-        "//folly/io/async:async_socket_exception",
-        "//folly/net:network_socket",
-        "//folly/portability:openssl",
-        "//folly/portability:sockets",
-        "//folly/ssl:openssl_ptr_types",
-        "//folly/ssl:ssl_session",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "ssl_errors",
-    srcs = ["SSLErrors.cpp"],
-    headers = ["SSLErrors.h"],
-    deps = [
-        "//folly:range",
-        "//folly/portability:openssl",
-    ],
-    exported_deps = [
-        "//folly/io/async:async_socket_exception",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "tls_definitions",
-    headers = ["TLSDefinitions.h"],
-    exported_deps = [
-        "//folly/io:iobuf",
     ],
 )

@@ -147,6 +147,7 @@ folly_add_library(
     folly_io_async_io_uring_provided_buffer_ring
     folly_memory_malloc
     folly_portability_sys_uio
+    folly_random
   EXPORTED_DEPS
     folly_futures_core
     folly_io_async_async_base
@@ -556,7 +557,9 @@ folly_add_library(
   HEADERS
     IoUringBufferPoolSharing.h
   DEPS
+    folly_function
     folly_io_async_io_uring_backend
+    folly_io_async_liburing
   EXPORTED_DEPS
     folly_io_async_async_base
   EXTERNAL_DEPS
@@ -673,6 +676,12 @@ folly_add_library(
   EXPORTED_DEPS
     folly_io_async_liburing
     folly_io_iobuf
+)
+
+folly_add_library(
+  NAME liburing
+  HEADERS
+    Liburing.h
 )
 
 folly_add_library(
