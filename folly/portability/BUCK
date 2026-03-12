@@ -125,11 +125,18 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "filesystem",
     srcs = ["Filesystem.cpp"],
-    raw_headers = ["Filesystem.h"],
+    headers = ["Filesystem.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = select({
+        "ovr_config//cpp:libc++": [],
+        "ovr_config//cpp:libstdc++": [
+            "fbsource//third-party/libgcc:stdc++fs",
+        ],
+    }),
 )
 
 fb_dirsync_cpp_library(
@@ -224,20 +231,19 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "malloc",
-    srcs = [
-        "Malloc.cpp",
-    ],
-    raw_headers = [
-        "Malloc.h",
-    ],
-    deps = [
-        # "//xplat/third-party/jemalloc:headers",  # not available in xplat
-        "//xplat/folly:bits",
-        "//xplat/folly:portability",
-    ],
+    srcs = ["Malloc.cpp"],
+    headers = ["Malloc.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":config",
+        "//folly:c_portability",
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": ["third-party//jemalloc:headers"],
+    }),
 )
 
 fb_dirsync_cpp_library(
@@ -681,19 +687,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "filesystem",
-    srcs = ["Filesystem.cpp"],
-    headers = ["Filesystem.h"],
-    exported_deps = select({
-        "ovr_config//cpp:libc++": [],
-        "ovr_config//cpp:libstdc++": [
-            "fbsource//third-party/libgcc:stdc++fs",
-        ],
-    }),
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "gflags",
     srcs = ["GFlags.cpp"],
     headers = ["GFlags.h"],
@@ -703,20 +696,6 @@ fbcode_target(
     exported_external_deps = [
         "gflags",
     ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "malloc",
-    srcs = ["Malloc.cpp"],
-    headers = ["Malloc.h"],
-    exported_deps = [
-        ":config",
-        "//folly:c_portability",
-    ] + select({
-        "DEFAULT": [],
-        "ovr_config//os:linux": ["third-party//jemalloc:headers"],
-    }),
 )
 
 fbcode_target(

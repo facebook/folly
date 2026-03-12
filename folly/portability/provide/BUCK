@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
@@ -10,21 +8,12 @@ oncall("fbcode_entropy_wardens_folly")
 #
 # This enables other rules across folly which may need these deps to extract the
 # complexity to here and to take simple deps on the rules here.
-
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "libdwarf",
-    exported_deps = select({
-        "DEFAULT": [],
-        "ovr_config//os:android": [
-            "//third-party/libdwarf:dwarf",
-        ],
-        "ovr_config//os:linux": [
-            "//third-party/libdwarf:dwarf",
-        ],
-    }),
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "fbsource//third-party/libdwarf:dwarf",
+    ],
 )
 
 fb_dirsync_cpp_library(
@@ -38,31 +27,9 @@ fb_dirsync_cpp_library(
     }),
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "libunwind-linux",
-    exported_deps = select({
-        "DEFAULT": [
-            "//third-party/libunwind:unwind",
-        ],
-        # anywhere-linux links in a different version of libunwind, do not use for now
-        "ovr_config//runtime:anywhere-linux": [],
-    }),
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "libdwarf",
-    exported_deps = [
-        "fbsource//third-party/libdwarf:dwarf",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "libunwind-linux",
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/libunwind:unwind",
     ],
