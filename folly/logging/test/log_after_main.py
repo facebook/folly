@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pyre-unsafe
+# pyre-strict
 
 import os
 import subprocess
@@ -21,7 +21,7 @@ import unittest
 
 
 class LogAfterMainTest(unittest.TestCase):
-    def find_helper(self, name, env_var):
+    def find_helper(self, name: str, env_var: str) -> str:
         path = os.environ.get(env_var)
         if path:
             if not os.access(path, os.X_OK):
@@ -43,7 +43,7 @@ class LogAfterMainTest(unittest.TestCase):
                 return path
         raise Exception("unable to find helper program {!r}".format(name))
 
-    def run_helper(self, cmd):
+    def run_helper(self, cmd: list[str]) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             cmd,
             capture_output=True,
@@ -51,14 +51,14 @@ class LogAfterMainTest(unittest.TestCase):
             errors="surrogateescape",
         )
 
-    def test_log_after_main(self):
+    def test_log_after_main(self) -> None:
         helper = self.find_helper("log_after_main", "FOLLY_LOG_AFTER_MAIN_HELPER")
         proc = self.run_helper([helper])
         self.assertEqual(proc.stdout, "")
         self.assertIn("main running", proc.stderr)
         self.assertEqual(proc.returncode, 0, "stderr: {}".format(proc.stderr))
 
-    def test_log_after_main_no_init(self):
+    def test_log_after_main_no_init(self) -> None:
         helper = self.find_helper(
             "log_after_main_no_init", "FOLLY_LOG_AFTER_MAIN_NO_INIT_HELPER"
         )
