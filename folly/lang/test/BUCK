@@ -1,7 +1,7 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load("../../defs.bzl", "folly_xplat_cxx_binary", "folly_xplat_cxx_test")
@@ -132,13 +132,14 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "must_use_immediately_test",
     srcs = ["MustUseImmediatelyTest.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/lang:must_use_immediately",
+        "//folly:traits",
+        "//folly/lang:must_use_immediately",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -242,13 +243,12 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "switch_test",
     srcs = ["SwitchTest.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//third-party/googletest:gtest",
-        "//xplat/folly/lang:switch",
+        "//folly/lang:switch",
     ],
 )
 
@@ -274,15 +274,15 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_binary,
+fb_dirsync_cpp_benchmark(
     name = "to_ascii_bench",
     srcs = ["ToAsciiBench.cpp"],
     deps = [
-        "fbsource//xplat/folly/portability:fmt_compile",
-        "//xplat/folly:benchmark",
-        "//xplat/folly/lang:keep",
-        "//xplat/folly/lang:to_ascii",
+        "fbsource//third-party/fmt:fmt",
+        "//folly:benchmark",
+        "//folly/lang:keep",
+        "//folly/lang:to_ascii",
+        "//folly/portability:fmt_compile",
     ],
 )
 
@@ -381,17 +381,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
-    name = "must_use_immediately_test",
-    srcs = ["MustUseImmediatelyTest.cpp"],
-    deps = [
-        "//folly:traits",
-        "//folly/lang:must_use_immediately",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
     name = "rvalue_reference_wrapper_test",
     srcs = ["RValueReferenceWrapperTest.cpp"],
     headers = [],
@@ -418,15 +407,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
-    name = "switch_test",
-    srcs = ["SwitchTest.cpp"],
-    deps = [
-        "//folly/lang:switch",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
     name = "cstring_view_test",
     srcs = ["cstring_view_test.cpp"],
     supports_static_listing = False,
@@ -435,18 +415,5 @@ fbcode_target(
         "//folly:range",
         "//folly/lang:cstring_view",
         "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_benchmark,
-    name = "to_ascii_bench",
-    srcs = ["ToAsciiBench.cpp"],
-    deps = [
-        "fbsource//third-party/fmt:fmt",
-        "//folly:benchmark",
-        "//folly/lang:keep",
-        "//folly/lang:to_ascii",
-        "//folly/portability:fmt_compile",
     ],
 )
