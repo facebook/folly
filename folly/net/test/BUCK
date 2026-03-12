@@ -1,4 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
@@ -6,23 +6,29 @@ load("../../defs.bzl", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "mock_net_ops_dispatcher",
-    raw_headers = ["MockNetOpsDispatcher.h"],
-    deps = [
-        "fbsource//xplat/folly/portability:gmock",
-        "//xplat/folly/net:net_ops_dispatcher",
+    headers = [
+        "MockNetOpsDispatcher.h",
+    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        "//folly/net:net_ops_dispatcher",
+        "//folly/portability:gmock",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "mock_tcpinfo_dispatcher",
-    raw_headers = ["MockTcpInfoDispatcher.h"],
-    deps = [
-        "fbsource//xplat/folly/portability:gmock",
-        "//xplat/folly/net:tcpinfo_dispatcher",
+    headers = [
+        "MockTcpInfoDispatcher.h",
+    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
+    exported_deps = [
+        "//folly/net:tcpinfo_dispatcher",
+        "//folly/portability:gmock",
     ],
 )
 
@@ -39,30 +45,6 @@ fb_dirsync_cpp_library(
 )
 
 # !!!! fbcode/folly/net/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "mock_net_ops_dispatcher",
-    headers = [
-        "MockNetOpsDispatcher.h",
-    ],
-    exported_deps = [
-        "//folly/net:net_ops_dispatcher",
-        "//folly/portability:gmock",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "mock_tcpinfo_dispatcher",
-    headers = [
-        "MockTcpInfoDispatcher.h",
-    ],
-    exported_deps = [
-        "//folly/net:tcpinfo_dispatcher",
-        "//folly/portability:gmock",
-    ],
-)
 
 fbcode_target(
     _kind = cpp_unittest,
