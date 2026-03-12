@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../../../defs.bzl", "folly_xplat_cxx_library")
 
@@ -7,11 +5,12 @@ oncall("fbcode_entropy_wardens_folly")
 
 ### this line is a hint for source control merge
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "async_fd_socket",
     srcs = ["AsyncFdSocket.cpp"],
     headers = ["AsyncFdSocket.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "fbsource//third-party/fmt:fmt",
     ],
@@ -19,18 +18,6 @@ fbcode_target(
         ":socket_fds",
         "//folly/io/async:async_socket",
         "//folly/portability:gtest_prod",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
-    name = "async_fd_socket",
-    srcs = ["AsyncFdSocket.cpp"],
-    raw_headers = ["AsyncFdSocket.h"],
-    exported_deps = [
-        "fbsource//xplat/folly/portability:gtest_prod",
-        ":socket_fds",
-        "//xplat/folly/io/async:async_socket",
     ],
 )
 

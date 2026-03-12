@@ -91,32 +91,32 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "async_ssl_socket_test_lib",
-    raw_headers = [
+    headers = [
         "AsyncSSLSocketTest.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        "fbsource//xplat/folly/io:socket_option_map",
-        "fbsource//xplat/folly/portability:gmock",
-        "fbsource//xplat/folly/portability:gtest",
-        "fbsource//xplat/folly/portability:pthread",
-        "fbsource//xplat/folly/portability:sockets",
-        "fbsource//xplat/folly/portability:string",
-        "fbsource//xplat/folly/portability:unistd",
         ":test_ssl_server",
-        "//xplat/folly:exception_wrapper",
-        "//xplat/folly:network_address",
-        "//xplat/folly/fibers:fiber_manager_map",
-        "//xplat/folly/io/async:async_base",
-        "//xplat/folly/io/async:async_socket",
-        "//xplat/folly/io/async:async_ssl_socket",
-        "//xplat/folly/io/async:async_transport",
-        "//xplat/folly/io/async:server_socket",
-        "//xplat/folly/io/async/ssl:ssl_errors",
-        "//xplat/folly/net:network_socket",
-        "//xplat/folly/testing:test_util",
+        "//folly:exception_wrapper",
+        "//folly:network_address",
+        "//folly/fibers:fiber_manager_map",
+        "//folly/io:socket_option_map",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:async_ssl_socket",
+        "//folly/io/async:async_transport",
+        "//folly/io/async:server_socket",
+        "//folly/io/async/ssl:ssl_errors",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/portability:pthread",
+        "//folly/portability:sockets",
+        "//folly/portability:string",
+        "//folly/portability:unistd",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -224,23 +224,25 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "async_socket_test_lib",
-    raw_headers = [
+    headers = [
         "AsyncSocketTest.h",
         "AsyncSocketTest2.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        "fbsource//xplat/folly/portability:sockets",
-        "fbsource//xplat/folly/synchronization:rw_spin_lock",
         ":blocking_socket",
         ":callback_state_enum",
         ":conn_callback",
-        "//xplat/folly/io/async:async_socket",
-        "//xplat/folly/io/async:server_socket",
-        "//xplat/folly/net:net_ops",
-        "//xplat/folly/net:network_socket",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:server_socket",
+        "//folly/net:net_ops",
+        "//folly/net:network_socket",
+        "//folly/portability:sockets",
+        "//folly/synchronization:rw_spin_lock",
     ],
 )
 
@@ -474,25 +476,27 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "event_base_test_lib",
-    raw_headers = [
+    headers = [
         "EventBaseTestLib.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        "fbsource//xplat/folly/futures:core",
-        "fbsource//xplat/folly/portability:gmock",
-        "fbsource//xplat/folly/portability:stdlib",
-        "fbsource//xplat/folly/portability:unistd",
-        "fbsource//xplat/folly/synchronization:baton",
-        "fbsource//xplat/folly/synchronization:relaxed_atomic",
         ":util",
-        "//xplat/folly:math",
-        "//xplat/folly:memory",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/io/async:async_base",
-        "//xplat/folly/system:thread_name",
+        "//folly:math",
+        "//folly:memory",
+        "//folly:scope_guard",
+        "//folly/futures:core",
+        "//folly/io/async:async_base",
+        "//folly/portability:gmock",
+        "//folly/portability:stdlib",
+        "//folly/portability:unistd",
+        "//folly/synchronization:baton",
+        "//folly/synchronization:relaxed_atomic",
+        "//folly/system:thread_id",
+        "//folly/system:thread_name",
     ],
 )
 
@@ -571,10 +575,9 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "mocks",
-    raw_headers = [
+    headers = [
         "MockAsyncSSLSocket.h",
         "MockAsyncSocket.h",
         "MockAsyncSocketLegacyObserver.h",
@@ -583,15 +586,17 @@ non_fbcode_target(
         "MockAsyncUDPSocket.h",
         "MockTimeoutManager.h",
     ],
-    deps = ["//xplat/folly/io/async:async_socket_exception"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        "fbsource//xplat/folly/portability:gmock",
-        "//xplat/folly:memory",
-        "//xplat/folly/io/async:async_base",
-        "//xplat/folly/io/async:async_socket",
-        "//xplat/folly/io/async:async_ssl_socket",
-        "//xplat/folly/io/async:async_transport",
-        "//xplat/folly/io/async:async_udp_socket",
+        "//folly:memory",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:async_socket_exception",
+        "//folly/io/async:async_ssl_socket",
+        "//folly/io/async:async_transport",
+        "//folly/io/async:async_udp_socket",
+        "//folly/portability:gmock",
     ],
 )
 
@@ -971,34 +976,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_library,
-    name = "async_ssl_socket_test_lib",
-    headers = [
-        "AsyncSSLSocketTest.h",
-    ],
-    exported_deps = [
-        ":test_ssl_server",
-        "//folly:exception_wrapper",
-        "//folly:network_address",
-        "//folly/fibers:fiber_manager_map",
-        "//folly/io:socket_option_map",
-        "//folly/io/async:async_base",
-        "//folly/io/async:async_socket",
-        "//folly/io/async:async_ssl_socket",
-        "//folly/io/async:async_transport",
-        "//folly/io/async:server_socket",
-        "//folly/io/async/ssl:ssl_errors",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-        "//folly/portability:pthread",
-        "//folly/portability:sockets",
-        "//folly/portability:string",
-        "//folly/portability:unistd",
-        "//folly/testing:test_util",
-    ],
-)
-
-fbcode_target(
     _kind = cpp_unittest,
     name = "async_ssl_socket_test",
     srcs = [
@@ -1110,27 +1087,6 @@ fbcode_target(
         ":mocks",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "async_socket_test_lib",
-    headers = [
-        "AsyncSocketTest.h",
-        "AsyncSocketTest2.h",
-    ],
-    exported_deps = [
-        ":blocking_socket",
-        ":callback_state_enum",
-        ":conn_callback",
-        "//folly/io/async:async_base",
-        "//folly/io/async:async_socket",
-        "//folly/io/async:server_socket",
-        "//folly/net:net_ops",
-        "//folly/net:network_socket",
-        "//folly/portability:sockets",
-        "//folly/synchronization:rw_spin_lock",
     ],
 )
 
@@ -1347,29 +1303,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_library,
-    name = "event_base_test_lib",
-    headers = [
-        "EventBaseTestLib.h",
-    ],
-    exported_deps = [
-        ":util",
-        "//folly:math",
-        "//folly:memory",
-        "//folly:scope_guard",
-        "//folly/futures:core",
-        "//folly/io/async:async_base",
-        "//folly/portability:gmock",
-        "//folly/portability:stdlib",
-        "//folly/portability:unistd",
-        "//folly/synchronization:baton",
-        "//folly/synchronization:relaxed_atomic",
-        "//folly/system:thread_id",
-        "//folly/system:thread_name",
-    ],
-)
-
-fbcode_target(
     _kind = cpp_unittest,
     name = "event_base_test",
     srcs = ["EventBaseTest.cpp"],
@@ -1433,30 +1366,6 @@ fbcode_target(
         "//folly/io/async:async_base",
         "//folly/portability:gtest",
         "//folly/portability:unistd",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "mocks",
-    headers = [
-        "MockAsyncSSLSocket.h",
-        "MockAsyncSocket.h",
-        "MockAsyncSocketLegacyObserver.h",
-        "MockAsyncSocketObserver.h",
-        "MockAsyncTransport.h",
-        "MockAsyncUDPSocket.h",
-        "MockTimeoutManager.h",
-    ],
-    exported_deps = [
-        "//folly:memory",
-        "//folly/io/async:async_base",
-        "//folly/io/async:async_socket",
-        "//folly/io/async:async_socket_exception",
-        "//folly/io/async:async_ssl_socket",
-        "//folly/io/async:async_transport",
-        "//folly/io/async:async_udp_socket",
-        "//folly/portability:gmock",
     ],
 )
 
