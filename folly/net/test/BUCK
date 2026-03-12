@@ -1,6 +1,7 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("../../defs.bzl", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -25,15 +26,15 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_library(
     name = "net_ops_test",
     srcs = ["NetOpsTest.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//third-party/glog:glog",
-        "//xplat/folly/net:net_ops",
-        "//xplat/folly/net:network_socket",
+        "fbsource//third-party/glog:glog",
+        "//folly/net:net_ops",
+        "//folly/net:network_socket",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -60,18 +61,6 @@ fbcode_target(
     exported_deps = [
         "//folly/net:tcpinfo_dispatcher",
         "//folly/portability:gmock",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "net_ops_test",
-    srcs = ["NetOpsTest.cpp"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly/net:net_ops",
-        "//folly/net:network_socket",
-        "//folly/portability:gtest",
     ],
 )
 
