@@ -36,6 +36,7 @@ folly_add_library(
   HEADERS
     LtHash.h
   EXPORTED_DEPS
+    folly_crypto_lt_hash
     folly_crypto_lt_hash_avx2
 )
 
@@ -45,5 +46,6 @@ folly_add_library(
   HEADERS
     LtHash.h
   EXPORTED_DEPS
+    folly_crypto_lt_hash
     folly_crypto_lt_hash_sse2
 )

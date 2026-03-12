@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "../../../defs.bzl",
     "folly_xplat_library",
@@ -20,29 +21,19 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "graph_cycle_detector",
-    raw_headers = [
-        "GraphCycleDetector.h",
-    ],
-    deps = [
-        "//xplat/folly/observer/detail:graph_cycle_detector",
-    ],
-)
-
-# !!!! fbcode/folly/experimental/observer/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "graph_cycle_detector",
     headers = [
         "GraphCycleDetector.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/observer/detail:graph_cycle_detector",
     ],
 )
+
+# !!!! fbcode/folly/experimental/observer/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
 fbcode_target(
     _kind = cpp_library,

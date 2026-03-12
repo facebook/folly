@@ -5,6 +5,7 @@ load(
     "IOS",
     "MACOSX",
 )
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "../../defs.bzl",
     "folly_xplat_library",
@@ -24,14 +25,13 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "exception_abi",
-    raw_headers = [
-        "ExceptionAbi.h",
-    ],
-    deps = [
-        "//xplat/folly/debugging/exception_tracer:exception_abi",
+    headers = ["ExceptionAbi.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/debugging/exception_tracer:exception_abi",
     ],
 )
 
@@ -118,15 +118,6 @@ non_fbcode_target(
 )
 
 # !!!! fbcode/folly/experimental/exception_tracer/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "exception_abi",
-    headers = ["ExceptionAbi.h"],
-    exported_deps = [
-        "//folly/debugging/exception_tracer:exception_abi",
-    ],
-)
 
 fbcode_target(
     _kind = cpp_library,
