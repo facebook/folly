@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "@fbsource//xplat/folly:defs.bzl",
     "folly_xplat_library",
@@ -36,14 +37,15 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "random_seed",
-    raw_headers = [
+    headers = [
         "RandomSeed.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "//xplat/folly:portability",
+        "//folly:portability",
     ],
 )
 
@@ -70,16 +72,5 @@ fbcode_target(
     ],
     external_deps = [
         ("boost", None, "boost_preprocessor"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "random_seed",
-    headers = [
-        "RandomSeed.h",
-    ],
-    exported_deps = [
-        "//folly:portability",
     ],
 )
