@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs:rust_binary.bzl", "rust_binary")
 load("@fbsource//tools/build_defs:rust_library.bzl", "rust_library")
 
 oncall("rust_libraries")
@@ -23,6 +24,36 @@ fbcode_target(
         "fbsource//third-party/rust:futures-core",
         "fbsource//third-party/rust:pin-project",
         ":request_context",
+    ],
+)
+
+fbcode_target(
+    _kind = rust_library,
+    name = "request_context_tokio",
+    srcs = ["request_context_tokio.rs"],
+    test_deps = [
+        "fbsource//third-party/rust:tokio",
+        ":request_context_future",
+    ],
+    deps = [
+        "fbsource//third-party/rust:papaya",
+        "fbsource//third-party/rust:rustc-hash",
+        "fbsource//third-party/rust:tokio",
+        ":request_context",
+    ],
+)
+
+fbcode_target(
+    _kind = rust_binary,
+    name = "request_context_tokio_bench",
+    srcs = ["benches/request_context_tokio_bench.rs"],
+    unittests = False,
+    deps = [
+        "fbsource//third-party/rust:criterion",
+        "fbsource//third-party/rust:futures",
+        "fbsource//third-party/rust:tokio",
+        ":request_context",
+        ":request_context_tokio",
     ],
 )
 

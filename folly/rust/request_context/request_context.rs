@@ -38,6 +38,8 @@ unsafe mod ffi {
         #[namespace = "facebook::rust"]
         fn get_folly_request_context() -> SharedPtr<RequestContext>;
         #[namespace = "facebook::rust"]
+        fn set_folly_request_context(ctx: &SharedPtr<RequestContext>) -> SharedPtr<RequestContext>;
+        #[namespace = "facebook::rust"]
         fn with_folly_request_context(
             rctx: &SharedPtr<RequestContext>,
             func: fn(&mut WithInner),
@@ -135,6 +137,28 @@ impl RequestContext {
 
         RequestContext(new_context)
     }
+
+    /// Swap the current thread's `RequestContext` with the given one.
+    ///
+    /// Sets `ctx` as the current thread-local `RequestContext` and returns the
+    /// previous context. If `ctx` is `None`, an empty (null) `SharedPtr` is set,
+    /// which effectively clears the current context back to the global default.
+    ///
+    /// This is useful for manually managing `RequestContext` propagation across
+    /// thread or task boundaries without RAII scope guards.
+    pub fn swap_current(ctx: Option<&RequestContext>) -> Option<RequestContext> {
+        let empty = cxx::SharedPtr::null();
+        let to_set = match ctx {
+            Some(rc) => &rc.0,
+            None => &empty,
+        };
+        let prev = ffi::set_folly_request_context(to_set);
+        if prev.is_null() {
+            None
+        } else {
+            Some(RequestContext(prev))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -161,5 +185,35 @@ mod test {
         RequestContext::create();
 
         RequestContext::get_current().with_context(|| panic!("expected panic"));
+    }
+
+    #[test]
+    fn swap_current_sets_and_restores() {
+        // Start with no context.
+        assert!(RequestContext::try_get_current().is_none());
+
+        // Create a context and capture it.
+        RequestContext::create();
+        let ctx = RequestContext::try_get_current().unwrap();
+        let root_id = ctx.get_root_id();
+
+        // Swap in None — clears the current context, returns the previous one.
+        let prev = RequestContext::swap_current(None);
+        assert!(prev.is_some());
+        assert_eq!(prev.unwrap().get_root_id(), root_id);
+
+        // Current context should now be empty.
+        assert!(RequestContext::try_get_current().is_none());
+
+        // Swap the original back in.
+        let prev2 = RequestContext::swap_current(Some(&ctx));
+        assert!(prev2.is_none());
+
+        // Current context should be the original again.
+        let restored = RequestContext::try_get_current().unwrap();
+        assert_eq!(restored.get_root_id(), root_id);
+
+        // Clean up: clear the context for other tests.
+        RequestContext::swap_current(None);
     }
 }
