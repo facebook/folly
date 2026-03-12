@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -26,9 +27,9 @@ non_fbcode_target(
     }),
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "libunwind",
+    xplat_impl = folly_xplat_library,
     exported_deps = select({
         "DEFAULT": [],
         "ovr_config//os:linux": [
@@ -57,17 +58,6 @@ fbcode_target(
     exported_deps = [
         "fbsource//third-party/libdwarf:dwarf",
     ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "libunwind",
-    exported_deps = select({
-        "DEFAULT": [],
-        "ovr_config//os:linux": [
-            ":libunwind-linux",
-        ],
-    }),
 )
 
 fbcode_target(
