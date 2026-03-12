@@ -1364,3 +1364,74 @@ TYPED_TEST(
 
   EXPECT_EQ(3, e.getPoolStats().processedTaskCount);
 }
+
+// ThreadFactory wrapper that throws std::runtime_error after N successful
+// newThread() calls, simulating pthread_create failure under thread pressure.
+class FailingThreadFactory : public ThreadFactory {
+ public:
+  explicit FailingThreadFactory(
+      std::shared_ptr<ThreadFactory> delegate, size_t failAfter)
+      : delegate_(std::move(delegate)), failAfter_(failAfter) {}
+
+  std::thread newThread(Func&& func) override {
+    if (count_.fetch_add(1) >= failAfter_) {
+      throw std::runtime_error("newThread: simulated failure");
+    }
+    return delegate_->newThread(std::move(func));
+  }
+
+  const std::string& getNamePrefix() const override {
+    return delegate_->getNamePrefix();
+  }
+
+ private:
+  std::shared_ptr<ThreadFactory> delegate_;
+  std::atomic<size_t> count_{0};
+  size_t failAfter_;
+};
+
+TEST(ThreadPoolExecutorTest, AddImplToleratesThreadCreationFailure) {
+  auto delegate = std::make_shared<NamedThreadFactory>("test");
+  auto factory = std::make_shared<FailingThreadFactory>(delegate, 1);
+
+  // Dynamic executor: max=4, min=0
+  CPUThreadPoolExecutor exe(std::pair(4, 0), std::move(factory));
+
+  // Warm up: create one thread successfully, then make factory fail.
+  folly::Baton<> warmup;
+  exe.add([&] { warmup.post(); });
+  warmup.wait();
+  EXPECT_GE(exe.numActiveThreads(), 1);
+
+  // Now the factory will fail for all subsequent newThread() calls.
+  // The existing thread should process enqueued tasks without crashing.
+  constexpr int kTasks = 10;
+  std::atomic<int> completed{0};
+  folly::Baton<> done;
+  for (int i = 0; i < kTasks; ++i) {
+    EXPECT_NO_THROW(exe.add([&] {
+      if (completed.fetch_add(1) + 1 == kTasks) {
+        done.post();
+      }
+    }));
+  }
+  done.wait();
+  EXPECT_EQ(kTasks, completed.load());
+
+  exe.join();
+}
+
+TEST(ThreadPoolExecutorTest, AddImplNoThreadsAndCreationFails) {
+  auto delegate = std::make_shared<NamedThreadFactory>("test");
+  // Fail from the very first newThread() call.
+  auto factory = std::make_shared<FailingThreadFactory>(delegate, 0);
+
+  // Dynamic executor: max=1, min=0. No threads will be created at startup.
+  CPUThreadPoolExecutor exe(std::pair(1, 0), std::move(factory));
+
+  // add() should NOT throw even though thread creation fails.
+  EXPECT_NO_THROW(exe.add([] {}));
+  EXPECT_EQ(0, exe.numActiveThreads());
+
+  exe.stop();
+}

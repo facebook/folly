@@ -25,6 +25,7 @@
 #include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/Memory.h>
 #include <folly/SharedMutex.h>
+#include <folly/container/span.h>
 #include <folly/executors/GlobalThreadPoolList.h>
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
 #include <folly/executors/thread_factory/NamedThreadFactory.h>
@@ -221,6 +222,8 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   // Prerequisite: threadListLock_ writelocked
   void addThreads(size_t n);
   // Prerequisite: threadListLock_ writelocked
+  bool tryAddOneThread();
+  // Prerequisite: threadListLock_ writelocked
   void removeThreads(size_t n, bool isJoin);
 
   struct //
@@ -251,6 +254,9 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   };
 
   using ThreadPtr = std::shared_ptr<Thread>;
+
+  // Prerequisite: threadListLock_ writelocked
+  void afterConstructThreads(folly::span<const ThreadPtr> newThreads);
 
   struct Task {
     struct Expiration {

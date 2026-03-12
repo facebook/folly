@@ -405,10 +405,13 @@ folly_add_library(
     ThreadPoolExecutor.h
   DEPS
     folly_concurrency_process_local_unique_id
+    folly_exception_string
+    folly_glog
     folly_portability_pthread
     folly_synchronization_asymmetric_thread_fence
     folly_tracing_static_tracepoint
   EXPORTED_DEPS
+    folly_container_span
     folly_default_keep_alive_executor
     folly_executors_global_thread_pool_list
     folly_executors_task_queue_lifo_sem_mpmc_queue

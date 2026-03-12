@@ -18,6 +18,8 @@
 
 #include <ctime>
 
+#include <folly/ExceptionString.h>
+#include <folly/GLog.h>
 #include <folly/concurrency/ProcessLocalUniqueId.h>
 #include <folly/executors/GlobalThreadPoolList.h>
 #include <folly/portability/PThread.h>
@@ -257,6 +259,30 @@ void ThreadPoolExecutor::addThreads(size_t n) {
     // and then handling for that case
     thread->handle = threadFactory_->newThread(
         std::bind(&ThreadPoolExecutor::threadRun, this, thread));
+  }
+  afterConstructThreads(newThreads);
+}
+
+// threadListLock_ is writelocked
+bool ThreadPoolExecutor::tryAddOneThread() {
+  auto thread = makeThread();
+  try {
+    thread->handle = threadFactory_->newThread(
+        std::bind(&ThreadPoolExecutor::threadRun, this, thread));
+  } catch (...) {
+    FB_LOG_EVERY_MS(ERROR, 1000)
+        << "ThreadPoolExecutor: thread creation failed: "
+        << folly::exceptionStr(std::current_exception());
+    return false;
+  }
+  afterConstructThreads({&thread, 1});
+  return true;
+}
+
+// threadListLock_ is writelocked
+void ThreadPoolExecutor::afterConstructThreads(
+    folly::span<const ThreadPtr> newThreads) {
+  for (auto& thread : newThreads) {
     threadList_.add(thread);
   }
   for (auto& thread : newThreads) {
@@ -555,15 +581,27 @@ void ThreadPoolExecutor::ensureActiveThreads() {
   if (active >= total) {
     return;
   }
-  ThreadPoolExecutor::addThreads(1);
-  activeThreads_.store(active + 1, std::memory_order_relaxed);
+  if (tryAddOneThread()) {
+    activeThreads_.store(active + 1, std::memory_order_relaxed);
+  }
 }
 
 void ThreadPoolExecutor::ensureMaxActiveThreads() {
-  while (activeThreads_.load(std::memory_order_relaxed) <
-         maxThreads_.load(std::memory_order_relaxed)) {
-    ensureActiveThreads();
+  ensureJoined();
+  asymmetric_thread_fence_light(std::memory_order_seq_cst);
+  auto active = activeThreads_.load(std::memory_order_relaxed);
+  auto total = maxThreads_.load(std::memory_order_relaxed);
+  if (active >= total) {
+    return;
   }
+  std::unique_lock w{threadListLock_};
+  active = activeThreads_.load(std::memory_order_relaxed);
+  total = maxThreads_.load(std::memory_order_relaxed);
+  if (active >= total) {
+    return;
+  }
+  ThreadPoolExecutor::addThreads(total - active);
+  activeThreads_.store(total, std::memory_order_relaxed);
 }
 
 // If an idle thread times out, only join it if there are at least
