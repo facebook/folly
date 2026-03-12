@@ -38,6 +38,8 @@ folly_add_library(
   NAME priority_thread_factory
   SRCS
     PriorityThreadFactory.cpp
+  HEADERS
+    PriorityThreadFactory.h
   DEPS
     folly_portability_sys_resource
     folly_portability_sys_time

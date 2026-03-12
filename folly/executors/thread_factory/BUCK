@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "../../defs.bzl",
@@ -8,47 +6,42 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "init_thread_factory",
-    raw_headers = [
-        "InitThreadFactory.h",
-    ],
-    deps = [
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/executors/thread_factory:thread_factory",
+    headers = ["InitThreadFactory.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":thread_factory",
+        "//folly:scope_guard",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "priority_thread_factory",
-    srcs = [
-        "PriorityThreadFactory.cpp",
-    ],
-    raw_headers = [
-        "PriorityThreadFactory.h",
-    ],
+    srcs = ["PriorityThreadFactory.cpp"],
+    headers = ["PriorityThreadFactory.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "fbsource//xplat/folly/portability:sys_resource",
-        "fbsource//xplat/folly/portability:sys_time",
-        "//third-party/glog:glog",
-        "//xplat/folly:string",
-        "//xplat/folly/system:thread_name",
+        "fbsource//third-party/glog:glog",
+        "//folly:string",
+        "//folly/portability:sys_resource",
+        "//folly/portability:sys_time",
+        "//folly/system:thread_name",
     ],
     exported_deps = [
-        "//xplat/folly/executors/thread_factory:init_thread_factory",
+        ":init_thread_factory",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "thread_factory",
-    raw_headers = [
-        "ThreadFactory.h",
-    ],
-    deps = [
-        "//xplat/folly:executor",
+    headers = ["ThreadFactory.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:executor",
     ],
 )
 
@@ -62,42 +55,5 @@ fb_dirsync_cpp_library(
         "//folly:conv",
         "//folly:range",
         "//folly/system:thread_name",
-    ],
-)
-
-# !!!! fbcode/folly/executors/thread_factory/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "priority_thread_factory",
-    srcs = ["PriorityThreadFactory.cpp"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:string",
-        "//folly/portability:sys_resource",
-        "//folly/portability:sys_time",
-        "//folly/system:thread_name",
-    ],
-    exported_deps = [
-        ":init_thread_factory",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "init_thread_factory",
-    headers = ["InitThreadFactory.h"],
-    exported_deps = [
-        ":thread_factory",
-        "//folly:scope_guard",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "thread_factory",
-    headers = ["ThreadFactory.h"],
-    exported_deps = [
-        "//folly:executor",
     ],
 )
