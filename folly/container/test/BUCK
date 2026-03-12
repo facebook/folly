@@ -432,23 +432,25 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "iterator_test",
     srcs = ["IteratorTest.cpp"],
+    headers = [],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/container:iterator",
+        "//folly/container:iterator",
+        "//folly/portability:gtest",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "range_traits_test",
     srcs = ["range_traits_test.cpp"],
+    headers = [],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/container:range_traits",
+        "//folly/container:range_traits",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -481,14 +483,12 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "std_bitset_test",
     srcs = ["StdBitsetTest.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//third-party/googletest:gtest",
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/container:std_bitset",
+        "//folly/container:std_bitset",
     ],
 )
 
@@ -504,15 +504,17 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "vector_bool_test",
     srcs = ["vector_bool_test.cpp"],
+    headers = [],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "//xplat/folly:memory",
-        "//xplat/folly/container:vector_bool",
-        "//xplat/folly/container/detail:bool_wrapper",
-        "//xplat/folly/memory:memory_resource",
+        "//folly:memory",
+        "//folly/container:vector_bool",
+        "//folly/container/detail:bool_wrapper",
+        "//folly/memory:memory_resource",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -827,33 +829,11 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
-    name = "iterator_test",
-    srcs = ["IteratorTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/container:iterator",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
     name = "merge_test",
     srcs = ["MergeTest.cpp"],
     headers = [],
     deps = [
         "//folly/container:merge",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "range_traits_test",
-    srcs = ["range_traits_test.cpp"],
-    headers = [],
-    deps = [
-        "//folly/container:range_traits",
         "//folly/portability:gtest",
     ],
 )
@@ -906,15 +886,6 @@ fbcode_target(
         "//folly:random",
         "//folly/container:std_bitset",
         "//folly/init:init",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "std_bitset_test",
-    srcs = ["StdBitsetTest.cpp"],
-    deps = [
-        "//folly/container:std_bitset",
     ],
 )
 
@@ -1096,20 +1067,6 @@ fbcode_target(
         "//folly:utility",
         "//folly/memory:malloc",
         "//folly/portability:gmock",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "vector_bool_test",
-    srcs = ["vector_bool_test.cpp"],
-    headers = [],
-    deps = [
-        "//folly:memory",
-        "//folly/container:vector_bool",
-        "//folly/container/detail:bool_wrapper",
-        "//folly/memory:memory_resource",
         "//folly/portability:gtest",
     ],
 )

@@ -28,20 +28,20 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "heterogeneous_access",
-    raw_headers = [
+    headers = [
         "HeterogeneousAccess.h",
     ],
-    deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "fbsource//xplat/folly/hash:rapidhash",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:traits",
-        "//xplat/folly/container:heterogeneous_access_fwd",
-        "//xplat/folly/hash/detail:random_seed",
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        ":heterogeneous_access_fwd",
+        "//folly:range",
+        "//folly:traits",
+        "//folly/hash:hash",
+        "//folly/hash:rapidhash",
+        "//folly/hash/detail:random_seed",
     ],
 )
 
@@ -142,16 +142,17 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "f14_hash_fwd",
-    raw_headers = [
+    headers = [
         "F14Map-fwd.h",
         "F14Set-fwd.h",
     ],
-    deps = [
-        "//xplat/folly/container/detail:f14_defaults",
-        "//xplat/folly/memory:memory_resource",
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly/container/detail:f14_defaults",
+        "//folly/memory:memory_resource",
     ],
 )
 
@@ -236,16 +237,20 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "intrusive_heap",
-    raw_headers = [
+    headers = [
         "IntrusiveHeap.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "//third-party/boost:boost",
-        "//third-party/glog:glog",
-        "//xplat/folly:portability",
+        "fbsource//third-party/glog:glog",
+        "//folly:portability",
+        "//folly/lang:builtin",
+    ],
+    exported_external_deps = [
+        "boost",
     ],
 )
 
@@ -260,28 +265,30 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "regex_match_cache",
     srcs = ["RegexMatchCache.cpp"],
-    raw_headers = ["RegexMatchCache.h"],
+    headers = ["RegexMatchCache.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "fbsource//xplat/folly/portability:windows",
-        "fbsource//xplat/folly/synchronization:atomic_util",
-        "//third-party/boost:boost_regex",
-        "//third-party/fmt:fmt",
-        "//third-party/glog:glog",
-        "//xplat/folly:map_util",
-        "//xplat/folly:string",
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
+        "//folly:map_util",
+        "//folly:string",
+        "//folly/portability:windows",
+        "//folly/synchronization:atomic_util",
     ],
     exported_deps = [
         ":f14_hash",
         ":reserve",
-        "//xplat/folly:chrono",
-        "//xplat/folly:fbstring",
-        "//xplat/folly:function",
-        "//xplat/folly/hash:unique_hash_key",
-        "//xplat/folly/lang:bits",
+        "//folly:chrono",
+        "//folly:function",
+        "//folly/hash:unique_hash_key",
+        "//folly/lang:bits",
+    ],
+    external_deps = [
+        ("boost", None, "boost_regex"),
     ],
 )
 
@@ -514,19 +521,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "f14_hash_fwd",
-    headers = [
-        "F14Map-fwd.h",
-        "F14Set-fwd.h",
-    ],
-    exported_deps = [
-        "//folly/container/detail:f14_defaults",
-        "//folly/memory:memory_resource",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "heap_vector_types",
     headers = [
         "heap_vector_types.h",
@@ -547,68 +541,10 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "heterogeneous_access",
-    headers = [
-        "HeterogeneousAccess.h",
-    ],
-    exported_deps = [
-        ":heterogeneous_access_fwd",
-        "//folly:range",
-        "//folly:traits",
-        "//folly/hash:hash",
-        "//folly/hash:rapidhash",
-        "//folly/hash/detail:random_seed",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "regex_match_cache",
-    srcs = ["RegexMatchCache.cpp"],
-    headers = ["RegexMatchCache.h"],
-    deps = [
-        "fbsource//third-party/fmt:fmt",
-        "fbsource//third-party/glog:glog",
-        "//folly:map_util",
-        "//folly:string",
-        "//folly/portability:windows",
-        "//folly/synchronization:atomic_util",
-    ],
-    exported_deps = [
-        ":f14_hash",
-        ":reserve",
-        "//folly:chrono",
-        "//folly:function",
-        "//folly/hash:unique_hash_key",
-        "//folly/lang:bits",
-    ],
-    external_deps = [
-        ("boost", None, "boost_regex"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "sparse_byte_set",
     headers = ["SparseByteSet.h"],
     exported_deps = [
         "//folly:c_portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "intrusive_heap",
-    headers = [
-        "IntrusiveHeap.h",
-    ],
-    exported_deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:portability",
-        "//folly/lang:builtin",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
