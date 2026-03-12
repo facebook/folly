@@ -72,11 +72,13 @@ else:
             "folly.executor",
             sources=["folly/executor.pyx", "folly/ProactorExecutor.cpp"],
             libraries=["folly_python_cpp", "folly", "glog"],
+            extra_compile_args=["-std=c++20"],
         ),
         Extension(
             "folly.iobuf",
             sources=["folly/iobuf.pyx", "folly/iobuf_ext.cpp"],
             libraries=["folly_python_cpp", "folly", "glog"],
+            extra_compile_args=["-std=c++20"],
         ),
     ]
 
