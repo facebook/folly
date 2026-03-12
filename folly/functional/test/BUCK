@@ -1,72 +1,14 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
 
 # xplat unit tests
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "apply_tuple_test",
     srcs = ["ApplyTupleTest.cpp"],
-    deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:overload",
-        "//xplat/folly/functional:apply_tuple",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
-    name = "invoke_test",
-    srcs = ["InvokeTest.cpp"],
-    deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly/functional:invoke",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
-    name = "partial_test",
-    srcs = ["PartialTest.cpp"],
-    deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:function",
-        "//xplat/folly/functional:partial",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
-    name = "protocol_test",
-    srcs = ["protocol_test.cpp"],
-    deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:traits",
-        "//xplat/folly/functional:protocol",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
-    name = "traits_test",
-    srcs = ["traits_test.cpp"],
-    deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/functional:traits",
-    ],
-)
-
-# fbcode unit tests
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "apply_tuple_test",
-    srcs = ["ApplyTupleTest.cpp"],
-    headers = [],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly:overload",
         "//folly/functional:apply_tuple",
@@ -74,22 +16,20 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "invoke_test",
     srcs = ["InvokeTest.cpp"],
-    headers = [],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/functional:invoke",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "partial_test",
     srcs = ["PartialTest.cpp"],
-    headers = [],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly:function",
         "//folly/functional:partial",
@@ -97,24 +37,24 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "protocol_test",
     srcs = ["protocol_test.cpp"],
-    headers = [],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/functional:protocol",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "traits_test",
     srcs = ["traits_test.cpp"],
-    headers = [],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/functional:traits",
         "//folly/portability:gtest",
     ],
 )
+
+# fbcode unit tests
