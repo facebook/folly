@@ -10,6 +10,7 @@ load(
     "WINDOWS",
 )
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load(
     "../../defs.bzl",
     "FBANDROID_CXXFLAGS",
@@ -451,21 +452,21 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "regex_match_cache_test",
     srcs = ["RegexMatchCacheTest.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gmock",
-        "fbsource//xplat/folly/portability:gtest",
-        "//third-party/fmt:fmt",
-        "//xplat/folly:portability",
-        "//xplat/folly:utility",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/container:regex_match_cache",
-        "//xplat/folly/container:sorted_vector_types",
-        "//xplat/folly/container:span",
-        "//xplat/folly/lang:keep",
+        "fbsource//third-party/fmt:fmt",
+        "//folly:portability",
+        "//folly:utility",
+        "//folly/container:f14_hash",
+        "//folly/container:regex_match_cache",
+        "//folly/container:sorted_vector_types",
+        "//folly/container:span",
+        "//folly/lang:keep",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -491,15 +492,15 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "tape_test",
     srcs = ["tape_test.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gmock",
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:small_vector",
-        "//xplat/folly/container:tape",
+        "//folly:small_vector",
+        "//folly/container:tape",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -859,24 +860,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
-    name = "regex_match_cache_test",
-    srcs = ["RegexMatchCacheTest.cpp"],
-    deps = [
-        "fbsource//third-party/fmt:fmt",
-        "//folly:portability",
-        "//folly:utility",
-        "//folly/container:f14_hash",
-        "//folly/container:regex_match_cache",
-        "//folly/container:sorted_vector_types",
-        "//folly/container:span",
-        "//folly/lang:keep",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
     name = "span_test",
     srcs = ["span_test.cpp"],
     headers = [],
@@ -946,18 +929,6 @@ fb_dirsync_cpp_library(
         "//folly/hash:hash",
         "//folly/lang:safe_assert",
         "//folly/portability:asm",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "tape_test",
-    srcs = ["tape_test.cpp"],
-    deps = [
-        "//folly:small_vector",
-        "//folly/container:tape",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
