@@ -84,6 +84,134 @@ template <class Value>
 struct OptionalPromise;
 template <class Value>
 struct OptionalPromiseReturn;
+
+// Storage types for Optional, parameterized on Value.
+template <class Value>
+struct OptionalStorageTriviallyDestructible {
+  union {
+    char emptyState;
+    Value value;
+  };
+  bool hasValue;
+
+  constexpr OptionalStorageTriviallyDestructible()
+      : emptyState(unsafe_default_initialized), hasValue{false} {}
+  void clear() { hasValue = false; }
+};
+
+template <class Value>
+struct OptionalStorageNonTriviallyDestructible {
+  union {
+    char emptyState;
+    Value value;
+  };
+  bool hasValue;
+
+  constexpr OptionalStorageNonTriviallyDestructible() : hasValue{false} {}
+  ~OptionalStorageNonTriviallyDestructible() { clear(); }
+  OptionalStorageNonTriviallyDestructible(
+      const OptionalStorageNonTriviallyDestructible&) = delete;
+  OptionalStorageNonTriviallyDestructible& operator=(
+      const OptionalStorageNonTriviallyDestructible&) = delete;
+  OptionalStorageNonTriviallyDestructible(
+      OptionalStorageNonTriviallyDestructible&&) = delete;
+  OptionalStorageNonTriviallyDestructible& operator=(
+      OptionalStorageNonTriviallyDestructible&&) = delete;
+
+  void clear() {
+    if (hasValue) {
+      hasValue = false;
+      FOLLY_PUSH_WARNING
+      FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
+      value.~Value();
+      FOLLY_POP_WARNING
+    }
+  }
+};
+
+// Base class holding the storage member and construct helper.
+template <class Value>
+struct OptionalStorage {
+  using Storage = typename std::conditional<
+      std::is_trivially_destructible_v<Value>,
+      OptionalStorageTriviallyDestructible<Value>,
+      OptionalStorageNonTriviallyDestructible<Value>>::type;
+
+  Storage storage_;
+
+  constexpr OptionalStorage() noexcept = default;
+
+  template <class... Args>
+  void construct(Args&&... args) {
+    const void* ptr = &storage_.value;
+    new (const_cast<void*>(ptr)) Value(std::forward<Args>(args)...);
+    storage_.hasValue = true;
+  }
+};
+
+// Trivial case: when Value is trivially copy constructible AND trivially
+// destructible, all special members are implicitly defaulted (trivial).
+template <
+    class Value,
+    bool = std::is_trivially_copy_constructible_v<Value> &&
+        std::is_trivially_destructible_v<Value>>
+struct OptionalCopyBase : OptionalStorage<Value> {
+  using OptionalStorage<Value>::OptionalStorage;
+};
+
+// Non-trivial case: user-defined copy constructor.
+template <class Value>
+struct OptionalCopyBase<Value, false> : OptionalStorage<Value> {
+  using OptionalStorage<Value>::OptionalStorage;
+  OptionalCopyBase() = default;
+  OptionalCopyBase(const OptionalCopyBase& src) noexcept(
+      std::is_nothrow_copy_constructible_v<Value>) {
+    if (src.storage_.hasValue) {
+      this->construct(src.storage_.value);
+    }
+  }
+  OptionalCopyBase(OptionalCopyBase&&) noexcept = default;
+  OptionalCopyBase& operator=(const OptionalCopyBase&) = default;
+  OptionalCopyBase& operator=(OptionalCopyBase&&) noexcept = default;
+  ~OptionalCopyBase() = default;
+};
+
+// Trivial case: when Value is trivially copy constructible, trivially copy
+// assignable, AND trivially destructible, the copy assignment operator is
+// implicitly defaulted (trivial).
+template <
+    class Value,
+    bool = std::is_trivially_copy_constructible_v<Value> &&
+        std::is_trivially_copy_assignable_v<Value> &&
+        std::is_trivially_destructible_v<Value>>
+struct OptionalCopyAssignBase : OptionalCopyBase<Value> {
+  using OptionalCopyBase<Value>::OptionalCopyBase;
+};
+
+// Non-trivial case: user-defined copy assignment operator.
+template <class Value>
+struct OptionalCopyAssignBase<Value, false> : OptionalCopyBase<Value> {
+  using OptionalCopyBase<Value>::OptionalCopyBase;
+  OptionalCopyAssignBase() = default;
+  OptionalCopyAssignBase(const OptionalCopyAssignBase&) = default;
+  OptionalCopyAssignBase(OptionalCopyAssignBase&&) noexcept = default;
+  ~OptionalCopyAssignBase() = default;
+  OptionalCopyAssignBase& operator=(OptionalCopyAssignBase&& other) noexcept =
+      default;
+  OptionalCopyAssignBase& operator=(const OptionalCopyAssignBase& src) noexcept(
+      std::is_nothrow_copy_constructible_v<Value> &&
+      std::is_nothrow_copy_assignable_v<Value>) {
+    if (this->storage_.hasValue && src.storage_.hasValue) {
+      this->storage_.value = src.storage_.value;
+    } else if (src.storage_.hasValue) {
+      this->construct(src.storage_.value);
+    } else {
+      this->storage_.clear();
+    }
+    return *this;
+  }
+};
+
 } // namespace detail
 
 struct None {
@@ -108,7 +236,9 @@ class FOLLY_EXPORT OptionalEmptyException : public std::runtime_error {
  * implementation, Optional exists primarily for backward compatibility.
  */
 template <class Value>
-class Optional {
+class Optional : private detail::OptionalCopyAssignBase<Value> {
+  using Base = detail::OptionalCopyAssignBase<Value>;
+
  public:
   using value_type = Value;
 
@@ -124,17 +254,12 @@ class Optional {
   /// Default-constructed Optionals are None.
   constexpr Optional() noexcept {}
 
-  Optional(const Optional& src) noexcept(
-      std::is_nothrow_copy_constructible<Value>::value) {
-    if (src.hasValue()) {
-      construct(src.value());
-    }
-  }
+  Optional(const Optional&) = default;
 
   Optional(Optional&& src) noexcept(
       std::is_nothrow_move_constructible<Value>::value) {
     if (src.hasValue()) {
-      construct(std::move(src.value()));
+      this->construct(std::move(src.value()));
       src.reset();
     }
   }
@@ -143,12 +268,12 @@ class Optional {
 
   constexpr /* implicit */ Optional(Value&& newValue) noexcept(
       std::is_nothrow_move_constructible<Value>::value) {
-    construct(std::move(newValue));
+    this->construct(std::move(newValue));
   }
 
   constexpr /* implicit */ Optional(const Value& newValue) noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
-    construct(newValue);
+    this->construct(newValue);
   }
 
   /**
@@ -189,7 +314,7 @@ class Optional {
   explicit Optional(U&& newValue) noexcept(
       std::is_nothrow_move_constructible<Value>::value) {
     if (newValue.has_value()) {
-      construct(std::move(*newValue));
+      this->construct(std::move(*newValue));
       newValue.reset();
     }
   }
@@ -199,23 +324,23 @@ class Optional {
   explicit Optional(const U& newValue) noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
     if (newValue.has_value()) {
-      construct(*newValue);
+      this->construct(*newValue);
     }
   }
   /// Allow explicit cast to std::optional
   /// @methodset Migration
   explicit operator std::optional<Value>() && noexcept(
       std::is_nothrow_move_constructible<Value>::value) {
-    std::optional<Value> ret = storage_.hasValue
-        ? std::optional<Value>(std::move(storage_.value))
+    std::optional<Value> ret = this->storage_.hasValue
+        ? std::optional<Value>(std::move(this->storage_.value))
         : std::nullopt;
     reset();
     return ret;
   }
   explicit operator std::optional<Value>() const& noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
-    return storage_.hasValue
-        ? std::optional<Value>(storage_.value)
+    return this->storage_.hasValue
+        ? std::optional<Value>(this->storage_.value)
         : std::nullopt;
   }
 
@@ -262,10 +387,10 @@ class Optional {
     if (hasValue()) {
       FOLLY_PUSH_WARNING
       FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
-      storage_.value = std::move(newValue);
+      this->storage_.value = std::move(newValue);
       FOLLY_POP_WARNING
     } else {
-      construct(std::move(newValue));
+      this->construct(std::move(newValue));
     }
   }
 
@@ -273,10 +398,10 @@ class Optional {
     if (hasValue()) {
       FOLLY_PUSH_WARNING
       FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
-      storage_.value = newValue;
+      this->storage_.value = newValue;
       FOLLY_POP_WARNING
     } else {
-      construct(newValue);
+      this->construct(newValue);
     }
   }
 
@@ -298,18 +423,14 @@ class Optional {
     return *this;
   }
 
-  Optional& operator=(const Optional& other) noexcept(
-      std::is_nothrow_copy_assignable<Value>::value) {
-    assign(other);
-    return *this;
-  }
+  Optional& operator=(const Optional&) = default;
 
   /// Construct a new value in the Optional, in-place.
   /// @methodset Modifiers
   template <class... Args>
   Value& emplace(Args&&... args) {
     reset();
-    construct(std::forward<Args>(args)...);
+    this->construct(std::forward<Args>(args)...);
     return value();
   }
 
@@ -319,13 +440,13 @@ class Optional {
       Value&>::type
   emplace(std::initializer_list<U> ilist, Args&&... args) {
     reset();
-    construct(ilist, std::forward<Args>(args)...);
+    this->construct(ilist, std::forward<Args>(args)...);
     return value();
   }
 
   /// Set the Optional to None
   /// @methodset Modifiers
-  void reset() noexcept { storage_.clear(); }
+  void reset() noexcept { this->storage_.clear(); }
 
   /// Set the Optional to None
   /// @methodset Modifiers
@@ -349,37 +470,37 @@ class Optional {
   /// @methodset Getters
   constexpr const Value& value() const& {
     require_value();
-    return storage_.value;
+    return this->storage_.value;
   }
 
   constexpr Value& value() & {
     require_value();
-    return storage_.value;
+    return this->storage_.value;
   }
 
   constexpr Value&& value() && {
     require_value();
-    return std::move(storage_.value);
+    return std::move(this->storage_.value);
   }
 
   constexpr const Value&& value() const&& {
     require_value();
-    return std::move(storage_.value);
+    return std::move(this->storage_.value);
   }
 
   /// Get the value by pointer; nullptr if None.
   /// @methodset Getters
   const Value* get_pointer() const& {
-    return storage_.hasValue ? &storage_.value : nullptr;
+    return this->storage_.hasValue ? &this->storage_.value : nullptr;
   }
   Value* get_pointer() & {
-    return storage_.hasValue ? &storage_.value : nullptr;
+    return this->storage_.hasValue ? &this->storage_.value : nullptr;
   }
   Value* get_pointer() && = delete;
 
   /// Does this Optional have a value.
   /// @methodset Observers
-  constexpr bool has_value() const noexcept { return storage_.hasValue; }
+  constexpr bool has_value() const noexcept { return this->storage_.hasValue; }
 
   /// Does this Optional have a value.
   /// @methodset Observers
@@ -405,8 +526,8 @@ class Optional {
   /// @methodset Getters
   template <class U>
   constexpr Value value_or(U&& dflt) const& {
-    if (storage_.hasValue) {
-      return storage_.value;
+    if (this->storage_.hasValue) {
+      return this->storage_.value;
     }
 
     return std::forward<U>(dflt);
@@ -414,8 +535,8 @@ class Optional {
 
   template <class U>
   constexpr Value value_or(U&& dflt) && {
-    if (storage_.hasValue) {
-      return std::move(storage_.value);
+    if (this->storage_.hasValue) {
+      return std::move(this->storage_.value);
     }
 
     return std::forward<U>(dflt);
@@ -445,7 +566,7 @@ class Optional {
   template <typename... Args>
   constexpr Optional(PrivateConstructor, Args&&... args) noexcept(
       std::is_nothrow_constructible<Value, Args&&...>::value) {
-    construct(std::forward<Args>(args)...);
+    this->construct(std::forward<Args>(args)...);
   }
   // for when coroutine promise return-object conversion is eager
   explicit Optional(detail::OptionalEmptyTag, Optional*& pointer) noexcept {
@@ -453,58 +574,10 @@ class Optional {
   }
 
   void require_value() const {
-    if (!storage_.hasValue) {
+    if (!this->storage_.hasValue) {
       throw_exception<OptionalEmptyException>();
     }
   }
-
-  template <class... Args>
-  void construct(Args&&... args) {
-    const void* ptr = &storage_.value;
-    // For supporting const types.
-    new (const_cast<void*>(ptr)) Value(std::forward<Args>(args)...);
-    storage_.hasValue = true;
-  }
-
-  struct StorageTriviallyDestructible {
-    union {
-      char emptyState;
-      Value value;
-    };
-    bool hasValue;
-
-    constexpr StorageTriviallyDestructible()
-        : emptyState(unsafe_default_initialized), hasValue{false} {}
-    void clear() { hasValue = false; }
-  };
-
-  struct StorageNonTriviallyDestructible {
-    union {
-      char emptyState;
-      Value value;
-    };
-    bool hasValue;
-
-    constexpr StorageNonTriviallyDestructible() : hasValue{false} {}
-    ~StorageNonTriviallyDestructible() { clear(); }
-
-    void clear() {
-      if (hasValue) {
-        hasValue = false;
-        FOLLY_PUSH_WARNING
-        FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
-        value.~Value();
-        FOLLY_POP_WARNING
-      }
-    }
-  };
-
-  using Storage = typename std::conditional<
-      std::is_trivially_destructible<Value>::value,
-      StorageTriviallyDestructible,
-      StorageNonTriviallyDestructible>::type;
-
-  Storage storage_;
 };
 
 template <class T>

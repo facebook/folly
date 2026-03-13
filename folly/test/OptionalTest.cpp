@@ -36,6 +36,21 @@ FOLLY_GNU_DISABLE_WARNING("-Wself-move")
 using std::shared_ptr;
 using std::unique_ptr;
 
+// Verify that Optional is trivially copyable for trivial types.
+static_assert(std::is_trivially_copy_constructible_v<folly::Optional<int32_t>>);
+static_assert(std::is_trivially_copy_assignable_v<folly::Optional<int32_t>>);
+static_assert(std::is_trivially_destructible_v<folly::Optional<int32_t>>);
+static_assert(
+    !std::is_trivially_copy_constructible_v<folly::Optional<std::string>>);
+static_assert(
+    !std::is_trivially_copy_assignable_v<folly::Optional<std::string>>);
+// Move constructor is intentionally non-trivial (resets source), unlike
+// std::optional.
+static_assert(
+    !std::is_trivially_move_constructible_v<folly::Optional<int32_t>>);
+static_assert(
+    !std::is_trivially_move_constructible_v<folly::Optional<std::string>>);
+
 namespace {
 
 struct HashableStruct {};
