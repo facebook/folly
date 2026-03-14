@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -28,18 +29,17 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "double_radix_sort",
     srcs = [
         "DoubleRadixSort.cpp",
     ],
-    raw_headers = [
+    headers = [
         "DoubleRadixSort.h",
     ],
-    deps = [
-        "//third-party/glog:glog",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    deps = ["fbsource//third-party/glog:glog"],
 )
 
 non_fbcode_target(
@@ -93,16 +93,4 @@ fbcode_target(
     exported_deps = [
         "//folly:function",
     ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "double_radix_sort",
-    srcs = [
-        "DoubleRadixSort.cpp",
-    ],
-    headers = [
-        "DoubleRadixSort.h",
-    ],
-    deps = ["fbsource//third-party/glog:glog"],
 )

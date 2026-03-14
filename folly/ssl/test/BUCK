@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load("../../defs.bzl", "folly_xplat_cxx_test")
 load("../../io/async/test/certs/defs.bzl", "alias_pem", "alias_pem_for_xplat")
 
@@ -13,14 +14,14 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "openssl_hash_test",
     srcs = ["OpenSSLHashTest.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/io:iobuf",
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/ssl:openssl_hash",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+        "//folly/ssl:openssl_hash",
     ],
 )
 
@@ -51,16 +52,16 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "ssl_session_manager_test",
     srcs = ["SSLSessionManagerTest.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "fbsource//xplat/folly/portability:openssl",
-        "//xplat/folly/ssl:openssl_ptr_types",
-        "//xplat/folly/ssl:ssl_session_manager",
-        "//xplat/folly/ssl/detail:openssl_session",
+        "//folly/portability:gtest",
+        "//folly/portability:openssl",
+        "//folly/ssl:openssl_ptr_types",
+        "//folly/ssl:ssl_session_manager",
+        "//folly/ssl/detail:openssl_session",
     ],
 )
 
@@ -88,17 +89,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_unittest,
-    name = "openssl_hash_test",
-    srcs = ["OpenSSLHashTest.cpp"],
-    deps = [
-        "//folly/io:iobuf",
-        "//folly/portability:gtest",
-        "//folly/ssl:openssl_hash",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
     name = "openssl_cert_utils_test",
     srcs = ["OpenSSLCertUtilsTest.cpp"],
     resources = [
@@ -119,19 +109,6 @@ fbcode_target(
         "//folly/ssl:openssl_cert_utils",
         "//folly/ssl:openssl_ptr_types",
         "//folly/testing:test_util",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "ssl_session_manager_test",
-    srcs = ["SSLSessionManagerTest.cpp"],
-    deps = [
-        "//folly/portability:gtest",
-        "//folly/portability:openssl",
-        "//folly/ssl:openssl_ptr_types",
-        "//folly/ssl:ssl_session_manager",
-        "//folly/ssl/detail:openssl_session",
     ],
 )
 
