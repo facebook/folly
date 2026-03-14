@@ -87,7 +87,7 @@ bool OpenSSLUtils::getPeerAddressFromX509StoreCtx(
     PLOG(ERROR) << "Unable to get peer name";
     return false;
   }
-  CHECK(static_cast<size_t>(*addrLen) <= sizeof(*addrStorage));
+  CHECK(*addrLen <= sizeof(*addrStorage));
   return true;
 }
 

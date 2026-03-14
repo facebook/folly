@@ -21,7 +21,6 @@ folly_add_library(
   HEADERS
     RangeSve2.h
   DEPS
-    folly_detail_range_common
     folly_portability
   EXPORTED_DEPS
     folly_detail_range_common

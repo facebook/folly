@@ -11,7 +11,6 @@ fb_dirsync_cpp_library(
     xplat_impl = folly_xplat_library,
     deps = [
         "//folly:portability",
-        "//folly/detail:range_common",  # @manual Windows DLL build fails if this is not included even if in exported_deps
     ],
     exported_deps = [
         "//folly/detail:range_common",

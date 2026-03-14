@@ -143,7 +143,6 @@ fbcode_target(
     deps = [
         ":base64_simd",
         ":base64_sse4_2_platform",
-        ":base64_swar",  # @manual Windows DLL build fails if this is not included
     ],
     exported_deps = [
         ":base64_common",
