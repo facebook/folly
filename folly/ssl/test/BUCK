@@ -65,15 +65,14 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "openssl_key_utils_test",
     srcs = ["OpenSSLKeyUtilsTest.cpp"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:string",
-        "//xplat/folly/ssl:openssl_key_utils",
-        "//xplat/folly/ssl:password_collector",
+        "//folly/portability:gtest",
+        "//folly/ssl:openssl_key_utils",
+        "//folly/ssl:password_collector",
     ],
 )
 
@@ -109,16 +108,5 @@ fbcode_target(
         "//folly/ssl:openssl_cert_utils",
         "//folly/ssl:openssl_ptr_types",
         "//folly/testing:test_util",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "openssl_key_utils_test",
-    srcs = ["OpenSSLKeyUtilsTest.cpp"],
-    deps = [
-        "//folly/portability:gtest",
-        "//folly/ssl:openssl_key_utils",
-        "//folly/ssl:password_collector",
     ],
 )

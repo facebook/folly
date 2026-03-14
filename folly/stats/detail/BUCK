@@ -1,31 +1,32 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "bucket",
-    raw_headers = [
-        "Bucket.h",
+    headers = ["Bucket.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:constexpr_math",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "buffered_stat",
-    raw_headers = [
+    srcs = [],
+    headers = [
         "BufferedStat.h",
         "BufferedStat-inl.h",
     ],
-    deps = [
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
         ":sliding_window",
-        "//xplat/folly:shared_mutex",
-        "//xplat/folly/stats:digest_builder",
+        "//folly:range",
+        "//folly:shared_mutex",
+        "//folly/stats:digest_builder",
     ],
 )
 
@@ -42,47 +43,7 @@ fb_dirsync_cpp_library(
     deps = ["fbsource//third-party/glog:glog"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "sliding_window",
-    raw_headers = [
-        "SlidingWindow.h",
-        "SlidingWindow-inl.h",
-    ],
-    deps = [
-        "//xplat/folly:function",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "bucket",
-    headers = ["Bucket.h"],
-    exported_deps = [
-        "//folly:constexpr_math",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "buffered_stat",
-    srcs = [],
-    headers = [
-        "BufferedStat.h",
-        "BufferedStat-inl.h",
-    ],
-    exported_deps = [
-        ":sliding_window",
-        "//folly:range",
-        "//folly:shared_mutex",
-        "//folly/stats:digest_builder",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "sliding_window",
     srcs = [
     ],
@@ -90,6 +51,8 @@ fbcode_target(
         "SlidingWindow.h",
         "SlidingWindow-inl.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:function",
     ],
