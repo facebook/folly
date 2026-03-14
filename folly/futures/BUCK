@@ -1,28 +1,23 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "barrier",
-    srcs = [
-        "Barrier.cpp",
-    ],
+    srcs = ["Barrier.cpp"],
+    headers = ["Barrier.h"],
     force_static = False,
-    raw_headers = [
-        "Barrier.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/lang:new",
+        "fbsource//third-party/glog:glog",
+        "//folly:scope_guard",
+        "//folly/lang:new",
     ],
-    exported_deps = ["//xplat/folly/futures:core"],
+    exported_deps = [
+        ":core",
+    ],
 )
 
 fb_dirsync_cpp_library(
@@ -36,8 +31,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "core",
     srcs = [
         "Future.cpp",
@@ -45,15 +39,7 @@ non_fbcode_target(
         "Promise.cpp",
         "ThreadWheelTimekeeper.cpp",
     ],
-    force_static = False,
-    labels = [
-        # This library should be used via :futures. Depslint
-        # doesn't support the concept of target-reexports (nor do we know the
-        # best design for such a feature), so we just exclude this target from
-        # being added.
-        "depslint_never_add",
-    ],
-    raw_headers = [
+    headers = [
         "Future.h",
         "Future-inl.h",
         "Future-pre.h",
@@ -64,58 +50,67 @@ non_fbcode_target(
         "ThreadWheelTimekeeper.h",
         "WTCallback.h",
     ],
+    force_static = False,
+    labels = [
+        # This library should be used via :futures. Depslint
+        # doesn't support the concept of target-reexports (nor do we know the
+        # best design for such a feature), so we just exclude this target from
+        # being added.
+        "depslint_never_add",
+    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "fbsource//xplat/folly/lang:safe_assert",
-        "//xplat/folly:likely",
-        "//xplat/folly:singleton",
-        "//xplat/folly/system:thread_name",
+        "//folly:likely",
+        "//folly:singleton",
+        "//folly/container:intrusive_heap",
+        "//folly/lang:safe_assert",
+        "//folly/portability:gflags",
+        "//folly/synchronization:distributed_mutex",
+        "//folly/synchronization:relaxed_atomic",
+        "//folly/synchronization:saturating_semaphore",
+        "//folly/synchronization:wait_options",
+        "//folly/system:thread_name",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/lang:switch",
-        "fbsource//xplat/folly/portability:gflags",
-        "fbsource//xplat/folly/synchronization:distributed_mutex",
-        "fbsource//xplat/folly/synchronization:relaxed_atomic",
-        "fbsource//xplat/folly/synchronization:saturating_semaphore",
         ":portability",
-        "//xplat/folly:chrono",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:random",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:traits",
-        "//xplat/folly:try",
-        "//xplat/folly:unit",
-        "//xplat/folly:utility",
-        "//xplat/folly/container:intrusive_heap",
-        "//xplat/folly/detail:async_trace",
-        "//xplat/folly/executors:drivable_executor",
-        "//xplat/folly/executors:executor_with_priority",
-        "//xplat/folly/executors:global_executor",
-        "//xplat/folly/executors:inline_executor",
-        "//xplat/folly/executors:queued_immediate_executor",
-        "//xplat/folly/executors:timed_drivable_executor",
-        "//xplat/folly/experimental/coro:traits",
-        "//xplat/folly/fibers:core",
-        "//xplat/folly/functional:invoke",
-        "//xplat/folly/futures/detail:core",
-        "//xplat/folly/futures/detail:types",
-        "//xplat/folly/io/async:async_base",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:pretty",
+        "//folly:chrono",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:random",
+        "//folly:scope_guard",
+        "//folly:traits",
+        "//folly:try",
+        "//folly:unit",
+        "//folly:utility",
+        "//folly/container:foreach",
+        "//folly/coro:traits",
+        "//folly/detail:async_trace",
+        "//folly/executors:drivable_executor",
+        "//folly/executors:executor_with_priority",
+        "//folly/executors:global_executor",
+        "//folly/executors:inline_executor",
+        "//folly/executors:queued_immediate_executor",
+        "//folly/executors:timed_drivable_executor",
+        "//folly/fibers:core",
+        "//folly/functional:invoke",
+        "//folly/futures/detail:core",
+        "//folly/io/async:async_base",
+        "//folly/lang:exception",
+        "//folly/lang:pretty",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "future_splitter",
+    headers = ["FutureSplitter.h"],
     force_static = False,
-    raw_headers = [
-        "FutureSplitter.h",
-    ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         ":shared_promise",
-        "//xplat/folly/lang:exception",
+        "//folly/lang:exception",
     ],
 )
 
@@ -159,123 +154,16 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "shared_promise",
-    srcs = [
-        "SharedPromise.cpp",
-    ],
-    force_static = False,
-    raw_headers = [
-        "SharedPromise.h",
-        "SharedPromise-inl.h",
-    ],
-    exported_deps = [
-        ":core",
-        "//xplat/folly:portability",
-        "//xplat/folly/executors:inline_executor",
-        "//xplat/folly/lang:exception",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "barrier",
-    srcs = ["Barrier.cpp"],
-    headers = ["Barrier.h"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:scope_guard",
-        "//folly/lang:new",
-    ],
-    exported_deps = [
-        ":core",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "core",
-    srcs = [
-        "Future.cpp",
-        "HeapTimekeeper.cpp",
-        "Promise.cpp",
-        "ThreadWheelTimekeeper.cpp",
-    ],
-    headers = [
-        "Future.h",
-        "Future-inl.h",
-        "Future-pre.h",
-        "HeapTimekeeper.h",
-        "Promise.h",
-        "Promise-inl.h",
-        "Retrying.h",
-        "ThreadWheelTimekeeper.h",
-        "WTCallback.h",
-    ],
-    deps = [
-        "//folly:likely",
-        "//folly:singleton",
-        "//folly/container:intrusive_heap",
-        "//folly/lang:safe_assert",
-        "//folly/portability:gflags",
-        "//folly/synchronization:distributed_mutex",
-        "//folly/synchronization:relaxed_atomic",
-        "//folly/synchronization:saturating_semaphore",
-        "//folly/synchronization:wait_options",
-        "//folly/system:thread_name",
-    ],
-    exported_deps = [
-        ":portability",
-        "//folly:chrono",
-        "//folly:optional",
-        "//folly:portability",
-        "//folly:random",
-        "//folly:scope_guard",
-        "//folly:traits",
-        "//folly:try",
-        "//folly:unit",
-        "//folly:utility",
-        "//folly/container:foreach",
-        "//folly/coro:traits",
-        "//folly/detail:async_trace",
-        "//folly/executors:drivable_executor",
-        "//folly/executors:executor_with_priority",
-        "//folly/executors:global_executor",
-        "//folly/executors:inline_executor",
-        "//folly/executors:queued_immediate_executor",
-        "//folly/executors:timed_drivable_executor",
-        "//folly/fibers:core",
-        "//folly/functional:invoke",
-        "//folly/futures/detail:core",
-        "//folly/futures/detail:types",
-        "//folly/io/async:async_base",
-        "//folly/lang:exception",
-        "//folly/lang:pretty",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "future_splitter",
-    headers = ["FutureSplitter.h"],
-    exported_deps = [
-        ":core",
-        ":shared_promise",
-        "//folly/lang:exception",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "shared_promise",
     srcs = ["SharedPromise.cpp"],
     headers = [
         "SharedPromise.h",
         "SharedPromise-inl.h",
     ],
+    force_static = False,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         "//folly:portability",

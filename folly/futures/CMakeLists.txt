@@ -77,7 +77,6 @@ folly_add_library(
     folly_fibers_core
     folly_functional_invoke
     folly_futures_detail_core
-    folly_futures_detail_types
     folly_futures_portability
     folly_io_async_async_base
     folly_lang_exception
