@@ -700,16 +700,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "openat2",
-    srcs = ["openat2.c"],
-    headers = ["openat2.h"],
-    exported_deps = [
-        "//folly:config",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "openssl",
     srcs = ["OpenSSL.cpp"],
     headers = ["OpenSSL.h"],

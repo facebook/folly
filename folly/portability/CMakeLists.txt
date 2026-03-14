@@ -188,16 +188,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME openat2
-  SRCS
-    openat2.c
-  HEADERS
-    openat2.h
-  EXPORTED_DEPS
-    folly_config
-)
-
-folly_add_library(
   NAME openssl
   SRCS
     OpenSSL.cpp

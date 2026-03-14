@@ -148,3 +148,4 @@ folly_add_library(
 )
 
 add_subdirectory(arch)
+add_subdirectory(os)

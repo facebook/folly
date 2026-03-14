@@ -160,7 +160,7 @@ constexpr Char char_at_(
     std::size_t right_count,
     std::size_t i) noexcept {
   FOLLY_PUSH_WARNING
-#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 13
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 14
 #pragma GCC diagnostic ignored "-Warray-bounds"
 #endif
   return i < left_pos

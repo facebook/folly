@@ -14,26 +14,26 @@
  * limitations under the License.
  */
 
-/**
- * Provide (glibc's missing) wrapper around the low-level `openat2` syscall.
- */
-
-#pragma once
-
-#include <folly/folly-config.h>
-
-#if !FOLLY_HAVE_OPENAT2
-#error "FOLLY_HAVE_OPENAT2 is disabled"
-#endif
+#include <folly/system/os/linux.h>
 
 #include <linux/openat2.h>
 
-#ifdef __cplusplus
-extern "C" {
+#include <folly/portability/SysSyscall.h>
+
+namespace folly {
+
+long linux_syscall_openat2(
+    int const dirfd,
+    char const* const pathname,
+    struct open_how const* const how) {
+  constexpr long no_openat2 =
+#if defined(__linux__) && defined(SYS_openat2)
+      SYS_openat2;
+#else
+      -1;
 #endif
-
-int openat2(int dirfd, const char* pathname, const struct open_how* how);
-
-#ifdef __cplusplus
+  return detail::linux_syscall(
+      no_openat2, dirfd, pathname, how, sizeof(struct open_how));
 }
-#endif
+
+} // namespace folly

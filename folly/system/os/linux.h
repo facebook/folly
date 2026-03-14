@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-#include <folly/folly-config.h>
+#pragma once
 
-#if FOLLY_HAVE_OPENAT2
+struct open_how;
 
-#include <folly/portability/openat2.h>
+namespace folly {
 
-#include <sys/syscall.h>
-#include <unistd.h>
+/// linux_syscall_openat2
+///
+/// Invokes the openat2 syscall. Returns the file descriptor on success, or
+/// returns -1 and sets errno on failure.
+long linux_syscall_openat2(
+    int dirfd, char const* pathname, struct open_how const* how);
 
-int openat2(int dirfd, const char* pathname, const struct open_how* how) {
-  return syscall(SYS_openat2, dirfd, pathname, how, sizeof(struct open_how));
-}
-
-#endif
+} // namespace folly
