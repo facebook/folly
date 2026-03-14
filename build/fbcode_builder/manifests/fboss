@@ -49,8 +49,8 @@ python-pyyaml
 [shipit.pathmap]
 fbcode/fboss/github = .
 fbcode/fboss/common = common
-fbcode/configerator/structs/neteng/fboss/thrift = configerator/structs/neteng/fboss/thrift
 fbcode/fboss = fboss
+fbcode/configerator/structs/neteng/fboss/thrift/common.thrift = configerator/structs/neteng/fboss/thrift/common.thrift
 
 [shipit.strip]
 ^fbcode/fboss/github/docs/.*
