@@ -3,7 +3,7 @@ name = rebalancer
 fbsource_path = fbcode/algopt/rebalancer/
 shipit_project = rebalancer
 shipit_fbcode_builder = true
-use_shipit = false
+use_shipit = true
 
 [git]
 # To git clone on devserver, setup fwdproxy:
