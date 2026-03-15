@@ -31,7 +31,7 @@ void runArithmeticBench(int64_t iters) {
     folly::IOBufQueue queue;
     QueueAppender appender(&queue, kBenchmarkSize);
     for (size_t i = 0; i < kBenchmarkSize / sizeof(T); ++i) {
-      appender.write((T)0xFB);
+      appender.write<T>((T)0xFB);
     }
     folly::doNotOptimizeAway(queue.move());
   }

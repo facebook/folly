@@ -28,6 +28,7 @@
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/Traits.h>
 #include <folly/container/span.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
@@ -1157,14 +1158,17 @@ class Writable {
    * May throw if there isn't enough space and the derived cursor type does not
    * support extending the IOBuf's writable range.
    */
-  template <class T>
+  template <class T, class..., class V>
   typename std::enable_if<std::is_arithmetic<T>::value>::type write(
-      T value, size_t n = sizeof(T)) {
+      V value, size_t n = sizeof(T)) {
     this->write(tag<T>, value, n);
   }
-  template <class T>
+  template <class T, class..., class V>
   typename std::enable_if<std::is_arithmetic<T>::value>::type write(
-      tag_t<T>, T value, size_t n = sizeof(T)) {
+      tag_t<T>, V value, size_t n = sizeof(T)) {
+    static_assert(
+        std::is_same_v<T, V>,
+        "the type of value does not match the type param");
     assert(n <= sizeof(T));
     const uint8_t* u8 = reinterpret_cast<const uint8_t*>(&value);
     Derived* d = static_cast<Derived*>(this);
@@ -1179,12 +1183,15 @@ class Writable {
    * May throw if there isn't enough space and the derived cursor type does not
    * support extending the IOBuf's writable range.
    */
-  template <class T>
-  void writeBE(T value) {
+  template <class T, class..., class V>
+  void writeBE(V value) {
     this->writeBE<T>(tag<T>, value);
   }
-  template <class T>
-  void writeBE(tag_t<T>, T value) {
+  template <class T, class..., class V>
+  void writeBE(tag_t<T>, V value) {
+    static_assert(
+        std::is_same_v<T, V>,
+        "the type of value does not match the type param");
     Derived* d = static_cast<Derived*>(this);
     d->write(tag<T>, Endian::big(value));
   }
@@ -1197,12 +1204,15 @@ class Writable {
    * May throw if there isn't enough space and the derived cursor type does not
    * support extending the IOBuf's writable range.
    */
-  template <class T>
-  void writeLE(T value) {
+  template <class T, class..., class V>
+  void writeLE(V value) {
     this->writeLE(tag<T>, value);
   }
-  template <class T>
-  void writeLE(tag_t<T>, T value) {
+  template <class T, class..., class V>
+  void writeLE(tag_t<T>, V value) {
+    static_assert(
+        std::is_same_v<T, V>,
+        "the type of value does not match the type param");
     Derived* d = static_cast<Derived*>(this);
     d->write(tag<T>, Endian::little(value));
   }
@@ -1708,14 +1718,17 @@ class QueueAppender : public Writable<QueueAppender> {
    *
    * @param n The number of bytes of value to write; defaults to sizeof(T)
    */
-  template <class T>
+  template <class T, class..., class V>
   typename std::enable_if<std::is_arithmetic<T>::value>::type write(
-      T value, size_t n = sizeof(T)) {
+      V value, size_t n = sizeof(T)) {
     this->write(tag<T>, value, n);
   }
-  template <class T>
+  template <class T, class..., class V>
   typename std::enable_if<std::is_arithmetic<T>::value>::type write(
-      tag_t<T>, T value, size_t n = sizeof(T)) {
+      tag_t<T>, V value, size_t n = sizeof(T)) {
+    static_assert(
+        std::is_same_v<T, V>,
+        "the type of value does not match the type param");
     // We can't fail.
     assert(n <= sizeof(T));
     if (FOLLY_UNLIKELY(length() < sizeof(T))) {
