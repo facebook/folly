@@ -42,10 +42,10 @@ TEST(IOBuf, RWCursor) {
 
   RWPrivateCursor wcursor(iobuf1.get());
   Cursor rcursor(iobuf1.get());
-  wcursor.writeLE<uint64_t>((uint64_t)1);
-  wcursor.writeLE<uint64_t>((uint64_t)1);
-  wcursor.writeLE<uint64_t>((uint64_t)1);
-  wcursor.write<uint8_t>((uint8_t)1);
+  wcursor.writeLE((uint64_t)1);
+  wcursor.writeLE((uint64_t)1);
+  wcursor.writeLE((uint64_t)1);
+  wcursor.write((uint8_t)1);
 
   EXPECT_EQ(1u, rcursor.readLE<uint64_t>());
   rcursor.skip(8);
@@ -62,8 +62,8 @@ TEST(IOBuf, skip) {
   unique_ptr<IOBuf> iobuf1(IOBuf::create(20));
   iobuf1->append(20);
   RWPrivateCursor wcursor(iobuf1.get());
-  wcursor.write<uint8_t>((uint8_t)1);
-  wcursor.write<uint8_t>((uint8_t)2);
+  wcursor.write((uint8_t)1);
+  wcursor.write((uint8_t)2);
   Cursor cursor(iobuf1.get());
   cursor.skip(1);
   EXPECT_EQ(2, cursor.read<uint8_t>());
@@ -73,8 +73,8 @@ TEST(IOBuf, reset) {
   unique_ptr<IOBuf> iobuf1(IOBuf::create(20));
   iobuf1->append(20);
   RWPrivateCursor wcursor(iobuf1.get());
-  wcursor.write<uint8_t>((uint8_t)1);
-  wcursor.write<uint8_t>((uint8_t)2);
+  wcursor.write((uint8_t)1);
+  wcursor.write((uint8_t)2);
   wcursor.reset(iobuf1.get());
   EXPECT_EQ(1, wcursor.read<uint8_t>());
 }
@@ -86,12 +86,12 @@ TEST(IOBuf, copyAssignConvert) {
   RWPrivateCursor cursor2(wcursor);
   RWPrivateCursor cursor3(iobuf1.get());
 
-  wcursor.write<uint8_t>((uint8_t)1);
+  wcursor.write((uint8_t)1);
   cursor3 = wcursor;
-  wcursor.write<uint8_t>((uint8_t)2);
+  wcursor.write((uint8_t)2);
   Cursor cursor4(wcursor);
   RWPrivateCursor cursor5(wcursor);
-  wcursor.write<uint8_t>((uint8_t)3);
+  wcursor.write((uint8_t)3);
 
   EXPECT_EQ(1, cursor2.read<uint8_t>());
   EXPECT_EQ(2, cursor3.read<uint8_t>());
@@ -104,7 +104,7 @@ TEST(IOBuf, arithmetic) {
   iobuf1.append(20);
   RWPrivateCursor wcursor(&iobuf1);
   wcursor += 1;
-  wcursor.write<uint8_t>((uint8_t)1);
+  wcursor.write((uint8_t)1);
   Cursor cursor(&iobuf1);
   cursor += 1;
   EXPECT_EQ(1, cursor.read<uint8_t>());
@@ -125,13 +125,13 @@ TEST(IOBuf, endian) {
   Cursor rcursor(iobuf1.get());
   uint16_t v = 1;
   int16_t vu = -1;
-  wcursor.writeBE<uint16_t>(v);
-  wcursor.writeBE<int16_t>(vu);
+  wcursor.writeBE(v);
+  wcursor.writeBE(vu);
   // Try a couple combinations to ensure they were generated correctly
-  wcursor.writeBE<int16_t>(vu);
-  wcursor.writeLE<int16_t>(vu);
-  wcursor.writeLE<int16_t>(vu);
-  wcursor.writeLE<uint16_t>(v);
+  wcursor.writeBE(vu);
+  wcursor.writeLE(vu);
+  wcursor.writeLE(vu);
+  wcursor.writeLE(v);
   EXPECT_EQ(v, rcursor.readBE<uint16_t>());
 }
 
@@ -139,9 +139,9 @@ TEST(IOBuf, Cursor) {
   unique_ptr<IOBuf> iobuf1(IOBuf::create(1));
   iobuf1->append(1);
   RWPrivateCursor c(iobuf1.get());
-  c.write<uint8_t>((uint8_t)40); // OK
+  c.write((uint8_t)40); // OK
   try {
-    c.write<uint8_t>((uint8_t)10); // Bad write, checked should except.
+    c.write((uint8_t)10); // Bad write, checked should except.
     ADD_FAILURE();
   } catch (...) {
   }
@@ -154,7 +154,7 @@ TEST(IOBuf, UnshareCursor) {
   RWUnshareCursor c1(iobuf1.get());
   RWUnshareCursor c2(iobuf2.get());
 
-  c1.write<uint8_t>((uint8_t)10); // This should duplicate the two buffers.
+  c1.write((uint8_t)10); // This should duplicate the two buffers.
   uint8_t t = c2.read<uint8_t>();
   EXPECT_EQ(0, t);
 
@@ -163,8 +163,7 @@ TEST(IOBuf, UnshareCursor) {
   RWPrivateCursor c3(iobuf1.get());
   RWPrivateCursor c4(iobuf2.get());
 
-  c3.write<uint8_t>(
-      (uint8_t)10); // This should _not_ duplicate the two buffers.
+  c3.write((uint8_t)10); // This should _not_ duplicate the two buffers.
   t = c4.read<uint8_t>();
   EXPECT_EQ(10, t);
 }
@@ -286,9 +285,9 @@ TEST(IOBuf, pushCursorData) {
   // write 20 bytes to the buffer chain
   RWPrivateCursor wcursor(iobuf1.get());
   EXPECT_FALSE(wcursor.isAtEnd());
-  wcursor.writeBE<uint64_t>(uint64_t(1));
-  wcursor.writeBE<uint64_t>(uint64_t(10));
-  wcursor.writeBE<uint32_t>(uint32_t(20));
+  wcursor.writeBE<uint64_t>(1);
+  wcursor.writeBE<uint64_t>(10);
+  wcursor.writeBE<uint32_t>(20);
   EXPECT_TRUE(wcursor.isAtEnd());
 
   // create a read buffer for the buffer chain
@@ -574,7 +573,7 @@ TEST(IOBuf, QueueAppender) {
   QueueAppender app(&queue, 100);
   size_t n = 1024 / sizeof(uint32_t);
   for (uint32_t i = 0; i < n; ++i) {
-    app.writeBE<uint32_t>(i);
+    app.writeBE(i);
   }
 
   // There must be a goodMallocSize between 100 and 1024...
@@ -673,7 +672,7 @@ TEST(IOBuf, QueueAppenderRWCursor) {
   const size_t n = 1024 / sizeof(uint32_t);
   for (size_t m = 0; m < n; m++) {
     for (uint32_t i = 0; i < n; ++i) {
-      app.writeBE<uint32_t>(uint32_t(0));
+      app.writeBE<uint32_t>(0);
     }
 
     RWPrivateCursor rw(app);
@@ -683,7 +682,7 @@ TEST(IOBuf, QueueAppenderRWCursor) {
 
     // Overwrite the data
     for (uint32_t i = 0; i < n; ++i) {
-      rw.writeBE<uint32_t>(uint32_t(i + m * n));
+      rw.writeBE<uint32_t>(i + m * n);
     }
   }
 
@@ -698,7 +697,7 @@ TEST(IOBuf, QueueAppenderTrimEnd) {
   QueueAppender app{&queue, 100};
   const size_t n = 1024 / sizeof(uint32_t);
   for (size_t i = 0; i < n; i++) {
-    app.writeBE<uint32_t>(uint32_t(0));
+    app.writeBE<uint32_t>(0);
   }
 
   app.trimEnd(4);
@@ -1188,11 +1187,11 @@ TEST(IOBuf, tryRead) {
 
   RWPrivateCursor wcursor(iobuf1.get());
   Cursor rcursor(iobuf1.get());
-  wcursor.writeLE<uint32_t>((uint32_t)1);
-  wcursor.writeLE<uint64_t>((uint64_t)1);
-  wcursor.writeLE<uint64_t>((uint64_t)1);
-  wcursor.writeLE<uint64_t>((uint64_t)1);
-  wcursor.writeLE<uint16_t>((uint16_t)1);
+  wcursor.writeLE((uint32_t)1);
+  wcursor.writeLE((uint64_t)1);
+  wcursor.writeLE((uint64_t)1);
+  wcursor.writeLE((uint64_t)1);
+  wcursor.writeLE((uint16_t)1);
   EXPECT_EQ(0, wcursor.totalLength());
 
   EXPECT_EQ(1u, rcursor.readLE<uint32_t>());
@@ -1220,7 +1219,7 @@ TEST(IOBuf, tryReadLE) {
   Cursor rcursor(&buf);
 
   const uint32_t expected = 0x01020304;
-  wcursor.writeLE<uint32_t>(expected);
+  wcursor.writeLE(expected);
   uint32_t actual;
   EXPECT_TRUE(rcursor.tryReadLE(actual));
   EXPECT_EQ(expected, actual);
@@ -1234,7 +1233,7 @@ TEST(IOBuf, tryReadBE) {
   Cursor rcursor(&buf);
 
   const uint32_t expected = 0x01020304;
-  wcursor.writeBE<uint32_t>(expected);
+  wcursor.writeBE(expected);
   uint32_t actual;
   EXPECT_TRUE(rcursor.tryReadBE(actual));
   EXPECT_EQ(expected, actual);
@@ -1638,15 +1637,15 @@ TEST(IOBuf, ThinCursorAdvances) {
 
   RWPrivateCursor wcursor(iobuf1.get());
   // Store into [0, 2)
-  wcursor.writeLE<uint16_t>((uint16_t)0x1122);
+  wcursor.writeLE((uint16_t)0x1122);
   // Store into [2, 6)
-  wcursor.writeBE<uint32_t>((uint32_t)0x33445566);
+  wcursor.writeBE((uint32_t)0x33445566);
   // Store into [6, 8)
-  wcursor.write<uint16_t>((uint16_t)0x7788);
+  wcursor.write((uint16_t)0x7788);
   // Store into [8, 12)
-  wcursor.write<uint32_t>((uint32_t)0x99AABBCC);
+  wcursor.write((uint32_t)0x99AABBCC);
   // Store into [12, 16)
-  wcursor.write<uint32_t>((uint32_t)0xDDEEFF00);
+  wcursor.write((uint32_t)0xDDEEFF00);
 
   Cursor rcursor(iobuf1.get());
   ThinCursor thinCursor = rcursor.borrow();
@@ -1675,7 +1674,7 @@ TEST(IOBuf, ThinCursorBorrowing) {
   iobuf->append(4);
 
   RWPrivateCursor wcursor(iobuf.get());
-  wcursor.writeBE<uint32_t>((uint32_t)0x11223344);
+  wcursor.writeBE((uint32_t)0x11223344);
 
   Cursor rcursor(iobuf.get());
   EXPECT_EQ(0x11, rcursor.read<uint8_t>());

@@ -1247,13 +1247,13 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloOnePacket) {
   auto buf = IOBuf::create(bufLen);
   buf->append(bufLen);
   folly::io::RWPrivateCursor cursor(buf.get());
-  cursor.write<uint8_t>(uint8_t(SSL3_MT_CLIENT_HELLO));
-  cursor.write<uint16_t>(uint16_t(0));
-  cursor.write<uint8_t>(uint8_t(38));
+  cursor.write<uint8_t>(SSL3_MT_CLIENT_HELLO);
+  cursor.write<uint16_t>(0);
+  cursor.write<uint8_t>(38);
   cursor.write<uint8_t>(majorVersion);
   cursor.write<uint8_t>(minorVersion);
   cursor.skip(32);
-  cursor.write<uint32_t>(uint32_t(0));
+  cursor.write<uint32_t>(0);
 
   SSL* ssl = ctx->createSSL();
   SCOPE_EXIT {
@@ -1289,13 +1289,13 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloTwoPackets) {
   auto buf = IOBuf::create(bufLen);
   buf->append(bufLen);
   folly::io::RWPrivateCursor cursor(buf.get());
-  cursor.write<uint8_t>(uint8_t(SSL3_MT_CLIENT_HELLO));
-  cursor.write<uint16_t>(uint16_t(0));
-  cursor.write<uint8_t>(uint8_t(38));
+  cursor.write<uint8_t>(SSL3_MT_CLIENT_HELLO);
+  cursor.write<uint16_t>(0);
+  cursor.write<uint8_t>(38);
   cursor.write<uint8_t>(majorVersion);
   cursor.write<uint8_t>(minorVersion);
   cursor.skip(32);
-  cursor.write<uint32_t>(uint32_t(0));
+  cursor.write<uint32_t>(0);
 
   SSL* ssl = ctx->createSSL();
   SCOPE_EXIT {
@@ -1349,13 +1349,13 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloMultiplePackets) {
   auto buf = IOBuf::create(bufLen);
   buf->append(bufLen);
   folly::io::RWPrivateCursor cursor(buf.get());
-  cursor.write<uint8_t>(uint8_t(SSL3_MT_CLIENT_HELLO));
-  cursor.write<uint16_t>(uint16_t(0));
-  cursor.write<uint8_t>(uint8_t(38));
+  cursor.write<uint8_t>(SSL3_MT_CLIENT_HELLO);
+  cursor.write<uint16_t>(0);
+  cursor.write<uint8_t>(38);
   cursor.write<uint8_t>(majorVersion);
   cursor.write<uint8_t>(minorVersion);
   cursor.skip(32);
-  cursor.write<uint32_t>(uint32_t(0));
+  cursor.write<uint32_t>(0);
 
   SSL* ssl = ctx->createSSL();
   SCOPE_EXIT {

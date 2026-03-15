@@ -33,7 +33,7 @@ template <class T>
 FOLLY_ALWAYS_INLINE void check_QueueAppender_write_loop(
     QueueAppender* out, const T* data, size_t len) {
   for (size_t i = 0; i < len; ++i) {
-    out->write<T>(data[i]);
+    out->write(data[i]);
   }
 }
 
@@ -66,11 +66,11 @@ extern "C" FOLLY_KEEP FOLLY_NOINLINE void check_QueueAppender_write_mixed(
     uint32_t c,
     uint64_t d,
     uint8_t e) {
-  out->write<uint8_t>(a);
-  out->write<uint16_t>(b);
-  out->write<uint32_t>(c);
-  out->write<uint64_t>(d);
-  out->write<uint8_t>(e);
+  out->write(a);
+  out->write(b);
+  out->write(c);
+  out->write(d);
+  out->write(e);
 }
 
 int benchmark_size = 1000;
@@ -83,7 +83,7 @@ void runBenchmark() {
   CursClass c(iobuf_benchmark.get());
 
   for (int i = 0; i < benchmark_size; i++) {
-    c.write(folly::tag<uint8_t>, (uint8_t)0);
+    c.write((uint8_t)0);
   }
 }
 
