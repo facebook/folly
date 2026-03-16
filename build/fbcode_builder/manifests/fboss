@@ -46,11 +46,16 @@ tabulate
 gcc12
 python-pyyaml
 
+# ShipitPathMap always assume to use directory to fetch the source code.
+# If you need to sync the files to fboss github repo, please make changes in
+# configerator/source/opensource/shipit_config/facebook/fboss.cconf
 [shipit.pathmap]
 fbcode/fboss/github = .
 fbcode/fboss/common = common
 fbcode/fboss = fboss
-fbcode/configerator/structs/neteng/fboss/thrift/common.thrift = configerator/structs/neteng/fboss/thrift/common.thrift
+# NOTE: Although this directory has other thrift files might not be ready for
+# opensource, this pathmap should only be used internally `getdeps.py fetch`
+fbcode/configerator/structs/neteng/fboss/thrift = configerator/structs/neteng/fboss/thrift
 
 [shipit.strip]
 ^fbcode/fboss/github/docs/.*
