@@ -50,11 +50,6 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND FOLLY_CXX_FLAGS -Wshadow-compatible-local)
   endif()
 
-  check_cxx_compiler_flag(-Wnoexcept-type COMPILER_HAS_W_NOEXCEPT_TYPE)
-  if (COMPILER_HAS_W_NOEXCEPT_TYPE)
-    list(APPEND FOLLY_CXX_FLAGS -Wno-noexcept-type)
-  endif()
-
   check_cxx_compiler_flag(
       -Wnullability-completeness
       COMPILER_HAS_W_NULLABILITY_COMPLETENESS)
@@ -67,11 +62,6 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
       COMPILER_HAS_W_INCONSISTENT_MISSING_OVERRIDE)
   if (COMPILER_HAS_W_INCONSISTENT_MISSING_OVERRIDE)
     list(APPEND FOLLY_CXX_FLAGS -Wno-inconsistent-missing-override)
-  endif()
-
-  check_cxx_compiler_flag(-faligned-new COMPILER_HAS_F_ALIGNED_NEW)
-  if (COMPILER_HAS_F_ALIGNED_NEW)
-    list(APPEND FOLLY_CXX_FLAGS -faligned-new)
   endif()
 
   check_cxx_compiler_flag(-fopenmp COMPILER_HAS_F_OPENMP)

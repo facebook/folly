@@ -31,8 +31,6 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-FOLLY_GNU_DISABLE_WARNING("-Wself-move")
-
 using std::shared_ptr;
 using std::unique_ptr;
 
@@ -722,7 +720,7 @@ TEST(Optional, SelfAssignment) {
   ASSERT_TRUE(a.has_value() && a.value() == 42);
 
   Optional<int> b = 23333333;
-  b = static_cast<decltype(b)&&>(b); // suppress self-move warning
+  b = std::move(std::move(b)); // suppress self-move warning
   ASSERT_TRUE(b.has_value() && b.value() == 23333333);
 }
 

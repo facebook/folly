@@ -53,7 +53,7 @@ extern "C" FOLLY_KEEP long check_folly_hazptr_protect(
 extern "C" FOLLY_KEEP long check_folly_hazptr_local_protect_default(
     std::atomic<hazptr_obj_of<long>*>& channel) {
   hazptr_local<1> local;
-  auto& holder = local[1];
+  auto& holder = local[0];
   auto ptr = holder.protect(channel);
   return ptr ? *ptr : 0;
 }

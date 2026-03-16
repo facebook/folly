@@ -23,8 +23,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/small_vector.h>
 
-FOLLY_GNU_DISABLE_WARNING("-Wself-move")
-
 namespace {
 
 template <typename I>
@@ -179,7 +177,7 @@ TEST(Tape, Move) {
   //   reset under libstdc++ and libc++
   //   no-op under microsoft-stl
   // the current implementation is reset
-  move_assign = static_cast<folly::string_tape&&>(move_assign);
+  move_assign = std::move(std::move(move_assign)); // suppress self-move warning
   ASSERT_EQ(0U, move_assign.size());
 }
 

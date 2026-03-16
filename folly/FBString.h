@@ -2204,7 +2204,7 @@ inline void basic_fbstring<E, T, A, S>::replaceImpl(
   auto const n1 = i2 - i1;
   assert(n1 >= 0);
   auto const n2 = std::distance(s1, s2);
-  assert(n2 >= 0);
+  assume(n2 >= 0);
 
   if (n1 > n2) {
     // shrinks

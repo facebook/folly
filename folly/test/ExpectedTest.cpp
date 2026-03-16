@@ -30,8 +30,6 @@
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 
-FOLLY_GNU_DISABLE_WARNING("-Wself-move")
-
 using std::shared_ptr;
 using std::unique_ptr;
 
@@ -552,7 +550,7 @@ TEST(Expected, SelfAssignment) {
   ASSERT_TRUE(a.hasValue() && a.value() == "42");
 
   Expected<std::string, E> b = "23333333";
-  b = static_cast<decltype(b)&&>(b); // suppress self-move warning
+  b = std::move(std::move(b)); // suppress self-move warning
   ASSERT_TRUE(b.hasValue() && b.value() == "23333333");
 }
 
@@ -658,7 +656,7 @@ FOLLY_GNU_DISABLE_WARNING("-Wpragmas")
 TEST(Expected, NoSelfAssign) {
   folly::Expected<NoSelfAssign, int> e{NoSelfAssign{}};
   e = static_cast<decltype(e)&>(e); // suppress self-assign warning
-  e = static_cast<decltype(e)&&>(e); // suppress self-move warning
+  e = std::move(std::move(e)); // suppress self-move warning
 }
 
 FOLLY_POP_WARNING

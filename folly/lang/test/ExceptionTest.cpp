@@ -676,7 +676,7 @@ void test_exception_shared_string_assign(const char* c, String s0) {
     // NOLINTNEXTLINE(bugprone-use-after-move)
     EXPECT_STREQ("", s0.what());
 
-    s1 = std::move(s1);
+    s1 = std::move(std::move(s1)); // suppress self-move warning
     EXPECT_STREQ(c, s1.what());
   }
 #endif

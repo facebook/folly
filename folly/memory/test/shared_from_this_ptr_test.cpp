@@ -21,8 +21,6 @@
 
 #include <folly/portability/GTest.h>
 
-FOLLY_GNU_DISABLE_WARNING("-Wself-move")
-
 struct SharedFromThisPtrTest : testing::Test {};
 
 struct jabberwocky : std::enable_shared_from_this<jabberwocky> {
@@ -155,7 +153,7 @@ TEST_F(SharedFromThisPtrTest, copy_assign_self) {
 
 TEST_F(SharedFromThisPtrTest, move_assign_self_empty) {
   folly::shared_from_this_ptr<jabberwocky> ptr;
-  ptr = static_cast<decltype(ptr)&&>(ptr);
+  ptr = std::move(std::move(ptr)); // suppress self-move warning
   EXPECT_FALSE(bool(ptr));
   EXPECT_EQ(nullptr, ptr.get());
 }
@@ -163,7 +161,7 @@ TEST_F(SharedFromThisPtrTest, move_assign_self_empty) {
 TEST_F(SharedFromThisPtrTest, move_assign_self) {
   auto shared = std::make_shared<jabberwocky>();
   folly::shared_from_this_ptr<jabberwocky> ptr{shared};
-  ptr = static_cast<decltype(ptr)&&>(ptr);
+  ptr = std::move(std::move(ptr)); // suppress self-move warning
   EXPECT_TRUE(bool(ptr));
   EXPECT_EQ(shared.get(), ptr.get());
   EXPECT_EQ(&*shared, &*ptr);

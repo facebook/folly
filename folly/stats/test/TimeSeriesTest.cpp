@@ -1464,7 +1464,6 @@ TEST(MultiLevelTimeSeries, QueryByInterval) {
 
 TEST(MinuteHourTimeSeries, constReaders) {
   using MLTS = folly::MultiLevelTimeSeries<int64_t>;
-  MLTS mlts(60, {seconds(60), seconds(3600), seconds(0)});
 
   auto checkInvariant = [](MLTS& mlts, TimePoint now) {
     std::vector<typename MLTS::ValueType> expectedSum;
@@ -1491,6 +1490,8 @@ TEST(MinuteHourTimeSeries, constReaders) {
       CHECK_EQ(expectedCountRate[i], mlts.countRate<double>(i));
     }
   };
+
+  MLTS mlts(60, {seconds(60), seconds(3600), seconds(0)});
 
   // Add random data points at random points in time, and read them at random
   // points in time, and verify the invariant that const-qualified read

@@ -1368,7 +1368,12 @@ class small_vector
     value_type* heap_;
     InternalSizeType capacity_;
 
-    InternalSizeType getCapacity() const { return capacity_; }
+    InternalSizeType getCapacity() const {
+      FOLLY_PUSH_WARNING
+      FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
+      return capacity_;
+      FOLLY_POP_WARNING
+    }
     void setCapacity(InternalSizeType c) { capacity_ = c; }
     size_t allocationExtraBytes() const { return 0; }
   } FOLLY_SV_PACK_ATTR;

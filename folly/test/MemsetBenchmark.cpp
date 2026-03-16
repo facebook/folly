@@ -43,7 +43,7 @@ void bmMemset(void* buf, size_t length, size_t iters) {
 #if !defined(__aarch64__)
   __asm__ volatile(".align 64\n");
 #endif
-#pragma unroll(1)
+  FOLLY_PRAGMA_UNROLL_N(1)
   for (size_t i = 0; i < iters; ++i) {
     memset_impl(buf, 0xFF, length);
   }

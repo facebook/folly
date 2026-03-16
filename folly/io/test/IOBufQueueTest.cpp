@@ -611,9 +611,9 @@ INSTANTIATE_TEST_CASE_P(
         ::testing::Values(EmptyHead::No, EmptyHead::Yes),
         ::testing::Values(Pack::No, Pack::Yes)),
     [](const testing::TestParamInfo<std::tuple<AppendType, EmptyHead, Pack>>&
-           info) {
+           pinfo) {
       std::string name;
-      switch (std::get<AppendType>(info.param)) {
+      switch (std::get<AppendType>(pinfo.param)) {
         case AppendType::Ptr:
           name = "AppendPtr";
           break;
@@ -624,7 +624,7 @@ INSTANTIATE_TEST_CASE_P(
           name = "AppendRRef";
           break;
       }
-      switch (std::get<EmptyHead>(info.param)) {
+      switch (std::get<EmptyHead>(pinfo.param)) {
         case EmptyHead::No:
           name += "NoEmptyHead";
           break;
@@ -632,7 +632,7 @@ INSTANTIATE_TEST_CASE_P(
           name += "EmptyHead";
           break;
       }
-      switch (std::get<Pack>(info.param)) {
+      switch (std::get<Pack>(pinfo.param)) {
         case Pack::No:
           name += "NoPack";
           break;

@@ -35,8 +35,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/sorted_vector_types.h>
 
-FOLLY_GNU_DISABLE_WARNING("-Wself-move")
-
 using folly::small_vector;
 
 using folly::small_vector_policy::policy_in_situ_only;
@@ -1301,7 +1299,7 @@ TEST(smallVector, SelfMoveAssignmentForVectorOfPair) {
   test.emplace_back(13, 2);
   EXPECT_EQ(test.size(), 1);
   EXPECT_EQ(test[0].first, 13);
-  test = static_cast<decltype(test)&&>(test); // suppress self-move warning
+  test = std::move(std::move(test)); // suppress self-move warning
   EXPECT_EQ(test.size(), 1);
   EXPECT_EQ(test[0].first, 13);
 }

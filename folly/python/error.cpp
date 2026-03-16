@@ -30,7 +30,8 @@ namespace {
 // Best effort c-api implementation of repr(obj)
 std::string pyObjectToString(PyObject* obj) {
   constexpr StringPiece kConversionFail = "Error conversion failed";
-  PyObject *pyStr, *pyBytes;
+  PyObject* pyStr = nullptr;
+  PyObject* pyBytes = nullptr;
   SCOPE_EXIT {
     Py_DecRef(pyStr);
     Py_DecRef(pyBytes);
@@ -61,7 +62,9 @@ std::string pyObjectToString(PyObject* obj) {
 } // namespace
 
 void handlePythonError(StringPiece errPrefix) {
-  PyObject *ptype, *pvalue, *ptraceback;
+  PyObject* ptype = nullptr;
+  PyObject* pvalue = nullptr;
+  PyObject* ptraceback = nullptr;
   SCOPE_EXIT {
     Py_DecRef(ptype);
     Py_DecRef(pvalue);
