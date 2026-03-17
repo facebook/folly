@@ -744,7 +744,7 @@ non_fbcode_target(
 non_fbcode_target(
     _kind = folly_xplat_library,
     name = "dynamic",
-    apple_sdks = ALL_APPLE_SDKS,
+    apple_sdks = DEFAULT_APPLE_SDKS,
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
