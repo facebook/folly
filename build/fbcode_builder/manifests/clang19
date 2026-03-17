@@ -1,0 +1,8 @@
+[manifest]
+name = clang19
+
+[debs.os=linux]
+clang-19
+
+[rpms.os=linux]
+clang

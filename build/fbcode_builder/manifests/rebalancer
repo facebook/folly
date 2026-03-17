@@ -20,11 +20,17 @@ fbthrift
 fizz
 fmt
 folly
-gcc14
 gflags
 glog
 googletest
 xxhash
+
+[dependencies.os=linux]
+clang19
+
+[cmake.defines.os=linux]
+CMAKE_C_COMPILER=clang-19
+CMAKE_CXX_COMPILER=clang++-19
 
 [cmake.defines.os=darwin]
 REBALANCER_USE_SCIP=0
@@ -38,8 +44,8 @@ fbcode/algopt/rebalancer = algopt/rebalancer
 fbcode/algopt/lp = algopt/lp
 
 [dependencies.all(distro=centos_stream,distro_vers=9)]
-gcc14
+clang19
 
 [cmake.defines.all(distro=centos_stream,distro_vers=9)]
-CMAKE_C_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/gcc
-CMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
+CMAKE_C_COMPILER=clang-19
+CMAKE_CXX_COMPILER=clang++-19
