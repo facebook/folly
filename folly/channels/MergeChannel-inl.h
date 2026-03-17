@@ -245,6 +245,12 @@ class MergeChannelProcessor
     return receiverKeys;
   }
 
+  template <typename K>
+  bool hasReceiverKey(const K& key) {
+    auto state = state_.rlock();
+    return state->receiversByKey.contains(key);
+  }
+
   /**
    * Called when the user's MergeChannel object is destroyed.
    */
@@ -458,6 +464,13 @@ class MergeChannelProcessor
   folly::Synchronized<State> state_;
 };
 } // namespace detail
+
+template <typename KeyType, typename ValueType>
+template <typename K>
+bool MergeChannel<KeyType, ValueType>::hasReceiverKey(const K& key) {
+  using Processor = detail::MergeChannelProcessor<KeyType, ValueType>;
+  return static_cast<Processor*>(processor_)->hasReceiverKey(key);
+}
 
 template <typename KeyType, typename ValueType>
 std::pair<

@@ -106,6 +106,12 @@ class MergeChannel {
   folly::F14FastSet<KeyType> getReceiverKeys();
 
   /**
+   * Returns whether a receiver with the given key exists.
+   */
+  template <typename K>
+  bool hasReceiverKey(const K& key);
+
+  /**
    * Closes the merge channel.
    */
   void close(std::optional<exception_wrapper> ex = std::nullopt) &&;
