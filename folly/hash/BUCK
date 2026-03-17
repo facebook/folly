@@ -22,11 +22,12 @@ non_fbcode_target(
     exported_deps = [
         "//third-party/boost:boost",
         "//xplat/folly:cpu_id",
-        "//xplat/folly:external_fastcrc32_avx512",
-        "//xplat/folly:external_fastcrc32_neon",
-        "//xplat/folly:external_fastcrc32_neon_eor3_sha3",
-        "//xplat/folly:external_fastcrc32_sse42",
         "//xplat/folly/detail:traponavx512",
+        "//xplat/folly/external/fast-crc32:avx512_crc32c_v8s3x4",
+        "//xplat/folly/external/fast-crc32:neon_crc32c_v3s4x2e_v2",
+        "//xplat/folly/external/fast-crc32:neon_eor3_crc32_v8s2x4e_s1x2",
+        "//xplat/folly/external/fast-crc32:neon_eor3_crc32c_v8s2x4e_s2x1",
+        "//xplat/folly/external/fast-crc32:sse_crc32c_v8s3x3",
         "//xplat/folly/external/nvidia/hash:checksum",  # @manual
         "//xplat/folly/hash/detail:checksum_detail",
     ],
