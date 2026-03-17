@@ -16,9 +16,11 @@
 
 #include <folly/system/os/linux.h>
 
-#include <linux/openat2.h>
-
 #include <folly/portability/SysSyscall.h>
+
+#if defined(__linux__) && defined(SYS_openat2)
+#include <linux/openat2.h>
+#endif
 
 namespace folly {
 
