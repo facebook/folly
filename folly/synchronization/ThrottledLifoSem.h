@@ -373,7 +373,7 @@ class ThrottledLifoSem {
 
   // Protects waiters_ and serializes attempts to acquire the waking bit, which
   // need to know if there are waiters available.
-  mutable DistributedMutex mutex_;
+  alignas(cacheline_align_v) mutable DistributedMutex mutex_;
   CountedIntrusiveList<Waiter, &Waiter::hook> waiters_;
 
   // Only accessed by the waking thread.
