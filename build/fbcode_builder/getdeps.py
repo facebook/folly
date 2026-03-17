@@ -1011,7 +1011,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
 
     def run_project_cmd(self, args, loader, manifest):
         platforms = [
-            HostType("linux", "ubuntu", "22"),
+            HostType("linux", "ubuntu", "24"),
             HostType("darwin", None, None),
             HostType("windows", None, None),
         ]
@@ -1402,7 +1402,7 @@ jobs:
             help="Allow CI to fire on all branches - Handy for testing",
         )
         parser.add_argument(
-            "--ubuntu-version", default="22.04", help="Version of Ubuntu to use"
+            "--ubuntu-version", default="24.04", help="Version of Ubuntu to use"
         )
         parser.add_argument(
             "--cpu-cores",
