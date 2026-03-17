@@ -27,41 +27,6 @@
 
 #if FOLLY_HAS_LIBURING
 
-// TODO(davidhwei): Remove once liburing catches up and gets synced with
-// fbsource.
-#define IORING_REGISTER_ZCRX_CTRL 36
-
-enum zcrx_reg_flags {
-  ZCRX_REG_IMPORT = 1,
-};
-
-enum zcrx_ctrl_op {
-  ZCRX_CTRL_FLUSH_RQ,
-  ZCRX_CTRL_EXPORT,
-
-  __ZCRX_CTRL_LAST,
-};
-
-struct zcrx_ctrl_flush_rq {
-  __u64 __resv[6];
-};
-
-struct zcrx_ctrl_export {
-  __u32 zcrx_fd;
-  __u32 __resv1[11];
-};
-
-struct zcrx_ctrl {
-  __u32 zcrx_id;
-  __u32 op; /* see enum zcrx_ctrl_op */
-  __u64 __resv[2];
-
-  union {
-    struct zcrx_ctrl_export zc_export;
-    struct zcrx_ctrl_flush_rq zc_flush;
-  };
-};
-
 namespace folly {
 
 class IoUringZeroCopyBufferPoolImpl {
