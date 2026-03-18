@@ -29,6 +29,7 @@
 #include <glog/logging.h>
 
 #include <folly/ConstexprMath.h>
+#include <folly/CppAttributes.h>
 #include <folly/Memory.h>
 #include <folly/ThreadLocal.h>
 #include <folly/synchronization/MicroSpinLock.h>
@@ -313,7 +314,7 @@ class NodeRecycler<
   std::atomic<int32_t> refs_; // current number of visitors to the list
   std::atomic<bool> dirty_; // whether *nodes_ is non-empty
   MicroSpinLock lock_; // protects access to *nodes_
-  NodeAlloc alloc_;
+  [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] NodeAlloc alloc_;
 };
 
 // In case of arena allocator, no recycling is necessary, and it's possible
@@ -335,7 +336,7 @@ class NodeRecycler<
   NodeAlloc& alloc() { return alloc_; }
 
  private:
-  NodeAlloc alloc_;
+  [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] NodeAlloc alloc_;
 };
 
 } // namespace detail
