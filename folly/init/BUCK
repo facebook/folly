@@ -30,7 +30,7 @@ non_fbcode_target(
         "//xplat/folly:portability",
         "//xplat/folly:singleton",
         # "fbsource//xplat/folly/synchronization:hazptr_thread_pool_executor",
-        "//xplat/folly:synchronization_hazptr_thread_pool_executor",
+        "//xplat/folly/synchronization:hazptr_thread_pool_executor",
     ],
 )
 
