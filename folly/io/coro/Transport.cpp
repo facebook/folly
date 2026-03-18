@@ -119,7 +119,8 @@ Task<folly::Unit> Transport::write(
     WriteInfo* writeInfo) {
   transport_->setSendTimeout(timeout.count());
   WriteCallback cb{*transport_};
-  transport_->write(&cb, buf.begin(), buf.size(), writeFlags);
+  transport_->writeChain(
+      &cb, folly::IOBuf::wrapBuffer(buf.begin(), buf.size()), writeFlags);
   auto waitRet = co_await co_awaitTry(cb.wait());
   if (waitRet.hasException()) {
     if (writeInfo) {
@@ -144,8 +145,7 @@ Task<folly::Unit> Transport::write(
     WriteInfo* writeInfo) {
   transport_->setSendTimeout(timeout.count());
   WriteCallback cb{*transport_};
-  auto iovec = ioBufQueue.front()->getIov();
-  transport_->writev(&cb, iovec.data(), iovec.size(), writeFlags);
+  transport_->writeChain(&cb, ioBufQueue.move(), writeFlags);
   auto waitRet = co_await co_awaitTry(cb.wait());
   if (waitRet.hasException()) {
     if (writeInfo) {

@@ -268,6 +268,57 @@ TEST_F(ServerTransportTest, SimpleWritev) {
   });
 }
 
+// Verify that write(IOBufQueue&) moves the data out of the queue and
+// delivers it correctly. This exercises the writeChain path.
+TEST_F(ServerTransportTest, WriteIOBufQueueMovesData) {
+  run([&]() -> Task<> {
+    auto cs = co_await connect();
+    auto ss = srv.accept(-1);
+
+    IOBufQueue sndBuf(IOBufQueue::cacheChainLength());
+    constexpr auto kBufSize = 4096;
+    std::array<uint8_t, kBufSize> data;
+    std::memset(data.data(), 'x', data.size());
+    sndBuf.append(data.data(), data.size());
+
+    EXPECT_EQ(sndBuf.chainLength(), kBufSize);
+    co_await cs.write(sndBuf);
+    // After write, the IOBufQueue should be empty (data was moved)
+    EXPECT_EQ(sndBuf.chainLength(), 0);
+
+    std::array<uint8_t, kBufSize> rcvBuf{};
+    ss->readAll(rcvBuf.data(), rcvBuf.size());
+    EXPECT_EQ(0, memcmp(data.data(), rcvBuf.data(), rcvBuf.size()));
+  });
+}
+
+// Verify that write(IOBufQueue&) works with a multi-element IOBuf chain.
+TEST_F(ServerTransportTest, WriteIOBufQueueChain) {
+  run([&]() -> Task<> {
+    auto cs = co_await connect();
+    auto ss = srv.accept(-1);
+
+    IOBufQueue sndBuf(IOBufQueue::cacheChainLength());
+    constexpr auto kChunkSize = 1024;
+    constexpr auto kNumChunks = 8;
+    std::array<uint8_t, kChunkSize * kNumChunks> expected;
+    for (size_t i = 0; i < kNumChunks; ++i) {
+      std::memset(
+          expected.data() + i * kChunkSize,
+          static_cast<int>('a' + i),
+          kChunkSize);
+      sndBuf.append(expected.data() + i * kChunkSize, kChunkSize);
+    }
+
+    co_await cs.write(sndBuf);
+    EXPECT_EQ(sndBuf.chainLength(), 0);
+
+    std::array<uint8_t, kChunkSize * kNumChunks> rcvBuf{};
+    ss->readAll(rcvBuf.data(), rcvBuf.size());
+    EXPECT_EQ(0, memcmp(expected.data(), rcvBuf.data(), rcvBuf.size()));
+  });
+}
+
 TEST_F(ServerTransportTest, WriteCancelled) {
   run([&]() -> Task<> {
     auto cs = co_await connect();
