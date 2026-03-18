@@ -1269,10 +1269,10 @@ non_fbcode_target(
     ],
     exported_deps = [
         ":portability",
-        ":synchronization_atomic_struct",
         "//xplat/folly/concurrency:cache_locality",
         "//xplat/folly/portability:sys_mman",
         "//xplat/folly/portability:unistd",
+        "//xplat/folly/synchronization:atomic_struct",
     ],
 )
 
@@ -1538,15 +1538,6 @@ non_fbcode_target(
     name = "synchronization_atomic_ref",
     exported_deps = [
         "//xplat/folly/synchronization:atomic_ref",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "synchronization_atomic_struct",
-    exported_deps = [
-        "//xplat/folly/synchronization:atomic_struct",
     ],
 )
 
