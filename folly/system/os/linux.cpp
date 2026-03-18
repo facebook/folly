@@ -31,11 +31,12 @@ long linux_syscall_openat2(
   constexpr long no_openat2 =
 #if defined(__linux__) && defined(SYS_openat2)
       SYS_openat2;
-#else
-      -1;
-#endif
   return detail::linux_syscall(
       no_openat2, dirfd, pathname, how, sizeof(struct open_how));
+#else
+      -1;
+  return detail::linux_syscall(no_openat2, dirfd, pathname, how, 0);
+#endif
 }
 
 } // namespace folly
