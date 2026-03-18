@@ -28,15 +28,15 @@ long linux_syscall_openat2(
     int const dirfd,
     char const* const pathname,
     struct open_how const* const how) {
-  constexpr long no_openat2 =
 #if defined(__linux__) && defined(SYS_openat2)
-      SYS_openat2;
-  return detail::linux_syscall(
-      no_openat2, dirfd, pathname, how, sizeof(struct open_how));
+  constexpr long no_openat2 = SYS_openat2;
+  constexpr size_t sz_how = sizeof(struct open_how);
 #else
-      -1;
-  return detail::linux_syscall(no_openat2, dirfd, pathname, how, 0);
+  constexpr long no_openat2 = -1;
+  constexpr size_t sz_how = 0;
 #endif
+  return detail::linux_syscall(
+      no_openat2, dirfd, pathname, how, sz_how);
 }
 
 } // namespace folly
