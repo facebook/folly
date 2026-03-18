@@ -28,7 +28,7 @@ namespace folly {
  *
  * This function should be called AFTER all EventBases are created and
  * their IoUringBackends are initialized. The first
- * (numHwQueues - startQueueId) EventBases are designated as owners — if
+ * N hwQueues EventBases are designated as owners — if
  * they do not already have a zero-copy buffer pool, one will be created
  * via createZcBufferPool(). Owner pools are then exported and shared with
  * the remaining EventBases via import.
@@ -38,20 +38,14 @@ namespace folly {
  *
  * @param eventBases The EventBases to set up for buffer pool sharing.
  *                   All must have IoUringBackend.
- * @param numHwQueues Total number of hardware queues on the NIC.
- * @param startQueueId The first HW queue ID designated for zero copy.
- *                     Queues before this ID are reserved for non-zero-copy
- *                     traffic.
+ * @param numHwQueues hw queues allocated for zcrx
  * @return true on success. CHECK-fails on any error.
  */
 bool setupIoUringBufferPoolSharing(
     std::vector<std::unique_ptr<folly::EventBase>>& eventBases,
-    size_t numHwQueues,
-    size_t startQueueId);
+    size_t numHwQueues);
 
 bool setupIoUringBufferPoolSharing(
-    std::vector<folly::EventBase*>& eventBases,
-    size_t numHwQueues,
-    size_t startQueueId);
+    std::vector<folly::EventBase*>& eventBases, size_t numHwQueues);
 
 } // namespace folly

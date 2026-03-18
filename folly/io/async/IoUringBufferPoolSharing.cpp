@@ -32,27 +32,19 @@ namespace folly {
 namespace {
 
 bool setupIoUringBufferPoolSharingImpl(
-    size_t count,
+    size_t numIoThreads,
     folly::FunctionRef<folly::EventBase*(size_t)> getEventBase,
-    size_t numHwQueues,
-    size_t startQueueId) {
+    size_t numHwQueues) {
 #if !FOLLY_HAS_LIBURING
-  (void)count;
+  (void)numIoThreads;
   (void)getEventBase;
   (void)numHwQueues;
-  (void)startQueueId;
   LOG(FATAL) << "Buffer pool sharing is only supported on Linux";
 #else
-  CHECK_GT(count, 0) << "eventBases cannot be empty";
-  CHECK_GT(numHwQueues, startQueueId)
-      << "numHwQueues (" << numHwQueues << ") must be > startQueueId ("
-      << startQueueId << ")";
-
-  // Validate all backends upfront to avoid leaving things in a half-setup
-  // state.
+  CHECK_GT(numIoThreads, 0) << "need at least one IO thread";
   std::vector<IoUringBackend*> backends;
-  backends.reserve(count);
-  for (size_t i = 0; i < count; ++i) {
+  backends.reserve(numIoThreads);
+  for (size_t i = 0; i < numIoThreads; ++i) {
     auto* backend =
         dynamic_cast<IoUringBackend*>(getEventBase(i)->getBackend());
     CHECK(backend) << "EventBase at index " << i
@@ -60,12 +52,7 @@ bool setupIoUringBufferPoolSharingImpl(
     backends.push_back(backend);
   }
 
-  // Every backend up to numZcQueues (or all of them, whichever is smaller) is
-  // an owner that needs its own pool.
-  size_t numZcQueues = numHwQueues - startQueueId;
-  size_t numOwners = std::min(numZcQueues, backends.size());
-
-  // Create buffer pools for owner backends (those tied to HW queues).
+  size_t numOwners = std::min(numHwQueues, backends.size());
   for (size_t i = 0; i < numOwners; ++i) {
     if (!backends[i]->zcBufferPool()) {
       CHECK(backends[i]->createZcBufferPool())
@@ -74,14 +61,13 @@ bool setupIoUringBufferPoolSharingImpl(
     }
   }
 
-  if (numZcQueues >= backends.size()) {
+  if (numHwQueues >= backends.size()) {
     // Every backend has its own HW queue, no sharing needed.
     return true;
   }
 
-  // Export handles from owner pools and import into remaining backends.
-  for (size_t i = numZcQueues; i < backends.size(); ++i) {
-    size_t ownerIdx = (i - numZcQueues) % numOwners;
+  for (size_t i = numHwQueues; i < backends.size(); ++i) {
+    size_t ownerIdx = (i - numHwQueues) % numOwners;
     auto handle = backends[ownerIdx]->exportZcBufferPool();
     CHECK(backends[i]->importZcBufferPool(std::move(handle)))
         << "Failed to import buffer pool handle into EventBase at index " << i
@@ -96,24 +82,17 @@ bool setupIoUringBufferPoolSharingImpl(
 
 bool setupIoUringBufferPoolSharing(
     std::vector<std::unique_ptr<folly::EventBase>>& eventBases,
-    size_t numHwQueues,
-    size_t startQueueId) {
+    size_t numHwQueues) {
   return setupIoUringBufferPoolSharingImpl(
       eventBases.size(),
       [&](size_t i) { return eventBases[i].get(); },
-      numHwQueues,
-      startQueueId);
+      numHwQueues);
 }
 
 bool setupIoUringBufferPoolSharing(
-    std::vector<folly::EventBase*>& eventBases,
-    size_t numHwQueues,
-    size_t startQueueId) {
+    std::vector<folly::EventBase*>& eventBases, size_t numHwQueues) {
   return setupIoUringBufferPoolSharingImpl(
-      eventBases.size(),
-      [&](size_t i) { return eventBases[i]; },
-      numHwQueues,
-      startQueueId);
+      eventBases.size(), [&](size_t i) { return eventBases[i]; }, numHwQueues);
 }
 
 } // namespace folly
