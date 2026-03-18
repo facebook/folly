@@ -160,7 +160,7 @@ void ZSTD_CCtx_Pool_Callback::operator()() const {
   if (pool_) {
     if (auto multiplier = FLAGS_folly_zstd_cctx_pool_stripes_cpu_multiplier;
         multiplier > 0.0) {
-      static const size_t num_cores = folly::hardware_concurrency();
+      static const size_t num_cores = folly::available_concurrency();
       const size_t num_stripes = std::min(
           static_cast<size_t>(std::ceil(multiplier * num_cores)),
           ZSTD_CCtx_Pool::kMaxNumStripes);
@@ -173,7 +173,7 @@ void ZSTD_DCtx_Pool_Callback::operator()() const {
   if (pool_) {
     if (auto multiplier = FLAGS_folly_zstd_dctx_pool_stripes_cpu_multiplier;
         multiplier > 0.0) {
-      static const size_t num_cores = folly::hardware_concurrency();
+      static const size_t num_cores = folly::available_concurrency();
       const size_t num_stripes = std::min(
           static_cast<size_t>(std::ceil(multiplier * num_cores)),
           ZSTD_DCtx_Pool::kMaxNumStripes);
