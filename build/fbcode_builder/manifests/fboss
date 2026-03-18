@@ -64,6 +64,7 @@ fbcode/configerator/structs/neteng/fboss/thrift = configerator/structs/neteng/fb
 ^fbcode/fboss/github/fboss-image/.*
 ^fbcode/fboss/github/.pre-commit-config.yaml
 ^fbcode/fboss/github/requirements-dev.txt
+^fbcode/fboss/.llms/.*
 
 [sandcastle]
 run_tests = off
