@@ -42,12 +42,12 @@ TYPED_TEST_SUITE_P(IOThreadPoolExecutorBaseTest);
 
 TYPED_TEST_P(IOThreadPoolExecutorBaseTest, IOObserver) {
   struct EventBaseAccumulator : IOThreadPoolExecutorBase::IOObserver {
-    void registerEventBase(EventBase& evb) override {
+    void registerEventBase(EventBase& evb) noexcept override {
       // Observers should be called while the evbs are running, so this
       // operation should complete.
       evb.runInEventBaseThreadAndWait([&] { evbs.insert(&evb); });
     }
-    void unregisterEventBase(EventBase& evb) override {
+    void unregisterEventBase(EventBase& evb) noexcept override {
       // Same as registerEventBase().
       evb.runInEventBaseThreadAndWait([&] { evbs.erase(&evb); });
     }

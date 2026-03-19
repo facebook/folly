@@ -165,10 +165,14 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
    public:
     virtual ~Observer() = default;
 
-    virtual void threadStarted(ThreadHandle*) {}
-    virtual void threadStopped(ThreadHandle*) {}
-    virtual void threadPreviouslyStarted(ThreadHandle* h) { threadStarted(h); }
-    virtual void threadNotYetStopped(ThreadHandle* h) { threadStopped(h); }
+    virtual void threadStarted(ThreadHandle*) noexcept {}
+    virtual void threadStopped(ThreadHandle*) noexcept {}
+    virtual void threadPreviouslyStarted(ThreadHandle* h) noexcept {
+      threadStarted(h);
+    }
+    virtual void threadNotYetStopped(ThreadHandle* h) noexcept {
+      threadStopped(h);
+    }
   };
 
   virtual void addObserver(std::shared_ptr<Observer>);
@@ -222,7 +226,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   // Prerequisite: threadListLock_ writelocked
   void addThreads(size_t n);
   // Prerequisite: threadListLock_ writelocked
-  bool tryAddOneThread();
+  bool tryAddOneThread() noexcept;
   // Prerequisite: threadListLock_ writelocked
   void removeThreads(size_t n, bool isJoin);
 
@@ -256,7 +260,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   using ThreadPtr = std::shared_ptr<Thread>;
 
   // Prerequisite: threadListLock_ writelocked
-  void afterConstructThreads(folly::span<const ThreadPtr> newThreads);
+  void afterConstructThreads(folly::span<const ThreadPtr> newThreads) noexcept;
 
   struct Task {
     struct Expiration {
@@ -312,7 +316,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   // Should not hold a lock because joining thread operation may invoke some
   // cleanup operations on the thread, and those cleanup operations may
   // require a lock on ThreadPoolExecutor.
-  void joinStoppedThreads(size_t n);
+  void joinStoppedThreads(size_t n) noexcept;
 
   // To implement shutdown.
   void stopAndJoinAllThreads(bool isJoin);
@@ -327,8 +331,10 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   virtual size_t getPendingTaskCountImpl() const = 0;
 
   // Called with threadListLock_ readlocked or writelocked.
-  virtual void handleObserverRegisterThread(ThreadHandle*, Observer&) {}
-  virtual void handleObserverUnregisterThread(ThreadHandle*, Observer&) {}
+  virtual void handleObserverRegisterThread(ThreadHandle*, Observer&) noexcept {
+  }
+  virtual void handleObserverUnregisterThread(
+      ThreadHandle*, Observer&) noexcept {}
 
   class ThreadList {
    public:
@@ -397,8 +403,8 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   // Dynamic thread sizing functions and variables
   void ensureMaxActiveThreads();
-  void ensureActiveThreads();
-  void ensureJoined();
+  void ensureActiveThreads() noexcept;
+  void ensureJoined() noexcept;
   bool minActive();
   bool tryTimeoutThread();
 

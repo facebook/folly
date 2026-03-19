@@ -24,7 +24,8 @@ IOThreadPoolDeadlockDetectorObserver::IOThreadPoolDeadlockDetectorObserver(
     DeadlockDetectorFactory* deadlockDetectorFactory, const std::string& name)
     : name_(name), deadlockDetectorFactory_(deadlockDetectorFactory) {}
 
-void IOThreadPoolDeadlockDetectorObserver::registerEventBase(EventBase& evb) {
+void IOThreadPoolDeadlockDetectorObserver::registerEventBase(
+    EventBase& evb) noexcept {
   if (!deadlockDetectorFactory_) {
     return;
   }
@@ -37,7 +38,8 @@ void IOThreadPoolDeadlockDetectorObserver::registerEventBase(EventBase& evb) {
   });
 }
 
-void IOThreadPoolDeadlockDetectorObserver::unregisterEventBase(EventBase& evb) {
+void IOThreadPoolDeadlockDetectorObserver::unregisterEventBase(
+    EventBase& evb) noexcept {
   if (!deadlockDetectorFactory_) {
     return;
   }

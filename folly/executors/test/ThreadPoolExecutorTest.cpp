@@ -539,12 +539,18 @@ TEST(ThreadPoolExecutorTest, PriorityPreemptionTest) {
 
 class TestObserver : public ThreadPoolExecutor::Observer {
  public:
-  void threadStarted(ThreadPoolExecutor::ThreadHandle*) override { threads_++; }
-  void threadStopped(ThreadPoolExecutor::ThreadHandle*) override { threads_--; }
-  void threadPreviouslyStarted(ThreadPoolExecutor::ThreadHandle*) override {
+  void threadStarted(ThreadPoolExecutor::ThreadHandle*) noexcept override {
     threads_++;
   }
-  void threadNotYetStopped(ThreadPoolExecutor::ThreadHandle*) override {
+  void threadStopped(ThreadPoolExecutor::ThreadHandle*) noexcept override {
+    threads_--;
+  }
+  void threadPreviouslyStarted(
+      ThreadPoolExecutor::ThreadHandle*) noexcept override {
+    threads_++;
+  }
+  void threadNotYetStopped(
+      ThreadPoolExecutor::ThreadHandle*) noexcept override {
     threads_--;
   }
   void checkCalls() { ASSERT_EQ(threads_, 0); }

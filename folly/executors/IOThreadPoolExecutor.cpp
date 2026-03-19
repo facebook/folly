@@ -310,7 +310,7 @@ size_t IOThreadPoolExecutor::getPendingTaskCountImpl() const {
 }
 
 void IOThreadPoolExecutor::handleObserverRegisterThread(
-    ThreadHandle* h, Observer& observer) {
+    ThreadHandle* h, Observer& observer) noexcept {
   auto thread = CHECK_NOTNULL(dynamic_cast<IOThread*>(h));
   if (auto ioObserver = dynamic_cast<IOObserver*>(&observer)) {
     ioObserver->registerEventBase(*thread->eventBase);
@@ -318,7 +318,7 @@ void IOThreadPoolExecutor::handleObserverRegisterThread(
 }
 
 void IOThreadPoolExecutor::handleObserverUnregisterThread(
-    ThreadHandle* h, Observer& observer) {
+    ThreadHandle* h, Observer& observer) noexcept {
   auto thread = CHECK_NOTNULL(dynamic_cast<IOThread*>(h));
   if (auto ioObserver = dynamic_cast<IOObserver*>(&observer)) {
     ioObserver->unregisterEventBase(*thread->eventBase);

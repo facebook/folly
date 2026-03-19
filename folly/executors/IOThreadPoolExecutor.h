@@ -50,8 +50,8 @@ class IOThreadPoolExecutorBase
 
   class IOObserver : public Observer {
    public:
-    virtual void registerEventBase(EventBase&) {}
-    virtual void unregisterEventBase(EventBase&) {}
+    virtual void registerEventBase(EventBase&) noexcept {}
+    virtual void unregisterEventBase(EventBase&) noexcept {}
   };
 };
 
@@ -158,9 +158,9 @@ class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   };
 
   void handleObserverRegisterThread(
-      ThreadHandle* h, Observer& observer) override;
+      ThreadHandle* h, Observer& observer) noexcept override;
   void handleObserverUnregisterThread(
-      ThreadHandle* h, Observer& observer) override;
+      ThreadHandle* h, Observer& observer) noexcept override;
 
  private:
   ThreadPtr makeThread() override;

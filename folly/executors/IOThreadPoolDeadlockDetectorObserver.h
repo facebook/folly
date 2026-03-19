@@ -30,8 +30,8 @@ class IOThreadPoolDeadlockDetectorObserver
       folly::DeadlockDetectorFactory* deadlockDetectorFactory,
       const std::string& name);
 
-  void registerEventBase(EventBase& evb) override;
-  void unregisterEventBase(EventBase& evb) override;
+  void registerEventBase(EventBase& evb) noexcept override;
+  void unregisterEventBase(EventBase& evb) noexcept override;
 
   static std::unique_ptr<IOThreadPoolDeadlockDetectorObserver> create(
       const std::string& name);

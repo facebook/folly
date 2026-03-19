@@ -264,7 +264,7 @@ void ThreadPoolExecutor::addThreads(size_t n) {
 }
 
 // threadListLock_ is writelocked
-bool ThreadPoolExecutor::tryAddOneThread() {
+bool ThreadPoolExecutor::tryAddOneThread() noexcept {
   auto thread = makeThread();
   try {
     thread->handle = threadFactory_->newThread(
@@ -281,7 +281,7 @@ bool ThreadPoolExecutor::tryAddOneThread() {
 
 // threadListLock_ is writelocked
 void ThreadPoolExecutor::afterConstructThreads(
-    folly::span<const ThreadPtr> newThreads) {
+    folly::span<const ThreadPtr> newThreads) noexcept {
   for (auto& thread : newThreads) {
     threadList_.add(thread);
   }
@@ -304,7 +304,7 @@ void ThreadPoolExecutor::removeThreads(size_t n, bool isJoin) {
   stopThreads(n);
 }
 
-void ThreadPoolExecutor::joinStoppedThreads(size_t n) {
+void ThreadPoolExecutor::joinStoppedThreads(size_t n) noexcept {
   for (size_t i = 0; i < n; i++) {
     auto thread = stoppedThreads_.take();
     thread->handle.join();
@@ -505,7 +505,7 @@ void ThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
 
 // Idle threads may have destroyed themselves, attempt to join
 // them here
-void ThreadPoolExecutor::ensureJoined() {
+void ThreadPoolExecutor::ensureJoined() noexcept {
   auto tojoin = threadsToJoin_.load(std::memory_order_relaxed);
   if (tojoin) {
     {
@@ -559,7 +559,7 @@ bool ThreadPoolExecutor::tryTimeoutThread() {
 // If we can't ensure that we were able to hand off a task to a thread,
 // attempt to start a thread that handled the task, if we aren't already
 // running the maximum number of threads.
-void ThreadPoolExecutor::ensureActiveThreads() {
+void ThreadPoolExecutor::ensureActiveThreads() noexcept {
   ensureJoined();
 
   // Matches barrier in tryTimeoutThread().  Ensure task added
