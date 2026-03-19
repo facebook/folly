@@ -42,6 +42,8 @@ bool setupIoUringBufferPoolSharingImpl(
   LOG(FATAL) << "Buffer pool sharing is only supported on Linux";
 #else
   CHECK_GT(numIoThreads, 0) << "need at least one IO thread";
+  CHECK_GT(numHwQueues, 0)
+      << "need at least 1 hw queue but passing: " << numHwQueues;
   std::vector<IoUringBackend*> backends;
   backends.reserve(numIoThreads);
   for (size_t i = 0; i < numIoThreads; ++i) {
