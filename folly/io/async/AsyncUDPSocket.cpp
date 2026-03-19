@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncUDPSocket.h>
 
 #include <cerrno>
