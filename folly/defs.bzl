@@ -18,6 +18,7 @@ load(
 load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
+load("@fbsource//tools/build_defs/dirsync:dirsync_redirect.bzl", "dirsync_redirect")
 
 def should_enable_gflags():
     return read_bool("folly", "have_libgflags_override", False)
@@ -130,8 +131,22 @@ def folly_xplat_library(
         platforms = None,
         enable_static_variant = False,
         labels = (),
+        redirect = True,
         **kwargs):
-    """Translate a simpler declaration into the more complete library target"""
+    """Translate a simpler declaration into the more complete library target.
+
+    When a redirect is configured via PACKAGE (using dirsync_redirect.write()),
+    this macro creates:
+    1. The actual implementation target with name "_{name}"
+    2. An alias target with the original name that uses select() to choose
+       between the local impl and the redirected target based on platform
+       constraints.
+    """
+
+    # Check for redirect configuration
+    redirect_config = dirsync_redirect.read()
+    use_redirect = redirect and redirect_config != None and not name.startswith("_")
+    impl_name = "_{}".format(name) if use_redirect else name
 
     # Set default platform settings. `()` means empty, whereas None
     # means default
@@ -150,14 +165,27 @@ def folly_xplat_library(
         "ovr_config//build_mode:arvr_mode": force_static,
     })
 
+    # Preserve lib_name when redirecting to maintain SONAME
+    if use_redirect:
+        kwargs.setdefault("soname", dirsync_redirect.soname(name))
+
     fb_xplat_cxx_library(
-        name = name,
+        name = impl_name,
         srcs = srcs,
         header_namespace = header_namespace,
         exported_headers = exported_headers,
         raw_headers = raw_headers,
         raw_headers_as_headers_mode = raw_headers_as_headers_mode,
         public_include_directories = _compute_include_directories(),
+        mangled_keys = [
+            "name",
+            "deps",
+            "exported_deps",
+            "provided_deps",
+            "tests",
+            "soname",
+            "precompiled_header",
+        ],
         deps = deps,
         exported_deps = exported_deps,
         force_static = force_static,
@@ -186,6 +214,16 @@ def folly_xplat_library(
         visibility = kwargs.pop("visibility", ["PUBLIC"]),
         **kwargs
     )
+
+    # Create redirect alias if configured
+    if use_redirect:
+        dirsync_redirect.create_alias(
+            name,
+            redirect_config,
+            platforms = platforms,
+            apple_sdks = apple_sdks,
+            enable_static_variant = enable_static_variant,
+        )
 
 def folly_xplat_cxx_library(name, **kwargs):
     folly_xplat_library(
