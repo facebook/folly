@@ -21,7 +21,7 @@ import re
 import sys
 import traceback
 from dataclasses import dataclass
-from typing import ClassVar, List, Optional, Tuple, Type
+from typing import ClassVar
 
 
 class DebuggerValue(abc.ABC):
