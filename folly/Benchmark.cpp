@@ -1194,6 +1194,7 @@ bool BenchmarkingStateBase::useCounters() const {
 std::vector<std::string> BenchmarkingStateBase::getBenchmarkList() {
   std::vector<std::string> bmNames;
   auto toRun = selectBenchmarksToRun(benchmarks_);
+  bmNames.reserve(toRun.benchmarks.size());
   for (auto benchmarkRegistration : toRun.benchmarks) {
     bmNames.push_back(benchmarkRegistration->name);
   }
