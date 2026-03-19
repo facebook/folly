@@ -63,8 +63,14 @@ class FiberImpl {
   }
 
   void* getStackPointer() const {
-    if (kIsArchAmd64 && kIsLinux) {
-      return reinterpret_cast<void**>(fiberContext_)[6];
+    if constexpr (kIsLinux) {
+      if constexpr (kIsArchAmd64) {
+        // RBP at offset 0x30 (index 6) in the x86_64 fcontext layout.
+        return reinterpret_cast<void**>(fiberContext_)[6];
+      } else if constexpr (kIsArchAArch64) {
+        // FP (x29) at offset 0x90 (index 18) in the arm64 fcontext layout.
+        return reinterpret_cast<void**>(fiberContext_)[18];
+      }
     }
     return nullptr;
   }
@@ -78,13 +84,22 @@ class FiberImpl {
   }
 
   void fixStackUnwinding() {
-    if (kIsArchAmd64 && kIsLinux) {
-      // Extract RBP and RIP from main context to stitch main context stack and
-      // fiber stack.
+    if (kIsLinux) {
+      // Stitch main context stack and fiber stack so that frame-pointer-based
+      // stack walkers (e.g. jemalloc prof_backtrace_impl) can terminate
+      // cleanly at the fiber boundary.
       auto stackBase = reinterpret_cast<void**>(stackBase_);
       auto mainContext = reinterpret_cast<void**>(mainContext_);
-      stackBase[-2] = mainContext[6];
-      stackBase[-1] = mainContext[7];
+      if constexpr (kIsArchAmd64) {
+        // Extract RBP and RIP from main context (offsets 6 and 7).
+        stackBase[-2] = mainContext[6];
+        stackBase[-1] = mainContext[7];
+      } else if constexpr (kIsArchAArch64) {
+        // Extract FP (x29) and LR (x30) from main context
+        // (offsets 0x90 and 0x98 in the fcontext layout).
+        stackBase[-2] = mainContext[18];
+        stackBase[-1] = mainContext[19];
+      }
     }
   }
 
