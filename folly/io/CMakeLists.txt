@@ -102,6 +102,7 @@ folly_add_library(
     folly_range
     folly_scope_guard
     folly_synchronization_micro_spin_lock
+    folly_traits
 )
 
 folly_add_library(
