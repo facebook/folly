@@ -90,7 +90,6 @@ fb_xplat_cxx_library(
     platforms = [
         CXX,
         APPLE,
-        FBCODE,
         WINDOWS,
     ] + ([ANDROID] if is_xplat() else []),
     preferred_linkage = "static",
@@ -98,10 +97,20 @@ fb_xplat_cxx_library(
         "fbcode//folly/rust/iobuf/...",
         "fbsource//xplat/folly/rust/iobuf/...",
     ],
+    xplat_preexisting_target_flavors = [FBCODE],
     exported_deps = [
         "fbsource//xplat/folly/io:iobuf" if is_xplat() else "fbcode//folly/io:iobuf",
     ],
 )
+
+fb_native.alias(
+    name = "_iobuf-ffiFbcode",
+    actual = ":_iobuf-ffi",
+    visibility = [
+        "fbcode//folly/rust/iobuf/...",
+        "fbsource//xplat/folly/rust/iobuf/...",
+    ],
+) if is_xplat() else None
 
 fb_xplat_rust_library(
     name = "_iobuf",
