@@ -53,10 +53,8 @@ folly_add_library(
 
 folly_add_library(
   NAME signal_handler
-  HEADERS
-    SignalHandler.h
   EXPORTED_DEPS
-    folly_debugging_symbolizer_signal_handler
+    folly_experimental_symbolizer_symbolizer
 )
 
 folly_add_library(
@@ -69,10 +67,8 @@ folly_add_library(
 
 folly_add_library(
   NAME symbolize_printer
-  HEADERS
-    SymbolizePrinter.h
   EXPORTED_DEPS
-    folly_debugging_symbolizer_symbolize_printer
+    folly_experimental_symbolizer_symbolizer
 )
 
 folly_add_library(
@@ -86,6 +82,8 @@ folly_add_library(
 folly_add_library(
   NAME symbolizer
   HEADERS
+    SignalHandler.h
+    SymbolizePrinter.h
     Symbolizer.h
   EXPORTED_DEPS
     folly_debugging_symbolizer_symbolizer

@@ -1,11 +1,7 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
-
-# xplat build rules
 
 fb_dirsync_cpp_library(
     name = "dwarf",
@@ -64,6 +60,7 @@ fb_dirsync_cpp_library(
         "//folly:likely",
         "//folly:range",
         "//folly/container:span",
+        "//folly/lang:cstring_view",
         "//folly/lang:safe_assert",
         "//folly/portability:config",
         "//folly/portability:unistd",
@@ -140,64 +137,30 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
+    name = "symbolize_printer",
+    xplat_impl = folly_xplat_library,
+    exported_deps = [":symbolizer"],
+)
+
+fb_dirsync_cpp_library(
     name = "symbolizer",
     srcs = [
         "SignalHandler.cpp",
         "SymbolizePrinter.cpp",
         "Symbolizer.cpp",
     ],
-    raw_headers = [
+    headers = [
         "SignalHandler.h",
         "SymbolizePrinter.h",
         "Symbolizer.h",
     ],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "fbsource//xplat/folly/io:iobuf",
-        "fbsource//xplat/folly/portability:sys_mman",
-        "fbsource//xplat/folly/portability:sys_syscall",
-        ":dwarf",
-        ":elf_cache",
-        ":line_reader",
-        ":stack_trace",
-        "//third-party/glog:glog",
-        "//xplat/folly:fbstring",
-        "//xplat/folly:file_util",
-        "//xplat/folly:memory",
-        "//xplat/folly:optional",
-        "//xplat/folly:range",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:string",
-        "//xplat/folly:synchronized",
-        "//xplat/folly/container:evicting_cache_map",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/debugging/symbolizer/detail:debug",
-        "//xplat/folly/memory:sanitize_address",
-    ],
-    exported_deps = [
-        ":symbolized_frame",
-        "//xplat/folly:demangle",
-        "//xplat/folly/lang:to_ascii",
-        "//xplat/folly/portability:config",
-        "//xplat/folly/portability:unistd",
-        "//xplat/folly/tracing:async_stack",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "symbolizer",
-    srcs = [
-        "Symbolizer.cpp",
-    ],
-    headers = [
-        "Symbolizer.h",
-    ],
-    deps = [
+        "fbsource//third-party/glog:glog",
         ":elf",
+        "//folly:demangle",
         "//folly:file_util",
         "//folly:memory",
         "//folly:scope_guard",
@@ -208,13 +171,13 @@ fbcode_target(
         "//folly/lang:to_ascii",
         "//folly/memory:sanitize_address",
         "//folly/portability:sys_mman",
+        "//folly/portability:sys_syscall",
         "//folly/tracing:async_stack",
     ],
     exported_deps = [
         ":dwarf",
         ":elf_cache",
         ":stack_trace",
-        ":symbolize_printer",
         ":symbolized_frame",
         "//folly:fbstring",
         "//folly:optional",
@@ -226,44 +189,8 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "symbolize_printer",
-    srcs = [
-        "SymbolizePrinter.cpp",
-    ],
-    headers = [
-        "SymbolizePrinter.h",
-    ],
-    deps = [
-        "//folly:demangle",
-        "//folly:file_util",
-        "//folly:scope_guard",
-        "//folly/io:iobuf",
-        "//folly/lang:to_ascii",
-    ],
-    exported_deps = [
-        ":symbolized_frame",
-        "//folly:fbstring",
-        "//folly:range",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "signal_handler",
-    srcs = [
-        "SignalHandler.cpp",
-    ],
-    headers = [
-        "SignalHandler.h",
-    ],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        ":symbolizer",
-        "//folly:scope_guard",
-        "//folly/lang:to_ascii",
-        "//folly/portability:sys_syscall",
-        "//folly/portability:unistd",
-    ],
+    xplat_impl = folly_xplat_library,
+    exported_deps = [":symbolizer"],
 )

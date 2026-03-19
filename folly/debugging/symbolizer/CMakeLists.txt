@@ -57,6 +57,7 @@ folly_add_library(
   EXPORTED_DEPS
     folly_container_span
     folly_conv
+    folly_lang_cstring_view
     folly_lang_safe_assert
     folly_likely
     folly_portability_config
@@ -98,16 +99,8 @@ folly_add_library(
 
 folly_add_library(
   NAME signal_handler
-  SRCS
-    SignalHandler.cpp
-  HEADERS
-    SignalHandler.h
-  DEPS
+  EXPORTED_DEPS
     folly_debugging_symbolizer_symbolizer
-    folly_lang_to_ascii
-    folly_portability_sys_syscall
-    folly_portability_unistd
-    folly_scope_guard
 )
 
 folly_add_library(
@@ -128,20 +121,8 @@ folly_add_library(
 
 folly_add_library(
   NAME symbolize_printer
-  SRCS
-    SymbolizePrinter.cpp
-  HEADERS
-    SymbolizePrinter.h
-  DEPS
-    folly_demangle
-    folly_file_util
-    folly_io_iobuf
-    folly_lang_to_ascii
-    folly_scope_guard
   EXPORTED_DEPS
-    folly_debugging_symbolizer_symbolized_frame
-    folly_fbstring
-    folly_range
+    folly_debugging_symbolizer_symbolizer
 )
 
 folly_add_library(
@@ -157,19 +138,25 @@ folly_add_library(
 folly_add_library(
   NAME symbolizer
   SRCS
+    SignalHandler.cpp
+    SymbolizePrinter.cpp
     Symbolizer.cpp
   HEADERS
+    SignalHandler.h
+    SymbolizePrinter.h
     Symbolizer.h
   DEPS
     folly_container_evicting_cache_map
     folly_debugging_symbolizer_detail_debug
     folly_debugging_symbolizer_elf
+    folly_demangle
     folly_file_util
     folly_lang_safe_assert
     folly_lang_to_ascii
     folly_memory
     folly_memory_sanitize_address
     folly_portability_sys_mman
+    folly_portability_sys_syscall
     folly_scope_guard
     folly_synchronized
     folly_tracing_async_stack
@@ -177,7 +164,6 @@ folly_add_library(
     folly_debugging_symbolizer_dwarf
     folly_debugging_symbolizer_elf_cache
     folly_debugging_symbolizer_stack_trace
-    folly_debugging_symbolizer_symbolize_printer
     folly_debugging_symbolizer_symbolized_frame
     folly_fbstring
     folly_io_iobuf
