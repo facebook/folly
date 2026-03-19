@@ -17,9 +17,6 @@
 #include <fmt/format.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 
-#include <fcntl.h>
-#include <sys/types.h>
-
 #include <cerrno>
 #include <chrono>
 #include <memory>
