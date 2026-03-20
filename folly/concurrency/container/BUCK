@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -9,7 +8,6 @@ fb_dirsync_cpp_library(
         "atomic_grow_array.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:c_portability",
         "//folly:constexpr_math",
@@ -26,7 +24,6 @@ fb_dirsync_cpp_library(
     name = "flat_combining_priority_queue",
     headers = ["FlatCombiningPriorityQueue.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:optional",
@@ -39,7 +36,6 @@ fb_dirsync_cpp_library(
     name = "lock_free_ring_buffer",
     headers = ["LockFreeRingBuffer.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
         "//folly:traits",
@@ -58,7 +54,6 @@ fb_dirsync_cpp_library(
         "RelaxedConcurrentPriorityQueue.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:random",
         "//folly:spin_lock",
@@ -77,7 +72,6 @@ fb_dirsync_cpp_library(
         "SingleWriterFixedHashMap.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly/lang:bits",

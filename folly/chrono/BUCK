@@ -1,8 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "../defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -10,14 +6,12 @@ fb_dirsync_cpp_library(
     name = "clock",
     headers = ["Clock.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
     name = "conv",
     headers = ["Conv.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:constexpr_math",
         "//folly:conv",
@@ -32,7 +26,6 @@ fb_dirsync_cpp_library(
     name = "hardware",
     headers = ["Hardware.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
     ],

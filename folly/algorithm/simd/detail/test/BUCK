@@ -22,7 +22,6 @@ non_fbcode_target(
 fb_dirsync_cpp_unittest(
     name = "simd_for_each_test",
     srcs = ["SimdForEachTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/algorithm/simd/detail:simd_for_each",
         "//folly/portability:gtest",
@@ -32,7 +31,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "traits_test",
     srcs = ["TraitsTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/algorithm/simd/detail:traits",
         "//folly/lang:bits",
@@ -46,7 +44,6 @@ fb_dirsync_cpp_unittest(
     srcs = [
         "UnrollUtilsTest.cpp",
     ],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/algorithm/simd/detail:unroll_utils",
         "//folly/portability:gtest",

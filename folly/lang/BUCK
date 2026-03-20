@@ -12,7 +12,6 @@ fb_dirsync_cpp_library(
     name = "access",
     headers = ["Access.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/functional:invoke",
     ],
@@ -22,7 +21,6 @@ fb_dirsync_cpp_library(
     name = "align",
     headers = ["Align.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:portability",
         "//folly:traits",
@@ -33,7 +31,6 @@ fb_dirsync_cpp_library(
     name = "aligned",
     headers = ["Aligned.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":align",
         "//folly:utility",
@@ -44,7 +41,6 @@ fb_dirsync_cpp_library(
     name = "assume",
     headers = ["Assume.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":hint",
         "//folly:portability",
@@ -55,7 +51,6 @@ fb_dirsync_cpp_library(
     name = "badge",
     headers = ["Badge.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:traits",
     ],
@@ -65,7 +60,6 @@ fb_dirsync_cpp_library(
     name = "bits",
     headers = ["Bits.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":assume",
         ":c_string",
@@ -81,7 +75,6 @@ fb_dirsync_cpp_library(
     name = "bits_class",
     headers = ["BitsClass.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:portability",
@@ -94,7 +87,6 @@ fb_dirsync_cpp_library(
     name = "builtin",
     headers = ["Builtin.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:portability",
     ],
@@ -104,7 +96,6 @@ fb_dirsync_cpp_library(
     name = "c_array",
     headers = ["CArray.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
 )
 
 fb_dirsync_cpp_library(
@@ -112,7 +103,6 @@ fb_dirsync_cpp_library(
     srcs = ["CString.cpp"],
     headers = ["CString.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly/functional:invoke",
     ],
@@ -125,7 +115,6 @@ fb_dirsync_cpp_library(
     name = "cast",
     headers = ["Cast.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":safe_assert",
         "//folly:portability",
@@ -137,7 +126,6 @@ fb_dirsync_cpp_library(
     name = "checked_math",
     headers = ["CheckedMath.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:c_portability",
         "//folly:likely",
@@ -148,7 +136,6 @@ fb_dirsync_cpp_library(
     name = "customization_point",
     headers = ["CustomizationPoint.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":static_const",
         "//folly:portability",
@@ -198,7 +185,6 @@ fb_dirsync_cpp_library(
     name = "extern",
     headers = ["Extern.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
 )
 
 fb_dirsync_cpp_library(
@@ -208,7 +194,6 @@ fb_dirsync_cpp_library(
         "Hint-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":safe_assert",
         "//folly:portability",
@@ -220,7 +205,6 @@ fb_dirsync_cpp_library(
     name = "keep",
     headers = ["Keep.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:c_portability",
         "//folly:cpp_attributes",
@@ -231,7 +215,6 @@ fb_dirsync_cpp_library(
     name = "must_use_immediately",
     headers = ["MustUseImmediately.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":safe_alias_fwd",
         "//folly:utility",
@@ -243,7 +226,6 @@ fb_dirsync_cpp_library(
     name = "new",
     headers = ["New.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:cpp_attributes",
         "//folly:portability",
@@ -255,7 +237,6 @@ fb_dirsync_cpp_library(
     name = "ordering",
     headers = ["Ordering.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":exception",
     ],
@@ -265,7 +246,6 @@ fb_dirsync_cpp_library(
     name = "pretty",
     headers = ["Pretty.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":c_array",
         "//folly:portability",
@@ -276,7 +256,6 @@ fb_dirsync_cpp_library(
     name = "propagate_const",
     headers = ["PropagateConst.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:traits",
         "//folly:utility",
@@ -287,14 +266,12 @@ fb_dirsync_cpp_library(
     name = "rvalue_reference_wrapper",
     headers = ["RValueReferenceWrapper.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
 )
 
 fb_dirsync_cpp_library(
     name = "safe_alias",
     headers = ["SafeAlias.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":safe_alias_fwd",
         "//folly:traits",
@@ -305,7 +282,6 @@ fb_dirsync_cpp_library(
     name = "safe_alias_fwd",
     headers = ["SafeAlias-fwd.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
 )
 
 fb_dirsync_cpp_library(
@@ -313,7 +289,6 @@ fb_dirsync_cpp_library(
     srcs = ["SafeAssert.cpp"],
     headers = ["SafeAssert.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         ":to_ascii",
         "//folly/detail:file_util_detail",
@@ -332,7 +307,6 @@ fb_dirsync_cpp_library(
     name = "safe_closure",
     headers = ["SafeClosure.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":safe_alias",
         "//folly/detail:tuple",
@@ -346,7 +320,6 @@ fb_dirsync_cpp_library(
     name = "static_const",
     headers = ["StaticConst.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:portability",
     ],
@@ -356,7 +329,6 @@ fb_dirsync_cpp_library(
     name = "strong",
     headers = ["Strong.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:traits",
@@ -367,7 +339,6 @@ fb_dirsync_cpp_library(
     name = "cstring_view",
     headers = ["cstring_view.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:traits",
@@ -379,7 +350,6 @@ fb_dirsync_cpp_library(
     name = "switch",
     headers = ["Switch.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:c_portability",
     ],
@@ -389,7 +359,6 @@ fb_dirsync_cpp_library(
     name = "thunk",
     headers = ["Thunk.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":new",
         "//folly:utility",
@@ -401,7 +370,6 @@ fb_dirsync_cpp_library(
     srcs = ["ToAscii.cpp"],
     headers = ["ToAscii.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":align",
         ":c_array",
@@ -417,7 +385,6 @@ fb_dirsync_cpp_library(
     name = "type_info",
     headers = ["TypeInfo.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:cpp_attributes",
         "//folly:portability",
@@ -429,7 +396,6 @@ fb_dirsync_cpp_library(
     srcs = ["UncaughtExceptions.cpp"],
     headers = ["UncaughtExceptions.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":exception",
     ],
@@ -439,7 +405,6 @@ fb_dirsync_cpp_library(
     name = "vector_traits",
     headers = ["VectorTraits.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
 )
 
 # fbcode build rules

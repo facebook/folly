@@ -1,8 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "../../defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -11,7 +7,6 @@ fb_dirsync_cpp_library(
     srcs = ["Contains.cpp"],
     headers = ["Contains.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly/algorithm/simd/detail:simd_contains_impl",
     ],
@@ -25,7 +20,6 @@ fb_dirsync_cpp_library(
     name = "find_first_of",
     headers = ["find_first_of.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":movemask",
         "//folly:portability",
@@ -42,7 +36,6 @@ fb_dirsync_cpp_library(
     name = "find_first_of_extra",
     headers = ["find_first_of_extra.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:range",
         "//folly/container:span",
@@ -56,7 +49,6 @@ fb_dirsync_cpp_library(
     name = "find_fixed",
     headers = ["FindFixed.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":movemask",
         "//folly:portability",
@@ -68,7 +60,6 @@ fb_dirsync_cpp_library(
     name = "ignore",
     headers = ["Ignore.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/lang:bits",
     ],
@@ -78,7 +69,6 @@ fb_dirsync_cpp_library(
     name = "movemask",
     headers = ["Movemask.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":ignore",
         "//folly:portability",

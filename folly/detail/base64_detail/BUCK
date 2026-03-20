@@ -12,7 +12,6 @@ fb_dirsync_cpp_library(
     name = "base64_common",
     headers = ["Base64Common.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":base64_constants",
         "//folly:utility",
@@ -23,14 +22,12 @@ fb_dirsync_cpp_library(
     name = "base64_constants",
     headers = ["Base64Constants.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
     name = "base64_hidden_constants",
     headers = ["Base64HiddenConstants.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":base64_constants",
     ],
@@ -40,7 +37,6 @@ fb_dirsync_cpp_library(
     name = "base64_scalar",
     headers = ["Base64Scalar.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":base64_common",
         ":base64_constants",
@@ -54,7 +50,6 @@ fb_dirsync_cpp_library(
     name = "base64_simd",
     headers = ["Base64Simd.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":base64_common",
         ":base64_constants",
@@ -69,7 +64,6 @@ fb_dirsync_cpp_library(
     name = "base64_sse4_2_platform",
     headers = ["Base64_SSE4_2_Platform.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":base64_hidden_constants",
         "//folly:portability",
@@ -98,7 +92,6 @@ fb_dirsync_cpp_library(
     srcs = ["Base64SWAR.cpp"],
     headers = ["Base64SWAR.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         ":base64_constants",
         ":base64_hidden_constants",
@@ -115,7 +108,6 @@ fb_dirsync_cpp_library(
     srcs = ["Base64Api.cpp"],
     headers = ["Base64Api.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         ":base64_sse4_2",
         ":base64_swar",

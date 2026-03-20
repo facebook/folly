@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -7,7 +6,6 @@ fb_dirsync_cpp_library(
     name = "atomic_utils",
     headers = ["AtomicUtils.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/lang:assume",
     ],
@@ -19,7 +17,6 @@ fb_dirsync_cpp_library(
         "HazptrUtils.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":sleeper",
@@ -33,7 +30,6 @@ fb_dirsync_cpp_library(
         "InlineFunctionRef.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:function",
         "//folly:traits",
@@ -50,7 +46,6 @@ fb_dirsync_cpp_library(
         "ThreadCachedTag.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:function",
@@ -66,7 +61,6 @@ fb_dirsync_cpp_library(
     srcs = ["Sleeper.cpp"],
     headers = ["Sleeper.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/portability:asm",
     ],
@@ -76,7 +70,6 @@ fb_dirsync_cpp_library(
     name = "spin",
     headers = ["Spin.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/portability:asm",
         "//folly/synchronization:wait_options",

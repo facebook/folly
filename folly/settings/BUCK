@@ -1,10 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "../defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -18,7 +14,6 @@ fb_dirsync_cpp_library(
         "detail/SettingsImpl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:synchronized",
     ],
@@ -56,7 +51,6 @@ fb_dirsync_cpp_library(
         "Types.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:conv",
         "//folly:expected",
@@ -74,7 +68,6 @@ fb_dirsync_cpp_library(
         "Immutables.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:indestructible",
         "//folly:synchronized",

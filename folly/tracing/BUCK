@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -10,7 +9,6 @@ fb_dirsync_cpp_library(
         "StaticTracepoint-ELF.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:c_portability",
     ],
@@ -22,7 +20,6 @@ fb_dirsync_cpp_library(
         "ScopedTraceSection.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
@@ -35,7 +32,6 @@ fb_dirsync_cpp_library(
         "AsyncStack-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:indestructible",

@@ -1,7 +1,7 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library", "folly_xplat_library")
+load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -37,7 +37,6 @@ fb_dirsync_cpp_library(
     name = "farm_hash",
     headers = ["FarmHash.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/external/farmhash:farmhash",
     ],
@@ -47,7 +46,6 @@ fb_dirsync_cpp_library(
     name = "hash",
     headers = ["Hash.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":fnv_hash",
         ":hsieh_hash",
@@ -67,7 +65,6 @@ fb_dirsync_cpp_library(
     name = "murmur_hash",
     headers = ["MurmurHash.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:c_portability",
         "//folly/lang:bits",
@@ -79,7 +76,6 @@ fb_dirsync_cpp_library(
     name = "rapidhash",
     headers = ["rapidhash.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/external/rapidhash:rapidhash",
     ],
@@ -90,7 +86,6 @@ fb_dirsync_cpp_library(
     srcs = ["SpookyHashV1.cpp"],
     headers = ["SpookyHashV1.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
@@ -98,7 +93,6 @@ fb_dirsync_cpp_library(
     srcs = ["SpookyHashV2.cpp"],
     headers = ["SpookyHashV2.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:c_portability",
         "//folly:portability",
@@ -110,7 +104,6 @@ fb_dirsync_cpp_library(
     name = "traits",
     headers = ["traits.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:traits",
     ],
@@ -144,7 +137,6 @@ fb_dirsync_cpp_library(
         "FnvHash.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
 )
 
 fb_dirsync_cpp_library(
@@ -153,7 +145,6 @@ fb_dirsync_cpp_library(
         "HsiehHash.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/lang:bits",
     ],
@@ -164,7 +155,6 @@ fb_dirsync_cpp_library(
     srcs = ["UniqueHashKey.cpp"],
     headers = ["UniqueHashKey.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly/portability:openssl",
         "//folly/portability:unistd",

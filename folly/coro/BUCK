@@ -1,7 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -14,7 +13,6 @@ fb_dirsync_cpp_library(
         "Accumulate-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/coro:async_generator",
         "//folly/coro:coroutine",
@@ -29,7 +27,6 @@ fb_dirsync_cpp_library(
     srcs = [],
     headers = ["AsyncGenerator.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:cancellation_token",
@@ -59,7 +56,6 @@ fb_dirsync_cpp_library(
     srcs = [],
     headers = ["AsyncPipe.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:try",
         "//folly/coro:async_generator",
@@ -78,7 +74,6 @@ fb_dirsync_cpp_library(
     srcs = [],
     headers = ["AsyncScope.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":coroutine",
@@ -100,7 +95,6 @@ fb_dirsync_cpp_library(
     name = "async_stack",
     headers = ["AsyncStack.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:executor",
         "//folly/coro:coroutine",
@@ -117,7 +111,6 @@ fb_dirsync_cpp_library(
         "AutoCleanup.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/coro:auto_cleanup_fwd",
         "//folly/coro:collect",
@@ -133,7 +126,6 @@ fb_dirsync_cpp_library(
         "AutoCleanup-fwd.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/coro:cleanup",
         "//folly/coro:coroutine",
@@ -146,7 +138,6 @@ fb_dirsync_cpp_library(
     name = "base_promise",
     headers = ["BasePromise.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":current_executor",
         ":error",
@@ -163,7 +154,6 @@ fb_dirsync_cpp_library(
     srcs = ["Baton.cpp"],
     headers = ["Baton.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly/synchronization:atomic_util",
     ],
@@ -179,7 +169,6 @@ fb_dirsync_cpp_library(
     name = "blocking_wait",
     headers = ["BlockingWait.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:try",
         "//folly/coro:coroutine",
@@ -206,7 +195,6 @@ fb_dirsync_cpp_library(
         "Cleanup.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/functional:invoke",
     ],
@@ -221,7 +209,6 @@ fb_dirsync_cpp_library(
         "Collect-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:cancellation_token",
         "//folly:exception_wrapper",
@@ -256,7 +243,6 @@ fb_dirsync_cpp_library(
         "Concat-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/coro:async_generator",
         "//folly/coro:coroutine",
@@ -269,7 +255,6 @@ fb_dirsync_cpp_library(
     name = "coroutine",
     headers = ["Coroutine.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:portability",
         "//folly:utility",
@@ -282,7 +267,6 @@ fb_dirsync_cpp_library(
     name = "current_executor",
     headers = ["CurrentExecutor.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:executor",
         "//folly/coro:coroutine",
@@ -298,7 +282,6 @@ fb_dirsync_cpp_library(
     name = "detach_on_cancel",
     headers = ["DetachOnCancel.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/coro:baton",
         "//folly/coro:coroutine",
@@ -315,7 +298,6 @@ fb_dirsync_cpp_library(
     name = "detail_barrier",
     headers = ["detail/Barrier.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":coroutine",
         ":traits",
@@ -330,7 +312,6 @@ fb_dirsync_cpp_library(
     name = "detail_barrier_task",
     headers = ["detail/BarrierTask.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":coroutine",
         ":detail_barrier",
@@ -345,7 +326,6 @@ fb_dirsync_cpp_library(
     name = "detail_current_async_frame",
     headers = ["detail/CurrentAsyncFrame.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":coroutine",
         ":with_async_stack",
@@ -360,7 +340,6 @@ fb_dirsync_cpp_library(
     name = "detail_helpers",
     headers = ["detail/Helpers.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":coroutine",
         "//folly:executor",
@@ -377,7 +356,6 @@ fb_dirsync_cpp_library(
     srcs = ["detail/Malloc.cpp"],
     headers = ["detail/Malloc.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly/lang:hint",
         "//folly/lang:new",
@@ -393,7 +371,6 @@ fb_dirsync_cpp_library(
     name = "detail_manual_lifetime",
     headers = ["detail/ManualLifetime.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:scope_guard",
     ],
@@ -405,7 +382,6 @@ fb_dirsync_cpp_library(
     name = "detail_traits",
     headers = ["detail/Traits.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:traits",
     ],
@@ -417,7 +393,6 @@ fb_dirsync_cpp_library(
     name = "error",
     headers = ["Error.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:exception_wrapper",
         "//folly:operation_cancelled",
@@ -433,7 +408,6 @@ fb_dirsync_cpp_library(
         "Filter-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/coro:async_generator",
         "//folly/coro:coroutine",
@@ -446,7 +420,6 @@ fb_dirsync_cpp_library(
     name = "future_util",
     headers = ["FutureUtil.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:cancellation_token",
         "//folly/coro:baton",
@@ -465,7 +438,6 @@ fb_dirsync_cpp_library(
     name = "generator",
     headers = ["Generator.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/coro:coroutine",
         "//folly/coro:invoke",
@@ -479,7 +451,6 @@ fb_dirsync_cpp_library(
     name = "gmock_helpers",
     headers = ["GmockHelpers.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":blocking_wait",
         "//folly/coro:coroutine",
@@ -496,7 +467,6 @@ fb_dirsync_cpp_library(
     name = "gtest_helpers",
     headers = ["GtestHelpers.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/coro:blocking_wait",
         "//folly/coro:coroutine",
@@ -513,7 +483,6 @@ fb_dirsync_cpp_library(
     name = "inline_task",
     headers = ["detail/InlineTask.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":coroutine",
         ":detail_malloc",
@@ -531,7 +500,6 @@ fb_dirsync_cpp_library(
     name = "invoke",
     headers = ["Invoke.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/functional:invoke",
         "//folly/lang:customization_point",
@@ -547,7 +515,6 @@ fb_dirsync_cpp_library(
         "Merge-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:cancellation_token",
         "//folly:executor",
@@ -573,7 +540,6 @@ fb_dirsync_cpp_library(
     srcs = ["Mutex.cpp"],
     headers = ["Mutex.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:executor",
         "//folly/coro:coroutine",
@@ -587,7 +553,6 @@ fb_dirsync_cpp_library(
     name = "value_or_fatal",
     headers = ["ValueOrFatal.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":task_wrapper",
         ":via_if_async",
@@ -605,7 +570,6 @@ fb_dirsync_cpp_library(
     name = "nothrow",
     headers = ["Nothrow.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":via_if_async",
@@ -620,7 +584,6 @@ fb_dirsync_cpp_library(
     name = "promise",
     headers = ["Promise.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:cancellation_token",
         "//folly:try",
@@ -638,7 +601,6 @@ fb_dirsync_cpp_library(
     name = "result",
     headers = ["Result.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":error",
         "//folly:try",
@@ -653,7 +615,6 @@ fb_dirsync_cpp_library(
     name = "retry",
     headers = ["Retry.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:cancellation_token",
         "//folly:constexpr_math",
@@ -691,7 +652,6 @@ fb_dirsync_cpp_library(
     name = "scope_exit",
     headers = ["ScopeExit.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:exception_wrapper",
         "//folly:executor",
@@ -713,7 +673,6 @@ fb_dirsync_cpp_library(
     srcs = ["SerialQueueRunner.cpp"],
     headers = ["SerialQueueRunner.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":baton",
         ":task",
@@ -727,7 +686,6 @@ fb_dirsync_cpp_library(
     name = "shared_lock",
     headers = ["SharedLock.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:portability",
@@ -744,7 +702,6 @@ fb_dirsync_cpp_library(
     srcs = ["SharedMutex.cpp"],
     headers = ["SharedMutex.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:executor",
         "//folly:spin_lock",
@@ -763,7 +720,6 @@ fb_dirsync_cpp_library(
         "SharedPromise.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":promise",
         "//folly:likely",
@@ -783,7 +739,6 @@ fb_dirsync_cpp_library(
         "Sleep-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/coro:coroutine",
         "//folly/coro:future_util",
@@ -799,7 +754,6 @@ fb_dirsync_cpp_library(
     srcs = [],
     headers = ["SmallUnboundedQueue.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/coro:baton",
         "//folly/coro:coroutine",
@@ -815,7 +769,6 @@ fb_dirsync_cpp_library(
     name = "synchronized",
     headers = ["Synchronized.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":shared_lock",
         ":shared_mutex",
@@ -831,7 +784,6 @@ fb_dirsync_cpp_library(
     name = "task",
     headers = ["Task.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:cancellation_token",
@@ -871,7 +823,6 @@ fb_dirsync_cpp_library(
     name = "task_wrapper",
     headers = ["TaskWrapper.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":task",
         "//folly/lang:must_use_immediately",
@@ -884,7 +835,6 @@ fb_dirsync_cpp_library(
     name = "timed_wait",
     headers = ["TimedWait.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:optional",
         "//folly/coro:baton",
@@ -906,7 +856,6 @@ fb_dirsync_cpp_library(
         "Timeout-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:cancellation_token",
         "//folly/coro:baton",
@@ -927,7 +876,6 @@ fb_dirsync_cpp_library(
     name = "traits",
     headers = ["Traits.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:traits",
         "//folly/coro:coroutine",
@@ -944,7 +892,6 @@ fb_dirsync_cpp_library(
         "Transform-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:traits",
         "//folly/coro:async_generator",
@@ -959,7 +906,6 @@ fb_dirsync_cpp_library(
     srcs = [],
     headers = ["BoundedQueue.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:mpmc_queue",
         "//folly:producer_consumer_queue",
@@ -975,7 +921,6 @@ fb_dirsync_cpp_library(
     srcs = [],
     headers = ["UnboundedQueue.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/concurrency:unbounded_queue",
         "//folly/coro:coroutine",
@@ -990,7 +935,6 @@ fb_dirsync_cpp_library(
     name = "value_or_error",
     headers = ["ValueOrError.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":via_if_async",
         "//folly/result:try",
@@ -1003,7 +947,6 @@ fb_dirsync_cpp_library(
     name = "via_if_async",
     headers = ["ViaIfAsync.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:executor",
@@ -1027,7 +970,6 @@ fb_dirsync_cpp_library(
     name = "with_async_stack",
     headers = ["WithAsyncStack.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/coro:coroutine",
         "//folly/coro:traits",
@@ -1044,7 +986,6 @@ fb_dirsync_cpp_library(
     name = "with_cancellation",
     headers = ["WithCancellation.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:cancellation_token",
         "//folly/coro:coroutine",

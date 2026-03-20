@@ -20,7 +20,6 @@ fb_dirsync_cpp_library(
         "DwarfUtil.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:optional",
         "//folly/lang:safe_assert",
@@ -47,7 +46,6 @@ fb_dirsync_cpp_library(
         "Elf-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:exception",
@@ -76,7 +74,6 @@ fb_dirsync_cpp_library(
         "ElfCache.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:scope_guard",
         "//folly/portability:sys_mman",
@@ -99,7 +96,6 @@ fb_dirsync_cpp_library(
     srcs = ["LineReader.cpp"],
     headers = ["LineReader.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:file_util",
     ],
@@ -113,7 +109,6 @@ fb_dirsync_cpp_library(
     srcs = ["StackTrace.cpp"],
     headers = ["StackTrace.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:portability",
         "//folly/portability:config",
@@ -131,7 +126,6 @@ fb_dirsync_cpp_library(
     srcs = ["SymbolizedFrame.cpp"],
     headers = ["SymbolizedFrame.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:range",
     ],

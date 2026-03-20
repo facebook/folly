@@ -14,7 +14,6 @@ fb_dirsync_cpp_library(
     srcs = ["SanitizeLeak.cpp"],
     headers = ["SanitizeLeak.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly/lang:extern",
     ],
@@ -30,7 +29,6 @@ fb_dirsync_cpp_library(
         "Arena-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":malloc",
         "//folly:conv",
@@ -54,7 +52,6 @@ fb_dirsync_cpp_library(
         "not_null-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:memory",
         "//folly:portability",
@@ -68,7 +65,6 @@ fb_dirsync_cpp_library(
     srcs = ["ReentrantAllocator.cpp"],
     headers = ["ReentrantAllocator.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly/lang:bits",
         "//folly/lang:safe_assert",
@@ -84,7 +80,6 @@ fb_dirsync_cpp_library(
     srcs = ["ThreadCachedArena.cpp"],
     headers = ["ThreadCachedArena.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:likely",
         "//folly:synchronized",
@@ -97,14 +92,12 @@ fb_dirsync_cpp_library(
     name = "memory_resource",
     headers = ["MemoryResource.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
     name = "uninitialized_memory_hacks",
     headers = ["UninitializedMemoryHacks.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
@@ -112,7 +105,6 @@ fb_dirsync_cpp_library(
     srcs = ["MallctlHelper.cpp"],
     headers = ["MallctlHelper.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:format",
         "//folly:string",
@@ -128,7 +120,6 @@ fb_dirsync_cpp_library(
     srcs = ["SanitizeAddress.cpp"],
     headers = ["SanitizeAddress.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly/lang:extern",
     ],
@@ -221,7 +212,6 @@ fb_dirsync_cpp_library(
     srcs = ["IoUringArena.cpp"],
     headers = ["IoUringArena.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:c_portability",
@@ -238,7 +228,6 @@ fb_dirsync_cpp_library(
     name = "iobuf_arena_factory",
     headers = ["IOBufArenaFactory.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io:iobuf",
     ],
@@ -248,7 +237,6 @@ fb_dirsync_cpp_library(
     name = "shared_from_this_ptr",
     headers = ["shared_from_this_ptr.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:traits",
     ],

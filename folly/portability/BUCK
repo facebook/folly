@@ -20,7 +20,6 @@ fb_dirsync_cpp_library(
     name = "asm",
     headers = ["Asm.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
     ],
@@ -30,7 +29,6 @@ fb_dirsync_cpp_library(
     name = "atomic",
     headers = ["Atomic.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
     ],
@@ -90,7 +88,6 @@ fb_dirsync_cpp_library(
     srcs = ["Dirent.cpp"],
     headers = ["Dirent.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":windows",
     ],
@@ -100,7 +97,6 @@ fb_dirsync_cpp_library(
     name = "event",
     headers = ["Event.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":fcntl",
         ":windows",
@@ -116,7 +112,6 @@ fb_dirsync_cpp_library(
     srcs = ["Fcntl.cpp"],
     headers = ["Fcntl.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":sockets",
         ":sys_stat",
@@ -143,7 +138,6 @@ fb_dirsync_cpp_library(
     name = "fmt_compile",
     headers = ["FmtCompile.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
     ],
@@ -181,7 +175,6 @@ fb_dirsync_cpp_library(
     name = "gmock",
     headers = ["GMock.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/googletest:gmock",
         "//folly:portability",
@@ -192,7 +185,6 @@ fb_dirsync_cpp_library(
     name = "gtest",
     headers = ["GTest.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/googletest:gtest",
         "//folly:portability",
@@ -203,14 +195,12 @@ fb_dirsync_cpp_library(
     name = "gtest_prod",
     headers = ["GTestProd.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
     name = "iovec",
     headers = ["IOVec.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
@@ -218,14 +208,12 @@ fb_dirsync_cpp_library(
     srcs = ["Libgen.cpp"],
     headers = ["Libgen.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
     name = "libunwind",
     headers = ["Libunwind.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/portability/provide:libunwind",  # @manual
     ],
@@ -250,14 +238,12 @@ fb_dirsync_cpp_library(
     name = "math",
     headers = ["Math.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
     name = "memory",
     headers = ["Memory.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:memory",
     ],
@@ -321,7 +307,6 @@ fb_dirsync_cpp_library(
     srcs = ["Sched.cpp"],
     headers = ["Sched.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
     ],
@@ -372,7 +357,6 @@ fb_dirsync_cpp_library(
     srcs = ["Stdio.cpp"],
     headers = ["Stdio.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         ":unistd",
         "//folly:scope_guard",
@@ -527,7 +511,6 @@ fb_dirsync_cpp_library(
     name = "sys_syscall",
     headers = ["SysSyscall.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:c_portability",
         "//folly:portability",
@@ -587,7 +570,6 @@ fb_dirsync_cpp_library(
     name = "syslog",
     headers = ["Syslog.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 non_fbcode_target(

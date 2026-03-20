@@ -13,7 +13,6 @@ fb_dirsync_cpp_library(
         "AddTasks-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         "//folly:optional",
@@ -28,7 +27,6 @@ fb_dirsync_cpp_library(
         "AtomicBatchDispatcher-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:c_portability",
         "//folly:function",
@@ -42,7 +40,6 @@ fb_dirsync_cpp_library(
     name = "batch_dispatcher",
     headers = ["BatchDispatcher.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:function",
         "//folly/futures:core",
@@ -54,7 +51,6 @@ fb_dirsync_cpp_library(
     srcs = ["BatchSemaphore.cpp"],
     headers = ["BatchSemaphore.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":semaphore_base",
     ],
@@ -64,7 +60,6 @@ fb_dirsync_cpp_library(
     name = "boost_context_compatibility",
     headers = ["BoostContextCompatibility.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:function",
@@ -198,7 +193,6 @@ fb_dirsync_cpp_library(
         "FiberManager-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         "//folly/functional:invoke",
@@ -213,7 +207,6 @@ fb_dirsync_cpp_library(
         "EventBaseLoopController-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         ":executor_based_loop_controller",
@@ -227,7 +220,6 @@ fb_dirsync_cpp_library(
     name = "executor_based_loop_controller",
     headers = ["ExecutorBasedLoopController.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":loop_controller",
         "//folly:executor",
@@ -241,7 +233,6 @@ fb_dirsync_cpp_library(
         "ExecutorLoopController-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         ":executor_based_loop_controller",
@@ -258,7 +249,6 @@ fb_dirsync_cpp_library(
         "FiberManagerMap-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         ":event_base_loop_controller",
@@ -274,7 +264,6 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "fibers",
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":add_tasks",  # @manual
         ":atomic_batch_dispatcher",  # @manual
@@ -305,7 +294,6 @@ fb_dirsync_cpp_library(
         "ForEach-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         "//folly/functional:invoke",
@@ -316,7 +304,6 @@ fb_dirsync_cpp_library(
     name = "generic_baton",
     headers = ["GenericBaton.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         "//folly/synchronization:baton",
@@ -328,7 +315,6 @@ fb_dirsync_cpp_library(
     srcs = ["GuardPageAllocator.cpp"],
     headers = ["GuardPageAllocator.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:singleton",
@@ -346,7 +332,6 @@ fb_dirsync_cpp_library(
     name = "loop_controller",
     headers = ["LoopController.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/io/async:async_base_fwd",
     ],
@@ -357,7 +342,6 @@ fb_dirsync_cpp_library(
     srcs = ["Semaphore.cpp"],
     headers = ["Semaphore.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         "//folly:intrusive_list",
@@ -373,7 +357,6 @@ fb_dirsync_cpp_library(
     srcs = ["SemaphoreBase.cpp"],
     headers = ["SemaphoreBase.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         "//folly:intrusive_list",
@@ -388,7 +371,6 @@ fb_dirsync_cpp_library(
     srcs = ["SimpleLoopController.cpp"],
     headers = ["SimpleLoopController.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly/io/async:async_base",
     ],
@@ -408,7 +390,6 @@ fb_dirsync_cpp_library(
         "TimedMutex-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":generic_baton",
         "//folly:intrusive_list",
@@ -423,7 +404,6 @@ fb_dirsync_cpp_library(
     name = "traits",
     headers = ["traits.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
@@ -433,7 +413,6 @@ fb_dirsync_cpp_library(
         "WhenN-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         ":for_each",

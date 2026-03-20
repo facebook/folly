@@ -10,7 +10,6 @@ fb_dirsync_cpp_unittest(
     name = "contains_test",
     srcs = ["ContainsTest.cpp"],
     headers = [],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/algorithm/simd:contains",
         "//folly/algorithm/simd/detail:simd_contains_impl",
@@ -35,7 +34,6 @@ fb_dirsync_cpp_unittest(
     name = "find_fixed_test",
     srcs = ["FindFixedTest.cpp"],
     headers = [],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:portability",
@@ -48,7 +46,6 @@ fb_dirsync_cpp_unittest(
     name = "momemask_test",
     srcs = ["MovemaskTest.cpp"],
     headers = [],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly:portability",
         "//folly/algorithm/simd:movemask",

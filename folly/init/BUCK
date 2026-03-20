@@ -60,5 +60,4 @@ fb_dirsync_cpp_library(
     name = "phase",
     srcs = ["Phase.cpp"],
     headers = ["Phase.h"],
-    xplat_impl = folly_xplat_library,
 )

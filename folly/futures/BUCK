@@ -24,7 +24,6 @@ fb_dirsync_cpp_library(
     name = "cleanup",
     headers = ["Cleanup.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly/futures:core",
@@ -116,7 +115,6 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "futures",
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":barrier",  # @manual
         ":core",  # @manual
@@ -134,7 +132,6 @@ fb_dirsync_cpp_library(
     srcs = ["ManualTimekeeper.cpp"],
     headers = ["ManualTimekeeper.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly/synchronization:atomic_util",
     ],
@@ -148,7 +145,6 @@ fb_dirsync_cpp_library(
     name = "portability",
     headers = ["Portability.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
     ],

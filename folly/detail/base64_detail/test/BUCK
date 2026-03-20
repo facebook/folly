@@ -26,7 +26,6 @@ non_fbcode_target(
 fb_dirsync_cpp_library(
     name = "base64_platform_test",
     srcs = ["Base64PlatformTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/detail/base64_detail:base64_sse4_2_platform",
         "//folly/portability:gtest",
@@ -36,7 +35,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "base64_special_cases_test",
     srcs = ["Base64SpecialCasesTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/detail/base64_detail:base64_api",
         "//folly/detail/base64_detail:base64_scalar",

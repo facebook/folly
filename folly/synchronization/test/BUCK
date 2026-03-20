@@ -4,7 +4,6 @@ load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -75,7 +74,6 @@ fbcode_target(
 fb_dirsync_cpp_library(
     name = "barrier",
     headers = ["Barrier.h"],
-    xplat_impl = folly_xplat_library,
 )
 
 fbcode_target(
@@ -493,7 +491,6 @@ fbcode_target(
 fb_dirsync_cpp_library(
     name = "flat_combining_examples",
     headers = ["FlatCombiningExamples.h"],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/synchronization:baton",
         "//folly/synchronization:flat_combining",
@@ -503,7 +500,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "flat_combining_test_helpers",
     headers = ["FlatCombiningTestHelpers.h"],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",

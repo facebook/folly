@@ -9,7 +9,6 @@ fb_dirsync_cpp_library(
     name = "auto_timer",
     headers = ["AutoTimer.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
@@ -24,7 +23,6 @@ fb_dirsync_cpp_library(
     srcs = ["FileHandlerFactory.cpp"],
     headers = ["FileHandlerFactory.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         ":logging",
     ],
@@ -38,7 +36,6 @@ fb_dirsync_cpp_library(
     srcs = ["BridgeFromGoogleLogging.cpp"],
     headers = ["BridgeFromGoogleLogging.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         ":logging",
         "//folly:utility",
@@ -60,7 +57,6 @@ fb_dirsync_cpp_library(
         "LogConfigParser.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         ":log_name",
         "//folly:conv",
@@ -81,7 +77,6 @@ fb_dirsync_cpp_library(
     srcs = [
         "InitWeak.cpp",
     ],
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:c_portability",
     ],
@@ -186,7 +181,6 @@ fb_dirsync_cpp_library(
         "LogHandlerFactory.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly/lang:safe_assert",
     ],
@@ -203,7 +197,6 @@ fb_dirsync_cpp_library(
     srcs = ["LogLevel.cpp"],
     headers = ["LogLevel.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:conv",
     ],
@@ -218,7 +211,6 @@ fb_dirsync_cpp_library(
     srcs = ["LogName.cpp"],
     headers = ["LogName.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:range",
     ],
@@ -229,7 +221,6 @@ fb_dirsync_cpp_library(
     srcs = ["RateLimiter.cpp"],
     headers = ["RateLimiter.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:chrono",
     ],

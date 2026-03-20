@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -7,7 +6,6 @@ fb_dirsync_cpp_library(
     name = "hex",
     headers = ["hex.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/lang:align",
         "//folly/lang:assume",
@@ -18,7 +16,6 @@ fb_dirsync_cpp_library(
     name = "uuid",
     headers = ["Uuid.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:portability",
         "//folly/memory:uninitialized_memory_hacks",

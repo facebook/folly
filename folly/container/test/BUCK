@@ -16,7 +16,6 @@ load(
     "FBANDROID_CXXFLAGS",
     "FBOBJC_CXXFLAGS",
     "folly_xplat_cxx_test",
-    "folly_xplat_library",
 )
 
 oncall("fbcode_entropy_wardens_folly")
@@ -608,7 +607,6 @@ fb_dirsync_cpp_library(
     headers = [
         "F14TestUtil.h",
     ],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/container/detail:f14_hash_detail",
     ],
@@ -894,7 +892,6 @@ fb_dirsync_cpp_library(
     headers = [
         "TrackingTypes.h",
     ],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:function",
         "//folly/hash:hash",

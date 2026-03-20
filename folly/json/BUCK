@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -15,7 +14,6 @@ fb_dirsync_cpp_library(
         "dynamic-inl.h",
         "json.h",
     ],
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:unicode",
@@ -52,7 +50,6 @@ fb_dirsync_cpp_library(
     name = "json_pointer",
     srcs = ["json_pointer.cpp"],
     headers = ["json_pointer.h"],
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:string",
     ],
@@ -66,7 +63,6 @@ fb_dirsync_cpp_library(
     name = "json_patch",
     srcs = ["json_patch.cpp"],
     headers = ["json_patch.h"],
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly/container:enumerate",
@@ -83,7 +79,6 @@ fb_dirsync_cpp_library(
     name = "json_schema",
     srcs = ["JSONSchema.cpp"],
     headers = ["JSONSchema.h"],
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:c_portability",
         "//folly:conv",
@@ -110,7 +105,6 @@ fb_dirsync_cpp_library(
         "DynamicParser.h",
         "DynamicParser-inl.h",
     ],
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:optional",
@@ -131,7 +125,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "json_mock_util",
     headers = ["JsonMockUtil.h"],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/portability:gmock",
         "//folly/test:json_test_util",
@@ -142,7 +135,6 @@ fb_dirsync_cpp_library(
     name = "json_test_util",
     srcs = ["JsonTestUtil.cpp"],
     headers = ["JsonTestUtil.h"],
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:conv",
         "//folly/lang:assume",

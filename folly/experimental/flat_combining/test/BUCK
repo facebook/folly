@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -8,7 +7,6 @@ fb_dirsync_cpp_library(
     headers = [
         "FlatCombiningExamples.h",
     ],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/synchronization/test:flat_combining_examples",
     ],
@@ -19,7 +17,6 @@ fb_dirsync_cpp_library(
     headers = [
         "FlatCombiningTestHelpers.h",
     ],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/synchronization/test:flat_combining_test_helpers",
     ],

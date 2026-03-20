@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -10,7 +9,6 @@ fb_dirsync_cpp_library(
     headers = ["AtFork.h"],
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:cpp_attributes",
         "//folly:scope_guard",
@@ -29,7 +27,6 @@ fb_dirsync_cpp_library(
     headers = ["AuxVector.h"],
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
         "//folly:preprocessor",
@@ -42,7 +39,6 @@ fb_dirsync_cpp_library(
     headers = ["EnvUtil.h"],
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:string",
@@ -61,7 +57,6 @@ fb_dirsync_cpp_library(
     headers = ["HardwareConcurrency.h"],
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:conv",
         "//folly:utility",
@@ -77,7 +72,6 @@ fb_dirsync_cpp_library(
     headers = ["MemoryMapping.h"],
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
@@ -100,7 +94,6 @@ fb_dirsync_cpp_library(
     headers = ["Pid.h"],
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         ":at_fork",
@@ -117,7 +110,6 @@ fb_dirsync_cpp_library(
     headers = ["Shell.h"],
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:conv",
         "//folly:format",
@@ -131,7 +123,6 @@ fb_dirsync_cpp_library(
     headers = ["ThreadId.h"],
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         ":at_fork",
         "//folly:likely",
@@ -149,7 +140,6 @@ fb_dirsync_cpp_library(
     headers = ["ThreadName.h"],
     feature = triage_InfrastructureSupermoduleOptou,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:portability",
         "//folly:scope_guard",

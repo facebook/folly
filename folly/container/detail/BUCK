@@ -13,7 +13,6 @@ fb_dirsync_cpp_library(
     name = "bit_iterator_detail",
     headers = ["BitIteratorDetail.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/portability:sys_types",
     ],
@@ -51,7 +50,6 @@ fb_dirsync_cpp_library(
         "F14Table.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":f14_defaults",
         ":f14_intrinsics_availability",
@@ -85,7 +83,6 @@ fb_dirsync_cpp_library(
         "Util.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:traits",
         "//folly/container:iterator",
@@ -116,7 +113,6 @@ fb_dirsync_cpp_library(
         "F14Defaults.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/container:heterogeneous_access_fwd",
     ],
@@ -128,7 +124,6 @@ fb_dirsync_cpp_library(
         "tape_detail.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
         "//folly:range",
@@ -145,7 +140,6 @@ fb_dirsync_cpp_library(
         "BoolWrapper.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 # !!!! fbcode/folly/container/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!

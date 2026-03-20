@@ -9,7 +9,6 @@ oncall("fbcode_entropy_wardens_folly")
 fb_dirsync_cpp_unittest(
     name = "hex_test",
     srcs = ["hex_test.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly:likely",
         "//folly/codec:hex",

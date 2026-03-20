@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -10,7 +9,6 @@ fb_dirsync_cpp_library(
         "BucketedTimeSeries-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:likely",
@@ -26,7 +24,6 @@ fb_dirsync_cpp_library(
         "DigestBuilder-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:memory",
         "//folly:spin_lock",
@@ -42,7 +39,6 @@ fb_dirsync_cpp_library(
         "Histogram-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:c_portability",
@@ -60,7 +56,6 @@ fb_dirsync_cpp_library(
         "MultiLevelTimeSeries-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":bucketed_time_series",
@@ -79,7 +74,6 @@ fb_dirsync_cpp_library(
         "QuantileEstimator-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":tdigest",
         "//folly/stats/detail:buffered_stat",
@@ -93,7 +87,6 @@ fb_dirsync_cpp_library(
         "QuantileHistogram-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:conv",
         "//folly:glog",
@@ -107,7 +100,6 @@ fb_dirsync_cpp_library(
         "StreamingStats.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/lang:exception",
     ],
@@ -122,7 +114,6 @@ fb_dirsync_cpp_library(
         "TDigest.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:overload",
@@ -144,7 +135,6 @@ fb_dirsync_cpp_library(
         "TimeseriesHistogram-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":histogram",
         ":multi_level_time_series",

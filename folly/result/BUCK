@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -7,7 +6,6 @@ fb_dirsync_cpp_library(
     name = "coded_rich_error",
     headers = ["coded_rich_error.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":rich_error",
         ":rich_error_base",
@@ -20,7 +18,6 @@ fb_dirsync_cpp_library(
     name = "coro",
     headers = ["coro.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":result",
         "//folly:cpp_attributes",
@@ -43,7 +40,6 @@ fb_dirsync_cpp_library(
         "ovr_config//os:android": ["-DFOLLY_EPITAPH_USE_SYMBOLIZER=0"],
     }),
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:demangle",
         "//folly/portability:config",
@@ -70,7 +66,6 @@ fb_dirsync_cpp_library(
     srcs = ["errc_rich_error.cpp"],
     headers = ["errc_rich_error.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":coded_rich_error",
     ],
@@ -80,7 +75,6 @@ fb_dirsync_cpp_library(
     name = "gtest_helpers",
     headers = ["gtest_helpers.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":coro",
         "//folly/coro:gtest_helpers",
@@ -91,7 +85,6 @@ fb_dirsync_cpp_library(
     name = "immortal_rich_error",
     headers = ["immortal_rich_error.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":rich_error_base",
         "//folly:portability",
@@ -105,7 +98,6 @@ fb_dirsync_cpp_library(
     name = "nestable_coded_rich_error",
     headers = ["nestable_coded_rich_error.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":coded_rich_error",
         ":rich_error",
@@ -119,7 +111,6 @@ fb_dirsync_cpp_library(
     name = "or_unwind_epitaph",
     headers = ["or_unwind_epitaph.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":coro",
         ":epitaph",
@@ -131,7 +122,6 @@ fb_dirsync_cpp_library(
     srcs = ["result.cpp"],
     headers = ["result.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:indestructible",
@@ -153,7 +143,6 @@ fb_dirsync_cpp_library(
     name = "rich_error",
     headers = ["rich_error.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":rich_error_fwd",
         "//folly:portability",
@@ -174,7 +163,6 @@ fb_dirsync_cpp_library(
         "rich_exception_ptr.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:demangle",
         "//folly/lang:safe_assert",
@@ -200,7 +188,6 @@ fb_dirsync_cpp_library(
     srcs = ["rich_error_code.cpp"],
     headers = ["rich_error_code.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = ["//folly/lang:exception"],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
@@ -214,7 +201,6 @@ fb_dirsync_cpp_library(
     name = "rich_error_fwd",
     headers = ["rich_error_fwd.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = ["//folly:portability"],
 )
 
@@ -222,7 +208,6 @@ fb_dirsync_cpp_library(
     name = "rich_msg",
     headers = ["rich_msg.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:utility",
@@ -236,7 +221,6 @@ fb_dirsync_cpp_library(
     name = "try",
     headers = ["try.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":result",
         "//folly:try",
@@ -250,7 +234,6 @@ fb_dirsync_cpp_library(
         "value_only_result_coro.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":result",
         "//folly/result:coro",

@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -8,5 +7,4 @@ fb_dirsync_cpp_library(
     srcs = ["test_ext.cpp"],
     headers = ["test_ext.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )

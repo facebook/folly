@@ -74,7 +74,6 @@ fb_dirsync_cpp_library(
         "CompressionCoreLocalContextPool.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:memory",
         "//folly:synchronized",
@@ -119,7 +118,6 @@ fb_dirsync_cpp_library(
         "QuotientMultiSet-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:math",
     ],
@@ -141,7 +139,6 @@ fb_dirsync_cpp_library(
     name = "instructions",
     headers = ["Instructions.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:cpu_id",
@@ -156,7 +153,6 @@ fb_dirsync_cpp_library(
     srcs = ["Select64.cpp"],
     headers = ["Select64.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:constexpr_math",
         "//folly:utility",

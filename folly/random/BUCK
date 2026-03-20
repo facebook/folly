@@ -1,8 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "../defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -14,7 +10,6 @@ fb_dirsync_cpp_library(
         "hash.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:utility",
         "//folly/functional:invoke",
@@ -27,7 +22,6 @@ fb_dirsync_cpp_library(
         "seed_seq.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:traits",
         "//folly/container:span",
@@ -41,7 +35,6 @@ fb_dirsync_cpp_library(
         "xoshiro256pp.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":seed_seq",
         "//folly:likely",

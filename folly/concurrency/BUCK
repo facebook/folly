@@ -11,7 +11,6 @@ fb_dirsync_cpp_library(
         "CoreCachedSharedPtr.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":cache_locality",
         "//folly:cpp_attributes",
@@ -27,7 +26,6 @@ fb_dirsync_cpp_library(
         "DynamicBoundedQueue.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":cache_locality",
@@ -41,7 +39,6 @@ fb_dirsync_cpp_library(
         "UnboundedQueue.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":cache_locality",
@@ -136,7 +133,6 @@ fb_dirsync_cpp_library(
     name = "thread_cached_synchronized",
     headers = ["ThreadCachedSynchronized.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:shared_mutex",
         "//folly:thread_local",
@@ -154,7 +150,6 @@ fb_dirsync_cpp_library(
         "detail/AtomicSharedPtr-detail.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:packed_sync_ptr",
         "//folly/lang:safe_assert",
@@ -171,7 +166,6 @@ fb_dirsync_cpp_library(
         "PriorityUnboundedQueueSet.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":unbounded_queue",
         "//folly:memory",
@@ -184,7 +178,6 @@ fb_dirsync_cpp_library(
     srcs = ["ProcessLocalUniqueId.cpp"],
     headers = ["ProcessLocalUniqueId.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:likely",
         "//folly/synchronization:relaxed_atomic",
@@ -197,7 +190,6 @@ fb_dirsync_cpp_library(
         "SingletonRelaxedCounter.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:likely",
         "//folly:portability",

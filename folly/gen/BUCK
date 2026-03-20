@@ -40,7 +40,6 @@ fb_dirsync_cpp_library(
         "Combine-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [":base"],
 )
 
@@ -51,7 +50,6 @@ fb_dirsync_cpp_library(
         "Core-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = ["//folly:portability"],
 )
 
@@ -62,7 +60,6 @@ fb_dirsync_cpp_library(
         "File-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":base",
         ":string",
@@ -78,7 +75,6 @@ fb_dirsync_cpp_library(
         "IStream.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
     ],
@@ -91,7 +87,6 @@ fb_dirsync_cpp_library(
         "Parallel-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":base",
         "//folly:mpmc_queue",
@@ -107,7 +102,6 @@ fb_dirsync_cpp_library(
         "ParallelMap-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         "//folly:expected",
@@ -125,7 +119,6 @@ fb_dirsync_cpp_library(
         "String-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":base",
         "//folly:conv",

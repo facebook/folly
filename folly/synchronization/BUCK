@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -7,7 +6,6 @@ fb_dirsync_cpp_library(
     name = "asymmetric_thread_fence",
     srcs = ["AsymmetricThreadFence.cpp"],
     headers = ["AsymmetricThreadFence.h"],
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         ":relaxed_atomic",
         "//folly:exception",
@@ -23,7 +21,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "atomic_ref",
     headers = ["AtomicRef.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:traits",
         "//folly/lang:safe_assert",
@@ -36,7 +33,6 @@ fb_dirsync_cpp_library(
         "AtomicUtil.h",
         "AtomicUtil-inl.h",
     ],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:constexpr_math",
         "//folly:likely",
@@ -54,7 +50,6 @@ fb_dirsync_cpp_library(
         "AtomicNotification.h",
         "AtomicNotification-inl.h",
     ],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":parking_lot",
         "//folly:portability",
@@ -65,7 +60,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "atomic_struct",
     headers = ["AtomicStruct.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:constexpr_math",
         "//folly:traits",
@@ -76,7 +70,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "baton",
     headers = ["Baton.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":atomic_util",
         ":wait_options",
@@ -93,7 +86,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "call_once",
     headers = ["CallOnce.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:likely",
         "//folly:micro_lock",
@@ -112,7 +104,6 @@ fb_dirsync_cpp_library(
         "DistributedMutex.h",
         "DistributedMutex-inl.h",
     ],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":atomic_notification",
@@ -152,7 +143,6 @@ fb_dirsync_cpp_library(
         "HazptrRec.h",
         "HazptrThrLocal.h",
     ],
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:exception_string",
         "//folly:scope_guard",
@@ -183,7 +173,6 @@ fb_dirsync_cpp_library(
     headers = [
         "HazptrThreadPoolExecutor.h",
     ],
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:singleton",
         "//folly/executors:cpu_thread_pool_executor",
@@ -197,7 +186,6 @@ fb_dirsync_cpp_library(
     name = "latch",
     headers = ["Latch.h"],
     use_raw_headers = True,  # Needed for Windows builds, otherwise we see a 64-bit -> 32-bit conversion error
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":saturating_semaphore",
         "//folly:c_portability",
@@ -209,7 +197,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "lifo_sem",
     headers = ["LifoSem.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":atomic_struct",
         ":saturating_semaphore",
@@ -227,7 +214,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "lock",
     headers = ["Lock.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:portability",
         "//folly:traits",
@@ -240,7 +226,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "micro_spin_lock",
     headers = ["MicroSpinLock.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":sanitize_thread",
         "//folly:portability",
@@ -252,7 +237,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "native_semaphore",
     headers = ["NativeSemaphore.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:utility",
         "//folly/lang:exception",
@@ -263,7 +247,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "pico_spin_lock",
     headers = ["PicoSpinLock.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":atomic_ref",
         ":atomic_util",
@@ -280,7 +263,6 @@ fb_dirsync_cpp_library(
         "ParkingLot.cpp",
     ],
     headers = ["ParkingLot.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:hash",
         "//folly:indestructible",
@@ -298,7 +280,6 @@ fb_dirsync_cpp_library(
     headers = [
         "Rcu.h",
     ],
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly/detail:static_singleton_manager",
     ],
@@ -315,7 +296,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "rw_spin_lock",
     headers = ["RWSpinLock.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":lock",
         "//folly:likely",
@@ -327,7 +307,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "relaxed_atomic",
     headers = ["RelaxedAtomic.h"],
-    xplat_impl = folly_xplat_cxx_library,
 )
 
 fb_dirsync_cpp_library(
@@ -336,7 +315,6 @@ fb_dirsync_cpp_library(
         "SanitizeThread.cpp",
     ],
     headers = ["SanitizeThread.h"],
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly/lang:extern",
     ],
@@ -348,7 +326,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "saturating_semaphore",
     headers = ["SaturatingSemaphore.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":atomic_util",
@@ -365,7 +342,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "small_locks",
     headers = ["SmallLocks.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":micro_spin_lock",
         ":pico_spin_lock",
@@ -377,7 +353,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "wait_options",
     headers = ["WaitOptions.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:c_portability",
     ],
@@ -386,7 +361,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "delayed_init",
     headers = ["DelayedInit.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":call_once",
         "//folly/lang:safe_assert",
@@ -398,7 +372,6 @@ fb_dirsync_cpp_library(
     headers = [
         "ThrottledLifoSem.h",
     ],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":distributed_mutex",
         ":saturating_semaphore",
@@ -414,7 +387,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "flat_combining",
     headers = ["FlatCombining.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:function",
         "//folly:indexed_mem_pool",
@@ -428,7 +400,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "event_count",
     headers = ["EventCount.h"],
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:likely",
@@ -447,7 +418,6 @@ fb_dirsync_cpp_library(
     headers = [
         "StripedThrottledLifoSem.h",
     ],
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly/portability:gflags",
         "//folly/portability:sys_resource",

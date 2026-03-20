@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -7,7 +6,6 @@ fb_dirsync_cpp_library(
     name = "bind",
     headers = ["Bind.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:utility",
         "//folly/detail:tuple",
@@ -18,7 +16,6 @@ fb_dirsync_cpp_library(
     name = "named",
     headers = ["Named.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":bind",
         "//folly:traits",
@@ -29,7 +26,6 @@ fb_dirsync_cpp_library(
     name = "named_to_storage",
     headers = ["NamedToStorage.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":named",
         ":to_storage",
@@ -40,7 +36,6 @@ fb_dirsync_cpp_library(
     name = "to_storage",
     headers = ["ToStorage.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":bind",
         "//folly:utility",
@@ -51,7 +46,6 @@ fb_dirsync_cpp_library(
     name = "as_argument",
     headers = ["AsArgument.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":bind",
         "//folly:utility",

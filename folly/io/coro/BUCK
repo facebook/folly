@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -8,7 +7,6 @@ fb_dirsync_cpp_library(
     headers = [
         "TransportCallbackBase.h",
     ],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
         "//folly/coro:baton",
@@ -23,7 +21,6 @@ fb_dirsync_cpp_library(
     headers = [
         "TransportCallbacks.h",
     ],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":transport_callback_base",
         "//folly:network_address",
@@ -45,7 +42,6 @@ fb_dirsync_cpp_library(
         "ServerSocket.h",
         "Transport.h",
     ],
-    xplat_impl = folly_xplat_library,
     deps = [
         ":transport_callbacks",
         "//folly:portability",

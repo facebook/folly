@@ -43,7 +43,6 @@ fb_dirsync_cpp_library(
         "LtHashInternal.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:range",
     ],

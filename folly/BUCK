@@ -37,7 +37,6 @@ fb_dirsync_cpp_library(
     name = "memory",
     headers = ["Memory.h"],
     fbobjc_complete_nullability = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":constexpr_math",
         ":likely",
@@ -61,7 +60,6 @@ fb_dirsync_cpp_library(
         "ObserverContainer.h",
     ],
     fbobjc_complete_nullability = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":constructor_callback_list",
@@ -77,7 +75,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "operation_cancelled",
     headers = ["OperationCancelled.h"],
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
@@ -95,7 +92,6 @@ fb_dirsync_cpp_library(
     }),
     fbobjc_complete_nullability = True,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":portability",
         ":traits",
@@ -114,7 +110,6 @@ fb_dirsync_cpp_library(
     headers = [
         "BenchmarkUtil.h",
     ],
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly/lang:align",
@@ -176,7 +171,6 @@ fb_dirsync_cpp_library(
     srcs = ["ScopeGuard.cpp"],
     headers = ["ScopeGuard.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":portability",
         ":preprocessor",
@@ -310,7 +304,6 @@ fb_dirsync_cpp_library(
     name = "thread_local",
     headers = ["ThreadLocal.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":likely",
         ":portability",
@@ -533,7 +526,6 @@ fb_dirsync_cpp_library(
     ],
     fbobjc_complete_nullability = True,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         ":cpu_id",
@@ -583,7 +575,6 @@ fb_dirsync_cpp_library(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         ":c_portability",
@@ -612,7 +603,6 @@ fb_dirsync_cpp_library(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    xplat_impl = folly_xplat_library,
     deps = [
         ":constexpr_math",
         "//folly/container:array",
@@ -650,7 +640,6 @@ fb_dirsync_cpp_library(
         "-fno-omit-frame-pointer",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly/container:array",
@@ -675,7 +664,6 @@ fb_dirsync_cpp_library(
     name = "bits",
     headers = ["Bits.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = ["//folly/lang:bits"],
 )
 
@@ -683,7 +671,6 @@ fb_dirsync_cpp_library(
     name = "hash",
     headers = ["Hash.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/hash:hash",
     ],
@@ -863,7 +850,6 @@ non_fbcode_target(
 fb_dirsync_cpp_library(
     name = "cpu_id",
     headers = ["CpuId.h"],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":portability",
         "//folly/system/arch:x86",
@@ -875,7 +861,6 @@ fb_dirsync_cpp_library(
     headers = ["CppAttributes.h"],
     apple_sdks = ALL_APPLE_SDKS,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [":portability"],
 )
 
@@ -935,7 +920,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "likely",
     headers = ["Likely.h"],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/lang:builtin",
     ],
@@ -944,14 +928,12 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "unit",
     headers = ["Unit.h"],
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
     name = "c_portability",
     headers = ["CPortability.h"],
     apple_sdks = ALL_APPLE_SDKS,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/portability:config",
     ],
@@ -961,7 +943,6 @@ fb_dirsync_cpp_library(
     name = "preprocessor",
     headers = ["Preprocessor.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":c_portability",
     ],
@@ -973,7 +954,6 @@ fb_dirsync_cpp_library(
     apple_sdks = ALL_APPLE_SDKS,
     fbobjc_complete_nullability = True,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":c_portability",
         "//folly/portability:config",
@@ -983,7 +963,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "traits",
     headers = ["Traits.h"],
-    xplat_impl = folly_xplat_library,
     exported_deps = [":portability"],
 )
 
@@ -992,7 +971,6 @@ fb_dirsync_cpp_library(
     headers = [
         "Utility.h",
     ],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":c_portability",
         ":portability",
@@ -1005,7 +983,6 @@ fb_dirsync_cpp_library(
     headers = ["Function.h"],
     fbobjc_complete_nullability = True,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":cpp_attributes",
         ":portability",
@@ -1058,7 +1035,6 @@ fb_dirsync_cpp_library(
     name = "chrono",
     headers = ["Chrono.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":portability",
         "//folly/lang:exception",
@@ -1104,7 +1080,6 @@ fb_dirsync_cpp_library(
         "ovr_config//distro/constraints:conda": ["-Wno-unused-function"],
     }),
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         ":c_portability",
         ":utility",
@@ -1130,7 +1105,6 @@ fb_dirsync_cpp_library(
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":conv",
         ":fbstring",
@@ -1194,7 +1168,6 @@ fb_dirsync_cpp_library(
         "-fno-omit-frame-pointer",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":c_portability",
         ":cpp_attributes",
@@ -3234,7 +3207,6 @@ fbcode_target(
 
 fb_dirsync_cpp_library(
     name = "json",
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":dynamic",
     ],
@@ -3245,7 +3217,6 @@ fb_dirsync_cpp_library(
     headers = [
         "json_pointer.h",
     ],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/json:json_pointer",
     ],
