@@ -129,6 +129,7 @@ fb_xplat_rust_library(
         "fbsource//xplat/thrift/lib/rust/src/dep_tests:test_if-rust",
     ],
     visibility = [
+        "fbcode//common/rust/folly/...",
         "fbcode//folly/rust/iobuf/...",
         "fbsource//xplat/folly/rust/iobuf/...",
     ],
