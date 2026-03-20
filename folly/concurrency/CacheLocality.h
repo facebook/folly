@@ -144,7 +144,7 @@ struct CacheLocality {
 /// getcpu(2), if available
 struct Getcpu {
   /// Function pointer to a function with the same signature as getcpu(2).
-  typedef int (*Func)(unsigned* cpu, unsigned* node, void* unused);
+  using Func = int (*)(unsigned* cpu, unsigned* node, void* unused);
 
   /// Returns a pointer to the VDSO implementation of getcpu(2), if
   /// available, or nullptr otherwise.  This function may be quite
