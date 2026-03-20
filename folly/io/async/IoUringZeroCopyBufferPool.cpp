@@ -433,8 +433,16 @@ IoUringZeroCopyBufferPool::exportHandle() const {
   struct zcrx_ctrl ctrl{};
   ctrl.zcrx_id = impl_->id_;
   ctrl.op = ZCRX_CTRL_EXPORT;
-  auto zcrxFd =
+  auto ret =
       io_uring_register(ring_->ring_fd, IORING_REGISTER_ZCRX_CTRL, &ctrl, 0);
+  if (ret < 0) {
+    throw std::runtime_error(
+        fmt::format(
+            "IoUringZeroCopyBufferPool export failed io_uring_register: {} {}",
+            ret,
+            folly::errnoStr(-ret)));
+  }
+  auto zcrxFd = static_cast<int>(ctrl.zc_export.zcrx_fd);
 
   return ExportHandle(zcrxFd, impl_);
 }
