@@ -1288,24 +1288,6 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "io_shutdown_socket_set",
-    exported_deps = [
-        "//xplat/folly/io:shutdown_socket_set",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "io_socket_option_map",
-    exported_deps = [
-        "//xplat/folly/io:socket_option_map",
-    ],
-)
-
 fb_dirsync_cpp_library(
     name = "map_util",
     headers = [
@@ -2392,29 +2374,8 @@ non_fbcode_target(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "experimental_symbolizer_stack_trace",
-    exported_deps = ["//xplat/folly/experimental/symbolizer:stack_trace"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "stats_detail_double_radix_sort",
-    exported_deps = ["//xplat/folly/stats/detail:double_radix_sort"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "futures_detail_types",
     exported_deps = ["//xplat/folly/futures/detail:types"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "stats_detail_bucket",
-    exported_deps = ["//xplat/folly/stats/detail:bucket"],
 )
 
 non_fbcode_target(
@@ -2494,27 +2455,6 @@ fb_dirsync_cpp_library(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "stats_bucketed_time_series",
-    exported_deps = ["//xplat/folly/stats:bucketed_time_series"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "stats_histogram",
-    exported_deps = ["//xplat/folly/stats:histogram"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "stats_streaming_stats",
-    exported_deps = ["//xplat/folly/stats:streaming_stats"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "gen_base",
     apple_sdks = DEFAULT_APPLE_SDKS,
     exported_deps = ["//xplat/folly/gen:base"],
@@ -2537,40 +2477,8 @@ non_fbcode_target(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "gen_core",
-    exported_deps = ["//xplat/folly/gen:core"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "io_global_shutdown_socket_set",
-    exported_deps = [
-        "//xplat/folly/io:global_shutdown_socket_set",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_function_scheduler",
-    exported_deps = [
-        "//xplat/folly/experimental:function_scheduler",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "hash_spooky_hash_v1",
     exported_deps = ["//xplat/folly/hash:spooky_hash_v1"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "hash_traits",
-    exported_deps = ["//xplat/folly/hash:traits"],
 )
 
 non_fbcode_target(
@@ -2588,13 +2496,6 @@ fb_dirsync_cpp_library(
     exported_deps = [
         "//folly:c_portability",
     ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "hash_farm_hash",
-    exported_deps = ["//xplat/folly/hash:farm_hash"],
 )
 
 non_fbcode_target(
@@ -2662,13 +2563,6 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "gen_istream",
-    exported_deps = ["//xplat/folly/gen:istream"],
-)
-
 fb_dirsync_cpp_library(
     name = "replaceable",
     headers = [
@@ -2692,28 +2586,12 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "logging_glog_bridge",
-    exported_deps = [
-        "//xplat/folly/logging:glog_bridge",
-    ],
-)
-
 fb_dirsync_cpp_library(
     name = "rw_spin_lock",
     headers = ["RWSpinLock.h"],
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = ["//folly/synchronization:rw_spin_lock"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "stats_detail_sliding_window",
-    exported_deps = ["//xplat/folly/stats/detail:sliding_window"],
 )
 
 fb_dirsync_cpp_library(
@@ -2737,13 +2615,6 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = ["//folly/synchronization:micro_spin_lock"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "stats_tdigest",
-    exported_deps = ["//xplat/folly/stats:tdigest"],
 )
 
 fb_dirsync_cpp_library(
@@ -2836,15 +2707,6 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_threaded_repeating_function_runner",
-    exported_deps = [
-        "//xplat/folly/experimental:threaded_repeating_function_runner",
-    ],
-)
-
 fb_dirsync_cpp_library(
     name = "poly",
     headers = [
@@ -2897,13 +2759,6 @@ non_fbcode_target(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "init_phase",
-    exported_deps = ["//xplat/folly/init:phase"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "logging_init",
     exported_deps = [
         "//xplat/folly/logging:init",
@@ -2926,50 +2781,6 @@ non_fbcode_target(
     exported_deps = [
         "//xplat/folly/logging:log_handler",
     ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "io_typed_io_buf",
-    exported_deps = [
-        "//xplat/folly/io:typed_io_buf",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "stats_multi_level_time_series",
-    exported_deps = ["//xplat/folly/stats:multi_level_time_series"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_symbolizer_detail_debug",
-    exported_deps = ["//xplat/folly/experimental/symbolizer/detail:debug"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_symbolizer_line_reader",
-    exported_deps = ["//xplat/folly/experimental/symbolizer:line_reader"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "stats_timeseries_histogram",
-    exported_deps = ["//xplat/folly/stats:timeseries_histogram"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_symbolizer_elf",
-    exported_deps = ["//xplat/folly/experimental/symbolizer:elf"],
 )
 
 fb_dirsync_cpp_library(
@@ -2995,29 +2806,6 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_symbolizer_elf_cache",
-    exported_deps = ["//xplat/folly/experimental/symbolizer:elf_cache"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_symbolizer_dwarf",
-    exported_deps = ["//xplat/folly/experimental/symbolizer:dwarf"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_event_count",
-    exported_deps = [
-        "//xplat/folly/experimental:event_count",
-    ],
-)
-
 fb_dirsync_cpp_library(
     name = "packed_sync_ptr",
     headers = ["PackedSyncPtr.h"],
@@ -3030,51 +2818,12 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "gen_combine",
-    exported_deps = ["//xplat/folly/gen:combine"],
-)
-
 fb_dirsync_cpp_library(
     name = "synchronized_ptr",
     headers = ["SynchronizedPtr.h"],
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     exported_deps = [":synchronized"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "gen_parallel",
-    exported_deps = ["//xplat/folly/gen:parallel"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "stats_digest_builder",
-    exported_deps = ["//xplat/folly/stats:digest_builder"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "logging_file_handler_factory",
-    exported_deps = [
-        "//xplat/folly/logging:file_handler_factory",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "logging_example_lib",
-    exported_deps = [
-        "//xplat/folly/logging/example:lib",
-    ],
 )
 
 fb_dirsync_cpp_library(
@@ -3087,13 +2836,6 @@ fb_dirsync_cpp_library(
         ":portability",
         "//folly/detail:mpmc_pipeline_detail",
     ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "gen_parallel_map",
-    exported_deps = ["//xplat/folly/gen:parallel_map"],
 )
 
 fb_dirsync_cpp_library(
@@ -3126,22 +2868,6 @@ fb_dirsync_cpp_library(
     ],
     exported_external_deps = [
         ("boost", None, "boost_random"),
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "stats_detail_buffered_stat",
-    exported_deps = ["//xplat/folly/stats/detail:buffered_stat"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_settings_settings",
-    exported_deps = [
-        "//xplat/folly/experimental/settings:settings",
     ],
 )
 
@@ -3191,15 +2917,6 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "experimental_flat_combining_priority_queue",
-    exported_deps = [
-        "//xplat/folly/experimental:flat_combining_priority_queue",
-    ],
-)
-
 fb_dirsync_cpp_library(
     name = "atomic_unordered_map",
     headers = ["AtomicUnorderedMap.h"],
@@ -3228,31 +2945,8 @@ non_fbcode_target(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "stats_quantile_estimator",
-    exported_deps = ["//xplat/folly/stats:quantile_estimator"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "io_record_io",
-    exported_deps = [
-        "//xplat/folly/io:record_io",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "futures_core",
     exported_deps = ["//xplat/folly/futures:core"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "futures_manual_timekeeper",
-    exported_deps = ["//xplat/folly/futures:manual_timekeeper"],
 )
 
 non_fbcode_target(
@@ -3274,13 +2968,6 @@ non_fbcode_target(
     _kind = folly_xplat_library,
     name = "futures_future_splitter",
     exported_deps = ["//xplat/folly/futures:future_splitter"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "futures_futures",
-    exported_deps = ["//xplat/folly/futures:futures"],
 )
 
 # This adds the symbol __folly_memcpy through FollyMemcpy.h, but does not
