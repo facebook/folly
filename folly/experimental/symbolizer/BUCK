@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -13,7 +12,6 @@ fb_dirsync_cpp_library(
         "DwarfUtil.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/debugging/symbolizer:dwarf",
     ],
@@ -26,7 +24,6 @@ fb_dirsync_cpp_library(
         "Elf-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/debugging/symbolizer:elf",
     ],
@@ -38,7 +35,6 @@ fb_dirsync_cpp_library(
         "ElfCache.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/debugging/symbolizer:elf_cache",
     ],
@@ -50,7 +46,6 @@ fb_dirsync_cpp_library(
         "LineReader.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/debugging/symbolizer:line_reader",
     ],
@@ -62,7 +57,6 @@ fb_dirsync_cpp_library(
         "StackTrace.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/debugging/symbolizer:stack_trace",
     ],
@@ -74,7 +68,6 @@ fb_dirsync_cpp_library(
         "SymbolizedFrame.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/debugging/symbolizer:symbolized_frame",
     ],
@@ -82,7 +75,6 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "symbolize_printer",
-    xplat_impl = folly_xplat_library,
     exported_deps = [":symbolizer"],
 )
 
@@ -94,7 +86,6 @@ fb_dirsync_cpp_library(
         "Symbolizer.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/debugging/symbolizer:symbolizer",
     ],
@@ -102,6 +93,5 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "signal_handler",
-    xplat_impl = folly_xplat_library,
     exported_deps = [":symbolizer"],
 )

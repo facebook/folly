@@ -1,11 +1,9 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../../../defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
 fb_dirsync_cpp_library(
     name = "openssl",
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/io/async/ssl:openssl_utils",  # @manual
         "//folly/io/async/ssl:ssl_errors",  # @manual
@@ -16,7 +14,6 @@ fb_dirsync_cpp_library(
     name = "basic_transport_certificate",
     headers = ["BasicTransportCertificate.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":openssl_transport_certificate",
     ],
@@ -26,7 +23,6 @@ fb_dirsync_cpp_library(
     name = "openssl_transport_certificate",
     headers = ["OpenSSLTransportCertificate.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/io/async:async_transport_certificate",
         "//folly/portability:openssl",
@@ -39,7 +35,6 @@ fb_dirsync_cpp_library(
     srcs = ["OpenSSLUtils.cpp"],
     headers = ["OpenSSLUtils.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:scope_guard",
@@ -62,7 +57,6 @@ fb_dirsync_cpp_library(
     srcs = ["SSLErrors.cpp"],
     headers = ["SSLErrors.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:range",
         "//folly/portability:openssl",
@@ -76,7 +70,6 @@ fb_dirsync_cpp_library(
     name = "tls_definitions",
     headers = ["TLSDefinitions.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/io:iobuf",
     ],

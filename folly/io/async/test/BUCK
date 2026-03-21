@@ -55,7 +55,6 @@ fb_dirsync_cpp_library(
         "TFOUtil.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly/detail:socket_fast_open",
     ],
@@ -67,7 +66,6 @@ fb_dirsync_cpp_library(
         "AsyncSignalHandlerTestLib.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":util",
         "//folly/io/async:async_base",
@@ -97,7 +95,6 @@ fb_dirsync_cpp_library(
         "AsyncSSLSocketTest.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":test_ssl_server",
         "//folly:exception_wrapper",
@@ -231,7 +228,6 @@ fb_dirsync_cpp_library(
         "AsyncSocketTest2.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":blocking_socket",
         ":callback_state_enum",
@@ -393,7 +389,6 @@ fb_dirsync_cpp_library(
     name = "blocking_socket",
     headers = ["BlockingSocket.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:optional",
         "//folly/io/async:async_socket",
@@ -409,7 +404,6 @@ fb_dirsync_cpp_library(
         "CallbackStateEnum.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
 )
 
 fb_dirsync_cpp_library(
@@ -418,7 +412,6 @@ fb_dirsync_cpp_library(
         "ConnCallback.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":callback_state_enum",
         "//folly/io/async:async_socket",
@@ -482,7 +475,6 @@ fb_dirsync_cpp_library(
         "EventBaseTestLib.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         ":util",
         "//folly:math",
@@ -535,7 +527,6 @@ fb_dirsync_cpp_library(
     srcs = ["EventBaseThreadTest.cpp"],
     headers = [],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/io/async:event_base_manager",
         "//folly/io/async:event_base_thread",
@@ -587,7 +578,6 @@ fb_dirsync_cpp_library(
         "MockTimeoutManager.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:memory",
         "//folly/io/async:async_base",
@@ -604,7 +594,6 @@ fb_dirsync_cpp_library(
     name = "mock_server_socket",
     headers = ["MockAsyncServerSocket.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/io/async:async_base",
         "//folly/io/async:server_socket",
@@ -617,7 +606,6 @@ fb_dirsync_cpp_library(
     srcs = ["NotificationQueueTest.cpp"],
     headers = [],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/io/async:async_base",
         "//folly/io/async:scoped_event_base_thread",
@@ -631,7 +619,6 @@ fb_dirsync_cpp_library(
     srcs = ["AtomicNotificationQueueTest.cpp"],
     headers = [],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/io/async:async_base",
         "//folly/portability:gtest",
@@ -643,7 +630,6 @@ fb_dirsync_cpp_library(
     srcs = ["NotificationQueueBenchmark.cpp"],
     headers = [],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_binary,
     deps = [
         "//folly:benchmark",
         "//folly/io/async:async_base",
@@ -671,7 +657,6 @@ fb_dirsync_cpp_library(
     srcs = ["ScopedBoundPort.cpp"],
     headers = ["ScopedBoundPort.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "//folly:memory",
         "//folly/io/async:scoped_event_base_thread",
@@ -685,7 +670,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "scoped_event_base_thread_test",
     srcs = ["ScopedEventBaseThreadTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly:optional",
         "//folly/futures:core",
@@ -702,7 +686,6 @@ fb_dirsync_cpp_library(
     srcs = ["SocketClient.cpp"],
     headers = [],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_binary,
     deps = [
         ":blocking_socket",
         "//folly:exception_wrapper",
@@ -738,7 +721,6 @@ non_fbcode_target(
 fb_dirsync_cpp_library(
     name = "time_util_test",
     srcs = ["TimeUtilTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "fbsource//third-party/glog:glog",
         ":util",
@@ -799,7 +781,6 @@ fb_dirsync_cpp_library(
         "SSLUtil.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly/ssl:openssl_ptr_types",
     ],
@@ -818,7 +799,6 @@ fb_dirsync_cpp_library(
         "Util.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:conv",
@@ -844,7 +824,6 @@ fb_dirsync_cpp_library(
     srcs = ["WriteChainAsyncTransportWrapperTest.cpp"],
     headers = [],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/io/async:async_transport",
         "//folly/io/async:decorated_async_transport_wrapper",
@@ -858,7 +837,6 @@ fb_dirsync_cpp_library(
     srcs = ["WriteFlagsTest.cpp"],
     headers = [],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/io/async:async_transport",
         "//folly/portability:gtest",
@@ -870,7 +848,6 @@ fb_dirsync_cpp_library(
     srcs = ["ZeroCopy.cpp"],
     headers = ["ZeroCopy.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
         "//folly:exception_wrapper",
         "//folly:network_address",
@@ -886,7 +863,6 @@ fb_dirsync_cpp_library(
     srcs = ["ZeroCopyTest.cpp"],
     headers = [],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         ":zero_copy_lib",
         "//folly/portability:gtest",
@@ -898,7 +874,6 @@ fb_dirsync_cpp_library(
     srcs = ["ZeroCopyBenchmark.cpp"],
     headers = [],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_cxx_binary,
     deps = [
         ":zero_copy_lib",
         "//folly:benchmark",

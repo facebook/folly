@@ -17,7 +17,6 @@ non_fbcode_target(
 fb_dirsync_cpp_unittest(
     name = "openssl_hash_test",
     srcs = ["OpenSSLHashTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/io:iobuf",
         "//folly/portability:gtest",
@@ -55,7 +54,6 @@ non_fbcode_target(
 fb_dirsync_cpp_unittest(
     name = "ssl_session_manager_test",
     srcs = ["SSLSessionManagerTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/portability:gtest",
         "//folly/portability:openssl",
@@ -68,7 +66,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "openssl_key_utils_test",
     srcs = ["OpenSSLKeyUtilsTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/portability:gtest",
         "//folly/ssl:openssl_key_utils",

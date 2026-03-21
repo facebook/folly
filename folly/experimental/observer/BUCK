@@ -1,10 +1,6 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "../../defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -15,7 +11,6 @@ fb_dirsync_cpp_library(
         "Observable-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/observer:observable",
     ],
@@ -28,7 +23,6 @@ fb_dirsync_cpp_library(
         "WithJitter-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/observer:with_jitter",
     ],
@@ -42,7 +36,6 @@ fb_dirsync_cpp_library(
         "Observer-pre.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/observer:observer",
     ],
@@ -55,7 +48,6 @@ fb_dirsync_cpp_library(
         "SimpleObservable-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/observer:simple_observable",
     ],

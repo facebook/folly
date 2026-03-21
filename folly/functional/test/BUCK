@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -8,7 +7,6 @@ oncall("fbcode_entropy_wardens_folly")
 fb_dirsync_cpp_unittest(
     name = "apply_tuple_test",
     srcs = ["ApplyTupleTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly:overload",
         "//folly/functional:apply_tuple",
@@ -19,7 +17,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "invoke_test",
     srcs = ["InvokeTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/functional:invoke",
         "//folly/portability:gtest",
@@ -29,7 +26,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "partial_test",
     srcs = ["PartialTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly:function",
         "//folly/functional:partial",
@@ -40,7 +36,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "protocol_test",
     srcs = ["protocol_test.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/functional:protocol",
         "//folly/portability:gtest",
@@ -50,7 +45,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "traits_test",
     srcs = ["traits_test.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/functional:traits",
         "//folly/portability:gtest",

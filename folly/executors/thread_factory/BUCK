@@ -1,8 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "../../defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -21,7 +17,6 @@ fb_dirsync_cpp_library(
     srcs = ["PriorityThreadFactory.cpp"],
     headers = ["PriorityThreadFactory.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:string",
@@ -38,7 +33,6 @@ fb_dirsync_cpp_library(
     name = "thread_factory",
     headers = ["ThreadFactory.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:executor",
     ],
@@ -48,7 +42,6 @@ fb_dirsync_cpp_library(
     name = "named_thread_factory",
     headers = ["NamedThreadFactory.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":thread_factory",
         "//folly:conv",

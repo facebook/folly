@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -10,7 +9,6 @@ oncall("fbcode_entropy_wardens_folly")
 # complexity to here and to take simple deps on the rules here.
 fb_dirsync_cpp_library(
     name = "libdwarf",
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/libdwarf:dwarf",
     ],
@@ -18,7 +16,6 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "libunwind",
-    xplat_impl = folly_xplat_library,
     exported_deps = select({
         "DEFAULT": [],
         "ovr_config//os:linux": [
@@ -29,7 +26,6 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "libunwind-linux",
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/libunwind:unwind",
     ],

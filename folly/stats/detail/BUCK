@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -7,7 +6,6 @@ fb_dirsync_cpp_library(
     name = "bucket",
     headers = ["Bucket.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:constexpr_math",
     ],
@@ -21,7 +19,6 @@ fb_dirsync_cpp_library(
         "BufferedStat-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":sliding_window",
         "//folly:range",
@@ -39,7 +36,6 @@ fb_dirsync_cpp_library(
         "DoubleRadixSort.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = ["fbsource//third-party/glog:glog"],
 )
 
@@ -52,7 +48,6 @@ fb_dirsync_cpp_library(
         "SlidingWindow-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:function",
     ],

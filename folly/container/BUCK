@@ -34,7 +34,6 @@ fb_dirsync_cpp_library(
         "HeterogeneousAccess.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":heterogeneous_access_fwd",
         "//folly:range",
@@ -51,14 +50,12 @@ fb_dirsync_cpp_library(
         "HeterogeneousAccess-fwd.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
     name = "enumerate",
     headers = ["Enumerate.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:c_portability",
         "//folly/portability:sys_types",
@@ -80,7 +77,6 @@ fb_dirsync_cpp_library(
     name = "merge",
     headers = ["Merge.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 non_fbcode_target(
@@ -106,7 +102,6 @@ fb_dirsync_cpp_library(
         "WeightedEvictingCacheMap.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/container:evicting_cache_map",
     ],
@@ -116,7 +111,6 @@ fb_dirsync_cpp_library(
     name = "view",
     headers = ["View.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
         "//folly/functional:invoke",
@@ -131,7 +125,6 @@ fb_dirsync_cpp_library(
         "Foreach-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":access",
         "//folly:portability",
@@ -149,7 +142,6 @@ fb_dirsync_cpp_library(
         "F14Set-fwd.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/container/detail:f14_defaults",
         "//folly/memory:memory_resource",
@@ -178,7 +170,6 @@ fb_dirsync_cpp_library(
     name = "bit_iterator",
     headers = ["BitIterator.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
         "//folly/container/detail:bit_iterator_detail",
@@ -231,7 +222,6 @@ fb_dirsync_cpp_library(
     name = "access",
     headers = ["Access.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/functional:invoke",
     ],
@@ -243,7 +233,6 @@ fb_dirsync_cpp_library(
         "IntrusiveHeap.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         "//folly:portability",
@@ -258,7 +247,6 @@ fb_dirsync_cpp_library(
     name = "range_traits",
     headers = ["range_traits.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:traits",
         "//folly:utility",
@@ -270,7 +258,6 @@ fb_dirsync_cpp_library(
     srcs = ["RegexMatchCache.cpp"],
     headers = ["RegexMatchCache.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
@@ -296,7 +283,6 @@ fb_dirsync_cpp_library(
     name = "span",
     headers = ["span.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":access",
         ":iterator",
@@ -315,7 +301,6 @@ fb_dirsync_cpp_library(
         "tape.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":iterator",
         "//folly:portability",
@@ -331,7 +316,6 @@ fb_dirsync_cpp_library(
         "Reserve.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:likely",
         "//folly:traits",
@@ -362,7 +346,6 @@ fb_dirsync_cpp_library(
     name = "std_bitset",
     headers = ["StdBitset.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:c_portability",
         "//folly:likely",
@@ -409,7 +392,6 @@ fb_dirsync_cpp_library(
     name = "map_util",
     headers = ["MapUtil.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:optional",
@@ -451,7 +433,6 @@ fb_dirsync_cpp_library(
     name = "vector_bool",
     headers = ["vector_bool.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/container/detail:bool_wrapper",
         "//folly/memory:memory_resource",

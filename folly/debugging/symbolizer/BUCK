@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -133,7 +132,6 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "symbolize_printer",
-    xplat_impl = folly_xplat_library,
     exported_deps = [":symbolizer"],
 )
 
@@ -150,7 +148,6 @@ fb_dirsync_cpp_library(
         "Symbolizer.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         ":elf",
@@ -185,6 +182,5 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "signal_handler",
-    xplat_impl = folly_xplat_library,
     exported_deps = [":symbolizer"],
 )

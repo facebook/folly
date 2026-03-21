@@ -125,7 +125,6 @@ fb_dirsync_cpp_library(
     srcs = ["Filesystem.cpp"],
     headers = ["Filesystem.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = select({
         "ovr_config//cpp:libc++": [],
         "ovr_config//cpp:libstdc++": [
@@ -224,7 +223,6 @@ fb_dirsync_cpp_library(
     srcs = ["Malloc.cpp"],
     headers = ["Malloc.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":config",
         "//folly:c_portability",

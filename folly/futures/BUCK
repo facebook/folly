@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -9,7 +8,6 @@ fb_dirsync_cpp_library(
     headers = ["Barrier.h"],
     force_static = False,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:scope_guard",
@@ -58,7 +56,6 @@ fb_dirsync_cpp_library(
         "depslint_never_add",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:likely",
         "//folly:singleton",
@@ -105,7 +102,6 @@ fb_dirsync_cpp_library(
     headers = ["FutureSplitter.h"],
     force_static = False,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         ":shared_promise",
@@ -159,7 +155,6 @@ fb_dirsync_cpp_library(
     ],
     force_static = False,
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":core",
         "//folly:portability",

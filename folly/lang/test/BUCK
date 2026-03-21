@@ -11,7 +11,6 @@ oncall("fbcode_entropy_wardens_folly")
 fb_dirsync_cpp_unittest(
     name = "align_test",
     srcs = ["AlignTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:align",
         "//folly/portability:gtest",
@@ -21,7 +20,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "aligned_test",
     srcs = ["AlignedTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:align",
         "//folly/lang:aligned",
@@ -57,7 +55,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "c_string_test",
     srcs = ["CStringTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:c_string",
         "//folly/portability:gtest",
@@ -67,7 +64,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "cast_test",
     srcs = ["CastTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly:utility",
         "//folly/lang:cast",
@@ -78,7 +74,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "checked_math_test",
     srcs = ["CheckedMathTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:checked_math",
         "//folly/lang:keep",
@@ -99,7 +94,6 @@ fb_dirsync_cpp_binary(
 fb_dirsync_cpp_unittest(
     name = "exception_test",
     srcs = ["ExceptionTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:portability",
@@ -114,7 +108,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "extern_test",
     srcs = ["ExternTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:extern",
         "//folly/portability:gtest",
@@ -124,7 +117,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "hint_test",
     srcs = ["HintTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:hint",
         "//folly/portability:gtest",
@@ -134,7 +126,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "must_use_immediately_test",
     srcs = ["MustUseImmediatelyTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly:traits",
         "//folly/lang:must_use_immediately",
@@ -145,7 +136,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "new_test",
     srcs = ["NewTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:align",
         "//folly/lang:new",
@@ -156,7 +146,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "ordering_test",
     srcs = ["OrderingTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:ordering",
         "//folly/portability:gtest",
@@ -166,7 +155,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "pretty_test",
     srcs = ["PrettyTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:pretty",
         "//folly/portability:gtest",
@@ -176,7 +164,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "propagate_const_test",
     srcs = ["PropagateConstTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:propagate_const",
         "//folly/portability:gtest",
@@ -196,7 +183,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "safe_alias_test",
     srcs = ["SafeAliasTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/detail:tuple",
         "//folly/lang:safe_alias",
@@ -221,7 +207,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "safe_closure_test",
     srcs = ["SafeClosureTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/coro/safe:captures",
         "//folly/lang:safe_closure",
@@ -232,7 +217,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "strong_test",
     srcs = ["StrongTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/hash:traits",
         "//folly/lang:strong",
@@ -243,7 +227,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "switch_test",
     srcs = ["SwitchTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:switch",
     ],
@@ -266,7 +249,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "thunk_test",
     srcs = ["ThunkTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly:traits",
         "//folly/lang:thunk",
@@ -289,7 +271,6 @@ fb_dirsync_cpp_benchmark(
 fb_dirsync_cpp_unittest(
     name = "to_ascii_test",
     srcs = ["ToAsciiTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:to_ascii",
         "//folly/portability:gtest",
@@ -299,7 +280,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "type_info_test",
     srcs = ["TypeInfoTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:type_info",
         "//folly/portability:gtest",
@@ -309,7 +289,6 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "vector_traits_test",
     srcs = ["VectorTraitsTest.cpp"],
-    xplat_impl = folly_xplat_cxx_test,
     deps = [
         "//folly/lang:vector_traits",
         "//folly/portability:gtest",

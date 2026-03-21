@@ -1,5 +1,4 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -21,7 +20,6 @@ fb_dirsync_cpp_library(
         "ovr_config//os:android-x86_64": ["-mpclmul"],
     }),
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
     ],
@@ -40,7 +38,6 @@ fb_dirsync_cpp_library(
         "ovr_config//os:android-x86_64": ["-mpclmul"],
     }),
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:portability",
     ],
@@ -61,7 +58,6 @@ fb_dirsync_cpp_library(
         ],
     }),
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:portability",
         "//folly/system:aux_vector",
@@ -81,7 +77,6 @@ fb_dirsync_cpp_library(
         "ovr_config//os:android-arm64": ["-march=armv8.2-a+crypto+sha3"],
     }),
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:portability",
         "//folly/system:aux_vector",
@@ -101,7 +96,6 @@ fb_dirsync_cpp_library(
         "ovr_config//os:android-arm64": ["-march=armv8.2-a+crypto+sha3"],
     }),
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly:portability",
         "//folly/system:aux_vector",

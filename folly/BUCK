@@ -135,7 +135,6 @@ fb_dirsync_cpp_library(
         "detail/BenchmarkAdaptive.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         ":file_util",
         ":map_util",
@@ -184,7 +183,6 @@ fb_dirsync_cpp_library(
     name = "synchronized",
     headers = ["Synchronized.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":function",
@@ -318,7 +316,6 @@ fb_dirsync_cpp_library(
     srcs = ["SingletonThreadLocal.cpp"],
     headers = ["SingletonThreadLocal.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":scope_guard",
         ":thread_local",
@@ -340,7 +337,6 @@ fb_dirsync_cpp_library(
         "Random-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         ":cpp_attributes",
@@ -369,7 +365,6 @@ fb_dirsync_cpp_library(
     srcs = ["File.cpp"],
     headers = ["File.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "fbsource//third-party/glog:glog",
         ":exception",
@@ -394,7 +389,6 @@ fb_dirsync_cpp_library(
     srcs = ["FileUtil.cpp"],
     headers = ["FileUtil.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly/detail:file_util_detail",
         "//folly/detail:file_util_vector_detail",
@@ -547,7 +541,6 @@ fb_dirsync_cpp_library(
         "FBVector.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/container:fbvector",
     ],
@@ -557,7 +550,6 @@ fb_dirsync_cpp_library(
     name = "fixed_string",
     headers = ["FixedString.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":constexpr_math",
         ":portability",
@@ -879,7 +871,6 @@ fb_dirsync_cpp_library(
     name = "constexpr_math",
     headers = ["ConstexprMath.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":portability",
         "//folly/lang:checked_math",
@@ -893,7 +884,6 @@ fb_dirsync_cpp_library(
         "ConstructorCallbackList.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         ":format",
@@ -907,14 +897,12 @@ fb_dirsync_cpp_library(
     name = "math",
     headers = ["Math.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
     name = "move_wrapper",
     headers = ["MoveWrapper.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
 )
 
 fb_dirsync_cpp_library(
@@ -1255,7 +1243,6 @@ fb_dirsync_cpp_library(
         "IntrusiveList.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/container:intrusive_list",
     ],
@@ -1267,7 +1254,6 @@ fb_dirsync_cpp_library(
         "MapUtil.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/container:map_util",
     ],
@@ -1299,7 +1285,6 @@ fb_dirsync_cpp_library(
     name = "mpmc_queue",
     headers = ["MPMCQueue.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":traits",
         "//folly/concurrency:cache_locality",
@@ -1415,7 +1400,6 @@ fb_dirsync_cpp_library(
         "small_vector.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/container:small_vector",
     ],
@@ -1427,7 +1411,6 @@ fb_dirsync_cpp_library(
         "sorted_vector_types.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/container:sorted_vector_types",
     ],
@@ -1452,7 +1435,6 @@ fb_dirsync_cpp_library(
     name = "stop_watch",
     headers = ["stop_watch.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":chrono",
         ":utility",
@@ -1463,7 +1445,6 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "varint",
     headers = ["Varint.h"],
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":conv",
         ":expected",
@@ -2377,7 +2358,6 @@ fb_dirsync_cpp_library(
         "Try-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":exception_wrapper",
         ":likely",
@@ -2394,7 +2374,6 @@ fb_dirsync_cpp_library(
     name = "thread_cached_int",
     headers = ["ThreadCachedInt.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":likely",
         ":thread_local",
@@ -2409,7 +2388,6 @@ fb_dirsync_cpp_library(
         "CancellationToken-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         ":optional",
         "//folly:scope_guard",
@@ -2465,7 +2443,6 @@ fb_dirsync_cpp_library(
     name = "poly_exception",
     headers = ["PolyException.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly:c_portability",
     ],
@@ -2516,7 +2493,6 @@ fb_dirsync_cpp_library(
     name = "concurrent_bit_set",
     headers = ["ConcurrentBitSet.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [":portability"],
 )
 
@@ -2524,7 +2500,6 @@ fb_dirsync_cpp_library(
     name = "padded",
     headers = ["Padded.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":portability",
         ":traits",
@@ -2542,7 +2517,6 @@ fb_dirsync_cpp_library(
         "Replaceable.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":portability",
         ":traits",
@@ -2563,7 +2537,6 @@ fb_dirsync_cpp_library(
     name = "rw_spin_lock",
     headers = ["RWSpinLock.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = ["//folly/synchronization:rw_spin_lock"],
 )
 
@@ -2572,7 +2545,6 @@ fb_dirsync_cpp_library(
     srcs = ["Fingerprint.cpp"],
     headers = ["Fingerprint.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         ":portability",
         "//folly/detail:fingerprint_polynomial",
@@ -2586,7 +2558,6 @@ fb_dirsync_cpp_library(
     name = "micro_spin_lock",
     headers = ["MicroSpinLock.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = ["//folly/synchronization:micro_spin_lock"],
 )
 
@@ -2594,7 +2565,6 @@ fb_dirsync_cpp_library(
     name = "discriminated_ptr",
     headers = ["DiscriminatedPtr.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":likely",
@@ -2610,7 +2580,6 @@ fb_dirsync_cpp_library(
     ],
     headers = ["GroupVarint.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         "//folly/container:array",
     ],
@@ -2637,7 +2606,6 @@ fb_dirsync_cpp_library(
     name = "lazy",
     headers = ["Lazy.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":optional",
         "//folly/functional:invoke",
@@ -2657,7 +2625,6 @@ fb_dirsync_cpp_library(
         "UTF8String.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":range",
     ],
@@ -2687,7 +2654,6 @@ fb_dirsync_cpp_library(
         "Poly-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":c_portability",
         ":cpp_attributes",
@@ -2704,7 +2670,6 @@ fb_dirsync_cpp_library(
     srcs = ["Unicode.cpp"],
     headers = ["Unicode.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [
         ":conv",
     ],
@@ -2760,7 +2725,6 @@ fb_dirsync_cpp_library(
     name = "token_bucket",
     headers = ["TokenBucket.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":constexpr_math",
         ":likely",
@@ -2773,7 +2737,6 @@ fb_dirsync_cpp_library(
     name = "producer_consumer_queue",
     headers = ["ProducerConsumerQueue.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/concurrency:cache_locality",
     ],
@@ -2783,7 +2746,6 @@ fb_dirsync_cpp_library(
     name = "packed_sync_ptr",
     headers = ["PackedSyncPtr.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":portability",
@@ -2795,7 +2757,6 @@ fb_dirsync_cpp_library(
     name = "synchronized_ptr",
     headers = ["SynchronizedPtr.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [":synchronized"],
 )
 
@@ -2803,7 +2764,6 @@ fb_dirsync_cpp_library(
     name = "mpmc_pipeline",
     headers = ["MPMCPipeline.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":portability",
@@ -2815,7 +2775,6 @@ fb_dirsync_cpp_library(
     name = "concurrent_lazy",
     headers = ["ConcurrentLazy.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/functional:invoke",
         "//folly/synchronization:delayed_init",
@@ -2829,7 +2788,6 @@ fb_dirsync_cpp_library(
         "ConcurrentSkipList-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":constexpr_math",
@@ -2850,7 +2808,6 @@ fb_dirsync_cpp_library(
         "DefaultKeepAliveExecutor.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":executor",
@@ -2865,7 +2822,6 @@ fb_dirsync_cpp_library(
         "VirtualExecutor.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         "//folly/executors:virtual_executor",
     ],
@@ -2878,7 +2834,6 @@ fb_dirsync_cpp_library(
         "AtomicHashArray-inl.h",
     ],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":thread_cached_int",
         ":utility",
@@ -2894,7 +2849,6 @@ fb_dirsync_cpp_library(
     name = "atomic_unordered_map",
     headers = ["AtomicUnorderedMap.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":conv",
         ":likely",
@@ -2961,7 +2915,6 @@ fb_dirsync_cpp_library(
     name = "base64",
     headers = ["base64.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":c_portability",
         ":portability",
@@ -2976,7 +2929,6 @@ fb_dirsync_cpp_library(
     name = "maybe_managed_ptr",
     headers = ["MaybeManagedPtr.h"],
     use_raw_headers = True,
-    xplat_impl = folly_xplat_library,
     deps = [],
     exported_deps = [],
 )
