@@ -1,10 +1,10 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
-load("../../defs.bzl", "folly_xplat_cxx_binary", "folly_xplat_cxx_test")
+load("../../defs.bzl", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -29,29 +29,28 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_binary,
+fb_dirsync_cpp_binary(
     name = "bits_benchmark",
     srcs = ["BitsBenchmark.cpp"],
-    raw_headers = [],
+    headers = [],
     deps = [
-        "//xplat/folly:benchmark",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:random",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/lang:bits",
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/lang:assume",
+        "//folly/lang:bits",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "bits_test",
     srcs = ["BitsTest.cpp"],
-    raw_headers = [],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:random",
-        "//xplat/folly/lang:bits",
+        "fbsource//third-party/fmt:fmt",
+        "//folly:random",
+        "//folly/container:span",
+        "//folly/lang:bits",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -184,14 +183,13 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "rvalue_reference_wrapper_test",
     srcs = ["RValueReferenceWrapperTest.cpp"],
-    raw_headers = [],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/lang:rvalue_reference_wrapper",
+        "//folly/lang:rvalue_reference_wrapper",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -206,18 +204,17 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "safe_assert_test",
     srcs = ["SafeAssertTest.cpp"],
-    raw_headers = [],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//third-party/glog:glog",
-        "//xplat/folly:benchmark",
-        "//xplat/folly:conv",
-        "//xplat/folly/lang:keep",
-        "//xplat/folly/lang:safe_assert",
+        "fbsource//third-party/glog:glog",
+        "//folly:benchmark",
+        "//folly:conv",
+        "//folly/lang:keep",
+        "//folly/lang:safe_assert",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -252,14 +249,17 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "cstring_view_test",
     srcs = ["cstring_view_test.cpp"],
+    supports_static_listing = False,
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:range",
-        "//xplat/folly/lang:cstring_view",
+        "fbsource//third-party/fmt:fmt",
+        "//folly:fbstring",
+        "//folly:range",
+        "//folly/lang:cstring_view",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -315,7 +315,6 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:gtest",
     ],
 )
-# !!!! fbcode/folly/lang/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
 fbcode_target(
     _kind = cpp_unittest,
@@ -324,19 +323,6 @@ fbcode_target(
     deps = [
         "//folly/lang:badge",
         "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_binary,
-    name = "bits_benchmark",
-    srcs = ["BitsBenchmark.cpp"],
-    headers = [],
-    deps = [
-        "//folly:benchmark",
-        "//folly:random",
-        "//folly/lang:assume",
-        "//folly/lang:bits",
     ],
 )
 
@@ -361,59 +347,6 @@ fbcode_target(
         "fbsource//third-party/glog:glog",
         "//folly/lang:bits_class",
         "//folly/portability:gflags",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "bits_test",
-    srcs = ["BitsTest.cpp"],
-    headers = [],
-    deps = [
-        "fbsource//third-party/fmt:fmt",
-        "//folly:random",
-        "//folly/container:span",
-        "//folly/lang:bits",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "rvalue_reference_wrapper_test",
-    srcs = ["RValueReferenceWrapperTest.cpp"],
-    headers = [],
-    deps = [
-        "//folly/lang:rvalue_reference_wrapper",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "safe_assert_test",
-    srcs = ["SafeAssertTest.cpp"],
-    headers = [],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:benchmark",
-        "//folly:conv",
-        "//folly/lang:keep",
-        "//folly/lang:safe_assert",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "cstring_view_test",
-    srcs = ["cstring_view_test.cpp"],
-    supports_static_listing = False,
-    deps = [
-        "//folly:fbstring",
-        "//folly:range",
-        "//folly/lang:cstring_view",
         "//folly/portability:gtest",
     ],
 )
