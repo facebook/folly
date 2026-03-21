@@ -3,7 +3,9 @@ load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load("../../../defs.bzl", "folly_xplat_cxx_binary", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 load("../../../io/async/test/certs/defs.bzl", "alias_pem")
 
@@ -522,11 +524,10 @@ non_fbcode_target(
     ],
 )
 
-fb_dirsync_cpp_library(
+fb_dirsync_cpp_unittest(
     name = "event_base_thread_test",
     srcs = ["EventBaseThreadTest.cpp"],
     headers = [],
-    use_raw_headers = True,
     deps = [
         "//folly/io/async:event_base_manager",
         "//folly/io/async:event_base_thread",
@@ -601,11 +602,10 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fb_dirsync_cpp_library(
+fb_dirsync_cpp_unittest(
     name = "notification_queue_test",
     srcs = ["NotificationQueueTest.cpp"],
     headers = [],
-    use_raw_headers = True,
     deps = [
         "//folly/io/async:async_base",
         "//folly/io/async:scoped_event_base_thread",
@@ -614,22 +614,20 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fb_dirsync_cpp_library(
+fb_dirsync_cpp_unittest(
     name = "atomic_notification_queue_test",
     srcs = ["AtomicNotificationQueueTest.cpp"],
     headers = [],
-    use_raw_headers = True,
     deps = [
         "//folly/io/async:async_base",
         "//folly/portability:gtest",
     ],
 )
 
-fb_dirsync_cpp_library(
+fb_dirsync_cpp_binary(
     name = "notification_queue_benchmark",
     srcs = ["NotificationQueueBenchmark.cpp"],
     headers = [],
-    use_raw_headers = True,
     deps = [
         "//folly:benchmark",
         "//folly/io/async:async_base",
@@ -667,7 +665,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fb_dirsync_cpp_library(
+fb_dirsync_cpp_unittest(
     name = "scoped_event_base_thread_test",
     srcs = ["ScopedEventBaseThreadTest.cpp"],
     deps = [
@@ -681,11 +679,10 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fb_dirsync_cpp_library(
+fb_dirsync_cpp_binary(
     name = "socket_client",
     srcs = ["SocketClient.cpp"],
     headers = [],
-    use_raw_headers = True,
     deps = [
         ":blocking_socket",
         "//folly:exception_wrapper",
@@ -718,7 +715,7 @@ non_fbcode_target(
     ],
 )
 
-fb_dirsync_cpp_library(
+fb_dirsync_cpp_unittest(
     name = "time_util_test",
     srcs = ["TimeUtilTest.cpp"],
     deps = [
@@ -819,11 +816,10 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fb_dirsync_cpp_library(
+fb_dirsync_cpp_unittest(
     name = "write_chain_async_transport_wrapper_test",
     srcs = ["WriteChainAsyncTransportWrapperTest.cpp"],
     headers = [],
-    use_raw_headers = True,
     deps = [
         "//folly/io/async:async_transport",
         "//folly/io/async:decorated_async_transport_wrapper",
@@ -832,11 +828,10 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fb_dirsync_cpp_library(
+fb_dirsync_cpp_unittest(
     name = "write_flags_test",
     srcs = ["WriteFlagsTest.cpp"],
     headers = [],
-    use_raw_headers = True,
     deps = [
         "//folly/io/async:async_transport",
         "//folly/portability:gtest",
@@ -858,22 +853,20 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fb_dirsync_cpp_library(
+fb_dirsync_cpp_unittest(
     name = "zero_copy_test",
     srcs = ["ZeroCopyTest.cpp"],
     headers = [],
-    use_raw_headers = True,
     deps = [
         ":zero_copy_lib",
         "//folly/portability:gtest",
     ],
 )
 
-fb_dirsync_cpp_library(
+fb_dirsync_cpp_binary(
     name = "zero_copy_benchmark",
     srcs = ["ZeroCopyBenchmark.cpp"],
     headers = [],
-    use_raw_headers = True,
     deps = [
         ":zero_copy_lib",
         "//folly:benchmark",
