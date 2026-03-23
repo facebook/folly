@@ -1,8 +1,6 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
-load("../../defs.bzl", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -18,20 +16,7 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
-    name = "uuid_test",
-    srcs = ["UuidTest.cpp"],
-    deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//third-party/fmt:fmt",
-        "//xplat/folly:random",
-        "//xplat/folly/codec:uuid",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "uuid_test",
     srcs = ["UuidTest.cpp"],
     supports_static_listing = False,
