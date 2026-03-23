@@ -23,14 +23,3 @@ fb_dirsync_cpp_library(
         "//folly/executors:function_scheduler",
     ],
 )
-
-fb_dirsync_cpp_library(
-    name = "threaded_repeating_function_runner",
-    headers = [
-        "ThreadedRepeatingFunctionRunner.h",
-    ],
-    use_raw_headers = True,
-    exported_deps = [
-        "//folly/executors:threaded_repeating_function_runner",
-    ],
-)

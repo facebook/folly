@@ -30,14 +30,6 @@ folly_add_library(
     folly_executors_function_scheduler
 )
 
-folly_add_library(
-  NAME threaded_repeating_function_runner
-  HEADERS
-    ThreadedRepeatingFunctionRunner.h
-  EXPORTED_DEPS
-    folly_executors_threaded_repeating_function_runner
-)
-
 add_subdirectory(channels)
 add_subdirectory(coro)
 add_subdirectory(crypto)
