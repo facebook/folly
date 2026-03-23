@@ -1,39 +1,51 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "../../defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "math_operation_simple",
     srcs = [
         "MathOperation_Simple.cpp",
     ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
+            "-mno-avx",
+            "-mno-avx2",
+            "-mno-sse2",
+        ],
+    }),
+    use_raw_headers = True,
     deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:memory",
-        "//xplat/folly/crypto/detail:lt_hash_internal",
-        "//xplat/folly/lang:bits",
+        "fbsource//third-party/glog:glog",
+        ":lt_hash_internal",
+        "//folly:memory",
+        "//folly/lang:bits",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "math_operation_avx2_disable",
     srcs = [
         "MathOperation_AVX2.cpp",
     ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": [
+            "-mno-avx",
+            "-mno-avx2",
+            "-mno-sse2",
+        ],
+    }),
+    use_raw_headers = True,
     deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:memory",
-        "//xplat/folly/crypto/detail:lt_hash_internal",
-        "//xplat/folly/lang:bits",
-        "//xplat/third-party/sodium:sodium",
+        "fbsource//third-party/glog:glog",
+        ":lt_hash_internal",
+        "//folly:memory",
+        "//folly/lang:bits",
+    ],
+    external_deps = [
+        ("libsodium", None, "sodium"),
     ],
 )
 
@@ -48,102 +60,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "math_operation_avx2",
-    srcs = [
-        "MathOperation_AVX2.cpp",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:memory",
-        "//xplat/folly/crypto/detail:lt_hash_internal",
-        "//xplat/folly/lang:bits",
-        "//xplat/third-party/sodium:sodium",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "math_operation_sse2_disable",
-    srcs = [
-        "MathOperation_SSE2.cpp",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:memory",
-        "//xplat/folly/crypto/detail:lt_hash_internal",
-        "//xplat/folly/lang:bits",
-        "//xplat/third-party/sodium:sodium",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "math_operation_sse2",
-    srcs = [
-        "MathOperation_SSE2.cpp",
-    ],
-    deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:memory",
-        "//xplat/folly/crypto/detail:lt_hash_internal",
-        "//xplat/folly/lang:bits",
-        "//xplat/third-party/sodium:sodium",
-    ],
-)
-
-# !!!! fbcode/folly/crypto/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "math_operation_simple",
-    srcs = [
-        "MathOperation_Simple.cpp",
-    ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//cpu:x86_64": [
-            "-mno-avx",
-            "-mno-avx2",
-            "-mno-sse2",
-        ],
-    }),
-    deps = [
-        "fbsource//third-party/glog:glog",
-        ":lt_hash_internal",
-        "//folly:memory",
-        "//folly/lang:bits",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "math_operation_sse2",
-    srcs = [
-        "MathOperation_SSE2.cpp",
-    ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//cpu:x86_64": [
-            "-mno-avx",
-            "-mno-avx2",
-            "-msse2",
-        ],
-    }),
-    deps = [
-        "fbsource//third-party/glog:glog",
-        ":lt_hash_internal",
-        "//folly:memory",
-        "//folly/lang:bits",
-    ],
-    external_deps = [
-        ("libsodium", None, "sodium"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "math_operation_avx2",
     srcs = [
         "MathOperation_AVX2.cpp",
@@ -156,6 +73,7 @@ fbcode_target(
             "-msse2",
         ],
     }),
+    use_raw_headers = True,
     deps = [
         "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
@@ -167,8 +85,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "math_operation_sse2_disable",
     srcs = [
         "MathOperation_SSE2.cpp",
@@ -181,6 +98,7 @@ fbcode_target(
             "-mno-sse2",
         ],
     }),
+    use_raw_headers = True,
     deps = [
         "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
@@ -192,20 +110,20 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "math_operation_avx2_disable",
+fb_dirsync_cpp_library(
+    name = "math_operation_sse2",
     srcs = [
-        "MathOperation_AVX2.cpp",
+        "MathOperation_SSE2.cpp",
     ],
     compiler_flags = select({
         "DEFAULT": [],
         "ovr_config//cpu:x86_64": [
             "-mno-avx",
             "-mno-avx2",
-            "-mno-sse2",
+            "-msse2",
         ],
     }),
+    use_raw_headers = True,
     deps = [
         "fbsource//third-party/glog:glog",
         ":lt_hash_internal",
