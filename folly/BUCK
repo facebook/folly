@@ -1460,7 +1460,7 @@ non_fbcode_target(
     ],
     fbobjc_compiler_flags = FBOBJC_CXXFLAGS,
     labels = [
-        # This library "re-exports" symbols in :futures_core. Depslint doesn't
+        # This library "re-exports" symbols in futures:core. Depslint doesn't
         # support the concept of target-reexports (nor do we know the best
         # design for such a feature), so we just exclude this target from being
         # removed.
@@ -1576,10 +1576,10 @@ non_fbcode_target(
         "fbsource//xplat/folly/system:thread_id",
         "fbsource//xplat/folly/system:thread_name",
         "fbsource//xplat/third-party/linker_lib:atomic",
-        ":futures_barrier",
-        ":futures_core",
-        ":futures_future_splitter",
-        ":futures_shared_promise",
+        "//xplat/folly/futures:barrier",
+        "//xplat/folly/futures:core",
+        "//xplat/folly/futures:future_splitter",
+        "//xplat/folly/futures:shared_promise",
         "//third-party/boost:boost",
         "//third-party/boost:boost_system",
         "//xplat/folly:singleton",
@@ -2303,13 +2303,6 @@ non_fbcode_target(
 )
 
 non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "futures_detail_types",
-    exported_deps = ["//xplat/folly/futures/detail:types"],
-)
-
-non_fbcode_target(
     _kind = folly_xplat_library,
     name = "timeout_queue",
     srcs = [
@@ -2387,13 +2380,6 @@ fb_dirsync_cpp_library(
     exported_deps = [
         "//folly:c_portability",
     ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "futures_portability",
-    exported_deps = ["//xplat/folly/futures:portability"],
 )
 
 non_fbcode_target(
@@ -2717,41 +2703,6 @@ fb_dirsync_cpp_library(
         "//folly/portability:sys_mman",
         "//folly/portability:unistd",
     ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "futures_detail_core",
-    exported_deps = ["//xplat/folly/futures/detail:core"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "futures_core",
-    exported_deps = ["//xplat/folly/futures:core"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "futures_barrier",
-    exported_deps = ["//xplat/folly/futures:barrier"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "futures_shared_promise",
-    exported_deps = ["//xplat/folly/futures:shared_promise"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "futures_future_splitter",
-    exported_deps = ["//xplat/folly/futures:future_splitter"],
 )
 
 # This adds the symbol __folly_memcpy through FollyMemcpy.h, but does not
