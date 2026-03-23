@@ -458,11 +458,11 @@ non_fbcode_target(
     deps = [
         "fbsource//xplat/folly/portability:dirent",
         ":conv",
-        ":logging_logging",
         ":scope_guard",
         ":string",
         "//third-party/boost:boost_range",
         "//xplat/folly/lang:assume",
+        "//xplat/folly/logging:logging",
         "//xplat/folly/portability:fcntl",
         "//xplat/folly/portability:sockets",
         "//xplat/folly/portability:stdlib",
@@ -2451,15 +2451,6 @@ fb_dirsync_cpp_library(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "logging_init_weak",
-    exported_deps = [
-        "//xplat/folly/logging:init_weak",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "futures_portability",
     exported_deps = ["//xplat/folly/futures:portability"],
 )
@@ -2524,15 +2515,6 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "logging_rate_limiter",
-    exported_deps = [
-        "//xplat/folly/logging:rate_limiter",
-    ],
-)
-
 fb_dirsync_cpp_library(
     name = "rw_spin_lock",
     headers = ["RWSpinLock.h"],
@@ -2590,15 +2572,6 @@ fb_dirsync_cpp_library(
         "//folly/detail:group_varint_detail",
         "//folly/lang:bits",
         "//folly/portability:builtins",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "logging_log_name",
-    exported_deps = [
-        "//xplat/folly/logging:log_name",
     ],
 )
 
@@ -2681,44 +2654,8 @@ fb_dirsync_cpp_library(
 non_fbcode_target(
     # @shim
     _kind = folly_xplat_library,
-    name = "logging_log_level",
-    exported_deps = [
-        "//xplat/folly/logging:log_level",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
     name = "init_init",
     exported_deps = ["//xplat/folly/init:init"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "logging_init",
-    exported_deps = [
-        "//xplat/folly/logging:init",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "logging_logging",
-    exported_deps = [
-        "//xplat/folly/logging:logging",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "logging_log_handler",
-    exported_deps = [
-        "//xplat/folly/logging:log_handler",
-    ],
 )
 
 fb_dirsync_cpp_library(
