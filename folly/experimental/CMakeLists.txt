@@ -32,7 +32,6 @@ folly_add_library(
 
 add_subdirectory(channels)
 add_subdirectory(coro)
-add_subdirectory(crypto)
 add_subdirectory(exception_tracer)
 add_subdirectory(observer)
 add_subdirectory(settings)
