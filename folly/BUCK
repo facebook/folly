@@ -476,7 +476,6 @@ non_fbcode_target(
         ":file",
         ":file_util",
         ":function",
-        ":gen_string",
         ":io_iobuf",
         ":map_util",
         ":optional",
@@ -485,6 +484,7 @@ non_fbcode_target(
         "//third-party/boost:boost",
         "//third-party/boost:boost_container",
         "//xplat/folly/container:span",
+        "//xplat/folly/gen:string",
         "//xplat/folly/portability:sys_resource",
     ],
 )
@@ -2378,28 +2378,6 @@ fb_dirsync_cpp_library(
         ":function",
         ":operation_cancelled",
     ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "gen_base",
-    apple_sdks = DEFAULT_APPLE_SDKS,
-    exported_deps = ["//xplat/folly/gen:base"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "gen_file",
-    exported_deps = ["//xplat/folly/gen:file"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "gen_string",
-    exported_deps = ["//xplat/folly/gen:string"],
 )
 
 fb_dirsync_cpp_library(
