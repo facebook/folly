@@ -23,14 +23,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME flat_combining_priority_queue
-  HEADERS
-    FlatCombiningPriorityQueue.h
-  EXPORTED_DEPS
-    folly_concurrency_container_flat_combining_priority_queue
-)
-
-folly_add_library(
   NAME function_scheduler
   HEADERS
     FunctionScheduler.h

@@ -14,17 +14,6 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
-    name = "flat_combining_priority_queue",
-    headers = [
-        "FlatCombiningPriorityQueue.h",
-    ],
-    use_raw_headers = True,
-    exported_deps = [
-        "//folly/concurrency/container:flat_combining_priority_queue",
-    ],
-)
-
-fb_dirsync_cpp_library(
     name = "function_scheduler",
     headers = [
         "FunctionScheduler.h",
