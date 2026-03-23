@@ -1,40 +1,21 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "../defs.bzl",
     "FBANDROID_CPPFLAGS",
-    "folly_xplat_library",
 )
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "f14_hash",
-    fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
-    raw_headers = [
-        "F14Map.h",
-        "F14Set.h",
-    ],
-    exported_deps = [
-        "//xplat/folly:traits",
-        "//xplat/folly/container:f14_hash_fwd",
-        "//xplat/folly/container:view",
-        "//xplat/folly/container/detail:f14_hash_detail",
-        "//xplat/folly/container/detail:util",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:safe_assert",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "f14_hash",
     headers = [
         "F14Map.h",
         "F14Set.h",
     ],
+    fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
+    use_raw_headers = True,
     exported_deps = [
         ":f14_hash_fwd",
         ":iterator",
