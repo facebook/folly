@@ -1675,8 +1675,8 @@ non_fbcode_target(
         ":memory",
         "//xplat/folly/container/test:f14_test_util",
         "//xplat/folly/container/test:tracking_types",
-        "//xplat/folly/experimental/flat_combining/test:flat_combining_examples",
-        "//xplat/folly/experimental/flat_combining/test:flat_combining_test_helpers",
+        "//xplat/folly/synchronization/test:flat_combining_examples",
+        "//xplat/folly/synchronization/test:flat_combining_test_helpers",
         "//xplat/folly/tracing/test:static_tracepoint_test_module",
     ],
 )
