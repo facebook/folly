@@ -88,5 +88,3 @@ folly_add_library(
   EXPORTED_DEPS
     folly_debugging_symbolizer_symbolizer
 )
-
-add_subdirectory(detail)
