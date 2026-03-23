@@ -669,20 +669,6 @@ fb_dirsync_cpp_library(
 )
 
 non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "hash_detail_checksum_detail",
-    exported_deps = ["//xplat/folly/hash/detail:checksum_detail"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "hash_checksum",
-    exported_deps = ["//xplat/folly/hash:checksum"],
-)
-
-non_fbcode_target(
     _kind = folly_xplat_library,
     name = "conv",
     srcs = [
@@ -767,15 +753,6 @@ non_fbcode_target(
         "//xplat/folly/lang:assume",
         "//xplat/folly/lang:bits",
         "//xplat/folly/lang:exception",
-    ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "f14_hash",
-    deps = [
-        "//xplat/folly/container:f14_hash",
     ],
 )
 
@@ -2425,20 +2402,6 @@ non_fbcode_target(
     exported_deps = ["//xplat/folly/gen:string"],
 )
 
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "hash_spooky_hash_v1",
-    exported_deps = ["//xplat/folly/hash:spooky_hash_v1"],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "hash_murmur_hash",
-    exported_deps = ["//xplat/folly/hash:murmur_hash"],
-)
-
 fb_dirsync_cpp_library(
     name = "poly_exception",
     headers = ["PolyException.h"],
@@ -2471,13 +2434,6 @@ non_fbcode_target(
         "//xplat/folly/portability:time",
         "//xplat/third-party/linker_lib:dl",
     ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "hash_spooky_hash_v2",
-    exported_deps = ["//xplat/folly/hash:spooky_hash_v2"],
 )
 
 fb_dirsync_cpp_library(
@@ -2583,13 +2539,6 @@ fb_dirsync_cpp_library(
         ":optional",
         "//folly/functional:invoke",
     ],
-)
-
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "hash_hash",
-    exported_deps = ["//xplat/folly/hash:hash"],
 )
 
 fb_dirsync_cpp_library(
