@@ -1,7 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -24,17 +21,14 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "read_mostly_shared_ptr",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "ReadMostlySharedPtr.h",
-    ],
-    deps = [
-        ":tl_ref_count",
+    headers = ["ReadMostlySharedPtr.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly:function",
+        "//folly/concurrency/memory:tl_ref_count",
     ],
 )
 
@@ -50,38 +44,11 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "tl_ref_count",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "TLRefCount.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/synchronization:asymmetric_thread_fence",
-        "fbsource//xplat/folly/synchronization/detail:sleeper",
-        "//xplat/folly:thread_local",
-    ],
-)
-
-# !!!! fbcode/folly/concurrency/memory/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "read_mostly_shared_ptr",
-    headers = ["ReadMostlySharedPtr.h"],
-    exported_deps = [
-        "//folly:function",
-        "//folly/concurrency/memory:tl_ref_count",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "tl_ref_count",
     headers = ["TLRefCount.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
     exported_deps = [
         "//folly:thread_local",
         "//folly/synchronization:asymmetric_thread_fence",

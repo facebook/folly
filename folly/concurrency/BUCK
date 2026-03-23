@@ -53,23 +53,21 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "concurrent_hash_map",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
+    headers = [
         "ConcurrentHashMap.h",
         "detail/ConcurrentHashMap-detail.h",
     ],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
     exported_deps = [
-        "fbsource//xplat/folly/synchronization:hazptr",
-        "//xplat/folly:optional",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/container:heterogeneous_access",
-        "//xplat/folly/container/detail:f14_mask",
-        "//xplat/folly/lang:exception",
+        "//folly:optional",
+        "//folly:scope_guard",
+        "//folly/container:heterogeneous_access",
+        "//folly/container/detail:f14_mask",
+        "//folly/lang:exception",
+        "//folly/synchronization:hazptr",
     ],
 )
 
@@ -231,23 +229,6 @@ fbcode_target(
     ],
     external_deps = [
         ("glibc", None, "dl"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "concurrent_hash_map",
-    headers = [
-        "ConcurrentHashMap.h",
-        "detail/ConcurrentHashMap-detail.h",
-    ],
-    exported_deps = [
-        "//folly:optional",
-        "//folly:scope_guard",
-        "//folly/container:heterogeneous_access",
-        "//folly/container/detail:f14_mask",
-        "//folly/lang:exception",
-        "//folly/synchronization:hazptr",
     ],
 )
 
