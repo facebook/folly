@@ -1,10 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "../defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -192,31 +186,26 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "global_executor",
-    srcs = [
-        "GlobalExecutor.cpp",
-    ],
+    srcs = ["GlobalExecutor.cpp"],
+    headers = ["GlobalExecutor.h"],
     force_static = False,
-    raw_headers = [
-        "GlobalExecutor.h",
-    ],
+    use_raw_headers = True,
     deps = [
-        "//xplat/folly:function",
-        "//xplat/folly:shared_mutex",
-        "//xplat/folly:singleton",
-        "//xplat/folly/detail:async_trace",
-        "//xplat/folly/executors:cpu_thread_pool_executor",
-        "//xplat/folly/executors:inline_executor",
-        "//xplat/folly/executors:io_thread_pool_executor",
-        "//xplat/folly/system:hardware_concurrency",
+        ":cpu_thread_pool_executor",
+        ":inline_executor",
+        ":io_thread_pool_executor",
+        "//folly:function",
+        "//folly:shared_mutex",
+        "//folly:singleton",
+        "//folly/detail:async_trace",
+        "//folly/system:hardware_concurrency",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/portability:gflags",
-        "//xplat/folly:executor",
-        "//xplat/folly/executors:io_executor",
-        "//xplat/folly/executors:thread_pool_executor",
+        ":io_executor",
+        "//folly:executor",
+        "//folly/portability:gflags",
     ],
 )
 
@@ -511,28 +500,6 @@ fb_dirsync_cpp_library(
     ],
     exported_external_deps = [
         "boost",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "global_executor",
-    srcs = ["GlobalExecutor.cpp"],
-    headers = ["GlobalExecutor.h"],
-    deps = [
-        ":cpu_thread_pool_executor",
-        ":inline_executor",
-        ":io_thread_pool_executor",
-        "//folly:function",
-        "//folly:shared_mutex",
-        "//folly:singleton",
-        "//folly/detail:async_trace",
-        "//folly/system:hardware_concurrency",
-    ],
-    exported_deps = [
-        ":io_executor",
-        "//folly:executor",
-        "//folly/portability:gflags",
     ],
 )
 

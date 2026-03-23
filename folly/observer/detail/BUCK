@@ -1,57 +1,8 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "../../defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "observer_manager",
-    srcs = [
-        "Core.cpp",
-        "ObserverManager.cpp",
-    ],
-    force_static = False,
-    raw_headers = [
-        "Core.h",
-        "ObserverManager.h",
-    ],
-    deps = [
-        "fbsource//third-party/fmt:fmt",
-        "fbsource//xplat/folly/futures:core",
-        "fbsource//xplat/folly/portability:gflags",
-        "fbsource//xplat/folly/synchronization:sanitize_thread",
-        "//third-party/glog:glog",
-        "//xplat/folly:exception_string",
-        "//xplat/folly:format",
-        "//xplat/folly:function",
-        "//xplat/folly:range",
-        "//xplat/folly:singleton",
-        "//xplat/folly:synchronized",
-        "//xplat/folly/concurrency:unbounded_queue",
-        "//xplat/folly/experimental/observer/detail:graph_cycle_detector",
-        "//xplat/folly/system:thread_name",
-    ],
-    exported_deps = [
-        "//xplat/folly/fibers:core_manager",
-    ],
-)
-
 fb_dirsync_cpp_library(
-    name = "graph_cycle_detector",
-    headers = ["GraphCycleDetector.h"],
-    use_raw_headers = True,
-    exported_deps = ["fbsource//third-party/glog:glog"],
-)
-
-# !!!! fbcode/folly/observer/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
     name = "observer_manager",
     srcs = [
         "Core.cpp",
@@ -61,6 +12,8 @@ fbcode_target(
         "Core.h",
         "ObserverManager.h",
     ],
+    force_static = False,
+    use_raw_headers = True,
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:exception_string",
@@ -82,4 +35,11 @@ fbcode_target(
         "//folly/futures:core",
         "//folly/synchronization:sanitize_thread",
     ],
+)
+
+fb_dirsync_cpp_library(
+    name = "graph_cycle_detector",
+    headers = ["GraphCycleDetector.h"],
+    use_raw_headers = True,
+    exported_deps = ["fbsource//third-party/glog:glog"],
 )

@@ -1,35 +1,33 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "@fbsource//xplat/folly:defs.bzl",
     "DEFAULT_APPLE_SDKS",
-    "folly_xplat_library",
 )
 
 oncall("fbcode_entropy_wardens_folly")
 
 # xplat build rules
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "base",
-    apple_sdks = DEFAULT_APPLE_SDKS,
-    raw_headers = [
+    headers = [
         "Base.h",
         "Base-inl.h",
     ],
-    deps = [
-        "fbsource//xplat/folly/gen:core",
-        "//third-party/range-v3:range-v3",
-        "//xplat/folly:conv",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:utility",
-        "//xplat/folly/container:access",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/functional:invoke",
+    apple_sdks = DEFAULT_APPLE_SDKS,
+    use_raw_headers = True,
+    exported_deps = [
+        "fbsource//third-party/range-v3:range-v3",
+        ":core",
+        "//folly:conv",
+        "//folly:function",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:range",
+        "//folly:utility",
+        "//folly/container:access",
+        "//folly/container:f14_hash",
+        "//folly/functional:invoke",
     ],
 )
 
@@ -126,29 +124,5 @@ fb_dirsync_cpp_library(
         "//folly:range",
         "//folly:string",
         "//folly/io:iobuf",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "base",
-    headers = [
-        "Base.h",
-        "Base-inl.h",
-    ],
-    exported_deps = [
-        "fbsource//third-party/range-v3:range-v3",
-        ":core",
-        "//folly:conv",
-        "//folly:function",
-        "//folly:optional",
-        "//folly:portability",
-        "//folly:range",
-        "//folly:utility",
-        "//folly/container:access",
-        "//folly/container:f14_hash",
-        "//folly/functional:invoke",
     ],
 )
