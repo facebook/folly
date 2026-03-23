@@ -2600,13 +2600,6 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    # @shim
-    _kind = folly_xplat_library,
-    name = "init_init",
-    exported_deps = ["//xplat/folly/init:init"],
-)
-
 fb_dirsync_cpp_library(
     name = "token_bucket",
     headers = ["TokenBucket.h"],
