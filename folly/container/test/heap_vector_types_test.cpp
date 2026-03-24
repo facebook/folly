@@ -162,6 +162,10 @@ TEST(HeapVectorTypes, SimpleSetTest) {
   for (int i = 0; i < 1000; ++i) {
     s.insert(folly::Random::rand32() % 100000);
   }
+  // Ensure values near 32 exist so lower_bound/upper_bound(32) never
+  // return end(), regardless of which random values were generated.
+  s.insert(31);
+  s.insert(34);
   EXPECT_FALSE(s.empty());
   check_invariant(s);
 
