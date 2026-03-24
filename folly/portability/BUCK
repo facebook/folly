@@ -34,21 +34,17 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "builtins",
-    srcs = [
-        "Builtins.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "Builtins.h",
+    srcs = ["Builtins.cpp"],
+    headers = ["Builtins.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    deps = [
+        ":windows",
     ],
     exported_deps = [
-        ":windows",
-        "//xplat/folly:portability",
+        "//folly:portability",
     ],
 )
 
@@ -68,18 +64,14 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "constexpr",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "Constexpr.h",
-    ],
+    headers = ["Constexpr.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
     exported_deps = [
-        "//xplat/folly:c_portability",
-        "//xplat/folly:portability",
+        "//folly:c_portability",
+        "//folly:portability",
     ],
 )
 
@@ -310,26 +302,20 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "sockets",
-    srcs = [
-        "Sockets.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "Sockets.h",
-    ],
+    srcs = ["Sockets.cpp"],
+    headers = ["Sockets.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
     deps = [
-        "//xplat/folly/net/detail:socket_file_descriptor_map",
+        "//folly:scope_guard",
+        "//folly/net:network_socket",
+        "//folly/net/detail:socket_file_descriptor_map",
     ],
     exported_deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/net:net_ops",
-        "//xplat/folly/net:network_socket",
+        "//folly:portability",
+        "//folly/net:net_ops",
     ],
 )
 
@@ -393,75 +379,54 @@ non_fbcode_target(
     }) + ["//xplat/folly:c_portability"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "string",
-    srcs = [
-        "String.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "String.h",
-    ],
-    exported_deps = [
-        ":config",
-    ],
+    srcs = ["String.cpp"],
+    headers = ["String.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    exported_deps = [":config"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "sys_file",
-    srcs = [
-        "SysFile.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "SysFile.h",
-    ],
-    exported_deps = [
+    srcs = ["SysFile.cpp"],
+    headers = ["SysFile.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    deps = [
         ":windows",
-        "//xplat/folly:c_portability",
+        "//folly:c_portability",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "sys_membarrier",
-    srcs = [
-        "SysMembarrier.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "SysMembarrier.h",
-    ],
-    exported_deps = [
+    srcs = ["SysMembarrier.cpp"],
+    headers = ["SysMembarrier.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    deps = [
         ":sys_syscall",
-        "//xplat/folly:portability",
+        "//folly:portability",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "sys_mman",
-    srcs = [
-        "SysMman.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "SysMman.h",
+    srcs = ["SysMman.cpp"],
+    headers = ["SysMman.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    deps = [
+        ":windows",
+        "//folly:portability",
     ],
     exported_deps = [
         ":sys_types",
-        ":windows",
-        "//xplat/folly:portability",
+    ],
+    exported_external_deps = [
+        ("glibc", None, "rt"),
     ],
 )
 
@@ -486,22 +451,18 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "sys_stat",
-    srcs = [
-        "SysStat.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "SysStat.h",
+    srcs = ["SysStat.cpp"],
+    headers = ["SysStat.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    deps = [
+        ":windows",
     ],
     exported_deps = [
         ":sys_types",
-        ":windows",
-        "//xplat/folly:c_portability",
+        "//folly:c_portability",
     ],
 )
 
@@ -515,21 +476,13 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "sys_time",
-    srcs = [
-        "SysTime.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "SysTime.h",
-    ],
-    exported_deps = [
-        ":windows",
-    ],
+    srcs = ["SysTime.cpp"],
+    headers = ["SysTime.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    exported_deps = [":windows"],
 )
 
 non_fbcode_target(
@@ -541,26 +494,22 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "sys_uio",
-    srcs = [
-        "SysUio.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "SysUio.h",
+    srcs = ["SysUio.cpp"],
+    headers = ["SysUio.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    deps = [
+        ":sockets",
+        ":sys_file",
+        ":unistd",
+        "//folly:scope_guard",
     ],
     exported_deps = [
         ":config",
         ":iovec",
-        ":sockets",
-        ":sys_file",
         ":sys_types",
-        ":unistd",
-        "//xplat/folly:scope_guard",
     ],
 )
 
@@ -570,24 +519,23 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "time",
-    srcs = [
-        "Time.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "Time.h",
+    srcs = ["Time.cpp"],
+    headers = ["Time.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    deps = [
+        ":windows",
+        "//folly:c_portability",
+        "//folly:likely",
+        "//folly:utility",
     ],
     exported_deps = [
         ":config",
-        ":windows",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:likely",
-        "//xplat/folly:utility",
+    ],
+    exported_external_deps = [
+        ("glibc", None, "rt"),
     ],
 )
 
@@ -635,33 +583,10 @@ non_fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "builtins",
-    srcs = ["Builtins.cpp"],
-    headers = ["Builtins.h"],
-    deps = [
-        ":windows",
-    ],
-    exported_deps = [
-        "//folly:portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "config",
     headers = ["Config.h"],
     exported_deps = [
         "//folly:config",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "constexpr",
-    headers = ["Constexpr.h"],
-    exported_deps = [
-        "//folly:c_portability",
-        "//folly:portability",
     ],
 )
 
@@ -719,22 +644,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "sockets",
-    srcs = ["Sockets.cpp"],
-    headers = ["Sockets.h"],
-    deps = [
-        "//folly:scope_guard",
-        "//folly/net:network_socket",
-        "//folly/net/detail:socket_file_descriptor_map",
-    ],
-    exported_deps = [
-        "//folly:portability",
-        "//folly/net:net_ops",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "source_location",
     headers = ["SourceLocation.h"],
     exported_deps = [
@@ -760,55 +669,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "string",
-    srcs = ["String.cpp"],
-    headers = ["String.h"],
-    exported_deps = [":config"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "sys_file",
-    srcs = ["SysFile.cpp"],
-    headers = ["SysFile.h"],
-    deps = [
-        ":windows",
-        "//folly:c_portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "sys_membarrier",
-    srcs = ["SysMembarrier.cpp"],
-    headers = ["SysMembarrier.h"],
-    deps = [
-        ":sys_syscall",
-        "//folly:portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "sys_mman",
-    srcs = ["SysMman.cpp"],
-    headers = [
-        "SysMman.h",
-    ],
-    deps = [
-        ":windows",
-        "//folly:portability",
-    ],
-    exported_deps = [
-        ":sys_types",
-    ],
-    exported_external_deps = [
-        ("glibc", None, "rt"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "sys_resource",
     srcs = ["SysResource.cpp"],
     headers = ["SysResource.h"],
@@ -822,67 +682,8 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "sys_stat",
-    srcs = ["SysStat.cpp"],
-    headers = ["SysStat.h"],
-    deps = [
-        ":windows",
-    ],
-    exported_deps = [
-        ":sys_types",
-        "//folly:c_portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "sys_time",
-    srcs = ["SysTime.cpp"],
-    headers = ["SysTime.h"],
-    exported_deps = [":windows"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "sys_types",
     headers = ["SysTypes.h"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "sys_uio",
-    srcs = ["SysUio.cpp"],
-    headers = ["SysUio.h"],
-    deps = [
-        ":sockets",
-        ":sys_file",
-        ":unistd",
-        "//folly:scope_guard",
-    ],
-    exported_deps = [
-        ":config",
-        ":iovec",
-        ":sys_types",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "time",
-    srcs = ["Time.cpp"],
-    headers = ["Time.h"],
-    deps = [
-        ":windows",
-        "//folly:c_portability",
-        "//folly:likely",
-        "//folly:utility",
-    ],
-    exported_deps = [
-        ":config",
-    ],
-    exported_external_deps = [
-        ("glibc", None, "rt"),
-    ],
 )
 
 fbcode_target(
