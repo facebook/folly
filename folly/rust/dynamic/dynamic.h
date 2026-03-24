@@ -50,7 +50,6 @@ bool object_erase(folly::dynamic& d, folly::StringPiece key);
 rust::Vec<rust::String> object_keys(const folly::dynamic& d);
 
 std::unique_ptr<folly::dynamic> clone_dynamic(const folly::dynamic& d) noexcept;
-rust::String to_string(const folly::dynamic& d);
 
 void set_null(folly::dynamic& d) noexcept;
 void set_bool(folly::dynamic& d, bool value) noexcept;

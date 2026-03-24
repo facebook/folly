@@ -92,7 +92,6 @@ mod bridge {
         fn object_keys(d: &dynamic) -> Result<Vec<String>>;
 
         fn clone_dynamic(d: &dynamic) -> UniquePtr<dynamic>;
-        fn to_string(d: &dynamic) -> String;
 
         fn to_json(d: &dynamic) -> String;
         fn to_pretty_json(d: &dynamic) -> String;

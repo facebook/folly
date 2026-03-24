@@ -106,12 +106,6 @@ std::unique_ptr<dynamic> clone_dynamic(const dynamic& d) noexcept {
   return std::make_unique<dynamic>(d);
 }
 
-rust::String to_string(const dynamic& d) {
-  std::ostringstream oss;
-  oss << d;
-  return rust::String(oss.str());
-}
-
 void set_null(dynamic& d) noexcept {
   d = nullptr;
 }
