@@ -48,19 +48,17 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "config",
+    headers = ["Config.h"],
     apple_sdks = ALL_APPLE_SDKS,
     fbobjc_exported_preprocessor_flags = [
         "-DFOLLY_ASSUME_NO_JEMALLOC=1",
         "-DFOLLY_ASSUME_NO_TCMALLOC=1",
     ],
-    raw_headers = [
-        "Config.h",
-    ],
+    use_raw_headers = True,
     exported_deps = [
-        "//xplat/folly:config",
+        "//folly:config",
     ],
 )
 
@@ -343,36 +341,24 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "stdlib",
-    srcs = select({
-        "DEFAULT": [],
-        "ovr_config//os:windows": [
-            "Stdlib.cpp",
-        ],
-    }),
+    srcs = ["Stdlib.cpp"],
+    headers = ["Stdlib.h"],
     compiler_flags = select({
         "DEFAULT": [],
         "ovr_config//os:windows-clang": WINDOWS_CLANG_CXX_FLAGS,
     }),
-    raw_headers = [
-        "Stdlib.h",
-    ],
+    use_raw_headers = True,
     deps = [
         ":fcntl",
         ":sys_stat",
         ":windows",
     ],
-    exported_deps = select({
-        "DEFAULT": [
-            ":config",
-        ],
-        "ovr_config//os:windows": [
-            ":config",
-            ":fcntl",
-        ],
-    }) + ["//xplat/folly:c_portability"],
+    exported_deps = [
+        ":config",
+        "//folly:c_portability",
+    ],
 )
 
 fb_dirsync_cpp_library(
@@ -426,24 +412,17 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "sys_resource",
-    srcs = [
-        "SysResource.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "SysResource.h",
-    ],
-    windows_exported_deps = [
-        ":sys_time",
+    srcs = ["SysResource.cpp"],
+    headers = ["SysResource.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    deps = [
+        ":windows",
     ],
     exported_deps = [
         ":sys_time",
-        ":windows",
     ],
 )
 
@@ -533,29 +512,20 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "unistd",
-    srcs = [
-        "Unistd.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "Unistd.h",
-    ],
-    windows_exported_deps = [
-        ":sockets",
-    ],
+    srcs = ["Unistd.cpp"],
+    headers = ["Unistd.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
     deps = [
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/net/detail:socket_file_descriptor_map",
+        ":sockets",
+        ":windows",
+        "//folly/net/detail:socket_file_descriptor_map",
     ],
     exported_deps = [
-        ":sockets",
         ":sys_types",
-        ":windows",
+        "//folly:portability",
     ],
 )
 
@@ -572,15 +542,6 @@ fb_dirsync_cpp_library(
 )
 
 # fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "config",
-    headers = ["Config.h"],
-    exported_deps = [
-        "//folly:config",
-    ],
-)
 
 fbcode_target(
     _kind = cpp_library,
@@ -616,50 +577,5 @@ fbcode_target(
     ],
     exported_external_deps = [
         ("glibc", None, "pthread"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "stdlib",
-    srcs = ["Stdlib.cpp"],
-    headers = ["Stdlib.h"],
-    deps = [
-        ":fcntl",
-        ":sys_stat",
-        ":windows",
-    ],
-    exported_deps = [
-        ":config",
-        "//folly:c_portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "sys_resource",
-    srcs = ["SysResource.cpp"],
-    headers = ["SysResource.h"],
-    deps = [
-        ":windows",
-    ],
-    exported_deps = [
-        ":sys_time",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "unistd",
-    srcs = ["Unistd.cpp"],
-    headers = ["Unistd.h"],
-    deps = [
-        ":sockets",
-        ":windows",
-        "//folly/net/detail:socket_file_descriptor_map",
-    ],
-    exported_deps = [
-        ":sys_types",
-        "//folly:portability",
     ],
 )
