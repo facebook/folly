@@ -1,25 +1,21 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
 load("@fbsource//tools/build_defs:platform_defs.bzl", "CXX", "FBCODE")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = fb_xplat_cxx_binary,
+fb_dirsync_cpp_benchmark(
     name = "tdigest_benchmark",
     srcs = ["TDigestBenchmark.cpp"],
     headers = [],
     platforms = (CXX, FBCODE),
-    # args = [
-    #     "--json",
-    # ],
     deps = [
-        "fbsource//xplat/folly:benchmark",
-        "fbsource//xplat/folly/portability:gflags",
-        "fbsource//xplat/folly/stats:digest_builder",
-        "fbsource//xplat/folly/stats:tdigest",
+        "//folly:benchmark",
+        "//folly/portability:gflags",
+        "//folly/stats:digest_builder",
+        "//folly/stats:tdigest",
     ],
 )
 
@@ -192,22 +188,6 @@ fbcode_target(
     deps = [
         "//folly/portability:gtest",
         "//folly/stats/detail:sliding_window",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_benchmark,
-    name = "tdigest_benchmark",
-    srcs = ["TDigestBenchmark.cpp"],
-    headers = [],
-    args = [
-        "--json",
-    ],
-    deps = [
-        "//folly:benchmark",
-        "//folly/portability:gflags",
-        "//folly/stats:digest_builder",
-        "//folly/stats:tdigest",
     ],
 )
 
