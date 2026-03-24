@@ -33,7 +33,7 @@
 
 // The signal_set macro from libevent 1.4.14b-stable conflicts with the
 // boost::asio::signal_set function
-#if _EVENT_NUMERIC_VERSION == 0x01040e00
+#if defined(_EVENT_NUMERIC_VERSION) && _EVENT_NUMERIC_VERSION == 0x01040e00
 #undef signal_set
 #endif
 
