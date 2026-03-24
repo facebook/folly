@@ -6,7 +6,7 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
-load("../../../defs.bzl", "folly_xplat_cxx_binary", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
+load("../../../defs.bzl", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 load("../../../io/async/test/certs/defs.bzl", "alias_pem")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -446,16 +446,15 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_binary,
+fb_dirsync_cpp_binary(
     name = "event_base_benchmark",
     srcs = ["EventBaseBenchmark.cpp"],
+    headers = [],
     allocator = "malloc",
-    raw_headers = [],
     deps = [
-        "fbsource//xplat/folly/portability:gflags",
-        "//xplat/folly:benchmark",
-        "//xplat/folly/io/async:async_base",
+        "//folly:benchmark",
+        "//folly/io/async:async_base",
+        "//folly/portability:gflags",
     ],
 )
 
@@ -482,33 +481,35 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "event_base_test",
     srcs = ["EventBaseTest.cpp"],
     allocator = "malloc",
     contacts = ["oncall+thrift@xmail.facebook.com"],
-    raw_headers = [],
+    emails = ["oncall+thrift@xmail.facebook.com"],
+    labels = [
+        "heavyweight",
+        "load-sensitive-timing-test",
+    ],
     supports_static_listing = False,
     deps = [
-        "fbsource//xplat/folly/init:init",
-        "fbsource//xplat/folly/portability:gtest",
         ":async_signal_handler_test_lib",
         ":event_base_test_lib",
+        "//folly/init:init",
+        "//folly/portability:gtest",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "event_base_local_test",
     srcs = ["EventBaseLocalTest.cpp"],
     allocator = "malloc",
     contacts = ["oncall+thrift@xmail.facebook.com"],
-    raw_headers = [],
+    emails = ["oncall+thrift@xmail.facebook.com"],
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "fbsource//xplat/folly/synchronization:baton",
-        "//xplat/folly/io/async:async_base",
+        "//folly/io/async:async_base",
+        "//folly/portability:gtest",
+        "//folly/synchronization:baton",
     ],
 )
 
@@ -987,53 +988,6 @@ fbcode_target(
         "//folly/io/async:async_transport",
         "//folly/io/async:decorated_async_transport_wrapper",
         "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_binary,
-    name = "event_base_benchmark",
-    srcs = ["EventBaseBenchmark.cpp"],
-    headers = [],
-    allocator = "malloc",
-    deps = [
-        "//folly:benchmark",
-        "//folly/io/async:async_base",
-        "//folly/portability:gflags",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "event_base_test",
-    srcs = ["EventBaseTest.cpp"],
-    headers = [],
-    allocator = "malloc",
-    emails = ["oncall+thrift@xmail.facebook.com"],
-    labels = [
-        "heavyweight",
-        "load-sensitive-timing-test",
-    ],
-    supports_static_listing = False,
-    deps = [
-        ":async_signal_handler_test_lib",
-        ":event_base_test_lib",
-        "//folly/init:init",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "event_base_local_test",
-    srcs = ["EventBaseLocalTest.cpp"],
-    headers = [],
-    allocator = "malloc",
-    emails = ["oncall+thrift@xmail.facebook.com"],
-    deps = [
-        "//folly/io/async:async_base",
-        "//folly/portability:gtest",
-        "//folly/synchronization:baton",
     ],
 )
 
