@@ -1128,7 +1128,10 @@ TEST_F(ExecutorWorkerProviderTest, ThreadCollectorMultipleInvocationTest) {
   // WorkerProvider::collectThreadIds() at least twice to make sure that there
   // is no deadlock in repeated invocations.
   CPUThreadPoolExecutor e(1);
-  e.add([&]() {});
+  // Ensure thread is fully initialized by running a task and waiting for it.
+  folly::Baton<> initialized;
+  e.add([&]() { initialized.post(); });
+  initialized.wait();
   {
     auto idsWithKA1 = kWorkerProviderGlobal->collectThreadIds();
     auto idsWithKA2 = kWorkerProviderGlobal->collectThreadIds();
@@ -1144,8 +1147,16 @@ TEST_F(ExecutorWorkerProviderTest, ThreadCollectorMultipleInvocationTest) {
   {
     auto idsWithKA1 = kWorkerProviderGlobal->collectThreadIds();
     e.setNumThreads(4);
+    // Ensure all new threads are fully initialized by running tasks.
+    std::array<folly::Baton<>, 4> threadInit;
     for (size_t i = 0; i < 4; ++i) {
-      e.add([i, &bats]() { bats[i].wait(); });
+      e.add([i, &bats, &threadInit]() {
+        threadInit[i].post();
+        bats[i].wait();
+      });
+    }
+    for (auto& bat : threadInit) {
+      bat.wait();
     }
     for (auto& bat : bats) {
       bat.post();
@@ -1390,6 +1401,11 @@ class FailingThreadFactory : public ThreadFactory {
     return delegate_->getNamePrefix();
   }
 
+  void reset(size_t failAfter) {
+    count_.store(0, std::memory_order_relaxed);
+    failAfter_ = failAfter;
+  }
+
  private:
   std::shared_ptr<ThreadFactory> delegate_;
   std::atomic<size_t> count_{0};
@@ -1440,4 +1456,88 @@ TEST(ThreadPoolExecutorTest, AddImplNoThreadsAndCreationFails) {
   EXPECT_EQ(0, exe.numActiveThreads());
 
   exe.stop();
+}
+
+TEST(ThreadPoolExecutorTest, SetNumThreadsNoOpOnFailure_CPU) {
+  auto delegate = std::make_shared<NamedThreadFactory>("test");
+  auto factory = std::make_shared<FailingThreadFactory>(delegate, 100);
+
+  // Static executor: min == max == 4.
+  CPUThreadPoolExecutor exe(std::pair(4, 4), factory);
+  EXPECT_EQ(4, exe.numThreads());
+  EXPECT_EQ(4, exe.numActiveThreads());
+
+  // An observer forces setNumThreads to create all threads up to the new max.
+  auto observer = std::make_shared<TestObserver>();
+  exe.addObserver(observer);
+
+  // Make the factory fail for all subsequent calls, then try to grow.
+  factory->reset(0);
+  EXPECT_THROW(exe.setNumThreads(8), std::runtime_error);
+
+  // Everything should be as if setNumThreads was never called.
+  EXPECT_EQ(4, exe.numThreads());
+  EXPECT_EQ(4, exe.numActiveThreads());
+  EXPECT_EQ(4, exe.getPoolStats().threadCount);
+
+  // The executor should still be functional.
+  folly::Baton<> done;
+  exe.add([&] { done.post(); });
+  done.wait();
+
+  exe.removeObserver(observer);
+  exe.join();
+}
+
+TEST(ThreadPoolExecutorTest, SetNumThreadsNoOpOnFailure_IO) {
+  auto delegate = std::make_shared<NamedThreadFactory>("test");
+  auto factory = std::make_shared<FailingThreadFactory>(delegate, 100);
+
+  IOThreadPoolExecutor exe(4, 4, factory);
+  EXPECT_EQ(4, exe.numThreads());
+  EXPECT_EQ(4, exe.numActiveThreads());
+
+  auto observer = std::make_shared<TestObserver>();
+  exe.addObserver(observer);
+
+  factory->reset(0);
+  EXPECT_THROW(exe.setNumThreads(8), std::runtime_error);
+
+  EXPECT_EQ(4, exe.numThreads());
+  EXPECT_EQ(4, exe.numActiveThreads());
+  EXPECT_EQ(4, exe.getPoolStats().threadCount);
+
+  folly::Baton<> done;
+  exe.add([&] { done.post(); });
+  done.wait();
+
+  exe.removeObserver(observer);
+  exe.join();
+}
+
+TEST(ThreadPoolExecutorTest, SetNumThreadsNoOpOnPartialFailure_CPU) {
+  auto delegate = std::make_shared<NamedThreadFactory>("test");
+  // Allow 6 total threads (4 initial + 2 of the 4 new ones).
+  auto factory = std::make_shared<FailingThreadFactory>(delegate, 6);
+
+  CPUThreadPoolExecutor exe(std::pair(4, 4), factory);
+  EXPECT_EQ(4, exe.numThreads());
+
+  auto observer = std::make_shared<TestObserver>();
+  exe.addObserver(observer);
+
+  // Attempt to grow to 8 but only 2 more can be created before failure.
+  // The strong guarantee means all or nothing: the 2 that were created
+  // should be rolled back.
+  EXPECT_THROW(exe.setNumThreads(8), std::runtime_error);
+
+  EXPECT_EQ(4, exe.numThreads());
+  EXPECT_EQ(4, exe.numActiveThreads());
+
+  folly::Baton<> done;
+  exe.add([&] { done.post(); });
+  done.wait();
+
+  exe.removeObserver(observer);
+  exe.join();
 }

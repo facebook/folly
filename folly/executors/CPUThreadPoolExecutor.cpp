@@ -303,7 +303,11 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
     guard.emplace(ExecutorBlockingGuard::TrackTag{}, this, getName());
   }
 
-  thread->startupBaton.post();
+  thread->initBaton.post();
+  thread->readyBaton.wait();
+  if (thread->cancelledBeforeReady) {
+    return;
+  }
   threadIdCollector_->addTid(folly::getOSThreadID());
   // On thread exit, we should remove the thread ID from the tracking list.
   auto threadIDsGuard = folly::makeGuard([this]() {

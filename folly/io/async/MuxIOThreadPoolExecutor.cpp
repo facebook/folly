@@ -154,7 +154,11 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
       threadIdCollector_->removeTid(tid);
     }
   };
-  thread->startupBaton.post();
+  thread->initBaton.post();
+  thread->readyBaton.wait();
+  if (thread->cancelledBeforeReady) {
+    return;
+  }
 
   ExecutorBlockingGuard guard{
       ExecutorBlockingGuard::TrackTag{}, this, getName()};

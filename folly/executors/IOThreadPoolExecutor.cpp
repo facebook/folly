@@ -242,10 +242,40 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   auto idler = std::make_unique<MemoryIdlerTimeout>(ioThread->eventBase);
   ioThread->eventBase->runBeforeLoop(idler.get());
 
+  // Post initBaton from inside the event loop. This guarantees loopTid_
+  // is set before afterConstructThreads returns, preventing the TOCTOU
+  // race where isInEventBaseThread() sees kNotRunningTid but loopTid_
+  // changes before dcheckIsInEventBaseThread() runs.
   ioThread->eventBase->runInEventBaseThread([thread] {
-    thread->startupBaton.post();
+    thread->initBaton.post();
   });
+
+  // Poll readyBaton without blocking the event loop. Observer
+  // registration (between initBaton and readyBaton) may call
+  // runInEventBaseThreadAndWait, so blocking would deadlock. In normal
+  // operation readyBaton is posted within microseconds of initBaton.
+  // In the rollback case, cancelledBeforeReady terminates the loop.
+  struct ReadyCheck : EventBase::LoopCallback {
+    ThreadPtr thread_;
+    IOThread* ioThread_{};
+    void runLoopCallback() noexcept override {
+      if (thread_->readyBaton.try_wait()) {
+        if (thread_->cancelledBeforeReady) {
+          ioThread_->shouldRun = false;
+          ioThread_->eventBase->terminateLoopSoon();
+        }
+      } else {
+        ioThread_->eventBase->runBeforeLoop(this);
+      }
+    }
+  };
+
   {
+    ReadyCheck readyCheck;
+    readyCheck.thread_ = std::move(thread);
+    readyCheck.ioThread_ = ioThread.get();
+    ioThread->eventBase->runBeforeLoop(&readyCheck);
+
     ExecutorBlockingGuard guard{
         ExecutorBlockingGuard::TrackTag{}, this, getName()};
     while (ioThread->shouldRun) {
@@ -256,6 +286,7 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
         ioThread->eventBase->loopOnce();
       }
     }
+    readyCheck.cancelLoopCallback();
     idler.reset();
     if (isWaitForAll_) {
       // some tasks, like thrift asynchronous calls, create additional

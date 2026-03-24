@@ -254,7 +254,9 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
     std::thread handle;
     std::atomic<bool> idle;
     folly::AtomicStruct<std::chrono::steady_clock::time_point> lastActiveTime;
-    folly::Baton<> startupBaton;
+    folly::Baton<> initBaton;
+    folly::Baton<> readyBaton;
+    bool cancelledBeforeReady{false};
   };
 
   using ThreadPtr = std::shared_ptr<Thread>;
@@ -304,7 +306,9 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   virtual void validateNumThreads(size_t /* numThreads */) {}
 
   // The function that will be bound to pool threads. It must call
-  // thread->startupBaton.post() when it's ready to consume work.
+  // thread->initBaton.post() once alive, then thread->readyBaton.wait()
+  // followed by a check of thread->cancelledBeforeReady before entering the
+  // work loop.
   virtual void threadRun(ThreadPtr thread) = 0;
 
   // Stop n threads and put their ThreadPtrs in the stoppedThreads_ queue

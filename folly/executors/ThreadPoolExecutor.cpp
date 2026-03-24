@@ -214,9 +214,16 @@ void ThreadPoolExecutor::setNumThreads(size_t numThreads) {
   {
     std::unique_lock w{threadListLock_};
     auto pending = getPendingTaskCountImpl();
-    maxThreads_.store(numThreads, std::memory_order_relaxed);
     auto active = activeThreads_.load(std::memory_order_relaxed);
-    auto minthreads = minThreads_.load(std::memory_order_relaxed);
+
+    // Save original values for rollback in case addThreads throws.
+    auto origMaxThreads = maxThreads_.load(std::memory_order_relaxed);
+    auto origMinThreads = minThreads_.load(std::memory_order_relaxed);
+    auto origThreadsCanTimeout =
+        threadsCanTimeout_.load(std::memory_order_relaxed);
+
+    maxThreads_.store(numThreads, std::memory_order_relaxed);
+    auto minthreads = origMinThreads;
     if (numThreads < minthreads) {
       minthreads = numThreads;
       minThreads_.store(numThreads, std::memory_order_relaxed);
@@ -239,7 +246,14 @@ void ThreadPoolExecutor::setNumThreads(size_t numThreads) {
       if (active + numToAdd < minthreads) {
         numToAdd = minthreads - active;
       }
+      auto rollback = makeGuard([&] {
+        maxThreads_.store(origMaxThreads, std::memory_order_relaxed);
+        minThreads_.store(origMinThreads, std::memory_order_relaxed);
+        threadsCanTimeout_.store(
+            origThreadsCanTimeout, std::memory_order_relaxed);
+      });
       ThreadPoolExecutor::addThreads(numToAdd);
+      rollback.dismiss();
       activeThreads_.store(active + numToAdd, std::memory_order_relaxed);
     }
   }
@@ -254,12 +268,24 @@ void ThreadPoolExecutor::addThreads(size_t n) {
   for (size_t i = 0; i < n; i++) {
     newThreads.push_back(makeThread());
   }
+  size_t created = 0;
+  auto rollback = makeGuard([&] {
+    for (size_t i = 0; i < created; i++) {
+      newThreads[i]->initBaton.wait(
+          folly::Baton<>::wait_options().logging_enabled(false));
+      newThreads[i]->cancelledBeforeReady = true;
+      newThreads[i]->readyBaton.post();
+    }
+    for (size_t i = 0; i < created; i++) {
+      newThreads[i]->handle.join();
+    }
+  });
   for (auto& thread : newThreads) {
-    // TODO need a notion of failing to create the thread
-    // and then handling for that case
     thread->handle = threadFactory_->newThread(
         std::bind(&ThreadPoolExecutor::threadRun, this, thread));
+    ++created;
   }
+  rollback.dismiss();
   afterConstructThreads(newThreads);
 }
 
@@ -286,7 +312,7 @@ void ThreadPoolExecutor::afterConstructThreads(
     threadList_.add(thread);
   }
   for (auto& thread : newThreads) {
-    thread->startupBaton.wait(
+    thread->initBaton.wait(
         folly::Baton<>::wait_options().logging_enabled(false));
   }
   for (auto& o : observers_) {
@@ -294,6 +320,9 @@ void ThreadPoolExecutor::afterConstructThreads(
       o->threadStarted(thread.get());
       handleObserverRegisterThread(thread.get(), *o);
     }
+  }
+  for (auto& thread : newThreads) {
+    thread->readyBaton.post();
   }
 }
 

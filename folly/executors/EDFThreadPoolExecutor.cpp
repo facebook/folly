@@ -339,7 +339,11 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
   ExecutorBlockingGuard guard{
       ExecutorBlockingGuard::TrackTag{}, this, getName()};
 
-  thread->startupBaton.post();
+  thread->initBaton.post();
+  thread->readyBaton.wait();
+  if (thread->cancelledBeforeReady) {
+    return;
+  }
   for (;;) {
     sem_->wait();
 
