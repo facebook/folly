@@ -476,7 +476,6 @@ non_fbcode_target(
         ":file",
         ":file_util",
         ":function",
-        ":io_iobuf",
         ":map_util",
         ":optional",
         ":portability",
@@ -485,6 +484,7 @@ non_fbcode_target(
         "//third-party/boost:boost_container",
         "//xplat/folly/container:span",
         "//xplat/folly/gen:string",
+        "//xplat/folly/io:iobuf",
         "//xplat/folly/portability:sys_resource",
     ],
 )
@@ -768,14 +768,6 @@ non_fbcode_target(
     exported_deps = [
         "//xplat/folly:traits",
         "//xplat/folly:utility",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "io_iobuf",
-    exported_deps = [
-        "//xplat/folly/io:iobuf",
     ],
 )
 
