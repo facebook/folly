@@ -27,7 +27,7 @@ folly_add_library(
   HEADERS
     ChannelBridge.h
   EXPORTED_DEPS
-    folly_experimental_channels_detail_atomic_queue
+    folly_channels_detail_atomic_queue
     folly_try
 )
 

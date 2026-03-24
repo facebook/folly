@@ -10,7 +10,7 @@ fbcode_target(
         "AtomicQueueTest.cpp",
     ],
     deps = [
-        "//folly/experimental/channels/detail:atomic_queue",
+        "//folly/channels/detail:atomic_queue",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",
     ],
@@ -23,7 +23,7 @@ fbcode_target(
         "PointerVariantTest.cpp",
     ],
     deps = [
-        "//folly/experimental/channels/detail:pointer_variant",
+        "//folly/channels/detail:pointer_variant",
         "//folly/portability:gtest",
     ],
 )

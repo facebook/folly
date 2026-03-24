@@ -21,8 +21,8 @@
 #include <folly/channels/ConsumeChannel.h>
 #include <folly/channels/MergeChannel.h>
 #include <folly/channels/Transform.h>
+#include <folly/channels/detail/IntrusivePtr.h>
 #include <folly/executors/SerialExecutor.h>
-#include <folly/experimental/channels/detail/IntrusivePtr.h>
 
 namespace folly {
 namespace channels {

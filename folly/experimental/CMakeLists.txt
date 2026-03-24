@@ -30,7 +30,6 @@ folly_add_library(
     folly_executors_function_scheduler
 )
 
-add_subdirectory(channels)
 add_subdirectory(coro)
 add_subdirectory(exception_tracer)
 add_subdirectory(observer)

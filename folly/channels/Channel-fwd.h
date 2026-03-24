@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/experimental/channels/detail/ChannelBridge.h>
+#include <folly/channels/detail/ChannelBridge.h>
 
 #include <optional>
 

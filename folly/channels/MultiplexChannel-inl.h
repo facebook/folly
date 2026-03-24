@@ -18,10 +18,10 @@
 
 #include <folly/channels/MultiplexChannel.h>
 #include <folly/channels/RateLimiter.h>
+#include <folly/channels/detail/Utility.h>
 #include <folly/coro/FutureUtil.h>
 #include <folly/coro/Mutex.h>
 #include <folly/coro/Promise.h>
-#include <folly/experimental/channels/detail/Utility.h>
 
 namespace folly {
 namespace channels {

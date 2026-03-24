@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/channels/ProxyChannel.h>
-#include <folly/experimental/channels/detail/Utility.h>
+#include <folly/channels/detail/Utility.h>
 
 namespace folly {
 namespace channels {

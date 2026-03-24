@@ -600,11 +600,11 @@ folly_add_library(
   HEADERS
     SmallUnboundedQueue.h
   EXPORTED_DEPS
+    folly_channels_detail_atomic_queue
     folly_coro_baton
     folly_coro_coroutine
     folly_coro_mutex
     folly_coro_task
-    folly_experimental_channels_detail_atomic_queue
 )
 
 folly_add_library(

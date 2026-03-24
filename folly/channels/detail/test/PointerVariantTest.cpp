@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/channels/detail/PointerVariant.h>
+#include <folly/channels/detail/PointerVariant.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {

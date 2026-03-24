@@ -22,8 +22,8 @@ folly_add_library(
     Channel.h
   EXPORTED_DEPS
     folly_cancellation_token
+    folly_channels_detail_channel_bridge
     folly_coro_coroutine
-    folly_experimental_channels_detail_channel_bridge
     folly_synchronized
 )
 
@@ -44,12 +44,12 @@ folly_add_library(
     ChannelProcessor.h
   EXPORTED_DEPS
     folly_channels_consume_channel
+    folly_channels_detail_intrusive_ptr
     folly_channels_merge_channel
     folly_channels_rate_limiter
     folly_channels_transform
     folly_executor
     folly_executors_serial_executor
-    folly_experimental_channels_detail_intrusive_ptr
 )
 
 folly_add_library(
@@ -60,10 +60,10 @@ folly_add_library(
   EXPORTED_DEPS
     folly_channels_channel
     folly_channels_channel_callback_handle
+    folly_channels_detail_utility
     folly_coro_task
     folly_executor
     folly_executors_sequenced_executor
-    folly_experimental_channels_detail_utility
     folly_format
     folly_intrusive_list
     folly_scope_guard
@@ -76,10 +76,10 @@ folly_add_library(
     FanoutChannel.h
   EXPORTED_DEPS
     folly_channels_channel
+    folly_channels_detail_utility
     folly_channels_fanout_sender
     folly_container_f14_hash
     folly_executors_sequenced_executor
-    folly_experimental_channels_detail_utility
 )
 
 folly_add_library(
@@ -89,10 +89,10 @@ folly_add_library(
     FanoutSender.h
   EXPORTED_DEPS
     folly_channels_channel
+    folly_channels_detail_pointer_variant
+    folly_channels_detail_utility
     folly_container_f14_hash
     folly_executors_sequenced_executor
-    folly_experimental_channels_detail_pointer_variant
-    folly_experimental_channels_detail_utility
 )
 
 folly_add_library(
@@ -113,9 +113,9 @@ folly_add_library(
     Merge.h
   EXPORTED_DEPS
     folly_channels_channel
+    folly_channels_detail_utility
     folly_container_f14_hash
     folly_executors_sequenced_executor
-    folly_experimental_channels_detail_utility
 )
 
 folly_add_library(
@@ -125,9 +125,9 @@ folly_add_library(
     MergeChannel.h
   EXPORTED_DEPS
     folly_channels_channel
+    folly_channels_detail_utility
     folly_container_f14_hash
     folly_executors_sequenced_executor
-    folly_experimental_channels_detail_utility
 )
 
 folly_add_library(
@@ -137,6 +137,8 @@ folly_add_library(
     MultiplexChannel.h
   EXPORTED_DEPS
     folly_channels_channel
+    folly_channels_detail_multiplexer_traits
+    folly_channels_detail_utility
     folly_channels_fanout_sender
     folly_channels_on_closed_exception
     folly_channels_rate_limiter
@@ -146,8 +148,6 @@ folly_add_library(
     folly_coro_promise
     folly_coro_task
     folly_executors_sequenced_executor
-    folly_experimental_channels_detail_multiplexer_traits
-    folly_experimental_channels_detail_utility
 )
 
 folly_add_library(
@@ -177,8 +177,8 @@ folly_add_library(
     ProxyChannel.h
   EXPORTED_DEPS
     folly_channels_channel
+    folly_channels_detail_utility
     folly_executors_sequenced_executor
-    folly_experimental_channels_detail_utility
 )
 
 folly_add_library(
@@ -197,12 +197,12 @@ folly_add_library(
     Transform.h
   EXPORTED_DEPS
     folly_channels_channel
+    folly_channels_detail_utility
     folly_channels_on_closed_exception
     folly_channels_rate_limiter
     folly_coro_async_generator
     folly_coro_task
     folly_executors_sequenced_executor
-    folly_experimental_channels_detail_utility
 )
 
 add_subdirectory(detail)

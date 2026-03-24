@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/channels/detail/AtomicQueue.h>
+#include <folly/channels/detail/AtomicQueue.h>
 
 #include <folly/portability/GTest.h>
 

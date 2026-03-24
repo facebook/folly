@@ -20,10 +20,10 @@
 #include <folly/channels/Channel.h>
 #include <folly/channels/FanoutSender.h>
 #include <folly/channels/OnClosedException.h>
+#include <folly/channels/detail/MultiplexerTraits.h>
 #include <folly/container/F14Map.h>
 #include <folly/coro/Task.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/channels/detail/MultiplexerTraits.h>
 
 namespace folly {
 namespace channels {

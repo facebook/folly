@@ -17,8 +17,8 @@
 #pragma once
 
 #include <folly/channels/Channel.h>
+#include <folly/channels/detail/PointerVariant.h>
 #include <folly/container/F14Set.h>
-#include <folly/experimental/channels/detail/PointerVariant.h>
 
 namespace folly {
 namespace channels {

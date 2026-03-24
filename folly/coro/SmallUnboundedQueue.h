@@ -16,11 +16,11 @@
 
 #pragma once
 
+#include <folly/channels/detail/AtomicQueue.h>
 #include <folly/coro/Baton.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/Mutex.h>
 #include <folly/coro/Task.h>
-#include <folly/experimental/channels/detail/AtomicQueue.h>
 
 #if FOLLY_HAS_COROUTINES
 

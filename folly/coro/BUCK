@@ -755,11 +755,11 @@ fb_dirsync_cpp_library(
     headers = ["SmallUnboundedQueue.h"],
     use_raw_headers = True,
     exported_deps = [
+        "//folly/channels/detail:atomic_queue",
         "//folly/coro:baton",
         "//folly/coro:coroutine",
         "//folly/coro:mutex",
         "//folly/coro:task",
-        "//folly/experimental/channels/detail:atomic_queue",
     ],
 )
 

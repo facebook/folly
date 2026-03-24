@@ -18,8 +18,8 @@
 
 #include <folly/CancellationToken.h>
 #include <folly/Synchronized.h>
+#include <folly/channels/detail/ChannelBridge.h>
 #include <folly/coro/Coroutine.h>
-#include <folly/experimental/channels/detail/ChannelBridge.h>
 
 namespace folly {
 namespace channels {

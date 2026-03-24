@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/Try.h>
-#include <folly/experimental/channels/detail/AtomicQueue.h>
+#include <folly/channels/detail/AtomicQueue.h>
 
 namespace folly {
 namespace channels {

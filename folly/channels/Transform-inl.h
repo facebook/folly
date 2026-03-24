@@ -17,10 +17,10 @@
 #pragma once
 
 #include <folly/channels/Channel.h>
+#include <folly/channels/detail/Utility.h>
 #include <folly/coro/AsyncGenerator.h>
 #include <folly/coro/Task.h>
 #include <folly/executors/SequencedExecutor.h>
-#include <folly/experimental/channels/detail/Utility.h>
 
 namespace folly {
 namespace channels {
