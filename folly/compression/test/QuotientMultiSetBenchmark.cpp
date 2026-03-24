@@ -23,9 +23,9 @@
 #include <folly/Random.h>
 #include <folly/String.h>
 #include <folly/compression/elias_fano/EliasFanoCoding.h>
+#include <folly/compression/test/CodingTestUtils.h>
 #include <folly/container/Enumerate.h>
 #include <folly/container/F14Set.h>
-#include <folly/experimental/test/CodingTestUtils.h>
 #include <folly/init/Init.h>
 
 DEFINE_int64(

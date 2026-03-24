@@ -13,7 +13,7 @@ fbcode_target(
         "//folly:portability",
         "//folly/compression:select64",
         "//folly/compression/elias_fano:bit_vector_coding",
-        "//folly/experimental/test:coding_test_utils",
+        "//folly/compression/test:coding_test_utils",
         "//folly/init:init",
     ],
 )
@@ -29,7 +29,7 @@ fbcode_target(
         "//folly:random",
         "//folly/compression:select64",
         "//folly/compression/elias_fano:elias_fano_coding",
-        "//folly/experimental/test:coding_test_utils",
+        "//folly/compression/test:coding_test_utils",
         "//folly/init:init",
     ],
 )

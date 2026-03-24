@@ -75,9 +75,9 @@ fbcode_target(
         "//folly:string",
         "//folly/compression:quotient_multiset",
         "//folly/compression/elias_fano:elias_fano_coding",
+        "//folly/compression/test:coding_test_utils",
         "//folly/container:enumerate",
         "//folly/container:f14_hash",
-        "//folly/experimental/test:coding_test_utils",
         "//folly/init:init",
     ],
     external_deps = [

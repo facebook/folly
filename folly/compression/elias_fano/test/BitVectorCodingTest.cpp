@@ -24,7 +24,7 @@
 #include <folly/Benchmark.h>
 #include <folly/compression/Select64.h>
 #include <folly/compression/elias_fano/BitVectorCoding.h>
-#include <folly/experimental/test/CodingTestUtils.h>
+#include <folly/compression/test/CodingTestUtils.h>
 #include <folly/init/Init.h>
 
 using namespace folly::compression;
