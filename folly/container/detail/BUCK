@@ -90,20 +90,21 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "f14_mask",
-    fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
-    raw_headers = [
+    headers = [
         "F14Mask.h",
     ],
+    fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
+    use_raw_headers = True,
     exported_deps = [
-        "//xplat/folly:bits",
-        "//xplat/folly:constexpr_math",
-        "//xplat/folly:likely",
-        "//xplat/folly:portability",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/lang:safe_assert",
+        ":f14_intrinsics_availability",
+        "//folly:bits",
+        "//folly:constexpr_math",
+        "//folly:likely",
+        "//folly:portability",
+        "//folly/lang:assume",
+        "//folly/lang:safe_assert",
     ],
 )
 
@@ -152,22 +153,5 @@ fbcode_target(
     ],
     exported_deps = [
         "//folly:portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "f14_mask",
-    headers = [
-        "F14Mask.h",
-    ],
-    exported_deps = [
-        ":f14_intrinsics_availability",
-        "//folly:bits",
-        "//folly:constexpr_math",
-        "//folly:likely",
-        "//folly:portability",
-        "//folly/lang:assume",
-        "//folly/lang:safe_assert",
     ],
 )

@@ -71,17 +71,15 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "deadlock_detector",
     srcs = ["DeadlockDetector.cpp"],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = ["DeadlockDetector.h"],
+    headers = ["DeadlockDetector.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
     exported_deps = [
-        "//xplat/folly:executor",
-        "//xplat/folly/executors:queue_observer",
+        "//folly:executor",
+        "//folly/executors:queue_observer",
     ],
 )
 
@@ -229,18 +227,5 @@ fbcode_target(
     ],
     external_deps = [
         ("glibc", None, "dl"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "deadlock_detector",
-    srcs = ["DeadlockDetector.cpp"],
-    headers = [
-        "DeadlockDetector.h",
-    ],
-    exported_deps = [
-        "//folly:executor",
-        "//folly/executors:queue_observer",
     ],
 )

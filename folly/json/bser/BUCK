@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
     "APPLE",
@@ -8,39 +6,11 @@ load(
     "MACOSX",
     "WINDOWS",
 )
-load(
-    "../../defs.bzl",
-    "folly_xplat_library",
-)
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "bser",
-    srcs = [
-        "Dump.cpp",
-        "Load.cpp",
-    ],
-    apple_sdks = (MACOSX,),
-    platforms = (CXX, FBCODE, WINDOWS, APPLE),
-    raw_headers = [
-        "Bser.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/io:iobuf",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:dynamic",
-        "//xplat/folly:json",
-        "//xplat/folly:optional",
-        "//xplat/folly:string",
-    ],
-)
-
-# !!!! fbcode/folly/json/bser/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "bser",
     srcs = [
         "Dump.cpp",
@@ -49,6 +19,9 @@ fbcode_target(
     headers = [
         "Bser.h",
     ],
+    apple_sdks = (MACOSX,),
+    platforms = (CXX, FBCODE, WINDOWS, APPLE),
+    use_raw_headers = True,
     exported_deps = [
         "//folly:c_portability",
         "//folly:json",  # @manual
