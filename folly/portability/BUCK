@@ -239,26 +239,24 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "openssl",
-    srcs = [
-        "OpenSSL.cpp",
-    ],
+    srcs = ["OpenSSL.cpp"],
+    headers = ["OpenSSL.h"],
     compiler_flags = select({
         "DEFAULT": [],
         "ovr_config//compiler:clang": [
             "-Wno-unused-function",
         ],
     }),
-    raw_headers = [
-        "OpenSSL.h",
-    ],
+    use_raw_headers = True,
     exported_deps = [
         ":windows",
-        "//xplat/folly:portability",
-        "//xplat/third-party/openssl:crypto",
-        "//xplat/third-party/openssl:ssl",
+        "//folly:portability",
+    ],
+    exported_external_deps = [
+        ("openssl", None, "ssl"),
+        ("openssl", None, "crypto"),
     ],
 )
 
@@ -319,20 +317,18 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "source_location",
+    headers = ["SourceLocation.h"],
     compiler_flags = select({
         "DEFAULT": [],
         "ovr_config//os:macos": [
             "-Wno-nonportable-include-path",
         ],
     }),
-    raw_headers = [
-        "SourceLocation.h",
-    ],
+    use_raw_headers = True,
     exported_deps = [
-        "//third-party/fmt:fmt",
+        "fbsource//third-party/fmt:fmt",
     ],
 )
 
@@ -485,13 +481,11 @@ fb_dirsync_cpp_library(
     exported_deps = [":windows"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "sys_types",
+    headers = ["SysTypes.h"],
     apple_sdks = ALL_APPLE_SDKS,
-    raw_headers = [
-        "SysTypes.h",
-    ],
+    use_raw_headers = True,
 )
 
 fb_dirsync_cpp_library(
@@ -565,16 +559,14 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "windows",
-    raw_headers = [
-        "Windows.h",
-    ],
+    headers = ["Windows.h"],
+    use_raw_headers = True,
     exported_deps = select({
         "DEFAULT": [],
         "ovr_config//os:windows": [
-            "//third-party/toolchains/win:ws2_32.lib",
+            "fbsource//third-party/toolchains/win:ws2_32.lib",
         ],
     }),
 )
@@ -605,21 +597,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "openssl",
-    srcs = ["OpenSSL.cpp"],
-    headers = ["OpenSSL.h"],
-    exported_deps = [
-        ":windows",
-        "//folly:portability",
-    ],
-    exported_external_deps = [
-        ("openssl", None, "ssl"),
-        ("openssl", None, "crypto"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "pthread",
     srcs = ["PThread.cpp"],
     headers = ["PThread.h"],
@@ -639,15 +616,6 @@ fbcode_target(
     ],
     exported_external_deps = [
         ("glibc", None, "pthread"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "source_location",
-    headers = ["SourceLocation.h"],
-    exported_deps = [
-        "fbsource//third-party/fmt:fmt",
     ],
 )
 
@@ -682,12 +650,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "sys_types",
-    headers = ["SysTypes.h"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "unistd",
     srcs = ["Unistd.cpp"],
     headers = ["Unistd.h"],
@@ -700,10 +662,4 @@ fbcode_target(
         ":sys_types",
         "//folly:portability",
     ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "windows",
-    headers = ["Windows.h"],
 )
