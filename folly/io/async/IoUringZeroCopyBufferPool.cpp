@@ -93,7 +93,7 @@ class IoUringZeroCopyBufferPoolImpl {
   void flushRefillQueue() noexcept;
 
   struct io_uring* ring_{nullptr};
-  size_t bufferSize_{0};
+  uint32_t bufferSize_{0};
   uint32_t rqEntries_{0};
 
   void* bufArea_{nullptr};
@@ -170,8 +170,11 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
       bufAreaSize_(params.numBuffers * params.bufferSizeHint),
       buffers_(params.numBuffers),
       rqRingAreaSize_(getRefillRingSize(params.rqEntries)) {
-  for (auto& buf : buffers_) {
+  for (size_t i = 0; i < params.numBuffers; i++) {
+    auto& buf = buffers_[i];
     buf.pool = this;
+    buf.off = i * bufferSize_;
+    buf.len = bufferSize_;
   }
   checkZcRxFeatures();
   mapMemory();
@@ -243,10 +246,6 @@ std::unique_ptr<IOBuf> IoUringZeroCopyBufferPoolImpl::getIoBuf(
   };
 
   int i = offset / bufferSize_;
-  auto& buf = buffers_[i];
-  buf.off = rcqe->off;
-  buf.len = cqe->res;
-
   auto ret = IOBuf::takeOwnership(
       static_cast<char*>(bufArea_) + offset,
       bufferSize_,

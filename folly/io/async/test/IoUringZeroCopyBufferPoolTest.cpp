@@ -214,6 +214,101 @@ TEST(IoUringZeroCopyBufferPoolTest, RefillWithFlush) {
   pool.reset();
 }
 
+TEST(IoUringZeroCopyBufferPoolTest, SharedBufferGetIoBuf) {
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numBuffers = 32,
+      .bufferSizeHint = 4096,
+      .rqEntries = 8,
+      .ifindex = 0,
+      .queueId = 0,
+  };
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper helper(*pool);
+
+  io_uring_cqe cqe{};
+  io_uring_zcrx_cqe zcqe{};
+
+  // Dispense 3 IOBufs: two sharing buffers_[0], one on buffers_[1].
+  cqe.res = 1500;
+  zcqe.off = 0;
+  auto buf1 = pool->getIoBuf(&cqe, &zcqe);
+
+  cqe.res = 800;
+  zcqe.off = 1600;
+  auto buf2 = pool->getIoBuf(&cqe, &zcqe);
+
+  EXPECT_EQ(buf1->length(), 1500);
+  EXPECT_EQ(buf2->length(), 800);
+  EXPECT_EQ(buf2->data() - buf1->data(), 1600);
+
+  cqe.res = 2048;
+  zcqe.off = 4096;
+  auto buf3 = pool->getIoBuf(&cqe, &zcqe);
+  EXPECT_EQ(buf3->length(), 2048);
+
+  EXPECT_EQ(helper.getRingUsedCount(), 0);
+  EXPECT_EQ(helper.getPendingBuffersSize(), 0);
+
+  buf1.reset();
+  EXPECT_EQ(helper.getRingUsedCount(), 1);
+  EXPECT_EQ(helper.getPendingBuffersSize(), 0);
+
+  buf2.reset();
+  EXPECT_EQ(helper.getRingUsedCount(), 2);
+  EXPECT_EQ(helper.getPendingBuffersSize(), 0);
+
+  buf3.reset();
+  EXPECT_EQ(helper.getRingUsedCount(), 3);
+  EXPECT_EQ(helper.getPendingBuffersSize(), 0);
+}
+
+TEST(IoUringZeroCopyBufferPoolTest, SharedBufferRefillWithPending) {
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numBuffers = 8,
+      .bufferSizeHint = 4096,
+      .rqEntries = 2,
+      .ifindex = 0,
+      .queueId = 0,
+  };
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper helper(*pool);
+
+  io_uring_cqe cqe{};
+  io_uring_zcrx_cqe zcqe{};
+
+  // Dispense 3 IOBufs: two sharing buffers_[0], one on buffers_[1].
+  // Each uses a distinct length to avoid false positives.
+  // This results in 3 returnBuffer() calls when freed.
+  cqe.res = 1500;
+  zcqe.off = 0;
+  auto buf1 = pool->getIoBuf(&cqe, &zcqe);
+  cqe.res = 2048;
+  zcqe.off = 4096;
+  auto buf2 = pool->getIoBuf(&cqe, &zcqe);
+  cqe.res = 800;
+  zcqe.off = 1600;
+  auto buf3 = pool->getIoBuf(&cqe, &zcqe);
+
+  buf1.reset();
+  buf2.reset();
+  buf3.reset();
+  EXPECT_EQ(helper.getRingUsedCount(), 2);
+  EXPECT_EQ(helper.getRingFreeCount(), 0);
+  EXPECT_EQ(helper.getPendingBuffersSize(), 1);
+
+  helper.consumeRefillRingEntries(2);
+  EXPECT_EQ(helper.getRingFreeCount(), 2);
+
+  zcqe.off = 2 * 4096;
+  auto buf4 = pool->getIoBuf(&cqe, &zcqe);
+  buf4.reset();
+
+  EXPECT_EQ(helper.getRingUsedCount(), 2);
+  EXPECT_EQ(helper.getPendingBuffersSize(), 0);
+}
+
 TEST(IoUringZeroCopyBufferPoolTest, RefillMoreThanCapacity) {
   IoUringZeroCopyBufferPool::Params params = {
       .ring = nullptr,
