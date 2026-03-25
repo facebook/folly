@@ -138,6 +138,38 @@ class BypassExceptionThrowing {
 
 } // namespace detail
 
+// Cheaply propagate exceptions from `awaitable` to the calling coroutine,
+// bypassing the expensive throw/catch stack unwinding mechanism.
+//
+// IMPORTANT: This does NOT swallow exceptions or convert them to a return
+// value. Unlike std::nothrow (which selects a non-throwing operator new that
+// returns nullptr on allocation failure), co_nothrow still propagates the
+// exception to the caller -- it just does so through the coroutine's internal
+// error channel instead of via C++ throw/catch.
+//
+// The return type and value are identical to a plain `co_await awaitable` --
+// the only difference is performance when the awaitable fails with an error.
+//
+// Currently only supports awaiting Task and AsyncGenerator.
+//
+// Use `co_nothrow` when you want to propagate errors without inspecting them:
+//
+//   // Cheaply propagates errors to caller (no throw/catch overhead).
+//   // On success, `result` is the normal return value of someOperation().
+//   // On failure, the exception propagates to *this* coroutine's caller.
+//   auto result = co_await co_nothrow(someOperation());
+//   process(result);  // only reached on success
+//
+// Use `value_or_error` when you need to inspect or handle the error:
+//
+//   // Returns result<T> -- value or error, never stopped. Cancellation
+//   // (OperationCancelled) is safely propagated to the parent without
+//   // throwing.  See also `value_or_error_or_stopped` in ValueOrError.h.
+//   auto res = co_await value_or_error(someOperation());
+//   if (auto ex = get_exception<MyError>(res)) { /* handle */ }
+//
+// `co_awaitTry` is also widely used but has a subtle footgun: it silently
+// interrupts cancellation. Prefer `value_or_error` for new code.
 template <
     typename Awaitable,
     std::enable_if_t<
