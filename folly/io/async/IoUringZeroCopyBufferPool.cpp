@@ -248,7 +248,7 @@ std::unique_ptr<IOBuf> IoUringZeroCopyBufferPoolImpl::getIoBuf(
   int i = offset / bufferSize_;
   auto ret = IOBuf::takeOwnership(
       static_cast<char*>(bufArea_) + offset,
-      bufferSize_,
+      length,
       length,
       freeFn,
       &buffers_[i]);

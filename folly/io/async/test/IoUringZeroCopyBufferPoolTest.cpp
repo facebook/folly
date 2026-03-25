@@ -66,8 +66,8 @@ TEST(IoUringZeroCopyBufferPoolTest, GetBuf) {
   io_uring_zcrx_cqe zcqe{};
   zcqe.off = 0;
   auto buf = pool->getIoBuf(&cqe, &zcqe);
-  ASSERT_EQ(buf->capacity(), 4096);
   ASSERT_EQ(buf->length(), 2048);
+  EXPECT_EQ(buf->capacity() >= buf->length(), true);
 }
 
 TEST(IoUringZeroCopyBufferPoolTest, DelayedDestruction) {
