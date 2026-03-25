@@ -39,6 +39,12 @@ class IoUringZeroCopyBufferPoolImpl {
     IoUringZeroCopyBufferPoolImpl* pool;
   };
 
+  struct SupportedFeatures {
+    bool importRing{false};
+    bool exportRing{false};
+    bool pageSize{false};
+  };
+
   explicit IoUringZeroCopyBufferPoolImpl(
       IoUringZeroCopyBufferPool::Params params, bool test);
 
@@ -79,6 +85,7 @@ class IoUringZeroCopyBufferPoolImpl {
 
  private:
   void mapMemory();
+  void checkZcRxFeatures();
   void initialRegister(uint32_t ifindex, uint16_t queueId);
   void delayedDestroy(uint32_t refs) noexcept;
   uint32_t getRingQueuedCount() const noexcept;
@@ -108,6 +115,7 @@ class IoUringZeroCopyBufferPoolImpl {
   uint32_t flushThreshold_{128};
   std::atomic<uint16_t> flushFailures_{0};
   std::atomic<uint16_t> flushCount_{0};
+  SupportedFeatures supportedFeatures_{};
 };
 
 struct ImplDeleter {
@@ -136,6 +144,24 @@ constexpr uint64_t kBufferMask = (1ULL << IORING_ZCRX_AREA_SHIFT) - 1;
 
 } // namespace
 
+void IoUringZeroCopyBufferPoolImpl::checkZcRxFeatures() {
+  struct io_uring_query_zcrx zcrxQuery{};
+  struct io_uring_query_hdr hdr{};
+  hdr.query_op = IO_URING_QUERY_ZCRX;
+  hdr.query_data = reinterpret_cast<__u64>(&zcrxQuery);
+  hdr.size = sizeof(zcrxQuery);
+
+  int ret = io_uring_register(
+      static_cast<unsigned int>(-1), IORING_REGISTER_QUERY, &hdr, 0);
+  if (ret != 0 || hdr.result != 0) {
+    return;
+  }
+
+  supportedFeatures_.importRing = zcrxQuery.register_flags & ZCRX_REG_IMPORT;
+  supportedFeatures_.exportRing = zcrxQuery.nr_ctrl_opcodes > ZCRX_CTRL_EXPORT;
+  supportedFeatures_.pageSize = zcrxQuery.features & ZCRX_FEATURE_RX_PAGE_SIZE;
+}
+
 IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
     IoUringZeroCopyBufferPool::Params params, bool test)
     : ring_(params.ring),
@@ -147,6 +173,7 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
   for (auto& buf : buffers_) {
     buf.pool = this;
   }
+  checkZcRxFeatures();
   mapMemory();
 
   // Calculate flush threshold to bound pending queue growth.
@@ -399,6 +426,11 @@ IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params, TestTag)
 IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(
     ExportHandle handle, struct io_uring* ring)
     : ring_(ring) {
+  if (!handle.impl_->supportedFeatures_.importRing) {
+    throw std::runtime_error(
+        "IoUringZeroCopyBufferPool import failed: kernel does not support import");
+  }
+
   struct io_uring_zcrx_ifq_reg ifqReg{};
   ifqReg.if_idx = static_cast<uint32_t>(handle.zcrxFd_);
   ifqReg.flags = ZCRX_REG_IMPORT;
@@ -428,6 +460,11 @@ IoUringZeroCopyBufferPool::exportHandle() const {
   if (impl_->ring_ != ring_) {
     throw std::runtime_error(
         "Cannot export a handle from a non-owning IoUringZeroCopyBufferPool");
+  }
+
+  if (!impl_->supportedFeatures_.exportRing) {
+    throw std::runtime_error(
+        "IoUringZeroCopyBufferPool export failed: kernel does not support export");
   }
 
   struct zcrx_ctrl ctrl{};
