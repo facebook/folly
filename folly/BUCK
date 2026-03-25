@@ -1022,13 +1022,11 @@ fb_dirsync_cpp_library(
     srcs = ["Demangle.cpp"],
     headers = ["Demangle.h"],
     compiler_flags = selects.with_or({
-        (
-            "ovr_config//os:android"
-        ): [
+        "DEFAULT": ["-fno-omit-frame-pointer"],
+        "ovr_config//os:android": [
             "-Wno-error=deprecated-dynamic-exception-spec",
             "-fno-omit-frame-pointer",
         ],
-        "DEFAULT": ["-fno-omit-frame-pointer"],
     }) + select({
         "DEFAULT": [],
         # x86_64-conda-linux-gnu-c++ (conda-forge gcc 11.4.0-13) 11.4.0
