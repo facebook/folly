@@ -97,6 +97,7 @@ non_fbcode_target(
         "//xplat/folly/python:executor_lib",
         "//xplat/folly:cancellation_token",
     ],
+    types = ["simplebridgecoro.pyi"],
     deps = [
         "//xplat/folly/python:coro",
     ],
@@ -349,6 +350,7 @@ fbcode_target(
         "//folly/python:executor_lib",
         "//folly:cancellation_token",
     ],
+    types = ["simplebridgecoro.pyi"],
     deps = [
         "//folly/python:coro",
     ],

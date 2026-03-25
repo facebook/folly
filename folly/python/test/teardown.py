@@ -56,6 +56,8 @@ class Teardown(unittest.TestCase):
 
             # Schedule a sleep for 1s and the immediately exit
             # pyre-fixme[16]: Module `test` has no attribute `simplebridgecoro`.
+            # pyre-fixme[1001]: Intentionally fire-and-forget; we want to test
+            # that the executor drives pending work on teardown.
             asyncio.ensure_future(simplebridgecoro.sleep_then_echo(10, 0))
 
         loop = asyncio.new_event_loop()

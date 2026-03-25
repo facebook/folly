@@ -13,35 +13,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pyre-unsafe
-
 import asyncio
 import unittest
 
-# pyre-fixme[21]: Could not find name `simplebridgecoro` in `folly.python.test`.
 from folly.python.test import simplebridgecoro
 
 
 class FuturesTest(unittest.TestCase):
-    def test_bridge_coro(self):
+    def test_bridge_coro(self) -> None:
         val = 1337
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(simplebridgecoro.get_value_x5_coro(val))
         self.assertEqual(val * 5, res)
 
-    def test_cancellation(self):
+    def test_cancellation(self) -> None:
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(self._return_five_after_cancelled())
         self.assertEqual(5, res)
 
-    async def _return_five_after_cancelled(self):
+    async def _return_five_after_cancelled(self) -> int:
         task = asyncio.create_task(simplebridgecoro.return_five_after_cancelled())
         await asyncio.sleep(0.1)
         self.assertFalse(task.done())
         task.cancel()
         return await task
 
-    async def _test_executor_stats(self, task_count, block_ms, drive_count):
+    async def _test_executor_stats(
+        self, task_count: int, block_ms: int, drive_count: int
+    ) -> None:
         initial_stats = simplebridgecoro.get_executor_stats()
         # Some compilation mode (libcxx) injects a different executor
         if initial_stats is None:
@@ -58,9 +57,10 @@ class FuturesTest(unittest.TestCase):
         self.assertEqual(results, expected)
 
         final_stats = simplebridgecoro.get_executor_stats()
+        assert final_stats is not None
         self.assertEqual(final_stats.drive_count, initial_count + drive_count)
 
-    def test_executor_stats(self):
+    def test_executor_stats(self) -> None:
         loop = asyncio.get_event_loop()
         task_count = 4
         # 4 * 1, less than 5ms default
@@ -71,7 +71,7 @@ class FuturesTest(unittest.TestCase):
             self._test_executor_stats(task_count, block_ms, drive_count)
         )
 
-    def test_executor_stats_timeslice_0(self):
+    def test_executor_stats_timeslice_0(self) -> None:
         simplebridgecoro.set_drive_time_slice_ms(0)
         loop = asyncio.get_event_loop()
         task_count = 4
@@ -83,7 +83,7 @@ class FuturesTest(unittest.TestCase):
             self._test_executor_stats(task_count, block_ms, drive_count)
         )
 
-    def test_executor_stats_blocking(self):
+    def test_executor_stats_blocking(self) -> None:
         loop = asyncio.get_event_loop()
         task_count = 3
         # More than 5ms default
