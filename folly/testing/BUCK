@@ -1,50 +1,15 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "test_util",
-    srcs = [
-        "TestUtil.cpp",
-    ],
-    fbandroid_deps = [
-        "//xplat/third-party/linker_lib:atomic",
-    ],
-    raw_headers = [
-        "TestUtil.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/portability:fcntl",
-        "//third-party/boost:boost",
-        "//third-party/boost:boost_regex",
-        "//third-party/glog:glog",
-        "//xplat/folly:exception",
-        "//xplat/folly:file",
-        "//xplat/folly:file_util",
-        "//xplat/folly:memory",
-        "//xplat/folly:string",
-        "//xplat/folly/ext:test_ext",
-        "//xplat/folly/ext/buck2:test_ext",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/io:fs_util",
-        "//xplat/folly:range",
-        "//xplat/folly:scope_guard",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "test_util",
     srcs = ["TestUtil.cpp"],
     headers = ["TestUtil.h"],
+    fbandroid_deps = [
+        "//xplat/third-party/linker_lib:atomic",
+    ],
+    use_raw_headers = True,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:exception",

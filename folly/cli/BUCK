@@ -1,4 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
@@ -10,76 +10,26 @@ load(
     "MACOSX",
     "WINDOWS",
 )
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "program_options",
     srcs = [
         "NestedCommandLineApp.cpp",
         "ProgramOptions.cpp",
+    ],
+    headers = [
+        "NestedCommandLineApp.h",
+        "ProgramOptions.h",
     ],
     apple_sdks = (IOS, MACOSX),
     fbandroid_deps = [
         "//third-party/gflags:gflags",
     ],
     platforms = (ANDROID, APPLE, CXX, FBCODE, WINDOWS),
-    raw_headers = [
-        "NestedCommandLineApp.h",
-        "ProgramOptions.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/io:fs_util",
-        "fbsource//xplat/folly/portability:gflags",
-        "//third-party/boost:boost",
-        "//third-party/boost:boost_program_options",
-        "//third-party/glog:glog",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:conv",
-        "//xplat/folly:file_util",
-        "//xplat/folly:format",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:string",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "args",
-    srcs = [
-        "Args.cpp",
-    ],
-    headers = [
-        "Args.h",
-    ],
-    deps = [
-        "fbsource//third-party/fmt:fmt",
-        "//folly:file_util",
-    ],
-    exported_deps = [
-        "//folly/container:span",
-        "//folly/lang:cstring_view",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "program_options",
-    srcs = [
-        "NestedCommandLineApp.cpp",
-        "ProgramOptions.cpp",
-    ],
-    headers = [
-        "NestedCommandLineApp.h",
-        "ProgramOptions.h",
-    ],
+    use_raw_headers = True,
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
@@ -101,5 +51,24 @@ fbcode_target(
     ],
     exported_external_deps = [
         ("boost", None, "boost_program_options"),
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "args",
+    srcs = [
+        "Args.cpp",
+    ],
+    headers = [
+        "Args.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:file_util",
+    ],
+    exported_deps = [
+        "//folly/container:span",
+        "//folly/lang:cstring_view",
     ],
 )
