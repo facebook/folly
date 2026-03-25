@@ -1046,7 +1046,7 @@ class RelaxedConcurrentPriorityQueue {
     }
   }
 
-  // This could guarentee the Mound is empty
+  // This could guarantee the Mound is empty
   FOLLY_ALWAYS_INLINE bool isMoundEmpty() {
     Position pos;
     pos.level = pos.index = 0;

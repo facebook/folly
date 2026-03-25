@@ -77,7 +77,7 @@ static constexpr auto& await = await_async;
  *
  * Runtime Consideration:
  * - The wrapper is currently 0 cost (in optimized builds), and this will
- *   remain a guarentee
+ *   remain a guarantee
  * - It provides protection (in debug builds) against running Async-annotated
  *   code on main context.
  * - It does NOT provide protection against doing I/O in non Async-annotated
