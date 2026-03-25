@@ -85,11 +85,18 @@ struct serialization_opts {
   folly::Optional<TemplateMap> templates;
 };
 
+struct bser_deserialization_options {
+  size_t max_depth = 256;
+};
+
 // parse a BSER value from a variety of sources.
 // The complete BSER data must be present to succeed.
 folly::dynamic parseBser(folly::StringPiece);
 folly::dynamic parseBser(folly::ByteRange);
 folly::dynamic parseBser(const folly::IOBuf*);
+folly::dynamic parseBser(folly::StringPiece, bser_deserialization_options);
+folly::dynamic parseBser(folly::ByteRange, bser_deserialization_options);
+folly::dynamic parseBser(const folly::IOBuf*, bser_deserialization_options);
 
 // When reading incrementally, it is useful to know how much data to
 // read to fully decode a BSER pdu.

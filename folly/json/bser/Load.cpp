@@ -23,7 +23,7 @@ using folly::io::Cursor;
 
 namespace folly {
 namespace bser {
-static dynamic parseBser(Cursor& curs);
+static dynamic parseBser(Cursor& curs, size_t remaining_depth);
 
 template <typename... ARGS>
 [[noreturn]] static void throwDecodeError(Cursor& curs, ARGS&&... args) {
@@ -89,16 +89,16 @@ static std::string decodeString(Cursor& curs) {
   return str;
 }
 
-static dynamic decodeArray(Cursor& curs) {
+static dynamic decodeArray(Cursor& curs, size_t remaining_depth) {
   dynamic arr = dynamic::array();
   auto size = decodeInt(curs);
   while (size-- > 0) {
-    arr.push_back(parseBser(curs));
+    arr.push_back(parseBser(curs, remaining_depth));
   }
   return arr;
 }
 
-static dynamic decodeObject(Cursor& curs) {
+static dynamic decodeObject(Cursor& curs, size_t remaining_depth) {
   dynamic obj = dynamic::object;
   auto size = decodeInt(curs);
   while (size-- > 0) {
@@ -107,19 +107,19 @@ static dynamic decodeObject(Cursor& curs) {
     }
     auto key = decodeString(curs);
     auto keyv = StringPiece(key); // to evade MSVC C4866
-    obj[keyv] = parseBser(curs);
+    obj[keyv] = parseBser(curs, remaining_depth);
   }
   return obj;
 }
 
-static dynamic decodeTemplate(Cursor& curs) {
+static dynamic decodeTemplate(Cursor& curs, size_t remaining_depth) {
   dynamic arr = folly::dynamic::array;
 
   // List of property names
   if ((BserType)curs.read<int8_t>() != BserType::Array) {
     throw std::runtime_error("Expected array encoding for property names");
   }
-  auto names = decodeArray(curs);
+  auto names = decodeArray(curs, remaining_depth);
 
   auto size = decodeInt(curs);
 
@@ -135,7 +135,7 @@ static dynamic decodeTemplate(Cursor& curs) {
         continue;
       }
 
-      obj[keyv] = parseBser(curs);
+      obj[keyv] = parseBser(curs, remaining_depth);
     }
 
     arr.push_back(std::move(obj));
@@ -144,7 +144,10 @@ static dynamic decodeTemplate(Cursor& curs) {
   return arr;
 }
 
-static dynamic parseBser(Cursor& curs) {
+static dynamic parseBser(Cursor& curs, size_t remaining_depth) {
+  if (remaining_depth == 0) {
+    throw BserDecodeError("BSER recursion depth limit exceeded");
+  }
   switch ((BserType)curs.read<int8_t>()) {
     case BserType::Int8:
       return curs.read<int8_t>();
@@ -168,11 +171,11 @@ static dynamic parseBser(Cursor& curs) {
     case BserType::String:
       return decodeString(curs);
     case BserType::Array:
-      return decodeArray(curs);
+      return decodeArray(curs, remaining_depth - 1);
     case BserType::Object:
-      return decodeObject(curs);
+      return decodeObject(curs, remaining_depth - 1);
     case BserType::Template:
-      return decodeTemplate(curs);
+      return decodeTemplate(curs, remaining_depth - 1);
     case BserType::Skip:
       throw std::runtime_error(
           "Skip not valid at this location in the bser stream");
@@ -225,19 +228,31 @@ size_t decodePduLength(const folly::IOBuf* buf) {
 }
 
 folly::dynamic parseBser(const IOBuf* buf) {
-  Cursor curs(buf);
-
-  decodeHeader(curs);
-  return parseBser(curs);
+  return parseBser(buf, bser_deserialization_options{});
 }
 
 folly::dynamic parseBser(ByteRange str) {
-  auto buf = IOBuf::wrapBuffer(str.data(), str.size());
-  return parseBser(&*buf);
+  return parseBser(str, bser_deserialization_options{});
 }
 
 folly::dynamic parseBser(StringPiece str) {
-  return parseBser(ByteRange((uint8_t*)str.data(), str.size()));
+  return parseBser(str, bser_deserialization_options{});
+}
+
+folly::dynamic parseBser(const IOBuf* buf, bser_deserialization_options opts) {
+  Cursor curs(buf);
+
+  decodeHeader(curs);
+  return parseBser(curs, opts.max_depth);
+}
+
+folly::dynamic parseBser(ByteRange str, bser_deserialization_options opts) {
+  auto buf = IOBuf::wrapBuffer(str.data(), str.size());
+  return parseBser(&*buf, opts);
+}
+
+folly::dynamic parseBser(StringPiece str, bser_deserialization_options opts) {
+  return parseBser(ByteRange((uint8_t*)str.data(), str.size()), opts);
 }
 } // namespace bser
 } // namespace folly
