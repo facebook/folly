@@ -19,6 +19,7 @@
 #include <memory>
 #include <vector>
 
+#include <folly/Executor.h>
 #include <folly/io/async/EventBase.h>
 
 namespace folly {
@@ -42,10 +43,17 @@ namespace folly {
  * @return true on success. CHECK-fails on any error.
  */
 bool setupIoUringBufferPoolSharing(
-    std::vector<std::unique_ptr<folly::EventBase>>& eventBases,
-    size_t numHwQueues);
-
-bool setupIoUringBufferPoolSharing(
     std::vector<folly::EventBase*>& eventBases, size_t numHwQueues);
+
+template <typename T>
+bool setupIoUringBufferPoolSharing(
+    std::vector<T>& eventBases, size_t numHwQueues) {
+  std::vector<folly::EventBase*> evbPtrs;
+  evbPtrs.reserve(eventBases.size());
+  for (auto& eb : eventBases) {
+    evbPtrs.push_back(eb.get());
+  }
+  return setupIoUringBufferPoolSharing(evbPtrs, numHwQueues);
+}
 
 } // namespace folly

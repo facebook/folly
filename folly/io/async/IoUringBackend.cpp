@@ -491,14 +491,15 @@ IoUringBackend::IoUringBackend(Options options)
     usingDeferTaskrun_ = true;
   }
 
-  if (options_.zeroCopyRx) {
+  if (options_.zeroCopyRx || options_.zcRxImport) {
     params_.flags |= IORING_SETUP_CQE32;
     params_.flags |= IORING_SETUP_DEFER_TASKRUN;
     params_.flags |= IORING_SETUP_SINGLE_ISSUER;
     params_.flags |= IORING_SETUP_R_DISABLED;
     params_.flags |= IORING_SETUP_COOP_TASKRUN;
     params_.flags |= IORING_SETUP_SUBMIT_ALL;
-
+  }
+  if (options_.zeroCopyRx) {
     napiId_ =
         options_.resolveNapiId(options_.zcRxIfindex, options_.zcRxQueueId);
   }
@@ -1083,14 +1084,21 @@ bool IoUringBackend::importZcBufferPool(
     LOG(WARNING) << "Buffer pool already exists";
     return false;
   }
+  auto napiId = handle.napiId_;
   zcBufferPool_ = IoUringZeroCopyBufferPool::importHandle(
       std::move(handle), this->ioRingPtr());
-  return zcBufferPool_ != nullptr;
+  if (!zcBufferPool_) {
+    return false;
+  }
+  napiId_ = napiId;
+  return true;
 }
 
 IoUringZeroCopyBufferPool::ExportHandle IoUringBackend::exportZcBufferPool() {
   CHECK(zcBufferPool_) << "No buffer pool to export";
-  return zcBufferPool_->exportHandle();
+  auto handle = zcBufferPool_->exportHandle();
+  handle.napiId_ = napiId_;
+  return handle;
 }
 
 void IoUringBackend::delayedInit() {

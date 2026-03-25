@@ -17,6 +17,7 @@
 #include <folly/io/async/IoUringBufferPoolSharing.h>
 
 #include <algorithm>
+#include <optional>
 
 #include <glog/logging.h>
 
@@ -31,6 +32,28 @@ namespace folly {
 
 namespace {
 
+#if FOLLY_HAS_LIBURING
+struct EbBackend {
+  folly::EventBase* evb;
+  IoUringBackend* backend;
+};
+
+bool compareByZcRxQueueId(const EbBackend& a, const EbBackend& b) {
+  auto aq = a.backend->options().zcRxQueueId;
+  auto bq = b.backend->options().zcRxQueueId;
+  if (aq < 0 && bq < 0) {
+    return false;
+  }
+  if (aq < 0) {
+    return false;
+  }
+  if (bq < 0) {
+    return true;
+  }
+  return aq < bq;
+}
+#endif
+
 bool setupIoUringBufferPoolSharingImpl(
     size_t numIoThreads,
     folly::FunctionRef<folly::EventBase*(size_t)> getEventBase,
@@ -44,36 +67,51 @@ bool setupIoUringBufferPoolSharingImpl(
   CHECK_GT(numIoThreads, 0) << "need at least one IO thread";
   CHECK_GT(numHwQueues, 0)
       << "need at least 1 hw queue but passing: " << numHwQueues;
-  std::vector<IoUringBackend*> backends;
-  backends.reserve(numIoThreads);
+
+  std::vector<EbBackend> entries;
+  entries.reserve(numIoThreads);
   for (size_t i = 0; i < numIoThreads; ++i) {
-    auto* backend =
-        dynamic_cast<IoUringBackend*>(getEventBase(i)->getBackend());
+    auto* evb = getEventBase(i);
+    auto* backend = dynamic_cast<IoUringBackend*>(evb->getBackend());
     CHECK(backend) << "EventBase at index " << i
                    << " does not have IoUringBackend";
-    backends.push_back(backend);
+    entries.push_back({evb, backend});
   }
 
-  size_t numOwners = std::min(numHwQueues, backends.size());
+  std::sort(entries.begin(), entries.end(), compareByZcRxQueueId);
+
+  size_t numOwners = std::min(numHwQueues, entries.size());
+
   for (size_t i = 0; i < numOwners; ++i) {
-    if (!backends[i]->zcBufferPool()) {
-      CHECK(backends[i]->createZcBufferPool())
-          << "Failed to create zero-copy buffer pool for EventBase at index "
-          << i;
-    }
+    auto* evb = entries[i].evb;
+    auto* backend = entries[i].backend;
+    evb->runInEventBaseThreadAndWait([backend, i] {
+      if (!backend->zcBufferPool()) {
+        CHECK(backend->createZcBufferPool())
+            << "Failed to create zero-copy buffer pool for EventBase at index "
+            << i;
+      }
+    });
   }
 
-  if (numHwQueues >= backends.size()) {
+  if (numHwQueues >= entries.size()) {
     // Every backend has its own HW queue, no sharing needed.
     return true;
   }
 
-  for (size_t i = numHwQueues; i < backends.size(); ++i) {
+  for (size_t i = numHwQueues; i < entries.size(); ++i) {
     size_t ownerIdx = (i - numHwQueues) % numOwners;
-    auto handle = backends[ownerIdx]->exportZcBufferPool();
-    CHECK(backends[i]->importZcBufferPool(std::move(handle)))
-        << "Failed to import buffer pool handle into EventBase at index " << i
-        << " from owner at index " << ownerIdx;
+    std::optional<IoUringZeroCopyBufferPool::ExportHandle> handle;
+    entries[ownerIdx].evb->runInEventBaseThreadAndWait(
+        [&handle, backend = entries[ownerIdx].backend] {
+          handle.emplace(backend->exportZcBufferPool());
+        });
+    entries[i].evb->runInEventBaseThreadAndWait(
+        [&handle, backend = entries[i].backend, i, ownerIdx] {
+          CHECK(backend->importZcBufferPool(std::move(handle.value())))
+              << "Failed to import buffer pool handle into EventBase at index "
+              << i << " from owner at index " << ownerIdx;
+        });
   }
 
   return true;
@@ -81,15 +119,6 @@ bool setupIoUringBufferPoolSharingImpl(
 }
 
 } // namespace
-
-bool setupIoUringBufferPoolSharing(
-    std::vector<std::unique_ptr<folly::EventBase>>& eventBases,
-    size_t numHwQueues) {
-  return setupIoUringBufferPoolSharingImpl(
-      eventBases.size(),
-      [&](size_t i) { return eventBases[i].get(); },
-      numHwQueues);
-}
 
 bool setupIoUringBufferPoolSharing(
     std::vector<folly::EventBase*>& eventBases, size_t numHwQueues) {

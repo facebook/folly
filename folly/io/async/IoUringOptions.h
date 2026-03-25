@@ -197,6 +197,12 @@ struct IoUringOptions {
     return *this;
   }
 
+  IoUringOptions& setZeroCopyImport(bool v) {
+    zcRxImport = v;
+
+    return *this;
+  }
+
   IoUringOptions& setZeroCopyRxInterface(std::string v) {
     zcRxIfname = std::move(v);
     zcRxIfindex = ::if_nametoindex(zcRxIfname.c_str());
@@ -302,6 +308,7 @@ struct IoUringOptions {
 
   // Zero copy receive
   bool zeroCopyRx{false};
+  bool zcRxImport{false};
   std::string zcRxIfname;
   int zcRxQueueId{-1};
   int zcRxIfindex{-1};

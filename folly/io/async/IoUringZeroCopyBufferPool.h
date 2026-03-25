@@ -55,6 +55,8 @@ class IoUringZeroCopyBufferPool {
     ExportHandle(const ExportHandle&) = delete;
     ExportHandle& operator=(const ExportHandle&) = delete;
 
+    int napiId_{-1};
+
    private:
     friend class IoUringZeroCopyBufferPool;
 

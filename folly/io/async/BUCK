@@ -998,6 +998,7 @@ fb_dirsync_cpp_library(
     ],
     exported_deps = [
         ":async_base",
+        "//folly:executor",
     ],
     external_deps = [
         "glog",
