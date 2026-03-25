@@ -1354,7 +1354,7 @@ void AsyncUDPSocket::handleRead() noexcept {
     } else {
       bytesRead = netops::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
     }
-#elif _WIN32
+#elif defined(_WIN32)
     WSABUF wBuf;
     wBuf.buf = (CHAR*)buf;
     wBuf.len = (ULONG)len;
