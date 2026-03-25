@@ -162,6 +162,7 @@ folly_add_library(
     xlog.h
   DEPS
     folly_constexpr_math
+    folly_container_reserve
     folly_demangle
     folly_exception
     folly_file_util

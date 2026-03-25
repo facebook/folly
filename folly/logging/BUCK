@@ -1,7 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -82,10 +79,10 @@ fb_dirsync_cpp_library(
     ],
 )
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
+# "logging" is the core of the logging library
+# If you want to log messages from your code, this is the library you should
+# depend on.
+fb_dirsync_cpp_library(
     name = "logging",
     srcs = [
         "AsyncFileWriter.cpp",
@@ -108,8 +105,7 @@ non_fbcode_target(
         "StreamHandlerFactory.cpp",
         "xlog.cpp",
     ],
-    force_static = False,
-    raw_headers = [
+    headers = [
         "AsyncFileWriter.h",
         "AsyncLogWriter.h",
         "CustomLogFormatter.h",
@@ -132,41 +128,48 @@ non_fbcode_target(
         "StreamHandlerFactory.h",
         "xlog.h",
     ],
+    force_static = False,
+    preprocessor_flags = [
+        "-DFOLLY_XLOG_SUPPORT_BUCK2",
+    ],
+    use_raw_headers = True,
     deps = [
-        "fbsource//xplat/folly/portability:pthread",
-        "fbsource//xplat/folly/portability:time",
-        "fbsource//xplat/folly/portability:unistd",
-        "//xplat/folly:constexpr_math",
-        "//xplat/folly:demangle",
-        "//xplat/folly:exception",
-        "//xplat/folly:file_util",
-        "//xplat/folly:format",
-        "//xplat/folly:map_util",
-        "//xplat/folly:string",
-        "//xplat/folly/system:at_fork",
-        "//xplat/folly/system:thread_id",
-        "//xplat/folly/system:thread_name",
+        "//folly:constexpr_math",
+        "//folly:demangle",
+        "//folly:exception",
+        "//folly:file_util",
+        "//folly:format",
+        "//folly:map_util",
+        "//folly:string",
+        "//folly/container:reserve",
+        "//folly/portability:fcntl",
+        "//folly/portability:pthread",
+        "//folly/portability:time",
+        "//folly/portability:unistd",
+        "//folly/system:at_fork",
+        "//folly/system:thread_id",
+        "//folly/system:thread_name",
     ],
     exported_deps = [
+        "fbsource//third-party/fmt:fmt",
         ":log_handler",
         ":log_level",
         ":log_name",
         ":rate_limiter",
-        "//third-party/fmt:fmt",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:conv",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:exception_string",
-        "//xplat/folly:file",
-        "//xplat/folly:likely",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:synchronized",
-        "//xplat/folly/detail:static_singleton_manager",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:type_info",
+        "//folly:c_portability",
+        "//folly:conv",
+        "//folly:cpp_attributes",
+        "//folly:exception_string",
+        "//folly:file",
+        "//folly:likely",
+        "//folly:optional",
+        "//folly:portability",
+        "//folly:range",
+        "//folly:scope_guard",
+        "//folly:synchronized",
+        "//folly/detail:static_singleton_manager",
+        "//folly/lang:exception",
+        "//folly/lang:type_info",
     ],
 )
 
@@ -223,100 +226,5 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     exported_deps = [
         "//folly:chrono",
-    ],
-)
-
-# fbcode build rules
-
-# "logging" is the core of the logging library
-# If you want to log messages from your code, this is the library you should
-# depend on.
-fbcode_target(
-    _kind = cpp_library,
-    name = "logging",
-    srcs = [
-        "AsyncFileWriter.cpp",
-        "AsyncLogWriter.cpp",
-        "CustomLogFormatter.cpp",
-        "FileWriterFactory.cpp",
-        "GlogStyleFormatter.cpp",
-        "ImmediateFileWriter.cpp",
-        "LogCategory.cpp",
-        "LogCategoryConfig.cpp",
-        "LogConfig.cpp",
-        "LogMessage.cpp",
-        "LogStream.cpp",
-        "LogStreamProcessor.cpp",
-        "Logger.cpp",
-        "LoggerDB.cpp",
-        "ObjectToString.cpp",
-        "StandardLogHandler.cpp",
-        "StandardLogHandlerFactory.cpp",
-        "StreamHandlerFactory.cpp",
-        "xlog.cpp",
-    ],
-    headers = [
-        "AsyncFileWriter.h",
-        "AsyncLogWriter.h",
-        "CustomLogFormatter.h",
-        "FileWriterFactory.h",
-        "GlogStyleFormatter.h",
-        "ImmediateFileWriter.h",
-        "LogCategory.h",
-        "LogCategoryConfig.h",
-        "LogConfig.h",
-        "LogFormatter.h",
-        "LogMessage.h",
-        "LogStream.h",
-        "LogStreamProcessor.h",
-        "LogWriter.h",
-        "Logger.h",
-        "LoggerDB.h",
-        "ObjectToString.h",
-        "StandardLogHandler.h",
-        "StandardLogHandlerFactory.h",
-        "StreamHandlerFactory.h",
-        "xlog.h",
-    ],
-    export_header_unit = "preload",
-    preprocessor_flags = [
-        "-DFOLLY_XLOG_SUPPORT_BUCK2",
-    ],
-    deps = [
-        "//folly:constexpr_math",
-        "//folly:demangle",
-        "//folly:exception",
-        "//folly:file_util",
-        "//folly:format",
-        "//folly:map_util",
-        "//folly:string",
-        "//folly/portability:fcntl",
-        "//folly/portability:pthread",
-        "//folly/portability:time",
-        "//folly/portability:unistd",
-        "//folly/system:at_fork",
-        "//folly/system:thread_id",
-        "//folly/system:thread_name",
-    ],
-    exported_deps = [
-        "fbsource//third-party/fmt:fmt",
-        ":log_handler",
-        ":log_level",
-        ":log_name",
-        ":rate_limiter",
-        "//folly:c_portability",
-        "//folly:conv",
-        "//folly:cpp_attributes",
-        "//folly:exception_string",
-        "//folly:file",
-        "//folly:likely",
-        "//folly:optional",
-        "//folly:portability",
-        "//folly:range",
-        "//folly:scope_guard",
-        "//folly:synchronized",
-        "//folly/detail:static_singleton_manager",
-        "//folly/lang:exception",
-        "//folly/lang:type_info",
     ],
 )
