@@ -1068,8 +1068,8 @@ bool IoUringBackend::createZcBufferPool() {
   }
   IoUringZeroCopyBufferPool::Params params = {
       .ring = this->ioRingPtr(),
-      .numPages = static_cast<size_t>(options_.zcRxNumPages),
-      .pageSize = kZeroCopyPageSize,
+      .numBuffers = static_cast<size_t>(options_.zcRxNumBuffers),
+      .bufferSizeHint = kZeroCopyPageSize,
       .rqEntries = static_cast<uint32_t>(options_.zcRxRefillEntries),
       .ifindex = static_cast<uint32_t>(options_.zcRxIfindex),
       .queueId = static_cast<uint16_t>(options_.zcRxQueueId),

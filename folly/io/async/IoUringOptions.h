@@ -236,8 +236,8 @@ struct IoUringOptions {
     return *this;
   }
 
-  IoUringOptions& setZeroCopyRxNumPages(int v) {
-    zcRxNumPages = v;
+  IoUringOptions& setZeroCopyRxNumBuffers(int v) {
+    zcRxNumBuffers = v;
 
     return *this;
   }
@@ -314,7 +314,7 @@ struct IoUringOptions {
   int zcRxIfindex{-1};
   ResolveNapiIdCallback resolveNapiId;
   SrcPortForQueueIdCallback srcPortQueueId;
-  int zcRxNumPages{-1};
+  int zcRxNumBuffers{-1};
   int zcRxRefillEntries{-1};
 
   // Incremental Buffers

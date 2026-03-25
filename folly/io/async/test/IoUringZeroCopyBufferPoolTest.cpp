@@ -54,8 +54,8 @@ using namespace ::folly;
 TEST(IoUringZeroCopyBufferPoolTest, GetBuf) {
   IoUringZeroCopyBufferPool::Params params = {
       .ring = nullptr,
-      .numPages = 32,
-      .pageSize = 4096,
+      .numBuffers = 32,
+      .bufferSizeHint = 4096,
       .rqEntries = 8,
       .ifindex = 0,
       .queueId = 0,
@@ -73,8 +73,8 @@ TEST(IoUringZeroCopyBufferPoolTest, GetBuf) {
 TEST(IoUringZeroCopyBufferPoolTest, DelayedDestruction) {
   IoUringZeroCopyBufferPool::Params params = {
       .ring = nullptr,
-      .numPages = 32,
-      .pageSize = 4096,
+      .numBuffers = 32,
+      .bufferSizeHint = 4096,
       .rqEntries = 8,
       .ifindex = 0,
       .queueId = 0,
@@ -96,8 +96,8 @@ TEST(IoUringZeroCopyBufferPoolTest, DelayedDestruction) {
 TEST(IoUringZeroCopyBufferPoolTest, RefillTest) {
   IoUringZeroCopyBufferPool::Params params = {
       .ring = nullptr,
-      .numPages = 8,
-      .pageSize = 4096,
+      .numBuffers = 8,
+      .bufferSizeHint = 4096,
       .rqEntries = 2,
       .ifindex = 0,
       .queueId = 0,
@@ -143,8 +143,8 @@ TEST(IoUringZeroCopyBufferPoolTest, RefillTest) {
 TEST(IoUringZeroCopyBufferPoolTest, RefillWithFlush) {
   IoUringZeroCopyBufferPool::Params params = {
       .ring = nullptr,
-      .numPages = 200,
-      .pageSize = 4096,
+      .numBuffers = 200,
+      .bufferSizeHint = 4096,
       .rqEntries = 8,
       .ifindex = 0,
       .queueId = 0,
@@ -217,8 +217,8 @@ TEST(IoUringZeroCopyBufferPoolTest, RefillWithFlush) {
 TEST(IoUringZeroCopyBufferPoolTest, RefillMoreThanCapacity) {
   IoUringZeroCopyBufferPool::Params params = {
       .ring = nullptr,
-      .numPages = 8,
-      .pageSize = 4096,
+      .numBuffers = 8,
+      .bufferSizeHint = 4096,
       .rqEntries = 2,
       .ifindex = 0,
       .queueId = 0,

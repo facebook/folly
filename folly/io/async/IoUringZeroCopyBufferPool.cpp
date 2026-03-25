@@ -93,7 +93,7 @@ class IoUringZeroCopyBufferPoolImpl {
   void flushRefillQueue() noexcept;
 
   struct io_uring* ring_{nullptr};
-  size_t pageSize_{0};
+  size_t bufferSize_{0};
   uint32_t rqEntries_{0};
 
   void* bufArea_{nullptr};
@@ -165,10 +165,10 @@ void IoUringZeroCopyBufferPoolImpl::checkZcRxFeatures() {
 IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
     IoUringZeroCopyBufferPool::Params params, bool test)
     : ring_(params.ring),
-      pageSize_(params.pageSize),
+      bufferSize_(params.bufferSizeHint),
       rqEntries_(params.rqEntries),
-      bufAreaSize_(params.numPages * params.pageSize),
-      buffers_(params.numPages),
+      bufAreaSize_(params.numBuffers * params.bufferSizeHint),
+      buffers_(params.numBuffers),
       rqRingAreaSize_(getRefillRingSize(params.rqEntries)) {
   for (auto& buf : buffers_) {
     buf.pool = this;
@@ -181,9 +181,9 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
   // When pending buffers reach this threshold, we flush to the kernel which
   // drains entries from the refill ring, freeing space for pending buffers.
   //
-  // Threshold = max(128, min(rqEntries/4, numPages/20)):
+  // Threshold = max(128, min(rqEntries/4, numBuffers/20)):
   // - rqEntries/4 (25% of ring): scales with kernel's drain capacity per flush
-  // - numPages/20 (5% of pool): caps memory sitting idle in pending queue
+  // - numBuffers/20 (5% of pool): caps memory sitting idle in pending queue
   // - min(): use the smaller limit to respect both constraints
   // - max(128): floor of 4 × ZCRX_FLUSH_BATCH to ensure batching efficiency
   constexpr uint32_t kKernelFlushBatch = 32;
@@ -192,7 +192,7 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
       kMinFlushThreshold,
       std::min(
           static_cast<uint32_t>(rqEntries_ / 4), // 25% of ring
-          static_cast<uint32_t>(params.numPages / 20))); // 5% of pool
+          static_cast<uint32_t>(params.numBuffers / 20))); // 5% of pool
 
   if (!test) {
     initialRegister(params.ifindex, params.queueId);
@@ -242,14 +242,14 @@ std::unique_ptr<IOBuf> IoUringZeroCopyBufferPoolImpl::getIoBuf(
     buffer->pool->returnBuffer(buffer);
   };
 
-  int i = offset / pageSize_;
+  int i = offset / bufferSize_;
   auto& buf = buffers_[i];
   buf.off = rcqe->off;
   buf.len = cqe->res;
 
   auto ret = IOBuf::takeOwnership(
       static_cast<char*>(bufArea_) + offset,
-      pageSize_,
+      bufferSize_,
       length,
       freeFn,
       &buffers_[i]);

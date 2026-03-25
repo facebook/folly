@@ -36,8 +36,8 @@ class IoUringZeroCopyBufferPool {
  public:
   struct Params {
     struct io_uring* ring;
-    size_t numPages;
-    size_t pageSize;
+    size_t numBuffers;
+    size_t bufferSizeHint;
     uint32_t rqEntries;
     uint32_t ifindex;
     uint16_t queueId;
