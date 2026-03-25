@@ -47,4 +47,8 @@ void destroyInstances() {
   ::folly::SingletonVault::singleton()->destroyInstances();
 }
 
+void reenableInstances() {
+  ::folly::SingletonVault::singleton()->reenableInstances();
+}
+
 } // namespace facebook::folly::rust

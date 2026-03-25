@@ -37,6 +37,8 @@ mod ffi {
         fn doEagerInit() -> Result<()>;
 
         fn destroyInstances() -> Result<()>;
+
+        fn reenableInstances() -> Result<()>;
     }
 }
 
@@ -76,4 +78,14 @@ pub fn do_eager_init() -> anyhow::Result<()> {
 /// WARNING: DO NOT USE THIS UNLESS YOU KNOW WHAT YOU ARE DOING.
 pub fn destroy_instances() -> anyhow::Result<()> {
     Ok(ffi::destroyInstances()?)
+}
+
+/// Re-enables singleton creation after a prior `destroy_instances()` call.
+///
+/// This is typically used after fork() in the child process to allow fresh
+/// singleton creation after `destroy_instances()` was called before the fork.
+///
+/// WARNING: DO NOT USE THIS UNLESS YOU KNOW WHAT YOU ARE DOING.
+pub fn reenable_instances() -> anyhow::Result<()> {
+    Ok(ffi::reenableInstances()?)
 }

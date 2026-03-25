@@ -33,4 +33,6 @@ void doEagerInit();
 
 void destroyInstances();
 
+void reenableInstances();
+
 } // namespace facebook::folly::rust
