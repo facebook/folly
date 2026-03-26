@@ -39,14 +39,6 @@ if (NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "blend" AND NOT MSVC_FAVORED_ARCHITEC
   message(FATAL_ERROR "MSVC_FAVORED_ARCHITECTURE must be set to one of exactly, 'blend', 'AMD64', 'INTEL64', or 'ATOM'! Got '${MSVC_FAVORED_ARCHITECTURE}' instead!")
 endif()
 
-set(MSVC_LANGUAGE_VERSION "c++20" CACHE STRING "One of 'c++20', or 'c++latest'. This determines which version of C++ to compile as.")
-set_property(
-  CACHE MSVC_LANGUAGE_VERSION
-  PROPERTY STRINGS
-    "c++20"
-    "c++latest"
-)
-
 ############################################################
 # We need to adjust a couple of the default option sets.
 ############################################################
@@ -107,6 +99,10 @@ endforeach()
 # Apply the option set for Folly to the specified target.
 function(apply_folly_compile_options_to_target THETARGET)
   # The general options passed:
+  target_compile_features(${THETARGET}
+    PUBLIC
+      cxx_std_20 # c++ 20 is required to use folly
+  )
   target_compile_options(${THETARGET}
     PUBLIC
       /EHs # Don't catch structured exceptions with catch (...)
@@ -119,7 +115,6 @@ function(apply_folly_compile_options_to_target THETARGET)
       /Zc:throwingNew # Assume operator new throws on failure.
 
       /permissive- # Be mean, don't allow bad non-standard stuff (C++/CLI, __declspec, etc. are all left intact).
-      /std:${MSVC_LANGUAGE_VERSION} # Build in the requested version of C++
       /utf-8 # fmt needs unicode support, which requires compiling with /utf-8
 
     PRIVATE
