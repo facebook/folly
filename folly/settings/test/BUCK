@@ -33,7 +33,7 @@ fbcode_target(
         "//folly:format",
         "//folly:random",
         "//folly:string",
-        "//folly/experimental/observer/detail:observer_manager",
+        "//folly/observer/detail:observer_manager",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/settings:observer",

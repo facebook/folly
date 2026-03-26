@@ -29,10 +29,10 @@ fb_dirsync_cpp_library(
         "//folly:function",
         "//folly:portability",
         "//folly:synchronized",
-        "//folly/experimental/observer/detail:graph_cycle_detector",
         "//folly/fibers:core_manager",
         "//folly/functional:invoke",
         "//folly/futures:core",
+        "//folly/observer/detail:graph_cycle_detector",
         "//folly/synchronization:sanitize_thread",
     ],
 )

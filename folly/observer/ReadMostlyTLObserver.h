@@ -17,8 +17,8 @@
 #pragma once
 
 #include <folly/concurrency/memory/ReadMostlySharedPtr.h>
-#include <folly/experimental/observer/detail/ObserverManager.h>
 #include <folly/observer/Observer.h>
+#include <folly/observer/detail/ObserverManager.h>
 
 namespace folly {
 namespace observer {

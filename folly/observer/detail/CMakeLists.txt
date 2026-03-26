@@ -37,11 +37,11 @@ folly_add_library(
     folly_singleton
     folly_system_thread_name
   EXPORTED_DEPS
-    folly_experimental_observer_detail_graph_cycle_detector
     folly_fibers_core_manager
     folly_function
     folly_functional_invoke
     folly_futures_core
+    folly_observer_detail_graph_cycle_detector
     folly_portability
     folly_synchronization_sanitize_thread
     folly_synchronized

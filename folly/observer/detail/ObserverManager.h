@@ -19,11 +19,11 @@
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
-#include <folly/experimental/observer/detail/GraphCycleDetector.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/functional/Invoke.h>
 #include <folly/futures/Future.h>
 #include <folly/observer/detail/Core.h>
+#include <folly/observer/detail/GraphCycleDetector.h>
 #include <folly/synchronization/SanitizeThread.h>
 
 namespace folly {

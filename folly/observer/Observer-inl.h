@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/Synchronized.h>
-#include <folly/experimental/observer/detail/ObserverManager.h>
+#include <folly/observer/detail/ObserverManager.h>
 
 namespace folly {
 namespace observer_detail {

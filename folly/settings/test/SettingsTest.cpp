@@ -25,7 +25,7 @@
 #include <folly/Format.h>
 #include <folly/Random.h>
 #include <folly/String.h>
-#include <folly/experimental/observer/detail/ObserverManager.h>
+#include <folly/observer/detail/ObserverManager.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/settings/Observer.h>

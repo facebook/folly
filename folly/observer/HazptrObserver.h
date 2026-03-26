@@ -20,8 +20,8 @@
 #include <memory>
 
 #include <folly/Synchronized.h>
-#include <folly/experimental/observer/detail/ObserverManager.h>
 #include <folly/observer/Observer.h>
+#include <folly/observer/detail/ObserverManager.h>
 #include <folly/synchronization/Hazptr.h>
 
 namespace folly {

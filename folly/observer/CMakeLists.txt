@@ -20,7 +20,7 @@ folly_add_library(
     CoreCachedObserver.h
   EXPORTED_DEPS
     folly_concurrency_core_cached_shared_ptr
-    folly_experimental_observer_detail_observer_manager
+    folly_observer_detail_observer_manager
     folly_observer_observer
 )
 
@@ -29,7 +29,7 @@ folly_add_library(
   HEADERS
     HazptrObserver.h
   EXPORTED_DEPS
-    folly_experimental_observer_detail_observer_manager
+    folly_observer_detail_observer_manager
     folly_observer_observer
     folly_synchronization_hazptr
     folly_synchronized
@@ -53,8 +53,8 @@ folly_add_library(
     Observer-pre.h
     Observer.h
   EXPORTED_DEPS
-    folly_experimental_observer_detail_observer_manager
     folly_functional_invoke
+    folly_observer_detail_observer_manager
     folly_shared_mutex
     folly_synchronized
     folly_thread_local
@@ -66,7 +66,7 @@ folly_add_library(
     ReadMostlyTLObserver.h
   EXPORTED_DEPS
     folly_concurrency_memory_read_mostly_shared_ptr
-    folly_experimental_observer_detail_observer_manager
+    folly_observer_detail_observer_manager
     folly_observer_observer
 )
 

@@ -21,8 +21,8 @@
 
 #include <folly/SharedMutex.h>
 #include <folly/ThreadLocal.h>
-#include <folly/experimental/observer/detail/Core.h>
 #include <folly/observer/Observer-pre.h>
+#include <folly/observer/detail/Core.h>
 
 namespace folly {
 namespace observer {

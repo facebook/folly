@@ -50,8 +50,8 @@ fb_dirsync_cpp_library(
         "//folly:shared_mutex",
         "//folly:synchronized",
         "//folly:thread_local",
-        "//folly/experimental/observer/detail:observer_manager",
         "//folly/functional:invoke",
+        "//folly/observer/detail:observer_manager",
     ],
 )
 
@@ -81,8 +81,8 @@ fbcode_target(
     ],
     exported_deps = [
         "//folly:synchronized",
-        "//folly/experimental/observer/detail:observer_manager",
         "//folly/observer:observer",
+        "//folly/observer/detail:observer_manager",
         "//folly/synchronization:hazptr",
     ],
 )
@@ -95,8 +95,8 @@ fbcode_target(
     ],
     exported_deps = [
         "//folly/concurrency/memory:read_mostly_shared_ptr",
-        "//folly/experimental/observer/detail:observer_manager",
         "//folly/observer:observer",
+        "//folly/observer/detail:observer_manager",
     ],
 )
 
@@ -108,7 +108,7 @@ fbcode_target(
     ],
     exported_deps = [
         "//folly/concurrency:core_cached_shared_ptr",
-        "//folly/experimental/observer/detail:observer_manager",
         "//folly/observer:observer",
+        "//folly/observer/detail:observer_manager",
     ],
 )
