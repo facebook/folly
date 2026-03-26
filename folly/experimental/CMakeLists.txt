@@ -24,5 +24,4 @@ folly_add_library(
 
 add_subdirectory(coro)
 add_subdirectory(exception_tracer)
-add_subdirectory(observer)
 add_subdirectory(symbolizer)
