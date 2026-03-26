@@ -12,7 +12,7 @@ fb_dirsync_cpp_unittest(
         ci.windows(ci.x86_64()),
         ci.linux(ci.aarch64()),
         ci.mac(ci.aarch64()),
-        ci.windows(ci.aarch64()),
+        # ci.windows(ci.aarch64()), # platform does not exist!
     ),
     deps = [
         "//folly/portability:gmock",
