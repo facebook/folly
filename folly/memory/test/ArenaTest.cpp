@@ -298,6 +298,14 @@ TEST(Arena, Clear) {
   static const size_t blockSize = 1024;
   SysArena arena(blockSize);
 
+  // Prime the arena so that at least one regular block exists before the loop.
+  // Without this, the first iteration's first pass starts with ptr_=nullptr
+  // (empty arena), causing large allocations to go to LargeBlocks. After
+  // clear(), ptr_ points to a full-capacity regular block, and those same
+  // large allocations go through the fast path instead, shifting addresses.
+  alloc(arena, 1);
+  arena.clear();
+
   for (int i = 0; i < 10; ++i) {
     std::vector<size_t> sizes(1000);
     std::generate(sizes.begin(), sizes.end(), []() {
