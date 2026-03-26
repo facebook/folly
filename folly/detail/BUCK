@@ -533,10 +533,10 @@ non_fbcode_target(
     srcs = [
         "StaticSingletonManager.cpp",
     ],
-    force_static = bool(select({
-        "DEFAULT": False,
+    force_static = select({
+        "DEFAULT": None,
         "ovr_config//os:macos": True,
-    })),
+    }),
     raw_headers = [
         "StaticSingletonManager.h",
     ],
