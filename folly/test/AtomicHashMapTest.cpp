@@ -629,7 +629,7 @@ void* testEraseEraseThread(void*) {
       if (currentLevel == kTestEraseInsertions) {
         currentLevel += lag + 1;
       }
-    } while (currentLevel - lag < i);
+    } while (currentLevel < i + lag);
 
     KeyT key = randomizeKey(i);
     while (globalAHM->count(key)) {
@@ -653,6 +653,7 @@ TEST(Ahm, threadEraseInsertRace) {
           << " thread inserting and " << kEraseThreads << " threads erasing.";
 
   globalAHM = std::make_unique<AHMapT>(kTestEraseInsertions / 4, config);
+  insertedLevel.store(0, std::memory_order_relaxed);
 
   vector<pthread_t> threadIds;
   for (uint64_t j = 0; j < kInsertThreads + kEraseThreads; j++) {
