@@ -18,6 +18,7 @@
 import asyncio
 import unittest
 from sys import platform
+from unittest import IsolatedAsyncioTestCase
 
 # pyre-fixme[21]: Could not find name `simplebridge` in `folly.python.test`.
 # pyre-fixme[21]: Could not find name `simplebridgecoro` in `folly.python.test`.
@@ -25,7 +26,7 @@ from folly.python.test import simplebridge, simplebridgecoro
 
 
 @unittest.skipIf(platform.startswith("win"), "Broken on Windows.")
-class Teardown(unittest.TestCase):
+class Teardown(IsolatedAsyncioTestCase):
     """
     The lifetimes of the native AsyncioExecutor/FiberManager objects
     are bound to that of the python event loop.
