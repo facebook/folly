@@ -197,12 +197,15 @@ TEST(HeapVectorTypes, SimpleSetTest) {
   EXPECT_FALSE(cs2.find(32) == cs2.end());
   EXPECT_TRUE(cs2.contains(32));
 
-  // Bad insert hint.
-  s2.insert(s2.begin() + 3, 33);
-  EXPECT_TRUE(s2.find(33) != s2.begin());
-  EXPECT_TRUE(s2.find(33) != s2.end());
+  // Bad insert hint. Use a value outside the random range [0, 99999] so
+  // we know it isn't already in the set — otherwise inserting a duplicate
+  // is a no-op but the subsequent erase removes the original, causing a
+  // size mismatch later.
+  constexpr int kBadHintVal = 100002;
+  s2.insert(s2.begin() + 3, kBadHintVal);
+  EXPECT_TRUE(s2.find(kBadHintVal) != s2.end());
   check_invariant(s2);
-  s2.erase(33);
+  s2.erase(kBadHintVal);
   check_invariant(s2);
 
   it = s2.find(32);
