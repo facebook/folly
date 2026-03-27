@@ -3,7 +3,6 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "../defs.bzl",
-    "CXXFLAGS",
     "folly_xplat_library",
 )
 
@@ -571,26 +570,7 @@ fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "traponavx512",
-    srcs = ["TrapOnAvx512.cpp"],
-    compiler_flags = CXXFLAGS + select({
-        "DEFAULT": [],
-        "ovr_config//toolchain/fb:fbcode-x86_64": [
-            "-msse4.2",
-            "-mavx512f",
-            "-mavx512vl",
-        ],
-    }),
-    raw_headers = ["TrapOnAvx512.h"],
-    deps = [
-        "//xplat/folly:portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "traponavx512",
     srcs = ["TrapOnAvx512.cpp"],
     headers = ["TrapOnAvx512.h"],
@@ -602,6 +582,7 @@ fbcode_target(
             "-mavx512vl",
         ],
     }),
+    use_raw_headers = True,
     deps = [
         "//folly:portability",
     ],
