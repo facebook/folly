@@ -1,11 +1,6 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "../defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -128,82 +123,69 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "malloc",
     srcs = ["Malloc.cpp"],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "Malloc.h",
-    ],
+    headers = ["Malloc.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": [
+            "third-party//jemalloc:headers",
+        ],
+    }),
     exported_deps = [
-        "fbsource//xplat/folly/portability:config",
-        "fbsource//xplat/folly/portability:malloc",
-        "//xplat/folly:c_portability",
-        "//xplat/folly/lang:bits",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/memory/detail:malloc_impl",
+        "//folly:portability",
+        "//folly/lang:exception",
+        "//folly/memory/detail:malloc_impl",
+        "//folly/portability:malloc",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "jemalloc_huge_page_allocator",
-    srcs = [
-        "JemallocHugePageAllocator.cpp",
-    ],
+    srcs = ["JemallocHugePageAllocator.cpp"],
+    headers = ["JemallocHugePageAllocator.h"],
     cxx_exported_deps = [
         "//xplat/third-party/linker_lib:pthread",
     ],
     fbandroid_exported_deps = [
         "//xplat/third-party/linker_lib:pthread",
     ],
-    raw_headers = [
-        "JemallocHugePageAllocator.h",
-    ],
+    use_raw_headers = True,
     deps = [
-        "fbsource//xplat/folly/portability:config",
-        "fbsource//xplat/folly/portability:malloc",
-        "fbsource//xplat/folly/portability:memory",
-        "fbsource//xplat/folly/portability:string",
-        "fbsource//xplat/folly/portability:sys_mman",
-        "fbsource//xplat/folly/portability:sys_types",
-        "//third-party/glog:glog",
-        "//xplat/folly:c_portability",
-    ],
-    exported_deps = [
-        "//xplat/folly/memory:malloc",
+        "fbsource//third-party/glog:glog",
+        "//folly:c_portability",
+        "//folly/memory:malloc",
+        "//folly/portability:malloc",
+        "//folly/portability:string",
+        "//folly/portability:sys_mman",
+        "//folly/portability:sys_types",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "jemalloc_nodump_allocator",
-    srcs = [
-        "JemallocNodumpAllocator.cpp",
-    ],
+    srcs = ["JemallocNodumpAllocator.cpp"],
+    headers = ["JemallocNodumpAllocator.h"],
     cxx_exported_deps = [
         "//xplat/third-party/linker_lib:pthread",
     ],
     fbandroid_exported_deps = [
         "//xplat/third-party/linker_lib:pthread",
     ],
-    raw_headers = [
-        "JemallocNodumpAllocator.h",
-    ],
+    use_raw_headers = True,
     deps = [
-        "fbsource//xplat/folly/portability:config",
-        "fbsource//xplat/folly/portability:malloc",
-        "fbsource//xplat/folly/portability:sys_mman",
-        "//third-party/glog:glog",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:conv",
-        "//xplat/folly:string",
+        "fbsource//third-party/glog:glog",
+        "//folly:conv",
+        "//folly:string",
     ],
     exported_deps = [
-        "//xplat/folly/memory:malloc",
+        "//folly:c_portability",
+        "//folly/portability:config",
+        "//folly/portability:malloc",
+        "//folly/portability:sys_mman",
     ],
 )
 
@@ -214,10 +196,10 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     deps = [
         "fbsource//third-party/glog:glog",
+        ":malloc",
         "//folly:c_portability",
         "//folly:conv",
         "//folly/lang:align",
-        "//folly/portability:malloc",
         "//folly/portability:string",
         "//folly/portability:sys_mman",
         "//folly/portability:unistd",
@@ -243,59 +225,6 @@ fb_dirsync_cpp_library(
 )
 
 # !!!! fbcode/folly/memory/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "malloc",
-    srcs = ["Malloc.cpp"],
-    headers = ["Malloc.h"],
-    deps = select({
-        "DEFAULT": [],
-        "ovr_config//os:linux": [
-            "third-party//jemalloc:headers",
-        ],
-    }),
-    exported_deps = [
-        "//folly:portability",
-        "//folly/lang:exception",
-        "//folly/memory/detail:malloc_impl",
-        "//folly/portability:malloc",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "jemalloc_nodump_allocator",
-    srcs = ["JemallocNodumpAllocator.cpp"],
-    headers = ["JemallocNodumpAllocator.h"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:conv",
-        "//folly:string",
-    ],
-    exported_deps = [
-        "//folly:c_portability",
-        "//folly/portability:config",
-        "//folly/portability:malloc",
-        "//folly/portability:sys_mman",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "jemalloc_huge_page_allocator",
-    srcs = ["JemallocHugePageAllocator.cpp"],
-    headers = ["JemallocHugePageAllocator.h"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:c_portability",
-        "//folly/memory:malloc",
-        "//folly/portability:malloc",
-        "//folly/portability:string",
-        "//folly/portability:sys_mman",
-        "//folly/portability:sys_types",
-    ],
-)
 
 fbcode_target(
     _kind = cpp_unittest,

@@ -42,7 +42,7 @@ folly_add_library(
     folly_c_portability
     folly_conv
     folly_lang_align
-    folly_portability_malloc
+    folly_memory_malloc
     folly_portability_string
     folly_portability_sys_mman
     folly_portability_unistd
@@ -80,11 +80,6 @@ folly_add_library(
   DEPS
     folly_conv
     folly_string
-  EXPORTED_DEPS
-    folly_c_portability
-    folly_portability_config
-    folly_portability_malloc
-    folly_portability_sys_mman
 )
 
 folly_add_library(
