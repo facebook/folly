@@ -60,6 +60,7 @@ folly_add_library(
   EXPORTED_DEPS
     folly_container_detail_f14_mask
     folly_container_heterogeneous_access
+    folly_lang_align
     folly_lang_exception
     folly_optional
     folly_scope_guard

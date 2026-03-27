@@ -1,7 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -66,6 +63,7 @@ fb_dirsync_cpp_library(
         "//folly:scope_guard",
         "//folly/container:heterogeneous_access",
         "//folly/container/detail:f14_mask",
+        "//folly/lang:align",
         "//folly/lang:exception",
         "//folly/synchronization:hazptr",
     ],
@@ -83,45 +81,40 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "cache_locality",
-    srcs = [
-        "CacheLocality.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
+    srcs = ["CacheLocality.cpp"],
+    headers = ["CacheLocality.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
     cxx_deps = [
         "//xplat/third-party/linker_lib:dl",
     ],
     fbandroid_deps = [
         "//xplat/third-party/linker_lib:dl",
     ],
-    raw_headers = [
-        "CacheLocality.h",
-    ],
+    use_raw_headers = True,
     deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "fbsource//xplat/folly/portability:fcntl",
-        "fbsource//xplat/folly/portability:fmt_compile",
-        "fbsource//xplat/folly/portability:unistd",
-        "//third-party/fmt:fmt",
-        "//third-party/glog:glog",
-        "//xplat/folly:optional",
-        "//xplat/folly/container:reserve",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/system:thread_id",
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
+        "//folly:indestructible",
+        "//folly:memory",
+        "//folly:scope_guard",
+        "//folly/container:reserve",
+        "//folly/hash:hash",
+        "//folly/lang:exception",
+        "//folly/portability:fcntl",
+        "//folly/portability:fmt_compile",
+        "//folly/portability:unistd",
+        "//folly/system:thread_id",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/synchronization:atomic_ref",
-        "//xplat/folly:indestructible",
-        "//xplat/folly:likely",
-        "//xplat/folly:memory",
-        "//xplat/folly:portability",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/detail:static_singleton_manager",
-        "//xplat/folly/lang:align",
+        "//folly:likely",
+        "//folly:portability",
+        "//folly/lang:align",
+        "//folly/synchronization:atomic_ref",
+    ],
+    external_deps = [
+        ("glibc", None, "dl"),
     ],
 )
 
@@ -195,37 +188,5 @@ fb_dirsync_cpp_library(
         "//folly/detail:thread_local_globals",
         "//folly/lang:safe_assert",
         "//folly/synchronization:atomic_ref",
-    ],
-)
-
-# !!!! fbcode/folly/concurrency/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "cache_locality",
-    srcs = ["CacheLocality.cpp"],
-    headers = ["CacheLocality.h"],
-    deps = [
-        "fbsource//third-party/fmt:fmt",
-        "fbsource//third-party/glog:glog",
-        "//folly:indestructible",
-        "//folly:memory",
-        "//folly:scope_guard",
-        "//folly/container:reserve",
-        "//folly/hash:hash",
-        "//folly/lang:exception",
-        "//folly/portability:fcntl",
-        "//folly/portability:fmt_compile",
-        "//folly/portability:unistd",
-        "//folly/system:thread_id",
-    ],
-    exported_deps = [
-        "//folly:likely",
-        "//folly:portability",
-        "//folly/lang:align",
-        "//folly/synchronization:atomic_ref",
-    ],
-    external_deps = [
-        ("glibc", None, "dl"),
     ],
 )
