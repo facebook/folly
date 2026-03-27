@@ -533,8 +533,14 @@ non_fbcode_target(
         "StaticSingletonManager.cpp",
     ],
     force_static = select({
-        "DEFAULT": None,
-        "ovr_config//os:macos": True,
+        "DEFAULT": select({
+            "DEFAULT": None,
+            "ovr_config//os:macos": True,
+        }),
+        # ARVR builds (e.g. VrDriver) don't benefit from dynamic linking of
+        # static_singleton_manager and it adds ~128KB to the APK size. Force
+        # static linking for ARVR mode to avoid the extra .so overhead.
+        "ovr_config//build_mode:arvr_mode": True,
     }),
     raw_headers = [
         "StaticSingletonManager.h",
