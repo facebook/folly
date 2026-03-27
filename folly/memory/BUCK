@@ -87,6 +87,9 @@ fb_dirsync_cpp_library(
     name = "memory_resource",
     headers = ["MemoryResource.h"],
     use_raw_headers = True,
+    exported_deps = [
+        "//folly:portability",
+    ],
 )
 
 fb_dirsync_cpp_library(

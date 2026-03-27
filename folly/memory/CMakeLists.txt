@@ -113,6 +113,8 @@ folly_add_library(
   NAME memory_resource
   HEADERS
     MemoryResource.h
+  EXPORTED_DEPS
+    folly_portability
 )
 
 folly_add_library(
