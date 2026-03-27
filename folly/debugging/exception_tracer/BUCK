@@ -14,36 +14,33 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "compatibility",
-    srcs = [
-    ],
+    headers = ["Compatibility.h"],
     apple_sdks = (IOS, MACOSX),
-    raw_headers = [
-        "Compatibility.h",
-    ],
+    use_raw_headers = True,
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "exception_tracer_base",
-    srcs = [
-        "ExceptionTracer.cpp",
-    ],
+    srcs = ["ExceptionTracer.cpp"],
+    headers = ["ExceptionTracer.h"],
     apple_sdks = (IOS, MACOSX),
-    raw_headers = [
-        "ExceptionTracer.h",
-    ],
+    labels = ["EXCLUDED_FROM_LINK_GROUPS"],
+    use_raw_headers = True,
     deps = [
-        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
-        "//third-party/glog:glog",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:portability",
-        "//xplat/folly:string",
-        "//xplat/folly/debugging/exception_tracer:exception_abi",
-        "//xplat/folly/debugging/exception_tracer:stacktrace",
-        "//xplat/third-party/linker_lib:dl",
+        "fbsource//third-party/glog:glog",
+        ":exception_abi",
+        ":stacktrace",
+        "//folly:portability",
+        "//folly:string",
+        "//folly/experimental/symbolizer:symbolizer",
+    ],
+    exported_deps = [
+        "//folly/portability:config",
+    ],
+    external_deps = [
+        ("glibc", None, "dl"),
     ],
 )
 
@@ -79,35 +76,29 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "smart_exception_tracer_singleton",
-    srcs = [
-        "SmartExceptionTracerSingleton.cpp",
-    ],
+    srcs = ["SmartExceptionTracerSingleton.cpp"],
+    headers = ["SmartExceptionTracerSingleton.h"],
     apple_sdks = (IOS, MACOSX),
-    raw_headers = [
-        "SmartExceptionTracerSingleton.h",
-    ],
+    use_raw_headers = True,
     exported_deps = [
-        "//xplat/folly:synchronized",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/debugging/exception_tracer:stacktrace",
+        ":stacktrace",
+        "//folly:synchronized",
+        "//folly/container:f14_hash",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "smart_exception_stack_trace_hooks",
-    srcs = [
-        "SmartExceptionStackTraceHooks.cpp",
-    ],
+    srcs = ["SmartExceptionStackTraceHooks.cpp"],
     apple_sdks = (IOS, MACOSX),
     link_whole = True,
+    use_raw_headers = True,
     deps = [
-        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
         ":exception_tracer_callbacks",
         ":smart_exception_tracer_singleton",
+        "//folly/experimental/symbolizer:symbolizer",
     ],
 )
 
@@ -135,38 +126,36 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "exception_tracer",
-    srcs = [
-        "ExceptionStackTraceLib.cpp",
-    ],
+    srcs = ["ExceptionStackTraceLib.cpp"],
     apple_sdks = (IOS, MACOSX),
     link_whole = True,
+    use_raw_headers = True,
     deps = [
-        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
-        "//xplat/folly:utility",
-        "//xplat/folly/debugging/exception_tracer:exception_abi",
-        "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
-        "//xplat/folly/debugging/exception_tracer:exception_tracer_callbacks",
-        "//xplat/folly/debugging/exception_tracer:stacktrace",
-        "//xplat/folly/lang:exception",
+        ":exception_abi",
+        ":exception_tracer_base",
+        ":exception_tracer_callbacks",
+        ":stacktrace",
+        "//folly:utility",
+        "//folly/lang:exception",
+    ],
+    exported_deps = [
+        ":exception_tracer_callbacks",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "stacktrace",
-    srcs = [
-        "StackTrace.cpp",
-    ],
+    srcs = ["StackTrace.cpp"],
+    headers = ["StackTrace.h"],
     apple_sdks = (IOS, MACOSX),
-    raw_headers = [
-        "StackTrace.h",
-    ],
+    use_raw_headers = True,
     deps = [
-        "fbsource//xplat/folly/experimental/symbolizer:stack_trace",
-        "//xplat/folly:portability",
+        "//folly/experimental/symbolizer:stack_trace",
+    ],
+    exported_deps = [
+        "//folly:portability",
     ],
 )
 
@@ -243,13 +232,6 @@ non_fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "compatibility",
-    srcs = [],
-    headers = ["Compatibility.h"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "exception_counter",
     srcs = ["ExceptionCounterLib.cpp"],
     headers = ["ExceptionCounterLib.h"],
@@ -278,49 +260,6 @@ fbcode_target(
     deps = [
         ":exception_counter",
         ":exception_tracer_callbacks",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "exception_tracer",
-    srcs = ["ExceptionStackTraceLib.cpp"],
-    headers = [],
-    link_whole = True,
-    deps = [
-        ":exception_abi",
-        ":exception_tracer_base",
-        ":exception_tracer_callbacks",
-        ":stacktrace",
-        "//folly:utility",
-        "//folly/lang:exception",
-    ],
-    exported_deps = [
-        ":exception_tracer_callbacks",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "exception_tracer_base",
-    srcs = ["ExceptionTracer.cpp"],
-    headers = ["ExceptionTracer.h"],
-    # Usage of dlsym(RTLD_NEXT, "symbol") does not always work with link groups
-    # due to relying on link order. Excluding all libs with `RTLD_NEXT` usage from any link group.
-    labels = ["EXCLUDED_FROM_LINK_GROUPS"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        ":exception_abi",
-        ":stacktrace",
-        "//folly:portability",
-        "//folly:string",
-        "//folly/experimental/symbolizer:symbolizer",
-    ],
-    exported_deps = [
-        "//folly/portability:config",
-    ],
-    external_deps = [
-        ("glibc", None, "dl"),
     ],
 )
 
@@ -398,49 +337,6 @@ fbcode_target(
     ],
     external_deps = [
         ("glibc", None, "dl"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "stacktrace",
-    srcs = ["StackTrace.cpp"],
-    headers = ["StackTrace.h"],
-    deps = [
-        "//folly/experimental/symbolizer:stack_trace",
-    ],
-    exported_deps = [
-        "//folly:portability",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "smart_exception_tracer_singleton",
-    srcs = [
-        "SmartExceptionTracerSingleton.cpp",
-    ],
-    headers = [
-        "SmartExceptionTracerSingleton.h",
-    ],
-    exported_deps = [
-        ":stacktrace",
-        "//folly:synchronized",
-        "//folly/container:f14_hash",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "smart_exception_stack_trace_hooks",
-    srcs = [
-        "SmartExceptionStackTraceHooks.cpp",
-    ],
-    link_whole = True,
-    deps = [
-        ":exception_tracer_callbacks",
-        ":smart_exception_tracer_singleton",
-        "//folly/experimental/symbolizer:symbolizer",
     ],
 )
 
