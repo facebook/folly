@@ -38,6 +38,8 @@ folly_add_library(
     AtomicUnorderedMapUtils.h
   EXPORTED_DEPS
     folly_exception
+    folly_lang_exception
+    folly_memory_malloc
     folly_portability_sys_mman
     folly_portability_unistd
 )

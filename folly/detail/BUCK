@@ -1,10 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "../defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -33,6 +27,8 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     exported_deps = [
         "//folly:exception",
+        "//folly/lang:exception",
+        "//folly/memory:malloc",
         "//folly/portability:sys_mman",
         "//folly/portability:unistd",
     ],
@@ -363,43 +359,15 @@ fb_dirsync_cpp_library(
     ],
 )
 
-# Targets below are kept as dual fbcode_target/non_fbcode_target patterns
-# because they have complex attributes that fb_dirsync_cpp_library doesn't handle:
-# - futex, iterators: compiler_flags on xplat side
-# - range_common, range_simd, range_sse42: undefined_symbols on fbcode side
-# - static_singleton_manager: force_static = select() on xplat side
-# - traponavx512: arch_preprocessor_flags (fbcode) vs compiler_flags + CXXFLAGS (xplat)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "futex",
-    srcs = [
-        "Futex.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "Futex.h",
-        "Futex-inl.h",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "fbsource//xplat/folly/portability:sys_syscall",
-        "fbsource//xplat/folly/portability:unistd",
-        "fbsource//xplat/folly/synchronization:parking_lot",
-        "//xplat/folly:scope_guard",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "futex",
     srcs = ["Futex.cpp"],
     headers = [
         "Futex.h",
         "Futex-inl.h",
     ],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
     deps = [
         "//folly:scope_guard",
         "//folly/hash:hash",
@@ -410,47 +378,19 @@ fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "iterators",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "Iterators.h",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/portability:sys_types",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "iterators",
     headers = ["Iterators.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "range_common",
-    srcs = [
-        "RangeCommon.cpp",
-    ],
-    raw_headers = [
-        "RangeCommon.h",
-    ],
-    deps = [
-        "//xplat/folly:likely",
-        "//xplat/folly/container:sparse_byte_set",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "range_common",
     srcs = ["RangeCommon.cpp"],
     headers = ["RangeCommon.h"],
-    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
+    undefined_symbols = True,
+    use_raw_headers = True,
     deps = [
         "//folly/container:sparse_byte_set",
     ],
@@ -459,30 +399,12 @@ fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "range_simd",
-    srcs = [
-        "RangeSimd.cpp",
-    ],
-    raw_headers = [
-        "RangeSimd.h",
-    ],
-    deps = [
-        ":range_sse42",
-        "//xplat/folly:likely",
-        "//xplat/folly:portability",
-        "//xplat/folly/detail:range_common",
-        "//xplat/folly/external/nvidia/detail:range_sve2",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "range_simd",
     srcs = ["RangeSimd.cpp"],
     headers = ["RangeSimd.h"],
     undefined_symbols = True,
+    use_raw_headers = True,
     deps = [
         ":range_sse42",
         "//folly:portability",
@@ -493,29 +415,12 @@ fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "range_sse42",
-    srcs = [
-        "RangeSse42.cpp",
-    ],
-    raw_headers = [
-        "RangeSse42.h",
-    ],
-    deps = [
-        "//xplat/folly:likely",
-        "//xplat/folly:portability",
-        "//xplat/folly/detail:range_common",
-        "//xplat/folly/detail:sse",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "range_sse42",
     srcs = ["RangeSse42.cpp"],
     headers = ["RangeSse42.h"],
-    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
+    undefined_symbols = True,
+    use_raw_headers = True,
     deps = [
         ":sse",
         "//folly:likely",
@@ -526,12 +431,10 @@ fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "static_singleton_manager",
-    srcs = [
-        "StaticSingletonManager.cpp",
-    ],
+    srcs = ["StaticSingletonManager.cpp"],
+    headers = ["StaticSingletonManager.h"],
     force_static = select({
         "DEFAULT": select({
             "DEFAULT": None,
@@ -542,26 +445,7 @@ non_fbcode_target(
         # static linking for ARVR mode to avoid the extra .so overhead.
         "ovr_config//build_mode:arvr_mode": True,
     }),
-    raw_headers = [
-        "StaticSingletonManager.h",
-    ],
-    deps = [
-        "//xplat/folly:c_portability",
-        "//xplat/folly:indestructible",
-        "//xplat/folly:likely",
-        "//xplat/folly:utility",
-        "//xplat/folly/detail:singleton",
-        "//xplat/folly/lang:thunk",
-        "//xplat/folly/lang:type_info",
-        "//xplat/folly/memory:reentrant_allocator",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "static_singleton_manager",
-    srcs = ["StaticSingletonManager.cpp"],
-    headers = ["StaticSingletonManager.h"],
+    use_raw_headers = True,
     deps = [
         "//folly/memory:reentrant_allocator",
     ],
