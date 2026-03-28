@@ -3,7 +3,9 @@ load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_sh_binary")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load(":validate_folly_symbolizer.bzl", "SPLIT_DWARF_FLAGS", "customized_unittest", "validate_folly_symbolizer", "validate_symbolizer_dwp")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -271,4 +273,48 @@ fbcode_target(
     # unless -c fbcode.split-dwarf5=True is enabled, so let's disable split-dwarf in the test
     # CU that is built with dwarf5
     binary = ":symbolizer_test_dwarf5_dwarf32_aaranges_split-dwarf4-by-default",
+)
+
+export_file(name = "eh_sdata8_large.lds")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "stack_trace_large_test",
+    srcs = ["StackTraceLargeTest.cpp"],
+    labels = ["broken-test"] + [ci.skip_target()],  # Mark broken until D96936982 lands.
+    linker_flags = [
+        "--script=$(location :eh_sdata8_large.lds)",
+    ],
+    modifiers = [
+        # no sanitizer because it causes memory access beyond 32bit
+        # and overflows
+        "ovr_config//build_mode:sanitizer_type[no-san]",
+    ],
+    deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly/debugging/symbolizer:stack_trace",
+        "//folly/debugging/symbolizer:symbolizer",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "stack_trace_large_benchmark",
+    srcs = ["StackTraceLargeBenchmark.cpp"],
+    labels = ["broken-test"] + [ci.skip_target()],  # Mark broken until D96936982 lands.
+    linker_flags = [
+        "--script=$(location :eh_sdata8_large.lds)",
+    ],
+    modifiers = [
+        # no sanitizer because it causes memory access beyond 32bit
+        # and overflows
+        "ovr_config//build_mode:sanitizer_type[no-san]",
+    ],
+    deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly:benchmark",
+        "//folly/debugging/symbolizer:stack_trace",
+        "//folly/init:init",
+    ],
 )
