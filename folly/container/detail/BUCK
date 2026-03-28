@@ -1,10 +1,7 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "../../defs.bzl",
     "FBANDROID_CPPFLAGS",
-    "folly_xplat_library",
 )
 
 oncall("ios_app_infra")
@@ -21,20 +18,20 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "f14_intrinsics_availability",
-    exported_preprocessor_flags = select({
-        "//xplat/folly/buck_config:folly-f14-fallback-disabled": [
-            "-DFOLLY_F14_FALLBACK_DISABLED=1",
-        ],
-        "DEFAULT": [],
-    }),
-    raw_headers = [
+    headers = [
         "F14IntrinsicsAvailability.h",
     ],
-    deps = [
-        "//xplat/folly:portability",
+    exported_preprocessor_flags = select({
+        "DEFAULT": [],
+        "fbsource//xplat/folly/buck_config:folly-f14-fallback-disabled": [
+            "-DFOLLY_F14_FALLBACK_DISABLED=1",
+        ],
+    }),
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly:portability",
     ],
 )
 
@@ -144,14 +141,3 @@ fb_dirsync_cpp_library(
 )
 
 # !!!! fbcode/folly/container/detail/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "f14_intrinsics_availability",
-    headers = [
-        "F14IntrinsicsAvailability.h",
-    ],
-    exported_deps = [
-        "//folly:portability",
-    ],
-)
