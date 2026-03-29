@@ -21,6 +21,7 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/io/IOBuf.h>
+#include <folly/lang/Hint.h>
 
 namespace folly {
 
@@ -198,7 +199,9 @@ class IOBufQueue {
      */
     uint8_t* writableData() {
       dcheckIntegrity();
-      return data_.cachedRange.first;
+      uint8_t* const ptr = data_.cachedRange.first;
+      folly::compiler_may_unsafely_assume_separate_storage(this, ptr);
+      return ptr;
     }
 
     /**
