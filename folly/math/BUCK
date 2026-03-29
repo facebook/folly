@@ -1,0 +1,13 @@
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fb_dirsync_cpp_library(
+    name = "reproducible_accumulator",
+    headers = ["ReproducibleAccumulator.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:constexpr_math",
+    ],
+)
