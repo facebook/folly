@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -71,10 +69,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-# !!!! fbcode/folly/observer/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "hazptr_observer",
     headers = [
         "HazptrObserver.h",
@@ -87,8 +82,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "read_mostly_tl_observer",
     headers = [
         "ReadMostlyTLObserver.h",
@@ -100,8 +94,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "core_cached_observer",
     headers = [
         "CoreCachedObserver.h",
