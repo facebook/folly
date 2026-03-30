@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -631,8 +629,7 @@ fb_dirsync_cpp_library(
 
 ### this line is a hint for source control merge
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "rust_adaptors",
     headers = ["RustAdaptors.h"],
     exported_deps = [
