@@ -21,7 +21,6 @@ fbcode_target(
     srcs = ["IOBufTest.cpp"],
     headers = [],
     allocator = "jemalloc_debug",
-    emails = ["simpkins@fb.com"],
     supports_static_listing = False,
     deps = [
         "//folly:range",
@@ -38,7 +37,6 @@ fbcode_target(
     srcs = ["IOBufCBTest.cpp"],
     headers = [],
     allocator = "jemalloc_debug",
-    emails = ["dmm@fb.com"],
     deps = [
         "//folly/io:iobuf",
         "//folly/portability:gtest",

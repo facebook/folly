@@ -1905,7 +1905,6 @@ non_fbcode_target(
     compiler_flags = CXXFLAGS + [
         "-Wno-unused-private-field",
     ],
-    contacts = ["oncall+folly@xmail.facebook.com"],
     fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
     fbandroid_cpu_suffixes = [
         "64bit",
@@ -1916,6 +1915,7 @@ non_fbcode_target(
         "-Wno-missing-prototypes",
         "-Wno-shadow",
     ],
+    oncall = "folly",
     platforms = (ANDROID, APPLE, CXX, WINDOWS),
     preprocessor_flags = CPPFLAGS + [
         "-DFOLLY_SKIP_AS_FAILURE=0",

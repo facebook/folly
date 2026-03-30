@@ -79,8 +79,7 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_unittest(
     name = "async_pipe_test",
     srcs = ["AsyncPipeTest.cpp"],
-    contacts = ["oncall+secure_pipes@xmail.facebook.com"],
-    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     supports_static_listing = False,
     deps = [
         "//folly/io/async:async_base",
@@ -125,7 +124,7 @@ non_fbcode_target(
         "AsyncSSLSocketTest.cpp",
         "AsyncSSLSocketTest2.cpp",
     ],
-    contacts = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     resources = {
         "certs/ca-cert.pem": "//xplat/folly/io/async/test/certs:ca-cert.pem",
         "certs/client_ca_cert.pem": "//xplat/folly/io/async/test/certs:client_ca_cert.pem",
@@ -177,8 +176,7 @@ non_fbcode_target(
 fb_dirsync_cpp_unittest(
     name = "async_ssl_socket_write_test",
     srcs = ["AsyncSSLSocketWriteTest.cpp"],
-    contacts = ["oncall+secure_pipes@xmail.facebook.com"],
-    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     supports_static_listing = False,
     deps = [
         "//folly/io:iobuf",
@@ -193,8 +191,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "async_socket_exception_test",
     srcs = ["AsyncSocketExceptionTest.cpp"],
-    contacts = ["oncall+secure_pipes@xmail.facebook.com"],
-    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     supports_static_listing = False,
     deps = [
         "//folly:conv",
@@ -312,8 +309,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "async_timeout_test",
     srcs = ["AsyncTimeoutTest.cpp"],
-    contacts = ["oncall+thrift@xmail.facebook.com"],
-    emails = ["oncall+thrift@xmail.facebook.com"],
+    oncall = "thrift",
     deps = [
         "//folly/io/async:async_base",
         "//folly/portability:gtest",
@@ -323,9 +319,8 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "async_udp_socket_test",
     srcs = ["AsyncUDPSocketTest.cpp"],
-    contacts = ["oncall+thrift@xmail.facebook.com"],
-    emails = ["oncall+thrift@xmail.facebook.com"],
     labels = ["heavyweight"],
+    oncall = "thrift",
     supports_static_listing = False,
     deps = [
         "//folly:conv",
@@ -347,8 +342,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "async_udp_socket_gso_gro_test",
     srcs = ["AsyncUDPSocketGSOGROTest.cpp"],
-    contacts = ["oncall+thrift@xmail.facebook.com"],
-    emails = ["oncall+thrift@xmail.facebook.com"],
+    oncall = "thrift",
     deps = [
         "//folly:conv",
         "//folly:network_address",
@@ -364,8 +358,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "async_udp_socket_sendmmsg_test",
     srcs = ["AsyncUDPSocketSendmmsgTest.cpp"],
-    contacts = ["oncall+thrift@xmail.facebook.com"],
-    emails = ["oncall+thrift@xmail.facebook.com"],
+    oncall = "thrift",
     deps = [
         "//folly:conv",
         "//folly:network_address",
@@ -414,8 +407,7 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_unittest(
     name = "delayed_destruction_base_test",
     srcs = ["DelayedDestructionBaseTest.cpp"],
-    contacts = ["oncall+thrift@xmail.facebook.com"],
-    emails = ["oncall+thrift@xmail.facebook.com"],
+    oncall = "thrift",
     deps = [
         "//folly/io/async:delayed_destruction",
         "//folly/portability:gtest",
@@ -425,8 +417,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "delayed_destruction_test",
     srcs = ["DelayedDestructionTest.cpp"],
-    contacts = ["oncall+thrift@xmail.facebook.com"],
-    emails = ["oncall+thrift@xmail.facebook.com"],
+    oncall = "thrift",
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly/io/async:delayed_destruction",
@@ -437,8 +428,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "destructor_check_test",
     srcs = ["DestructorCheckTest.cpp"],
-    contacts = ["oncall+thrift@xmail.facebook.com"],
-    emails = ["oncall+thrift@xmail.facebook.com"],
+    oncall = "thrift",
     deps = [
         "//folly:memory",
         "//folly/io/async:destructor_check",
@@ -485,12 +475,11 @@ fb_dirsync_cpp_unittest(
     name = "event_base_test",
     srcs = ["EventBaseTest.cpp"],
     allocator = "malloc",
-    contacts = ["oncall+thrift@xmail.facebook.com"],
-    emails = ["oncall+thrift@xmail.facebook.com"],
     labels = [
         "heavyweight",
         "load-sensitive-timing-test",
     ],
+    oncall = "thrift",
     supports_static_listing = False,
     deps = [
         ":async_signal_handler_test_lib",
@@ -504,8 +493,7 @@ fb_dirsync_cpp_unittest(
     name = "event_base_local_test",
     srcs = ["EventBaseLocalTest.cpp"],
     allocator = "malloc",
-    contacts = ["oncall+thrift@xmail.facebook.com"],
-    emails = ["oncall+thrift@xmail.facebook.com"],
+    oncall = "thrift",
     deps = [
         "//folly/io/async:async_base",
         "//folly/portability:gtest",
@@ -530,7 +518,7 @@ fb_dirsync_cpp_unittest(
 # folly_xplat_cxx_test(
 #     name = "hhwheel_timer_slow_test",
 #     srcs = ["HHWheelTimerSlowTests.cpp"],
-#     contacts = ["oncall+thrift@xmail.facebook.com"],
+#     oncall = "thrift",
 #     raw_headers = [],
 #     labels = [
 #         "extended",
@@ -546,9 +534,8 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "hhwheel_timer_test",
     srcs = ["HHWheelTimerTest.cpp"],
-    contacts = ["oncall+thrift@xmail.facebook.com"],
-    emails = ["oncall+thrift@xmail.facebook.com"],
     labels = ["slow"],
+    oncall = "thrift",
     deps = [
         ":util",
         "//folly/io/async:async_base",
@@ -686,7 +673,7 @@ non_fbcode_target(
     srcs = [
         "SSLSessionTest.cpp",
     ],
-    contacts = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     raw_headers = [],
     resources = {
         "certs/ca-cert.pem": "//xplat/folly/io/async/test/certs:ca-cert.pem",
@@ -722,7 +709,7 @@ non_fbcode_target(
     srcs = [
         "SSLContextTest.cpp",
     ],
-    contacts = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     raw_headers = [],
     resources = {
         "certs/client_chain.pem": "//xplat/folly/io/async/test/certs:client_chain.pem",
@@ -747,8 +734,7 @@ non_fbcode_target(
 fb_dirsync_cpp_unittest(
     name = "ssl_options_test",
     srcs = ["SSLOptionsTest.cpp"],
-    contacts = ["oncall+secure_pipes@xmail.facebook.com"],
-    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     deps = [
         ":ssl_util",
         "//folly/io/async:ssl_context",
@@ -923,9 +909,9 @@ fbcode_target(
         "AsyncSSLSocketTest.cpp",
         "AsyncSSLSocketTest2.cpp",
     ],
-    emails = ["oncall+secure_pipes@xmail.facebook.com"],
     extract_helper_lib = False,
     labels = ["oss-broken"],
+    oncall = "secure_pipes",
     resources = {
         "certs/ca-cert.pem": ":ca-cert.pem",
         "certs/client_ca_cert.pem": ":client_ca_cert.pem",
@@ -996,11 +982,11 @@ fbcode_target(
     name = "hhwheel_timer_slow_test",
     srcs = ["HHWheelTimerSlowTests.cpp"],
     headers = [],
-    emails = ["oncall+thrift@xmail.facebook.com"],
     labels = [
         "extended",
         "load-sensitive-timing-test",
     ],
+    oncall = "thrift",
     deps = [
         ":util",
         "//folly:random",
@@ -1059,7 +1045,7 @@ fbcode_target(
     name = "ssl_session_test",
     srcs = ["SSLSessionTest.cpp"],
     headers = [],
-    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     resources = {
         "certs/ca-cert.pem": ":ca-cert.pem",
         "certs/tests-cert.pem": ":tests-cert.pem",
@@ -1083,7 +1069,7 @@ fbcode_target(
     name = "ssl_context_test",
     srcs = ["SSLContextTest.cpp"],
     headers = [],
-    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     resources = {
         "certs/client_chain.pem": ":client_chain.pem",
         "certs/client_key.pem": ":client_key.pem",
@@ -1109,7 +1095,7 @@ fbcode_target(
     name = "ssl_context_regression_test",
     srcs = ["SSLContextRegressionTest.cpp"],
     headers = [],
-    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     deps = [
         "//folly:file_util",
         "//folly/io/async:ssl_context",

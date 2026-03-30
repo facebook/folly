@@ -5,8 +5,7 @@ oncall("fbcode_entropy_wardens_folly")
 fb_dirsync_cpp_unittest(
     name = "async_fd_socket_test",
     srcs = ["AsyncFdSocketTest.cpp"],
-    contacts = ["oncall+thrift@xmail.facebook.com"],
-    emails = ["oncall+thrift@xmail.facebook.com"],
+    oncall = "thrift",
     supports_static_listing = False,
     deps = [
         "//folly/io/async/fdsock:async_fd_socket",

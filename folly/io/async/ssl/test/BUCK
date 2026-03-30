@@ -9,7 +9,7 @@ non_fbcode_target(
     _kind = folly_xplat_cxx_test,
     name = "ssl_errors_test",
     srcs = ["SSLErrorsTest.cpp"],
-    contacts = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     raw_headers = [],
     deps = [
         "fbsource//xplat/folly/portability:gtest",
@@ -24,7 +24,7 @@ non_fbcode_target(
     srcs = [
         # "BasicTransportCertificateTest.cpp",
     ],
-    contacts = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     raw_headers = [],
     deps = [
         "fbsource//xplat/folly/portability:gtest",
@@ -48,7 +48,7 @@ fbcode_target(
     name = "ssl_errors_test",
     srcs = ["SSLErrorsTest.cpp"],
     headers = [],
-    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     deps = [
         "//folly/io/async/ssl:ssl_errors",
         "//folly/portability:gtest",
@@ -61,7 +61,7 @@ fbcode_target(
     name = "basic_transport_certificate_test",
     srcs = ["BasicTransportCertificateTest.cpp"],
     headers = [],
-    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     resources = [
         ":tests-cert.pem",
     ],
@@ -79,7 +79,7 @@ fbcode_target(
     name = "openssl_utils_test",
     srcs = ["OpenSSLUtilsTest.cpp"],
     headers = [],
-    emails = ["oncall+secure_pipes@xmail.facebook.com"],
+    oncall = "secure_pipes",
     deps = [
         "//folly:string",
         "//folly/io/async/ssl:openssl_utils",

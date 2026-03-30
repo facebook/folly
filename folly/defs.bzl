@@ -236,13 +236,15 @@ def folly_xplat_cxx_test(
         srcs,
         raw_headers = [],
         deps = [],
-        contacts = [],
+        oncall = None,
         **kwargs):
     # resources is cherry picked because some of the other kwargs
     # have issues that need to be investigated.
     # e.g., Some args are duplicated. Some args cause TSAN errors.
     # TODO(T188948036): Fix xplat/folly:folly-futures-test and folly_xplat_cxx_test
     resources = kwargs.get("resources", [])
+
+    oncall_kwargs = {"oncall": oncall} if oncall != None else {}
 
     fb_xplat_cxx_test(
         name = name,
@@ -253,8 +255,8 @@ def folly_xplat_cxx_test(
         deps = deps + [
             "//xplat/folly/test/common:test_main",
         ],
-        contacts = contacts,
         platforms = (CXX,),
+        **oncall_kwargs
     )
 
 def folly_xplat_cxx_binary(
@@ -262,14 +264,16 @@ def folly_xplat_cxx_binary(
         srcs,
         raw_headers = [],
         deps = [],
-        contacts = [],
+        oncall = None,
         **kwargs):
+    oncall_kwargs = {"oncall": oncall} if oncall != None else {}
+
     fb_xplat_cxx_binary(
         name = name,
         srcs = srcs,
         raw_headers = raw_headers,
         include_directories = _compute_include_directories(),
         deps = deps,
-        contacts = contacts,
         platforms = (CXX,),
+        **oncall_kwargs
     )
