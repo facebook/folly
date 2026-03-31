@@ -16,17 +16,127 @@
 
 #pragma once
 
-#include <boost/context/detail/fcontext.hpp>
 #include <glog/logging.h>
+#include <folly/Function.h>
 
 /**
  * Wrappers for different versions of boost::context library
  * API reference for different versions
  * Boost 1.61:
  * https://github.com/boostorg/context/blob/boost-1.61.0/include/boost/context/detail/fcontext.hpp
+ *
+ * On Windows ARM64, boost::context assembly stubs (jump_fcontext / make_fcontext)
+ * are not currently supported, so fall back to the native Windows Fibers API.
  */
 
-#include <folly/Function.h>
+#if defined(_WIN32) && defined(_M_ARM64)
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+
+namespace folly {
+namespace fibers {
+
+class FiberImpl {
+ public:
+  FiberImpl(
+      folly::Function<void()> func,
+      unsigned char* /*stackLimit*/,
+      size_t stackSize)
+      : func_(std::move(func)) {
+    fiber_ = CreateFiberEx(
+    stackSize,             
+    stackSize,            
+    FIBER_FLAG_FLOAT_SWITCH,
+    &FiberImpl::fiberFunc,
+    this);
+    CHECK(fiber_ != nullptr)
+    << "CreateFiberEx failed: " << GetLastError();
+  }
+
+  ~FiberImpl() {
+      if (fiber_) {
+          DCHECK(GetCurrentFiber() != fiber_)
+              << "Destroying fiber while it is active";
+          DeleteFiber(std::exchange(fiber_, nullptr));
+      }
+  }
+
+  FiberImpl(const FiberImpl&) = delete;
+  FiberImpl& operator=(const FiberImpl&) = delete;
+
+  FiberImpl(FiberImpl&& other) noexcept
+      : func_(std::move(other.func_)),
+        fiber_(std::exchange(other.fiber_, nullptr)),
+        mainFiber_(std::exchange(other.mainFiber_, nullptr)),
+        convertedThread_(std::exchange(other.convertedThread_, false)) {}
+
+  FiberImpl& operator=(FiberImpl&& other) noexcept {
+    if (this != &other) {
+      if (fiber_) DeleteFiber(fiber_);
+      func_ = std::move(other.func_);
+      fiber_ = std::exchange(other.fiber_, nullptr);
+      mainFiber_ = std::exchange(other.mainFiber_, nullptr);
+      convertedThread_ = std::exchange(other.convertedThread_, false);
+    }
+    return *this;
+  }
+
+  void activate() {
+      mainFiber_ = GetCurrentFiber();
+      // On ARM64 Windows, GetCurrentFiber() returns a garbage low address
+      // (e.g. 0x1E00) when the thread has not been converted to a fiber yet.
+      // A real fiber handle is always above 64KB (Windows minimum allocation
+      // granularity), so use 0x10000 as the threshold.
+      if (mainFiber_ == nullptr ||
+          mainFiber_ == INVALID_HANDLE_VALUE ||
+          reinterpret_cast<uintptr_t>(mainFiber_) < 0x10000) {
+          mainFiber_ = ConvertThreadToFiber(nullptr);
+          CHECK(mainFiber_ != nullptr)
+              << "ConvertThreadToFiber failed: " << GetLastError();
+          convertedThread_ = true;
+      }
+      SwitchToFiber(fiber_);
+  }
+
+
+  void deactivate() {
+    DCHECK(mainFiber_ != nullptr) << "deactivate() called before activate()";
+    SwitchToFiber(std::exchange(mainFiber_, nullptr));
+    if (convertedThread_) {
+        ConvertFiberToThread();
+        convertedThread_ = false;
+    }
+  }
+
+  void* getStackPointer() const { return nullptr; }
+
+ private:
+  static VOID CALLBACK fiberFunc(LPVOID param) {
+    auto* self = static_cast<FiberImpl*>(param);
+    self->func_();
+    // func_() must not return in normal folly::fibers usage.
+    // If it does, switch back to avoid undefined behavior — but
+    // don't call deactivate() as mainFiber_ may already be cleared.
+    CHECK(false) << "FiberImpl::func_() returned unexpectedly";
+  }
+
+  folly::Function<void()> func_;
+  LPVOID fiber_{nullptr};
+  LPVOID mainFiber_{nullptr};
+  bool convertedThread_{false};
+};
+
+} // namespace fibers
+} // namespace folly
+#else
+
+#include <boost/context/detail/fcontext.hpp>
 
 namespace folly {
 namespace fibers {
@@ -110,3 +220,4 @@ class FiberImpl {
 };
 } // namespace fibers
 } // namespace folly
+#endif
