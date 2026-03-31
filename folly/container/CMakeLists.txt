@@ -115,6 +115,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME fixed_capacity_ring_queue
+  HEADERS
+    FixedCapacityRingQueue.h
+  EXPORTED_DEPS
+    folly_lang_bits
+)
+
+folly_add_library(
   NAME foreach
   HEADERS
     Foreach-inl.h

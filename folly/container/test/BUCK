@@ -20,6 +20,15 @@ load(
 
 oncall("fbcode_entropy_wardens_folly")
 
+fb_dirsync_cpp_unittest(
+    name = "fixed_capacity_ring_queue_test",
+    srcs = ["FixedCapacityRingQueueTest.cpp"],
+    deps = [
+        "//folly/container:fixed_capacity_ring_queue",
+        "//folly/portability:gtest",
+    ],
+)
+
 non_fbcode_target(
     _kind = folly_xplat_cxx_test,
     name = "f14_set-test",
