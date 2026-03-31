@@ -31,9 +31,6 @@ namespace folly {
  * Tiny exclusive lock that uses 2 bits. It is stored as 1 byte and
  * has APIs for using the remaining 6 bits for storing user data.
  *
- * You should zero-initialize the bits of a MicroLock that you intend
- * to use.
- *
  * If you're not space-constrained, prefer std::mutex, which will
  * likely be faster, since it has more than two bits of information to
  * work with.
