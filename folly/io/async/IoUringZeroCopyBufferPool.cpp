@@ -17,10 +17,10 @@
 #include <folly/io/async/IoUringZeroCopyBufferPool.h>
 
 #include <mutex>
-#include <queue>
 
 #include <folly/Conv.h>
 #include <folly/String.h>
+#include <folly/container/FixedCapacityRingQueue.h>
 #include <folly/lang/Align.h>
 #include <folly/portability/SysMman.h>
 #include <folly/synchronization/DistributedMutex.h>
@@ -75,22 +75,13 @@ class IoUringZeroCopyBufferPoolImpl {
   size_t getPendingBuffersSize() const noexcept {
     return pendingBuffers_.size();
   }
-  uint32_t getFlushThreshold() const noexcept { return flushThreshold_; }
-  uint16_t getAndResetFlushFailures() noexcept {
-    return flushFailures_.exchange(0, std::memory_order_relaxed);
-  }
-  uint16_t getAndResetFlushCount() noexcept {
-    return flushCount_.exchange(0, std::memory_order_relaxed);
-  }
 
  private:
   void mapMemory();
   void checkZcRxFeatures();
   void initialRegister(uint32_t ifindex, uint16_t queueId);
   void delayedDestroy(uint32_t refs) noexcept;
-  uint32_t getRingQueuedCount() const noexcept;
-  void writeBufferToRing(Buffer* buffer) noexcept;
-  void flushRefillQueue() noexcept;
+  void refillBuffer(Buffer* buffer) noexcept;
 
   struct io_uring* ring_{nullptr};
   uint32_t bufferSize_{0};
@@ -111,10 +102,7 @@ class IoUringZeroCopyBufferPoolImpl {
   folly::DistributedMutex mutex_;
   std::atomic<bool> wantsShutdown_{false};
   uint32_t shutdownReferences_{0};
-  std::queue<Buffer*> pendingBuffers_;
-  uint32_t flushThreshold_{128};
-  std::atomic<uint16_t> flushFailures_{0};
-  std::atomic<uint16_t> flushCount_{0};
+  FixedCapacityRingQueue<Buffer*> pendingBuffers_;
   SupportedFeatures supportedFeatures_{};
 };
 
@@ -127,7 +115,7 @@ struct ImplDeleter {
 };
 
 namespace {
-struct RingQueue {
+struct RefillRingHeader {
   uint32_t head;
   uint32_t tail;
 };
@@ -179,23 +167,8 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
   checkZcRxFeatures();
   mapMemory();
 
-  // Calculate flush threshold to bound pending queue growth.
-  //
-  // When pending buffers reach this threshold, we flush to the kernel which
-  // drains entries from the refill ring, freeing space for pending buffers.
-  //
-  // Threshold = max(128, min(rqEntries/4, numBuffers/20)):
-  // - rqEntries/4 (25% of ring): scales with kernel's drain capacity per flush
-  // - numBuffers/20 (5% of pool): caps memory sitting idle in pending queue
-  // - min(): use the smaller limit to respect both constraints
-  // - max(128): floor of 4 × ZCRX_FLUSH_BATCH to ensure batching efficiency
-  constexpr uint32_t kKernelFlushBatch = 32;
-  constexpr uint32_t kMinFlushThreshold = 4 * kKernelFlushBatch;
-  flushThreshold_ = std::max(
-      kMinFlushThreshold,
-      std::min(
-          static_cast<uint32_t>(rqEntries_ / 4), // 25% of ring
-          static_cast<uint32_t>(params.numBuffers / 20))); // 5% of pool
+  pendingBuffers_ =
+      FixedCapacityRingQueue<Buffer*>(static_cast<uint32_t>(params.numBuffers));
 
   if (!test) {
     initialRegister(params.ifindex, params.queueId);
@@ -203,11 +176,11 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
     // rqRing_ is normally set up using information that the kernel fills in via
     // io_uring_register_ifq(). Unit tests do not do this, so fake it.
     rqRing_.khead = reinterpret_cast<uint32_t*>(
-        (static_cast<char*>(rqRingArea_) + offsetof(RingQueue, head)));
+        (static_cast<char*>(rqRingArea_) + offsetof(RefillRingHeader, head)));
     rqRing_.ktail = reinterpret_cast<uint32_t*>(
-        (static_cast<char*>(rqRingArea_) + offsetof(RingQueue, tail)));
+        (static_cast<char*>(rqRingArea_) + offsetof(RefillRingHeader, tail)));
     rqRing_.rqes = reinterpret_cast<struct io_uring_zcrx_rqe*>(
-        static_cast<char*>(rqRingArea_) + sizeof(RingQueue));
+        static_cast<char*>(rqRingArea_) + sizeof(RefillRingHeader));
     rqRing_.rq_tail = 0;
     rqRing_.ring_entries = rqEntries_;
   }
@@ -315,16 +288,13 @@ void IoUringZeroCopyBufferPoolImpl::initialRegister(
   rqRing_.rq_tail = 0;
   rqRing_.ring_entries = ifqReg.rq_entries;
 
+  rqEntries_ = ifqReg.rq_entries;
   rqAreaToken_ = areaReg.rq_area_token;
   rqMask_ = ifqReg.rq_entries - 1;
   id_ = ifqReg.zcrx_id;
 }
 
-uint32_t IoUringZeroCopyBufferPoolImpl::getRingQueuedCount() const noexcept {
-  return rqTail_ - io_uring_smp_load_acquire(rqRing_.khead);
-}
-
-void IoUringZeroCopyBufferPoolImpl::writeBufferToRing(Buffer* buffer) noexcept {
+void IoUringZeroCopyBufferPoolImpl::refillBuffer(Buffer* buffer) noexcept {
   uint32_t myTail = rqTail_++;
 
   struct io_uring_zcrx_rqe* rqe = &rqRing_.rqes[myTail & rqMask_];
@@ -342,27 +312,18 @@ void IoUringZeroCopyBufferPoolImpl::returnBuffer(Buffer* buffer) noexcept {
   }
 
   uint32_t startTail = rqTail_;
+  uint32_t freeEntries = getRingFreeCount();
 
-  // Trigger flush when pending buffers reach threshold computed from:
-  // max(128, min(25% of ring, 5% of pool))
-  // This bounds pending queue growth per Little's Law: L = λW
-  if (pendingBuffers_.size() >= flushThreshold_) {
-    flushRefillQueue();
-  }
-
-  uint32_t queueLength = getRingQueuedCount();
-  uint32_t slots = rqRing_.ring_entries - queueLength;
-  auto numToProcess =
-      std::min(pendingBuffers_.size(), static_cast<size_t>(slots));
-  for (size_t i = 0; i < numToProcess; i++) {
-    writeBufferToRing(pendingBuffers_.front());
-    pendingBuffers_.pop();
-  }
-
-  if (numToProcess < slots) {
-    writeBufferToRing(buffer);
+  if (freeEntries > 0) {
+    refillBuffer(buffer);
+    freeEntries--;
   } else {
     pendingBuffers_.push(buffer);
+  }
+
+  uint32_t refillCount = std::min(pendingBuffers_.size(), freeEntries);
+  for (uint32_t i = 0; i < refillCount; i++) {
+    refillBuffer(pendingBuffers_.pop());
   }
 
   if (rqTail_ != startTail) {
@@ -373,29 +334,6 @@ void IoUringZeroCopyBufferPoolImpl::returnBuffer(Buffer* buffer) noexcept {
 void IoUringZeroCopyBufferPoolImpl::delayedDestroy(uint32_t refs) noexcept {
   if (refs == 0) {
     delete this;
-  }
-}
-
-void IoUringZeroCopyBufferPoolImpl::flushRefillQueue() noexcept {
-  // ring_ is nullptr in unit tests which don't have a real io_uring.
-  if (ring_ == nullptr) {
-    return;
-  }
-  struct zcrx_ctrl ctrl{};
-  ctrl.zcrx_id = id_;
-  ctrl.op = ZCRX_CTRL_FLUSH_RQ;
-
-  // Best-effort flush: on failure (e.g., -EOPNOTSUPP on older kernels),
-  // buffers remain in pendingBuffers_ and are processed when ring space
-  // becomes available naturally.
-  int ret =
-      io_uring_register(ring_->ring_fd, IORING_REGISTER_ZCRX_CTRL, &ctrl, 0);
-  flushCount_.fetch_add(1, std::memory_order_relaxed);
-  if (ret < 0) {
-    flushFailures_.fetch_add(1, std::memory_order_relaxed);
-    LOG_EVERY_N(WARNING, 100)
-        << "Zero copy receive refill queue flush failed: "
-        << folly::errnoStr(-ret);
   }
 }
 
@@ -503,18 +441,6 @@ uint32_t IoUringZeroCopyBufferPool::getRingFreeCount() const noexcept {
 
 size_t IoUringZeroCopyBufferPool::getPendingBuffersSize() const noexcept {
   return impl_->getPendingBuffersSize();
-}
-
-uint32_t IoUringZeroCopyBufferPool::getFlushThreshold() const noexcept {
-  return impl_->getFlushThreshold();
-}
-
-uint16_t IoUringZeroCopyBufferPool::getAndResetFlushFailures() noexcept {
-  return impl_->getAndResetFlushFailures();
-}
-
-uint16_t IoUringZeroCopyBufferPool::getAndResetFlushCount() noexcept {
-  return impl_->getAndResetFlushCount();
 }
 
 } // namespace folly
