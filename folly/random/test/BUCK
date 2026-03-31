@@ -1,56 +1,9 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load(
-    "@fbsource//tools/build_defs:platform_defs.bzl",
-    "ANDROID",
-    "APPLE",
-    "CXX",
-    "WINDOWS",
-)
-load(
-    "../../defs.bzl",
-    "FBANDROID_CXXFLAGS",
-    "FBOBJC_CXXFLAGS",
-    "folly_xplat_cxx_test",
-)
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
-    name = "hash_test",
-    srcs = ["hash_test.cpp"],
-    fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
-    fbobjc_compiler_flags = FBOBJC_CXXFLAGS,
-    platforms = (ANDROID, APPLE, CXX, WINDOWS),
-    deps = [
-        "//xplat/folly/container:span",
-        "//xplat/folly/portability:gtest",
-        "//xplat/folly/random:hash",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
-    name = "xoshiro256pp_test",
-    srcs = ["Xoshiro256ppTest.cpp"],
-    fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
-    fbobjc_compiler_flags = FBOBJC_CXXFLAGS,
-    platforms = (ANDROID, APPLE, CXX, WINDOWS),
-    deps = [
-        "//xplat/folly/lang:keep",
-        "//xplat/folly/portability:gtest",
-        "//xplat/folly/random:xoshiro256pp",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "engine_bench",
     srcs = ["engine_bench.cpp"],
     deps = [
@@ -61,8 +14,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "hash_test",
     srcs = ["hash_test.cpp"],
     deps = [
@@ -72,8 +24,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "seed_seq_test",
     srcs = ["seed_seq_test.cpp"],
     deps = [
@@ -83,12 +34,10 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "xoshiro256pp_test",
     srcs = ["Xoshiro256ppTest.cpp"],
     deps = [
-        "//folly/lang:keep",
         "//folly/portability:gtest",
         "//folly/random:xoshiro256pp",
     ],
