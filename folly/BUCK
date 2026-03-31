@@ -1423,23 +1423,6 @@ fb_dirsync_cpp_library(
 
 non_fbcode_target(
     _kind = folly_xplat_library,
-    name = "external_farmhash_farmhash",
-    srcs = [
-        "external/farmhash/farmhash.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
-        "external/farmhash/farmhash.h",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/portability:config",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
     name = "test_test_utils",
     raw_headers = [
         "test/TestUtils.h",
