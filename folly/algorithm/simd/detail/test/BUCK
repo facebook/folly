@@ -1,21 +1,18 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
-load("../../../../defs.bzl", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "simd_any_of_test",
     srcs = [
         "SimdAnyOfTest.cpp",
     ],
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:range",
-        "//xplat/folly/algorithm/simd/detail:simd_any_of",
-        "//xplat/folly/algorithm/simd/detail:simd_platform",
+        "//folly:range",
+        "//folly/algorithm/simd/detail:simd_any_of",
+        "//folly/algorithm/simd/detail:simd_platform",
+        "//folly/container:span",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -46,21 +43,6 @@ fb_dirsync_cpp_unittest(
     ],
     deps = [
         "//folly/algorithm/simd/detail:unroll_utils",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "simd_any_of_test",
-    srcs = [
-        "SimdAnyOfTest.cpp",
-    ],
-    deps = [
-        "//folly:range",
-        "//folly/algorithm/simd/detail:simd_any_of",
-        "//folly/algorithm/simd/detail:simd_platform",
-        "//folly/container:span",
         "//folly/portability:gtest",
     ],
 )
