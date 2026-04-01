@@ -30,8 +30,8 @@ magic_enum
 # specific configuration we rely on the folly manifest to provide this
 # dependency to avoid duplication.
 
-[dependencies.all(distro=centos_stream,distro_vers=9)]
-gcc14
+[rpms.all(distro=centos_stream,distro_vers=9)]
+gcc-toolset-14
 
 [cmake.defines.all(distro=centos_stream,distro_vers=9)]
 CMAKE_C_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/gcc
