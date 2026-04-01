@@ -109,6 +109,22 @@ TEST(CollectionUtilTest, hasContains) {
       !detail::HasFind<std::deque<int>, int>);
 }
 
+// Container with key_type but no .contains() or .find().
+// Exercises the fallback path in the key_type overload of contains().
+template <typename K>
+class HasKeyTypeOnly {
+ public:
+  using key_type = K;
+  using value_type = K;
+  using const_iterator = typename std::vector<K>::const_iterator;
+  const_iterator begin() const { return data_.begin(); }
+  const_iterator end() const { return data_.end(); }
+  void push_back(const K& v) { data_.push_back(v); }
+
+ private:
+  std::vector<K> data_;
+};
+
 template <typename K, typename V>
 class OnlyHasFind {
  public:
@@ -136,6 +152,21 @@ TEST(CollectionUtilTest, hasFind) {
 
   OnlyHasFind<int, int> myMap2;
   EXPECT_FALSE(folly::contains(myMap, 0));
+}
+
+TEST(CollectionUtilTest, containsFallbackWithKeyType) {
+  // Regression test: a container with key_type but no .contains() or .find()
+  // previously caused infinite recursion (stack overflow).
+  static_assert(
+      !detail::HasContains<HasKeyTypeOnly<int>, int> &&
+      !detail::HasFind<HasKeyTypeOnly<int>, int>);
+
+  HasKeyTypeOnly<int> c;
+  c.push_back(1);
+  c.push_back(2);
+  c.push_back(3);
+  EXPECT_TRUE(folly::contains(c, 2));
+  EXPECT_FALSE(folly::contains(c, 4));
 }
 
 TEST(CollectionUtilTest, dynamicContains) {
