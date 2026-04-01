@@ -41,10 +41,10 @@ class RegexMatchCache::RegexObject {
 
  public:
   explicit RegexObject(std::string_view const regex)
-      : object{std::string(regex)} {}
+      : object{regex.begin(), regex.end()} {}
 
   bool operator()(std::string_view const string) const {
-    return boost::regex_match(std::string(string), object);
+    return boost::regex_match(string.begin(), string.end(), object);
   }
 };
 
