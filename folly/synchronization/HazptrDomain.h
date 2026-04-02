@@ -252,9 +252,7 @@ class hazptr_domain {
   friend class hazptr_holder<Atom>;
   friend class hazptr_obj<Atom>;
   friend class hazptr_obj_cohort<Atom>;
-#if FOLLY_HAZPTR_THR_LOCAL
   friend class hazptr_tc<Atom>;
-#endif
 
   struct default_domain_tag {};
 
@@ -316,7 +314,7 @@ class hazptr_domain {
   }
 
   /** acquire_hprecs */
-  Rec* acquire_hprecs(uint8_t num) {
+  Rec* acquire_hprecs(size_t num) {
     DCHECK_GE(num, 1);
     auto [n, head] = try_pop_available_hprecs(num);
     for (; n < num; ++n) {
@@ -679,7 +677,7 @@ class hazptr_domain {
     }
   }
 
-  std::pair<uint8_t, Rec*> try_pop_available_hprecs(uint8_t num) {
+  std::pair<size_t, Rec*> try_pop_available_hprecs(size_t num) {
     DCHECK_GE(num, 1);
     while (true) {
       uintptr_t avail = load_avail();
@@ -691,7 +689,7 @@ class hazptr_domain {
         if (cas_avail(avail, avail | kLockBit)) {
           // Lock acquired
           Rec* head = reinterpret_cast<Rec*>(avail);
-          uint8_t nn = pop_available_hprecs_release_lock(num, head);
+          size_t nn = pop_available_hprecs_release_lock(num, head);
           // Lock released
           DCHECK_GE(nn, 1);
           DCHECK_LE(nn, num);
@@ -703,12 +701,12 @@ class hazptr_domain {
     }
   }
 
-  uint8_t pop_available_hprecs_release_lock(uint8_t num, Rec* head) {
+  size_t pop_available_hprecs_release_lock(size_t num, Rec* head) {
     // Lock already acquired
     DCHECK_GE(num, 1);
     DCHECK(head);
     Rec* tail = head;
-    uint8_t nn = 1;
+    size_t nn = 1;
     Rec* next = tail->next_avail();
     while ((next != nullptr) && (nn < num)) {
       DCHECK_EQ(reinterpret_cast<uintptr_t>(next) & kLockBit, 0);

@@ -16,17 +16,23 @@
 
 #pragma once
 
-#include <folly/synchronization/Hazptr-fwd.h>
-
-#if FOLLY_HAZPTR_THR_LOCAL
-
+#include <algorithm>
 #include <atomic>
+#include <vector>
 
 #include <glog/logging.h>
 
-#include <folly/SingletonThreadLocal.h>
+#include <folly/lang/Align.h>
+#include <folly/lang/Bits.h>
+#include <folly/synchronization/Hazptr-fwd.h>
 #include <folly/synchronization/HazptrObj.h>
 #include <folly/synchronization/HazptrRec.h>
+
+#if FOLLY_HAZPTR_THR_LOCAL
+
+#include <folly/SingletonThreadLocal.h>
+
+#endif // FOLLY_HAZPTR_THR_LOCAL
 
 /**
  *  Thread local classes and singletons
@@ -62,23 +68,52 @@ class hazptr_tc_entry {
  *  hazptr_tc:
  *
  *  Thread cache of hazptr_rec-s that belong to the default domain.
+ *
+ *  Uses a single dynamically-sized vector as the backing store. The
+ *  hot paths (try_get, try_put) touch two cache lines for pure
+ *  thread-local work with no atomics or contention: one for the
+ *  vector metadata (data pointer, size, capacity) and count, and one
+ *  for the actual entry being read or written.
+ *
+ *  A usage-aware decay mechanism gradually releases excess records
+ *  (those beyond kCapacity) back to the domain when demand has
+ *  subsided. Every kDecayThreshold fast-path puts when count exceeds
+ *  kCapacity, the algorithm checks whether the excess was actively
+ *  used during the window. If underutilized, both the record count
+ *  and the allocation are shrunk, reclaiming memory. Active use
+ *  (via try_put_slow) resets the tick counter and starts a new decay
+ *  window.
  */
 template <template <typename> class Atom>
-class hazptr_tc {
-  static constexpr uint8_t kCapacity = 9;
+class alignas(hardware_constructive_interference_size) hazptr_tc {
+  static constexpr size_t kCapacity = 16;
+  static constexpr size_t kDecayThreshold = 1024;
 
-  hazptr_tc_entry<Atom> entry_[kCapacity];
-  uint8_t count_{0};
+  using Rec = hazptr_rec<Atom>;
+  using Entry = hazptr_tc_entry<Atom>;
+
+  size_t count_{0};
+  size_t window_start_{0};
+  uint32_t put_tick_{0};
   bool local_{false}; // for debug mode only
+  std::vector<Entry> vec_;
 
  public:
-  ~hazptr_tc() { evict(count()); }
+  hazptr_tc() = default;
+  ~hazptr_tc() { evict(); }
 
-  static constexpr uint8_t capacity() noexcept { return kCapacity; }
+  hazptr_tc(const hazptr_tc&) = delete;
+  hazptr_tc(hazptr_tc&&) = delete;
+  hazptr_tc& operator=(const hazptr_tc&) = delete;
+  hazptr_tc& operator=(hazptr_tc&&) = delete;
+
+  static constexpr size_t min_capacity() noexcept { return kCapacity; }
+
+  FOLLY_ALWAYS_INLINE size_t count() const noexcept { return count_; }
+
+  size_t allocated_capacity() const noexcept { return vec_.capacity(); }
 
  private:
-  using Rec = hazptr_rec<Atom>;
-
   template <uint8_t, template <typename> class>
   friend class hazptr_array;
   friend class hazptr_holder<Atom>;
@@ -88,70 +123,130 @@ class hazptr_tc {
   template <uint8_t M, template <typename> class A>
   friend hazptr_array<M, A> make_hazard_pointer_array();
   friend void hazptr_tc_evict<Atom>();
+  template <template <typename> class A>
+  friend struct hazptr_tc_tester;
 
   FOLLY_ALWAYS_INLINE
-  hazptr_tc_entry<Atom>& operator[](uint8_t i) noexcept {
-    DCHECK(i <= capacity());
-    return entry_[i];
+  Entry& operator[](size_t i) noexcept {
+    DCHECK(i < vec_.size());
+    return vec_[i];
   }
 
-  FOLLY_ALWAYS_INLINE hazptr_rec<Atom>* try_get() noexcept {
+  FOLLY_ALWAYS_INLINE Rec* try_get() noexcept {
     if (FOLLY_LIKELY(count_ > 0)) {
-      auto hprec = entry_[--count_].get();
-      return hprec;
+      return vec_[--count_].get();
     }
     return nullptr;
   }
 
-  FOLLY_ALWAYS_INLINE bool try_put(hazptr_rec<Atom>* hprec) noexcept {
-    if (FOLLY_LIKELY(count_ < capacity())) {
-      entry_[count_++].fill(hprec);
+  FOLLY_ALWAYS_INLINE bool try_put(Rec* hprec) noexcept {
+    if (FOLLY_LIKELY(count_ < vec_.size())) {
+      vec_[count_++].fill(hprec);
+      if (FOLLY_UNLIKELY(
+              count_ > kCapacity && ++put_tick_ >= kDecayThreshold)) {
+        decay();
+      }
       return true;
     }
-    return false;
+    return try_put_slow(hprec);
   }
 
-  FOLLY_ALWAYS_INLINE uint8_t count() const noexcept { return count_; }
+  FOLLY_NOINLINE bool try_put_slow(Rec* hprec) noexcept {
+    put_tick_ = 0;
+    size_t new_cap = std::max(kCapacity, folly::nextPowTwo(count_ + 1));
+    vec_.resize(new_cap);
+    vec_[count_++].fill(hprec);
+    window_start_ = count_;
+    return true;
+  }
 
-  FOLLY_ALWAYS_INLINE void set_count(uint8_t val) noexcept { count_ = val; }
+  FOLLY_NOINLINE void decay() {
+    put_tick_ = 0;
+    if (count_ <= kCapacity) {
+      return;
+    }
 
-  FOLLY_NOINLINE void fill(uint8_t num) {
-    DCHECK_LE(count_ + num, capacity());
+    size_t cap = vec_.capacity();
+    size_t excess = count_ - kCapacity;
+    size_t excess_cap = cap - kCapacity;
+    size_t start_excess =
+        window_start_ > kCapacity ? window_start_ - kCapacity : 0;
+    size_t drawn = start_excess > excess ? start_excess - excess : 0;
+
+    if (drawn <= excess_cap / 4) {
+      size_t new_cap = std::max(kCapacity, cap / 2);
+      size_t new_excess_cap = new_cap > kCapacity ? new_cap - kCapacity : 0;
+      size_t new_excess = std::min(excess, new_excess_cap / 2);
+      size_t new_count = kCapacity + new_excess;
+      if (new_count < count_ || new_cap < cap) {
+        shrink_to(new_count, new_cap);
+      }
+    }
+    window_start_ = count_;
+  }
+
+  void shrink_to(size_t new_count, size_t new_cap) {
+    release_hprecs(new_count, count_);
+    count_ = new_count;
+    if (new_cap < vec_.capacity()) {
+      std::vector<Entry> new_vec(vec_.begin(), vec_.begin() + count_);
+      new_vec.resize(new_cap);
+      vec_ = std::move(new_vec);
+    }
+  }
+
+  FOLLY_ALWAYS_INLINE void set_count(size_t val) noexcept { count_ = val; }
+
+  FOLLY_NOINLINE void fill(size_t num) {
+    if (count_ + num > vec_.size()) {
+      size_t new_cap = std::max(kCapacity, folly::nextPowTwo(count_ + num));
+      vec_.resize(new_cap);
+    }
     auto& domain = default_hazptr_domain<Atom>();
     Rec* hprec = domain.acquire_hprecs(num);
-    for (uint8_t i = 0; i < num; ++i) {
+    for (size_t i = 0; i < num; ++i) {
       DCHECK(hprec);
       Rec* next = hprec->next_avail();
       hprec->set_next_avail(nullptr);
-      entry_[count_++].fill(hprec);
+      vec_[count_++].fill(hprec);
       hprec = next;
     }
     DCHECK(hprec == nullptr);
   }
 
-  FOLLY_NOINLINE void evict(uint8_t num) {
+  FOLLY_NOINLINE void evict(size_t num) {
     DCHECK_GE(count_, num);
     if (num == 0) {
       return;
     }
+    size_t new_count = count_ - num;
+    release_hprecs(new_count, count_);
+    count_ = new_count;
+  }
+
+  void evict() {
+    release_hprecs(0, count_);
+    count_ = 0;
+  }
+
+  void release_hprecs(size_t from, size_t to) {
+    if (from >= to) {
+      return;
+    }
     Rec* head = nullptr;
     Rec* tail = nullptr;
-    for (uint8_t i = 0; i < num; ++i) {
-      Rec* rec = entry_[--count_].get();
-      DCHECK(rec);
+    for (size_t i = from; i < to; ++i) {
+      Rec* rec = vec_[i].get();
       rec->set_next_avail(head);
       head = rec;
       if (!tail) {
         tail = rec;
       }
     }
-    DCHECK(head);
-    DCHECK(tail);
-    DCHECK(tail->next_avail() == nullptr);
-    hazard_pointer_default_domain<Atom>().release_hprecs(head, tail);
+    if (head) {
+      hazard_pointer_default_domain<Atom>().release_hprecs(head, tail);
+    }
   }
-
-  void evict() { evict(count()); }
 
   bool local() const noexcept { // for debugging only
     return local_;
@@ -161,6 +256,8 @@ class hazptr_tc {
     local_ = b;
   }
 }; // hazptr_tc
+
+#if FOLLY_HAZPTR_THR_LOCAL
 
 struct hazptr_tc_tls_tag {};
 /** hazptr_tc_tls */
@@ -175,6 +272,6 @@ void hazptr_tc_evict() {
   hazptr_tc_tls<Atom>().evict();
 }
 
-} // namespace folly
-
 #endif // FOLLY_HAZPTR_THR_LOCAL
+
+} // namespace folly

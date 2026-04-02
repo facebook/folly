@@ -190,6 +190,8 @@ folly_add_library(
     folly_container_f14_hash
     folly_detail_static_singleton_manager
     folly_function
+    folly_lang_align
+    folly_lang_bits
     folly_portability
     folly_portability_config
     folly_singleton_thread_local

@@ -484,7 +484,7 @@ void array_test() {
 template <template <typename> class Atom = std::atomic>
 void array_dtor_full_tc_test() {
 #if FOLLY_HAZPTR_THR_LOCAL
-  const uint8_t M = hazptr_tc<Atom>::capacity();
+  const uint8_t M = hazptr_tc<Atom>::min_capacity();
 #else
   const uint8_t M = 3;
 #endif
@@ -1585,7 +1585,7 @@ uint64_t tc_miss_bench(std::string name, int nthreads) {
   hazptr_tc_evict();
   hazard_pointer_default_domain<>().delete_hazard_pointers();
   // Thread cache capacity
-  constexpr int C = hazptr_tc<>::capacity();
+  constexpr int C = hazptr_tc<>::min_capacity();
   // Number of unavailable hazard pointers that will be at the head of
   // the main list of hazard pointers before reaching available ones.
   constexpr int N = 10000;

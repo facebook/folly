@@ -205,6 +205,17 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_unittest,
+    name = "hazptr_tc_test",
+    srcs = ["HazptrTcTest.cpp"],
+    deps = [
+        "//folly/lang:bits",
+        "//folly/portability:gtest",
+        "//folly/synchronization:hazptr",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_benchmark,
     name = "hazptr_bench",
     srcs = ["HazptrBench.cpp"],
