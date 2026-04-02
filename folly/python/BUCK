@@ -68,8 +68,7 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "executor",
     srcs = ["executor.pyx"],
     headers = [
@@ -78,14 +77,16 @@ non_fbcode_target(
     ],
     header_namespace = "folly/python",
     cpp_deps = [
+        "//folly/portability:unistd",
         ":asyncio_executor",
-        ":proactor_executor",
         ":executor_lib",
+        ":proactor_executor",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     visibility = ["PUBLIC"],
     deps = [
-        "//xplat/folly/python:folly",
+        ":folly",
     ],
 )
 
@@ -125,20 +126,18 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "coro",
-    headers = {
-        "coro.pxd": "coro.pxd",
-    },
+    headers = ["coro.pxd"],
     cpp_deps = [
-        "//xplat/folly/experimental/coro:task",
-        "//xplat/folly/python:coro_lib",
+        "//folly:cancellation_token",
+        ":coro_lib",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     visibility = ["PUBLIC"],
     deps = [
-        "//xplat/folly/python:executor",
+        ":executor",
     ],
 )
 
@@ -165,17 +164,18 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "folly",
-    headers = {"__init__.pxd": "__init__.pxd"},
+    headers = ["__init__.pxd"],
     cpp_deps = [
-        "fbsource//xplat/folly/futures:core",
-        "//xplat/folly:exception_wrapper",
-        "//xplat/folly:executor",
-        "//xplat/folly:try",
-        "//xplat/folly:unit",
+        "//folly/futures:core",
+        "//folly:exception_wrapper",
+        "//folly:executor",
+        "//folly:portability",
+        "//folly:try",
+        "//folly:unit",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     visibility = ["PUBLIC"],
 )
@@ -202,21 +202,18 @@ fb_dirsync_rule(
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "async_generator",
-    headers = {
-        "async_generator.pxd": "async_generator.pxd",
-    },
+    headers = ["async_generator.pxd"],
     cpp_deps = [
-        "//xplat/folly/experimental/coro:async_generator",
-        "//xplat/folly/python:async_generator_lib",
+        ":async_generator_lib",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     visibility = ["PUBLIC"],
     deps = [
-        "//xplat/folly/python:coro",
-        "//xplat/folly/python:optional",
+        ":coro",
+        ":optional",
     ],
 )
 
@@ -504,21 +501,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cython_library,
-    name = "folly",
-    headers = ["__init__.pxd"],
-    cpp_deps = [
-        "//folly/futures:core",
-        "//folly:exception_wrapper",
-        "//folly:executor",
-        "//folly:try",
-        "//folly:portability",
-        "//folly:unit",
-    ],
-    package = "folly",
-)
-
-fbcode_target(
     _kind = cpp_library,
     name = "executor_lib",
     srcs = [
@@ -564,28 +546,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cython_library,
-    name = "executor",
-    srcs = [
-        "executor.pyx",
-    ],
-    headers = [
-        "executor.pxd",
-        "executor_detail.pxd",
-    ],
-    cpp_deps = [
-        "//folly/portability:unistd",
-        ":asyncio_executor",
-        ":executor_lib",
-        ":proactor_executor",
-    ],
-    package = "folly",
-    deps = [
-        ":folly",
-    ],
-)
-
-fbcode_target(
     _kind = cpp_library,
     name = "futures_lib",
     headers = [
@@ -614,22 +574,6 @@ fbcode_target(
         "//folly:executor",
         "//folly:portability",
         "//folly/coro:task",
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "coro",
-    headers = [
-        "coro.pxd",
-    ],
-    cpp_deps = [
-        "//folly:cancellation_token",
-        ":coro_lib",
-    ],
-    package = "folly",
-    deps = [
-        ":executor",
     ],
 )
 
@@ -717,22 +661,6 @@ fbcode_target(
         "//folly:portability",
         "//folly/coro:async_generator",
         "//folly/coro:task",
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "async_generator",
-    headers = [
-        "async_generator.pxd",
-    ],
-    cpp_deps = [
-        ":async_generator_lib",
-    ],
-    package = "folly",
-    deps = [
-        ":coro",
-        ":optional",
     ],
 )
 
