@@ -331,6 +331,12 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   static void registerThreadPoolExecutor(ThreadPoolExecutor* tpe);
   static void deregisterThreadPoolExecutor(ThreadPoolExecutor* tpe);
 
+  // Destroy all task observers. Must be called from derived class destructors
+  // after stop(), while the derived class vtable is still valid. This ensures
+  // observer cleanup (e.g., fb303 callback unregistration) happens before the
+  // vtable reverts to the base class.
+  void destroyTaskObservers();
+
   // Prerequisite: threadListLock_ readlocked or writelocked
   virtual size_t getPendingTaskCountImpl() const = 0;
 

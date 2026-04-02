@@ -64,6 +64,10 @@ ThreadPoolExecutor::ThreadPoolExecutor(
 ThreadPoolExecutor::~ThreadPoolExecutor() {
   joinKeepAliveOnce();
   CHECK_EQ(0, threadList_.get().size());
+  destroyTaskObservers();
+}
+
+void ThreadPoolExecutor::destroyTaskObservers() {
   auto* taskObserver =
       taskObservers_.exchange(nullptr, std::memory_order_acquire);
   while (taskObserver != nullptr) {

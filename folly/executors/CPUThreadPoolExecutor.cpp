@@ -183,6 +183,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
 CPUThreadPoolExecutor::~CPUThreadPoolExecutor() {
   deregisterThreadPoolExecutor(this);
   stop();
+  destroyTaskObservers();
   CHECK(threadsToStop_ == 0);
   if (getNumPriorities() == 1) {
     delete queueObservers_[0];
