@@ -1,6 +1,7 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cython_library.bzl", "CYTHON_DEFAULT_APPLE_SDKS", "CYTHON_DEFAULT_PLATFORMS", "cython_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
 load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -20,19 +21,17 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "range",
-    headers = {
-        "range.pxd": "range.pxd",
-    },
+    headers = ["range.pxd"],
     cpp_deps = [
-        "//xplat/folly:range",
+        "//folly:range",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     visibility = ["PUBLIC"],
     deps = [
-        "//xplat/folly/python:folly",
+        ":folly",
     ],
 )
 
@@ -181,8 +180,7 @@ non_fbcode_target(
     visibility = ["PUBLIC"],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "fibers",
     srcs = ["fiber_manager.pyx"],
     headers = [
@@ -190,16 +188,17 @@ non_fbcode_target(
         "fibers.pxd",
     ],
     cpp_deps = [
-        "//xplat/folly/fibers:core",
-        "//xplat/folly/fibers:executor_loop_controller",
-        "//xplat/folly/fibers:loop_controller",
-        "//xplat/folly/python:fibers_lib",
+        "//folly/fibers:core",
+        "//folly/fibers:executor_loop_controller",
+        "//folly/fibers:loop_controller",
+        ":fibers_lib",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     visibility = ["PUBLIC"],
     deps = [
-        "//xplat/folly/python:folly",
-        "//xplat/folly/python:futures",
+        ":folly",
+        ":futures",
     ],
 )
 
@@ -237,32 +236,28 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "memory",
-    headers = {
-        "memory.pxd": "memory.pxd",
-    },
+    headers = ["memory.pxd"],
     cpp_deps = [
-        "//xplat/folly:memory",
+        "//folly:memory",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     visibility = ["PUBLIC"],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "function",
-    headers = {
-        "function.pxd": "function.pxd",
-    },
+    headers = ["function.pxd"],
     cpp_deps = [
-        "//xplat/folly:function",
+        "//folly:function",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     visibility = ["PUBLIC"],
     deps = [
-        "//xplat/folly/python:folly",
+        ":folly",
     ],
 )
 
@@ -363,46 +358,40 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "cast",
-    headers = {
-        "cast.pxd": "cast.pxd",
-    },
+    headers = ["cast.pxd"],
     cpp_deps = [
-        "//xplat/folly/lang:cast",
+        "//folly/lang:cast",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     visibility = ["PUBLIC"],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "expected",
-    headers = {
-        "expected.pxd": "expected.pxd",
-    },
-    cpp_deps = ["//xplat/folly:expected"],
+    headers = ["expected.pxd"],
+    cpp_deps = ["//folly:expected"],
+    fbcode_rule = cython_library,
     package = "folly",
     visibility = ["PUBLIC"],
     deps = [
-        "//xplat/folly/python:folly",
+        ":folly",
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "futures",
-    headers = {
-        "futures.pxd": "futures.pxd",
-    },
+    headers = ["futures.pxd"],
     cpp_deps = [
-        "//xplat/folly/python:futures_lib",
+        ":futures_lib",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     visibility = ["PUBLIC"],
     deps = [
-        "//xplat/folly/python:executor",
+        ":executor",
     ],
 )
 
@@ -421,33 +410,32 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "optional",
-    headers = {"optional.pxd": "optional.pxd"},
-    cpp_deps = ["//xplat/folly:optional"],
+    headers = ["optional.pxd"],
+    cpp_deps = ["//folly:optional"],
+    fbcode_rule = cython_library,
     package = "folly",
     visibility = ["PUBLIC"],
     deps = [
-        "//xplat/folly/python:folly",  # So we don't squash the "folly" package
+        ":folly",  # So we don't squash the "folly" package
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "fbstring",
     headers = ["fbstring.pxd"],
     cpp_deps = [
-        "//xplat/folly:fbstring",
+        "//folly:fbstring",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     deps = [
         ":folly",
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "request_context",
     srcs = ["request_context.pyx"],
     headers = [
@@ -466,9 +454,10 @@ non_fbcode_target(
         "ovr_config//distro:conda": [],
     }),
     cpp_deps = [
-        "//xplat/folly/io/async:request_context",
+        "//folly/io/async:request_context",
         ":weak",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     types = ["request_context.pyi"],
     deps = [
@@ -477,35 +466,6 @@ non_fbcode_target(
 )
 
 # !!!! fbcode/folly/python/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cython_library,
-    name = "request_context",
-    srcs = ["request_context.pyx"],
-    headers = [
-        "request_context.h",
-        "request_context.pxd",
-    ],
-    compatible_with = [
-        "ovr_config//os:linux",
-        "ovr_config//os:macos",
-        "ovr_config//os:windows",
-    ],
-    cpp_compiler_flags = select({
-        "DEFAULT": ["-DFOLLY_PYTHON_META_BUILD"],
-        # Conda is not Meta Python
-        "ovr_config//distro:conda": [],
-    }),
-    cpp_deps = [
-        "//folly/io/async:request_context",
-        ":weak",
-    ],
-    package = "folly",
-    types = ["request_context.pyi"],
-    deps = [
-        ":folly",
-    ],
-)
 
 fbcode_target(
     _kind = cpp_library,
@@ -627,19 +587,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cython_library,
-    name = "function",
-    headers = ["function.pxd"],
-    cpp_deps = [
-        "//folly:function",
-    ],
-    package = "folly",
-    deps = [
-        ":folly",
-    ],
-)
-
-fbcode_target(
     _kind = cpp_library,
     name = "futures_lib",
     headers = [
@@ -651,21 +598,6 @@ fbcode_target(
         ":weak",
         "//folly:executor",
         "//folly/futures:core",
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "futures",
-    headers = [
-        "futures.pxd",
-    ],
-    cpp_deps = [
-        ":futures_lib",
-    ],
-    package = "folly",
-    deps = [
-        ":executor",
     ],
 )
 
@@ -724,27 +656,6 @@ fbcode_target(
     exported_deps = [
         ":weak",
         "//folly/fibers:core",
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "fibers",
-    srcs = ["fiber_manager.pyx"],
-    headers = [
-        "fiber_manager.pxd",
-        "fibers.pxd",
-    ],
-    cpp_deps = [
-        "//folly/fibers:core",
-        "//folly/fibers:executor_loop_controller",
-        "//folly/fibers:loop_controller",
-        ":fibers_lib",
-    ],
-    package = "folly",
-    deps = [
-        ":folly",
-        ":futures",
     ],
 )
 
@@ -825,41 +736,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cython_library,
-    name = "range",
-    headers = ["range.pxd"],
-    cpp_deps = [
-        "//folly:range",
-    ],
-    package = "folly",
-    deps = [
-        ":folly",
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "optional",
-    headers = ["optional.pxd"],
-    cpp_deps = ["//folly:optional"],
-    package = "folly",
-    deps = [
-        ":folly",  # So we don't squash the "folly" package
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "expected",
-    headers = ["expected.pxd"],
-    cpp_deps = ["//folly:expected"],
-    package = "folly",
-    deps = [
-        ":folly",
-    ],
-)
-
-fbcode_target(
     _kind = cpp_library,
     name = "async_generator_lib",
     headers = [
@@ -889,26 +765,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cython_library,
-    name = "cast",
-    headers = ["cast.pxd"],
-    cpp_deps = [
-        "//folly/lang:cast",
-    ],
-    package = "folly",
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "memory",
-    headers = ["memory.pxd"],
-    cpp_deps = [
-        "//folly:memory",
-    ],
-    package = "folly",
-)
-
-fbcode_target(
     _kind = cpp_library,
     name = "error",
     srcs = [
@@ -924,19 +780,6 @@ fbcode_target(
     ],
     exported_deps = [
         "//folly:range",
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "fbstring",
-    headers = ["fbstring.pxd"],
-    cpp_deps = [
-        "//folly:fbstring",
-    ],
-    package = "folly",
-    deps = [
-        ":folly",
     ],
 )
 
