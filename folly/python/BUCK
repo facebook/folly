@@ -297,8 +297,7 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "iobuf",
     srcs = ["iobuf.pyx"],
     headers = [
@@ -307,14 +306,14 @@ non_fbcode_target(
     header_namespace = "folly/python",
     api = ["iobuf"],
     cpp_deps = [
-        "fbsource//xplat/folly/io:iobuf",
-        "//xplat/folly:executor",
+        "//folly/io:iobuf",
         ":iobuf_ext",
         ":iobuf_lib",
     ],
+    fbcode_rule = cython_library,
     package = "folly",
     tests = [
-        "//xplat/folly/python/test:iobuf",
+        "//folly/python/test:iobuf",
     ],
     types = ["iobuf.pyi"],
     visibility = ["PUBLIC"],
@@ -705,33 +704,6 @@ fbcode_target(
     exported_deps = [
         "fbsource//third-party/python:python",  # Python.h
         "//folly/io:iobuf",
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "iobuf",
-    srcs = ["iobuf.pyx"],
-    headers = [
-        "iobuf.pxd",
-    ],
-    api = ["iobuf"],
-    cpp_deps = [
-        "//folly/io:iobuf",
-        ":iobuf_ext",
-        ":iobuf_lib",
-    ],
-    package = "folly",
-    tests = [
-        "//folly/python/test:iobuf",
-    ],
-    types = [
-        "iobuf.pyi",
-    ],
-    deps = [
-        ":executor",
-        ":folly",
-        ":futures",
     ],
 )
 
