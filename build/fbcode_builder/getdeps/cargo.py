@@ -53,7 +53,9 @@ class CargoBuilder(BuilderBase):
         # pyre-fixme[8]: Attribute has type `Optional[List[str]]`; used as
         #  `Union[None, List[str], str]`.
         self.manifests_to_build: list[str] | None = (
-            manifests_to_build and manifests_to_build.split(",")
+            # pyrefly: ignore [bad-assignment]
+            manifests_to_build
+            and manifests_to_build.split(",")
         )
         self.loader: ManifestLoader = loader
         self.cargo_config_file_subdir: str | None = cargo_config_file
@@ -405,6 +407,7 @@ path = "{null_file}"
                         if self.build_opts.is_windows():
                             # pyre-fixme[16]: Optional type has no attribute `replace`.
                             subpath = subpath.replace("/", "\\")
+                        # pyrefly: ignore [no-matching-overload]
                         crate_path = os.path.join(dep_source_dir, subpath)
                         print(
                             f"{self.manifest.name}: Mapped crate {crate} to dep {dep} dir {crate_path}",

@@ -263,6 +263,7 @@ class BuilderBase:
             # 1.5 GiB is a lot to assume, but it's typical of Facebook-style C++.
             # Some manifests are even heavier and should override.
             default_job_weight = 1536
+        # pyrefly: ignore [no-matching-overload]
         return int(
             self.manifest.get(
                 "build", "job_weight_mib", str(default_job_weight), ctx=self.ctx
@@ -1149,6 +1150,7 @@ if __name__ == "__main__":
         # pyre-fixme[53]: Captured variable `cmake` is not annotated.
         # pyre-fixme[53]: Captured variable `env` is not annotated.
         def list_tests() -> list[dict[str, object]]:
+            # pyrefly: ignore [no-matching-overload]
             output = subprocess.check_output(
                 [require_command(ctest, "ctest"), "--show-only=json-v1"],
                 env=env,
@@ -1233,6 +1235,7 @@ if __name__ == "__main__":
             env.set("https_proxy", "")
             runs = []
 
+            # pyrefly: ignore [unbound-name]
             with start_run(env["FBSOURCE_HASH"]) as run_id:
                 testpilot_args = [
                     tpx,

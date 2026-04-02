@@ -316,6 +316,7 @@ class BuildOptions:
                         # pyre-fixme[6]: For 2nd argument expected `str` but got
                         #  `Optional[str]`.
                         os.environ["OPENSSL_ROOT_DIR"] = candidate
+                        # pyrefly: ignore [unsupported-operation]
                         env["OPENSSL_ROOT_DIR"] = os.environ["OPENSSL_ROOT_DIR"]
 
         if self.fbsource_dir:
