@@ -3,26 +3,29 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:cython_library.bzl", "CYTHON_DEFAULT_APPLE_SDKS", "CYTHON_DEFAULT_PLATFORMS", "cython_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
 load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("@fbsource//tools/target_determinator/macros:fbcode_ci_helpers.bzl", "fbcode_ci")
 load("../../defs.bzl", "folly_xplat_cxx_library", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = python_unittest,
+fb_dirsync_rule(
+    # @autodeps-skip
     name = "futures",
     srcs = ["futures.py"],
+    fbcode_rule = python_unittest,
     supports_static_listing = False,
     deps = [
         ":simple_bridge",
     ],
 )
 
-non_fbcode_target(
-    _kind = python_unittest,
+fb_dirsync_rule(
+    # @autodeps-skip
     name = "coro",
     srcs = ["coro.py"],
+    fbcode_rule = python_unittest,
     supports_static_listing = False,
     deps = [
         ":simple_bridge_coro",
@@ -43,18 +46,18 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "simple_bridge",
     srcs = ["simplebridge.pyx"],
     headers = ["simple.h"],
     header_namespace = "folly/python/test",
     cpp_deps = [
-        "fbsource//xplat/folly/futures:core",
+        "//folly/futures:core",
     ],
+    fbcode_rule = cython_library,
     deps = [
-        "//xplat/folly/python:fibers",
-        "//xplat/folly/python:futures",
+        "//folly/python:fibers",
+        "//folly/python:futures",
     ],
 )
 
@@ -118,10 +121,11 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = python_unittest,
+fb_dirsync_rule(
+    # @autodeps-skip
     name = "generator",
     srcs = ["generator.py"],
+    fbcode_rule = python_unittest,
     supports_static_listing = False,
     deps = [
         ":simple_generator",
@@ -158,10 +162,11 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = python_unittest,
+fb_dirsync_rule(
+    # @autodeps-skip
     name = "teardown",
     srcs = ["teardown.py"],
+    fbcode_rule = python_unittest,
     supports_static_listing = False,
     deps = [
         ":simple_bridge",
@@ -169,25 +174,26 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = python_unittest,
+fb_dirsync_rule(
+    # @autodeps-skip
     name = "test_set_executor",
     srcs = ["test_set_executor.py"],
+    fbcode_rule = python_unittest,
     supports_static_listing = False,
     deps = [
         ":test_set_executor_cython",
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "test_set_executor_cython",
     srcs = ["test_set_executor_cython.pyx"],
     cpp_deps = [
         ":test_set_executor_cpplib",
     ],
+    fbcode_rule = cython_library,
     deps = [
-        "//xplat/folly/python:executor",
+        "//folly/python:executor",
     ],
 )
 
@@ -202,93 +208,33 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = python_unittest,
+fb_dirsync_rule(
     name = "request_context",
     srcs = ["request_context.py"],
     compatible_with = [
         "ovr_config//os:linux",
     ],
-    deps = [
-        ":request_context_helper",
-        "//xplat/folly/python:request_context",
-    ],
-)
-
-non_fbcode_target(
-    _kind = cython_library,
-    name = "request_context_helper",
-    srcs = ["request_context_helper.pyx"],
-    cpp_deps = [
-        "//xplat/folly/io/async:request_context",
-    ],
-    types = ["request_context_helper.pyi"],
-    deps = [
-        "//xplat/folly/python:request_context",
-    ],
-)
-
-# !!!! fbcode/folly/python/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = python_unittest,
-    name = "request_context",
-    srcs = ["request_context.py"],
-    compatible_with = [
-        "ovr_config//os:linux",
-    ],
+    fbcode_rule = python_unittest,
     deps = [
         ":request_context_helper",
         "//folly/python:request_context",
     ],
 )
 
-fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "request_context_helper",
     srcs = ["request_context_helper.pyx"],
     cpp_deps = [
         "//folly/io/async:request_context",
     ],
+    fbcode_rule = cython_library,
     types = ["request_context_helper.pyi"],
     deps = [
         "//folly/python:request_context",
     ],
 )
 
-fbcode_target(
-    _kind = python_unittest,
-    # @autodeps-skip
-    name = "futures",
-    srcs = ["futures.py"],
-    deps = [
-        ":simple_bridge",
-    ],
-)
-
-fbcode_target(
-    _kind = python_unittest,
-    # @autodeps-skip
-    name = "coro",
-    srcs = ["coro.py"],
-    deps = [
-        ":simple_bridge_coro",
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "simple_bridge",
-    srcs = ["simplebridge.pyx"],
-    headers = ["simple.h"],
-    cpp_deps = [
-        "//folly/futures:core",
-    ],
-    deps = [
-        "//folly/python:fibers",
-        "//folly/python:futures",
-    ],
-)
+# !!!! fbcode/folly/python/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
 fbcode_target(
     _kind = cpp_library,
@@ -371,16 +317,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = python_unittest,
-    # @autodeps-skip
-    name = "generator",
-    srcs = ["generator.py"],
-    deps = [
-        ":simple_generator",
-    ],
-)
-
-fbcode_target(
     _kind = cpp_unittest,
     name = "AsyncGeneratorTest",
     srcs = [
@@ -412,44 +348,11 @@ fbcode_target(
 fbcode_target(
     _kind = python_unittest,
     # @autodeps-skip
-    name = "teardown",
-    srcs = ["teardown.py"],
-    deps = [
-        ":simple_bridge",
-        ":simple_bridge_coro",
-    ],
-)
-
-fbcode_target(
-    _kind = python_unittest,
-    # @autodeps-skip
-    name = "test_set_executor",
-    srcs = ["test_set_executor.py"],
-    deps = [
-        ":test_set_executor_cython",
-    ],
-)
-
-fbcode_target(
-    _kind = python_unittest,
-    # @autodeps-skip
     name = "test_set_executor_3_13",
     srcs = ["test_set_executor.py"],
     py_version = "3.13.free-threading-experimental",
     deps = [
         ":test_set_executor_cython",
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "test_set_executor_cython",
-    srcs = ["test_set_executor_cython.pyx"],
-    cpp_deps = [
-        ":test_set_executor_cpplib",
-    ],
-    deps = [
-        "//folly/python:executor",
     ],
 )
 
