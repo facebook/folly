@@ -86,38 +86,38 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "simple_bridge_coro",
     srcs = ["simplebridgecoro.pyx"],
     headers = ["simplecoro.h"],
     header_namespace = "folly/python/test",
     cpp_deps = [
-        "//xplat/folly/coro:baton",
-        "//xplat/folly/coro:task",
-        "//xplat/folly/futures:core",
-        "//xplat/folly/python:asyncio_executor",
-        "//xplat/folly/python:executor_lib",
-        "//xplat/folly:cancellation_token",
+        "//folly/coro:baton",
+        "//folly/coro:task",
+        "//folly/futures:core",
+        "//folly/python:asyncio_executor",
+        "//folly/python:executor_lib",
+        "//folly:cancellation_token",
     ],
+    fbcode_rule = cython_library,
     types = ["simplebridgecoro.pyi"],
     deps = [
-        "//xplat/folly/python:coro",
+        "//folly/python:coro",
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "simple_generator",
     srcs = ["simplegenerator.pyx"],
     headers = ["simplegenerator.h"],
     header_namespace = "folly/python/test",
     cpp_deps = [
-        "//xplat/folly/experimental/coro:async_generator",
+        "//folly/coro:async_generator",
     ],
+    fbcode_rule = cython_library,
     deps = [
-        "//xplat/folly/python:async_generator",
-        "//xplat/folly/python:executor",
+        "//folly/python:async_generator",
+        "//folly/python:executor",
     ],
 )
 
@@ -280,39 +280,6 @@ fbcode_target(
     deps = [
         ":iobuf_helper",
         "//folly/python:iobuf",
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "simple_bridge_coro",
-    srcs = ["simplebridgecoro.pyx"],
-    headers = ["simplecoro.h"],
-    cpp_deps = [
-        "//folly/coro:baton",
-        "//folly/coro:task",
-        "//folly/futures:core",
-        "//folly/python:asyncio_executor",
-        "//folly/python:executor_lib",
-        "//folly:cancellation_token",
-    ],
-    types = ["simplebridgecoro.pyi"],
-    deps = [
-        "//folly/python:coro",
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "simple_generator",
-    srcs = ["simplegenerator.pyx"],
-    headers = ["simplegenerator.h"],
-    cpp_deps = [
-        "//folly/coro:async_generator",
-    ],
-    deps = [
-        "//folly/python:async_generator",
-        "//folly/python:executor",
     ],
 )
 
