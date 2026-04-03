@@ -46,3 +46,7 @@ xplat/thrift = thrift
 ^xplat/thrift/perf/canary.py$
 ^xplat/thrift/perf/loadtest.py$
 ^xplat/thrift/.castle/.*
+^xplat/thrift/lib/cpp2/fast_thrift/.*\.clang-tidy$
+^xplat/thrift/lib/cpp2/fast_thrift/(.*/)?\.llms(/.*)?$
+^xplat/thrift/lib/cpp2/fast_thrift/.*\.md$
+^xplat/thrift/lib/cpp2/fast_thrift/bench/perf_harness\.sh$

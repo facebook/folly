@@ -227,6 +227,7 @@ class SystemPackageFetcher:
 
     def hash(self) -> str:
         if self.packages_are_installed():
+            # pyrefly: ignore [bad-argument-type]
             return hashlib.sha256(self.installed).hexdigest()
         else:
             return "0" * 40
@@ -913,6 +914,7 @@ def download_url_to_file_with_progress(url: str, file_name: str) -> None:
 
         def write_update(self, total: int, amount: int) -> None:
             if total == -1:
+                # pyrefly: ignore [bad-assignment]
                 total = "(Unknown)"
 
             if sys.stdout.isatty():
@@ -929,6 +931,7 @@ def download_url_to_file_with_progress(url: str, file_name: str) -> None:
         def progress_pycurl(
             self, total: float, amount: float, _uploadtotal: float, _uploadamount: float
         ) -> None:
+            # pyrefly: ignore [bad-argument-type]
             self.write_update(total, amount)
 
     progress = Progress()

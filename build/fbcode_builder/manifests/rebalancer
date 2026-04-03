@@ -32,9 +32,6 @@ clang19
 CMAKE_C_COMPILER=clang-19
 CMAKE_CXX_COMPILER=clang++-19
 
-[cmake.defines.os=darwin]
-REBALANCER_USE_SCIP=0
-
 [shipit.strip]
 ^.*/fb/.*$
 

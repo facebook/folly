@@ -35,8 +35,8 @@ retry:
     ++spins;
     if (spins > maxSpins + maxYields) {
       // Somebody appears to have the lock.  Block waiting for the
-      // holder to unlock the lock.  We set heldbit(slot) so that the
-      // lock holder knows to FUTEX_WAKE us.
+      // holder to unlock the lock.  We set waitBit so that the
+      // lock holder knows to atomic_notify_one us.
       newWord = oldWord | waitBit;
       if (newWord != oldWord) {
         if (!atomic_ref(lock_).compare_exchange_weak(

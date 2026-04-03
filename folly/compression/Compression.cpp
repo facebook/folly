@@ -1086,7 +1086,6 @@ class LZMA2StreamCodec final : public StreamCodec {
 
   bool decodeAndCheckVarint(ByteRange& input);
   bool flushVarintBuffer(MutableByteRange& output);
-  void resetVarintBuffer();
 
   Optional<lzma_stream> cstream_{};
   Optional<lzma_stream> dstream_{};

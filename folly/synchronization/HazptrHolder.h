@@ -274,7 +274,7 @@ class hazptr_array {
 #if FOLLY_HAZPTR_THR_LOCAL
     auto& tc = hazptr_tc_tls<Atom>();
     auto count = tc.count();
-    auto cap = hazptr_tc<Atom>::capacity();
+    auto cap = hazptr_tc<Atom>::min_capacity();
     if (FOLLY_UNLIKELY((M + count) > cap)) {
       tc.evict((M + count) - cap);
       count = cap - M;
@@ -320,7 +320,7 @@ FOLLY_ALWAYS_INLINE hazptr_array<M, Atom> make_hazard_pointer_array() {
   auto h = reinterpret_cast<hazptr_holder<Atom>*>(&a.raw_);
 #if FOLLY_HAZPTR_THR_LOCAL
   static_assert(
-      M <= hazptr_tc<Atom>::capacity(),
+      M <= hazptr_tc<Atom>::min_capacity(),
       "M must be within the thread cache capacity.");
   auto& tc = hazptr_tc_tls<Atom>();
   auto count = tc.count();
@@ -328,7 +328,7 @@ FOLLY_ALWAYS_INLINE hazptr_array<M, Atom> make_hazard_pointer_array() {
     tc.fill(M - count);
     count = M;
   }
-  uint8_t offset = count - M;
+  size_t offset = count - M;
   for (uint8_t i = 0; i < M; ++i) {
     auto hprec = tc[offset + i].get();
     DCHECK(hprec != nullptr);
@@ -375,8 +375,8 @@ class hazptr_local {
     auto h = reinterpret_cast<hazptr_holder<Atom>*>(&raw_);
 #if FOLLY_HAZPTR_THR_LOCAL
     static_assert(
-        M <= hazptr_tc<Atom>::capacity(),
-        "M must be <= hazptr_tc::capacity().");
+        M <= hazptr_tc<Atom>::min_capacity(),
+        "M must be <= hazptr_tc::min_capacity().");
     auto& tc = hazptr_tc_tls<Atom>();
     auto count = tc.count();
     if (FOLLY_UNLIKELY(M > count)) {

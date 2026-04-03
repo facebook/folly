@@ -669,6 +669,7 @@ folly_add_library(
   HEADERS
     IoUringZeroCopyBufferPool.h
   DEPS
+    folly_container_fixed_capacity_ring_queue
     folly_conv
     folly_lang_align
     folly_portability_sys_mman

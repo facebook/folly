@@ -136,6 +136,7 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
 IOThreadPoolExecutor::~IOThreadPoolExecutor() {
   deregisterThreadPoolExecutor(this);
   stop();
+  destroyTaskObservers();
 }
 
 void IOThreadPoolExecutor::add(Func func) {

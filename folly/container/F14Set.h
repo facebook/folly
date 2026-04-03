@@ -751,6 +751,14 @@ class F14BasicSet {
   /**
    * Get memory footprint, not including sizeof(*this).
    * @methodset Capacity
+   *
+   * Returns the memory allocated by the container itself (hash table
+   * metadata, chunk storage, and for F14NodeSet the per-node allocations).
+   * This does NOT include heap memory owned by the stored values
+   * themselves. For example, if values are std::string with
+   * contents exceeding the SSO buffer, the external character buffers are
+   * not counted. To get a more complete memory footprint, iterate over
+   * the set and account for the dynamic allocations of each value.
    */
   std::size_t getAllocatedMemorySize() const {
     return table_.getAllocatedMemorySize();

@@ -7,6 +7,16 @@ load(
 oncall("fbcode_entropy_wardens_folly")
 
 fb_dirsync_cpp_library(
+    name = "fixed_capacity_ring_queue",
+    headers = ["FixedCapacityRingQueue.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly/lang:bits",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "f14_hash",
     headers = [
         "F14Map.h",

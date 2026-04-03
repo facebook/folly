@@ -103,6 +103,7 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
 MuxIOThreadPoolExecutor::~MuxIOThreadPoolExecutor() {
   deregisterThreadPoolExecutor(this);
   stop();
+  destroyTaskObservers();
 }
 
 void MuxIOThreadPoolExecutor::add(Func func) {

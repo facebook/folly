@@ -284,6 +284,7 @@ EDFThreadPoolExecutor::EDFThreadPoolExecutor(
 EDFThreadPoolExecutor::~EDFThreadPoolExecutor() {
   deregisterThreadPoolExecutor(this);
   stop();
+  destroyTaskObservers();
 }
 
 void EDFThreadPoolExecutor::add(Func f) {

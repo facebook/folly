@@ -31,9 +31,6 @@ namespace folly {
  * Tiny exclusive lock that uses 2 bits. It is stored as 1 byte and
  * has APIs for using the remaining 6 bits for storing user data.
  *
- * You should zero-initialize the bits of a MicroLock that you intend
- * to use.
- *
  * If you're not space-constrained, prefer std::mutex, which will
  * likely be faster, since it has more than two bits of information to
  * work with.
@@ -53,7 +50,7 @@ namespace folly {
  * The MaxSpins template parameter controls the number of times we
  * spin trying to acquire the lock.  MaxYields controls the number of
  * times we call sched_yield; once we've tried to acquire the lock
- * MaxSpins + MaxYields times, we sleep on the lock futex.
+ * MaxSpins + MaxYields times, we sleep via folly::atomic_wait.
  * By adjusting these parameters, you can make MicroLock behave as
  * much or as little like a conventional spinlock as you'd like.
  *
@@ -77,10 +74,11 @@ namespace folly {
  *
  * (The virtual dispatch benchmark is provided for scale.)
  *
- * While the uncontended case for MicroLock is competitive with the
- * glibc 2.2.0 implementation of std::mutex, std::mutex is likely to be
- * faster in the contended case, because we need to wake up all waiters
- * when we release.
+ * While the uncontended case for MicroLock is competitive with
+ * std::mutex, std::mutex is likely to be faster in the contended case:
+ * std::mutex operates on a 32-bit word which can use the futex syscall
+ * directly, while MicroLock's uint8_t forces atomic_wait through
+ * folly's ParkingLot (a userspace hash table of mutex+condvar pairs).
  *
  * Make sure to benchmark your particular workload.
  *

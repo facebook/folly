@@ -59,8 +59,11 @@ bool contains(const C& container, const K& key) {
   } else if constexpr (detail::HasFind<C, K>) {
     return container.find(key) != container.end();
   } else {
-    // Fallback: use generic and possibly slower std::find otherwise.
-    return contains(container, key);
+    // Fallback: use generic and possibly slower std::find.
+    // Inline the linear search to avoid infinite recursion — calling
+    // contains(container, key) would re-dispatch to this overload.
+    const auto e = std::end(container);
+    return std::find(std::begin(container), e, key) != e;
   }
 }
 
