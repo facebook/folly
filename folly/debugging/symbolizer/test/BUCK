@@ -87,6 +87,7 @@ fbcode_target(
     # this test expect to find its symbols in /proc/self/exe.
     extract_helper_lib = False,
     resources = [
+        "test-xindex.o",
         ":simple_elf",
     ],
     deps = [

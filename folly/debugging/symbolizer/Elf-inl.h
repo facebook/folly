@@ -52,12 +52,10 @@ const ElfShdr* ElfFile::iterateSections(Fn fn) const
   // There exist malformed ELF binaries with invalid header counts/offsets,
   // which can cause SIGBUS when iterating past the valid mapped memory
   // region. This code must handle malformed binaries without crashing.
+  auto numSections = getNumSections();
   size_t sectionsSize;
   size_t sectionsEnd;
-  if (!folly::checked_mul(
-          &sectionsSize,
-          static_cast<size_t>(elfHeader().e_shnum),
-          sizeof(ElfShdr)) ||
+  if (!folly::checked_mul(&sectionsSize, numSections, sizeof(ElfShdr)) ||
       !folly::checked_add(
           &sectionsEnd,
           static_cast<size_t>(elfHeader().e_shoff),
@@ -67,7 +65,7 @@ const ElfShdr* ElfFile::iterateSections(Fn fn) const
   }
 
   const ElfShdr* ptr = &at<ElfShdr>(elfHeader().e_shoff);
-  for (size_t i = 0; i < elfHeader().e_shnum; i++, ptr++) {
+  for (size_t i = 0; i < numSections; i++, ptr++) {
     if (fn(*ptr)) {
       return ptr;
     }

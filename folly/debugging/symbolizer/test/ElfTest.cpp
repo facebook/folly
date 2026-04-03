@@ -295,6 +295,36 @@ TEST(TestNoteMultipleNoteSections, SimpleElf) {
   }
 }
 
+TEST(TestShnXindex, LargeSectionCount) {
+  // Synthetic ELF with 65536 sections, triggering SHN_XINDEX encoding:
+  //   e_shnum = 0     (real count in section 0's sh_size)
+  //   e_shstrndx = 0xFFFF  (real index in section 0's sh_link)
+  // Verifies getSectionByName works when the section header string table
+  // index requires SHN_XINDEX indirection.
+  auto const file = folly::test::find_resource(
+      "folly/debugging/symbolizer/test/test-xindex.o");
+  ASSERT_TRUE(std::filesystem::exists(file.c_str())) << file.c_str();
+
+  ElfFile elfFile;
+  auto res = elfFile.openNoThrow(file.c_str());
+  ASSERT_EQ(ElfFile::kSuccess, res.code) << res.msg;
+
+  // .debug_str is at section index 65534 in the synthetic ELF.
+  // If SHN_XINDEX is not handled, getSectionByName will fail because
+  // e_shstrndx=0xFFFF is used as a literal index (out of bounds) and
+  // e_shnum=0 makes iterateSections a no-op.
+  const auto* debugStr = elfFile.getSectionByName(".debug_str");
+  ASSERT_NE(nullptr, debugStr)
+      << ".debug_str not found (SHN_XINDEX handling broken)";
+  EXPECT_EQ(debugStr->sh_type, SHT_PROGBITS);
+  EXPECT_GT(debugStr->sh_size, 0);
+
+  const auto* shstrtab = elfFile.getSectionByName(".shstrtab");
+  ASSERT_NE(nullptr, shstrtab)
+      << ".shstrtab not found (SHN_XINDEX handling broken)";
+  EXPECT_EQ(shstrtab->sh_type, SHT_STRTAB);
+}
+
 TEST(TestNoteParsing, SimpleElf) {
   uint8_t headerOnly[sizeof(ElfNhdr)];
   ElfNhdr header;
