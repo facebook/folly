@@ -39,36 +39,38 @@ fb_dirsync_rule(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "async_generator_lib",
-    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
-    platforms = CYTHON_DEFAULT_PLATFORMS,
-    raw_headers = [
+    headers = [
         "async_generator.h",
     ],
-    deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly/experimental/coro:async_generator",
-        "//xplat/folly/experimental/coro:task",
+    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    platforms = CYTHON_DEFAULT_PLATFORMS,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
+        "//folly:portability",
+        "//folly/coro:async_generator",
+        "//folly/coro:task",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "proactor_executor",
     srcs = [
         "ProactorExecutor.cpp",
     ],
-    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
-    platforms = CYTHON_DEFAULT_PLATFORMS,
-    raw_headers = [
+    headers = [
         "ProactorExecutor.h",
     ],
+    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    platforms = CYTHON_DEFAULT_PLATFORMS,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     exported_deps = [
-        "fbsource//third-party/python:python",
-        "//xplat/folly/concurrency:concurrent_hash_map",
-        "//xplat/folly/python:asyncio_executor",
+        ":asyncio_executor",
+        "//folly/concurrency:concurrent_hash_map",
+        "//folly/portability:windows",
     ],
 )
 
@@ -342,22 +344,23 @@ fb_dirsync_rule(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "coro_lib",
-    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
-    platforms = CYTHON_DEFAULT_PLATFORMS,
-    raw_headers = [
+    headers = [
         "coro.h",
     ],
-    deps = [
+    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    platforms = CYTHON_DEFAULT_PLATFORMS,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
+    exported_deps = [
         ":asyncio_executor",
         ":executor_lib",
         ":weak",
-        "//xplat/folly:cancellation_token",
-        "//xplat/folly:executor",
-        "//xplat/folly:portability",
-        "//xplat/folly/experimental/coro:task",
+        "//folly:cancellation_token",
+        "//folly:executor",
+        "//folly:portability",
+        "//folly/coro:task",
     ],
 )
 
@@ -503,39 +506,6 @@ fb_dirsync_rule(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "proactor_executor",
-    srcs = [
-        "ProactorExecutor.cpp",
-    ],
-    headers = [
-        "ProactorExecutor.h",
-    ],
-    exported_deps = [
-        ":asyncio_executor",
-        "//folly/concurrency:concurrent_hash_map",
-        "//folly/portability:windows",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "coro_lib",
-    headers = [
-        "coro.h",
-    ],
-    exported_deps = [
-        ":asyncio_executor",
-        ":executor_lib",
-        ":weak",
-        "//folly:cancellation_token",
-        "//folly:executor",
-        "//folly:portability",
-        "//folly/coro:task",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "iobuf_lib",
     srcs = ["iobuf.cpp"],
     headers = [
@@ -549,21 +519,8 @@ fbcode_target(
         ":import",
     ],
     exported_deps = [
-        "fbsource//third-party/python:python",  # Python.h
+        "fbsource//third-party/python:python",
         "//folly/io:iobuf",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "async_generator_lib",
-    headers = [
-        "async_generator.h",
-    ],
-    exported_deps = [
-        "//folly:portability",
-        "//folly/coro:async_generator",
-        "//folly/coro:task",
     ],
 )
 
