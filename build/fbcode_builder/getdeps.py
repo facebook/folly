@@ -24,6 +24,7 @@ from getdeps.fetcher import (
     file_name_is_cmake_file,
     is_public_commit,
     list_files_under_dir_newer_than_timestamp,
+    safe_extractall,
     SystemPackageFetcher,
 )
 from getdeps.load import ManifestLoader
@@ -283,11 +284,12 @@ class CachedProject:
             try:
                 target_file_name = os.path.join(dl_dir, self.cache_file_name)
                 if self.cache.download_to_file(self.cache_file_name, target_file_name):
-                    tf = tarfile.open(target_file_name, "r")
-                    print(
-                        "Extracting %s -> %s..." % (self.cache_file_name, self.inst_dir)
-                    )
-                    tf.extractall(self.inst_dir)
+                    with tarfile.open(target_file_name, "r") as tf:
+                        print(
+                            "Extracting %s -> %s..."
+                            % (self.cache_file_name, self.inst_dir)
+                        )
+                        safe_extractall(tf, self.inst_dir)
 
                     cached_marker = os.path.join(self.inst_dir, ".getdeps-cached-build")
                     with open(cached_marker, "w") as f:
