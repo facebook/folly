@@ -998,7 +998,6 @@ fbcode_target(
         "//folly:fbvector",
         "//folly:small_vector",
         "//folly:traits",
-        "//folly/container:foreach",
         "//folly/portability:gflags",
         "//folly/test:fbvector_test_util",
     ],

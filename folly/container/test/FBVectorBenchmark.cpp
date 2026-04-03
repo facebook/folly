@@ -22,7 +22,6 @@
 #include <folly/Benchmark.h>
 #include <folly/FBVector.h>
 #include <folly/Traits.h>
-#include <folly/container/Foreach.h>
 #include <folly/portability/GFlags.h>
 #include <folly/small_vector.h>
 #include <folly/test/FBVectorTestUtil.h>
