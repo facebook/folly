@@ -101,7 +101,6 @@ fb_dirsync_cpp_library(
     deps = [
         ":async_socket_exception",
         "//folly:file_util",
-        "//folly:utility",
         "//folly/detail:file_util_detail",
     ],
     exported_deps = [

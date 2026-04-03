@@ -17,7 +17,6 @@
 #include <folly/io/async/AsyncPipe.h>
 
 #include <folly/FileUtil.h>
-#include <folly/Utility.h>
 #include <folly/detail/FileUtilDetail.h>
 #include <folly/io/async/AsyncSocketException.h>
 
