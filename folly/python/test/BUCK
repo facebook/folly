@@ -3,6 +3,8 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:cython_library.bzl", "CYTHON_DEFAULT_APPLE_SDKS", "CYTHON_DEFAULT_PLATFORMS", "cython_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
 load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("@fbsource//tools/target_determinator/macros:fbcode_ci_helpers.bzl", "fbcode_ci")
@@ -132,33 +134,34 @@ fb_dirsync_rule(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "AsyncGeneratorTest",
     srcs = [
         "AsyncGeneratorTest.cpp",
     ],
     supports_static_listing = False,
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/experimental/coro:blocking_wait",
-        "//xplat/folly/experimental/coro:task",
-        "//xplat/folly/python:async_generator_lib",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
+        "//folly/portability:gtest",
+        "//folly/python:async_generator_lib",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "ErrorTest",
     srcs = [
         "ErrorTest.cpp",
     ],
     supports_static_listing = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    xplat_impl = folly_xplat_cxx_test,
     deps = [
-        "fbsource//third-party/python:python",  # Python.h
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/python:error",
+        "fbsource//third-party/python:python",
+        "//folly:scope_guard",
+        "//folly/portability:gtest",
+        "//folly/python:error",
     ],
 )
 
@@ -197,14 +200,16 @@ fb_dirsync_rule(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "test_set_executor_cpplib",
+    headers = ["test_set_executor.h"],
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    modular_headers = False,
     platforms = CYTHON_DEFAULT_PLATFORMS,
-    raw_headers = ["test_set_executor.h"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_cxx_library,
     exported_deps = [
-        "//xplat/folly/python:asyncio_executor",
+        "//folly/python:asyncio_executor",
     ],
 )
 
@@ -284,35 +289,6 @@ fbcode_target(
 )
 
 fbcode_target(
-    _kind = cpp_unittest,
-    name = "AsyncGeneratorTest",
-    srcs = [
-        "AsyncGeneratorTest.cpp",
-    ],
-    deps = [
-        "//folly/coro:blocking_wait",
-        "//folly/coro:task",
-        "//folly/portability:gtest",
-        "//folly/python:async_generator_lib",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "ErrorTest",
-    srcs = [
-        "ErrorTest.cpp",
-    ],
-    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
-    deps = [
-        "fbsource//third-party/python:python",
-        "//folly:scope_guard",
-        "//folly/portability:gtest",
-        "//folly/python:error",
-    ],
-)
-
-fbcode_target(
     _kind = python_unittest,
     # @autodeps-skip
     name = "test_set_executor_3_13",
@@ -320,16 +296,6 @@ fbcode_target(
     py_version = "3.13.free-threading-experimental",
     deps = [
         ":test_set_executor_cython",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "test_set_executor_cpplib",
-    headers = ["test_set_executor.h"],
-    modular_headers = False,
-    exported_deps = [
-        "//folly/python:asyncio_executor",
     ],
 )
 
