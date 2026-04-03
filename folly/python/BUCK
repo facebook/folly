@@ -112,22 +112,35 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "executor_lib",
     srcs = [
         "executor.cpp",
     ],
-    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
-    platforms = CYTHON_DEFAULT_PLATFORMS,
-    raw_headers = [
+    headers = [
         "executor.h",
     ],
+    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "-DFOLLY_PYTHON_WIN_SHAREDLIB",
+        ],
+    }),
+    platforms = CYTHON_DEFAULT_PLATFORMS,
+    preferred_linkage = select({
+        "DEFAULT": None,
+        "ovr_config//os:windows": "shared",
+    }),
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        ":asyncio_executor",
         ":import",
+    ],
+    exported_deps = [
+        ":asyncio_executor",
         ":weak",
-        "//xplat/folly:executor",
+        "//folly:executor",
     ],
 )
 
@@ -348,17 +361,31 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "fibers_lib",
     srcs = ["fibers.cpp"],
+    headers = ["fibers.h"],
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "-DFOLLY_PYTHON_WIN_SHAREDLIB",
+        ],
+    }),
     platforms = CYTHON_DEFAULT_PLATFORMS,
-    raw_headers = ["fibers.h"],
+    preferred_linkage = select({
+        "DEFAULT": None,
+        "ovr_config//os:windows": "shared",
+    }),
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
         ":import",
+    ],
+    exported_deps = [
         ":weak",
-        "//xplat/folly/fibers:core",
+        "//folly/fibers:core",
     ],
 )
 
@@ -476,35 +503,6 @@ fb_dirsync_rule(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "executor_lib",
-    srcs = [
-        "executor.cpp",
-    ],
-    headers = [
-        "executor.h",
-    ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//os:windows": [
-            "-DFOLLY_PYTHON_WIN_SHAREDLIB",
-        ],
-    }),
-    preferred_linkage = select({
-        "DEFAULT": None,
-        "ovr_config//os:windows": "shared",
-    }),
-    deps = [
-        ":import",
-    ],
-    exported_deps = [
-        ":asyncio_executor",
-        ":weak",
-        "//folly:executor",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "proactor_executor",
     srcs = [
         "ProactorExecutor.cpp",
@@ -533,31 +531,6 @@ fbcode_target(
         "//folly:executor",
         "//folly:portability",
         "//folly/coro:task",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "fibers_lib",
-    srcs = ["fibers.cpp"],
-    headers = ["fibers.h"],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//os:windows": [
-            "-DFOLLY_PYTHON_WIN_SHAREDLIB",
-        ],
-    }),
-    preferred_linkage = select({
-        "DEFAULT": None,
-        "ovr_config//os:windows": "shared",
-    }),
-    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
-    deps = [
-        ":import",
-    ],
-    exported_deps = [
-        ":weak",
-        "//folly/fibers:core",
     ],
 )
 
