@@ -34,17 +34,18 @@ fb_dirsync_rule(
     ],
 )
 
-non_fbcode_target(
-    _kind = python_unittest,
+fb_dirsync_rule(
     name = "iobuf",
     srcs = [
         "iobuf.py",
     ],
+    fbcode_rule = python_unittest,
     labels = ci.labels(fbcode_ci.use_opt_instead_of_dev()),
     supports_static_listing = False,
+    typing = True,
     deps = [
         ":iobuf_helper",
-        "//xplat/folly/python:iobuf",
+        "//folly/python:iobuf",
     ],
 )
 
@@ -274,25 +275,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = python_unittest,
-    name = "iobuf",
-    srcs = [
-        "iobuf.py",
-    ],
-    labels = ci.labels(fbcode_ci.use_opt_instead_of_dev()),
-    typing = True,
-    deps = [
-        ":iobuf_helper",
-        "//folly/python:iobuf",
-    ],
-)
-
-fbcode_target(
-    _kind = python_unittest,
+fb_dirsync_rule(
     # @autodeps-skip
     name = "test_set_executor_3_13",
     srcs = ["test_set_executor.py"],
+    fbcode_only = True,
+    fbcode_rule = python_unittest,
     py_version = "3.13.free-threading-experimental",
     deps = [
         ":test_set_executor_cython",
