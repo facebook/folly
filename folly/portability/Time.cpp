@@ -17,7 +17,7 @@
 #include <folly/portability/Time.h>
 
 #include <folly/CPortability.h>
-#include <folly/Likely.h>
+#include <folly/Likely.h> // IWYU pragma: keep -- used in __MACH__ blocks
 #include <folly/Utility.h>
 
 #include <cassert>
