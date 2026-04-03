@@ -99,7 +99,7 @@ class alignas(hardware_constructive_interference_size) hazptr_tc {
   std::vector<Entry> vec_;
 
  public:
-  hazptr_tc() = default;
+  hazptr_tc() : vec_(kCapacity) {}
   ~hazptr_tc() { evict(); }
 
   hazptr_tc(const hazptr_tc&) = delete;
