@@ -524,12 +524,13 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "build_mode",
     srcs = [
         "build_mode.pyx",
     ],
+    fbcode_only = True,
+    fbcode_rule = cython_library,
     package = "folly",
     types = [
         "build_mode.pyi",
@@ -539,12 +540,13 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_rule(
     name = "scoped_gil_release",
     headers = [
         "ScopedGILRelease.h",
     ],
+    fbcode_only = True,
+    fbcode_rule = cpp_library,
     visibility = ["PUBLIC"],
     exported_deps = [
         ":weak",
