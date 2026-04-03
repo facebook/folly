@@ -1,0 +1,25 @@
+[manifest]
+name = highs-optimizer
+
+[git]
+repo_url = https://github.com/ERGO-Code/HiGHS.git
+rev = v1.13.1
+
+[build]
+builder = cmake
+
+[cmake.defines]
+BUILD_TESTING = OFF
+BUILD_EXAMPLES = OFF
+FAST_BUILD = ON
+
+[rpms]
+coin-or-HiGHS
+coin-or-HiGHS-devel
+
+[debs]
+highs
+libhighs-dev
+
+[homebrew]
+highs
