@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:cython_library.bzl", "CYTHON_DEFAULT_APPLE_SDKS", "CYTHON_DEFAULT_PLATFORMS", "cython_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
@@ -64,8 +62,7 @@ fb_dirsync_rule(
     ],
 )
 
-non_fbcode_target(
-    _kind = cython_library,
+fb_dirsync_rule(
     name = "iobuf_helper",
     srcs = [
         "IOBufTestUtils.cpp",
@@ -77,15 +74,16 @@ non_fbcode_target(
     ],
     header_namespace = "folly/python/test",
     cpp_deps = [
-        "//xplat/folly/executors:global_executor",
-        "//xplat/folly/python:iobuf_ext",
+        "//folly/executors:global_executor",
+        "//folly/python:iobuf_ext",
     ],
+    fbcode_rule = cython_library,
     types = [
         "iobuf_helper.pyi",
     ],
     visibility = ["PUBLIC"],
     deps = [
-        "//xplat/folly/python:iobuf",
+        "//folly/python:iobuf",
     ],
 )
 
@@ -237,41 +235,6 @@ fb_dirsync_rule(
     types = ["request_context_helper.pyi"],
     deps = [
         "//folly/python:request_context",
-    ],
-)
-
-# !!!! fbcode/folly/python/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "iobuf_test_utils",
-    srcs = ["IOBufTestUtils.cpp"],
-    headers = ["IOBufTestUtils.h"],
-    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
-    deps = [
-        "//folly/executors:global_executor",
-        "//folly/python:iobuf_ext",
-        "//folly/python:iobuf_lib",
-    ],
-    exported_deps = [
-        "fbsource//third-party/python:python",  # Python.h
-        "//folly/io:iobuf",
-    ],
-)
-
-fbcode_target(
-    _kind = cython_library,
-    name = "iobuf_helper",
-    srcs = [
-        "iobuf_helper.pyx",
-    ],
-    headers = ["iobuf_helper.pxd"],
-    cpp_deps = [":iobuf_test_utils"],
-    types = [
-        "iobuf_helper.pyi",
-    ],
-    deps = [
-        "//folly/python:iobuf",
     ],
 )
 
