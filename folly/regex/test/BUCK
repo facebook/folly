@@ -1,0 +1,126 @@
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fb_dirsync_cpp_library(
+    name = "benchmark_helpers",
+    headers = ["BenchmarkHelpers.h"],
+    exported_deps = [
+        "fbsource//third-party/ctre:ctre",
+        "fbsource//third-party/pcre2:pcre2-8",
+        "fbsource//third-party/re2:re2",
+        "//folly:benchmark",
+        "//folly:benchmark_util",
+        "//folly/regex:regex",
+    ],
+    exported_external_deps = [
+        ("boost", None, "boost_regex"),
+        "pcre",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "parser_test",
+    srcs = ["ParserTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex/detail:AstOptimizer",
+        "//folly/regex/detail:ast",
+        "//folly/regex/detail:char_class",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_complexity_test",
+    srcs = ["RegexComplexityTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:nfa",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_test",
+    srcs = ["RegexTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "regex_backtrack_benchmark",
+    srcs = ["RegexBacktrackBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":benchmark_helpers",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "regex_budget_benchmark",
+    srcs = ["RegexBudgetBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":benchmark_helpers",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "regex_benchmark",
+    srcs = ["RegexBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":benchmark_helpers",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "regex_search_scale_benchmark",
+    srcs = ["RegexSearchScaleBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":benchmark_helpers",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "regex_nomatch_scale_benchmark",
+    srcs = ["RegexNoMatchScaleBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":benchmark_helpers",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "regex_match_scale_benchmark",
+    srcs = ["RegexMatchScaleBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":benchmark_helpers",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "charclass_benchmark",
+    srcs = ["CharClassBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:benchmark_util",
+        "//folly/regex:regex",
+        "//folly/regex/detail:char_class",
+    ],
+)
