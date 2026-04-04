@@ -40,7 +40,6 @@ size_t qfind_first_byte_of_sse42(
 #include <smmintrin.h>
 
 #include <cstdint>
-#include <limits>
 #include <string>
 
 #include <folly/Likely.h>
