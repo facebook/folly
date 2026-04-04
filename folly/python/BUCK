@@ -1,4 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cython_library.bzl", "CYTHON_DEFAULT_APPLE_SDKS", "CYTHON_DEFAULT_PLATFORMS", "cython_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
@@ -298,22 +297,24 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "iobuf_lib",
     srcs = ["iobuf.cpp"],
     exported_headers = {
         "folly/python/iobuf.h": "iobuf.h",
-        "folly/python/iobuf_api.h": ":iobuf__iobuf_api.h",
+        # @fb-only[end= ]: "folly/python/iobuf_api.h": ":iobuf__iobuf_api.h",
     },
     apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
+    modular_headers = False,
     platforms = CYTHON_DEFAULT_PLATFORMS,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         ":import",
     ],
     exported_deps = [
         "fbsource//third-party/python:python",
-        "fbsource//xplat/folly/io:iobuf",
+        "//folly/io:iobuf",
     ],
 )
 
@@ -502,28 +503,6 @@ fb_dirsync_rule(
     ],
 )
 
-# !!!! fbcode/folly/python/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "iobuf_lib",
-    srcs = ["iobuf.cpp"],
-    headers = [
-        "iobuf.h",
-        # @fb-only[end= ]: ":iobuf__iobuf_api.h",
-    ],
-    # TODO(T36778537): Cython-generated `*_api.h` headers aren't modular.
-    modular_headers = False,
-    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
-    deps = [
-        ":import",
-    ],
-    exported_deps = [
-        "fbsource//third-party/python:python",
-        "//folly/io:iobuf",
-    ],
-)
-
 fb_dirsync_rule(
     name = "build_mode",
     srcs = [
@@ -554,6 +533,7 @@ fb_dirsync_rule(
 )
 
 fb_dirsync_cpp_library(
+    # @autodeps-skip
     name = "weak",
     headers = [
         "Weak.h",
