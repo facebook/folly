@@ -108,7 +108,7 @@ constexpr bool kHasUnalignedAccess = false;
 #define FOLLY_ARM 0
 #endif
 
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(_M_ARM64)
 #define FOLLY_AARCH64 1
 #else
 #define FOLLY_AARCH64 0
@@ -361,7 +361,7 @@ constexpr auto kHasWeakSymbols = false;
   (FOLLY_SSE > major || FOLLY_SSE == major && FOLLY_SSE_MINOR >= minor)
 
 #ifndef FOLLY_NEON
-#if (defined(__ARM_NEON) || defined(__ARM_NEON__)) && !defined(__CUDACC__)
+#if (defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)) && !defined(__CUDACC__)
 #define FOLLY_NEON 1
 #else
 #define FOLLY_NEON 0
@@ -645,6 +645,10 @@ constexpr auto kCpplibVer = 0;
 // folly::coro requires C++17 support
 #if defined(__NVCC__)
 // For now, NVCC matches other compilers but does not offer coroutines.
+#define FOLLY_HAS_COROUTINES 0
+#elif defined(_MSC_VER) && defined(_M_ARM64)
+// MSVC ARM64: coroutine codegen triggers unsupported relocations at link time,
+// leading to build failures. Disable coroutines for this target.
 #define FOLLY_HAS_COROUTINES 0
 #elif defined(_WIN32) && defined(__clang__) && !defined(LLVM_COROUTINES) && \
     !defined(LLVM_COROUTINES_CPP20)

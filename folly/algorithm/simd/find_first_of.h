@@ -277,8 +277,8 @@ class default_vector_finder_first_op_of {
             vld1q_u8(reinterpret_cast<uint8_t const*>(input.data() + size));
         auto vmask = vdupq_n_u8(Eq ? 0 : -1);
         for (auto const a : alphabet_) {
-          auto const veq = vhaystack == vdupq_n_u8(a);
-          vmask = Eq ? veq | vmask : ~veq & vmask;
+            auto const veq = vceqq_u8(vhaystack, vdupq_n_u8(static_cast<uint8_t>(a)));
+            vmask = Eq ? vorrq_u8(veq, vmask) : vbicq_u8(vmask, veq);
         }
 #endif
         if (auto const [word, bits] = movemask<CharT>(vmask); word) {
@@ -398,10 +398,12 @@ class shuffle_vector_finder_first_op_of {
         auto const vtable = reinterpret_cast<uint8x16_t const*>(table);
         auto const vhaystack =
             vld1q_u8(reinterpret_cast<uint8_t const*>(input.data() + size));
+        auto const vhaystack_lo = vandq_u8(vhaystack, vdupq_n_u8(15));
         auto vmask = vdupq_n_u8(Eq ? 0 : -1);
         for (size_t i = 0; i < shuffle_.rounds; ++i) {
-          auto const veq = vqtbl1q_u8(vtable[i], vhaystack & 15) == vhaystack;
-          vmask = Eq ? veq | vmask : ~veq & vmask;
+            auto const vshuffle = vqtbl1q_u8(vtable[i], vhaystack_lo);
+            auto const veq = vceqq_u8(vshuffle, vhaystack);
+            vmask = Eq ? vorrq_u8(veq, vmask) : vbicq_u8(vmask, veq);
         }
 #endif
         if (auto const [word, bits] = movemask<CharT>(vmask); word) {

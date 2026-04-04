@@ -146,13 +146,13 @@ FOLLY_ERASE auto movemaskChars16Aarch64(uint8x16_t reg) {
   return std::pair{bits, std::integral_constant<std::uint32_t, 4>{}};
 }
 
-template <typename Reg>
+template <typename Scalar, typename Reg>
 FOLLY_ERASE uint64x1_t asUint64x1Aarch64(Reg reg) {
-  if constexpr (std::is_same_v<Reg, uint64x1_t>) {
+  if constexpr (sizeof(Scalar) == 8) {
     return reg;
-  } else if constexpr (std::is_same_v<Reg, uint32x2_t>) {
+  } else if constexpr (sizeof(Scalar) == 4) {
     return vreinterpret_u64_u32(reg);
-  } else if constexpr (std::is_same_v<Reg, uint16x4_t>) {
+  } else if constexpr (sizeof(Scalar) == 2) {
     return vreinterpret_u64_u16(reg);
   } else {
     return vreinterpret_u64_u8(reg);
@@ -164,16 +164,18 @@ FOLLY_ERASE uint64x1_t asUint64x1Aarch64(Reg reg) {
 template <typename Scalar>
 template <typename Reg>
 FOLLY_ERASE auto movemask_fn<Scalar>::operator()(Reg reg) const {
-  if constexpr (std::is_same_v<Reg, uint64x2_t>) {
-    return movemask<std::uint32_t>(vmovn_u64(reg));
-  } else if constexpr (std::is_same_v<Reg, uint32x4_t>) {
-    return movemask<std::uint16_t>(vmovn_u32(reg));
-  } else if constexpr (std::is_same_v<Reg, uint16x8_t>) {
-    return movemask<std::uint8_t>(vmovn_u16(reg));
-  } else if constexpr (std::is_same_v<Reg, uint8x16_t>) {
-    return detail::movemaskChars16Aarch64(reg);
+  if constexpr (sizeof(Reg) == 16) {
+    if constexpr (sizeof(Scalar) == 1) {
+      return detail::movemaskChars16Aarch64(reg);
+    } else if constexpr (sizeof(Scalar) == 2) {
+      return movemask<std::uint8_t>(vmovn_u16(reg));
+    } else if constexpr (sizeof(Scalar) == 4) {
+      return movemask<std::uint16_t>(vmovn_u32(reg));
+    } else {
+      return movemask<std::uint32_t>(vmovn_u64(reg));
+    }
   } else {
-    std::uint64_t mmask = vget_lane_u64(detail::asUint64x1Aarch64(reg), 0);
+    std::uint64_t mmask = vget_lane_u64(detail::asUint64x1Aarch64<Scalar>(reg), 0);
     return std::pair{
         mmask, std::integral_constant<std::uint32_t, sizeof(Scalar) * 8>{}};
   }

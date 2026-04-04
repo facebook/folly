@@ -338,7 +338,13 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
     // was 48 bytes of assembly (even after using the same multiplicand
     // for both steps) and this one was 27 bytes, for example.
     auto const kMul = 0xc4ceb9fe1a85ec53ULL;
-#ifdef _WIN32
+#if defined(_MSC_VER) && defined(_M_ARM64)
+    // MSVC ARM64: no _mul128, no __int128.
+    // Use 32-bit halves to compute the 128-bit product manually.
+    uint64_t lo = hash * kMul;
+    // __umulh gives the high 64 bits of an unsigned 64x64 multiply
+    uint64_t hi = __umulh(hash, kMul);
+#elif defined(_WIN32) && !defined(FOLLY_AARCH64)
     __int64 signedHi;
     __int64 signedLo = _mul128(
         static_cast<__int64>(hash), static_cast<__int64>(kMul), &signedHi);
