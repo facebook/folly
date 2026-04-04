@@ -301,8 +301,6 @@ folly_add_library(
   NAME strong
   HEADERS
     Strong.h
-  EXPORTED_DEPS
-    folly_traits
 )
 
 folly_add_library(
