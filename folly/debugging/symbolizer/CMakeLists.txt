@@ -155,6 +155,7 @@ folly_add_library(
     folly_lang_to_ascii
     folly_memory
     folly_memory_sanitize_address
+    folly_portability
     folly_portability_sys_mman
     folly_portability_sys_syscall
     folly_scope_guard
