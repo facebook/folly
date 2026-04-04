@@ -1240,8 +1240,9 @@ TEST(SetRLimit, SetRLimitFailure) {
 TEST(SetRLimit, SetRLimitFailureIntoErrnum) {
   rlimit limit;
   ::getrlimit(RLIMIT_MEMLOCK, &limit);
-  auto limit2 = limit;
-  limit2.rlim_cur = limit2.rlim_max * 2;
+  rlimit limit2{};
+  limit2.rlim_max = 0;
+  limit2.rlim_cur = 1;
   auto options = Subprocess::Options().pipeStdout();
   int errnum = 0;
   options.addRLimit(RLIMIT_MEMLOCK, limit2, to_shared_ptr_non_owning(&errnum));
