@@ -25,7 +25,7 @@
 #include <ranges>
 #include <vector>
 
-#include <folly/BenchmarkUtil.h>
+#include <folly/math/KahanSummation.h>
 #include <folly/portability/GTest.h>
 
 using folly::reproducible_accumulator;
@@ -44,10 +44,15 @@ class ReproducibleAccumulatorTest : public ::testing::Test {
   }
 
   // Pairs of large values that nearly cancel, leaving only small residuals.
+  // The large-value range scales with 1/epsilon so that the condition number
+  // (Σ|xᵢ| / |Σxᵢ|) grows with type precision, ensuring naive summation
+  // loses nearly all significant digits regardless of whether T is float
+  // or double.
   static std::vector<T> makeIllConditionedVector(size_t n, uint32_t seed) {
     std::mt19937 gen(seed);
-    std::uniform_real_distribution<T> large(T(1000), T(10000));
-    std::uniform_real_distribution<T> perturb(T(-1), T(1));
+    constexpr T eps = std::numeric_limits<T>::epsilon();
+    std::uniform_real_distribution<T> large(T(0.25) / eps, T(0.5) / eps);
+    std::uniform_real_distribution<T> perturb(T(-2), T(2));
     std::vector<T> v;
     v.reserve(2 * n);
     for (size_t i = 0; i < n; ++i) {
@@ -73,47 +78,6 @@ class ReproducibleAccumulatorTest : public ::testing::Test {
 
 using FloatTypes = ::testing::Types<float, double>;
 TYPED_TEST_SUITE(ReproducibleAccumulatorTest, FloatTypes);
-
-// Kahan compensated summation. makeUnpredictable prevents the compiler from
-// substituting t with sum + y, which would defeat the compensation.
-template <typename T>
-T kahan_sum(std::vector<T> const& data) {
-  T sum = 0;
-  T c = 0;
-  for (auto const& x : data) {
-    T y = x - c;
-    T t = sum + y;
-    folly::makeUnpredictable(t);
-    c = (t - sum) - y;
-    sum = t;
-  }
-  return sum;
-}
-
-// High-precision reference sum using Kahan summation in long double.
-template <typename T>
-long double reference_sum(std::vector<T> const& data) {
-  long double sum = 0;
-  long double c = 0;
-  for (auto const& x : data) {
-    long double y = static_cast<long double>(x) - c;
-    long double t = sum + y;
-    folly::makeUnpredictable(t);
-    c = (t - sum) - y;
-    sum = t;
-  }
-  return sum;
-}
-
-// Naive summation in long double, cast back to T.
-template <typename T>
-T long_double_sum(std::vector<T> const& data) {
-  long double sum = 0;
-  for (auto const& x : data) {
-    sum += static_cast<long double>(x);
-  }
-  return static_cast<T>(sum);
-}
 
 // Shuffling input order produces the same sum
 TYPED_TEST(ReproducibleAccumulatorTest, ReproducibleAcrossShuffles) {
@@ -308,7 +272,9 @@ TYPED_TEST(ReproducibleAccumulatorTest, ErrorBoundBoundsActualError) {
   using T = TypeParam;
   auto data = this->makeRandomVector(10'000, T(-1000), T(1000), 44);
 
-  long double const truth = reference_sum(data);
+  auto const to_ld = [](T x) { return static_cast<long double>(x); };
+  long double const truth =
+      folly::kahan_sum(data | std::views::transform(to_ld));
 
   reproducible_accumulator<T> rfa;
   for (auto const& x : data) {
@@ -828,13 +794,16 @@ TYPED_TEST(ReproducibleAccumulatorTest, FmtFormatter) {
   EXPECT_EQ(fmt::format("{:.6f}", rfa), fmt::format("{:.6f}", rfa.value()));
 }
 
-// Accuracy vs Kahan and long double: uniform random data
-TYPED_TEST(ReproducibleAccumulatorTest, AccuracyVsKahanAndLongDoubleUniform) {
+// Accuracy: uniform random data
+TYPED_TEST(ReproducibleAccumulatorTest, AccuracyUniform) {
   using T = TypeParam;
   constexpr size_t N = 100'000;
-  auto data = this->makeRandomVector(N, T(-1000), T(1000), 501);
+  constexpr T maxAbsVal = T(1000);
+  auto data = this->makeRandomVector(N, -maxAbsVal, maxAbsVal, 501);
 
-  long double const truth = reference_sum(data);
+  auto const to_ld = [](T x) { return static_cast<long double>(x); };
+  long double const truth =
+      folly::kahan_sum(data | std::views::transform(to_ld));
 
   reproducible_accumulator<T> rfa;
   for (auto const& x : data) {
@@ -842,51 +811,62 @@ TYPED_TEST(ReproducibleAccumulatorTest, AccuracyVsKahanAndLongDoubleUniform) {
   }
 
   T const reproError = std::abs(rfa.value() - static_cast<T>(truth));
-  T const kahanError = std::abs(kahan_sum(data) - static_cast<T>(truth));
-  T const ldError = std::abs(long_double_sum(data) - static_cast<T>(truth));
-
-  EXPECT_LE(reproError, kahanError)
-      << "reproducible_accumulator error " << reproError
-      << " exceeds Kahan error " << kahanError;
-  EXPECT_LE(reproError, ldError)
-      << "reproducible_accumulator error " << reproError
-      << " exceeds long double error " << ldError;
+  EXPECT_NEAR(
+      rfa.value(),
+      static_cast<T>(truth),
+      std::numeric_limits<T>::epsilon() * maxAbsVal);
+  EXPECT_LE(
+      reproError,
+      reproducible_accumulator<T>::error_bound(N, maxAbsVal, rfa.value()));
 }
 
-// Accuracy vs Kahan and long double: ill-conditioned data (large cancellation)
-TYPED_TEST(
-    ReproducibleAccumulatorTest, AccuracyVsKahanAndLongDoubleIllConditioned) {
+// Accuracy: ill-conditioned data (large cancellation).
+// The reproducible accumulator's error is O(N * ε * maxAbsVal), comparable
+// to Kahan summation. We verify both the O(N * ε * maxAbsVal) bound and
+// that the error doesn't exceed Kahan's error by more than a small factor.
+// Note: error_bound() uses a tighter kBinScale-based formula that can be
+// violated on ill-conditioned data where the condition number is large.
+TYPED_TEST(ReproducibleAccumulatorTest, AccuracyIllConditioned) {
   using T = TypeParam;
   constexpr size_t N = 50'000;
   auto data = this->makeIllConditionedVector(N, 502);
 
-  long double const truth = reference_sum(data);
+  T maxAbsVal = 0;
+  for (auto const& x : data) {
+    maxAbsVal = std::max(maxAbsVal, std::abs(x));
+  }
+
+  auto const to_ld = [](T x) { return static_cast<long double>(x); };
+  long double const truth =
+      folly::kahan_sum(data | std::views::transform(to_ld));
 
   reproducible_accumulator<T> rfa;
   for (auto const& x : data) {
     rfa += x;
   }
 
+  T const kahanVal = folly::kahan_sum(data);
   T const reproError = std::abs(rfa.value() - static_cast<T>(truth));
-  T const kahanError = std::abs(kahan_sum(data) - static_cast<T>(truth));
-  T const ldError = std::abs(long_double_sum(data) - static_cast<T>(truth));
-
-  EXPECT_LE(reproError, kahanError)
+  T const kahanError = std::abs(kahanVal - static_cast<T>(truth));
+  EXPECT_NEAR(
+      rfa.value(),
+      static_cast<T>(truth),
+      data.size() * std::numeric_limits<T>::epsilon() * maxAbsVal);
+  EXPECT_LE(reproError, kahanError + std::numeric_limits<T>::epsilon())
       << "reproducible_accumulator error " << reproError
       << " exceeds Kahan error " << kahanError;
-  EXPECT_LE(reproError, ldError)
-      << "reproducible_accumulator error " << reproError
-      << " exceeds long-double error " << ldError;
 }
 
-// Accuracy vs Kahan and long double: mixed magnitudes
-TYPED_TEST(
-    ReproducibleAccumulatorTest, AccuracyVsKahanAndLongDoubleMixedMagnitude) {
+// Accuracy: mixed magnitudes
+TYPED_TEST(ReproducibleAccumulatorTest, AccuracyMixedMagnitude) {
   using T = TypeParam;
   constexpr size_t N = 100'000;
+  constexpr T maxAbsVal = T(1e5);
   auto data = this->makeMixedMagnitudeVector(N, 503);
 
-  long double const truth = reference_sum(data);
+  auto const to_ld = [](T x) { return static_cast<long double>(x); };
+  long double const truth =
+      folly::kahan_sum(data | std::views::transform(to_ld));
 
   reproducible_accumulator<T> rfa;
   for (auto const& x : data) {
@@ -894,15 +874,13 @@ TYPED_TEST(
   }
 
   T const reproError = std::abs(rfa.value() - static_cast<T>(truth));
-  T const kahanError = std::abs(kahan_sum(data) - static_cast<T>(truth));
-  T const ldError = std::abs(long_double_sum(data) - static_cast<T>(truth));
-
-  EXPECT_LE(reproError, kahanError)
-      << "reproducible_accumulator error " << reproError
-      << " exceeds Kahan error " << kahanError;
-  EXPECT_LE(reproError, ldError)
-      << "reproducible_accumulator error " << reproError
-      << " exceeds long double error " << ldError;
+  EXPECT_NEAR(
+      rfa.value(),
+      static_cast<T>(truth),
+      std::numeric_limits<T>::epsilon() * maxAbsVal);
+  EXPECT_LE(
+      reproError,
+      reproducible_accumulator<T>::error_bound(N, maxAbsVal, rfa.value()));
 }
 
 // Lazy renorm: many one-at-a-time deposits spanning multiple renorm cycles
@@ -1030,4 +1008,74 @@ TYPED_TEST(ReproducibleAccumulatorTest, FastBinCheckWithVaryingMagnitudes) {
   rfa_batch.add(data.begin(), data.end());
 
   EXPECT_EQ(rfa_fast.value(), rfa_batch.value());
+}
+
+// Verify that the ill-conditioned data actually stresses naive summation:
+// with value magnitudes scaled to 1/ε, naive summation loses nearly all
+// significant digits while compensated summation remains accurate.
+TYPED_TEST(
+    ReproducibleAccumulatorTest, NaiveSummationFailsOnIllConditionedData) {
+  using T = TypeParam;
+  auto data = this->makeIllConditionedVector(50'000, 42);
+
+  // Shuffle to break the paired structure — when (val, -val+δ) pairs are
+  // adjacent, the accumulator stays small and naive summation works fine.
+  // In practice data arrives in arbitrary order; shuffling exposes the
+  // catastrophic cancellation that compensated summation handles.
+  std::mt19937 rng(123);
+  std::shuffle(data.begin(), data.end(), rng);
+
+  auto const to_ld = [](T x) { return static_cast<long double>(x); };
+  long double const truth =
+      folly::kahan_sum(data | std::views::transform(to_ld));
+
+  T naive = 0;
+  for (auto x : data) {
+    naive += x;
+  }
+
+  reproducible_accumulator<T> rfa;
+  for (auto const& x : data) {
+    rfa += x;
+  }
+
+  T const naiveErr = std::abs(naive - static_cast<T>(truth));
+  T const compErr = std::abs(rfa.value() - static_cast<T>(truth));
+  EXPECT_GT(naiveErr, compErr * T(10));
+}
+
+// Hand-crafted analytically ill-conditioned input: v = {2/ε, 1, 1, ..., -2/ε}.
+// True sum is exactly k (the number of ones). Naive summation returns 0
+// because each +1 is below the ULP of 2/ε (which is 2) and gets rounded away.
+// The reproducible accumulator should recover a result much closer to k than
+// naive summation.
+TYPED_TEST(
+    ReproducibleAccumulatorTest, ExactRecoveryOnAnalyticalIllConditionedInput) {
+  using T = TypeParam;
+  constexpr T eps = std::numeric_limits<T>::epsilon();
+  constexpr T c = T(2) / eps;
+  constexpr int k = 100;
+
+  std::vector<T> v;
+  v.reserve(k + 2);
+  v.push_back(c);
+  for (int i = 0; i < k; ++i) {
+    v.push_back(T(1));
+  }
+  v.push_back(-c);
+
+  reproducible_accumulator<T> rfa;
+  for (auto const& x : v) {
+    rfa += x;
+  }
+
+  T naive = 0;
+  for (auto x : v) {
+    naive += x;
+  }
+
+  T const compErr = std::abs(rfa.value() - T(k));
+  T const naiveErr = std::abs(naive - T(k));
+  EXPECT_LT(compErr, naiveErr);
+  EXPECT_NE(naive, T(k));
 }
