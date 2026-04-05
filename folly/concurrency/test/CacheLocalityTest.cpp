@@ -1092,7 +1092,8 @@ TEST(CacheLocality, BenchmarkSysfs) {
 }
 #endif
 
-#if defined(FOLLY_HAVE_LINUX_VDSO) && !defined(FOLLY_SANITIZE_MEMORY)
+#if (FOLLY_X64 || FOLLY_X86) && defined(FOLLY_HAVE_LINUX_VDSO) && \
+    !defined(FOLLY_SANITIZE_MEMORY)
 TEST(Getcpu, VdsoGetcpu) {
   Getcpu::Func func = Getcpu::resolveVdsoFunc();
   SKIP_IF(func == nullptr);
