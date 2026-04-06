@@ -65,7 +65,7 @@ non_fbcode_target(
         "SmartExceptionTracer.h",
     ],
     deps = [
-        "fbsource//xplat/folly/debugging/symbolizer:symbolizer",
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
         "//xplat/folly:exception_wrapper",
         "//xplat/folly:map_util",
         "//xplat/folly:scope_guard",
@@ -114,7 +114,7 @@ non_fbcode_target(
         "ExceptionCounterLib.h",
     ],
     deps = [
-        "fbsource//xplat/folly/debugging/symbolizer:symbolizer",
+        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
         "fbsource//xplat/folly/hash:spooky_hash_v2",
         "fbsource//xplat/folly/synchronization:rw_spin_lock",
         "//xplat/folly:range",
@@ -241,7 +241,7 @@ fbcode_target(
         "//folly:range",
         "//folly:singleton_thread_local",
         "//folly:synchronized",
-        "//folly/debugging/symbolizer:symbolizer",
+        "//folly/experimental/symbolizer:symbolizer",
         "//folly/hash:spooky_hash_v2",
         "//folly/synchronization:rw_spin_lock",
     ],

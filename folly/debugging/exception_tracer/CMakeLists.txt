@@ -40,7 +40,7 @@ folly_add_library(
   DEPS
     folly_debugging_exception_tracer_exception_tracer_callbacks
     folly_debugging_exception_tracer_stacktrace
-    folly_debugging_symbolizer_symbolizer
+    folly_experimental_symbolizer_symbolizer
     folly_hash_spooky_hash_v2
     folly_range
     folly_singleton_thread_local

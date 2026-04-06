@@ -27,7 +27,7 @@
 
 #include <folly/debugging/exception_tracer/Compatibility.h>
 #include <folly/debugging/exception_tracer/StackTrace.h>
-#include <folly/debugging/symbolizer/Symbolizer.h>
+#include <folly/experimental/symbolizer/Symbolizer.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 

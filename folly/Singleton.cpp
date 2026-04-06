@@ -32,7 +32,7 @@
 
 #include <folly/Demangle.h>
 #include <folly/ScopeGuard.h>
-#include <folly/debugging/symbolizer/Symbolizer.h>
+#include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/FmtCompile.h>

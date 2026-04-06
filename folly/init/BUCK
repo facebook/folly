@@ -15,7 +15,7 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/glog:glog",
         ":phase",
         "//folly:singleton",
-        "//folly/debugging/symbolizer:symbolizer",
+        "//folly/experimental/symbolizer:symbolizer",
         "//folly/logging:init",
         "//folly/portability:config",
         "//folly/portability:gflags",

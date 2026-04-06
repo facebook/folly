@@ -21,7 +21,7 @@ folly_add_library(
   HEADERS
     Init.h
   DEPS
-    folly_debugging_symbolizer_symbolizer
+    folly_experimental_symbolizer_symbolizer
     folly_init_phase
     folly_logging_init
     folly_portability_config

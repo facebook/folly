@@ -20,7 +20,7 @@
 #include <cstdlib>
 #include <new>
 
-#include <folly/debugging/symbolizer/StackTrace.h>
+#include <folly/experimental/symbolizer/StackTrace.h>
 
 namespace folly {
 namespace exception_tracer {
