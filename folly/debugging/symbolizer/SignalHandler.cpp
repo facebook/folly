@@ -156,16 +156,9 @@ bool try_async_reraise(int signum, siginfo_t* info) {
   constexpr long nr_pidfd_open = -1;
 #endif
   if constexpr (kIsLinux && nr_pidfd_send_signal >= 0 && nr_pidfd_open >= 0) {
-    constexpr auto kPIdfdSelf = -10000;
-    // PIDFD_SELF handling introduced in linux-6.15 (released 2025-05-25)
-    if (0 == linux_syscall(nr_pidfd_send_signal, kPIdfdSelf, signum, info, 0)) {
-      return true;
-    }
-    // fallback using a real pidfd
-    // TODO: remove fallback once minimum is linux-6.15
-    if (errno != EBADF) { // EBADF here means PIDFD_SELF is not yet supported
-      return false;
-    }
+    // We could use PIDFD_SELF since linux-6.15 (released 2025-05-25), but that
+    // causes memory leaks on some kernels (see
+    // https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=a2c1f82618b0b65f1ef615aa9cfdac8122537d69).
     auto const tid = linux_syscall(FOLLY_SYS_gettid);
     // pidfd_open introduced in linux-5.3 (released 2019-09-15)
     int const fd = to_narrow(linux_syscall(nr_pidfd_open, tid, 0));
