@@ -28,6 +28,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/debugging/symbolizer/Symbolizer.h>
 #include <folly/lang/ToAscii.h>
@@ -587,6 +588,10 @@ void signalHandler(int signum, siginfo_t* info, void* uctx) {
 constexpr size_t kSmallSigAltStackSize = 65536;
 
 [[maybe_unused]] bool isSmallSigAltStackEnabled() {
+#if FOLLY_APPLE_TVOS
+  // sigaltstack is banned on tvOS
+  return false;
+#else
   stack_t ss;
   if (sigaltstack(nullptr, &ss) != 0) {
     return false;
@@ -595,6 +600,7 @@ constexpr size_t kSmallSigAltStackSize = 65536;
     return false;
   }
   return ss.ss_size <= kSmallSigAltStackSize;
+#endif
 }
 
 } // namespace

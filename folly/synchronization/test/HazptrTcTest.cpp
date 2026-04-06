@@ -48,7 +48,7 @@ TEST_F(HazptrTcTest, InitialState) {
   hazptr_tc<> tc;
   EXPECT_EQ(tc.min_capacity(), kCap);
   EXPECT_EQ(tc.count(), 0);
-  EXPECT_EQ(tc.allocated_capacity(), 0);
+  EXPECT_EQ(tc.allocated_capacity(), kCap);
 }
 
 TEST_F(HazptrTcTest, Fill) {
@@ -396,9 +396,10 @@ TEST_F(HazptrTcTest, DecayRepeatedShrink) {
 }
 
 TEST_F(HazptrTcTest, AllocatedCapacityPowerOfTwo) {
-  // Allocated capacity is always a power of 2 (or 0 if never used).
+  // Allocated capacity is always a power of 2.
   hazptr_tc<> tc;
-  EXPECT_EQ(tc.allocated_capacity(), 0);
+  EXPECT_EQ(tc.allocated_capacity(), kCap);
+  EXPECT_TRUE(folly::isPowTwo(tc.allocated_capacity()));
   TcTester::fill(tc, kCap);
   size_t cap = tc.allocated_capacity();
   EXPECT_GT(cap, 0);
@@ -422,6 +423,14 @@ TEST_F(HazptrTcTest, AllocatedCapacityPowerOfTwo) {
     cap = tc.allocated_capacity();
     EXPECT_TRUE(folly::isPowTwo(cap));
   }
+}
+
+TEST_F(HazptrTcTest, CtorPreAllocatesVec) {
+  // The ctor pre-allocates vec_ to kCapacity so that operator[] never
+  // encounters an empty vector (fixes the crash from D98099826).
+  hazptr_tc<> tc;
+  EXPECT_EQ(tc.allocated_capacity(), kCap);
+  EXPECT_EQ(tc.count(), 0);
 }
 
 TEST_F(HazptrTcTest, AllocatedCapacityGrowth) {

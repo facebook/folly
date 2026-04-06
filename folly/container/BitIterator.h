@@ -86,8 +86,8 @@ class BitIterator : public bititerator_detail::BitIteratorBase<BaseIter>::type {
   }
 
   BitIterator& operator=(const BaseIter& other) {
-    this->~BitIterator();
-    new (this) BitIterator(other);
+    this->base_reference() = other;
+    bitOffset_ = 0;
     return *this;
   }
 

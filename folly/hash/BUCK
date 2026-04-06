@@ -1,35 +1,31 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "checksum",
     srcs = [
         "Checksum.cpp",
     ],
+    headers = [
+        "Checksum.h",
+    ],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    raw_headers = [
-        "Checksum.h",
+    use_raw_headers = True,
+    deps = [
+        "//folly:cpu_id",
+        "//folly/detail:traponavx512",
+        "//folly/external/fast-crc32:avx512_crc32c_v8s3x4",  # @manual
+        "//folly/external/fast-crc32:neon_crc32c_v3s4x2e_v2",  # @manual
+        "//folly/external/fast-crc32:neon_eor3_crc32_v8s2x4e_s1x2",  # @manual
+        "//folly/external/fast-crc32:neon_eor3_crc32c_v8s2x4e_s2x1",  # @manual
+        "//folly/external/fast-crc32:sse_crc32c_v8s3x3",  # @manual
+        "//folly/hash/detail:checksum_detail",
     ],
-    exported_deps = [
-        "//third-party/boost:boost",
-        "//xplat/folly:cpu_id",
-        "//xplat/folly/detail:traponavx512",
-        "//xplat/folly/external/fast-crc32:avx512_crc32c_v8s3x4",
-        "//xplat/folly/external/fast-crc32:neon_crc32c_v3s4x2e_v2",
-        "//xplat/folly/external/fast-crc32:neon_eor3_crc32_v8s2x4e_s1x2",
-        "//xplat/folly/external/fast-crc32:neon_eor3_crc32c_v8s2x4e_s2x1",
-        "//xplat/folly/external/fast-crc32:sse_crc32c_v8s3x3",
-        "//xplat/folly/external/nvidia/hash:checksum",  # @manual
-        "//xplat/folly/hash/detail:checksum_detail",
+    external_deps = [
+        "boost",
     ],
 )
 
@@ -106,28 +102,6 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     exported_deps = [
         "//folly:traits",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "checksum",
-    srcs = ["Checksum.cpp"],
-    headers = ["Checksum.h"],
-    deps = [
-        "//folly:cpu_id",
-        "//folly/detail:traponavx512",
-        "//folly/external/fast-crc32:avx512_crc32c_v8s3x4",  # @manual
-        "//folly/external/fast-crc32:neon_crc32c_v3s4x2e_v2",  # @manual
-        "//folly/external/fast-crc32:neon_eor3_crc32_v8s2x4e_s1x2",  # @manual
-        "//folly/external/fast-crc32:neon_eor3_crc32c_v8s2x4e_s2x1",  # @manual
-        "//folly/external/fast-crc32:sse_crc32c_v8s3x3",  # @manual
-        "//folly/hash/detail:checksum_detail",
-    ],
-    external_deps = [
-        "boost",
     ],
 )
 

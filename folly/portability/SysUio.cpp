@@ -19,7 +19,7 @@
 #include <cerrno>
 #include <cstdio>
 
-#include <folly/ScopeGuard.h>
+#include <folly/ScopeGuard.h> // IWYU pragma: keep -- used in _WIN32 blocks
 #include <folly/portability/Sockets.h>
 #include <folly/portability/SysFile.h>
 #include <folly/portability/Unistd.h>

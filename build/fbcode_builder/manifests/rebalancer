@@ -23,6 +23,7 @@ folly
 gflags
 glog
 googletest
+highs-optimizer
 xxhash
 
 [dependencies.os=linux]

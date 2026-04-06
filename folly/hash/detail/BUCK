@@ -1,39 +1,31 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "@fbsource//xplat/folly:defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "checksum_detail",
     srcs = [
         "ChecksumDetail.cpp",
         "Crc32CombineDetail.cpp",
         "Crc32cDetail.cpp",
     ],
+    headers = ["ChecksumDetail.h"],
     compiler_flags = select({
         "DEFAULT": [],
         "ovr_config//os:android-x86_64": ["-mpclmul"],
     }),
-    raw_headers = [
-        "ChecksumDetail.h",
-    ],
+    use_raw_headers = True,
     deps = [
-        "//third-party/boost:boost_preprocessor",
-        "//xplat/folly:bits",
-        "//xplat/folly:cpp_attributes",
+        "//folly:bits",
+        "//folly:cpp_attributes",
     ],
     exported_deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly/external/nvidia/hash:checksum",  # @manual
-        "//xplat/folly/external/nvidia/hash/detail:crc32c_detail",  # @manual
+        "//folly:portability",
+        "//folly/external/nvidia/hash:checksum",  # @manual
+        "//folly/external/nvidia/hash/detail:crc32c_detail",  # @manual
+    ],
+    external_deps = [
+        ("boost", None, "boost_preprocessor"),
     ],
 )
 
@@ -45,31 +37,5 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     exported_deps = [
         "//folly:portability",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "checksum_detail",
-    srcs = [
-        "ChecksumDetail.cpp",
-        "Crc32CombineDetail.cpp",
-        "Crc32cDetail.cpp",
-    ],
-    headers = ["ChecksumDetail.h"],
-    deps = [
-        "//folly:bits",
-        "//folly:cpp_attributes",
-        "//folly/external/nvidia/hash/detail:crc32c_detail",
-    ],
-    exported_deps = [
-        "//folly:portability",
-        "//folly/external/nvidia/hash:checksum",  # @manual
-        "//folly/external/nvidia/hash/detail:crc32c_detail",  # @manual
-    ],
-    external_deps = [
-        ("boost", None, "boost_preprocessor"),
     ],
 )

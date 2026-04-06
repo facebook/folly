@@ -24,14 +24,14 @@ BENCHMARK(BENCHFUN(zzInitRNG)) {
 }
 
 BENCHMARK(BENCHFUN(defaultCtor), iters) {
-  FOR_EACH_RANGE (i, 0, iters) {
+  for (unsigned int i = 0; i < iters; ++i) {
     VECTOR v;
     doNotOptimizeAway(&v);
   }
 }
 
 void BENCHFUN(sizeCtor)(int iters, int size) {
-  FOR_EACH_RANGE (i, 0, iters) {
+  for (int i = 0; i < iters; ++i) {
     VECTOR v(size);
     doNotOptimizeAway(&v);
   }
@@ -41,7 +41,7 @@ BENCHMARK_PARAM(BENCHFUN(sizeCtor), 128)
 BENCHMARK_PARAM(BENCHFUN(sizeCtor), 1024)
 
 void BENCHFUN(fillCtor)(int iters, int size) {
-  FOR_EACH_RANGE (i, 0, iters) {
+  for (int i = 0; i < iters; ++i) {
     VECTOR v(size_t(size), randomObject<VECTOR::value_type>());
     doNotOptimizeAway(&v);
   }
@@ -53,7 +53,7 @@ BENCHMARK_PARAM(BENCHFUN(fillCtor), 1024)
 #ifndef SKIP_RESERVE
 void BENCHFUN(reserve)(int iters, int size) {
   auto const obj = randomObject<VECTOR::value_type>();
-  FOR_EACH_RANGE (i, 0, iters) {
+  for (int i = 0; i < iters; ++i) {
     VECTOR v(random(0U, 1U), obj);
     v.reserve(size);
   }
@@ -68,7 +68,7 @@ void BENCHFUN(insertFront)(int iters, int initialSize) {
   auto const obj = randomObject<VECTOR::value_type>();
   VECTOR v(initialSize, obj);
   braces.dismissing([&]() {
-    FOR_EACH_RANGE (i, 0, iters) {
+    for (int i = 0; i < iters; ++i) {
       v.insert(v.begin(), obj);
     }
   });
@@ -86,7 +86,7 @@ void BENCHFUN(pushBack)(int iters, int initialSize) {
   auto const obj = randomObject<VECTOR::value_type>();
   VECTOR v(initialSize, obj);
   braces.dismissing([&]() {
-    FOR_EACH_RANGE (i, 0, iters) {
+    for (int i = 0; i < iters; ++i) {
       v.push_back(obj);
     }
   });

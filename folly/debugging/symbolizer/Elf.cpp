@@ -315,8 +315,30 @@ ElfFile::OpenResult ElfFile::init() noexcept {
   return {kSuccess, nullptr};
 }
 
+size_t ElfFile::getNumSections() const noexcept {
+  // Do not use elfHeader().e_shnum directly — it is a 16-bit field that
+  // overflows for ELFs with >= SHN_LORESERVE (0xFF00) sections.
+  // When e_shnum == 0, the real count is in sh_size of section header 0.
+  size_t shnum = elfHeader().e_shnum;
+  if (shnum == 0 && elfHeader().e_shoff != 0) {
+    shnum = at<ElfShdr>(elfHeader().e_shoff).sh_size;
+  }
+  return shnum;
+}
+
+size_t ElfFile::getSectionHeaderStrIndex() const noexcept {
+  // Do not use elfHeader().e_shstrndx directly — when the string table
+  // index >= SHN_LORESERVE, it is set to SHN_XINDEX (0xFFFF) and the
+  // real index is in sh_link of section header 0.
+  size_t shstrndx = elfHeader().e_shstrndx;
+  if (shstrndx == SHN_XINDEX && elfHeader().e_shoff != 0) {
+    shstrndx = at<ElfShdr>(elfHeader().e_shoff).sh_link;
+  }
+  return shstrndx;
+}
+
 const ElfShdr* ElfFile::getSectionByIndex(size_t idx) const noexcept {
-  FOLLY_SAFE_CHECK(idx < elfHeader().e_shnum, "invalid section index");
+  FOLLY_SAFE_CHECK(idx < getNumSections(), "invalid section index");
   if (elfHeader().e_shoff + (idx + 1) * sizeof(ElfShdr) > length_) {
     // Handle ELFs with invalid internal offsets to program/section headers.
     return nullptr;
@@ -356,11 +378,12 @@ const char* ElfFile::getString(
 }
 
 const char* ElfFile::getSectionName(const ElfShdr& section) const noexcept {
-  if (elfHeader().e_shstrndx == SHN_UNDEF) {
+  auto shstrndx = getSectionHeaderStrIndex();
+  if (shstrndx == SHN_UNDEF) {
     return nullptr; // no section name string table
   }
 
-  auto stringSection = getSectionByIndex(elfHeader().e_shstrndx);
+  auto stringSection = getSectionByIndex(shstrndx);
   if (!stringSection) {
     return nullptr;
   }
@@ -368,11 +391,12 @@ const char* ElfFile::getSectionName(const ElfShdr& section) const noexcept {
 }
 
 const ElfShdr* ElfFile::getSectionByName(const char* name) const noexcept {
-  if (elfHeader().e_shstrndx == SHN_UNDEF) {
+  auto shstrndx = getSectionHeaderStrIndex();
+  if (shstrndx == SHN_UNDEF) {
     return nullptr; // no section name string table
   }
 
-  auto stringSection = getSectionByIndex(elfHeader().e_shstrndx);
+  auto stringSection = getSectionByIndex(shstrndx);
   if (!stringSection) {
     return nullptr;
   }

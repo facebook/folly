@@ -43,10 +43,15 @@ namespace folly {
 /// the largest element magnitude — not the condition number. The second is
 /// O(epsilon * |sum|), independent of N. This is much more accurate than
 /// naive summation (whose error grows as O(N * epsilon * |sum|) and is
-/// sensitive to catastrophic cancellation), but less accurate than Kahan
-/// summation (whose error is O(epsilon * |sum|) with no N-dependent term).
-/// The tradeoff is order-independence: unlike Kahan, the result is bitwise
-/// identical regardless of summation order.
+/// sensitive to catastrophic cancellation), and comparable to Kahan
+/// summation in practice — though the asymptotic bound has an N-dependent
+/// term that Kahan lacks. The tradeoff is order-independence: unlike Kahan,
+/// the result is bitwise identical regardless of summation order.
+///
+/// Note: `error_bound()` uses a tighter formula based on the internal bin
+/// scale factor, which can be violated on highly ill-conditioned data
+/// (condition number >> 1). The O(N * epsilon * max_abs_val) bound above
+/// always holds.
 ///
 /// Performance: `operator+=` (one-at-a-time) costs roughly 4x a naive FP add
 /// due to the serial dependency chain through Fold bin levels. The batch

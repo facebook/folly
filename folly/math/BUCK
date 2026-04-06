@@ -3,6 +3,24 @@ load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsy
 oncall("fbcode_entropy_wardens_folly")
 
 fb_dirsync_cpp_library(
+    name = "kahan_summation",
+    headers = ["KahanSummation.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/lang:hint",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "accurate_summation",
+    headers = ["AccurateSummation.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/math:kahan_summation",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "reproducible_accumulator",
     headers = ["ReproducibleAccumulator.h"],
     use_raw_headers = True,

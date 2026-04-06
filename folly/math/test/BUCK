@@ -11,20 +11,45 @@ fbcode_target(
     headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:benchmark_util",
+        "//folly/math:kahan_summation",
         "//folly/math:reproducible_accumulator",
         "//folly/portability:gtest",
     ],
 )
 
 fbcode_target(
+    _kind = cpp_unittest,
+    name = "kahan_summation_test",
+    srcs = ["KahanSummationTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/math:kahan_summation",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "accurate_summation_test",
+    srcs = ["AccurateSummationTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/math:accurate_summation",
+        "//folly/math:kahan_summation",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_benchmark,
-    name = "reproducible_accumulator_benchmark",
-    srcs = ["ReproducibleAccumulatorBenchmark.cpp"],
+    name = "summation_benchmark",
+    srcs = ["SummationBenchmark.cpp"],
     headers = [],
     deps = [
         "//folly:benchmark",
         "//folly/init:init",
+        "//folly/math:accurate_summation",
+        "//folly/math:kahan_summation",
         "//folly/math:reproducible_accumulator",
     ],
 )

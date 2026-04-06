@@ -86,6 +86,25 @@ TEST(BitIterator, Const) {
   checkIt(0x42, bi);
 }
 
+TEST(BitIterator, AssignFromBaseIter) {
+  // Regression test: operator=(const BaseIter&) previously used placement new
+  // on this, which is undefined behavior. Verify assignment works correctly
+  // and resets bitOffset to 0.
+  std::vector<int> v{0x10, 0x42};
+  auto bi = makeBitIterator(v.begin());
+  ++bi; // advance to bitOffset 1
+  ++bi; // advance to bitOffset 2
+  EXPECT_EQ(2u, bi.bitOffset());
+
+  // Assign from a different base iterator -- should reset bitOffset to 0
+  bi = v.begin() + 1;
+  EXPECT_EQ(0u, bi.bitOffset());
+  EXPECT_EQ(v.begin() + 1, bi.base());
+
+  // Verify the iterator works correctly after assignment
+  checkIt(0x42, bi);
+}
+
 TEST(BitIterator, IteratorCategory) {
   EXPECT_TRUE( //
       (std::is_same<

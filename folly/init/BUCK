@@ -1,51 +1,21 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
-# xplat build rules
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "init",
     srcs = [
         "Init.cpp",
     ],
-    fbcode_deps = [
-        "fbcode//folly/experimental/symbolizer:signal_handler",
-    ],
-    raw_headers = [
+    headers = [
         "Init.h",
     ],
-    deps = [
-        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
-        "fbsource//xplat/folly/logging:init",
-        "fbsource//xplat/folly/portability:config",
-        "fbsource//xplat/folly/portability:gflags",
-        "fbsource//xplat/folly/portability:sys_syscall",
-        ":phase",
-        "//third-party/glog:glog",
-        "//xplat/folly:portability",
-        "//xplat/folly:singleton",
-        # "fbsource//xplat/folly/synchronization:hazptr_thread_pool_executor",
-        "//xplat/folly/synchronization:hazptr_thread_pool_executor",
-    ],
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "init",
-    srcs = ["Init.cpp"],
-    headers = ["Init.h"],
+    use_raw_headers = True,
     deps = [
         "fbsource//third-party/glog:glog",
         ":phase",
         "//folly:singleton",
-        "//folly/experimental/symbolizer:signal_handler",
+        "//folly/experimental/symbolizer:symbolizer",
         "//folly/logging:init",
         "//folly/portability:config",
         "//folly/portability:gflags",

@@ -548,6 +548,15 @@ class ElfFile {
 
   enum { CONTINUE = 0, STOP = 1 };
 
+  // Get the real number of section headers, handling SHN_XINDEX.
+  // When e_shnum == 0, the real count is in sh_size of section header 0.
+  size_t getNumSections() const noexcept;
+
+  // Get the real section header string table index, handling SHN_XINDEX.
+  // When e_shstrndx == SHN_XINDEX (0xFFFF), the real index is in sh_link
+  // of section header 0.
+  size_t getSectionHeaderStrIndex() const noexcept;
+
   void validateStringTable(const ElfShdr& stringTable) const noexcept;
 
   template <class T>

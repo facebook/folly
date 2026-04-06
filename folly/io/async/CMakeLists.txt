@@ -178,7 +178,6 @@ folly_add_library(
     folly_detail_file_util_detail
     folly_file_util
     folly_io_async_async_socket_exception
-    folly_utility
   EXPORTED_DEPS
     folly_io_async_async_base
     folly_io_async_async_transport

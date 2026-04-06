@@ -1,8 +1,5 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//xplat/folly:defs.bzl", "folly_xplat_cxx_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -142,10 +139,10 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "exception",
     srcs = ["Exception.cpp"],
+    headers = ["Exception.h"],
     compiler_flags = selects.with_or({
         (
             "ovr_config//os:android"
@@ -161,23 +158,23 @@ non_fbcode_target(
         ): ["-lc++abi"],
         "DEFAULT": [],
     }),
-    raw_headers = ["Exception.h"],
+    use_raw_headers = True,
     deps = [
         ":align",
         ":new",
     ],
     exported_deps = [
+        "fbsource//third-party/fmt:fmt",
         ":assume",
         ":safe_assert",
         ":thunk",
         ":type_info",
-        "//third-party/fmt:fmt",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:likely",
-        "//xplat/folly:portability",
-        "//xplat/folly:traits",
-        "//xplat/folly:utility",
+        "//folly:c_portability",
+        "//folly:cpp_attributes",
+        "//folly:likely",
+        "//folly:portability",
+        "//folly:traits",
+        "//folly:utility",
     ],
 )
 
@@ -331,7 +328,6 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:traits",
     ],
 )
 
@@ -405,34 +401,4 @@ fb_dirsync_cpp_library(
     name = "vector_traits",
     headers = ["VectorTraits.h"],
     use_raw_headers = True,
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "exception",
-    srcs = ["Exception.cpp"],
-    headers = ["Exception.h"],
-    linker_flags = select({
-        "DEFAULT": [],
-        "ovr_config//os:macos": ["-lc++abi"],
-    }),
-    deps = [
-        ":align",
-        ":new",
-    ],
-    exported_deps = [
-        "fbsource//third-party/fmt:fmt",
-        ":assume",
-        ":safe_assert",
-        ":thunk",
-        ":type_info",
-        "//folly:c_portability",
-        "//folly:cpp_attributes",
-        "//folly:likely",
-        "//folly:portability",
-        "//folly:traits",
-        "//folly:utility",
-    ],
 )
