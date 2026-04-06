@@ -204,7 +204,7 @@ class RegexMatchCacheDynamicBitset {
     auto const newsize = std::max(strictNextPowTwo(index), minsize);
     assert(newsize >= minsize);
     assert(newsize % wordbits == 0);
-    auto const newdata = new uintptr_t[newsize / 8];
+    auto const newdata = new uintptr_t[newsize / wordbits];
     auto const buf = get_bit_span_();
     auto const buf2size = nextPowTwo(buf.size);
     std::memcpy(newdata, buf.data, buf2size / 8);
