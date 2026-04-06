@@ -1089,8 +1089,8 @@ folly_add_library(
     Singleton-inl.h
     Singleton.h
   DEPS
+    folly_debugging_symbolizer_symbolizer
     folly_demangle
-    folly_experimental_symbolizer_symbolizer
     folly_lang_safe_assert
     folly_portability_config
     folly_portability_fmt_compile

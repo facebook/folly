@@ -294,7 +294,7 @@ non_fbcode_target(
         "//xplat/folly/memory:sanitize_leak",
     ] + select({
         "DEFAULT": [],
-        "ovr_config//os:linux": ["//xplat/folly/experimental/symbolizer:symbolizer"],
+        "ovr_config//os:linux": ["//xplat/folly/debugging/symbolizer:symbolizer"],
     }),
 )
 
@@ -3071,7 +3071,7 @@ fbcode_target(
         "fbsource//third-party/fmt:fmt",
         ":demangle",
         ":scope_guard",
-        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/debugging/symbolizer:symbolizer",
         "//folly/lang:safe_assert",
         "//folly/portability:config",
         "//folly/portability:fmt_compile",
