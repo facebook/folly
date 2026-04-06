@@ -1,11 +1,10 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
 
 oncall("rust_libraries")
 
-fbcode_target(
-    _kind = rust_bindgen_library,
+fb_dirsync_rule(
     name = "tdigest",
     allowlist_funcs = [
         "facebook::rust::.*",
@@ -20,6 +19,7 @@ fbcode_target(
     cpp_deps = [":tdigest-ffi"],
     cxx_bridge = "tdigest.rs",
     cxx_namespaces = True,
+    fbcode_rule = rust_bindgen_library,
     generate = ("types", "vars", "functions"),
     header = "tdigest.h",
     opaque_types = [
@@ -33,8 +33,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "tdigest-ffi",
     srcs = ["tdigest.cpp"],
     headers = ["tdigest.h"],
