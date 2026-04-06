@@ -85,7 +85,7 @@ folly_add_library(
   DEPS
     folly_debugging_exception_tracer_exception_abi
     folly_debugging_exception_tracer_stacktrace
-    folly_experimental_symbolizer_symbolizer
+    folly_debugging_symbolizer_symbolizer
     folly_portability
     folly_string
   EXPORTED_DEPS
@@ -114,7 +114,7 @@ folly_add_library(
   DEPS
     folly_debugging_exception_tracer_exception_tracer_callbacks
     folly_debugging_exception_tracer_smart_exception_tracer_singleton
-    folly_experimental_symbolizer_symbolizer
+    folly_debugging_symbolizer_symbolizer
 )
 
 folly_add_library(
@@ -158,7 +158,7 @@ folly_add_library(
   HEADERS
     StackTrace.h
   DEPS
-    folly_experimental_symbolizer_stack_trace
+    folly_debugging_symbolizer_stack_trace
   EXPORTED_DEPS
     folly_portability
 )
