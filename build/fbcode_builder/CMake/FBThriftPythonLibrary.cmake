@@ -153,12 +153,19 @@ function(add_fbthrift_python_library LIB_NAME THRIFT_FILE)
 
   # Parse the namespace value
   if (NOT DEFINED ARG_NAMESPACE)
-    set(ARG_NAMESPACE "${base}")
+    set(ARG_NAMESPACE "")
   endif()
 
-  # mstch_python outputs to gen-python/<namespace>/
+  # mstch_python outputs to gen-python/<namespace_py3>/<basename>/
+  # NAMESPACE should match the "namespace py3" value in the thrift file
+  # (consistent with BUCK's py3_namespace).  The basename is appended
+  # automatically by this function, just as the mstch_python generator does.
   string(REPLACE "." "/" namespace_dir "${ARG_NAMESPACE}")
-  set(py_output_dir "${output_dir}/gen-python/${namespace_dir}")
+  if(namespace_dir STREQUAL "")
+    set(py_output_dir "${output_dir}/gen-python/${base}")
+  else()
+    set(py_output_dir "${output_dir}/gen-python/${namespace_dir}/${base}")
+  endif()
   list(APPEND generated_sources
     "${py_output_dir}/thrift_types.py"
     "${py_output_dir}/thrift_enums.py"
@@ -205,10 +212,9 @@ function(add_fbthrift_python_library LIB_NAME THRIFT_FILE)
   string(REPLACE ";" "," GEN_ARG_STR "${ARG_OPTIONS}")
 
   # mstch_python generates output at gen-python/<namespace_py3>/<basename>/
-  # The CMake NAMESPACE parameter must match this full path (including the
-  # basename appended by the generator).  For example, phy.thrift with
-  # "namespace py3 neteng.fboss.phy" produces gen-python/neteng/fboss/phy/phy/
-  # so NAMESPACE must be "neteng.fboss.phy.phy".
+  # The CMake NAMESPACE parameter should match the "namespace py3" directive
+  # in the thrift file (consistent with BUCK's py3_namespace).  The basename
+  # is appended automatically by this function.
 
   # Emit the rule to run the thrift compiler
   add_custom_command(
