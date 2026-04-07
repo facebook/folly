@@ -24,6 +24,7 @@ enable_tests=ON
 enable_tests=OFF
 
 [dependencies]
+benchmark
 fizz
 fmt
 folly
