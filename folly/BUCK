@@ -1065,25 +1065,21 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "exception_string",
-    srcs = [
-        "ExceptionString.cpp",
-    ],
+    srcs = ["ExceptionString.cpp"],
+    headers = ["ExceptionString.h"],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    raw_headers = [
-        "ExceptionString.h",
-    ],
+    use_raw_headers = True,
     deps = [
-        "//xplat/folly:demangle",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:type_info",
+        ":demangle",
+        "//folly/lang:exception",
+        "//folly/lang:type_info",
     ],
     exported_deps = [
-        "//xplat/folly:fbstring",
+        ":fbstring",
     ],
 )
 
@@ -1216,25 +1212,23 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "micro_lock",
-    srcs = [
-        "MicroLock.cpp",
-    ],
+    srcs = ["MicroLock.cpp"],
+    headers = ["MicroLock.h"],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    raw_headers = [
-        "MicroLock.h",
+    use_raw_headers = True,
+    deps = [
+        "//folly/portability:asm",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/portability:asm",
-        "fbsource//xplat/folly/synchronization:atomic_notification",
-        "fbsource//xplat/folly/synchronization:atomic_ref",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:utility",
+        ":optional",
+        ":portability",
+        ":utility",
+        "//folly/synchronization:atomic_notification",
+        "//folly/synchronization:atomic_ref",
     ],
 )
 
@@ -2610,21 +2604,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "exception_string",
-    srcs = ["ExceptionString.cpp"],
-    headers = ["ExceptionString.h"],
-    deps = [
-        ":demangle",
-        "//folly/lang:exception",
-        "//folly/lang:type_info",
-    ],
-    exported_deps = [
-        ":fbstring",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "exception_wrapper",
     srcs = ["ExceptionWrapper.cpp"],
     headers = [
@@ -2870,23 +2849,6 @@ fbcode_target(
             "//folly/external/aor:memcpy_aarch64-use",  # @manual
         ],
     }),
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "micro_lock",
-    srcs = ["MicroLock.cpp"],
-    headers = ["MicroLock.h"],
-    deps = [
-        "//folly/portability:asm",
-    ],
-    exported_deps = [
-        ":optional",
-        ":portability",
-        ":utility",
-        "//folly/synchronization:atomic_notification",
-        "//folly/synchronization:atomic_ref",
-    ],
 )
 
 fbcode_target(
