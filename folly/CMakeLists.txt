@@ -1253,6 +1253,28 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME test_socket_address_test_helper
+  SRCS
+    test/SocketAddressTestHelper.cpp
+  HEADERS
+    test/SocketAddressTestHelper.h
+  DEPS
+    folly_net_tcpinfo_dispatcher
+)
+
+folly_add_library(
+  NAME test_test_utils
+  HEADERS
+    test/TestUtils.h
+  EXPORTED_DEPS
+    folly_conv
+    folly_exception_string
+    folly_fbstring
+    folly_fixed_string
+    folly_range
+)
+
+folly_add_library(
   NAME thread_cached_int
   HEADERS
     ThreadCachedInt.h
