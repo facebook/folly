@@ -38,7 +38,6 @@ folly_add_library(
   HEADERS
     ExceptionCounterLib.h
   DEPS
-    folly_debugging_exception_tracer_exception_tracer_callbacks
     folly_debugging_exception_tracer_stacktrace
     folly_experimental_symbolizer_symbolizer
     folly_hash_spooky_hash_v2
@@ -68,7 +67,6 @@ folly_add_library(
   DEPS
     folly_debugging_exception_tracer_exception_abi
     folly_debugging_exception_tracer_exception_tracer_base
-    folly_debugging_exception_tracer_exception_tracer_callbacks
     folly_debugging_exception_tracer_stacktrace
     folly_lang_exception
     folly_utility
@@ -125,7 +123,6 @@ folly_add_library(
     SmartExceptionTracer.h
   DEPS
     folly_container_f14_hash
-    folly_debugging_exception_tracer_exception_tracer_callbacks
     folly_debugging_exception_tracer_smart_exception_tracer_singleton
     folly_debugging_exception_tracer_stacktrace
     folly_lang_exception

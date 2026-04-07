@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
     "IOS",
@@ -7,10 +5,6 @@ load(
 )
 load("@fbsource//tools/build_defs:selects.bzl", "selects")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load(
-    "../../defs.bzl",
-    "folly_xplat_library",
-)
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -53,29 +47,6 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "smart_exception_tracer",
-    srcs = [
-        "SmartExceptionTracer.cpp",
-    ],
-    apple_sdks = (IOS, MACOSX),
-    link_whole = True,
-    raw_headers = [
-        "SmartExceptionTracer.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
-        "//xplat/folly:exception_wrapper",
-        "//xplat/folly:map_util",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
-        "//xplat/folly/debugging/exception_tracer:exception_tracer_callbacks",
-        "//xplat/folly/debugging/exception_tracer:smart_exception_tracer_singleton",
-        "//xplat/folly/lang:exception",
-    ],
-)
-
 fb_dirsync_cpp_library(
     name = "smart_exception_tracer_singleton",
     srcs = ["SmartExceptionTracerSingleton.cpp"],
@@ -102,30 +73,6 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "exception_counter",
-    srcs = [
-        "ExceptionCounterLib.cpp",
-    ],
-    apple_sdks = (IOS, MACOSX),
-    link_whole = True,
-    raw_headers = [
-        "ExceptionCounterLib.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/experimental/symbolizer:symbolizer",
-        "fbsource//xplat/folly/hash:spooky_hash_v2",
-        "fbsource//xplat/folly/synchronization:rw_spin_lock",
-        "//xplat/folly:range",
-        "//xplat/folly:singleton_thread_local",
-        "//xplat/folly:synchronized",
-        "//xplat/folly/debugging/exception_tracer:exception_tracer_base",
-        "//xplat/folly/debugging/exception_tracer:exception_tracer_callbacks",
-        "//xplat/folly/debugging/exception_tracer:stacktrace",
-    ],
-)
-
 fb_dirsync_cpp_library(
     name = "exception_tracer",
     srcs = ["ExceptionStackTraceLib.cpp"],
@@ -135,7 +82,6 @@ fb_dirsync_cpp_library(
     deps = [
         ":exception_abi",
         ":exception_tracer_base",
-        ":exception_tracer_callbacks",
         ":stacktrace",
         "//folly:utility",
         "//folly/lang:exception",
@@ -159,84 +105,11 @@ fb_dirsync_cpp_library(
     ],
 )
 
-FBCODE_STATIC_LIBSTDCXX_SELECTOR = selects.and_(
-    selects.cond("ovr_config//runtime/constraints:fbcode"),
-    selects.cond("ovr_config//cpp:libstdc++"),
-    selects.or_(
-        selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
-        selects.cond("ovr_config//third-party/libgcc:11.x"),
-    ),
-)
-
-FOLLY_SHOULD_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS = selects.or_(
-    selects.cond("fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type"),
-    FBCODE_STATIC_LIBSTDCXX_SELECTOR,
-)
-
-FOLLY_SHOULD_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER = selects.or_(
-    selects.cond("fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type"),
-    FBCODE_STATIC_LIBSTDCXX_SELECTOR,
-)
-
-EXCEPTION_TRACER_LIB_COMPILER_FLAGS = selects.if_(
-    FOLLY_SHOULD_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS,
-    ["-DFOLLY_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS=1"],
-    [],
-) + selects.if_(
-    FOLLY_SHOULD_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER,
-    ["-DFOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER=1"],
-    [],
-)
-
-EXCEPTION_TRACER_LIB_EXPORTED_LINKER_FLAGS = selects.if_(
-    FOLLY_SHOULD_INSTALL_STATIC_CXA_FUNCTIONS_WRAPPERS,
-    [
-        # @fb-only[end= ]: "-Wl,--wrap=__cxa_throw",
-        # @fb-only[end= ]: "-Wl,--wrap=__cxa_rethrow",
-        # @fb-only[end= ]: "-Wl,--wrap=__cxa_begin_catch",
-        # @fb-only[end= ]: "-Wl,--wrap=__cxa_end_catch",
-    ],
-    [],
-) + selects.if_(
-    FOLLY_SHOULD_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER,
-    select({
-        "DEFAULT": ["-Wl,--wrap=_ZSt17rethrow_exceptionSt13exception_ptr"],
-        "ovr_config//cpp:libstdc++": ["-Wl,--wrap=_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE"],
-    }),
-    [],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "exception_tracer_callbacks",
-    srcs = [
-        "ExceptionTracerLib.cpp",
-    ],
-    compiler_flags = EXCEPTION_TRACER_LIB_COMPILER_FLAGS,
-    exported_linker_flags = EXCEPTION_TRACER_LIB_EXPORTED_LINKER_FLAGS,
-    link_whole = True,
-    raw_headers = [
-        "ExceptionTracerLib.h",
-    ],
-    deps = [
-        "//xplat/folly:indestructible",
-        "//xplat/folly:portability",
-        "//xplat/folly:shared_mutex",
-        "//xplat/folly:synchronized",
-        "//xplat/folly/debugging/exception_tracer:compatibility",
-        "//xplat/third-party/linker_lib:dl",
-    ],
-)
-
-# !!!! fbcode/folly/debugging/exception_tracer/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "exception_counter",
     srcs = ["ExceptionCounterLib.cpp"],
     headers = ["ExceptionCounterLib.h"],
     deps = [
-        ":exception_tracer_callbacks",
         ":stacktrace",
         "//folly:range",
         "//folly:singleton_thread_local",
@@ -252,8 +125,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "exception_counter_static_registration",
     srcs = ["ExceptionCounterLibStaticRegistration.cpp"],
     link_whole = True,
@@ -265,7 +137,10 @@ fbcode_target(
 
 LIBSTDCXX_BUCKIFIED_SELECTOR = selects.and_(
     selects.cond("ovr_config//cpp:libstdc++"),
-    selects.cond("ovr_config//third-party/libgcc:11.x"),
+    selects.or_(
+        selects.cond("ovr_config//third-party/libgcc:11.x"),
+        selects.cond("fbsource//arvr/third-party/toolchains/platform010/build/libgcc:libgcc-static"),
+    ),
 )
 
 LIBCXX_BUCKIFIED_SELECTOR = selects.and_(
@@ -280,10 +155,10 @@ LIBCXX_BUCKIFIED_SELECTOR = selects.and_(
 STATIC_CXX_STDLIB_SELECTOR = selects.or_(
     LIBSTDCXX_BUCKIFIED_SELECTOR,
     LIBCXX_BUCKIFIED_SELECTOR,
+    selects.cond("fbsource//xplat/toolchains/android/ndk:cxx-static-runtime-type"),
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "exception_tracer_callbacks",
     srcs = ["ExceptionTracerLib.cpp"],
     headers = ["ExceptionTracerLib.h"],
@@ -340,14 +215,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "smart_exception_tracer",
     srcs = ["SmartExceptionTracer.cpp"],
     headers = ["SmartExceptionTracer.h"],
     deps = [
         "fbsource//third-party/glog:glog",
-        ":exception_tracer_callbacks",
         ":smart_exception_tracer_singleton",
         ":stacktrace",
         "//folly:map_util",
