@@ -1083,16 +1083,15 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "exception_wrapper",
-    srcs = [
-        "ExceptionWrapper.cpp",
-    ],
-    raw_headers = [
+    srcs = ["ExceptionWrapper.cpp"],
+    headers = [
         "ExceptionWrapper.h",
         "ExceptionWrapper-inl.h",
     ],
+    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
+    use_raw_headers = True,
     exported_deps = [
         ":c_portability",
         ":cpp_attributes",
@@ -1102,9 +1101,9 @@ non_fbcode_target(
         ":portability",
         ":traits",
         ":utility",
-        "//xplat/folly/functional:traits",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/lang:exception",
+        "//folly/functional:traits",
+        "//folly/lang:assume",
+        "//folly/lang:exception",
     ],
 )
 
@@ -1130,25 +1129,26 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "fmt_utility",
     srcs = [
         "FmtUtility.cpp",
     ],
+    headers = [
+        "FmtUtility.h",
+    ],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    raw_headers = [
-        "FmtUtility.h",
-    ],
+    use_raw_headers = True,
     deps = [
-        "//xplat/folly:range",
-        "//xplat/folly:string",
-        "//xplat/folly/ssl:openssl_hash",
+        ":range",
+        ":string",
+        "//folly/ssl:openssl_hash",
     ],
     exported_deps = [
-        "//xplat/folly:cpp_attributes",
+        "fbsource//third-party/fmt:fmt",
+        ":cpp_attributes",
     ],
 )
 
@@ -2604,30 +2604,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "exception_wrapper",
-    srcs = ["ExceptionWrapper.cpp"],
-    headers = [
-        "ExceptionWrapper.h",
-        "ExceptionWrapper-inl.h",
-    ],
-    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
-    exported_deps = [
-        ":c_portability",
-        ":cpp_attributes",
-        ":demangle",
-        ":exception_string",
-        ":fbstring",
-        ":portability",
-        ":traits",
-        ":utility",
-        "//folly/functional:traits",
-        "//folly/lang:assume",
-        "//folly/lang:exception",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "executor",
     srcs = ["Executor.cpp"],
     headers = [
@@ -2644,26 +2620,6 @@ fbcode_target(
         ":range",
         ":utility",
         "//folly/lang:exception",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "fmt_utility",
-    srcs = [
-        "FmtUtility.cpp",
-    ],
-    headers = [
-        "FmtUtility.h",
-    ],
-    deps = [
-        ":range",
-        ":string",
-        "//folly/ssl:openssl_hash",
-    ],
-    exported_deps = [
-        "fbsource//third-party/fmt:fmt",
-        ":cpp_attributes",
     ],
 )
 
