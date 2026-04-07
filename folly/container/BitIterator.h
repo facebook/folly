@@ -17,7 +17,7 @@
 /**
  * BitIterator
  *    Wrapper around an iterator over an integral type that iterates
- *    over its underlying bits in MSb to LSb order
+ *    over its underlying bits in LSb to MSb order
  *
  * findFirstSet(BitIterator begin, BitIterator end)
  *    return a BitIterator pointing to the first 1 bit in [begin, end), or
