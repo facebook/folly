@@ -2625,8 +2625,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "memset-impl",
     srcs = [
         "FollyMemset.cpp",
@@ -2657,8 +2656,7 @@ fbcode_target(
 )
 
 # This exports the symbol __folly_memset to C++ via a header.
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "memset",
     headers = ["FollyMemset.h"],
     exported_deps = [
@@ -2666,9 +2664,7 @@ fbcode_target(
     ],
 )
 
-# This overrides the libc memset with __folly_memset.
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "memset-use",
     srcs = [
         "FollyMemset.cpp",
@@ -2704,12 +2700,12 @@ fbcode_target(
 )
 
 # This adds the symbol __folly_memcpy but does not replace the default memcpy.
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "memcpy-impl",
     srcs = [
         "FollyMemcpy.cpp",
     ] + select({
+        "DEFAULT": [],
         "ovr_config//cpu:x86_64": [
             "memcpy.S",
         ],
@@ -2745,8 +2741,7 @@ fbcode_target(
 )
 
 # This overrides the libc memcpy with __folly_memcpy.
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "memcpy-use",
     srcs = [
         "FollyMemcpy.cpp",
