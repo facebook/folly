@@ -489,26 +489,29 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "uri",
     srcs = [
         "Uri.cpp",
     ],
-    force_static = False,
-    raw_headers = [
+    headers = [
         "Uri.h",
         "Uri-inl.h",
     ],
+    force_static = False,
+    use_raw_headers = True,
+    xplat_impl = folly_xplat_library,
     deps = [
-        "//third-party/boost:boost_regex",
-        "//third-party/glog:glog",
+        "fbsource//third-party/glog:glog",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "//third-party/boost:boost_regex",
-        "//xplat/folly:conv",
-        "//xplat/folly:string",
+        ":conv",
+        ":expected",
+        ":string",
+        "//folly/hash:hash",
+    ],
+    external_deps = [
+        ("boost", None, "boost_regex"),
     ],
 )
 
@@ -1242,8 +1245,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "network_address",
     srcs = [
         "IPAddress.cpp",
@@ -1252,10 +1254,7 @@ non_fbcode_target(
         "MacAddress.cpp",
         "SocketAddress.cpp",
     ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
+    headers = [
         "IPAddress.h",
         "IPAddressException.h",
         "IPAddressV4.h",
@@ -1263,36 +1262,45 @@ non_fbcode_target(
         "MacAddress.h",
         "SocketAddress.h",
     ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    use_raw_headers = True,
     windows_exported_linker_flags = [
         "iphlpapi.lib",
     ],
+    xplat_impl = folly_xplat_library,
     deps = [
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:small_vector",
+        "fbsource//third-party/fmt:fmt",
+        ":exception",
+        ":format",
+        ":scope_guard",
+        ":small_vector",
+        ":string",
+        "//folly/detail:ip_address_source",
+        "//folly/net:net_ops",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "fbsource//xplat/folly/portability:sockets",
-        "//third-party/boost:boost",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:constexpr_math",
-        "//xplat/folly:conv",
-        "//xplat/folly:cpp_attributes",
-        "//xplat/folly:exception",
-        "//xplat/folly:expected",
-        "//xplat/folly:fbstring",
-        "//xplat/folly:format",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:string",
-        "//xplat/folly:unit",
-        "//xplat/folly/detail:ip_address",
-        "//xplat/folly/detail:ip_address_source",
-        "//xplat/folly/lang:bits",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/net:net_ops",
-        "//xplat/folly/net:network_socket",
+        ":c_portability",
+        ":constexpr_math",
+        ":conv",
+        ":cpp_attributes",
+        ":expected",
+        ":fbstring",
+        ":optional",
+        ":portability",
+        ":range",
+        ":unit",
+        "//folly/detail:ip_address",
+        "//folly/hash:hash",
+        "//folly/lang:bits",
+        "//folly/lang:exception",
+        "//folly/net:network_socket",
+        "//folly/portability:config",
+        "//folly/portability:sockets",
+    ],
+    external_deps = [
+        "boost",
     ],
 )
 
@@ -2774,57 +2782,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "network_address",
-    srcs = [
-        "IPAddress.cpp",
-        "IPAddressV4.cpp",
-        "IPAddressV6.cpp",
-        "MacAddress.cpp",
-        "SocketAddress.cpp",
-    ],
-    headers = [
-        "IPAddress.h",
-        "IPAddressException.h",
-        "IPAddressV4.h",
-        "IPAddressV6.h",
-        "MacAddress.h",
-        "SocketAddress.h",
-    ],
-    deps = [
-        "fbsource//third-party/fmt:fmt",
-        ":exception",
-        ":format",
-        ":scope_guard",
-        ":small_vector",
-        ":string",
-        "//folly/detail:ip_address_source",
-        "//folly/net:net_ops",
-    ],
-    exported_deps = [
-        ":c_portability",
-        ":constexpr_math",
-        ":conv",
-        ":expected",
-        ":fbstring",
-        ":optional",
-        ":portability",
-        ":range",
-        ":unit",
-        "//folly/detail:ip_address",
-        "//folly/hash:hash",
-        "//folly/lang:bits",
-        "//folly/lang:exception",
-        "//folly/net:network_socket",
-        "//folly/portability:config",
-        "//folly/portability:sockets",
-    ],
-    external_deps = [
-        "boost",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "singleton",
     srcs = [
         "Singleton.cpp",
@@ -2917,27 +2874,6 @@ fbcode_target(
     exported_external_deps = [
         "boost",
         ("boost", None, "boost_multi_index"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "uri",
-    srcs = [
-        "Uri.cpp",
-    ],
-    headers = [
-        "Uri.h",
-        "Uri-inl.h",
-    ],
-    exported_deps = [
-        ":conv",
-        ":expected",
-        ":string",
-        "//folly/hash:hash",
-    ],
-    external_deps = [
-        ("boost", None, "boost_regex"),
     ],
 )
 

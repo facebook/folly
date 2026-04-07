@@ -854,6 +854,7 @@ folly_add_library(
     folly_c_portability
     folly_constexpr_math
     folly_conv
+    folly_cpp_attributes
     folly_detail_ip_address
     folly_expected
     folly_fbstring
