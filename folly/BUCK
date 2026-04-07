@@ -1160,29 +1160,25 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "format_traits",
+    headers = ["FormatTraits.h"],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    raw_headers = [
-        "FormatTraits.h",
-    ],
+    use_raw_headers = True,
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "glog",
+    headers = ["GLog.h"],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    raw_headers = [
-        "GLog.h",
-    ],
+    use_raw_headers = True,
     exported_deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:likely",
+        "fbsource//third-party/glog:glog",
+        ":likely",
     ],
 )
 
@@ -2731,12 +2727,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "format_traits",
-    headers = ["FormatTraits.h"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "indestructible",
     headers = ["Indestructible.h"],
     exported_deps = [
@@ -2782,16 +2772,6 @@ fb_dirsync_cpp_library(
     ],
     exported_deps = [
         "//folly/json:json_patch",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "glog",
-    headers = ["GLog.h"],
-    exported_deps = [
-        "fbsource//third-party/glog:glog",
-        ":likely",
     ],
 )
 
