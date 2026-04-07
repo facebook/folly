@@ -627,6 +627,7 @@ if debugger_type is None:  # noqa: C901
                 print(co_bt_info())
                 super().__init__("co_bt", gdb.COMMAND_USER)
 
+            # pyrefly: ignore [bad-param-name-override]
             def invoke(self, arg: str, from_tty: bool):
                 backtrace_command(GdbValue, arg)
 
@@ -635,6 +636,7 @@ if debugger_type is None:  # noqa: C901
                 print(co_async_stack_root_info())
                 super().__init__("co_async_stack_roots", gdb.COMMAND_USER)
 
+            # pyrefly: ignore [bad-param-name-override]
             def invoke(self, arg: str, from_tty: bool):
                 async_stack_roots_command(GdbValue)
 
