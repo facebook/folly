@@ -1,10 +1,8 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "promise_demo",
     srcs = ["Promise.cpp"],
     headers = [],
@@ -16,8 +14,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "detach_on_cancel_demo",
     srcs = ["DetachOnCancel.cpp"],
     headers = [],
@@ -31,8 +28,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "with_cancellation_demo",
     srcs = ["WithCancellation.cpp"],
     headers = [],
@@ -47,8 +43,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "async_scope_demo",
     srcs = ["AsyncScope.cpp"],
     headers = [],
@@ -59,8 +54,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "cancellable_async_scope_demo",
     srcs = ["CancellableAsyncScope.cpp"],
     headers = [],
@@ -71,8 +65,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "task_demo",
     srcs = ["Task.cpp"],
     headers = [],
@@ -85,8 +78,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "retry_demo",
     srcs = ["Retry.cpp"],
     headers = [],
