@@ -756,18 +756,16 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "indestructible",
+    headers = ["Indestructible.h"],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    raw_headers = [
-        "Indestructible.h",
-    ],
+    use_raw_headers = True,
     exported_deps = [
-        "//xplat/folly:traits",
-        "//xplat/folly:utility",
+        ":traits",
+        ":utility",
     ],
 )
 
@@ -973,19 +971,17 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "atomic_linked_list",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
+    headers = [
         "AtomicIntrusiveLinkedList.h",
         "AtomicLinkedList.h",
     ],
-    exported_deps = [
-        "//xplat/folly:memory",
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
     ],
+    use_raw_headers = True,
+    exported_deps = [":memory"],
 )
 
 fb_dirsync_cpp_library(
@@ -2554,16 +2550,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "atomic_linked_list",
-    headers = [
-        "AtomicIntrusiveLinkedList.h",
-        "AtomicLinkedList.h",
-    ],
-    exported_deps = [":memory"],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "clock_gettime_wrappers",
     srcs = ["ClockGettimeWrappers.cpp"],
     headers = ["ClockGettimeWrappers.h"],
@@ -2720,16 +2706,6 @@ fbcode_target(
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         ":cpp_attributes",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "indestructible",
-    headers = ["Indestructible.h"],
-    exported_deps = [
-        ":traits",
-        ":utility",
     ],
 )
 
