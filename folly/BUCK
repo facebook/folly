@@ -949,25 +949,25 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "atomic_hash_map",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    raw_headers = [
+    headers = [
         "AtomicHashMap.h",
         "AtomicHashMap-inl.h",
     ],
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    use_raw_headers = True,
     exported_deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "//xplat/folly:atomic_hash_array",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:likely",
-        "//xplat/folly:thread_cached_int",
-        "//xplat/folly/container:foreach",
-        "//xplat/folly/detail:atomic_hash_utils",
-        "//xplat/folly/detail:iterators",
+        ":atomic_hash_array",
+        ":c_portability",
+        ":likely",
+        ":thread_cached_int",
+        "//folly/container:foreach",
+        "//folly/detail:atomic_hash_utils",
+        "//folly/detail:iterators",
+        "//folly/hash:hash",
     ],
 )
 
@@ -1178,21 +1178,19 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "indexed_mem_pool",
+    headers = ["IndexedMemPool.h"],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    raw_headers = [
-        "IndexedMemPool.h",
-    ],
+    use_raw_headers = True,
     exported_deps = [
         ":portability",
-        "//xplat/folly/concurrency:cache_locality",
-        "//xplat/folly/portability:sys_mman",
-        "//xplat/folly/portability:unistd",
-        "//xplat/folly/synchronization:atomic_struct",
+        "//folly/concurrency:cache_locality",
+        "//folly/portability:sys_mman",
+        "//folly/portability:unistd",
+        "//folly/synchronization:atomic_struct",
     ],
 )
 
@@ -2531,25 +2529,6 @@ fb_dirsync_cpp_library(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "atomic_hash_map",
-    headers = [
-        "AtomicHashMap.h",
-        "AtomicHashMap-inl.h",
-    ],
-    exported_deps = [
-        ":atomic_hash_array",
-        ":c_portability",
-        ":likely",
-        ":thread_cached_int",
-        "//folly/container:foreach",
-        "//folly/detail:atomic_hash_utils",
-        "//folly/detail:iterators",
-        "//folly/hash:hash",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "clock_gettime_wrappers",
     srcs = ["ClockGettimeWrappers.cpp"],
     headers = ["ClockGettimeWrappers.h"],
@@ -2706,19 +2685,6 @@ fbcode_target(
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         ":cpp_attributes",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "indexed_mem_pool",
-    headers = ["IndexedMemPool.h"],
-    exported_deps = [
-        ":portability",
-        "//folly/concurrency:cache_locality",
-        "//folly/portability:sys_mman",
-        "//folly/portability:unistd",
-        "//folly/synchronization:atomic_struct",
     ],
 )
 
