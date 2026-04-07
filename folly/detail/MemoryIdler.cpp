@@ -187,18 +187,23 @@ FOLLY_NOINLINE static uintptr_t getStackPtr() {
   return rv;
 }
 
-void MemoryIdler::unmapUnusedStack(size_t retain) {
+bool MemoryIdler::prepareUnmapUnusedStack() noexcept {
   if (!FLAGS_folly_memory_idler_madvise_stacks) {
-    return;
+    return false;
   }
 
   if (!isUnmapUnusedStackAvailable()) {
-    return;
+    return false;
   }
 
   if (tls_stackSize == 0) {
     fetchStackLimits();
   }
+
+  return true;
+}
+
+void MemoryIdler::unmapUnusedStack(size_t retain) {
   if (tls_stackSize <= std::max(static_cast<size_t>(1), retain)) {
     // covers both missing stack info, and impossibly large retain
     return;
@@ -231,6 +236,10 @@ void MemoryIdler::unmapUnusedStack(size_t retain) {
 }
 
 #else
+
+bool MemoryIdler::prepareUnmapUnusedStack() noexcept {
+  return false;
+}
 
 void MemoryIdler::unmapUnusedStack(size_t /* retain */) {}
 
