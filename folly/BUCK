@@ -770,36 +770,34 @@ fb_dirsync_cpp_library(
 )
 
 # xplat/folly/test aliases
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "json_test_util",
-    platforms = (CXX, ANDROID, APPLE, WINDOWS, FBCODE),
-    raw_headers = [
+    headers = [
         "test/JsonTestUtil.h",
     ],
+    platforms = (CXX, ANDROID, APPLE, WINDOWS, FBCODE),
+    use_raw_headers = True,
     exported_deps = [
-        "//xplat/folly/json:json_test_util",
+        "//folly/json:json_test_util",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "json_mock_util",
-    exported_headers = [
-        "test/JsonMockUtil.h",
-    ],
+    exported_headers = {
+        "test/JsonMockUtil.h": "test/JsonMockUtil.h",
+    },
     platforms = (CXX, ANDROID, APPLE, WINDOWS, FBCODE),
     exported_deps = [
-        "//xplat/folly/json:json_mock_util",
+        "//folly/json:json_mock_util",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "comparison_operator_test_util",
-    exported_headers = [
-        "test/ComparisonOperatorTestUtil.h",
-    ],
+    exported_headers = {
+        "test/ComparisonOperatorTestUtil.h": "test/ComparisonOperatorTestUtil.h",
+    },
     platforms = (CXX, ANDROID, APPLE, WINDOWS, FBCODE),
     exported_deps = [
         "fbsource//xplat/folly/portability:gtest",

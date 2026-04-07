@@ -192,6 +192,10 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME comparison_operator_test_util
+)
+
+folly_add_library(
   NAME concurrent_bit_set
   HEADERS
     ConcurrentBitSet.h
@@ -649,6 +653,12 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME json_mock_util
+  EXPORTED_DEPS
+    folly_json_json_mock_util
+)
+
+folly_add_library(
   NAME json_patch
   HEADERS
     json_patch.h
@@ -662,6 +672,14 @@ folly_add_library(
     json_pointer.h
   EXPORTED_DEPS
     folly_json_json_pointer
+)
+
+folly_add_library(
+  NAME json_test_util
+  HEADERS
+    test/JsonTestUtil.h
+  EXPORTED_DEPS
+    folly_json_json_test_util
 )
 
 folly_add_library(
