@@ -164,6 +164,7 @@ class CPUThreadPoolExecutor
     CPUTask(); // Poison.
     CPUTask(
         Func&& f,
+        std::shared_ptr<folly::RequestContext> context,
         std::chrono::milliseconds expiration,
         Func&& expireCallback,
         int8_t pri);

@@ -152,7 +152,11 @@ void IOThreadPoolExecutor::add(
   }
   auto ioThread = pickThread();
 
-  auto task = Task(std::move(func), expiration, std::move(expireCallback));
+  auto task = Task(
+      std::move(func),
+      folly::RequestContext::saveContext(),
+      expiration,
+      std::move(expireCallback));
   registerTaskEnqueue(task);
   auto wrappedFunc = [this, ioThread, task = std::move(task)]() mutable {
     runTask(ioThread, std::move(task));

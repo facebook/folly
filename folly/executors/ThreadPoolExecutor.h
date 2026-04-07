@@ -272,6 +272,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
     Task(
         Func&& func,
+        std::shared_ptr<folly::RequestContext> context,
         std::chrono::milliseconds expiration,
         Func&& expireCallback,
         int8_t pri = 0);
