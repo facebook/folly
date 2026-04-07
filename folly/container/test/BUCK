@@ -515,7 +515,6 @@ fb_dirsync_cpp_unittest(
         "//folly:memory",
         "//folly/container:vector_bool",
         "//folly/container/detail:bool_wrapper",
-        "//folly/memory:memory_resource",
         "//folly/portability:gtest",
     ],
 )
