@@ -111,7 +111,7 @@ class SparseByteSet {
    *
    *  O(1), non-amortized.
    */
-  inline uint16_t size() { return size_; }
+  inline uint16_t size() const { return size_; }
 
  private:
   uint16_t size_; // can't use uint8_t because it would overflow if all

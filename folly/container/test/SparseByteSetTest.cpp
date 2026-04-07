@@ -115,3 +115,12 @@ TEST_F(SparseByteSetTest, size) {
   s.remove(1);
   EXPECT_EQ(s.size(), 2);
 }
+
+TEST_F(SparseByteSetTest, size_const) {
+  // Regression test: size() was not const-qualified, so it could not be
+  // called on a const SparseByteSet reference.
+  s.add(10);
+  s.add(20);
+  const SparseByteSet& cs = s;
+  EXPECT_EQ(cs.size(), 2);
+}
