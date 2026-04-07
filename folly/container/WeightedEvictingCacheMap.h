@@ -86,6 +86,9 @@ class ImplicitlyWeightedEvictingCacheMap {
       const ImplicitlyWeightedEvictingCacheMap&) = delete;
   ImplicitlyWeightedEvictingCacheMap& operator=(
       ImplicitlyWeightedEvictingCacheMap&& that) {
+    if (this == &that) {
+      return *this;
+    }
     // Put moved-from in a valid but empty state
     ecm_ = std::move(that.ecm_);
     that.ecm_.clear();

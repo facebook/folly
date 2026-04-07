@@ -201,6 +201,29 @@ TEST(ImplicitlyWeightedEvictingCacheMap, ConstAndMove) {
   EXPECT_EQ(map.size(), 0);
 }
 
+TEST(ImplicitlyWeightedEvictingCacheMap, SelfMoveAssignment) {
+  // Regression test: self-move-assignment previously caused data loss because
+  // the post-move cleanup ran unconditionally outside the self-assignment
+  // guard.
+  using MyMap = ImplicitlyWeightedEvictingCacheMap<
+      std::string,
+      const std::string,
+      ValueStringLength>;
+  MyMap map{100};
+
+  std::string four("four");
+  map.set("a", four);
+  map.set("b", four);
+  EXPECT_EQ(map.size(), 2);
+
+  // Self-move should be a no-op — data must be preserved.
+  map = std::move(std::move(map)); // double std::move suppresses warning
+  EXPECT_EQ(map.size(), 2);
+  EXPECT_TRUE(map.exists("a"));
+  EXPECT_TRUE(map.exists("b"));
+  EXPECT_EQ(map.get("a"), four);
+}
+
 TEST(ImplicitlyWeightedEvictingCacheMap, Scalars) {
   struct SumKV {
     size_t operator()(size_t a, size_t b) { return a + b; }
