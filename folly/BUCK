@@ -2081,19 +2081,15 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "timeout_queue",
-    srcs = [
-        "TimeoutQueue.cpp",
-    ],
+    srcs = ["TimeoutQueue.cpp"],
+    headers = ["TimeoutQueue.h"],
     apple_sdks = (IOS, MACOSX),
-    raw_headers = [
-        "TimeoutQueue.h",
-    ],
-    deps = [
-        "//third-party/boost:boost",
-        "//third-party/boost:boost_multi_index",
+    use_raw_headers = True,
+    exported_external_deps = [
+        "boost",
+        ("boost", None, "boost_multi_index"),
     ],
 )
 
@@ -2858,17 +2854,6 @@ fbcode_target(
     exported_external_deps = [
         "boost",
         ("boost", None, "boost_container"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "timeout_queue",
-    srcs = ["TimeoutQueue.cpp"],
-    headers = ["TimeoutQueue.h"],
-    exported_external_deps = [
-        "boost",
-        ("boost", None, "boost_multi_index"),
     ],
 )
 
