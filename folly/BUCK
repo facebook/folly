@@ -1311,19 +1311,17 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "overload",
+    headers = ["Overload.h"],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    raw_headers = [
-        "Overload.h",
-    ],
+    use_raw_headers = True,
     exported_deps = [
         ":portability",
         ":traits",
-        "//xplat/folly/functional:invoke",
+        "//folly/functional:invoke",
     ],
 )
 
@@ -1379,18 +1377,18 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "spin_lock",
+    headers = [
+        "SpinLock.h",
+    ],
     compiler_flags = [
         "-fno-omit-frame-pointer",
     ],
-    raw_headers = [
-        "SpinLock.h",
-    ],
+    use_raw_headers = True,
     exported_deps = [
-        "fbsource//xplat/folly/synchronization:small_locks",
-        "//xplat/folly:portability",
+        ":portability",
+        "//folly/synchronization:small_locks",
     ],
 )
 
@@ -3002,17 +3000,6 @@ fbcode_target(
 
 fbcode_target(
     _kind = cpp_library,
-    name = "overload",
-    headers = ["Overload.h"],
-    exported_deps = [
-        ":portability",
-        ":traits",
-        "//folly/functional:invoke",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
     name = "shared_mutex",
     srcs = ["SharedMutex.cpp"],
     headers = ["SharedMutex.h"],
@@ -3076,18 +3063,6 @@ fbcode_target(
     external_deps = [
         ("glibc", None, "dl"),
         ("glibc", None, "rt"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "spin_lock",
-    headers = [
-        "SpinLock.h",
-    ],
-    exported_deps = [
-        ":portability",
-        "//folly/synchronization:small_locks",
     ],
 )
 
