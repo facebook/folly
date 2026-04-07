@@ -186,6 +186,7 @@ folly_add_library(
   HEADERS
     ClockGettimeWrappers.h
   DEPS
+    folly_c_portability
     folly_likely
   EXPORTED_DEPS
     folly_portability_time

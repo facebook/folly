@@ -2157,21 +2157,24 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "clock_gettime_wrappers",
-    srcs = [
-        "ClockGettimeWrappers.cpp",
-    ],
+    srcs = ["ClockGettimeWrappers.cpp"],
+    headers = ["ClockGettimeWrappers.h"],
     cxx_deps = ["//third-party/toolchains:rt"],
-    raw_headers = [
-        "ClockGettimeWrappers.h",
-    ],
+    use_raw_headers = True,
     deps = [
         ":c_portability",
         ":likely",
-        "//xplat/folly/portability:time",
-        "//xplat/third-party/linker_lib:dl",
+    ],
+    exported_deps = [
+        "//folly/portability:time",
+    ],
+    external_deps = [
+        ("glibc", None, "dl"),
+    ],
+    exported_external_deps = [
+        ("glibc", None, "rt"),
     ],
 )
 
@@ -2520,25 +2523,6 @@ fb_dirsync_cpp_library(
 
 ######################################################################
 # Libraries
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "clock_gettime_wrappers",
-    srcs = ["ClockGettimeWrappers.cpp"],
-    headers = ["ClockGettimeWrappers.h"],
-    deps = [
-        ":likely",
-    ],
-    exported_deps = [
-        "//folly/portability:time",
-    ],
-    external_deps = [
-        ("glibc", None, "dl"),
-    ],
-    exported_external_deps = [
-        ("glibc", None, "rt"),
-    ],
-)
 
 fbcode_target(
     _kind = cpp_library,
