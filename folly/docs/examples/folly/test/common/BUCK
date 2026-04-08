@@ -5,7 +5,7 @@ oncall("fbcode_entropy_wardens_folly")
 fb_dirsync_cpp_unittest(
     name = "test_main_demo",
     srcs = ["TestMainDemo.cpp"],
-    test_main = "//folly/test/common:test_main_lib",
+    test_main = "//folly/test/common:test_main",
     deps = [
         "fbsource//third-party/googletest:gtest",
         "//folly:singleton",
