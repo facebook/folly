@@ -1,8 +1,8 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "non_fbcode_target")
 load("@fbsource//tools/build_defs:default_platform_defs.bzl", "ANDROID", "APPLE", "CXX", "WINDOWS")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load("../../defs.bzl", "CXXFLAGS", "FBANDROID_CPPFLAGS", "FBANDROID_CXXFLAGS", "FBOBJC_CXXFLAGS", "folly_xplat_cxx_test")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -319,10 +319,7 @@ non_fbcode_target(
     ],
 )
 
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "barrier_test",
     srcs = ["BarrierTest.cpp"],
     deps = [
@@ -332,8 +329,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "callback_lifetime_test",
     srcs = ["CallbackLifetimeTest.cpp"],
     deps = [
@@ -343,8 +339,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "collect_test",
     srcs = ["CollectTest.cpp"],
     deps = [
@@ -360,8 +355,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "context_test",
     srcs = ["ContextTest.cpp"],
     deps = [
@@ -370,8 +364,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "core_test",
     srcs = ["CoreTest.cpp"],
     deps = [
@@ -381,8 +374,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "ensure_test",
     srcs = ["EnsureTest.cpp"],
     deps = [
@@ -391,8 +383,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "filter_test",
     srcs = ["FilterTest.cpp"],
     deps = [
@@ -401,8 +392,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "future_splitter_test",
     srcs = ["FutureSplitterTest.cpp"],
     deps = [
@@ -412,8 +402,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "future_test",
     srcs = ["FutureTest.cpp"],
     deps = [
@@ -429,8 +418,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "semi_future_test",
     srcs = ["SemiFutureTest.cpp"],
     deps = [
@@ -447,8 +435,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "futures_benchmark",
     srcs = ["Benchmark.cpp"],
     headers = [],
@@ -466,8 +453,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "header_compile_test",
     srcs = ["HeaderCompileTest.cpp"],
     deps = [
@@ -477,8 +463,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "interrupt_test",
     srcs = ["InterruptTest.cpp"],
     labels = ["load-sensitive-timing-test"],
@@ -490,8 +475,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "manual_timekeeper_test",
     srcs = ["ManualTimekeeperTest.cpp"],
     deps = [
@@ -500,8 +484,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "map_test",
     srcs = ["MapTest.cpp"],
     deps = [
@@ -510,8 +493,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "non_copyable_lambda_test",
     srcs = ["NonCopyableLambdaTest.cpp"],
     deps = [
@@ -520,8 +502,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "poll_test",
     srcs = ["PollTest.cpp"],
     deps = [
@@ -530,8 +511,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "promise_test",
     srcs = ["PromiseTest.cpp"],
     deps = [
@@ -540,8 +520,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "reduce_test",
     srcs = ["ReduceTest.cpp"],
     deps = [
@@ -550,8 +529,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "retrying_test",
     srcs = ["RetryingTest.cpp"],
     deps = [
@@ -562,8 +540,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "self_destruct_test",
     srcs = ["SelfDestructTest.cpp"],
     deps = [
@@ -573,8 +550,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "shared_promise_test",
     srcs = ["SharedPromiseTest.cpp"],
     deps = [
@@ -583,18 +559,17 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "test_executor",
     srcs = ["TestExecutor.cpp"],
     headers = ["TestExecutor.h"],
+    use_raw_headers = True,
     exported_deps = [
         "//folly:executor",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "test_executor_test",
     srcs = ["TestExecutorTest.cpp"],
     deps = [
@@ -603,19 +578,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "then_compile_test",
     srcs = ["ThenCompileTest.cpp"],
     headers = ["ThenCompileTest.h"],
+    use_raw_headers = True,
     deps = [
         "//folly/futures:core",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "then_test",
     srcs = ["ThenTest.cpp"],
     deps = [
@@ -624,8 +598,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "timekeeper_test",
     srcs = ["TimekeeperTest.cpp"],
     deps = [
@@ -635,10 +608,10 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "timekeeper_test_lib",
     headers = ["TimekeeperTestLib.h"],
+    use_raw_headers = True,
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
@@ -654,8 +627,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "thread_wheel_timekeeper_test",
     srcs = ["ThreadWheelTimekeeperTest.cpp"],
     supports_static_listing = False,
@@ -665,8 +637,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "heap_timekeeper_test",
     srcs = ["HeapTimekeeperTest.cpp"],
     supports_static_listing = False,
@@ -676,8 +647,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "times_test",
     srcs = ["TimesTest.cpp"],
     deps = [
@@ -687,8 +657,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "unwrap_test",
     srcs = ["UnwrapTest.cpp"],
     deps = [
@@ -697,8 +666,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "via_test",
     srcs = ["ViaTest.cpp"],
     deps = [
@@ -712,8 +680,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "wait_test",
     srcs = ["WaitTest.cpp"],
     deps = [
@@ -726,8 +693,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "when_test",
     srcs = ["WhenTest.cpp"],
     deps = [
@@ -736,8 +702,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "while_do_test",
     srcs = ["WhileDoTest.cpp"],
     deps = [
@@ -747,8 +712,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "will_equal_test",
     srcs = ["WillEqualTest.cpp"],
     deps = [
@@ -757,8 +721,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "window_test",
     srcs = ["WindowTest.cpp"],
     deps = [
@@ -770,8 +733,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "conversion_operator",
     srcs = ["ConversionOperatorTest.cpp"],
     deps = [
@@ -780,12 +742,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "cleanup_test",
     srcs = ["CleanupTest.cpp"],
     headers = [],
     labels = ["case-isolation-failure"],
+    use_raw_headers = True,
     deps = [
         "//folly/executors:cpu_thread_pool_executor",
         "//folly/executors:manual_executor",
