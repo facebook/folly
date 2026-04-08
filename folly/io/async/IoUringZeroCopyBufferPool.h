@@ -97,9 +97,7 @@ class IoUringZeroCopyBufferPool {
   uint32_t getRingUsedCount() const noexcept;
   uint32_t getRingFreeCount() const noexcept;
   size_t getPendingBuffersSize() const noexcept;
-  uint32_t getFlushThreshold() const noexcept;
-  uint16_t getAndResetFlushFailures() noexcept;
-  uint16_t getAndResetFlushCount() noexcept;
+  size_t getBufferSize() const noexcept;
 
   struct io_uring* ring_{nullptr};
   std::shared_ptr<IoUringZeroCopyBufferPoolImpl> impl_;
