@@ -341,8 +341,36 @@ folly_add_library(
     dynamic-inl.h
     dynamic.h
     json.h
+  DEPS
+    folly_utility
   EXPORTED_DEPS
+    folly_c_portability
+    folly_container_access
+    folly_container_enumerate
+    folly_container_f14_hash
+    folly_conv
+    folly_detail_iterators
+    folly_expected
+    folly_format
+    folly_function
+    folly_hash_hash
     folly_json_dynamic
+    folly_json_pointer
+    folly_lang_assume
+    folly_lang_bits
+    folly_lang_exception
+    folly_likely
+    folly_optional
+    folly_portability
+    folly_portability_constexpr
+    folly_range
+    folly_string
+    folly_traits
+    folly_unicode
+    folly_utility
+  EXTERNAL_DEPS
+    ${GLOG_LIBRARIES}
+    Boost::headers
 )
 
 folly_add_library(

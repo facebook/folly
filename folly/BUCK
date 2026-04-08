@@ -709,53 +709,53 @@ non_fbcode_target(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "dynamic",
-    apple_sdks = DEFAULT_APPLE_SDKS,
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    export_header_unit = "include",
-    export_header_unit_filter = [".*"],
-    fbobjc_complete_nullability = True,
-    raw_headers = [
+    headers = [
         "DynamicConverter.h",
         "dynamic.h",
         "dynamic-inl.h",
         "json.h",
     ],
+    apple_sdks = DEFAULT_APPLE_SDKS,
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    fbobjc_complete_nullability = True,
+    use_raw_headers = True,
     deps = [
-        "//xplat/folly:utility",
+        ":utility",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "fbsource//xplat/folly/portability:constexpr",
-        "//third-party/boost:boost",
-        "//third-party/boost:boost_algorithm",
-        "//third-party/glog:glog",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:conv",
-        "//xplat/folly:expected",
-        "//xplat/folly:format",
-        "//xplat/folly:function",
-        "//xplat/folly:json_pointer",
-        "//xplat/folly:likely",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:string",
-        "//xplat/folly:traits",
-        "//xplat/folly:unicode",
-        "//xplat/folly:utility",
-        "//xplat/folly/container:access",
-        "//xplat/folly/container:enumerate",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/detail:iterators",
-        "//xplat/folly/json:dynamic",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/lang:bits",
-        "//xplat/folly/lang:exception",
+        ":c_portability",
+        ":conv",
+        ":expected",
+        ":format",
+        ":function",
+        ":json_pointer",
+        ":likely",
+        ":optional",
+        ":portability",
+        ":range",
+        ":string",
+        ":traits",
+        ":unicode",
+        ":utility",
+        "//folly/container:access",
+        "//folly/container:enumerate",
+        "//folly/container:f14_hash",
+        "//folly/detail:iterators",
+        "//folly/hash:hash",
+        "//folly/json:dynamic",
+        "//folly/lang:assume",
+        "//folly/lang:bits",
+        "//folly/lang:exception",
+        "//folly/portability:constexpr",
+    ],
+    external_deps = [
+        "boost",
+        ("boost", None, "boost_algorithm"),
+        ("glog", None, "glog"),
     ],
 )
 
@@ -2572,20 +2572,6 @@ fbcode_target(
     ],
     exported_external_deps = [
         "double_conversion",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "dynamic",
-    headers = [
-        "DynamicConverter.h",
-        "dynamic.h",
-        "dynamic-inl.h",
-        "json.h",
-    ],
-    exported_deps = [
-        "//folly/json:dynamic",
     ],
 )
 
