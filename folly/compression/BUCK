@@ -81,30 +81,25 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_library,
+fb_dirsync_cpp_library(
     name = "compression_context_pool_singletons",
     srcs = ["CompressionContextPoolSingletons.cpp"],
-    cxx_deps = [
-        "//xplat/folly/memory:jemalloc_huge_page_allocator",
-    ],
+    headers = ["CompressionContextPoolSingletons.h"],
     fbandroid_preprocessor_flags = [
         "-DFOLLY_COMPRESSION_USE_HUGEPAGES=0",
     ],
-    fbcode_deps = [
-        "//xplat/folly/memory:jemalloc_huge_page_allocator",
-    ],
-    raw_headers = ["CompressionContextPoolSingletons.h"],
+    use_raw_headers = True,
     deps = [
-        "//xplat/folly:portability",
-        "//xplat/folly/system:hardware_concurrency",
+        "//folly:portability",
+        "//folly/memory:jemalloc_huge_page_allocator",
+        "//folly/memory:malloc",
+        "//folly/system:hardware_concurrency",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/portability:config",
-        "fbsource//xplat/folly/portability:gflags",
+        "fbsource//xplat/third-party/zstd:zstd",
         ":compression_context_pool",
-        "//xplat/folly/memory:malloc",
-        "//xplat/third-party/zstd:zstd",
+        "//folly/portability:config",
+        "//folly/portability:gflags",
     ],
 )
 
@@ -210,24 +205,5 @@ fbcode_target(
         "snappy",
         ("bzip2", None, "bz2"),
         ("xz", None, "lzma"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "compression_context_pool_singletons",
-    srcs = ["CompressionContextPoolSingletons.cpp"],
-    headers = ["CompressionContextPoolSingletons.h"],
-    deps = [
-        "//folly:portability",
-        "//folly/memory:jemalloc_huge_page_allocator",
-        "//folly/memory:malloc",
-        "//folly/system:hardware_concurrency",
-    ],
-    exported_deps = [
-        "fbsource//third-party/zstd:zstd",
-        ":compression_context_pool",
-        "//folly/portability:config",
-        "//folly/portability:gflags",
     ],
 )
