@@ -437,12 +437,10 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "subprocess",
-    srcs = [
-        "Subprocess.cpp",
-    ],
+    srcs = ["Subprocess.cpp"],
+    headers = ["Subprocess.h"],
     cxx_deps = [
         "//xplat/third-party/linker_lib:dl",
     ],
@@ -452,24 +450,21 @@ non_fbcode_target(
     fbandroid_use_host_platform = True,
     force_static = False,
     platforms = (CXX, ANDROID, APPLE),
-    raw_headers = [
-        "Subprocess.h",
-    ],
+    use_raw_headers = True,
     deps = [
-        "fbsource//xplat/folly/portability:dirent",
         ":conv",
         ":scope_guard",
         ":string",
-        "//third-party/boost:boost_range",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/logging:logging",
-        "//xplat/folly/portability:fcntl",
-        "//xplat/folly/portability:sockets",
-        "//xplat/folly/portability:stdlib",
-        "//xplat/folly/portability:sys_syscall",
-        "//xplat/folly/portability:unistd",
-        "//xplat/folly/system:at_fork",
-        "//xplat/folly/system:shell",
+        "//folly/lang:assume",
+        "//folly/logging:logging",
+        "//folly/portability:dirent",
+        "//folly/portability:fcntl",
+        "//folly/portability:sockets",
+        "//folly/portability:stdlib",
+        "//folly/portability:sys_syscall",
+        "//folly/portability:unistd",
+        "//folly/system:at_fork",
+        "//folly/system:shell",
     ],
     exported_deps = [
         ":exception",
@@ -480,12 +475,18 @@ non_fbcode_target(
         ":optional",
         ":portability",
         ":range",
-        "//third-party/boost:boost",
-        "//third-party/boost:boost_container",
-        "//xplat/folly/container:span",
-        "//xplat/folly/gen:string",
-        "//xplat/folly/io:iobuf",
-        "//xplat/folly/portability:sys_resource",
+        "//folly/container:span",
+        "//folly/gen:string",
+        "//folly/io:iobuf",
+        "//folly/portability:sys_resource",
+    ],
+    external_deps = [
+        ("boost", None, "boost_range"),
+        ("glibc", None, "dl"),
+    ],
+    exported_external_deps = [
+        "boost",
+        ("boost", None, "boost_container"),
     ],
 )
 
@@ -2793,50 +2794,6 @@ fbcode_target(
     external_deps = [
         ("glibc", None, "dl"),
         ("glibc", None, "rt"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "subprocess",
-    srcs = ["Subprocess.cpp"],
-    headers = ["Subprocess.h"],
-    deps = [
-        ":conv",
-        ":scope_guard",
-        ":string",
-        "//folly/lang:assume",
-        "//folly/logging:logging",
-        "//folly/portability:dirent",
-        "//folly/portability:fcntl",
-        "//folly/portability:sockets",
-        "//folly/portability:stdlib",
-        "//folly/portability:sys_syscall",
-        "//folly/portability:unistd",
-        "//folly/system:at_fork",
-        "//folly/system:shell",
-    ],
-    exported_deps = [
-        ":exception",
-        ":file",
-        ":file_util",
-        ":function",
-        ":map_util",
-        ":optional",
-        ":portability",
-        ":range",
-        "//folly/container:span",
-        "//folly/gen:string",
-        "//folly/io:iobuf",
-        "//folly/portability:sys_resource",
-    ],
-    external_deps = [
-        ("boost", None, "boost_range"),
-        ("glibc", None, "dl"),
-    ],
-    exported_external_deps = [
-        "boost",
-        ("boost", None, "boost_container"),
     ],
 )
 
