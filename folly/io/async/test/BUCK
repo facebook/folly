@@ -612,19 +612,23 @@ fb_dirsync_cpp_binary(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "request_context_test",
     srcs = ["RequestContextTest.cpp"],
-    raw_headers = ["RequestContextHelper.h"],
+    headers = ["RequestContextHelper.h"],
+    use_raw_headers = True,
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:memory",
-        "//xplat/folly/io/async:async_base",
-        "//xplat/folly/synchronization/test:barrier",
-        "//xplat/folly/system:thread_name",
+        "fbsource//third-party/fmt:fmt",
+        "//folly:memory",
+        "//folly:singleton",
+        "//folly/container:enumerate",
+        "//folly/io/async:async_base",
+        "//folly/io/async:request_context",
+        "//folly/portability:gtest",
+        "//folly/synchronization:relaxed_atomic",
+        "//folly/synchronization/test:barrier",
+        "//folly/system:thread_name",
     ],
-    exported_deps = ["//xplat/folly/io/async:request_context"],
 )
 
 fb_dirsync_cpp_library(
@@ -1007,25 +1011,6 @@ fbcode_target(
         "//folly/portability:gflags",
         "//folly/synchronization:relaxed_atomic",
         "//folly/synchronization/test:barrier",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "request_context_test",
-    srcs = ["RequestContextTest.cpp"],
-    headers = ["RequestContextHelper.h"],
-    deps = [
-        "fbsource//third-party/fmt:fmt",
-        "//folly:memory",
-        "//folly:singleton",
-        "//folly/container:enumerate",
-        "//folly/io/async:async_base",
-        "//folly/io/async:request_context",
-        "//folly/portability:gtest",
-        "//folly/synchronization:relaxed_atomic",
-        "//folly/synchronization/test:barrier",
-        "//folly/system:thread_name",
     ],
 )
 
