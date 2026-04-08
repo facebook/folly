@@ -41,7 +41,7 @@ class FiberImpl {
       folly::Function<void()> func, unsigned char* stackLimit, size_t stackSize)
       : func_(std::move(func)) {
     auto stackBase = stackLimit + stackSize;
-    stackBase_ = stackBase;
+    entryFrameBase_ = nullptr;
     fiberContext_ =
         boost::context::detail::make_fcontext(stackBase, stackSize, &fiberFunc);
   }
@@ -76,34 +76,43 @@ class FiberImpl {
   }
 
  private:
-  static void fiberFunc(boost::context::detail::transfer_t transfer) {
+  static FOLLY_NOINLINE void fiberFunc(
+      boost::context::detail::transfer_t transfer) {
     auto fiberImpl = reinterpret_cast<FiberImpl*>(transfer.data);
     fiberImpl->mainContext_ = transfer.fctx;
+#if FOLLY_HAS_BUILTIN(__builtin_frame_address)
+    fiberImpl->entryFrameBase_ = __builtin_frame_address(0);
+#endif
     fiberImpl->fixStackUnwinding();
     fiberImpl->func_();
   }
 
-  void fixStackUnwinding() {
+  // fixStackUnwinding must be marked with FOLLY_NOINLINE to guarantee
+  // fiberFunc has a frame.
+  FOLLY_NOINLINE void fixStackUnwinding() {
     if (kIsLinux) {
       // Stitch main context stack and fiber stack so that frame-pointer-based
       // stack walkers (e.g. jemalloc prof_backtrace_impl) can terminate
       // cleanly at the fiber boundary.
-      auto stackBase = reinterpret_cast<void**>(stackBase_);
+      auto frameBase = reinterpret_cast<void**>(entryFrameBase_);
+      if (frameBase == nullptr) {
+        return;
+      }
       auto mainContext = reinterpret_cast<void**>(mainContext_);
       if constexpr (kIsArchAmd64) {
         // Extract RBP and RIP from main context (offsets 6 and 7).
-        stackBase[-2] = mainContext[6];
-        stackBase[-1] = mainContext[7];
+        frameBase[0] = mainContext[6];
+        frameBase[1] = mainContext[7];
       } else if constexpr (kIsArchAArch64) {
         // Extract FP (x29) and LR (x30) from main context
         // (offsets 0x90 and 0x98 in the fcontext layout).
-        stackBase[-2] = mainContext[18];
-        stackBase[-1] = mainContext[19];
+        frameBase[0] = mainContext[18];
+        frameBase[1] = mainContext[19];
       }
     }
   }
 
-  unsigned char* stackBase_;
+  void* entryFrameBase_;
   folly::Function<void()> func_;
   FiberContext fiberContext_;
   MainContext mainContext_;
