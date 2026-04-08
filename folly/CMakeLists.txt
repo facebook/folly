@@ -1406,6 +1406,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME utf8_string_icu
+  HEADERS
+    UTF8String.h
+  DEPS
+    folly_range
+)
+
+folly_add_library(
   NAME utility
   HEADERS
     Utility.h

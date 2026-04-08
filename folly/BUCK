@@ -2300,17 +2300,17 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "utf8_string_icu",
-    apple_sdks = (IOS, MACOSX),
-    platforms = (CXX, ANDROID, APPLE),
-    raw_headers = [
+    headers = [
         "UTF8String.h",
     ],
+    apple_sdks = (IOS, MACOSX),
+    platforms = (CXX, ANDROID, APPLE),
+    use_raw_headers = True,
     deps = [
+        "fbsource//third-party/boost:boost_regex_icu",
         ":range",
-        "//third-party/boost:boost_regex_icu",
     ],
 )
 
