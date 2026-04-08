@@ -1,11 +1,12 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "folly-addr2line",
     srcs = [
         "Addr2Line.cpp",
@@ -21,9 +22,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = export_file,
+fb_dirsync_rule(
     name = "libFollySegFault.so.v",
+    fbcode_rule = export_file,
 )
 
 # Build a standlone DSO for use w/ `LD_PRELOAD`.

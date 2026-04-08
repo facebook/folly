@@ -37,10 +37,7 @@ class IoUringZeroCopyBufferPoolTestHelper {
   uint32_t getRingUsedCount() { return pool.getRingUsedCount(); }
   uint32_t getRingFreeCount() { return pool.getRingFreeCount(); }
   size_t getPendingBuffersSize() { return pool.getPendingBuffersSize(); }
-  uint32_t getFlushThreshold() { return pool.getFlushThreshold(); }
-  uint64_t getAndResetFlushFailures() {
-    return pool.getAndResetFlushFailures();
-  }
+  size_t getBufferSize() { return pool.getBufferSize(); }
 
   void consumeRefillRingEntries(uint32_t numEntries) {
     *getHead() += numEntries;
@@ -140,7 +137,7 @@ TEST(IoUringZeroCopyBufferPoolTest, RefillTest) {
   EXPECT_EQ(helper.getPendingBuffersSize(), 0);
 }
 
-TEST(IoUringZeroCopyBufferPoolTest, RefillWithFlush) {
+TEST(IoUringZeroCopyBufferPoolTest, RefillWithLargePendingQueue) {
   IoUringZeroCopyBufferPool::Params params = {
       .ring = nullptr,
       .numBuffers = 200,
@@ -186,17 +183,11 @@ TEST(IoUringZeroCopyBufferPoolTest, RefillWithFlush) {
   EXPECT_EQ(helper.getPendingBuffersSize(), 135);
   helper.consumeRefillRingEntries(8);
 
-  // Simulate kernel consuming 8 entries from the refill ring, then get 10 more
-  // buffers. This triggers automatic flush when pending queue reaches 128.
-  // The flush allows the kernel to consume more entries, reducing pending size.
   for (int i = 0; i < 10; i++) {
     auto buf = pool->getIoBuf(&cqe, &zcqe);
     zcqe.off += 4096;
   }
 
-  // After getting 10 buffers: 8 went to the now-empty ring, and pending queue
-  // had 135, so we'd have 135 - 8 + 10 = 137 pending. In test mode (no real
-  // kernel), flush is a no-op so the count is deterministic.
   EXPECT_EQ(helper.getRingUsedCount(), 8);
   EXPECT_EQ(helper.getPendingBuffersSize(), 137);
 
@@ -307,6 +298,37 @@ TEST(IoUringZeroCopyBufferPoolTest, SharedBufferRefillWithPending) {
 
   EXPECT_EQ(helper.getRingUsedCount(), 2);
   EXPECT_EQ(helper.getPendingBuffersSize(), 0);
+}
+
+TEST(IoUringZeroCopyBufferPoolTest, BufferSizeHintFallback) {
+  size_t pageSize = sysconf(_SC_PAGESIZE);
+
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numBuffers = 8,
+      .bufferSizeHint = 0,
+      .rqEntries = 4,
+      .ifindex = 0,
+      .queueId = 0,
+  };
+
+  // Hint too small: falls back to page size.
+  params.bufferSizeHint = 512;
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper helper(*pool);
+  EXPECT_EQ(helper.getBufferSize(), pageSize);
+
+  // Non-power-of-two hint: falls back to page size.
+  params.bufferSizeHint = 6000;
+  pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper helper2(*pool);
+  EXPECT_EQ(helper2.getBufferSize(), pageSize);
+
+  // Exact page size hint: accepted as-is.
+  params.bufferSizeHint = pageSize;
+  pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper helper3(*pool);
+  EXPECT_EQ(helper3.getBufferSize(), pageSize);
 }
 
 TEST(IoUringZeroCopyBufferPoolTest, RefillMoreThanCapacity) {

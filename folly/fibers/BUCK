@@ -1,8 +1,5 @@
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -69,65 +66,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "core",
-    srcs = [
-        "Baton.cpp",
-        "Fiber.cpp",
-        "FiberManager.cpp",
-    ],
-    raw_headers = [
-        "Baton.h",
-        "Baton-inl.h",
-        "Fiber.h",
-        "Fiber-inl.h",
-        "FiberManagerInternal.h",
-        "FiberManagerInternal-inl.h",
-        "Promise.h",
-        "Promise-inl.h",
-    ],
-    deps = [
-        "fbsource//xplat/folly/portability:asm",
-        "fbsource//xplat/folly/portability:config",
-        "fbsource//xplat/folly/portability:sys_syscall",
-        "fbsource//xplat/folly/portability:unistd",
-        "fbsource//xplat/folly/synchronization:sanitize_thread",
-        "//third-party/glog:glog",
-        "//xplat/folly:constexpr_math",
-        "//xplat/folly:singleton_thread_local",
-        "//xplat/folly/detail:memory_idler",
-        "//xplat/folly/memory:sanitize_address",
-    ],
-    exported_deps = [
-        "//xplat/folly:atomic_linked_list",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:executor",
-        "//xplat/folly:function",
-        "//xplat/folly:intrusive_list",
-        "//xplat/folly:likely",
-        "//xplat/folly:memory",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:scope_guard",
-        "//xplat/folly:try",
-        "//xplat/folly/detail:futex",
-        "//xplat/folly/executors:execution_observer",
-        "//xplat/folly/experimental/coro:coroutine",
-        "//xplat/folly/fibers:boost_context_compatibility",
-        "//xplat/folly/fibers:guard_page_allocator",
-        "//xplat/folly/fibers:loop_controller",
-        "//xplat/folly/fibers:traits",
-        "//xplat/folly/functional:invoke",
-        "//xplat/folly/io/async:async_base",
-        "//xplat/folly/io/async:request_context",
-        "//xplat/folly/lang:thunk",
-        "//xplat/folly/tracing:async_stack",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "core",
     srcs = [
         "Baton.cpp",
@@ -145,6 +84,7 @@ fbcode_target(
         "Promise.h",
         "Promise-inl.h",
     ],
+    use_raw_headers = True,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:constexpr_math",

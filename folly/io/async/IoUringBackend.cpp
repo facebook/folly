@@ -290,9 +290,6 @@ bool validateZeroCopyRxOptions(IoUringOptions& options) {
   return true;
 }
 
-// Currently a 4K page size is required.
-constexpr size_t kZeroCopyPageSize = 4096;
-
 } // namespace
 
 IoUringBackend::SocketPair::SocketPair() {
@@ -1069,7 +1066,7 @@ bool IoUringBackend::createZcBufferPool() {
   IoUringZeroCopyBufferPool::Params params = {
       .ring = this->ioRingPtr(),
       .numBuffers = static_cast<size_t>(options_.zcRxNumBuffers),
-      .bufferSizeHint = kZeroCopyPageSize,
+      .bufferSizeHint = options_.zcRxBufferSizeHint,
       .rqEntries = static_cast<uint32_t>(options_.zcRxRefillEntries),
       .ifindex = static_cast<uint32_t>(options_.zcRxIfindex),
       .queueId = static_cast<uint16_t>(options_.zcRxQueueId),

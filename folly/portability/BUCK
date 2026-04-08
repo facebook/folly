@@ -258,34 +258,29 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "pthread",
-    srcs = [
-        "PThread.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    cxx_exported_deps = [
-        "//xplat/third-party/linker_lib:pthread",
-    ],
-    raw_headers = [
-        "PThread.h",
+    srcs = ["PThread.cpp"],
+    headers = ["PThread.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
+    use_raw_headers = True,
+    deps = [
+        "//folly/lang:assume",
     ],
     exported_deps = [
         ":config",
         ":sched",
         ":time",
         ":windows",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly/lang:assume",
-    ] + select({
-        "DEFAULT": [],
-        "ovr_config//os:android": ["//xplat/third-party/linker_lib:pthread"],
-        "ovr_config//os:windows": ["//third-party/boost:boost_thread"],
-    }),
+        "//folly:portability",
+    ],
+    external_deps = [
+        "boost",
+        ("boost", None, "boost_thread"),
+    ],
+    exported_external_deps = [
+        ("glibc", None, "pthread"),
+    ],
 )
 
 fb_dirsync_cpp_library(
@@ -553,29 +548,5 @@ fbcode_target(
     ],
     exported_external_deps = [
         "gflags",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "pthread",
-    srcs = ["PThread.cpp"],
-    headers = ["PThread.h"],
-    deps = [
-        "//folly/lang:assume",
-    ],
-    exported_deps = [
-        ":config",
-        ":sched",
-        ":time",
-        ":windows",
-        "//folly:portability",
-    ],
-    external_deps = [
-        "boost",
-        ("boost", None, "boost_thread"),
-    ],
-    exported_external_deps = [
-        ("glibc", None, "pthread"),
     ],
 )

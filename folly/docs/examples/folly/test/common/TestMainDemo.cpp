@@ -15,7 +15,7 @@
  */
 
 /**
- * This file demonstrates the usage of folly/test/common:test_main_lib,
+ * This file demonstrates the usage of folly/test/common:test_main,
  * which is a `main` implementation that initializes gtest & folly before
  * running tests.
  * @file
@@ -29,7 +29,7 @@ using namespace ::testing;
 
 namespace {
 /// This is a singleton that demonstrates folly will be initialized by
-/// `//folly/test/common:test_main_lib`.
+/// `//folly/test/common:test_main`.
 folly::Singleton<int> DemoSingleton([]() { return new int(42); });
 } // namespace
 

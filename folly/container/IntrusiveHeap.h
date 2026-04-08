@@ -61,8 +61,8 @@ class IntrusiveHeapNode : private boost::noncopyable {
    * If this is in a heap, left_ and right_ point to subheaps or nullptr.
    * Otherwise, these are undefined.
    */
-  IntrusiveHeapNode* left_;
-  IntrusiveHeapNode* right_;
+  IntrusiveHeapNode* left_ = nullptr;
+  IntrusiveHeapNode* right_ = nullptr;
 };
 
 template <class Tag>

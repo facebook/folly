@@ -18,7 +18,6 @@
 
 #include <folly/Memory.h>
 #include <folly/container/detail/BoolWrapper.h>
-#include <folly/memory/MemoryResource.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {

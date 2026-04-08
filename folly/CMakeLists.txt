@@ -186,9 +186,14 @@ folly_add_library(
   HEADERS
     ClockGettimeWrappers.h
   DEPS
+    folly_c_portability
     folly_likely
   EXPORTED_DEPS
     folly_portability_time
+)
+
+folly_add_library(
+  NAME comparison_operator_test_util
 )
 
 folly_add_library(
@@ -649,6 +654,12 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME json_mock_util
+  EXPORTED_DEPS
+    folly_json_json_mock_util
+)
+
+folly_add_library(
   NAME json_patch
   HEADERS
     json_patch.h
@@ -662,6 +673,14 @@ folly_add_library(
     json_pointer.h
   EXPORTED_DEPS
     folly_json_json_pointer
+)
+
+folly_add_library(
+  NAME json_test_util
+  HEADERS
+    test/JsonTestUtil.h
+  EXPORTED_DEPS
+    folly_json_json_test_util
 )
 
 folly_add_library(
@@ -854,6 +873,7 @@ folly_add_library(
     folly_c_portability
     folly_constexpr_math
     folly_conv
+    folly_cpp_attributes
     folly_detail_ip_address
     folly_expected
     folly_fbstring
@@ -1249,6 +1269,28 @@ folly_add_library(
     SynchronizedPtr.h
   EXPORTED_DEPS
     folly_synchronized
+)
+
+folly_add_library(
+  NAME test_socket_address_test_helper
+  SRCS
+    test/SocketAddressTestHelper.cpp
+  HEADERS
+    test/SocketAddressTestHelper.h
+  DEPS
+    folly_net_tcpinfo_dispatcher
+)
+
+folly_add_library(
+  NAME test_test_utils
+  HEADERS
+    test/TestUtils.h
+  EXPORTED_DEPS
+    folly_conv
+    folly_exception_string
+    folly_fbstring
+    folly_fixed_string
+    folly_range
 )
 
 folly_add_library(

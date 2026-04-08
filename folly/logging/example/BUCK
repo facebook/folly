@@ -1,10 +1,7 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 
 oncall("fbcode_entropy_wardens_folly")
-
-# xplat build rules
 
 fb_dirsync_cpp_library(
     name = "lib",
@@ -18,10 +15,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "example",
     srcs = ["main.cpp"],
     deps = [

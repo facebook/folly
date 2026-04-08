@@ -1,11 +1,9 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "UnboundedBlockingQueueBench",
     srcs = ["UnboundedBlockingQueueBench.cpp"],
     deps = [
@@ -17,8 +15,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "PriorityUnboundedBlockingQueueTest",
     srcs = ["PriorityUnboundedBlockingQueueTest.cpp"],
     deps = [
@@ -29,8 +26,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "UnboundedBlockingQueueTest",
     srcs = ["UnboundedBlockingQueueTest.cpp"],
     deps = [
@@ -40,8 +36,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "PriorityLifoSemMPMCQueueTest",
     srcs = ["PriorityLifoSemMPMCQueueTest.cpp"],
     deps = [
@@ -52,8 +47,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "striped_priority_unbounded_blocking_queue_test",
     srcs = [
         "StripedPriorityUnboundedBlockingQueueTest.cpp",

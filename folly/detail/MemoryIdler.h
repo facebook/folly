@@ -53,9 +53,13 @@ struct MemoryIdler {
 
   static bool isUnmapUnusedStackAvailable() noexcept;
 
+  static bool prepareUnmapUnusedStack() noexcept;
+
   /// Uses madvise to discard the portion of the thread's stack that
   /// currently doesn't hold any data, trying to ensure that no page
-  /// faults will occur during the next retain bytes of stack allocation
+  /// faults will occur during the next retain bytes of stack allocation.
+  /// Should be called after prepareUnmapUnusedStack(), and only if it
+  /// returned true.
   static void unmapUnusedStack(size_t retain = kDefaultStackToRetain);
 
   /// The system-wide default for the amount of time a blocking
@@ -206,9 +210,17 @@ struct MemoryIdler {
       }
     }
 
+    // unmapUnusedStack() requires some initialization on each thread that may
+    // allocate and deallocate, so we need to run the initialization before
+    // flushing the malloc caches, but we need to unmap the stack last after
+    // having run any logic that could use stack space.
+    bool shouldUnmapUnusedStack = prepareUnmapUnusedStack();
+
     // flush, then wait
     flushLocalMallocCaches();
-    unmapUnusedStack(stackToRetain);
+    if (shouldUnmapUnusedStack) {
+      unmapUnusedStack(stackToRetain);
+    }
     return false;
   }
 };

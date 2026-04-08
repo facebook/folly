@@ -186,7 +186,7 @@ StripedEDFThreadPoolExecutor::StripedEDFThreadPoolExecutor(
           numThreads, makeQueue(options), std::move(threadFactory)) {}
 
 void StripedEDFThreadPoolExecutor::add(Func f, uint64_t deadline) {
-  CPUTask task(std::move(f), {}, {}, 0);
+  CPUTask task(std::move(f), folly::RequestContext::saveContext(), {}, {}, 0);
   CPUThreadPoolExecutor::addImpl(
       [this, deadline](auto&& task) {
         using QueueType = BlockingQueueWithDeadline<CPUTask>;

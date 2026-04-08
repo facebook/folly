@@ -77,13 +77,14 @@ void ThreadPoolExecutor::destroyTaskObservers() {
 
 ThreadPoolExecutor::Task::Task(
     Func&& func,
+    std::shared_ptr<folly::RequestContext> context,
     std::chrono::milliseconds expiration,
     Func&& expireCallback,
     int8_t pri)
     : func_(std::move(func)),
       // Assume that the task in enqueued on creation
       enqueueTime_(std::chrono::steady_clock::now()),
-      context_(folly::RequestContext::saveContext()),
+      context_(std::move(context)),
       priority_(pri),
       taskId_(processLocalUniqueId()) {
   if (expiration > std::chrono::milliseconds::zero()) {

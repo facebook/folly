@@ -75,11 +75,13 @@ class IoUringZeroCopyBufferPoolImpl {
   size_t getPendingBuffersSize() const noexcept {
     return pendingBuffers_.size();
   }
+  size_t getBufferSize() const noexcept { return bufferSize_; }
 
  private:
   void mapMemory();
   void checkZcRxFeatures();
-  void initialRegister(uint32_t ifindex, uint16_t queueId);
+  void initialRegister(
+      const IoUringZeroCopyBufferPool::Params& params, uint32_t pageSize);
   void delayedDestroy(uint32_t refs) noexcept;
   void refillBuffer(Buffer* buffer) noexcept;
 
@@ -92,6 +94,7 @@ class IoUringZeroCopyBufferPoolImpl {
   std::vector<Buffer> buffers_;
   void* rqRingArea_{nullptr};
   size_t rqRingAreaSize_{0};
+  size_t mmapSize_{0};
   struct io_uring_zcrx_rq rqRing_{};
   uint64_t rqAreaToken_{0};
   uint32_t rqTail_{0};
@@ -155,23 +158,36 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
     : ring_(params.ring),
       bufferSize_(params.bufferSizeHint),
       rqEntries_(params.rqEntries),
-      bufAreaSize_(params.numBuffers * params.bufferSizeHint),
       buffers_(params.numBuffers),
       rqRingAreaSize_(getRefillRingSize(params.rqEntries)) {
-  for (size_t i = 0; i < params.numBuffers; i++) {
-    auto& buf = buffers_[i];
-    buf.pool = this;
-    buf.off = i * bufferSize_;
-    buf.len = bufferSize_;
+  uint32_t pageSize = static_cast<uint32_t>(sysconf(_SC_PAGESIZE));
+  if (!bufferSize_) {
+    bufferSize_ = pageSize;
+  }
+
+  if (bufferSize_ < pageSize || !isPowTwo(bufferSize_)) {
+    LOG_FIRST_N(WARNING, 1)
+        << "IoUringZeroCopyBufferPool: invalid requested buffer size "
+        << bufferSize_ << ", adjusting to " << pageSize;
+    bufferSize_ = pageSize;
   }
   checkZcRxFeatures();
+
+  if (bufferSize_ > pageSize && !supportedFeatures_.pageSize) {
+    LOG_FIRST_N(WARNING, 1)
+        << "IoUringZeroCopyBufferPool: zcrx does not support buffer size, adjusting size to "
+        << pageSize;
+    bufferSize_ = pageSize;
+  }
+
+  bufAreaSize_ = params.numBuffers * bufferSize_;
   mapMemory();
 
   pendingBuffers_ =
       FixedCapacityRingQueue<Buffer*>(static_cast<uint32_t>(params.numBuffers));
 
   if (!test) {
-    initialRegister(params.ifindex, params.queueId);
+    initialRegister(params, pageSize);
   } else {
     // rqRing_ is normally set up using information that the kernel fills in via
     // io_uring_register_ifq(). Unit tests do not do this, so fake it.
@@ -184,10 +200,20 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
     rqRing_.rq_tail = 0;
     rqRing_.ring_entries = rqEntries_;
   }
+
+  // Initialize buffers after registering with zcrx since we can fallback to a
+  // lower buffer size.
+  DCHECK(!buffers_.empty());
+  for (size_t i = 0; i < params.numBuffers; i++) {
+    auto& buf = buffers_[i];
+    buf.pool = this;
+    buf.off = i * bufferSize_;
+    buf.len = bufferSize_;
+  }
 }
 
 IoUringZeroCopyBufferPoolImpl::~IoUringZeroCopyBufferPoolImpl() {
-  ::munmap(bufArea_, bufAreaSize_ + rqRingAreaSize_);
+  ::munmap(bufArea_, mmapSize_);
 }
 
 void IoUringZeroCopyBufferPoolImpl::destroy() noexcept {
@@ -234,9 +260,14 @@ std::unique_ptr<IOBuf> IoUringZeroCopyBufferPoolImpl::getIoBuf(
 }
 
 void IoUringZeroCopyBufferPoolImpl::mapMemory() {
+  // Align the mmap size to a multiple of 2MB to ensure that we are using
+  // the kernel THP mmap path.
+  // TODO: Detect smallest huge page size and align to that.
+  mmapSize_ = folly::align_ceil(bufAreaSize_ + rqRingAreaSize_, 1 << 21);
+
   bufArea_ = ::mmap(
       nullptr,
-      bufAreaSize_ + rqRingAreaSize_,
+      mmapSize_,
       PROT_READ | PROT_WRITE,
       MAP_ANONYMOUS | MAP_PRIVATE,
       -1,
@@ -244,15 +275,21 @@ void IoUringZeroCopyBufferPoolImpl::mapMemory() {
   if (bufArea_ == MAP_FAILED) {
     throw std::runtime_error(
         folly::to<std::string>(
-            "IoUringZeroCopyBufferPool failed to mmap size ",
-            bufAreaSize_ + rqRingAreaSize_));
+            "IoUringZeroCopyBufferPool failed to mmap size ", mmapSize_));
   }
 
   rqRingArea_ = static_cast<char*>(bufArea_) + bufAreaSize_;
+
+  // Try to promote the buffers to huge pages, if that fails, it isn't
+  // fatal, io_uring_register_ifq() will probably fail with a large buffer
+  // size but will fallback to the default system page size.
+  if (madvise(bufArea_, mmapSize_, MADV_HUGEPAGE) != 0) {
+    LOG(WARNING) << "madvise(MADV_HUGEPAGE) failed: " << folly::errnoStr(errno);
+  }
 }
 
 void IoUringZeroCopyBufferPoolImpl::initialRegister(
-    uint32_t ifindex, uint16_t queueId) {
+    const IoUringZeroCopyBufferPool::Params& params, uint32_t pageSize) {
   struct io_uring_region_desc regionReg{};
   regionReg.user_addr = reinterpret_cast<uint64_t>(rqRingArea_);
   regionReg.size = rqRingAreaSize_;
@@ -263,20 +300,41 @@ void IoUringZeroCopyBufferPoolImpl::initialRegister(
   areaReg.len = bufAreaSize_;
 
   struct io_uring_zcrx_ifq_reg ifqReg{};
-  ifqReg.if_idx = ifindex;
-  ifqReg.if_rxq = queueId;
+  ifqReg.if_idx = params.ifindex;
+  ifqReg.if_rxq = params.queueId;
   ifqReg.rq_entries = rqEntries_;
   ifqReg.area_ptr = reinterpret_cast<uint64_t>(&areaReg);
   ifqReg.region_ptr = reinterpret_cast<uint64_t>(&regionReg);
 
+  if (bufferSize_ > pageSize) {
+    ifqReg.rx_buf_len = bufferSize_;
+  }
+
   auto ret = io_uring_register_ifq(ring_, &ifqReg);
+  if (bufferSize_ > pageSize && (ret == -EINVAL || ret == -ERANGE)) {
+    LOG(WARNING)
+        << "IoUringZeroCopyBufferPool failed io_uring_register_ifq with rx_buf_len size "
+        << ifqReg.rx_buf_len << ", falling back to default page size";
+
+    ::munmap(bufArea_, mmapSize_);
+    bufAreaSize_ = params.numBuffers * pageSize;
+    bufferSize_ = pageSize;
+    mapMemory();
+
+    ifqReg.rx_buf_len = 0;
+    areaReg.addr = reinterpret_cast<uint64_t>(bufArea_);
+    areaReg.len = bufAreaSize_;
+    regionReg.user_addr = reinterpret_cast<uint64_t>(rqRingArea_);
+
+    ret = io_uring_register_ifq(ring_, &ifqReg);
+  }
   if (ret) {
-    ::munmap(bufArea_, bufAreaSize_ + rqRingAreaSize_);
+    ::munmap(bufArea_, mmapSize_);
     throw std::runtime_error(
         fmt::format(
             "IoUringZeroCopyBufferPool failed io_uring_register_ifq: {} {}",
             ret,
-            folly::errnoStr(ret)));
+            folly::errnoStr(-ret)));
   }
 
   rqRing_.khead = reinterpret_cast<uint32_t*>(
@@ -378,7 +436,7 @@ IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(
         fmt::format(
             "IoUringZeroCopyBufferPool failed io_uring_register_ifq: {} {}",
             ret,
-            folly::errnoStr(ret)));
+            folly::errnoStr(-ret)));
   }
 
   zcrxId_ = ifqReg.zcrx_id;
@@ -441,6 +499,10 @@ uint32_t IoUringZeroCopyBufferPool::getRingFreeCount() const noexcept {
 
 size_t IoUringZeroCopyBufferPool::getPendingBuffersSize() const noexcept {
   return impl_->getPendingBuffersSize();
+}
+
+size_t IoUringZeroCopyBufferPool::getBufferSize() const noexcept {
+  return impl_->getBufferSize();
 }
 
 } // namespace folly

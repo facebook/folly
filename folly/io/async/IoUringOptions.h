@@ -248,6 +248,12 @@ struct IoUringOptions {
     return *this;
   }
 
+  IoUringOptions& setZeroCopyRxBufferSizeHint(size_t v) {
+    zcRxBufferSizeHint = v;
+
+    return *this;
+  }
+
   IoUringOptions& setEnableIncrementalBuffers(bool v) {
     enableIncrementalBuffers = v;
 
@@ -316,6 +322,7 @@ struct IoUringOptions {
   SrcPortForQueueIdCallback srcPortQueueId;
   int zcRxNumBuffers{-1};
   int zcRxRefillEntries{-1};
+  size_t zcRxBufferSizeHint{0};
 
   // Incremental Buffers
   bool enableIncrementalBuffers{false};

@@ -16,17 +16,17 @@ job_weight_mib = 3072
 builder = nop
 
 [dependencies]
-folly
+folly-python
 fb303
-wangle
-fizz
-mvfst
-fmt
+wangle-python
+fizz-python
+mvfst-python
+fmt-python
 libsodium
 googletest
-zstd
+zstd-python
 fatal
-fbthrift
+fbthrift-python
 iproute2
 libusb
 libcurl

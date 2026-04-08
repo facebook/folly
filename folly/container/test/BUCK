@@ -477,14 +477,14 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "span_test",
     srcs = ["span_test.cpp"],
+    supports_static_listing = False,
     deps = [
-        "fbsource//xplat/folly/portability:gmock",
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly/container:span",
+        "//folly/container:span",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -515,7 +515,6 @@ fb_dirsync_cpp_unittest(
         "//folly:memory",
         "//folly/container:vector_bool",
         "//folly/container/detail:bool_wrapper",
-        "//folly/memory:memory_resource",
         "//folly/portability:gtest",
     ],
 )
@@ -835,19 +834,6 @@ fbcode_target(
     headers = [],
     deps = [
         "//folly/container:merge",
-        "//folly/portability:gtest",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "span_test",
-    srcs = ["span_test.cpp"],
-    headers = [],
-    supports_static_listing = False,
-    deps = [
-        "//folly/container:span",
-        "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],
 )

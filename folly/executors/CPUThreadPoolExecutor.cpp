@@ -49,13 +49,19 @@ const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
 
 CPUThreadPoolExecutor::CPUTask::CPUTask(
     Func&& f,
+    std::shared_ptr<folly::RequestContext> context,
     std::chrono::milliseconds expiration,
     Func&& expireCallback,
     int8_t pri)
-    : Task(std::move(f), expiration, std::move(expireCallback), pri) {}
+    : Task(
+          std::move(f),
+          std::move(context),
+          expiration,
+          std::move(expireCallback),
+          pri) {}
 
 CPUThreadPoolExecutor::CPUTask::CPUTask()
-    : Task(nullptr, std::chrono::milliseconds(0), nullptr) {}
+    : Task(nullptr, nullptr, std::chrono::milliseconds(0), nullptr) {}
 
 /* static */ auto CPUThreadPoolExecutor::makeDefaultQueue()
     -> std::unique_ptr<BlockingQueue<CPUTask>> {
@@ -226,7 +232,12 @@ void CPUThreadPoolExecutor::add(Func func) {
 
 void CPUThreadPoolExecutor::add(
     Func func, std::chrono::milliseconds expiration, Func expireCallback) {
-  CPUTask task(std::move(func), expiration, std::move(expireCallback), 0);
+  CPUTask task(
+      std::move(func),
+      folly::RequestContext::saveContext(),
+      expiration,
+      std::move(expireCallback),
+      0);
   addImpl(
       [this](auto&& t) { return taskQueue_->add(std::move(t)); },
       std::move(task));
@@ -243,7 +254,11 @@ void CPUThreadPoolExecutor::add(
     Func expireCallback) {
   CHECK_GT(getNumPriorities(), 0);
   CPUTask task(
-      std::move(func), expiration, std::move(expireCallback), priority);
+      std::move(func),
+      folly::RequestContext::saveContext(),
+      expiration,
+      std::move(expireCallback),
+      priority);
   addImpl(
       [this](auto&& t) {
         auto pri = t.priority();

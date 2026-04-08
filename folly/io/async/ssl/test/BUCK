@@ -1,20 +1,19 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load("../../../../defs.bzl", "folly_xplat_cxx_test")
 load("../../../../io/async/test/certs/defs.bzl", "alias_pem")
 
 oncall("fbcode_entropy_wardens_folly")
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "ssl_errors_test",
     srcs = ["SSLErrorsTest.cpp"],
     oncall = "secure_pipes",
-    raw_headers = [],
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "fbsource//xplat/folly/portability:openssl",
-        "//xplat/folly/io/async/ssl:ssl_errors",
+        "//folly/io/async/ssl:ssl_errors",
+        "//folly/portability:gtest",
+        "//folly/portability:openssl",
     ],
 )
 
@@ -40,19 +39,6 @@ fbcode_target(
     _kind = alias_pem,
     pems = [
         "tests-cert.pem",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "ssl_errors_test",
-    srcs = ["SSLErrorsTest.cpp"],
-    headers = [],
-    oncall = "secure_pipes",
-    deps = [
-        "//folly/io/async/ssl:ssl_errors",
-        "//folly/portability:gtest",
-        "//folly/portability:openssl",
     ],
 )
 
