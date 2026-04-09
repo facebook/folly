@@ -26,7 +26,7 @@
 #include <folly/String.h>
 #include <folly/debugging/exception_tracer/ExceptionAbi.h>
 #include <folly/debugging/exception_tracer/StackTrace.h>
-#include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/debugging/symbolizer/Symbolizer.h>
 
 #if __has_include(<dlfcn.h>)
 #include <dlfcn.h>
