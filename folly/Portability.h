@@ -138,6 +138,18 @@ constexpr bool kHasUnalignedAccess = false;
 #define FOLLY_WASM 0
 #endif
 
+#if defined(__wasm32__)
+#define FOLLY_WASM32 1
+#else
+#define FOLLY_WASM32 0
+#endif
+
+#if defined(__wasm64__)
+#define FOLLY_WASM64 1
+#else
+#define FOLLY_WASM64 0
+#endif
+
 namespace folly {
 constexpr bool kIsArchArm = FOLLY_ARM == 1;
 constexpr bool kIsArchX86 = FOLLY_X86 == 1;
@@ -147,6 +159,8 @@ constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
 constexpr bool kIsArchS390X = FOLLY_S390X == 1;
 constexpr bool kIsArchRISCV64 = FOLLY_RISCV64 == 1;
 constexpr bool kIsArchWasm = FOLLY_WASM == 1;
+constexpr bool kIsArchWasm32 = FOLLY_WASM32 == 1;
+constexpr bool kIsArchWasm64 = FOLLY_WASM64 == 1;
 } // namespace folly
 
 namespace folly {
