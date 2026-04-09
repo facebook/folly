@@ -146,7 +146,7 @@ int unsetenv(const char* name) {
 
 #endif
 
-#if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__wasm32__)
+#if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__wasm__)
 
 #include <string>
 #include <vector>

@@ -97,7 +97,7 @@ inline constexpr to_address_fn to_address;
 #if (defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L) || \
     (defined(_XOPEN_SOURCE) && _XOPEN_SOURCE >= 600) ||         \
     (defined(__ANDROID__) && (__ANDROID_API__ > 16)) ||         \
-    (defined(__APPLE__)) || defined(__FreeBSD__) || defined(__wasm32__)
+    (defined(__APPLE__)) || defined(__FreeBSD__) || defined(__wasm__)
 
 inline void* aligned_malloc(size_t size, size_t align) {
   // use posix_memalign, but mimic the behaviour of memalign

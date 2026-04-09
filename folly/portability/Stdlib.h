@@ -57,7 +57,7 @@ extern char** environ;
 namespace folly {
 namespace portability {
 namespace stdlib {
-#if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__wasm32__)
+#if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__wasm__)
 int clearenv();
 #endif
 
