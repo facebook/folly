@@ -47,7 +47,7 @@ irange(Integer1 begin, Integer2 end) {
   // If end<=begin then the range is empty; we can achieve this effect by
   // choosing the larger of {begin, end} as the loop terminator
   using otype = std::common_type_t<Integer1, Integer2>;
-  return {
+  return std::ranges::iota_view<otype, otype>{
       static_cast<otype>(begin),
       std::max(static_cast<otype>(begin), static_cast<otype>(end))};
 }
@@ -64,7 +64,7 @@ irange(Integer1 begin, Integer2 end) {
 /// type forever.
 template <detail::IRangeNonBoolIntegral Integer>
 constexpr std::ranges::iota_view<Integer, Integer> irange(Integer end) {
-  return {Integer(), end};
+  return std::ranges::iota_view<Integer, Integer>{Integer(), end};
 }
 
 } // namespace folly
