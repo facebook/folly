@@ -1,4 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
@@ -15,7 +15,6 @@ load(
     "../../defs.bzl",
     "FBANDROID_CXXFLAGS",
     "FBOBJC_CXXFLAGS",
-    "folly_xplat_cxx_test",
 )
 
 oncall("fbcode_entropy_wardens_folly")
@@ -39,8 +38,7 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "f14_set-test",
     srcs = [
         "F14SetTest.cpp",
@@ -57,13 +55,10 @@ non_fbcode_target(
     platforms = (ANDROID, APPLE, CXX, WINDOWS),
     use_instrumentation_test = True,
     deps = [
-        "fbsource//third-party/boost:boost",
-        "fbsource//third-party/boost:boost_filesystem",
-        "fbsource//third-party/boost:boost_system",
-        "fbsource//third-party/double-conversion:double-conversion",
         "fbsource//third-party/glog:glog",
         "fbsource//xplat/folly:atomic_hash_map",
         "fbsource//xplat/folly:atomic_linked_list",
+        "fbsource//xplat/folly:benchmark",
         "fbsource//xplat/folly:c_portability",
         "fbsource//xplat/folly:chrono",
         "fbsource//xplat/folly:config",
@@ -109,6 +104,8 @@ non_fbcode_target(
         "fbsource//xplat/folly:spin_lock",
         "fbsource//xplat/folly:stop_watch",
         "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly:test-headers",
+        "fbsource//xplat/folly:test_test_utils",
         "fbsource//xplat/folly:thread_local",
         "fbsource//xplat/folly:traits",
         "fbsource//xplat/folly:unit",
@@ -125,6 +122,7 @@ non_fbcode_target(
         "fbsource//xplat/folly/container:heap_vector_types",
         "fbsource//xplat/folly/container:iterator",
         "fbsource//xplat/folly/container:sparse_byte_set",
+        "fbsource//xplat/folly/container/detail:f14_hash_detail",
         "fbsource//xplat/folly/detail:discriminated_ptr_detail",
         "fbsource//xplat/folly/detail:futex",
         "fbsource//xplat/folly/detail:socket_fast_open",
@@ -143,6 +141,7 @@ non_fbcode_target(
         "fbsource//xplat/folly/functional:apply_tuple",
         "fbsource//xplat/folly/functional:invoke",
         "fbsource//xplat/folly/functional:partial",
+        "fbsource//xplat/folly/hash:hash",
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/io:typed_io_buf",
         "fbsource//xplat/folly/io/async:async_base",
@@ -169,7 +168,9 @@ non_fbcode_target(
         "fbsource//xplat/folly/lang:bits",
         "fbsource//xplat/folly/lang:checked_math",
         "fbsource//xplat/folly/lang:exception",
+        "fbsource//xplat/folly/lang:keep",
         "fbsource//xplat/folly/lang:rvalue_reference_wrapper",
+        "fbsource//xplat/folly/lang:safe_assert",
         "fbsource//xplat/folly/lang:uncaught_exceptions",
         "fbsource//xplat/folly/logging:init",
         "fbsource//xplat/folly/logging:init_weak",
@@ -220,33 +221,12 @@ non_fbcode_target(
         "fbsource//xplat/folly/system:thread_name",
         "fbsource//xplat/folly/tracing:scoped_trace_section",
         "fbsource//xplat/folly/tracing:static_tracepoint",
-        "fbsource//xplat/third-party/event:event",
-        "fbsource//xplat/third-party/linker_lib:atomic",
-        "fbsource//xplat/third-party/openssl:crypto",
-        "fbsource//xplat/third-party/openssl:ssl",
         ":f14_test_util",
         ":tracking_types",
-        "//xplat/folly:benchmark",
-        "//xplat/folly:conv",
-        "//xplat/folly:fbstring",
-        "//xplat/folly:portability",
-        "//xplat/folly:test-headers",
-        "//xplat/folly:test_test_utils",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/lang:keep",
-        "//xplat/third-party/linker_lib:atomic",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "fbsource//xplat/folly/portability:asm",
-        "//xplat/folly:function",
-        "//xplat/folly/container/detail:f14_hash_detail",
-        "//xplat/folly/lang:safe_assert",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "f14_map-test",
     srcs = [
         "F14MapTest.cpp",
@@ -263,13 +243,10 @@ non_fbcode_target(
     platforms = (ANDROID, APPLE, CXX, WINDOWS),
     use_instrumentation_test = True,
     deps = [
-        "fbsource//third-party/boost:boost",
-        "fbsource//third-party/boost:boost_filesystem",
-        "fbsource//third-party/boost:boost_system",
-        "fbsource//third-party/double-conversion:double-conversion",
         "fbsource//third-party/glog:glog",
         "fbsource//xplat/folly:atomic_hash_map",
         "fbsource//xplat/folly:atomic_linked_list",
+        "fbsource//xplat/folly:benchmark",
         "fbsource//xplat/folly:c_portability",
         "fbsource//xplat/folly:chrono",
         "fbsource//xplat/folly:config",
@@ -315,6 +292,8 @@ non_fbcode_target(
         "fbsource//xplat/folly:spin_lock",
         "fbsource//xplat/folly:stop_watch",
         "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly:test-headers",
+        "fbsource//xplat/folly:test_test_utils",
         "fbsource//xplat/folly:thread_local",
         "fbsource//xplat/folly:traits",
         "fbsource//xplat/folly:unit",
@@ -331,6 +310,7 @@ non_fbcode_target(
         "fbsource//xplat/folly/container:heap_vector_types",
         "fbsource//xplat/folly/container:iterator",
         "fbsource//xplat/folly/container:sparse_byte_set",
+        "fbsource//xplat/folly/container/detail:f14_hash_detail",
         "fbsource//xplat/folly/detail:discriminated_ptr_detail",
         "fbsource//xplat/folly/detail:futex",
         "fbsource//xplat/folly/detail:socket_fast_open",
@@ -349,6 +329,7 @@ non_fbcode_target(
         "fbsource//xplat/folly/functional:apply_tuple",
         "fbsource//xplat/folly/functional:invoke",
         "fbsource//xplat/folly/functional:partial",
+        "fbsource//xplat/folly/hash:hash",
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/io:typed_io_buf",
         "fbsource//xplat/folly/io/async:async_base",
@@ -376,6 +357,7 @@ non_fbcode_target(
         "fbsource//xplat/folly/lang:checked_math",
         "fbsource//xplat/folly/lang:exception",
         "fbsource//xplat/folly/lang:rvalue_reference_wrapper",
+        "fbsource//xplat/folly/lang:safe_assert",
         "fbsource//xplat/folly/lang:uncaught_exceptions",
         "fbsource//xplat/folly/logging:init",
         "fbsource//xplat/folly/logging:init_weak",
@@ -426,27 +408,8 @@ non_fbcode_target(
         "fbsource//xplat/folly/system:thread_name",
         "fbsource//xplat/folly/tracing:scoped_trace_section",
         "fbsource//xplat/folly/tracing:static_tracepoint",
-        "fbsource//xplat/third-party/event:event",
-        "fbsource//xplat/third-party/linker_lib:atomic",
-        "fbsource//xplat/third-party/openssl:crypto",
-        "fbsource//xplat/third-party/openssl:ssl",
         ":f14_test_util",
         ":tracking_types",
-        "//xplat/folly:benchmark",
-        "//xplat/folly:conv",
-        "//xplat/folly:fbstring",
-        "//xplat/folly:portability",
-        "//xplat/folly:test-headers",
-        "//xplat/folly:test_test_utils",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/third-party/linker_lib:atomic",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "fbsource//xplat/folly/portability:asm",
-        "//xplat/folly:function",
-        "//xplat/folly/container/detail:f14_hash_detail",
-        "//xplat/folly/lang:safe_assert",
     ],
 )
 
@@ -815,6 +778,7 @@ fbcode_target(
     srcs = ["ForeachTest.cpp"],
     headers = [],
     deps = [
+        "//folly:traits",
         "//folly/container:foreach",
         "//folly/portability:gtest",
     ],
@@ -880,7 +844,6 @@ fbcode_target(
     headers = [],
     deps = [
         "//folly:benchmark",
-        "//folly:random",
         "//folly/container:std_bitset",
         "//folly/init:init",
     ],
