@@ -1,4 +1,4 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
 load("@fbsource//xplat/folly/docs:defs.bzl", "copy", "html")
 
 #
@@ -7,98 +7,117 @@ load("@fbsource//xplat/folly/docs:defs.bzl", "copy", "html")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "AtomicHashMap.html",
     src = "AtomicHashMap.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "Benchmark.html",
     src = "Benchmark.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "Conv.html",
     src = "Conv.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "Dynamic.html",
     src = "Dynamic.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "FBString.html",
     src = "FBString.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "FBVector.html",
     src = "FBVector.md",
+    fbcode_rule = html,
     support = ["Fbvector--graphical_solutions.png"],
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "Format.html",
     src = "Format.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "GroupVarint.html",
     src = "GroupVarint.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "Histogram.html",
     src = "Histogram.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "PackedSyncPtr.html",
     src = "PackedSyncPtr.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "Poly.html",
     src = "Poly.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "ProducerConsumerQueue.html",
     src = "ProducerConsumerQueue.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "SmallLocks.html",
     src = "SmallLocks.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "small_vector.html",
     src = "small_vector.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "Synchronized.html",
     src = "Synchronized.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "ThreadCachedInt.html",
     src = "ThreadCachedInt.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "ThreadLocal.html",
     src = "ThreadLocal.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = html,
+fb_dirsync_rule(
+    name = "Traits.html",
     src = "Traits.md",
+    fbcode_rule = html,
 )
 
-fbcode_target(
-    _kind = copy,
+fb_dirsync_rule(
+    name = "style.css",
+    fbcode_rule = copy,
     path = "style.css",
 )

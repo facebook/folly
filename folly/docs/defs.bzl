@@ -7,18 +7,18 @@ load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
 #
 
 # Helper function to copy a file to the output directory
-def copy(path):
+def copy(path, **_kwargs):
     custom_rule(
         name = path,
         srcs = [path],
         build_args = shell.quote(path),
-        build_script_dep = "//folly/docs/facebook:copy.py",
+        build_script_dep = "fbcode//folly/docs/facebook:copy.py",
         output_gen_files = [path],
         strict = False,  # Remove (https://fburl.com/strict-custom-rules)
     )
 
 # Helper function to define a custom_rule() that will emit the HTML output.
-def html(src, support = None, style = "style.css", copy_support = True):
+def html(src, support = None, style = "style.css", copy_support = True, **_kwargs):
     html = paths.split_extension(src)[0] + ".html"
 
     if support == None:
@@ -30,7 +30,7 @@ def html(src, support = None, style = "style.css", copy_support = True):
         build_args =
             "--style %s %s" % (shell.quote(style), shell.quote(src)) +
             " --pandoc-path $(exe fbsource//third-party/stackage-lts:pandoc)",
-        build_script_dep = "//folly/docs/facebook:build_html.py",
+        build_script_dep = "fbcode//folly/docs/facebook:build_html.py",
         output_gen_files = [html],
         strict = False,  # Remove (https://fburl.com/strict-custom-rules)
     )
