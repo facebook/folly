@@ -626,14 +626,14 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_policy_test",
     srcs = [
         "F14PolicyTest.cpp",
     ],
     deps = [
         "//folly/container:f14_hash",
+        "//folly/container/detail:f14_intrinsics_availability",
         "//folly/portability:gtest",
     ],
 )

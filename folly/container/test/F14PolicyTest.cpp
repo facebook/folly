@@ -15,6 +15,9 @@
  */
 
 #include <folly/container/F14Set.h>
+#include <folly/container/detail/F14IntrinsicsAvailability.h>
+
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 #include <functional>
 #include <type_traits>
@@ -47,3 +50,5 @@ TEST(F14Policy, assume32BitTag) {
 }
 
 } // namespace folly
+
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
