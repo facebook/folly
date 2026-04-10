@@ -931,7 +931,7 @@ fb_dirsync_cpp_library(
     deps = [
         "//folly:conv",
         "//folly:string",
-        "//folly/container:fixed_capacity_ring_queue",
+        "//folly/container:dynamic_ring_queue",
         "//folly/lang:align",
         "//folly/portability:sys_mman",
         "//folly/synchronization:distributed_mutex",
