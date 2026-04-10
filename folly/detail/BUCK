@@ -283,6 +283,7 @@ fb_dirsync_cpp_library(
         "//folly:shared_mutex",
         "//folly:synchronized",
         "//folly/concurrency/container:atomic_grow_array",
+        "//folly/container:f14_hash",
         "//folly/container:foreach",
         "//folly/lang:exception",
         "//folly/memory:malloc",

@@ -207,12 +207,7 @@ void ThreadEntrySet::compress() {
   // compress the vector
   threadElements.shrink_to_fit();
   // compress the index
-  EntryIndex newIndex;
-  newIndex.reserve(entryToVectorSlot.size());
-  while (!entryToVectorSlot.empty()) {
-    newIndex.insert(entryToVectorSlot.extract(entryToVectorSlot.begin()));
-  }
-  entryToVectorSlot = std::move(newIndex);
+  entryToVectorSlot.reserve(0);
 }
 
 /**
