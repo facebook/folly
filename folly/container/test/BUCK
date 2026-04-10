@@ -21,6 +21,16 @@ load(
 oncall("fbcode_entropy_wardens_folly")
 
 fb_dirsync_cpp_unittest(
+    name = "dynamic_ring_queue_test",
+    srcs = ["DynamicRingQueueTest.cpp"],
+    deps = [
+        "//folly/container:dynamic_ring_queue",
+        "//folly/lang:bits",
+        "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
     name = "fixed_capacity_ring_queue_test",
     srcs = ["FixedCapacityRingQueueTest.cpp"],
     deps = [

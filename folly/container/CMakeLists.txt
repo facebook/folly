@@ -51,6 +51,15 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME dynamic_ring_queue
+  HEADERS
+    DynamicRingQueue.h
+  EXPORTED_DEPS
+    folly_lang_bits
+    folly_likely
+)
+
+folly_add_library(
   NAME enumerate
   HEADERS
     Enumerate.h
