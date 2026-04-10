@@ -129,6 +129,7 @@ folly_add_library(
     FixedCapacityRingQueue.h
   EXPORTED_DEPS
     folly_lang_bits
+    folly_likely
 )
 
 folly_add_library(

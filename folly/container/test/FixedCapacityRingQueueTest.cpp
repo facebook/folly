@@ -27,6 +27,7 @@ TEST(FixedCapacityRingQueueTest, DefaultConstructed) {
   FixedCapacityRingQueue<int> q;
   EXPECT_TRUE(q.empty());
   EXPECT_EQ(q.size(), 0);
+  EXPECT_EQ(q.capacity(), 0);
 }
 
 TEST(FixedCapacityRingQueueTest, PushAndPop) {
@@ -47,7 +48,6 @@ TEST(FixedCapacityRingQueueTest, PushAndPop) {
 
 TEST(FixedCapacityRingQueueTest, CapacityRoundsUpToPowerOfTwo) {
   FixedCapacityRingQueue<int> q(5);
-  // nextPowTwo(5) == 8
   EXPECT_EQ(q.capacity(), 8);
 }
 
@@ -57,38 +57,34 @@ TEST(FixedCapacityRingQueueTest, CapacityExactPowerOfTwo) {
 }
 
 TEST(FixedCapacityRingQueueTest, FillToCapacity) {
-  constexpr uint32_t kCap = 16;
-  FixedCapacityRingQueue<int> q(kCap);
+  FixedCapacityRingQueue<int> q(16);
 
-  for (uint32_t i = 0; i < kCap; ++i) {
-    q.push(static_cast<int>(i));
+  for (int i = 0; i < 16; ++i) {
+    q.push(i);
   }
-  EXPECT_EQ(q.size(), kCap);
+  EXPECT_EQ(q.size(), 16);
 
-  for (uint32_t i = 0; i < kCap; ++i) {
-    EXPECT_EQ(q.pop(), static_cast<int>(i));
+  for (int i = 0; i < 16; ++i) {
+    EXPECT_EQ(q.pop(), i);
   }
   EXPECT_TRUE(q.empty());
 }
 
 TEST(FixedCapacityRingQueueTest, Wraparound) {
-  constexpr uint32_t kCap = 4;
-  FixedCapacityRingQueue<int> q(kCap);
+  FixedCapacityRingQueue<int> q(4);
 
-  // Fill completely
-  for (uint32_t i = 0; i < kCap; ++i) {
-    q.push(static_cast<int>(i));
-  }
+  q.push(0);
+  q.push(1);
+  q.push(2);
+  q.push(3);
 
-  // Drain half
   EXPECT_EQ(q.pop(), 0);
   EXPECT_EQ(q.pop(), 1);
 
-  // Refill the freed slots (head has advanced, so new items wrap around)
   q.push(100);
   q.push(101);
 
-  EXPECT_EQ(q.size(), kCap);
+  EXPECT_EQ(q.size(), 4);
   EXPECT_EQ(q.pop(), 2);
   EXPECT_EQ(q.pop(), 3);
   EXPECT_EQ(q.pop(), 100);
@@ -97,15 +93,14 @@ TEST(FixedCapacityRingQueueTest, Wraparound) {
 }
 
 TEST(FixedCapacityRingQueueTest, ManyWraparoundCycles) {
-  constexpr uint32_t kCap = 8;
-  FixedCapacityRingQueue<int> q(kCap);
+  FixedCapacityRingQueue<int> q(8);
 
   int pushVal = 0;
   for (int cycle = 0; cycle < 100; ++cycle) {
-    for (uint32_t i = 0; i < kCap; ++i) {
+    for (int i = 0; i < 8; ++i) {
       q.push(pushVal++);
     }
-    for (uint32_t i = 0; i < kCap; ++i) {
+    for (int i = 0; i < 8; ++i) {
       q.pop();
     }
     EXPECT_TRUE(q.empty());
@@ -180,20 +175,19 @@ TEST(FixedCapacityRingQueueTest, InterleavedPushPop) {
   EXPECT_TRUE(q.empty());
 }
 
-#ifndef NDEBUG
-TEST(FixedCapacityRingQueueTest, PushBeyondCapacityDChecks) {
+TEST(FixedCapacityRingQueueTest, PushBeyondCapacityReturnsFalse) {
   FixedCapacityRingQueue<int> q(4);
-  for (uint32_t i = 0; i < q.capacity(); ++i) {
-    q.push(static_cast<int>(i));
+  for (int i = 0; i < 4; ++i) {
+    EXPECT_TRUE(q.push(i));
   }
-  EXPECT_DEATH(q.push(99), "");
+  EXPECT_FALSE(q.push(99));
+  EXPECT_EQ(q.size(), 4);
 }
 
-TEST(FixedCapacityRingQueueTest, PopWhenEmptyDChecks) {
-  FixedCapacityRingQueue<int> q(4);
-  EXPECT_DEATH(q.pop(), "");
+TEST(FixedCapacityRingQueueTest, ConstructorRejectsOverflow) {
+  constexpr auto kMax = FixedCapacityRingQueue<int>::kMaxCapacity;
+  EXPECT_THROW(FixedCapacityRingQueue<int>(kMax + 1), std::length_error);
 }
-#endif
 
 TEST(FixedCapacityRingQueueTest, MoveConstruct) {
   FixedCapacityRingQueue<int> q(8);
@@ -228,3 +222,10 @@ TEST(FixedCapacityRingQueueTest, NotCopyable) {
   EXPECT_FALSE(std::is_copy_constructible_v<FixedCapacityRingQueue<int>>);
   EXPECT_FALSE(std::is_copy_assignable_v<FixedCapacityRingQueue<int>>);
 }
+
+#ifndef NDEBUG
+TEST(FixedCapacityRingQueueTest, PopWhenEmptyDChecks) {
+  FixedCapacityRingQueue<int> q(4);
+  EXPECT_DEATH(q.pop(), "");
+}
+#endif
