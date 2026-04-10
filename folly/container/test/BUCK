@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
-load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
@@ -9,6 +8,8 @@ load(
     "CXX",
     "WINDOWS",
 )
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load(
@@ -494,22 +495,18 @@ fb_dirsync_cpp_unittest(
 
 # !!!! fbcode/folly/container/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "access_test",
     srcs = ["AccessTest.cpp"],
-    headers = [],
     deps = [
         "//folly/container:access",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "array_test",
     srcs = ["ArrayTest.cpp"],
-    headers = [],
     supports_static_listing = False,
     deps = [
         "//folly/container:array",
@@ -517,11 +514,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "bit_iterator_bench",
     srcs = ["BitIteratorBench.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",
@@ -531,22 +526,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "bit_iterator_test",
     srcs = ["BitIteratorTest.cpp"],
-    headers = [],
     deps = [
         "//folly/container:bit_iterator",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "enumerate_test",
     srcs = ["EnumerateTest.cpp"],
-    headers = [],
     deps = [
         "//folly:range",
         "//folly/container:enumerate",
@@ -554,22 +545,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "evicting_cache_map_bench",
     srcs = ["EvictingCacheMapBench.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
         "//folly/container:evicting_cache_map",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "evicting_cache_map_test",
     srcs = ["EvictingCacheMapTest.cpp"],
-    headers = [],
     allocator = "jemalloc_debug",
     deps = [
         "//folly/container:evicting_cache_map",
@@ -587,8 +574,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_fwd_test",
     srcs = [
         "F14FwdTest.cpp",
@@ -599,8 +585,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_map_test",
     srcs = [
         "F14MapTest.cpp",
@@ -620,8 +605,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_map_fallback_test",
     srcs = [
         "F14MapTest.cpp",
@@ -654,8 +638,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_set_test",
     srcs = [
         "F14SetTest.cpp",
@@ -675,8 +658,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_set_fallback_test",
     srcs = [
         "F14SetTest.cpp",
@@ -697,11 +679,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "heap_vector_types_test",
     srcs = ["heap_vector_types_test.cpp"],
-    headers = [],
     deps = [
         "//folly:random",
         "//folly:range",
@@ -714,8 +694,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_interprocess_test",
     srcs = [
         "F14InterprocessTest.cpp",
@@ -733,8 +712,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "f14_small_overheads",
     srcs = [
         "F14SmallOverheads.cpp",
@@ -745,8 +723,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_asan_support_test",
     srcs = [
         "F14AsanSupportTest.cpp",
@@ -758,11 +735,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "foreach_benchmark",
     srcs = ["ForeachBenchmark.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
         "//folly:random",
@@ -772,11 +747,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "foreach_test",
     srcs = ["ForeachTest.cpp"],
-    headers = [],
     deps = [
         "//folly:traits",
         "//folly/container:foreach",
@@ -784,8 +757,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "heterogeneous_access_test",
     srcs = [
         "HeterogeneousAccessTest.cpp",
@@ -801,22 +773,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "merge_test",
     srcs = ["MergeTest.cpp"],
-    headers = [],
     deps = [
         "//folly/container:merge",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "sparse_byte_set_benchmark",
     srcs = ["SparseByteSetBenchmark.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:benchmark",
@@ -826,22 +794,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "sparse_byte_set_test",
     srcs = ["SparseByteSetTest.cpp"],
-    headers = [],
     deps = [
         "//folly/container:sparse_byte_set",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "std_bitset_benchmark",
     srcs = ["StdBitsetBenchmark.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
         "//folly/container:std_bitset",
@@ -862,8 +826,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "tape_bench",
     srcs = ["tape_bench.cpp"],
     deps = [
@@ -888,11 +851,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "weighted_evicting_cache_map_test",
     srcs = ["WeightedEvictingCacheMapTest.cpp"],
-    headers = [],
     allocator = "jemalloc_debug",
     deps = [
         "//folly/container:weighted_evicting_cache_map",
@@ -900,11 +861,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "intrusive_heap_test",
     srcs = ["IntrusiveHeapTest.cpp"],
-    headers = [],
     deps = [
         "//folly:random",
         "//folly/container:intrusive_heap",
@@ -913,11 +872,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "hash_maps_bench",
     srcs = ["HashMapsBench.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
@@ -933,8 +890,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "reserve_test",
     srcs = ["ReserveTest.cpp"],
     deps = [
@@ -980,11 +936,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "map_util_test",
     srcs = ["MapUtilTest.cpp"],
-    headers = [],
     deps = [
         "//folly:map_util",
         "//folly:sorted_vector_types",
@@ -997,7 +951,6 @@ fbcode_target(
     _kind = cpp_unittest,
     name = "small_vector_test",
     srcs = ["small_vector_test.cpp"],
-    headers = [],
     supports_static_listing = False,
     deps = [
         "fbsource//third-party/fmt:fmt",
@@ -1013,11 +966,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "sorted_vector_types_test",
     srcs = ["sorted_vector_test.cpp"],
-    headers = [],
     deps = [
         "//folly:optional",
         "//folly:range",
@@ -1029,11 +980,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "collection_util_test",
     srcs = ["CollectionUtilTest.cpp"],
-    headers = [],
     deps = [
         "//folly:small_vector",
         "//folly:sorted_vector_types",
@@ -1043,11 +992,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "irange_test",
     srcs = ["IRangeTest.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/googletest:gtest",
         "//folly/container:irange",
