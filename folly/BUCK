@@ -417,7 +417,7 @@ non_fbcode_target(
     ],
     force_static = select({
         "DEFAULT": False,
-        "ovr_config//build_mode:arvr_mode": select({
+        "ovr_config//build_mode:arvr_mode[enabled]": select({
             "DEFAULT": False,
             "ovr_config//os:macos": True,
         }),

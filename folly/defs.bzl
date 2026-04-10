@@ -46,7 +46,7 @@ def cpp_flags():
                 "DEFAULT": ["-DFOLLY_MOBILE=1"],
                 "ovr_config//os:windows": [],
             }),
-            "ovr_config//build_mode:arvr_mode": select({
+            "ovr_config//build_mode:arvr_mode[enabled]": select({
                 "DEFAULT": ["-DFOLLY_MOBILE=1"],
                 "ovr_config//os:linux": [],
                 "ovr_config//os:macos": [],
@@ -162,7 +162,7 @@ def folly_xplat_library(
             "DEFAULT": force_static,
             "ovr_config//runtime:fbcode": False,
         }),
-        "ovr_config//build_mode:arvr_mode": force_static,
+        "ovr_config//build_mode:arvr_mode[enabled]": force_static,
     })
 
     # Preserve lib_name when redirecting to maintain SONAME

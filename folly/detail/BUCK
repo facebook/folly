@@ -441,7 +441,7 @@ fb_dirsync_cpp_library(
         # ARVR builds (e.g. VrDriver) don't benefit from dynamic linking of
         # static_singleton_manager and it adds ~128KB to the APK size. Force
         # static linking for ARVR mode to avoid the extra .so overhead.
-        "ovr_config//build_mode:arvr_mode": True,
+        "ovr_config//build_mode:arvr_mode[enabled]": True,
     }),
     use_raw_headers = True,
     deps = [
