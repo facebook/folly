@@ -97,7 +97,7 @@ namespace folly {
 #define SO_NO_TSOCKS 201
 #endif
 
-#if FOLLY_HAVE_SO_TIMESTAMPING
+#if defined(FOLLY_HAVE_SO_TIMESTAMPING) && FOLLY_HAVE_SO_TIMESTAMPING
 #define SO_MAX_ATTEMPTS_ENABLE_BYTEEVENTS 10
 #endif
 
@@ -1159,7 +1159,7 @@ class AsyncSocket
    */
   void enableTFO() override {
     // No-op if folly does not allow tfo
-#if FOLLY_ALLOW_TFO
+#if defined(FOLLY_ALLOW_TFO) && FOLLY_ALLOW_TFO
     tfoInfo_.enabled = true;
 #endif
   }
