@@ -1,14 +1,11 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "reproducible_accumulator_test",
     srcs = ["ReproducibleAccumulatorTest.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly/math:kahan_summation",
@@ -17,22 +14,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "kahan_summation_test",
     srcs = ["KahanSummationTest.cpp"],
-    headers = [],
     deps = [
         "//folly/math:kahan_summation",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "accurate_summation_test",
     srcs = ["AccurateSummationTest.cpp"],
-    headers = [],
     deps = [
         "//folly/math:accurate_summation",
         "//folly/math:kahan_summation",
@@ -40,11 +33,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "summation_benchmark",
     srcs = ["SummationBenchmark.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
         "//folly/init:init",
