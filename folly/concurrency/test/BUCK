@@ -1,15 +1,14 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
-load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "cache_locality_benchmark",
     srcs = ["CacheLocalityBenchmark.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",
@@ -18,8 +17,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "cache_locality_init_main",
     srcs = ["CacheLocalityInitMain.cpp"],
     deps = [
@@ -27,11 +25,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "cache_locality_test",
     srcs = ["CacheLocalityTest.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
@@ -61,8 +57,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "atomic_shared_ptr_performance",
     srcs = ["AtomicSharedPtrPerformance.cpp"],
     deps = [
@@ -71,11 +66,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "core_cached_shared_ptr_test",
     srcs = ["CoreCachedSharedPtrTest.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
         "//folly:portability",
@@ -89,11 +82,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "concurrent_hash_map_bench",
     srcs = ["ConcurrentHashMapBench.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark_util",
         "//folly/concurrency:concurrent_hash_map",
@@ -103,8 +94,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "concurrent_hash_map_stress_test",
     srcs = ["ConcurrentHashMapStressTest.cpp"],
     labels = [
@@ -142,8 +132,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "concurrent_hash_map_stress_test_no_simd",
     srcs = ["ConcurrentHashMapStressTest.cpp"],
     labels = [
@@ -183,11 +172,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "dynamic_bounded_queue_test",
     srcs = ["DynamicBoundedQueueTest.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:mpmc_queue",
@@ -198,8 +185,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "priority_unbounded_queue_set_test",
     srcs = ["PriorityUnboundedQueueSetTest.cpp"],
     deps = [
@@ -210,11 +196,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "unbounded_queue_test",
     srcs = ["UnboundedQueueTest.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:mpmc_queue",
@@ -227,8 +211,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "thread_cached_synchronized_bench",
     srcs = ["ThreadCachedSynchronizedBench.cpp"],
     deps = [
@@ -239,8 +222,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "thread_cached_synchronized_test",
     srcs = ["ThreadCachedSynchronizedTest.cpp"],
     deps = [
@@ -249,8 +231,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "process_local_unique_id_test",
     srcs = ["ProcessLocalUniqueIdTest.cpp"],
     deps = [
@@ -260,8 +241,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "singleton_relaxed_counter_bench",
     srcs = [
         "SingletonRelaxedCounterBench.cpp",
@@ -276,8 +256,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "singleton_relaxed_counter_test",
     srcs = [
         "SingletonRelaxedCounterTest.cpp",
