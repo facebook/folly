@@ -1,14 +1,14 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
-load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "atomic_notification_test",
     srcs = [
         "AtomicNotificationTest.cpp",
@@ -20,8 +20,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "atomic_ref_test",
     srcs = ["AtomicRefTest.cpp"],
     deps = [
@@ -30,19 +29,16 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "atomic_struct_test",
     srcs = ["AtomicStructTest.cpp"],
-    headers = [],
     deps = [
         "//folly/portability:gtest",
         "//folly/synchronization:atomic_struct",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "atomic_util_bench",
     srcs = ["AtomicUtilBench.cpp"],
     deps = [
@@ -56,8 +52,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "atomic_util_test",
     srcs = ["AtomicUtilTest.cpp"],
     supports_static_listing = False,
@@ -76,8 +71,7 @@ fb_dirsync_cpp_library(
     headers = ["Barrier.h"],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "barrier_test",
     srcs = ["BarrierTest.cpp"],
     deps = [
@@ -111,8 +105,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "baton_test_helpers",
     headers = ["BatonTestHelpers.h"],
     exported_deps = [
@@ -122,11 +115,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "call_once_benchmark",
     srcs = ["CallOnceBenchmark.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",
@@ -135,11 +126,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "call_once_test",
     srcs = ["CallOnceTest.cpp"],
-    headers = [],
     deps = [
         "//folly:traits",
         "//folly/portability:gtest",
@@ -147,11 +136,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "delayed_init_test",
     srcs = ["DelayedInitTest.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
         ":barrier",
@@ -204,8 +191,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "hazptr_tc_test",
     srcs = ["HazptrTcTest.cpp"],
     deps = [
@@ -215,8 +201,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "hazptr_bench",
     srcs = ["HazptrBench.cpp"],
     deps = [
@@ -236,8 +221,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "latch_test",
     srcs = ["LatchTest.cpp"],
     deps = [
@@ -263,11 +247,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "lifo_sem_bench",
     srcs = ["LifoSemBench.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
         "//folly/portability:asm",
@@ -276,8 +258,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "lock_test",
     srcs = ["LockTest.cpp"],
     supports_static_listing = False,
@@ -287,8 +268,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "native_semaphore_test",
     srcs = ["NativeSemaphoreTest.cpp"],
     deps = [
@@ -297,8 +277,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "parking_lot_benchmark",
     srcs = ["ParkingLotBenchmark.cpp"],
     deps = [
@@ -309,8 +288,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "parking_lot_test",
     srcs = ["ParkingLotTest.cpp"],
     deps = [
@@ -320,19 +298,16 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "rcu_bench",
     srcs = ["RcuBench.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
         "//folly/synchronization:rcu",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rcu_test",
     srcs = ["RcuTest.cpp"],
     deps = [
@@ -347,11 +322,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "relaxed_atomic_test",
     srcs = ["RelaxedAtomicTest.cpp"],
-    headers = [],
     deps = [
         "//folly/portability:gtest",
         "//folly/synchronization:atomic_util",
@@ -359,11 +332,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rw_spin_lock_test",
     srcs = ["RWSpinLockTest.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly/portability:gflags",
@@ -384,8 +355,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "semaphore",
     headers = ["Semaphore.h"],
     exported_deps = [
@@ -399,8 +369,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "semaphore_test",
     srcs = ["SemaphoreTest.cpp"],
     deps = [
@@ -413,8 +382,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "small_locks_benchmark",
     srcs = ["SmallLocksBenchmark.cpp"],
     deps = [
@@ -430,11 +398,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "small_locks_test",
     srcs = ["SmallLocksTest.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:random",
@@ -450,8 +416,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "thread_cached_epoch_bench_util",
     headers = ["ThreadCachedEpochBench.h"],
     exported_deps = [
@@ -460,11 +425,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "thread_cached_readers_bench",
     srcs = ["ThreadCachedReadersBench.cpp"],
-    headers = [],
     deps = [
         ":thread_cached_epoch_bench_util",
         "//folly:benchmark",
@@ -472,11 +435,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "thread_cached_readers_test",
     srcs = ["ThreadCachedReadersTest.cpp"],
-    headers = [],
     deps = [
         "//folly:thread_local",
         "//folly/portability:gtest",
@@ -484,8 +445,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "throttled_lifo_sem_test",
     srcs = [
         "ThrottledLifoSemTest.cpp",
@@ -518,8 +478,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "flat_combining_benchmark",
     srcs = ["FlatCombiningBenchmark.cpp"],
     deps = [
@@ -530,8 +489,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "flat_combining_test",
     srcs = ["FlatCombiningTest.cpp"],
     supports_static_listing = False,
@@ -542,11 +500,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "event_count_test",
     srcs = ["EventCountTest.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:random",
@@ -555,11 +511,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "striped_throttled_lifo_sem_test",
     srcs = ["StripedThrottledLifoSemTest.cpp"],
-    headers = [],
     deps = [
         "//folly:random",
         "//folly:scope_guard",
