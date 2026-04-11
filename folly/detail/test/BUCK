@@ -1,11 +1,11 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "async_trace_test",
     srcs = ["AsyncTraceTest.cpp"],
     deps = [
@@ -14,8 +14,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "static_singleton_manager_test",
     srcs = ["StaticSingletonManagerTest.cpp"],
     supports_static_listing = False,
@@ -26,8 +25,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "unique_instance_test",
     srcs = ["UniqueInstanceTest.cpp"],
     deps = [
@@ -50,8 +48,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "perf_scoped_test",
     srcs = [
         "PerfScopedTest.cpp",
@@ -65,8 +62,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "simple_simd_string_utils_test",
     srcs = [
         "SimpleSimdStringUtilsTest.cpp",
@@ -78,8 +74,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "split_string_simd_test",
     srcs = [
         "SplitStringSimdTest.cpp",
@@ -94,8 +89,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "thread_local_detail_test",
     srcs = [
         "ThreadLocalDetailTest.cpp",
@@ -108,8 +102,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "thread_local_benchmark",
     srcs = ["ThreadLocalBenchmark.cpp"],
     deps = [
@@ -119,8 +112,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "traponavx512_test_negative",
     srcs = ["TrapOnAvx512TestNegative.cpp"],
     deps = [
@@ -129,8 +121,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "tuple_test",
     srcs = ["tuple_test.cpp"],
     deps = [
@@ -141,8 +132,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "detail_typelist_test",
     srcs = ["TypeListTest.cpp"],
     deps = [
@@ -151,8 +141,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "benchmark_adaptive_test",
     srcs = ["BenchmarkAdaptiveTest.cpp"],
     deps = [
