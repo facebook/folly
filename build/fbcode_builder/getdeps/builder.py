@@ -92,7 +92,8 @@ class BuilderBase:
                 wrapper = os.path.join(self.build_dir, "succeed.bat")
                 with open(wrapper, "w") as f:
                     f.write("@echo off\n")
-                    f.write(f'call "{vcvarsall}" amd64\n')
+                    arch = "arm64" if self.build_opts.is_arm() else "amd64"
+                    f.write(f'call "{vcvarsall}" {arch}\n')
                     f.write("set ERRORLEVEL=0\n")
                     f.write("exit /b 0\n")
                 return [wrapper, "&&"]
@@ -1424,7 +1425,7 @@ class OpenSSLBuilder(BuilderBase):
             # jom is compatible with nmake, adds the /j argument for parallel build
             make = "jom.exe"
             make_j_args = ["/j%s" % self.num_jobs]
-            args = ["VC-WIN64A-masm", "-utf-8"]
+            args = ["VC-WIN64-ARM", "-utf-8"] if self.build_opts.is_arm() else ["VC-WIN64A-masm", "-utf-8"]
             # fixes "if multiple CL.EXE write to the same .PDB file, please use /FS"
             extra_args = ["/FS"]
         elif self.build_opts.is_darwin():
@@ -1501,6 +1502,13 @@ class Boost(BuilderBase):
 
     def _build(self, reconfigure: bool) -> None:
         env = self._compute_env()
+        if self.build_opts.is_arm():
+            if not self.b2_args:
+                self.b2_args = []
+            self.b2_args += [
+                "pch=off",
+                "context-impl=winfib",
+            ]
         linkage: list[str] = ["static"]
         if self.build_opts.is_windows() or self.build_opts.shared_libs:
             linkage.append("shared")
@@ -1520,7 +1528,10 @@ class Boost(BuilderBase):
             if self.build_opts.is_windows():
                 bootstrap = os.path.join(self.src_dir, "bootstrap.bat")
                 self._check_cmd([bootstrap] + bootstrap_args, cwd=self.src_dir, env=env)
-                args += ["address-model=64"]
+                if self.build_opts.is_arm():
+                    args += ["address-model=64", "architecture=arm"]
+                else:
+                    args += ["address-model=64"]
             else:
                 bootstrap = os.path.join(self.src_dir, "bootstrap.sh")
                 self._check_cmd(
@@ -1529,6 +1540,19 @@ class Boost(BuilderBase):
                     env=env,
                 )
 
+            b2_args = list(self.b2_args)
+            if self.build_opts.is_arm():
+                ARM_EXCLUDED_LIBS = {
+                    "coroutine",
+                    "graph",
+                    "graph_parallel",
+                    "mpi",
+                    "python",
+                }
+                b2_args = [
+                    arg for arg in b2_args
+                    if not any(arg == f"--with-{lib}" for lib in ARM_EXCLUDED_LIBS)
+                ]
             b2 = os.path.join(self.src_dir, "b2")
             self._check_cmd(
                 [
@@ -1538,7 +1562,7 @@ class Boost(BuilderBase):
                     "--builddir=%s" % self.build_dir,
                 ]
                 + args
-                + self.b2_args
+                + b2_args
                 + [
                     "link=%s" % link,
                     "runtime-link=shared",
