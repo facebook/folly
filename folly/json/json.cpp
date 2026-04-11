@@ -699,11 +699,9 @@ dynamic parseNumber(Input& in) {
   }
 
   auto integral = in.skipSignAndDigits();
-  if (positive && integral.size() < 2 && (*in != '.' || !json5)) {
-    in.error("expected digits after `+'");
-  }
-  if (negative && integral.size() < 2 && (*in != '.' || !json5)) {
-    in.error("expected digits after `-'");
+  if ((positive || negative) && integral.size() < 2 && (*in != '.' || !json5)) {
+    in.error(
+        positive ? "expected digits after `+`" : "expected digits after `-`");
   }
 
   const bool isIntegralZero =
@@ -726,6 +724,14 @@ dynamic parseNumber(Input& in) {
       return *result;
     }
     in.error("hex literal out of range");
+  }
+
+  // JSON5 forbids leading zeros (octal/noctal literals like 010, 080, 00).
+  if (json5 && !integral.empty() && !isIntegralZero) {
+    auto digitStart = integral.begin() + (positive || negative);
+    if (*digitStart == '0') {
+      in.error("leading zeros in numbers are not allowed");
+    }
   }
 
   auto const wasE = *in == 'e' || *in == 'E';
@@ -829,10 +835,15 @@ std::string parseString(Input& in, char quoteChar) {
 
   std::string ret;
   for (;;) {
-    auto range = in.skipWhile([quoteChar](char c) {
-      return c != quoteChar && c != '\\';
+    auto range = in.skipWhile([quoteChar, json5](char c) {
+      return c != quoteChar && c != '\\' &&
+          !(json5 && (c == '\n' || c == '\r'));
     });
     ret.append(range.begin(), range.end());
+
+    if (json5 && (*in == '\n' || *in == '\r')) {
+      in.error("unescaped newline in string");
+    }
 
     if (*in == quoteChar) {
       ++in;

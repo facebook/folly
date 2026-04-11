@@ -1392,3 +1392,40 @@ TEST(Json5, FormFeedWhitespace) {
   // Without json5 flag, form feed should fail
   EXPECT_THROW(parseJson("\f42"), std::exception);
 }
+
+TEST(Json5, LeadingZerosRejected) {
+  // Octal-style leading zeros must be rejected
+  EXPECT_THROW(fromJson5("010"), std::exception);
+  EXPECT_THROW(fromJson5("00"), std::exception);
+  EXPECT_THROW(fromJson5("01"), std::exception);
+  EXPECT_THROW(fromJson5("0123"), std::exception);
+
+  // Noctal-style (invalid octal digit, but still leading zero)
+  EXPECT_THROW(fromJson5("080"), std::exception);
+  EXPECT_THROW(fromJson5("09"), std::exception);
+
+  // Signed variants
+  EXPECT_THROW(fromJson5("+010"), std::exception);
+  EXPECT_THROW(fromJson5("-010"), std::exception);
+  EXPECT_THROW(fromJson5("+00"), std::exception);
+  EXPECT_THROW(fromJson5("-00"), std::exception);
+  EXPECT_THROW(fromJson5("+080"), std::exception);
+  EXPECT_THROW(fromJson5("-080"), std::exception);
+}
+
+TEST(Json5, UnescapedNewlineInStringRejected) {
+  // Unescaped newlines must be rejected
+  EXPECT_THROW(fromJson5("\"hello\nworld\""), std::exception);
+  EXPECT_THROW(fromJson5("\"hello\rworld\""), std::exception);
+
+  // Single-quoted strings with unescaped newlines must also be rejected
+  EXPECT_THROW(fromJson5("'hello\nworld'"), std::exception);
+  EXPECT_THROW(fromJson5("'hello\rworld'"), std::exception);
+
+  // Unescaped newline at start/end of string
+  EXPECT_THROW(fromJson5("\"\nfoo\""), std::exception);
+  EXPECT_THROW(fromJson5("\"foo\n\""), std::exception);
+
+  // In an object value
+  EXPECT_THROW(fromJson5("{\"key\": \"hello\nworld\"}"), std::exception);
+}
