@@ -48,11 +48,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "flat_combining_priority_queue_test",
     srcs = ["FlatCombiningPriorityQueueTest.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",
@@ -61,11 +59,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "single_writer_fixed_hash_map_test",
     srcs = ["SingleWriterFixedHashMapTest.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
         "//folly/concurrency/container:single_writer_fixed_hash_map",
