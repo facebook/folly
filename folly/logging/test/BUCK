@@ -1,14 +1,13 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "async_file_writer_test",
     srcs = ["AsyncFileWriterTest.cpp"],
     deps = [
@@ -32,8 +31,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "async_log_writer_test",
     srcs = ["AsyncLogWriterTest.cpp"],
     deps = [
@@ -44,8 +42,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "config_parser_test",
     srcs = ["ConfigParserTest.cpp"],
     deps = [
@@ -60,8 +57,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "config_update_test",
     srcs = ["ConfigUpdateTest.cpp"],
     deps = [
@@ -96,8 +92,7 @@ fbcode_target(
     },
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "file_handler_factory_test",
     srcs = ["FileHandlerFactoryTest.cpp"],
     deps = [
@@ -110,8 +105,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "custom_log_formatter_test",
     srcs = ["CustomLogFormatterTest.cpp"],
     deps = [
@@ -124,8 +118,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "glog_formatter_test",
     srcs = ["GlogFormatterTest.cpp"],
     deps = [
@@ -139,8 +132,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "immediate_file_writer_test",
     srcs = ["ImmediateFileWriterTest.cpp"],
     deps = [
@@ -155,8 +147,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "init_test",
     srcs = ["InitTest.cpp"],
     deps = [
@@ -169,8 +160,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "log_category_test",
     srcs = ["LogCategoryTest.cpp"],
     deps = [
@@ -181,8 +171,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "logger_db_test",
     srcs = ["LoggerDBTest.cpp"],
     deps = [
@@ -192,8 +181,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "logger_test",
     srcs = ["LoggerTest.cpp"],
     deps = [
@@ -206,8 +194,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "log_level_test",
     srcs = ["LogLevelTest.cpp"],
     deps = [
@@ -218,8 +205,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "log_message_test",
     srcs = ["LogMessageTest.cpp"],
     deps = [
@@ -229,8 +215,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "log_name_test",
     srcs = ["LogNameTest.cpp"],
     deps = [
@@ -239,8 +224,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "log_stream_test",
     srcs = ["LogStreamTest.cpp"],
     deps = [
@@ -249,8 +233,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rate_limiter_test",
     srcs = ["RateLimiterTest.cpp"],
     deps = [
@@ -260,8 +243,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "standard_log_handler_test",
     srcs = ["StandardLogHandlerTest.cpp"],
     deps = [
@@ -273,8 +255,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "config_helpers",
     srcs = ["ConfigHelpers.cpp"],
     headers = ["ConfigHelpers.h"],
@@ -286,8 +267,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "sync_level_test",
     srcs = ["SyncLevelTest.cpp"],
     deps = [
@@ -311,8 +291,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "xlog_test_lib",
     srcs = [
         "XlogFile1.cpp",
@@ -328,8 +307,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "xlog_bench",
     srcs = ["XlogBench.cpp"],
     deps = [
@@ -363,8 +341,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "standard_log_handler_factory_test",
     srcs = ["StandardLogHandlerFactoryTest.cpp"],
     deps = [
@@ -376,8 +353,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "bridge_from_google_logging_test",
     srcs = ["BridgeFromGoogleLoggingTest.cpp"],
     deps = [
@@ -391,11 +367,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "auto_timer_test",
     srcs = ["AutoTimerTest.cpp"],
-    headers = [],
     deps = [
         "//folly/logging:auto_timer",
         "//folly/portability:gtest",
