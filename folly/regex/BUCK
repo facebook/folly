@@ -1,0 +1,22 @@
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fb_dirsync_cpp_library(
+    name = "regex",
+    headers = [
+        "Regex.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/regex/detail:AstOptimizer",
+        "//folly/regex/detail:ast",
+        "//folly/regex/detail:char_class",
+        "//folly/regex/detail:dfa",
+        "//folly/regex/detail:dfa_executor",
+        "//folly/regex/detail:executor",
+        "//folly/regex/detail:nfa",
+        "//folly/regex/detail:nfa_executor",
+        "//folly/regex/detail:parser",
+    ],
+)

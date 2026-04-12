@@ -1,0 +1,122 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fb_dirsync_cpp_library(
+    name = "char_class",
+    headers = [
+        "CharClass.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [],
+)
+
+fb_dirsync_cpp_library(
+    name = "ast",
+    headers = [
+        "Ast.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":char_class",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "parser",
+    headers = [
+        "Parser.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast",
+        ":char_class",
+        "//folly/lang:exception",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "executor",
+    headers = [
+        "Executor.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast",
+        ":char_class",
+        "//folly:likely",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "nfa",
+    headers = [
+        "Nfa.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":FixedBitset",
+        ":ast",
+        "//folly/lang:exception",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "nfa_executor",
+    headers = [
+        "NfaExecutor.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast",
+        ":char_class",
+        ":executor",
+        ":nfa",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "dfa",
+    headers = [
+        "Dfa.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast",
+        ":char_class",
+        ":nfa",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "dfa_executor",
+    headers = [
+        "DfaExecutor.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast",
+        ":dfa",
+        ":executor",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "AstOptimizer",
+    headers = [
+        "AstOptimizer.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":FixedBitset",
+        ":ast",
+    ],
+)
+
+cpp_library(
+    name = "FixedBitset",
+    headers = ["FixedBitset.h"],
+    labels = ["autodeps2_generated"],
+)
