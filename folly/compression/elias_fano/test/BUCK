@@ -1,13 +1,10 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "bitvector_test",
     srcs = ["BitVectorCodingTest.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
         "//folly:portability",
@@ -18,11 +15,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "eliasfano_test",
     srcs = ["EliasFanoCodingTest.cpp"],
-    headers = [],
     labels = ["slow"],
     deps = [
         "//folly:benchmark",
