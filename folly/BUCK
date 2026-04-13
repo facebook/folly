@@ -409,11 +409,11 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "executor",
-    srcs = [
-        "Executor.cpp",
+    srcs = ["Executor.cpp"],
+    headers = [
+        "Executor.h",
     ],
     force_static = select({
         "DEFAULT": False,
@@ -422,18 +422,18 @@ non_fbcode_target(
             "ovr_config//os:macos": True,
         }),
     }),
-    raw_headers = [
-        "Executor.h",
+    use_raw_headers = True,
+    deps = [
+        ":exception_string",
+        ":portability",
     ],
     exported_deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:exception_string",
-        "//xplat/folly:function",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:utility",
-        "//xplat/folly/lang:exception",
+        "fbsource//third-party/glog:glog",
+        ":function",
+        ":optional",
+        ":range",
+        ":utility",
+        "//folly/lang:exception",
     ],
 )
 
@@ -2565,27 +2565,6 @@ fbcode_target(
     ],
     exported_external_deps = [
         "double_conversion",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "executor",
-    srcs = ["Executor.cpp"],
-    headers = [
-        "Executor.h",
-    ],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        ":exception_string",
-        ":portability",
-    ],
-    exported_deps = [
-        ":function",
-        ":optional",
-        ":range",
-        ":utility",
-        "//folly/lang:exception",
     ],
 )
 
