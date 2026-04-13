@@ -17,7 +17,6 @@ builder = cmake
 [dependencies]
 boost
 fbthrift
-fizz
 fmt
 folly
 gflags
