@@ -16,14 +16,67 @@
 
 #include <Python.h>
 
+#include <queue>
 #include <thread>
 
+#include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/ManualExecutor.h>
+#include <folly/executors/SequencedExecutor.h>
 #include <folly/portability/GTest.h>
 #include <folly/python/iobuf_ext.h>
 
 namespace folly::python {
 namespace {
+
+// Mimics AsyncioExecutor::drop() semantics: after the drive loop exits,
+// remaining tasks are NOT drained — they are destroyed with the queue.
+// This lets us test that std::move(executor).add() correctly keeps the
+// KeepAlive inside the task (so drive() must process it), vs the old
+// get()->add() approach where the KeepAlive was released separately.
+class DropStyleExecutor : public DrivableExecutor, public SequencedExecutor {
+ public:
+  void add(Func f) override {
+    std::lock_guard g(mu_);
+    tasks_.push(std::move(f));
+  }
+
+  void drive() noexcept override {
+    Func f;
+    {
+      std::lock_guard g(mu_);
+      if (tasks_.empty()) {
+        return;
+      }
+      f = std::move(tasks_.front());
+      tasks_.pop();
+    }
+    f();
+  }
+
+  // Like AsyncioExecutor::drop() — drives until keepAliveCount hits 0,
+  // then stops. No drain of remaining tasks.
+  void drop() {
+    keepAliveRelease();
+    while (keepAliveCount_.load(std::memory_order_acquire) > 0) {
+      drive();
+    }
+    // No drain — remaining tasks are lost (same as AsyncioExecutor).
+  }
+
+  bool keepAliveAcquire() noexcept override {
+    keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
+    return true;
+  }
+
+  void keepAliveRelease() noexcept override {
+    keepAliveCount_.fetch_sub(1, std::memory_order_release);
+  }
+
+ private:
+  std::mutex mu_;
+  std::queue<Func> tasks_;
+  std::atomic<int> keepAliveCount_{1}; // starts at 1 like AsyncioExecutor
+};
 
 struct IOBufExtTest : public testing::Test {
   void SetUp() override {
@@ -37,45 +90,40 @@ struct IOBufExtTest : public testing::Test {
   PyGILState_STATE gstate_{PyGILState_UNLOCKED};
 };
 
-// Regression test for S646339. When the executor passed to
-// iobuf_from_memoryview is destroyed before the IOBuf, the free callback
-// dereferences a dangling Executor* pointer.
-// DISABLED: This test crashes (ASAN heap-use-after-free) until the fix lands.
-TEST_F(
-    IOBufExtTest, DISABLED_testFreeCallbackShouldSurviveExecutorDestruction) {
-  // Create a Python bytes object to serve as the backing buffer.
+// Regression test for S646339 (use-after-free in iobuf_ext.cpp:55).
+// RED without KeepAlive (raw Executor* → ASAN heap-use-after-free).
+// GREEN with KeepAlive (executor kept alive by the token).
+TEST_F(IOBufExtTest, testFreeCallbackShouldSurviveExecutorDestruction) {
   PyObject* pyBytes = PyBytes_FromStringAndSize("hello", 5);
   ASSERT_NE(pyBytes, nullptr);
   auto initialRefcnt = Py_REFCNT(pyBytes);
 
-  std::unique_ptr<folly::IOBuf> iobuf;
-  {
-    // Create an executor with a limited lifetime.
-    auto executor = std::make_unique<folly::ManualExecutor>();
+  auto executor = std::make_unique<folly::ManualExecutor>();
+  auto iobuf = iobuf_from_memoryview(
+      executor.get(),
+      pyBytes,
+      PyBytes_AS_STRING(pyBytes),
+      PyBytes_GET_SIZE(pyBytes));
+  ASSERT_NE(iobuf, nullptr);
+  EXPECT_EQ(Py_REFCNT(pyBytes), initialRefcnt + 1);
 
-    // Wrap the Python buffer in an IOBuf, passing the executor.
-    // iobuf_from_memoryview does Py_INCREF internally.
-    iobuf = iobuf_from_memoryview(
-        executor.get(),
-        pyBytes,
-        PyBytes_AS_STRING(pyBytes),
-        PyBytes_GET_SIZE(pyBytes));
-    ASSERT_NE(iobuf, nullptr);
-    EXPECT_EQ(Py_REFCNT(pyBytes), initialRefcnt + 1);
+  // Free the IOBuf from a non-GIL thread after a brief delay, concurrently
+  // with executor destruction below. This mirrors the production scenario
+  // where a ServiceRouter fiber frees the IOBuf during request cleanup.
+  std::thread freer([&iobuf]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    iobuf.reset();
+  });
 
-    // Executor is destroyed here while IOBuf still holds a raw pointer to it.
-  }
+  // Destroy the executor. Without the fix (raw Executor*), the destructor
+  // completes immediately (keepAliveCount is 0), and the freer thread later
+  // hits a use-after-free on executor->add(). With the fix (KeepAlive),
+  // the destructor spins in drive() until the freer thread releases the
+  // token, then processes the queued Py_DECREF and exits cleanly.
+  executor.reset();
 
-  // Destroy the IOBuf from a thread that has never held the GIL, just like
-  // the ServiceRouter fiber thread in production. Before the fix, this
-  // crashed (SIGSEGV) via executor->add() on the dangling pointer. After
-  // the fix, it falls through to Py_AddPendingCall.
-  std::thread([&iobuf]() { iobuf.reset(); }).join();
+  freer.join();
 
-  // Py_AddPendingCall queues the decref; flush it.
-  Py_MakePendingCalls();
-
-  // The Python object's refcount should be back to the initial value.
   EXPECT_EQ(Py_REFCNT(pyBytes), initialRefcnt);
   Py_DECREF(pyBytes);
 }
@@ -215,6 +263,47 @@ TEST_F(IOBufExtTest, testFreeCallbackShouldSkipDecrefDuringFinalization) {
   // Re-initialize Python for subsequent tests and TearDown.
   Py_Initialize();
   gstate_ = PyGILState_Ensure();
+}
+
+// Regression test for the std::move fix (prevents repeat of D61615594 revert).
+// RED with get()->add() (KeepAlive released too early → Py_DECREF task lost).
+// GREEN with std::move().add() (KeepAlive in task → drive() must run it).
+//
+// Uses DropStyleExecutor which mimics AsyncioExecutor::drop() — no drain
+// after the drive loop, so tasks not driven before keepAliveCount hits 0
+// are silently lost.
+TEST_F(IOBufExtTest, testDropStyleExecutorShouldDecrefViaDrive) {
+  PyObject* pyBytes = PyBytes_FromStringAndSize("drop!", 5);
+  ASSERT_NE(pyBytes, nullptr);
+  auto initialRefcnt = Py_REFCNT(pyBytes);
+
+  auto executor = std::make_unique<DropStyleExecutor>();
+  auto iobuf = iobuf_from_memoryview(
+      executor.get(),
+      pyBytes,
+      PyBytes_AS_STRING(pyBytes),
+      PyBytes_GET_SIZE(pyBytes));
+  ASSERT_NE(iobuf, nullptr);
+  EXPECT_EQ(Py_REFCNT(pyBytes), initialRefcnt + 1);
+
+  // Free the IOBuf from a non-GIL thread first (deterministic, no race).
+  // The free callback enqueues Py_DECREF on the executor and either:
+  //   (a) moves the KeepAlive into the task (std::move path), or
+  //   (b) releases the KeepAlive via delete py_data (get()->add() path)
+  std::thread([&iobuf]() { iobuf.reset(); }).join();
+
+  // Now call drop(). It does keepAliveRelease (own ref), then drives
+  // while keepAliveCount > 0.
+  // With std::move: count is 1 (task holds KeepAlive) → drive() processes
+  //   the Py_DECREF task → KeepAlive released → count 0 → exits.
+  // Without std::move: count is 0 (KeepAlive already released by delete
+  //   py_data) → loop doesn't execute → task never driven → Py_DECREF lost.
+  executor->drop();
+
+  // If Py_DECREF ran (std::move path), refcount is back to initial.
+  // If Py_DECREF was lost (get()->add() path), refcount is still initial+1.
+  EXPECT_EQ(Py_REFCNT(pyBytes), initialRefcnt);
+  Py_DECREF(pyBytes);
 }
 
 } // namespace

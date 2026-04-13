@@ -174,7 +174,9 @@ fb_dirsync_cpp_unittest(
     xplat_impl = folly_xplat_cxx_test,
     deps = [
         "fbsource//third-party/python:python",
+        "//folly/executors:drivable_executor",
         "//folly/executors:manual_executor",
+        "//folly/executors:sequenced_executor",
         "//folly/portability:gtest",
         "//folly/python:iobuf_ext",
     ],
