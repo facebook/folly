@@ -164,6 +164,22 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
+fb_dirsync_cpp_unittest(
+    name = "IOBufExtTest",
+    srcs = [
+        "IOBufExtTest.cpp",
+    ],
+    supports_static_listing = False,
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    xplat_impl = folly_xplat_cxx_test,
+    deps = [
+        "fbsource//third-party/python:python",
+        "//folly/executors:manual_executor",
+        "//folly/portability:gtest",
+        "//folly/python:iobuf_ext",
+    ],
+)
+
 fb_dirsync_rule(
     # @autodeps-skip
     name = "teardown",
