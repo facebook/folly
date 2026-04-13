@@ -1,7 +1,7 @@
 [manifest]
 name = rebalancer
 fbsource_path = fbcode/algopt/rebalancer/
-shipit_project = rebalancer
+shipit_project = facebookincubator/rebalancer
 shipit_fbcode_builder = true
 use_shipit = true
 
