@@ -1,12 +1,12 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "large_test",
     srcs = ["LargeTest.cpp"],
     supports_static_listing = False,
@@ -21,7 +21,6 @@ fbcode_target(
     _kind = cpp_unittest,
     name = "compression_test",
     srcs = ["CompressionTest.cpp"],
-    headers = [],
     supports_static_listing = False,
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
@@ -49,11 +48,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "compression_context_pool_benchmark",
     srcs = ["CompressionContextPoolBenchmark.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",
@@ -62,8 +59,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "quotient_multiset_benchmark",
     srcs = [
         "QuotientMultiSetBenchmark.cpp",
@@ -85,8 +81,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "quotient_multiset_test",
     srcs = [
         "QuotientMultiSetTest.cpp",
@@ -101,11 +96,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "instructions_test",
     srcs = ["InstructionsTest.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly/compression:instructions",
@@ -113,8 +106,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "select64_test",
     srcs = ["Select64Test.cpp"],
     deps = [
