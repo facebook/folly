@@ -1,12 +1,11 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
 load("@fbsource//tools/build_defs:rust_library.bzl", "rust_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
 
 oncall("rust_libraries")
 
-fbcode_target(
-    _kind = rust_bindgen_library,
+fb_dirsync_rule(
     name = "string-sys",
     allowlist_funcs = [
         "facebook::rust::.*",
@@ -22,6 +21,7 @@ fbcode_target(
     # Don't use modules so that we can import std_string from here
     # into other modules needing C++ folly:StringPiece.
     cxx_namespaces = False,
+    fbcode_rule = rust_bindgen_library,
     generate = ("types", "methods", "functions", "vars"),
     header = "string.h",
     opaque_types = [
@@ -33,8 +33,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "string-ffi",
     srcs = ["string.cpp"],
     headers = ["string.h"],
@@ -43,9 +42,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = rust_library,
+fb_dirsync_rule(
     name = "string",
     srcs = ["lib.rs"],
+    fbcode_rule = rust_library,
     deps = [":string-sys"],
 )
