@@ -21,19 +21,8 @@ namespace folly::python {
 
 namespace {
 
-// Attached to each IOBuf created from a Python memoryview. The free callback
-// must Py_DECREF the Python object when the IOBuf is destroyed, but the
-// destruction often happens on a C++ thread without the GIL.
-//
-// The executor is stored as KeepAlive<> (not a raw pointer) to prevent the
-// executor from being destroyed while this IOBuf still exists. A previous
-// attempt with a raw Executor* caused use-after-free crashes (S646339) when
-// the IOBuf outlived the asyncio executor. A prior KeepAlive attempt
-// (D61615594) was reverted because it used get()->add() instead of
-// std::move().add(), which allowed the KeepAlive to be released before
-// drive() processed the Py_DECREF task.
 struct PyBufferData {
-  folly::Executor::KeepAlive<> executor;
+  folly::Executor* executor;
   PyObject* py_object;
 };
 
@@ -46,7 +35,7 @@ std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
     uint64_t length) {
   Py_INCREF(py_object);
   auto* pyUserData = new PyBufferData();
-  pyUserData->executor = folly::getKeepAliveToken(executor);
+  pyUserData->executor = executor;
   pyUserData->py_object = py_object;
 
   return folly::IOBuf::takeOwnership(
@@ -62,18 +51,10 @@ std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
             // if we have the GIL, we can just decref the object.
             Py_DECREF(pyObject);
           } else if (py_data->executor) {
-            // Schedule Py_DECREF on the executor (which holds the GIL when
-            // it drives). std::move transfers the KeepAlive into the task,
-            // ensuring the executor can't be destroyed until drive()
-            // processes this task. Do NOT use get()->add() here — that
-            // leaves the KeepAlive in py_data, which gets released by
-            // delete py_data below, allowing the executor to shut down
-            // before the task runs (see
-            // testDropStyleExecutorShouldDecrefViaDrive).
-            std::move(py_data->executor)
-                .add([pyObject](folly::Executor::KeepAlive<>&&) {
-                  Py_DECREF(pyObject);
-                });
+            // we have an executor, we can schedule the decref on it.
+            py_data->executor->add([pyObject]() mutable {
+              Py_DECREF(pyObject);
+            });
           } else {
             /*
               This is the last ditch effort. We don't have the GIL and we have
