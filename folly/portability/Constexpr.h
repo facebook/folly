@@ -117,7 +117,7 @@ namespace detail {
 template <typename V>
 struct is_constant_evaluated_or_constinit_ {
   V value;
-  FOLLY_ERASE FOLLY_CONSTEVAL /* implicit */
+  FOLLY_ERASE consteval /* implicit */
   is_constant_evaluated_or_constinit_(V const v) noexcept(noexcept(V(v)))
       : value{v} {}
 };
