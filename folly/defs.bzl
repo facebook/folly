@@ -235,6 +235,7 @@ def folly_xplat_cxx_test(
         name,
         srcs,
         raw_headers = [],
+        headers = [],
         deps = [],
         oncall = None,
         **kwargs):
@@ -250,6 +251,7 @@ def folly_xplat_cxx_test(
         name = name,
         srcs = srcs,
         raw_headers = raw_headers,
+        headers = headers,
         resources = resources,
         include_directories = _compute_include_directories(),
         deps = deps + [

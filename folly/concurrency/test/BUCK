@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
@@ -40,8 +38,7 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "atomic_shared_ptr_test",
     srcs = ["AtomicSharedPtrTest.cpp"],
     headers = ["AtomicSharedPtrCounted.h"],
@@ -115,8 +112,7 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "concurrent_hash_map_test",
     srcs = ["ConcurrentHashMapTest.cpp"],
     supports_static_listing = False,
@@ -154,8 +150,7 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "concurrent_hash_map_test_no_simd",
     srcs = ["ConcurrentHashMapTest.cpp"],
     preprocessor_flags = ["-DFOLLY_F14_FORCE_FALLBACK=1"],
