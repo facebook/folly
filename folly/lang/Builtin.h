@@ -56,7 +56,7 @@ namespace detail {
 
 template <typename V>
 struct predict_constinit_ {
-  FOLLY_ERASE FOLLY_CONSTEVAL /* implicit */ predict_constinit_(
+  FOLLY_ERASE consteval /* implicit */ predict_constinit_(
       V /* anonymous */) noexcept {}
 };
 
