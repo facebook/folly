@@ -28,6 +28,18 @@
 
 #include <folly/Function.h>
 
+#if defined(__clang__)
+#define DISABLE_TAIL_CALLS __attribute__((disable_tail_calls))
+#define TAIL_CALLS_CAN_BE_DISABLED 1
+#elif defined(__GNUC__)
+#define DISABLE_TAIL_CALLS \
+  __attribute__((optimize("no-optimize-sibling-calls")))
+#define TAIL_CALLS_CAN_BE_DISABLED 1
+#else
+#define DISABLE_TAIL_CALLS
+#define TAIL_CALLS_CAN_BE_DISABLED 0
+#endif
+
 namespace folly {
 namespace fibers {
 
@@ -63,9 +75,9 @@ class FiberImpl {
   }
 
   void* getStackPointer() const {
-    if constexpr (kIsLinux) {
+    if constexpr (kIsLinux || kIsApple) {
       if constexpr (kIsArchAmd64) {
-        // RBP at offset 0x30 (index 6) in the x86_64 fcontext layout.
+        // RBP at offset 0x30 (index 6) in the SysV x86_64 fcontext layout.
         return reinterpret_cast<void**>(fiberContext_)[6];
       } else if constexpr (kIsArchAArch64) {
         // FP (x29) at offset 0x90 (index 18) in the arm64 fcontext layout.
@@ -76,24 +88,22 @@ class FiberImpl {
   }
 
  private:
-  static FOLLY_NOINLINE void fiberFunc(
+  static FOLLY_NOINLINE DISABLE_TAIL_CALLS void fiberFunc(
       boost::context::detail::transfer_t transfer) {
     auto fiberImpl = reinterpret_cast<FiberImpl*>(transfer.data);
     fiberImpl->mainContext_ = transfer.fctx;
-#if FOLLY_HAS_BUILTIN(__builtin_frame_address)
+#if FOLLY_HAS_BUILTIN(__builtin_frame_address) && TAIL_CALLS_CAN_BE_DISABLED
     fiberImpl->entryFrameBase_ = __builtin_frame_address(0);
 #endif
     fiberImpl->fixStackUnwinding();
     fiberImpl->func_();
   }
 
-  // fixStackUnwinding must be marked with FOLLY_NOINLINE to guarantee
-  // fiberFunc has a frame.
-  FOLLY_NOINLINE void fixStackUnwinding() {
-    if (kIsLinux) {
+  void fixStackUnwinding() {
+    if (kIsLinux || kIsApple) {
       // Stitch main context stack and fiber stack so that frame-pointer-based
-      // stack walkers (e.g. jemalloc prof_backtrace_impl) can terminate
-      // cleanly at the fiber boundary.
+      // stack walkers can terminate cleanly at the fiber boundary on the
+      // ELF and Mach-O fcontext backends.
       auto frameBase = reinterpret_cast<void**>(entryFrameBase_);
       if (frameBase == nullptr) {
         return;
@@ -119,3 +129,6 @@ class FiberImpl {
 };
 } // namespace fibers
 } // namespace folly
+
+#undef TAIL_CALLS_CAN_BE_DISABLED
+#undef DISABLE_TAIL_CALLS
