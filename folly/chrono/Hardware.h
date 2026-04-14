@@ -43,7 +43,7 @@ inline std::uint64_t hardware_timestamp() {
   return __rdtsc();
 #elif defined(__GNUC__) && (defined(__i386__) || FOLLY_X64)
   return __builtin_ia32_rdtsc();
-#elif FOLLY_AARCH64 && !FOLLY_MOBILE
+#elif FOLLY_AARCH64 && !FOLLY_MOBILE && !defined(_MSC_VER)
   uint64_t cval;
   asm volatile("mrs %0, cntvct_el0" : "=r"(cval));
   return cval;
