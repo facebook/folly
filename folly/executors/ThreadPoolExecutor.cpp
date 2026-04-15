@@ -64,7 +64,11 @@ ThreadPoolExecutor::ThreadPoolExecutor(
 ThreadPoolExecutor::~ThreadPoolExecutor() {
   joinKeepAliveOnce();
   CHECK_EQ(0, threadList_.get().size());
-  destroyTaskObservers();
+  // Derived class destructors must call destroyTaskObservers() after stop().
+  // This ensures observer cleanup (e.g., fb303 callback unregistration) runs
+  // while the derived vtable is still valid, preventing pure virtual calls.
+  CHECK_EQ(taskObservers_.load(), nullptr)
+      << "ThreadPoolExecutor subclasses should call destroyTaskObservers() in their destructor";
 }
 
 void ThreadPoolExecutor::destroyTaskObservers() {
