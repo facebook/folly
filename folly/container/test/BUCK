@@ -836,17 +836,16 @@ fb_dirsync_cpp_benchmark(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "util_test",
     srcs = ["UtilTest.cpp"],
     headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
+        ":tracking_types",
         "//folly:optional",
         "//folly:range",
         "//folly/container/detail:util",
-        "//folly/container/test:tracking_types",
         "//folly/portability:gtest",
     ],
 )
