@@ -1,14 +1,11 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "nested_command_line_app_test",
     srcs = ["NestedCommandLineAppTest.cpp"],
-    headers = [],
     env = {
         "FOLLY_NESTED_CMDLINE_HELPER": "$(exe_target :nested_command_line_app_test_helper)",
     },
@@ -24,11 +21,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "nested_command_line_app_test_helper",
     srcs = ["NestedCommandLineAppTestHelper.cpp"],
-    headers = [],
     deps = [
         "//folly/cli:program_options",
         "//folly/portability:gflags",
@@ -41,11 +36,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "program_options_test",
     srcs = ["ProgramOptionsTest.cpp"],
-    headers = [],
     env = {
         "FOLLY_PROGRAM_OPTIONS_TEST_HELPER": "$(exe_target :program_options_test_helper)",
     },
@@ -58,11 +51,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "program_options_test_helper",
     srcs = ["ProgramOptionsTestHelper.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         # boost_atomic is required by boost_filesystem, which is required by
@@ -76,11 +67,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "args_test",
     srcs = ["ArgsTest.cpp"],
-    headers = [],
     deps = [
         "//folly:string",
         "//folly/cli:args",
@@ -90,11 +79,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "nested_command_line_app_example",
     srcs = ["NestedCommandLineAppExample.cpp"],
-    headers = [],
     deps = [
         "//folly:scope_guard",
         "//folly:string",
