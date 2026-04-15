@@ -521,7 +521,7 @@ size_t LoggerDB::flushAllHandlers() {
   // different categories.
   std::set<std::shared_ptr<LogHandler>> handlers;
   {
-    auto loggersByName = loggersByName_.wlock();
+    auto loggersByName = loggersByName_.rlock();
     for (const auto& entry : *loggersByName) {
       for (const auto& handler : entry.second->getHandlers()) {
         handlers.emplace(handler);

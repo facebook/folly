@@ -16,6 +16,9 @@
 
 #include <folly/logging/LoggerDB.h>
 
+#include <atomic>
+#include <thread>
+
 #include <folly/logging/Logger.h>
 #include <folly/logging/test/TestLogHandler.h>
 #include <folly/portability/GTest.h>
@@ -74,4 +77,60 @@ TEST(LoggerDB, flushAllHandlers) {
   EXPECT_EQ(2, h1->getFlushCount());
   EXPECT_EQ(2, h2->getFlushCount());
   EXPECT_EQ(2, h3->getFlushCount());
+}
+
+TEST(LoggerDB, flushAllHandlersReturnValue) {
+  LoggerDB db{LoggerDB::TESTING};
+  auto* cat1 = db.getCategory("foo");
+  auto* cat2 = db.getCategory("bar");
+
+  // No handlers registered yet
+  EXPECT_EQ(0, db.flushAllHandlers());
+
+  auto h1 = std::make_shared<TestLogHandler>();
+  auto h2 = std::make_shared<TestLogHandler>();
+  cat1->addHandler(h1);
+  cat2->addHandler(h2);
+
+  // Two distinct handlers
+  EXPECT_EQ(2, db.flushAllHandlers());
+
+  // Register h1 on cat2 as well — should still only count 2 unique handlers
+  cat2->addHandler(h1);
+  EXPECT_EQ(2, db.flushAllHandlers());
+}
+
+TEST(LoggerDB, flushAllHandlersConcurrentWithReads) {
+  // Verify that flushAllHandlers() does not block concurrent read operations
+  // on the logger map. Both flushAllHandlers() and getCategoryOrNull() use
+  // rlock(), so they can proceed concurrently without blocking each other.
+  // If flushAllHandlers() incorrectly used wlock(), this test would exhibit
+  // significant contention with the concurrent flush threads.
+  LoggerDB db{LoggerDB::TESTING};
+  auto* cat = db.getCategory("flush.test");
+  auto handler = std::make_shared<TestLogHandler>();
+  cat->addHandler(handler);
+
+  constexpr int kIterations = 1000;
+  std::atomic<bool> stop{false};
+
+  // Reader thread: continuously looks up an existing category using
+  // getCategoryOrNull(), which also acquires rlock(). With the correct
+  // rlock() in flushAllHandlers(), both can run concurrently.
+  std::thread reader([&]() {
+    while (!stop.load(std::memory_order_relaxed)) {
+      auto* c = db.getCategoryOrNull("flush.test");
+      EXPECT_NE(nullptr, c);
+    }
+  });
+
+  // Main thread: flush repeatedly.
+  for (int i = 0; i < kIterations; ++i) {
+    EXPECT_EQ(1, db.flushAllHandlers());
+  }
+
+  stop.store(true, std::memory_order_relaxed);
+  reader.join();
+
+  EXPECT_EQ(kIterations, handler->getFlushCount());
 }
