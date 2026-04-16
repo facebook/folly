@@ -992,6 +992,7 @@ fb_dirsync_cpp_library(
     modular_headers = False,
     use_raw_headers = True,
     deps = [
+        "fbsource//third-party/glog:glog",
         ":io_uring_backend",
         ":liburing",
         "//folly:function",
@@ -999,8 +1000,5 @@ fb_dirsync_cpp_library(
     exported_deps = [
         ":async_base",
         "//folly:executor",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

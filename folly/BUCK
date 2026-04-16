@@ -725,6 +725,7 @@ fb_dirsync_cpp_library(
     fbobjc_complete_nullability = True,
     use_raw_headers = True,
     deps = [
+        "fbsource//third-party/glog:glog",
         ":utility",
     ],
     exported_deps = [
@@ -756,7 +757,6 @@ fb_dirsync_cpp_library(
     external_deps = [
         "boost",
         ("boost", None, "boost_algorithm"),
-        ("glog", None, "glog"),
     ],
 )
 

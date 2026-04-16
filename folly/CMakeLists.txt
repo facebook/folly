@@ -369,7 +369,6 @@ folly_add_library(
     folly_unicode
     folly_utility
   EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
     Boost::headers
 )
 
