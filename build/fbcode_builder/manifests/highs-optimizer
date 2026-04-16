@@ -12,10 +12,3 @@ builder = cmake
 BUILD_TESTING = OFF
 BUILD_EXAMPLES = OFF
 FAST_BUILD = ON
-
-[rpms]
-coin-or-HiGHS
-coin-or-HiGHS-devel
-
-[homebrew]
-highs
