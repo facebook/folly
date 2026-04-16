@@ -266,6 +266,8 @@ struct literal_c_str {
 
 #endif
 
+#if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
+
 /// literal_string
 ///
 /// A structural type representing a literal string. A structural type may be
@@ -289,7 +291,7 @@ template <typename C, std::size_t N>
 struct literal_string {
   C buffer[N] = {};
 
-  FOLLY_CONSTEVAL /* implicit */ literal_string(C const (&buf)[N]) noexcept {
+  consteval /* implicit */ literal_string(C const (&buf)[N]) noexcept {
     for (std::size_t i = 0; i < N; ++i) {
       buffer[i] = buf[i];
     }
@@ -311,19 +313,19 @@ struct literal_string {
 inline namespace literals {
 inline namespace string_literals {
 
-#if FOLLY_CPLUSPLUS >= 202002 && !defined(__NVCC__)
 template <literal_string Str>
-FOLLY_CONSTEVAL decltype(Str) operator""_lit() noexcept {
+consteval decltype(Str) operator""_lit() noexcept {
   return Str;
 }
 template <literal_string Str>
-FOLLY_CONSTEVAL vtag_t<Str> operator""_litv() noexcept {
+consteval vtag_t<Str> operator""_litv() noexcept {
   return vtag<Str>;
 }
-#endif
 
 } // namespace string_literals
 } // namespace literals
+
+#endif
 
 namespace detail {
 
