@@ -1,0 +1,164 @@
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fb_dirsync_cpp_library(
+    name = "char_class",
+    headers = [
+        "CharClass.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [],
+)
+
+fb_dirsync_cpp_library(
+    name = "chunked_buffer",
+    headers = [
+        "ChunkedBuffer.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = ["//folly/portability:constexpr"],
+)
+
+fb_dirsync_cpp_library(
+    name = "ast",
+    headers = [
+        "Ast.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":char_class",
+        ":chunked_buffer",
+        ":dynamic_bitset",
+        "//folly/portability:constexpr",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "parser",
+    headers = [
+        "Parser.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast",
+        ":char_class",
+        "//folly/lang:exception",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "executor",
+    headers = [
+        "Executor.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast",
+        ":char_class",
+        ":direction",
+        "//folly:likely",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "nfa",
+    headers = [
+        "Nfa.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast",
+        ":direction",
+        ":fixed_bitset",
+        "//folly/lang:exception",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "nfa_executor",
+    headers = [
+        "NfaExecutor.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast",
+        ":char_class",
+        ":direction",
+        ":executor",
+        ":nfa",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "dfa",
+    headers = [
+        "Dfa.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast",
+        ":char_class",
+        ":direction",
+        ":dynamic_bitset",
+        ":nfa",
+        "//folly/portability:constexpr",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "dfa_executor",
+    headers = [
+        "DfaExecutor.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast",
+        ":dfa",
+        ":direction",
+        ":executor",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "ast_optimizer",
+    headers = [
+        "AstOptimizer.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast",
+        ":fixed_bitset",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "fixed_bitset",
+    headers = [
+        "FixedBitset.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = ["//folly/portability:constexpr"],
+)
+
+fb_dirsync_cpp_library(
+    name = "direction",
+    headers = [
+        "Direction.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [],
+)
+
+fb_dirsync_cpp_library(
+    name = "dynamic_bitset",
+    headers = [
+        "DynamicBitset.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":chunked_buffer",
+        ":fixed_bitset",
+    ],
+)
