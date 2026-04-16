@@ -1,18 +1,11 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
 load("../../defs.bzl", "folly_xplat_cxx_test")
 load("../../io/async/test/certs/defs.bzl", "alias_pem", "alias_pem_for_xplat")
 
 oncall("fbcode_entropy_wardens_folly")
-
-non_fbcode_target(
-    _kind = alias_pem_for_xplat,
-    pems = [
-        "tests-cert.pem",
-        "ca-cert.pem",
-    ],
-)
 
 fb_dirsync_cpp_unittest(
     name = "openssl_hash_test",
@@ -75,12 +68,14 @@ fb_dirsync_cpp_unittest(
 
 # !!!! fbcode/folly/ssl/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
-fbcode_target(
-    _kind = alias_pem,
+fb_dirsync_rule(
+    name = "pem_aliases",
+    fbcode_rule = alias_pem,
     pems = [
         "tests-cert.pem",
         "ca-cert.pem",
     ],
+    xplat_rule = alias_pem_for_xplat,
 )
 
 fbcode_target(
