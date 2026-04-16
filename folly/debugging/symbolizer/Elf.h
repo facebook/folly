@@ -43,6 +43,16 @@
 namespace folly {
 namespace symbolizer {
 
+namespace detail {
+
+// Extract and validate a filename-like C-string from section data, returning
+// empty on malformed input (missing null terminator, empty name, or directory
+// separator in the prefix).
+folly::StringPiece getNullTerminatedPathComponent(
+    folly::StringPiece section) noexcept;
+
+} // namespace detail
+
 #if defined(ElfW)
 #define FOLLY_ELF_ELFW(name) ElfW(name)
 #elif defined(__FreeBSD__)
