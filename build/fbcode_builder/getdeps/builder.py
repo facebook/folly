@@ -869,10 +869,14 @@ if __name__ == "__main__":
             # We sometimes see intermittent ccache related breakages on some
             # of the FB internal CI hosts, so we prefer to disable ccache
             # when running in that environment.
-            # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got
-            #  `Env`.
+            # Prefer sccache over ccache when both are available; sccache
+            # supports cloud-backed caches (e.g. GitHub Actions cache) which
+            # accelerate CI builds across runs.
+            sccache = path_search(env, "sccache")
             ccache = path_search(env, "ccache")
-            if ccache:
+            if sccache:
+                defines["CMAKE_CXX_COMPILER_LAUNCHER"] = sccache
+            elif ccache:
                 defines["CMAKE_CXX_COMPILER_LAUNCHER"] = ccache
         else:
             # rocksdb does its own probing for ccache.

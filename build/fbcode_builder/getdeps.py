@@ -1083,6 +1083,10 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         rust_version = (
             manifest.get("github.actions", "rust_version", ctx=manifest_ctx) or "stable"
         )
+        use_sccache = (
+            manifest.get("github.actions", "sccache", ctx=manifest_ctx) != "off"
+            and not build_opts.is_windows()
+        )
 
         override_build_type = args.build_type or manifest.get(
             "github.actions", "build_type", ctx=manifest_ctx
@@ -1163,6 +1167,7 @@ on:{run_on}
 
 permissions:
   contents: read  #  to fetch code (actions/checkout)
+  actions: read  #  to query GitHub Actions cache usage
 
 jobs:
 """
@@ -1172,6 +1177,9 @@ jobs:
 
             out.write("  build:\n")
             out.write("    runs-on: %s\n" % runs_on)
+            if use_sccache:
+                out.write("    env:\n")
+                out.write('      SCCACHE_GHA_ENABLED: "on"\n')
             out.write("    steps:\n")
 
             if build_opts.is_windows():
@@ -1200,12 +1208,22 @@ jobs:
 
             out.write("    - uses: actions/checkout@v6\n")
 
+            if use_sccache:
+                out.write("    - name: Set up sccache\n")
+                out.write("      uses: mozilla-actions/sccache-action@v0.0.9\n")
+                out.write("      with:\n")
+                out.write('        version: "v0.14.0"\n')
+
             build_type_arg = ""
             if override_build_type:
                 build_type_arg = f"--build-type {override_build_type} "
 
             if args.shared_libs:
                 build_type_arg += "--shared-libs "
+
+            sccache_defines = ""
+            if use_sccache:
+                sccache_defines = ' --extra-cmake-defines \'{"CMAKE_CXX_COMPILER_LAUNCHER":"sccache"}\''
 
             if build_opts.free_up_disk:
                 free_up_disk = "--free-up-disk "
@@ -1337,7 +1355,7 @@ jobs:
                             f"      if: ${{{{ steps.paths.outputs.{m.name}_SOURCE }}}}\n"
                         )
                 out.write(
-                    f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}\n"
+                    f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}{sccache_defines}\n"
                 )
 
                 if args.use_build_cache and not src_dir_arg:
@@ -1370,8 +1388,13 @@ jobs:
                 no_deps_arg = "--no-deps "
 
             out.write(
-                f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{tests_arg}{no_deps_arg}--src-dir=. {manifest.name}{project_prefix}\n"
+                f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{tests_arg}{no_deps_arg}--src-dir=. {manifest.name}{project_prefix}{sccache_defines}\n"
             )
+
+            if use_sccache:
+                out.write("    - name: Show sccache stats\n")
+                out.write("      if: always()\n")
+                out.write("      run: sccache --show-stats\n")
 
             out.write("    - name: Copy artifacts\n")
             if build_opts.is_linux():
@@ -1407,6 +1430,14 @@ jobs:
                 out.write("    - name: Show disk space at end\n")
                 out.write("      if: always()\n")
                 out.write("      run: df -h\n")
+
+            out.write("    - name: Show GitHub Actions cache usage\n")
+            out.write("      if: always()\n")
+            out.write("      env:\n")
+            out.write("        GH_TOKEN: ${{ github.token }}\n")
+            out.write(
+                "      run: gh cache list --repo ${{ github.repository }} --sort size_in_bytes --order desc --limit 30\n"
+            )
 
             out.write("    - name: Setup tmate session\n")
             out.write(

@@ -166,6 +166,42 @@ name = test
             p2.get_section_as_args("autoconf.args"), ["--prefix=/foo", "--with-woot"]
         )
 
+    def test_github_actions_sccache_off_accepted(self) -> None:
+        p = ManifestParser(
+            "test",
+            """
+[manifest]
+name = test
+
+[github.actions]
+sccache = off
+""",
+        )
+        self.assertEqual(p.get("github.actions", "sccache"), "off")
+
+    def test_github_actions_sccache_on_accepted(self) -> None:
+        p = ManifestParser(
+            "test",
+            """
+[manifest]
+name = test
+
+[github.actions]
+sccache = on
+""",
+        )
+        self.assertEqual(p.get("github.actions", "sccache"), "on")
+
+    def test_github_actions_sccache_absent_returns_none(self) -> None:
+        p = ManifestParser(
+            "test",
+            """
+[manifest]
+name = test
+""",
+        )
+        self.assertIsNone(p.get("github.actions", "sccache"))
+
     def test_section_as_dict(self) -> None:
         p = ManifestParser(
             "test",
