@@ -1581,6 +1581,7 @@ uint64_t cohort_bench(std::string name, int nthreads) {
   return bench(name, ops, repFn);
 }
 
+#if FOLLY_HAZPTR_THR_LOCAL
 uint64_t tc_miss_bench(std::string name, int nthreads) {
   hazptr_tc_evict();
   hazard_pointer_default_domain<>().delete_hazard_pointers();
@@ -1618,6 +1619,7 @@ uint64_t tc_miss_bench(std::string name, int nthreads) {
   };
   return bench(name, ops, repFn);
 }
+#endif // FOLLY_HAZPTR_THR_LOCAL
 
 const int nthr[] = {1, 10};
 const int sizes[] = {10, 20};
@@ -1642,8 +1644,10 @@ void benches() {
     local_bench<3>("", i);
     std::cout << "10x construct/destruct hazptr_array<9>        ";
     array_bench<9>("", i);
+#if FOLLY_HAZPTR_THR_LOCAL
     std::cout << "TC hit + miss & overflow                      ";
     tc_miss_bench("", i);
+#endif // FOLLY_HAZPTR_THR_LOCAL
     std::cout << "allocate/retire/reclaim object                ";
     obj_bench("", i);
     for (int j : sizes) {
