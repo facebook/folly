@@ -422,6 +422,10 @@ constexpr T constexpr_ceil(T t, T round) {
 template <typename T>
 constexpr T constexpr_mult(T const a, T const b) {
   using lim = std::numeric_limits<T>;
+  FOLLY_PUSH_WARNING
+#if __clang_major__ >= 18
+  FOLLY_CLANG_DISABLE_WARNING("-Wnan-infinity-disabled")
+#endif
   if (constexpr_isnan(a) || constexpr_isnan(b)) {
     return constexpr_isnan(a) ? a : b;
   }
@@ -446,6 +450,7 @@ constexpr T constexpr_mult(T const a, T const b) {
       return sign * inf;
     }
   }
+  FOLLY_POP_WARNING
   return a * b;
 }
 
@@ -543,6 +548,10 @@ template <
 constexpr T constexpr_exp(T const power) {
   using lim = std::numeric_limits<T>;
 
+  FOLLY_PUSH_WARNING
+#if __clang_major__ >= 18
+  FOLLY_CLANG_DISABLE_WARNING("-Wnan-infinity-disabled")
+#endif
   // edge cases
   if (constexpr_isnan(power)) {
     return power;
@@ -573,6 +582,7 @@ constexpr T constexpr_exp(T const power) {
     term = term * abspower / index;
     result += term;
   }
+  FOLLY_POP_WARNING
   return power < T(0) ? T(1) / result : result;
 }
 
@@ -594,6 +604,10 @@ constexpr T constexpr_log(T const num) {
   using lim = std::numeric_limits<T>;
   constexpr auto& isq = constexpr_iterated_squares_desc_2_v<T>;
 
+  FOLLY_PUSH_WARNING
+#if __clang_major__ >= 18
+  FOLLY_CLANG_DISABLE_WARNING("-Wnan-infinity-disabled")
+#endif
   // edge cases
   if (constexpr_isnan(num)) {
     return num;
@@ -607,6 +621,7 @@ constexpr T constexpr_log(T const num) {
   if (num == lim::infinity()) {
     return num;
   }
+  FOLLY_POP_WARNING
 
   // compression
   auto const shrink = isq.shrink(num, isq.base);
@@ -662,6 +677,13 @@ constexpr T constexpr_pow(T const base, T const exp) {
   if (exp == T(0)) {
     return T(1);
   }
+  if (base == T(1)) {
+    return base;
+  }
+  FOLLY_PUSH_WARNING
+#if __clang_major__ >= 18
+  FOLLY_CLANG_DISABLE_WARNING("-Wnan-infinity-disabled")
+#endif
   if (constexpr_isnan(base)) {
     return base;
   }
@@ -674,9 +696,6 @@ constexpr T constexpr_pow(T const base, T const exp) {
       return exp == lim::infinity() ? lim::infinity() : T(0);
     }
     return T(1);
-  }
-  if (base == T(1)) {
-    return base;
   }
   if (constexpr_isnan(exp)) {
     return exp;
@@ -691,6 +710,7 @@ constexpr T constexpr_pow(T const base, T const exp) {
         exp != constexpr_trunc(exp / T(2)) * T(2);
     return (oddi ? -T(1) : T(1)) * (exp < T(0) ? T(0) : lim::infinity());
   }
+  FOLLY_POP_WARNING
   if (base == T(0)) {
     auto const oddi = //
         exp == constexpr_trunc(exp) &&
