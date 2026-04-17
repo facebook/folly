@@ -1336,7 +1336,7 @@ class small_vector
       }
       rollback.dismiss();
     }
-    detail::annotate_object_leaked_impl(newh);
+    annotate_object_leaked(newh);
     std::destroy(begin(), end());
     freeHeap();
     // Store shifted pointer if capacity is heapified
@@ -1468,11 +1468,11 @@ class small_vector
       auto extraBytes = u.pdata_.allocationExtraBytes();
       auto vp = detail::small_vector_detail::unshiftPointer(
           u.pdata_.heap_, extraBytes);
-      detail::annotate_object_collected_impl(vp);
+      annotate_object_collected(vp);
       sizedFree(vp, u.getCapacity() * sizeof(value_type) + extraBytes);
     } else {
       auto vp = u.pdata_.heap_;
-      detail::annotate_object_collected_impl(vp);
+      annotate_object_collected(vp);
       free(vp);
     }
   }
