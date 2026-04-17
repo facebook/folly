@@ -29,7 +29,7 @@ using namespace folly::test;
 using namespace testing;
 
 TEST(IndexedMemPool, uniquePtr) {
-  typedef IndexedMemPool<size_t> Pool;
+  using Pool = IndexedMemPool<size_t>;
   Pool pool(100);
 
   for (size_t i = 0; i < 100000; ++i) {
@@ -54,10 +54,10 @@ TEST(IndexedMemPool, noStarvation) {
   const int count = 1000;
   const uint32_t poolSize = 100;
 
-  typedef DeterministicSchedule Sched;
+  using Sched = DeterministicSchedule;
   Sched sched(Sched::uniform(0));
 
-  typedef IndexedMemPool<int, 8, 8, DeterministicAtomic> Pool;
+  using Pool = IndexedMemPool<int, 8, 8, DeterministicAtomic>;
   Pool pool(poolSize);
 
   for (auto pass = 0; pass < 10; ++pass) {
@@ -108,7 +108,7 @@ TEST(IndexedMemPool, noStarvation) {
 
 TEST(IndexedMemPool, stCapacity) {
   // only one local list => capacity is exact
-  typedef IndexedMemPool<int, 1, 32> Pool;
+  using Pool = IndexedMemPool<int, 1, 32>;
   Pool pool(10);
 
   EXPECT_EQ(pool.capacity(), 10u);
@@ -120,7 +120,7 @@ TEST(IndexedMemPool, stCapacity) {
 }
 
 TEST(IndexedMemPool, mtCapacity) {
-  typedef IndexedMemPool<int, 16, 32> Pool;
+  using Pool = IndexedMemPool<int, 16, 32>;
   Pool pool(1000);
 
   std::thread threads[10];
@@ -177,7 +177,7 @@ struct NonTrivialStruct {
 thread_local size_t NonTrivialStruct::count;
 
 TEST(IndexedMemPool, eagerRecycle) {
-  typedef IndexedMemPool<NonTrivialStruct> Pool;
+  using Pool = IndexedMemPool<NonTrivialStruct>;
   Pool pool(100);
 
   EXPECT_EQ(NonTrivialStruct::count, 0);

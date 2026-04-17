@@ -34,14 +34,14 @@ using namespace folly;
 template <class T>
 class MmapAllocator {
  public:
-  typedef T value_type;
-  typedef T* pointer;
-  typedef const T* const_pointer;
-  typedef T& reference;
-  typedef const T& const_reference;
+  using value_type = T;
+  using pointer = T*;
+  using const_pointer = const T*;
+  using reference = T&;
+  using const_reference = const T&;
 
-  typedef ptrdiff_t difference_type;
-  typedef size_t size_type;
+  using difference_type = ptrdiff_t;
+  using size_type = size_t;
 
   T* address(T& x) const { return std::addressof(x); }
 
@@ -51,7 +51,7 @@ class MmapAllocator {
 
   template <class U>
   struct rebind {
-    typedef MmapAllocator<U> other;
+    using other = MmapAllocator<U>;
   };
 
   bool operator!=(const MmapAllocator<T>& other) const {
@@ -96,14 +96,13 @@ template <
     class Allocator = std::allocator<char>,
     class ProbeFcn = AtomicHashArrayLinearProbeFcn>
 void testMap() {
-  typedef AtomicHashArray<
+  using MyArr = AtomicHashArray<
       KeyT,
       ValueT,
       std::hash<KeyT>,
       std::equal_to<KeyT>,
       Allocator,
-      ProbeFcn>
-      MyArr;
+      ProbeFcn>;
   auto arr = MyArr::create(150);
   map<KeyT, ValueT> ref;
   for (int i = 0; i < 100; ++i) {
@@ -154,14 +153,13 @@ template <
     class Allocator = std::allocator<char>,
     class ProbeFcn = AtomicHashArrayLinearProbeFcn>
 void testNoncopyableMap() {
-  typedef AtomicHashArray<
+  using MyArr = AtomicHashArray<
       KeyT,
       std::unique_ptr<ValueT>,
       std::hash<KeyT>,
       std::equal_to<KeyT>,
       Allocator,
-      ProbeFcn>
-      MyArr;
+      ProbeFcn>;
 
   auto arr = MyArr::create(250);
   for (int i = 0; i < 100; i++) {
@@ -357,15 +355,14 @@ struct KeyConvertTraits {
   char* operator()(const StringPiece a) { return strndup(a.begin(), a.size()); }
 };
 
-typedef AtomicHashArray<
+using AHACstrInt = AtomicHashArray<
     char*,
     int64_t,
     HashTraits,
     EqTraits,
     MmapAllocator<char>,
     AtomicHashArrayQuadraticProbeFcn,
-    KeyConvertTraits>
-    AHACstrInt;
+    KeyConvertTraits>;
 AHACstrInt::Config cstrIntCfg;
 
 static bool legalKey(char* a) {
