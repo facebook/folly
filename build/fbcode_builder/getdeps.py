@@ -888,7 +888,7 @@ class BuildCmd(ProjectCmdBase):
         )
         parser.add_argument(
             "--free-up-disk",
-            help="Remove unused tools and clean up intermediate files if possible to maximise space for the build",
+            help="After installing each dependency, delete its build directory to free disk space during the build",
             action="store_true",
             default=False,
         )
@@ -1372,6 +1372,14 @@ jobs:
                         f"       key: ${{{{ steps.paths.outputs.{m.name}_CACHE_KEY }}}}-install\n"
                     )
 
+            if args.free_up_disk_before_build and not build_opts.is_windows():
+                out.write("    - name: Free up disk space before build\n")
+                out.write("      run: |\n")
+                out.write(
+                    "        sudo rm -rf /usr/share/dotnet /usr/local/share/powershell /opt/ghc /usr/local/.ghcup\n"
+                )
+                out.write("        df -h\n")
+
             out.write("    - name: Build %s\n" % manifest.name)
 
             project_prefix = ""
@@ -1502,7 +1510,13 @@ jobs:
         )
         parser.add_argument(
             "--free-up-disk",
-            help="Remove unused tools and clean up intermediate files if possible to maximise space for the build",
+            help="After installing each dependency, delete its build directory to free disk space during the build",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
+            "--free-up-disk-before-build",
+            help="Remove large system tools (dotnet, powershell, ghcup) immediately before the final project build to free disk space",
             action="store_true",
             default=False,
         )
