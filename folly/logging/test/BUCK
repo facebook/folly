@@ -4,6 +4,7 @@ load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -73,23 +74,23 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-fbcode_target(
-    _kind = python_unittest,
+fb_dirsync_rule(
     name = "fatal_test",
     srcs = ["fatal_test.py"],
     env = {
-        "FOLLY_FATAL_HELPER": "$(location //folly/logging/test/helpers:fatal_helper)",
+        "FOLLY_FATAL_HELPER": "$(location fbcode//folly/logging/test/helpers:fatal_helper)",
     },
+    fbcode_rule = python_unittest,
 )
 
-fbcode_target(
-    _kind = python_unittest,
+fb_dirsync_rule(
     name = "log_after_main",
     srcs = ["log_after_main.py"],
     env = {
-        "FOLLY_LOG_AFTER_MAIN_HELPER": "$(location //folly/logging/test/helpers:log_after_main)",
-        "FOLLY_LOG_AFTER_MAIN_NO_INIT_HELPER": "$(location //folly/logging/test/helpers:log_after_main_no_init)",
+        "FOLLY_LOG_AFTER_MAIN_HELPER": "$(location fbcode//folly/logging/test/helpers:log_after_main)",
+        "FOLLY_LOG_AFTER_MAIN_NO_INIT_HELPER": "$(location fbcode//folly/logging/test/helpers:log_after_main_no_init)",
     },
+    fbcode_rule = python_unittest,
 )
 
 fb_dirsync_cpp_unittest(
