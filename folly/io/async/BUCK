@@ -858,7 +858,6 @@ fb_dirsync_cpp_library(
         "//folly:spin_lock",
         "//folly:string",
         "//folly/container:f14_hash",
-        "//folly/lang:bits",
         "//folly/portability:gflags",
         "//folly/portability:sockets",
         "//folly/portability:sys_mman",
@@ -883,6 +882,7 @@ fb_dirsync_cpp_library(
         "//folly:range",
         "//folly:small_vector",
         "//folly/io:iobuf",
+        "//folly/lang:bits",
         "//folly/portability:asm",
     ],
     exported_external_deps = [

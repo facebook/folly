@@ -29,6 +29,7 @@
 #include <folly/Function.h>
 #include <folly/IPAddress.h>
 #include <folly/io/async/IoUringZeroCopyBufferPool.h>
+#include <folly/lang/Bits.h>
 
 namespace folly {
 #if FOLLY_HAS_LIBURING
@@ -59,36 +60,36 @@ struct IoUringOptions {
   IoUringOptions& operator=(IoUringOptions&&) = default;
   ~IoUringOptions() = default;
 
-  IoUringOptions& setCapacity(size_t v) {
+  IoUringOptions& setCapacity(uint32_t v) {
     capacity = v;
     return *this;
   }
 
-  IoUringOptions& setMinCapacity(size_t v) {
+  IoUringOptions& setMinCapacity(uint32_t v) {
     minCapacity = v;
 
     return *this;
   }
 
-  IoUringOptions& setMaxSubmit(size_t v) {
+  IoUringOptions& setMaxSubmit(uint32_t v) {
     maxSubmit = v;
 
     return *this;
   }
 
-  IoUringOptions& setSqeSize(size_t v) {
+  IoUringOptions& setSqeSize(int32_t v) {
     sqeSize = v;
 
     return *this;
   }
 
-  IoUringOptions& setMaxGet(size_t v) {
+  IoUringOptions& setMaxGet(uint32_t v) {
     maxGet = v;
 
     return *this;
   }
 
-  IoUringOptions& setUseRegisteredFds(size_t v) {
+  IoUringOptions& setUseRegisteredFds(uint32_t v) {
     registeredFds = v;
     return *this;
   }
@@ -137,22 +138,20 @@ struct IoUringOptions {
     return *this;
   }
 
-  IoUringOptions& setSQGroupNumThreads(size_t v) {
+  IoUringOptions& setSQGroupNumThreads(uint32_t v) {
     sqGroupNumThreads = v;
 
     return *this;
   }
 
-  IoUringOptions& setInitialProvidedBuffers(size_t eachSize, size_t count) {
+  IoUringOptions& setInitialProvidedBuffers(uint32_t eachSize, uint32_t count) {
     initialProvidedBuffersCount = count;
     initialProvidedBuffersEachSize = eachSize;
     return *this;
   }
 
-  constexpr bool isPow2(uint64_t n) noexcept { return n > 0 && !((n - 1) & n); }
-
-  IoUringOptions& setProvidedBufRings(size_t v) {
-    if (!isPow2(v)) {
+  IoUringOptions& setProvidedBufRings(uint32_t v) {
+    if (!folly::isPowTwo(v)) {
       throw std::runtime_error(
           folly::to<std::string>(
               "number of provided buffer rings must be a power of 2"));
@@ -248,7 +247,7 @@ struct IoUringOptions {
     return *this;
   }
 
-  IoUringOptions& setZeroCopyRxBufferSizeHint(size_t v) {
+  IoUringOptions& setZeroCopyRxBufferSizeHint(uint32_t v) {
     zcRxBufferSizeHint = v;
 
     return *this;
@@ -279,17 +278,17 @@ struct IoUringOptions {
     return *this;
   }
 
-  ssize_t sqeSize{-1};
+  int32_t sqeSize{-1};
 
-  size_t capacity{256};
-  size_t minCapacity{0};
-  size_t maxSubmit{128};
-  size_t maxGet{256};
-  size_t registeredFds{0};
-  size_t sqGroupNumThreads{1};
-  size_t initialProvidedBuffersCount{0};
-  size_t initialProvidedBuffersEachSize{0};
-  size_t providedBufRings{1};
+  uint32_t capacity{256};
+  uint32_t minCapacity{0};
+  uint32_t maxSubmit{128};
+  uint32_t maxGet{256};
+  uint32_t registeredFds{0};
+  uint32_t sqGroupNumThreads{1};
+  uint32_t initialProvidedBuffersCount{0};
+  uint32_t initialProvidedBuffersEachSize{0};
+  uint32_t providedBufRings{1};
 
   uint32_t flags{0};
 
@@ -322,7 +321,7 @@ struct IoUringOptions {
   SrcPortForQueueIdCallback srcPortQueueId;
   int zcRxNumBuffers{-1};
   int zcRxRefillEntries{-1};
-  size_t zcRxBufferSizeHint{0};
+  uint32_t zcRxBufferSizeHint{0};
 
   // Incremental Buffers
   bool enableIncrementalBuffers{false};
