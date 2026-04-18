@@ -180,9 +180,9 @@ std::unique_ptr<folly::EventBase> getEventBase(folly::IoUringOptions opts) {
 }
 
 std::unique_ptr<folly::EventBase> getEventBase() {
-  static constexpr size_t kBackendCapacity = 32;
-  static constexpr size_t kBackendMaxSubmit = 16;
-  static constexpr size_t kBackendMaxGet = 8;
+  static constexpr uint32_t kBackendCapacity = 32;
+  static constexpr uint32_t kBackendMaxSubmit = 16;
+  static constexpr uint32_t kBackendMaxGet = 8;
   folly::IoUringOptions options;
   options.setCapacity(kBackendCapacity)
       .setMaxSubmit(kBackendMaxSubmit)
@@ -192,11 +192,11 @@ std::unique_ptr<folly::EventBase> getEventBase() {
 }
 
 void testEventFD(bool overflow, bool persist) {
-  static constexpr size_t kBackendCapacity = 64;
-  static constexpr size_t kBackendMaxSubmit = 8;
+  static constexpr uint32_t kBackendCapacity = 64;
+  static constexpr uint32_t kBackendMaxSubmit = 8;
   // for overflow == true  we use a greater than kBackendCapacity number of
   // EventFD instances and lower when overflow == false
-  size_t kNumEventFds = overflow ? 2048 : 32;
+  uint32_t kNumEventFds = overflow ? 2048 : 32;
   static constexpr size_t kEventFdCount = 2;
   auto total = kNumEventFds * kEventFdCount + kEventFdCount / 2;
 
@@ -227,8 +227,8 @@ void testEventFD(bool overflow, bool persist) {
 }
 
 void testInvalidFd(size_t numTotal, size_t numValid, size_t numInvalid) {
-  static constexpr size_t kBackendCapacity = 32;
-  static constexpr size_t kBackendMaxSubmit = 16;
+  static constexpr uint32_t kBackendCapacity = 32;
+  static constexpr uint32_t kBackendMaxSubmit = 16;
 
   auto total = numTotal;
 
@@ -788,9 +788,9 @@ TEST(IoUringBackend, InvalidFd55) {
 }
 
 TEST(IoUringBackend, RegisteredFds) {
-  static constexpr size_t kBackendCapacity = 16;
-  static constexpr size_t kBackendMaxSubmit = 8;
-  static constexpr size_t kBackendMaxGet = 8;
+  static constexpr uint32_t kBackendCapacity = 16;
+  static constexpr uint32_t kBackendMaxSubmit = 8;
+  static constexpr uint32_t kBackendMaxGet = 8;
 
   std::unique_ptr<folly::IoUringBackend> backendReg;
   std::unique_ptr<folly::IoUringBackend> backendNoReg;
@@ -854,9 +854,9 @@ TEST(IoUringBackend, RegisteredFds) {
 }
 
 TEST(IoUringBackend, FileReadWrite) {
-  static constexpr size_t kBackendCapacity = 512;
-  static constexpr size_t kBackendMaxSubmit = 8;
-  static constexpr size_t kBackendMaxGet = 8;
+  static constexpr uint32_t kBackendCapacity = 512;
+  static constexpr uint32_t kBackendMaxSubmit = 8;
+  static constexpr uint32_t kBackendMaxGet = 8;
 
   folly::IoUringOptions options;
   options.setCapacity(kBackendCapacity)
@@ -921,9 +921,9 @@ TEST(IoUringBackend, FileReadWrite) {
 }
 
 TEST(IoUringBackend, FileReadvWritev) {
-  static constexpr size_t kBackendCapacity = 512;
-  static constexpr size_t kBackendMaxSubmit = 8;
-  static constexpr size_t kBackendMaxGet = 8;
+  static constexpr uint32_t kBackendCapacity = 512;
+  static constexpr uint32_t kBackendMaxSubmit = 8;
+  static constexpr uint32_t kBackendMaxGet = 8;
 
   folly::IoUringOptions options;
   options.setCapacity(kBackendCapacity)
@@ -1016,9 +1016,9 @@ TEST(IoUringBackend, FileReadvWritev) {
 }
 
 TEST(IoUringBackend, FileReadMany) {
-  static constexpr size_t kBackendCapacity = 256;
-  static constexpr size_t kBackendMaxSubmit = 32;
-  static constexpr size_t kBackendMaxGet = 32;
+  static constexpr uint32_t kBackendCapacity = 256;
+  static constexpr uint32_t kBackendMaxSubmit = 32;
+  static constexpr uint32_t kBackendMaxGet = 32;
 
   folly::IoUringOptions options;
   options.setCapacity(kBackendCapacity)
@@ -1079,9 +1079,9 @@ TEST(IoUringBackend, FileReadMany) {
 }
 
 TEST(IoUringBackend, FileWriteMany) {
-  static constexpr size_t kBackendCapacity = 256;
-  static constexpr size_t kBackendMaxSubmit = 32;
-  static constexpr size_t kBackendMaxGet = 32;
+  static constexpr uint32_t kBackendCapacity = 256;
+  static constexpr uint32_t kBackendMaxSubmit = 32;
+  static constexpr uint32_t kBackendMaxGet = 32;
 
   folly::IoUringOptions options;
   options.setCapacity(kBackendCapacity)
@@ -1165,9 +1165,9 @@ TEST(IoUringBackend, FileWriteMany) {
 }
 
 TEST(IoUringBackend, SendmsgRecvmsg) {
-  static constexpr size_t kBackendCapacity = 256;
-  static constexpr size_t kBackendMaxSubmit = 32;
-  static constexpr size_t kBackendMaxGet = 32;
+  static constexpr uint32_t kBackendCapacity = 256;
+  static constexpr uint32_t kBackendMaxSubmit = 32;
+  static constexpr uint32_t kBackendMaxGet = 32;
 
   folly::IoUringOptions options;
   options.setCapacity(kBackendCapacity)
@@ -2190,9 +2190,9 @@ TEST(IoUringBackend, DeferTaskRun) {
 
 namespace folly {
 namespace test {
-static constexpr size_t kCapacity = 32;
-static constexpr size_t kMaxSubmit = 4;
-static constexpr size_t kMaxGet = static_cast<size_t>(-1);
+static constexpr uint32_t kCapacity = 32;
+static constexpr uint32_t kMaxSubmit = 4;
+static constexpr uint32_t kMaxGet = std::numeric_limits<uint32_t>::max();
 
 struct IoUringBackendProviderBase : BackendProviderBase {
   static bool isIoUringBackend() { return true; }

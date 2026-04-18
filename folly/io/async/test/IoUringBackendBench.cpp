@@ -153,7 +153,7 @@ class EventBaseProvider {
   };
 
   static std::unique_ptr<folly::EventBase> getEventBase(
-      Type type, size_t capacity = 1024) {
+      Type type, uint32_t capacity = 1024) {
     switch (type) {
       case DEFAULT: {
         return std::make_unique<folly::EventBase>();
