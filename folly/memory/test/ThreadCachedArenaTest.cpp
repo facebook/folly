@@ -151,6 +151,35 @@ TEST(ThreadCachedArena, MultiThreaded) {
   mainTester.verify();
 }
 
+TEST(ThreadCachedArena, MultiThreadedCustomAlign) {
+  static const size_t requestedBlockSize = 64;
+  // Use a larger-than-default alignment to exercise the maxAlign path.
+  // This triggers Arena::merge between zombies_ (constructed at arena init)
+  // and per-thread arenas (constructed on first allocation per thread).
+  static const size_t customAlign = 64;
+  ThreadCachedArena arena(requestedBlockSize, customAlign);
+  ArenaTester mainTester(arena);
+
+  static const size_t numThreads = 20;
+  for (size_t i = 0; i < 2; i++) {
+    std::vector<std::thread> threads;
+    threads.reserve(numThreads);
+    for (size_t j = 0; j < numThreads; j++) {
+      threads.emplace_back([&arena, &mainTester]() {
+        ArenaTester tester(arena);
+        tester.allocate(500, 1 << 10);
+        tester.verify();
+        mainTester.merge(std::move(tester));
+      });
+    }
+    for (auto& t : threads) {
+      t.join();
+    }
+  }
+
+  mainTester.verify();
+}
+
 TEST(ThreadCachedArena, ThreadCachedArenaAllocator) {
   using Map = std::unordered_map<
       int,
