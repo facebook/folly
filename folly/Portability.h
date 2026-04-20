@@ -32,7 +32,7 @@
 #include <version>
 #endif
 
-static_assert(FOLLY_CPLUSPLUS >= 202002L, "__cplusplus >= 202002L");
+static_assert(FOLLY_CPLUSPLUS >= 201703L, "__cplusplus >= 201703L");
 
 #if defined(__GNUC__) && !defined(__clang__)
 #if defined(FOLLY_CONFIG_TEMPORARY_DOWNGRADE_GCC)
