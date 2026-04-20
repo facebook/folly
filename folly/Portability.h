@@ -32,7 +32,7 @@
 #include <version>
 #endif
 
-static_assert(FOLLY_CPLUSPLUS >= 201703L, "__cplusplus >= 201703L");
+static_assert(FOLLY_CPLUSPLUS >= 202002L, "__cplusplus >= 202002L");
 
 #if defined(__GNUC__) && !defined(__clang__)
 #if defined(FOLLY_CONFIG_TEMPORARY_DOWNGRADE_GCC)
@@ -643,13 +643,6 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_CXX23_CONSTEXPR constexpr
 #else
 #define FOLLY_CXX23_CONSTEXPR
-#endif
-
-// C++20 constinit
-#if defined(__cpp_constinit) && __cpp_constinit >= 201907L
-#define FOLLY_CONSTINIT constinit
-#else
-#define FOLLY_CONSTINIT
 #endif
 
 #if defined(FOLLY_CFG_NO_COROUTINES)
