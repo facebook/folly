@@ -1112,11 +1112,9 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         if builder_name == "nop":
             return None
 
-        # We want to be sure that we're running things with python 3
-        # but python versioning is honestly a bit of a frustrating mess.
-        # `python` may be version 2 or version 3 depending on the system.
-        # python3 may not be a thing at all!
-        # Assume an optimistic default
+        # The interpreter name varies across runners, so resolve it per-OS
+        # below. Default to `python3`, which works on Linux and macOS GHA
+        # runners.
         py3 = "python3"
 
         if build_opts.is_linux():
@@ -1133,8 +1131,8 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
                 runs_on = args.runs_on
             else:
                 runs_on = "windows-2022"
-            # The windows runners are python 3 by default; python2.exe
-            # is available if needed.
+            # On Windows GHA runners the python 3 interpreter is exposed as
+            # `python`, not `python3`.
             py3 = "python"
         else:
             artifacts = "mac"
