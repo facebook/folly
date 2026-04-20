@@ -111,6 +111,7 @@ SCHEMA: dict[str, dict[str, object]] = {
             "rust_version": OPTIONAL,
             "build_type": OPTIONAL,
             "sccache": OPTIONAL,
+            "timeout_minutes": OPTIONAL,
         },
     },
     "crate.pathmap": {"optional_section": True},
