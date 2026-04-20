@@ -134,3 +134,71 @@ TEST(LoggerDB, flushAllHandlersConcurrentWithReads) {
 
   EXPECT_EQ(kIterations, handler->getFlushCount());
 }
+
+TEST(LoggerDB, contextCallbackSingle) {
+  LoggerDB db{LoggerDB::TESTING};
+
+  // Before any callback is registered, getContextString() should return empty.
+  EXPECT_EQ("", db.getContextString());
+
+  // Add a callback that returns a known string.
+  db.addContextCallback([] { return std::string("hello"); });
+
+  // getContextString() prepends a space to each non-empty callback result.
+  EXPECT_EQ(" hello", db.getContextString());
+}
+
+TEST(LoggerDB, contextCallbackMultiple) {
+  LoggerDB db{LoggerDB::TESTING};
+
+  db.addContextCallback([] { return std::string("alpha"); });
+  db.addContextCallback([] { return std::string("beta"); });
+  db.addContextCallback([] { return std::string("gamma"); });
+
+  // Each callback result is space-prefixed and appended in order.
+  EXPECT_EQ(" alpha beta gamma", db.getContextString());
+}
+
+TEST(LoggerDB, contextCallbackConcurrentAddAndRead) {
+  // Smoke test for concurrent addContextCallback + getContextString.
+  // The release/acquire fix on callbacks_ ensures that a reader on a
+  // weakly-ordered architecture (ARM) sees fully-visible memory backing
+  // a newly-allocated CallbacksObj when it loads the non-null pointer.
+  // On x86 (TSO), relaxed stores behave like release stores, so this
+  // test cannot deterministically catch the ordering bug -- it requires
+  // ARM hardware or TSAN to surface the race. We stress many fresh
+  // LoggerDB instances to maximize the chance of hitting the null-to-
+  // non-null transition window concurrently.
+  constexpr int kInstances = 200;
+
+  for (int i = 0; i < kInstances; ++i) {
+    LoggerDB db{LoggerDB::TESTING};
+    std::atomic<bool> ready{false};
+    std::atomic<bool> stop{false};
+
+    // Reader thread: spins on getContextString() until told to stop.
+    std::thread reader([&]() {
+      // Signal that we are actively reading.
+      ready.store(true, std::memory_order_release);
+      while (!stop.load(std::memory_order_relaxed)) {
+        auto ctx = db.getContextString();
+        // Must be either empty (callback not yet visible) or correct.
+        if (!ctx.empty()) {
+          EXPECT_NE(std::string::npos, ctx.find("val"));
+        }
+      }
+    });
+
+    // Wait for reader to be running before adding the callback,
+    // maximizing the chance of concurrent null->non-null observation.
+    while (!ready.load(std::memory_order_acquire)) {
+      // spin
+    }
+
+    db.addContextCallback([] { return std::string("val"); });
+    EXPECT_EQ(" val", db.getContextString());
+
+    stop.store(true, std::memory_order_relaxed);
+    reader.join();
+  }
+}

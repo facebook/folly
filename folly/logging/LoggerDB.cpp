@@ -656,16 +656,17 @@ LoggerDB::ContextCallbackList::~ContextCallbackList() {
 
 void LoggerDB::ContextCallbackList::addCallback(ContextCallback callback) {
   std::lock_guard g(writeMutex_);
+  // relaxed is safe here: writeMutex_ provides acquire semantics
   auto callbacks = callbacks_.load(std::memory_order_relaxed);
   if (!callbacks) {
     callbacks = new CallbacksObj();
-    callbacks_.store(callbacks, std::memory_order_relaxed);
+    callbacks_.store(callbacks, std::memory_order_release);
   }
   callbacks->push(std::move(callback));
 }
 
 std::string LoggerDB::ContextCallbackList::getContextString() const {
-  auto callbacks = callbacks_.load(std::memory_order_relaxed);
+  auto callbacks = callbacks_.load(std::memory_order_acquire);
   if (callbacks == nullptr) {
     return {};
   }
