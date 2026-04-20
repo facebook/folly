@@ -553,6 +553,9 @@ fb_dirsync_cpp_library(
     srcs = [
         "FBVectorTestUtil.cpp",
     ],
+    headers = [
+        "FBVectorTestUtil.h",
+    ],
     exported_deps = [
         "//folly:fbstring",
         "//folly:random",
