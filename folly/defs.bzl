@@ -156,10 +156,14 @@ def folly_xplat_library(
         platforms = DEFAULT_PLATFORMS
 
     # We use gflags on fbcode platforms, which don't mix well when mixing static
-    # and dynamic linking.
+    # and dynamic linking. Also disable for android host tests (robolectric on
+    # macOS) — same rationale: force_static causes multiple JNI dylibs to each
+    # statically link folly, producing duplicate gflag registrations that crash
+    # on macOS (macOS lacks Linux's flat namespace symbol deduplication).
     force_static = select({
         "DEFAULT": select({
             "DEFAULT": force_static,
+            "ovr_config//runtime/constraints:android-host-test": False,
             "ovr_config//runtime:fbcode": False,
         }),
         "ovr_config//build_mode:arvr_mode[enabled]": force_static,
