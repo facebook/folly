@@ -1,6 +1,7 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "non_fbcode_target")
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
@@ -194,6 +195,107 @@ fb_dirsync_cpp_library(
         "//folly/functional:apply_tuple",
         "//folly/synchronization:lock",
     ],
+)
+
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "singleton",
+    srcs = [
+        "Singleton.cpp",
+    ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//compiler:clang": [
+            "-Wno-invalid-noreturn",
+        ],
+    }),
+    cxx_deps = [
+        "//xplat/third-party/linker_lib:dl",
+        "//third-party/toolchains:rt",
+    ],
+    exported_preprocessor_flags = select({
+        "//xplat/folly/buck_config:folly-singleton-schedule-at-exit-disabled": [
+            "-DFOLLY_SINGLETON_SKIP_SCHEDULE_ATEXIT=1",
+        ],
+        "DEFAULT": [],
+    }) + select({
+        # Symbolizer is not available for all platforms, disable it for now.
+        "DEFAULT": ["-DFOLLY_HAVE_DWARF=0"],
+        "ovr_config//os:linux": [],
+    }),
+    fbandroid_deps = [
+        "//xplat/third-party/linker_lib:dl",
+    ],
+    raw_headers = [
+        "Singleton-inl.h",
+        "Singleton.h",
+        # Instead of depending on experimental_symbolizer_symbolizer, reference always-included headers here.
+        "debugging/symbolizer/Dwarf.h",
+        "debugging/symbolizer/DwarfImpl.h",
+        "debugging/symbolizer/DwarfLineNumberVM.h",
+        "debugging/symbolizer/DwarfSection.h",
+        "debugging/symbolizer/DwarfUtil.h",
+        "debugging/symbolizer/Elf.h",
+        "debugging/symbolizer/Elf-inl.h",
+        "debugging/symbolizer/ElfCache.h",
+        "debugging/symbolizer/Symbolizer.h",
+        "debugging/symbolizer/SymbolizedFrame.h",
+        "debugging/symbolizer/SymbolizePrinter.h",
+        "debugging/symbolizer/StackTrace.h",
+        "experimental/symbolizer/Dwarf.h",
+        "experimental/symbolizer/DwarfImpl.h",
+        "experimental/symbolizer/DwarfLineNumberVM.h",
+        "experimental/symbolizer/DwarfSection.h",
+        "experimental/symbolizer/DwarfUtil.h",
+        "experimental/symbolizer/Elf.h",
+        "experimental/symbolizer/Elf-inl.h",
+        "experimental/symbolizer/ElfCache.h",
+        "experimental/symbolizer/Symbolizer.h",
+        "experimental/symbolizer/SymbolizedFrame.h",
+        "experimental/symbolizer/SymbolizePrinter.h",
+        "experimental/symbolizer/StackTrace.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly/portability:fmt_compile",
+        "fbsource//xplat/folly/system:at_fork",
+    ],
+    exported_deps = [
+        "fbsource//xplat/folly/hash:hash",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:config",
+        "fbsource//xplat/folly/portability:sys_mman",
+        "fbsource//xplat/folly/portability:sys_syscall",
+        "fbsource//xplat/folly/portability:unistd",
+        "fbsource//xplat/folly/synchronization:baton",
+        "//third-party/double-conversion:double-conversion",
+        "//third-party/fmt:fmt",
+        "//third-party/glog:glog",
+        "//xplat/folly:c_portability",
+        "//xplat/folly:cancellation_token",
+        "//xplat/folly:conv",
+        "//xplat/folly:demangle",
+        "//xplat/folly:exception",
+        "//xplat/folly:executor",
+        "//xplat/folly:fbstring",
+        "//xplat/folly:file_util",
+        "//xplat/folly:memory",
+        "//xplat/folly:optional",
+        "//xplat/folly:range",
+        "//xplat/folly:scope_guard",
+        "//xplat/folly:string",
+        "//xplat/folly:synchronized",
+        "//xplat/folly/concurrency:core_cached_shared_ptr",
+        "//xplat/folly/concurrency/memory:read_mostly_shared_ptr",
+        "//xplat/folly/container:evicting_cache_map",
+        "//xplat/folly/detail:singleton",
+        "//xplat/folly/detail:static_singleton_manager",
+        "//xplat/folly/lang:exception",
+        "//xplat/folly/memory:reentrant_allocator",
+        "//xplat/folly/memory:sanitize_leak",
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": ["//xplat/folly/debugging/symbolizer:symbolizer"],
+    }),
 )
 
 fb_dirsync_cpp_library(
@@ -2356,6 +2458,20 @@ fb_dirsync_cpp_library(
     ],
 )
 
+# This adds the symbol __folly_memcpy through FollyMemcpy.h, but does not
+# replace the default memcpy.
+# NOTE: for mobile, this is a no-op. we have this here for symmetry with fbcode
+non_fbcode_target(
+    _kind = folly_xplat_library,
+    name = "memcpy",
+    srcs = [
+        "FollyMemcpy.cpp",
+        "memcpy.S",
+    ],
+    fbcode_compiler_flags_override = [],
+    raw_headers = ["FollyMemcpy.h"],
+)
+
 fb_dirsync_cpp_library(
     name = "base64",
     headers = ["base64.h"],
@@ -2556,10 +2672,10 @@ fb_dirsync_cpp_library(
 )
 
 # This exports the symbol __folly_memcpy to C++ via a header.
-fb_dirsync_cpp_library(
+fbcode_target(
+    _kind = cpp_library,
     name = "memcpy",
     headers = ["FollyMemcpy.h"],
-    use_raw_headers = True,
     exported_deps = [
         ":memcpy-impl",  # @manual
     ],
@@ -2602,7 +2718,8 @@ fb_dirsync_cpp_library(
     }),
 )
 
-fb_dirsync_cpp_library(
+fbcode_target(
+    _kind = cpp_library,
     name = "singleton",
     srcs = [
         "Singleton.cpp",
@@ -2611,30 +2728,6 @@ fb_dirsync_cpp_library(
         "Singleton.h",
         "Singleton-inl.h",
     ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//compiler:clang": [
-            "-Wno-invalid-noreturn",
-        ],
-    }),
-    cxx_deps = [
-        "//xplat/third-party/linker_lib:dl",
-        "//third-party/toolchains:rt",
-    ],
-    exported_preprocessor_flags = select({
-        "//xplat/folly/buck_config:folly-singleton-schedule-at-exit-disabled": [
-            "-DFOLLY_SINGLETON_SKIP_SCHEDULE_ATEXIT=1",
-        ],
-        "DEFAULT": [],
-    }) + select({
-        # Symbolizer is not available for all platforms, disable it for now.
-        "DEFAULT": ["-DFOLLY_HAVE_DWARF=0"],
-        "ovr_config//os:linux": [],
-    }),
-    fbandroid_deps = [
-        "//xplat/third-party/linker_lib:dl",
-    ],
-    use_raw_headers = True,
     deps = [
         "fbsource//third-party/fmt:fmt",
         ":demangle",
