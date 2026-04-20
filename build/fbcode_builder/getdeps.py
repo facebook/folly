@@ -1236,11 +1236,20 @@ jobs:
 
             out.write("    - uses: actions/checkout@v6\n")
 
+            extra_cmake_defines = {}
             if use_sccache:
                 out.write("    - name: Set up sccache\n")
                 out.write("      uses: mozilla-actions/sccache-action@v0.0.9\n")
                 out.write("      with:\n")
                 out.write('        version: "v0.14.0"\n')
+                extra_cmake_defines["CMAKE_CXX_COMPILER_LAUNCHER"] = "sccache"
+
+            if extra_cmake_defines:
+                extra_cmake_arg = (
+                    " --extra-cmake-defines '" + json.dumps(extra_cmake_defines) + "'"
+                )
+            else:
+                extra_cmake_arg = ""
 
             build_type_arg = ""
             if override_build_type:
@@ -1248,10 +1257,6 @@ jobs:
 
             if args.shared_libs:
                 build_type_arg += "--shared-libs "
-
-            sccache_defines = ""
-            if use_sccache:
-                sccache_defines = ' --extra-cmake-defines \'{"CMAKE_CXX_COMPILER_LAUNCHER":"sccache"}\''
 
             if build_opts.free_up_disk:
                 free_up_disk = "--free-up-disk "
@@ -1383,7 +1388,7 @@ jobs:
                             f"      if: ${{{{ steps.paths.outputs.{m.name}_SOURCE }}}}\n"
                         )
                 out.write(
-                    f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}{sccache_defines}\n"
+                    f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}{extra_cmake_arg}\n"
                 )
 
                 if args.use_build_cache and not src_dir_arg:
@@ -1424,7 +1429,7 @@ jobs:
                 no_deps_arg = "--no-deps "
 
             out.write(
-                f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{tests_arg}{no_deps_arg}--src-dir=. {manifest.name}{project_prefix}{sccache_defines}\n"
+                f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{tests_arg}{no_deps_arg}--src-dir=. {manifest.name}{project_prefix}{extra_cmake_arg}\n"
             )
 
             if use_sccache:
