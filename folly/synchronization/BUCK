@@ -166,6 +166,7 @@ fb_dirsync_cpp_library(
         "//folly/portability:config",
         "//folly/synchronization:atomic_util",
         "//folly/synchronization/detail:hazptr_utils",
+        "//folly/synchronization/detail:sleeper",
     ],
 )
 
