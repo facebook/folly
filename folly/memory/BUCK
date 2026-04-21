@@ -228,8 +228,6 @@ fb_dirsync_cpp_library(
     ],
 )
 
-# !!!! fbcode/folly/memory/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
 fbcode_target(
     _kind = cpp_unittest,
     name = "jemalloc_huge_page_allocator_test",
