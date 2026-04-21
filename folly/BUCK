@@ -1202,6 +1202,17 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "get_ref_util",
+    headers = [
+        "GetRefUtil.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly:cpp_attributes",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "intrusive_list",
     headers = [
         "IntrusiveList.h",

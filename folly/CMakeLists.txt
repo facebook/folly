@@ -614,6 +614,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME get_ref_util
+  HEADERS
+    GetRefUtil.h
+  EXPORTED_DEPS
+    folly_cpp_attributes
+)
+
+folly_add_library(
   NAME glog
   HEADERS
     GLog.h

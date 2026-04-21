@@ -763,6 +763,16 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
+    name = "get_ref_util_test",
+    srcs = ["GetRefUtilTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly:get_ref_util",
+        "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
     name = "group_varint_test",
     srcs = ["GroupVarintTest.cpp"],
     deps = [
