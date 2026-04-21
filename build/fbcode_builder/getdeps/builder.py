@@ -1622,17 +1622,18 @@ class SetupPyBuilder(BuilderBase):
             # pyre-fixme[6]: For 2nd argument expected `str` but got `Optional[str]`.
             env[key] = value
 
-        setup_py_path = os.path.join(self.src_dir, "setup.py")
-
-        if not os.path.exists(setup_py_path):
-            raise RuntimeError(f"setup.py script not found at {setup_py_path}")
-
         self._check_cmd(
             # pyre-fixme[6]: For 1st argument expected `List[str]` but got
             #  `List[Union[str, None, str]]`.
             # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got
             #  `Env`.
-            [path_search(env, "python3"), setup_py_path, "install"],
+            [
+                path_search(env, "python3"),
+                "-m",
+                "pip",
+                "install",
+                ".",
+            ],
             cwd=self.src_dir,
             env=env,
         )
