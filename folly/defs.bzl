@@ -250,12 +250,15 @@ def folly_xplat_cxx_test(
     # TODO(T188948036): Fix xplat/folly:folly-futures-test and folly_xplat_cxx_test
     resources = kwargs.get("resources", [])
     env = kwargs.get("env", None)
+    modifiers = kwargs.get("modifiers", None)
 
     extra_kwargs = {}
     if oncall != None:
         extra_kwargs["oncall"] = oncall
     if env != None:
         extra_kwargs["env"] = env
+    if modifiers != None:
+        extra_kwargs["modifiers"] = modifiers
 
     fb_xplat_cxx_test(
         name = name,

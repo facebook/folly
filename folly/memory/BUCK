@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
@@ -228,13 +226,13 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "jemalloc_huge_page_allocator_test",
     srcs = ["JemallocHugePageAllocatorTest.cpp"],
     headers = [],
     allocator = "jemalloc",
     labels = ["oss-broken"],
+    modifiers = ["ovr_config//project/folly/constraints:mobile[disabled]"],
     deps = [
         ":jemalloc_huge_page_allocator",
         "//folly/container:f14_hash",
@@ -253,12 +251,12 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "io_uring_arena_test",
     srcs = ["IoUringArenaTest.cpp"],
     headers = [],
     allocator = "jemalloc",
+    modifiers = ["ovr_config//project/folly/constraints:mobile[disabled]"],
     deps = [
         ":io_uring_arena",
         "//folly/container:f14_hash",
