@@ -29,15 +29,15 @@
 #include <folly/Function.h>
 
 #if defined(__clang__)
-#define DISABLE_TAIL_CALLS __attribute__((disable_tail_calls))
-#define TAIL_CALLS_CAN_BE_DISABLED 1
+#define FOLLY_DETAIL_DISABLE_TAIL_CALLS __attribute__((disable_tail_calls))
+#define FOLLY_DETAIL_TAIL_CALLS_CAN_BE_DISABLED 1
 #elif defined(__GNUC__)
-#define DISABLE_TAIL_CALLS \
+#define FOLLY_DETAIL_DISABLE_TAIL_CALLS \
   __attribute__((optimize("no-optimize-sibling-calls")))
-#define TAIL_CALLS_CAN_BE_DISABLED 1
+#define FOLLY_DETAIL_TAIL_CALLS_CAN_BE_DISABLED 1
 #else
-#define DISABLE_TAIL_CALLS
-#define TAIL_CALLS_CAN_BE_DISABLED 0
+#define FOLLY_DETAIL_DISABLE_TAIL_CALLS
+#define FOLLY_DETAIL_TAIL_CALLS_CAN_BE_DISABLED 0
 #endif
 
 namespace folly {
@@ -88,11 +88,12 @@ class FiberImpl {
   }
 
  private:
-  static FOLLY_NOINLINE DISABLE_TAIL_CALLS void fiberFunc(
+  static FOLLY_NOINLINE FOLLY_DETAIL_DISABLE_TAIL_CALLS void fiberFunc(
       boost::context::detail::transfer_t transfer) {
     auto fiberImpl = reinterpret_cast<FiberImpl*>(transfer.data);
     fiberImpl->mainContext_ = transfer.fctx;
-#if FOLLY_HAS_BUILTIN(__builtin_frame_address) && TAIL_CALLS_CAN_BE_DISABLED
+#if FOLLY_HAS_BUILTIN(__builtin_frame_address) && \
+    FOLLY_DETAIL_TAIL_CALLS_CAN_BE_DISABLED
     fiberImpl->entryFrameBase_ = __builtin_frame_address(0);
 #endif
     fiberImpl->fixStackUnwinding();
@@ -130,5 +131,5 @@ class FiberImpl {
 } // namespace fibers
 } // namespace folly
 
-#undef TAIL_CALLS_CAN_BE_DISABLED
-#undef DISABLE_TAIL_CALLS
+#undef FOLLY_DETAIL_TAIL_CALLS_CAN_BE_DISABLED
+#undef FOLLY_DETAIL_DISABLE_TAIL_CALLS
