@@ -85,19 +85,23 @@ class Indestructible final {
    * type is explicitly but not implicitly constructible from the given
    * argument.
    */
-  template <typename U = T>
-    requires(
-        std::is_constructible<T, U &&>::value &&
-        !std::is_same<Indestructible<T>, remove_cvref_t<U>>::value &&
-        !std::is_convertible<U &&, T>::value)
+  template <
+      typename U = T,
+      std::enable_if_t<std::is_constructible<T, U&&>::value>* = nullptr,
+      std::enable_if_t<
+          !std::is_same<Indestructible<T>, remove_cvref_t<U>>::value>* =
+          nullptr,
+      std::enable_if_t<!std::is_convertible<U&&, T>::value>* = nullptr>
   explicit constexpr Indestructible(U&& u) noexcept(
       noexcept(T(std::declval<U>())))
       : storage_{std::in_place, std::forward<U>(u)} {}
-  template <typename U = T>
-    requires(
-        std::is_constructible<T, U &&>::value &&
-        !std::is_same<Indestructible<T>, remove_cvref_t<U>>::value &&
-        std::is_convertible<U &&, T>::value)
+  template <
+      typename U = T,
+      std::enable_if_t<std::is_constructible<T, U&&>::value>* = nullptr,
+      std::enable_if_t<
+          !std::is_same<Indestructible<T>, remove_cvref_t<U>>::value>* =
+          nullptr,
+      std::enable_if_t<std::is_convertible<U&&, T>::value>* = nullptr>
   /* implicit */ constexpr Indestructible(U&& u) noexcept(
       noexcept(T(std::declval<U>())))
       : storage_{std::in_place, std::forward<U>(u)} {}
