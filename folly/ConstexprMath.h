@@ -35,10 +35,28 @@ namespace folly {
 namespace numbers {
 
 namespace detail {
+
+// Apple Clang in Xcode 16.3 thru 26.3 reports Clang 17, when it is actually
+// based on upstream Clang 19
+#if __clang_major__ >= 18 || \
+    (defined(__apple_build_version__) && __clang_major__ >= 17)
+#define FOLLY_DETAIL_DISABLE_NAN_INFINITY_DISABLED \
+  FOLLY_CLANG_DISABLE_WARNING("-Wnan-infinity-disabled")
+#else
+#define FOLLY_DETAIL_DISABLE_NAN_INFINITY_DISABLED
+#endif
+
+#if FOLLY_HAS_FEATURE(cxx_constexpr_string_builtins) || \
+    FOLLY_HAS_BUILTIN(__builtin_strcmp)
+#define FOLLY_DETAIL_STRCMP __builtin_strcmp
+#else
+#define FOLLY_DETAIL_STRCMP ::std::strcmp
+#endif
+
 template <typename T>
 using enable_if_floating_t =
     std::enable_if_t<std::is_floating_point<T>::value, T>;
-}
+} // namespace detail
 
 /// e_v
 ///
@@ -423,9 +441,7 @@ template <typename T>
 constexpr T constexpr_mult(T const a, T const b) {
   using lim = std::numeric_limits<T>;
   FOLLY_PUSH_WARNING
-#if __clang_major__ >= 18
-  FOLLY_CLANG_DISABLE_WARNING("-Wnan-infinity-disabled")
-#endif
+  FOLLY_DETAIL_DISABLE_NAN_INFINITY_DISABLED
   if (constexpr_isnan(a) || constexpr_isnan(b)) {
     return constexpr_isnan(a) ? a : b;
   }
@@ -549,9 +565,7 @@ constexpr T constexpr_exp(T const power) {
   using lim = std::numeric_limits<T>;
 
   FOLLY_PUSH_WARNING
-#if __clang_major__ >= 18
-  FOLLY_CLANG_DISABLE_WARNING("-Wnan-infinity-disabled")
-#endif
+  FOLLY_DETAIL_DISABLE_NAN_INFINITY_DISABLED
   // edge cases
   if (constexpr_isnan(power)) {
     return power;
@@ -605,9 +619,7 @@ constexpr T constexpr_log(T const num) {
   constexpr auto& isq = constexpr_iterated_squares_desc_2_v<T>;
 
   FOLLY_PUSH_WARNING
-#if __clang_major__ >= 18
-  FOLLY_CLANG_DISABLE_WARNING("-Wnan-infinity-disabled")
-#endif
+  FOLLY_DETAIL_DISABLE_NAN_INFINITY_DISABLED
   // edge cases
   if (constexpr_isnan(num)) {
     return num;
@@ -681,9 +693,7 @@ constexpr T constexpr_pow(T const base, T const exp) {
     return base;
   }
   FOLLY_PUSH_WARNING
-#if __clang_major__ >= 18
-  FOLLY_CLANG_DISABLE_WARNING("-Wnan-infinity-disabled")
-#endif
+  FOLLY_DETAIL_DISABLE_NAN_INFINITY_DISABLED
   if (constexpr_isnan(base)) {
     return base;
   }
