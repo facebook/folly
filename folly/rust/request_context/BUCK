@@ -1,4 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbsource//tools/build_defs:rust_binary.bzl", "rust_binary")
 load("@fbsource//tools/build_defs:rust_library.bzl", "rust_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
@@ -28,10 +27,11 @@ fb_dirsync_rule(
     ],
 )
 
-fbcode_target(
-    _kind = rust_library,
+fb_dirsync_rule(
     name = "request_context_tokio",
     srcs = ["request_context_tokio.rs"],
+    fbcode_rule = rust_library,
+    modifiers = ["ovr_config//build_mode:asan_ubsan_dev_sanitizer_flags[enabled]"],
     test_deps = [
         "fbsource//third-party/rust:tokio",
         ":request_context_future",
@@ -44,10 +44,10 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = rust_binary,
+fb_dirsync_rule(
     name = "request_context_tokio_bench",
     srcs = ["benches/request_context_tokio_bench.rs"],
+    fbcode_rule = rust_binary,
     unittests = False,
     deps = [
         "fbsource//third-party/rust:criterion",
