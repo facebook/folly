@@ -942,9 +942,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "small_vector_test",
     srcs = ["small_vector_test.cpp"],
-    env = {
-        "ASAN_OPTIONS": "detect_leaks=0",
-    },
+    modifiers = ["ovr_config//build_mode:asan_ubsan_dev_sanitizer_flags[enabled]"],
     supports_static_listing = False,
     deps = [
         "fbsource//third-party/fmt:fmt",
