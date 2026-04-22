@@ -215,66 +215,44 @@ void ThreadEntrySet::compress() {
  * about leaking memory at that point.
  *
  * Otherwise if ThreadLocal is used in a shared library, onThreadExit may be
- * called after dlclose().
+ * called after the library's static destructors have run, accessing destroyed
+ * data structures.
  *
- * This class has one single static instance; however since it's so widely used,
- * directly or indirectly, by so many classes, we need to take care to avoid
- * problems stemming from the Static Initialization/Destruction Order Fiascos.
- * Therefore this class needs to be constexpr-constructible, so as to avoid
- * the need for this to participate in init/destruction order.
+ * Rather than deleting pthread keys (which races with threads still calling
+ * pthread_setspecific), we set an atomic flag that causes onThreadExit
+ * callbacks to no-op. The keys and TLS values are intentionally leaked — the
+ * process is shutting down and the kernel will reclaim everything.
  */
-class PthreadKeyUnregister {
- public:
-  static constexpr size_t kMaxKeys = size_t(1) << 16;
+// NOLINTNEXTLINE
+std::atomic<bool> threadLocalShuttingDown{false};
 
-  ~PthreadKeyUnregister() {
-    // If static constructor priorities are not supported then
-    // ~PthreadKeyUnregister logic is not safe.
+// NOLINTNEXTLINE
+struct ThreadLocalShutdownGuard {
+  ThreadLocalShutdownGuard() = default;
+  ThreadLocalShutdownGuard(const ThreadLocalShutdownGuard&) = delete;
+  ThreadLocalShutdownGuard& operator=(const ThreadLocalShutdownGuard&) = delete;
+  ThreadLocalShutdownGuard(ThreadLocalShutdownGuard&&) = delete;
+  ThreadLocalShutdownGuard& operator=(ThreadLocalShutdownGuard&&) = delete;
+  ~ThreadLocalShutdownGuard() {
 #if !defined(__APPLE__) && !defined(_MSC_VER)
-    MSLGuard lg(lock_);
-    while (size_) {
-      pthread_key_delete(keys_[--size_]);
-    }
+    threadLocalShuttingDown.store(true, std::memory_order_release);
 #endif
   }
-
-  static void registerKey(pthread_key_t key) { instance_.registerKeyImpl(key); }
-
- private:
-  /**
-   * Only one global instance should exist, hence this is private.
-   * See also the important note at the top of this class about `constexpr`
-   * usage.
-   */
-  constexpr PthreadKeyUnregister() : lock_(), size_(0), keys_() {}
-
-  void registerKeyImpl(pthread_key_t key) {
-    MSLGuard lg(lock_);
-    if (size_ == kMaxKeys) {
-      throw_exception<std::logic_error>(
-          "pthread_key limit has already been reached");
-    }
-    keys_[size_++] = key;
-  }
-
-  MicroSpinLock lock_;
-  size_t size_;
-  pthread_key_t keys_[kMaxKeys];
-
-  static PthreadKeyUnregister instance_;
 };
 
 StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
     : nextId_(1), threadEntry_(threadEntry), strict_(strict) {
   int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
   checkPosixError(ret, "pthread_key_create failed");
-  PthreadKeyUnregister::registerKey(pthreadKey_);
 }
 
 ThreadEntryList* StaticMetaBase::getThreadEntryList() {
   class PthreadKey {
    public:
     static void onThreadExit(void* ptr) {
+      if (threadLocalShuttingDown.load(std::memory_order_acquire)) {
+        return;
+      }
       ThreadEntryList* list = static_cast<ThreadEntryList*>(ptr);
       StaticMetaBase::cleanupThreadEntriesAndList(list);
     }
@@ -282,7 +260,6 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
     PthreadKey() {
       int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
       checkPosixError(ret, "pthread_key_create failed");
-      PthreadKeyUnregister::registerKey(pthreadKey_);
     }
 
     FOLLY_ALWAYS_INLINE pthread_key_t get() const { return pthreadKey_; }
@@ -371,6 +348,9 @@ bool StaticMetaBase::dying() {
  */
 
 void StaticMetaBase::onThreadExit(void* ptr) {
+  if (threadLocalShuttingDown.load(std::memory_order_acquire)) {
+    return;
+  }
   folly::detail::thread_is_dying_mark();
   auto threadEntry = static_cast<ThreadEntry*>(ptr);
 
@@ -788,7 +768,7 @@ void ThreadEntry::resetElementImplAfterSet(
 }
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX
-PthreadKeyUnregister PthreadKeyUnregister::instance_;
+ThreadLocalShutdownGuard threadLocalShutdownGuard; // NOLINT
 #if defined(__GLIBC__)
 // Invoking thread_local dtor register early to fix issue
 // https://github.com/facebook/folly/issues/1252
