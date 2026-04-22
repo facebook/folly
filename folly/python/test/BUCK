@@ -194,6 +194,17 @@ fb_dirsync_rule(
 
 fb_dirsync_rule(
     # @autodeps-skip
+    name = "test_iobuf_ext",
+    srcs = ["test_iobuf_ext.py"],
+    fbcode_rule = python_unittest,
+    supports_static_listing = False,
+    deps = [
+        "//folly/python:iobuf",
+    ],
+)
+
+fb_dirsync_rule(
+    # @autodeps-skip
     name = "test_set_executor",
     srcs = ["test_set_executor.py"],
     fbcode_rule = python_unittest,
