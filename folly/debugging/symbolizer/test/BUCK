@@ -304,7 +304,6 @@ fbcode_target(
     srcs = ["StackTraceLargeBenchmark.cpp"],
     linker_flags = [
         "--script=$(location :eh_sdata8_large.lds)",
-        "--enable-reverse-relax",
     ],
     modifiers = [
         # no sanitizer because it causes memory access beyond 32bit
