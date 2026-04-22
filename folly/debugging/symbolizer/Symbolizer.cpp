@@ -50,8 +50,9 @@
 #endif
 
 #ifdef __roar__
-extern "C" char* _roar_upcall_symbolizeAddress(
+extern "C" char* __roar_api_symbolize(
     void* Address, unsigned* NumFrames, bool WithSrcLine, bool WithInline);
+extern "C" int __roar_api_address_is_code(void* Address);
 #endif
 
 namespace folly {
@@ -129,7 +130,7 @@ bool setROARSymbolizedFrame(
   const bool withSrcLine = mode != LocationInfoMode::DISABLED;
   const bool withInline = mode == LocationInfoMode::FULL_WITH_INLINE;
   unsigned numFrames = 0;
-  char* jitNames = _roar_upcall_symbolizeAddress(
+  char* jitNames = __roar_api_symbolize(
       reinterpret_cast<void*>(address), &numFrames, withSrcLine, withInline);
   if (numFrames == 0)
     return false;
@@ -205,6 +206,14 @@ using UnsyncSymbolCache = EvictingCacheMap<uintptr_t, CachedSymbolizedFrames>;
  */
 bool containedInExecutableSegment(
     const ElfFile& elfFile, ElfAddr instructionAddr) {
+#ifdef __roar__
+  // In ROAR, JITed code might be loaded at an address that was not marked as
+  // executable in the original ELF file. In this case, ask ROAR if the address
+  // is code or not.
+  if (__roar_api_address_is_code(reinterpret_cast<void*>(instructionAddr))) {
+    return true;
+  }
+#endif
   return elfFile.iterateProgramHeaders([&](const ElfPhdr& sh) {
     bool executable = sh.p_flags & PF_X;
     bool loadable = sh.p_type == PT_LOAD;
