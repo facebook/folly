@@ -398,6 +398,8 @@ uncaught_exceptions() noexcept {
   return std::uncaught_exceptions();
 #elif defined(_CPPLIB_VER)
   return std::uncaught_exceptions();
+#elif defined(__EMSCRIPTEN__)
+  return std::uncaught_exceptions();
 #elif defined(__has_feature) && !FOLLY_HAS_FEATURE(cxx_thread_local)
   return std::uncaught_exceptions();
 #else
