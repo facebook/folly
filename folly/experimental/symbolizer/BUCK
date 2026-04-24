@@ -1,1 +1,97 @@
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+
 oncall("fbcode_entropy_wardens_folly")
+
+fb_dirsync_cpp_library(
+    name = "dwarf",
+    headers = [
+        "Dwarf.h",
+        "DwarfImpl.h",
+        "DwarfLineNumberVM.h",
+        "DwarfSection.h",
+        "DwarfUtil.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/debugging/symbolizer:dwarf",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "elf",
+    headers = [
+        "Elf.h",
+        "Elf-inl.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/debugging/symbolizer:elf",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "elf_cache",
+    headers = [
+        "ElfCache.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/debugging/symbolizer:elf_cache",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "line_reader",
+    headers = [
+        "LineReader.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/debugging/symbolizer:line_reader",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "stack_trace",
+    headers = [
+        "StackTrace.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/debugging/symbolizer:stack_trace",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "symbolized_frame",
+    headers = [
+        "SymbolizedFrame.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/debugging/symbolizer:symbolized_frame",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "symbolize_printer",
+    exported_deps = [":symbolizer"],
+)
+
+fb_dirsync_cpp_library(
+    name = "symbolizer",
+    headers = [
+        "SignalHandler.h",
+        "SymbolizePrinter.h",
+        "Symbolizer.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/debugging/symbolizer:symbolizer",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "signal_handler",
+    exported_deps = [":symbolizer"],
+)
