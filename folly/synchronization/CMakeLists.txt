@@ -398,6 +398,12 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME thread_annotations
+  HEADERS
+    ThreadAnnotations.h
+)
+
+folly_add_library(
   NAME throttled_lifo_sem
   HEADERS
     ThrottledLifoSem.h

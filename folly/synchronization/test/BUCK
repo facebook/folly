@@ -512,3 +512,12 @@ fb_dirsync_cpp_unittest(
         "//folly/synchronization:striped_throttled_lifo_sem",
     ],
 )
+
+fb_dirsync_cpp_unittest(
+    name = "thread_annotations_test",
+    srcs = ["ThreadAnnotationsTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/synchronization:thread_annotations",
+    ],
+)

@@ -438,3 +438,8 @@ fb_dirsync_cpp_library(
         "//folly/synchronization:throttled_lifo_sem",
     ],
 )
+
+fb_dirsync_cpp_library(
+    name = "thread_annotations",
+    headers = ["ThreadAnnotations.h"],
+)
