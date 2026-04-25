@@ -184,6 +184,27 @@ TEST_F(ElfTest, FailToOpenLargeFilename) {
   EXPECT_EQ(ElfFile::kSuccess, elfFile->openNoThrow(kDefaultElf));
 }
 
+TEST(TestDebugLinkParsing, ParsesNullTerminatedName) {
+  std::string raw("debug.bin\0ignored", 17);
+  auto const parsed = folly::symbolizer::detail::getNullTerminatedPathComponent(
+      folly::StringPiece(raw.data(), raw.size()));
+  EXPECT_EQ("debug.bin", parsed);
+}
+
+TEST(TestDebugLinkParsing, RejectsMissingNullTerminator) {
+  std::string raw("debug.bin", 9);
+  auto const parsed = folly::symbolizer::detail::getNullTerminatedPathComponent(
+      folly::StringPiece(raw.data(), raw.size()));
+  EXPECT_TRUE(parsed.empty());
+}
+
+TEST(TestDebugLinkParsing, RejectsDirectoryTraversalLikeNames) {
+  std::string raw("../debug.bin\0", 13);
+  auto const parsed = folly::symbolizer::detail::getNullTerminatedPathComponent(
+      folly::StringPiece(raw.data(), raw.size()));
+  EXPECT_TRUE(parsed.empty());
+}
+
 TEST(TestGetNoteGnuBuildId, SimpleElf) {
   auto const file =
       folly::test::find_resource("folly/debugging/symbolizer/test/simple_elf");
