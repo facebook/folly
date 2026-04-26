@@ -372,7 +372,10 @@ fb_dirsync_cpp_library(
         ":scope_guard",
         "//folly/portability:fmt_compile",
         "//folly/portability:sys_file",
-    ],
+    ] + select({
+        "DEFAULT": ["//folly/portability:filesystem"],
+        "ovr_config//os:windows": [],
+    }),
     exported_deps = [
         ":exception_wrapper",
         ":expected",

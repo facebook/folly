@@ -488,6 +488,7 @@ folly_add_library(
   DEPS
     folly_exception
     folly_file_util
+    folly_portability_filesystem
     folly_portability_fmt_compile
     folly_portability_sys_file
     folly_scope_guard
