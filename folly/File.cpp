@@ -18,7 +18,11 @@
 
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
+#ifdef _WIN32
 #include <folly/ScopeGuard.h>
+#else
+#include <folly/portability/Filesystem.h>
+#endif
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/FmtCompile.h>
 #include <folly/portability/SysFile.h>
@@ -74,18 +78,38 @@ File::~File() {
 }
 
 /* static */ File File::temporary() {
-  // make a temp file with tmpfile(), dup the fd, then return it in a File.
-  FILE* tmpFile = tmpfile();
-  checkFopenError(tmpFile, "tmpfile() failed");
+#ifdef _WIN32
+  // Windows tmpfile_s creates an auto-deleting anonymous temp file and provides
+  // better error reporting than tmpfile().
+  FILE* tmpFile = nullptr;
+  errno_t err = tmpfile_s(&tmpFile);
+  if (err != 0 || !tmpFile) {
+    throwSystemErrorExplicit(err, "tmpfile_s() failed");
+  }
   SCOPE_EXIT {
     fclose(tmpFile);
   };
-
-  // TODO(nga): consider setting close-on-exec for the resulting FD
   int fd = ::dup(fileno(tmpFile));
   checkUnixError(fd, "dup() failed");
-
   return File(fd, true);
+#else
+  // Use mkstemp rather than tmpfile() because Android bionic's tmpfile()
+  // hardcodes /data/local/tmp and ignores $TMPDIR, failing with EACCES inside
+  // instrumentation test APKs where the process lacks write access to that
+  // directory.  fs::temp_directory_path() reads $TMPDIR and works on all POSIX
+  // platforms.
+  auto tmpPath = fs::temp_directory_path() / "folly_tmp_XXXXXX";
+  std::string pathStr = tmpPath.string();
+  // TODO(nga): consider setting close-on-exec for the resulting FD
+  int fd = ::mkstemp(pathStr.data());
+  checkUnixError(fd, "mkstemp() failed");
+  if (::unlink(pathStr.c_str()) != 0) {
+    auto errnoCopy = errno;
+    ::close(fd);
+    throwSystemErrorExplicit(errnoCopy, "unlink() failed");
+  }
+  return File(fd, true);
+#endif
 }
 
 int File::release() noexcept {

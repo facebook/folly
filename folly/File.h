@@ -82,7 +82,7 @@ class File {
   ~File();
 
   /**
-   * Create and return a temporary, owned file (uses tmpfile()).
+   * Create and return a temporary, owned file.
    */
   static File temporary();
 
