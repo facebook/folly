@@ -1,3 +1,5 @@
+load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
+load("@fbsource//tools/build_defs:platform_defs.bzl", "ANDROID", "CXX", "FBCODE")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
@@ -566,6 +568,11 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_unittest(
     name = "file_test",
     srcs = ["FileTest.cpp"],
+    platforms = (ANDROID, CXX, FBCODE),
+    use_instrumentation_test = True,
+    # TODO(T263893609): Drop this explicit override once folly_xplat_cxx_test
+    # forwards Android test attrs correctly for xplat/folly tests.
+    xplat_impl = fb_xplat_cxx_test,
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
