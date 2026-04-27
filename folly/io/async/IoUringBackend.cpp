@@ -312,7 +312,7 @@ IoUringBackend::SocketPair::~SocketPair() {
   }
 }
 
-IoUringBackend::FdRegistry::FdRegistry(io_uring& ioRing, size_t n)
+IoUringBackend::FdRegistry::FdRegistry(io_uring& ioRing, uint32_t n)
     : ioRing_(ioRing), files_(n, -1), inUse_(n), records_(n) {
   if (n > std::numeric_limits<int>::max()) {
     throw std::runtime_error("too many registered files");
@@ -504,7 +504,7 @@ IoUringBackend::IoUringBackend(Options options)
   // poll SQ options
   if (options_.flags & Options::Flags::POLL_SQ) {
     params_.flags |= IORING_SETUP_SQPOLL;
-    params_.sq_thread_idle = options_.sqIdle.count();
+    params_.sq_thread_idle = static_cast<__u32>(options_.sqIdle.count());
   }
 
   SQGroupInfoRegistry::FDCreateFunc func = [&](io_uring_params& params) {
@@ -553,6 +553,7 @@ IoUringBackend::IoUringBackend(Options options)
   }
 
   numEntries_ *= 2;
+  poolAllocRemaining_ = numEntries_;
 
   // timer entry
   timerEntry_ = std::make_unique<IoSqe>(this, false, true /*persist*/);
@@ -1035,10 +1036,8 @@ void IoUringBackend::initSubmissionLinked() {
     try {
       IoUringProvidedBufferRing::Options options = {
           .gid = nextBufferProviderGid(),
-          .bufferCount =
-              static_cast<uint32_t>(options_.initialProvidedBuffersCount),
-          .bufferSize =
-              static_cast<uint32_t>(options_.initialProvidedBuffersEachSize),
+          .bufferCount = options_.initialProvidedBuffersCount,
+          .bufferSize = options_.initialProvidedBuffersEachSize,
           .useHugePages = options_.useHugePages,
           .useIncrementalBuffers = options_.enableIncrementalBuffers,
       };
@@ -1605,15 +1604,15 @@ int IoUringBackend::submitEager() {
   } while (res == -EINTR);
   VLOG(2) << "IoUringBackend::submitEager() " << waitingToSubmit_;
   if (res >= 0) {
-    DCHECK(static_cast<int>(waitingToSubmit_) >= res);
-    waitingToSubmit_ -= res;
+    DCHECK(waitingToSubmit_ >= static_cast<uint32_t>(res));
+    waitingToSubmit_ -= static_cast<uint32_t>(res);
   }
   return res;
 }
 
 int IoUringBackend::submitBusyCheck(
-    int num, WaitForEventsMode waitForEvents) noexcept {
-  int i = 0;
+    uint32_t num, WaitForEventsMode waitForEvents) noexcept {
+  uint32_t i = 0;
   int res;
   DCHECK(!isSubmitting()) << "mid processing a submit, cannot submit";
   while (i < num) {
@@ -1684,7 +1683,7 @@ int IoUringBackend::submitBusyCheck(
       break;
     }
 
-    i += res;
+    i += static_cast<uint32_t>(res);
 
     // if polling the CQ, busy wait for one entry
     if (waitForEvents == WaitForEventsMode::WAIT &&
@@ -1696,16 +1695,16 @@ int IoUringBackend::submitBusyCheck(
     }
   }
 
-  DCHECK(static_cast<int>(waitingToSubmit_) >= i);
+  DCHECK(waitingToSubmit_ >= i);
   waitingToSubmit_ -= i;
-  return num;
+  return static_cast<int>(num);
 }
 
 size_t IoUringBackend::prepList(IoSqeBaseList& ioSqes) {
   int i = 0;
 
   while (!ioSqes.empty()) {
-    if (static_cast<size_t>(i) == options_.maxSubmit) {
+    if (static_cast<uint32_t>(i) == options_.maxSubmit) {
       int num = submitBusyCheck(i, WaitForEventsMode::DONT_WAIT);
       CHECK_EQ(num, i);
       i = 0;
@@ -1722,7 +1721,7 @@ size_t IoUringBackend::prepList(IoSqeBaseList& ioSqes) {
 }
 
 void IoUringBackend::queueRead(
-    int fd, void* buf, unsigned int nbytes, off_t offset, FileOpCallback&& cb) {
+    int fd, void* buf, size_t nbytes, off_t offset, FileOpCallback&& cb) {
   iovec iov{buf, nbytes};
   auto* ioSqe = new ReadIoSqe(this, fd, &iov, offset, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;
@@ -1731,11 +1730,7 @@ void IoUringBackend::queueRead(
 }
 
 void IoUringBackend::queueWrite(
-    int fd,
-    const void* buf,
-    unsigned int nbytes,
-    off_t offset,
-    FileOpCallback&& cb) {
+    int fd, const void* buf, size_t nbytes, off_t offset, FileOpCallback&& cb) {
   iovec iov{const_cast<void*>(buf), nbytes};
   auto* ioSqe = new WriteIoSqe(this, fd, &iov, offset, std::move(cb));
   ioSqe->backendCb_ = processFileOpCB;

@@ -19,7 +19,7 @@ fbcode_target(
         ],
     },
     deps = [
-        "//folly/debugging/symbolizer:signal_handler",
+        "//folly/debugging/symbolizer:symbolizer",
     ],
 )
 
@@ -34,7 +34,7 @@ fbcode_target(
     },
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
-        ":symbolizer_test_utils_dwarf5_dwarf64_single_inlining_aaranges",
+        ":symbolizer_test_utils_dwarf4_dwarf32_aaranges",
         "//folly:benchmark",
         "//folly:range",
         "//folly/debugging/symbolizer:dwarf",
@@ -55,7 +55,7 @@ fbcode_target(
         ],
     },
     deps = [
-        "//folly/debugging/symbolizer:signal_handler",
+        "//folly/debugging/symbolizer:symbolizer",
     ],
 )
 
@@ -161,7 +161,7 @@ fbcode_target(
         "//folly:range",
         "//folly/coro:blocking_wait",
         "//folly/coro:task",
-        "//folly/debugging/symbolizer:signal_handler",
+        "//folly/debugging/symbolizer:symbolizer",
         "//folly/executors:io_thread_pool_executor",
         "//folly/portability:gtest",
     ],
@@ -283,6 +283,7 @@ fbcode_target(
     srcs = ["StackTraceLargeTest.cpp"],
     linker_flags = [
         "--script=$(location :eh_sdata8_large.lds)",
+        "--enable-reverse-relax",
     ],
     modifiers = [
         # no sanitizer because it causes memory access beyond 32bit
@@ -291,6 +292,7 @@ fbcode_target(
     ],
     deps = [
         "fbsource//third-party/glog:glog",
+        "//folly/debugging/symbolizer:elf",
         "//folly/debugging/symbolizer:stack_trace",
         "//folly/debugging/symbolizer:symbolizer",
         "//folly/portability:gtest",
@@ -303,6 +305,7 @@ fbcode_target(
     srcs = ["StackTraceLargeBenchmark.cpp"],
     linker_flags = [
         "--script=$(location :eh_sdata8_large.lds)",
+        "--enable-reverse-relax",
     ],
     modifiers = [
         # no sanitizer because it causes memory access beyond 32bit

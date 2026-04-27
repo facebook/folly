@@ -20,7 +20,7 @@
 
 #include <folly/Conv.h>
 #include <folly/String.h>
-#include <folly/container/FixedCapacityRingQueue.h>
+#include <folly/container/DynamicRingQueue.h>
 #include <folly/lang/Align.h>
 #include <folly/portability/SysMman.h>
 #include <folly/synchronization/DistributedMutex.h>
@@ -105,7 +105,7 @@ class IoUringZeroCopyBufferPoolImpl {
   folly::DistributedMutex mutex_;
   std::atomic<bool> wantsShutdown_{false};
   uint32_t shutdownReferences_{0};
-  FixedCapacityRingQueue<Buffer*> pendingBuffers_;
+  DynamicRingQueue<Buffer*> pendingBuffers_;
   SupportedFeatures supportedFeatures_{};
 };
 
@@ -132,6 +132,7 @@ size_t getRefillRingSize(size_t rqEntries) {
 }
 
 constexpr uint64_t kBufferMask = (1ULL << IORING_ZCRX_AREA_SHIFT) - 1;
+constexpr uint32_t kMTU = 4096;
 
 } // namespace
 
@@ -183,8 +184,8 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
   bufAreaSize_ = params.numBuffers * bufferSize_;
   mapMemory();
 
-  pendingBuffers_ =
-      FixedCapacityRingQueue<Buffer*>(static_cast<uint32_t>(params.numBuffers));
+  pendingBuffers_ = DynamicRingQueue<Buffer*>(
+      static_cast<uint32_t>(params.numBuffers * (bufferSize_ / kMTU)));
 
   if (!test) {
     initialRegister(params, pageSize);
@@ -244,7 +245,7 @@ std::unique_ptr<IOBuf> IoUringZeroCopyBufferPoolImpl::getIoBuf(
     buffer->pool->returnBuffer(buffer);
   };
 
-  int i = offset / bufferSize_;
+  uint32_t i = static_cast<uint32_t>(offset / bufferSize_);
   auto ret = IOBuf::takeOwnership(
       static_cast<char*>(bufArea_) + offset,
       length,
@@ -379,7 +380,8 @@ void IoUringZeroCopyBufferPoolImpl::returnBuffer(Buffer* buffer) noexcept {
     pendingBuffers_.push(buffer);
   }
 
-  uint32_t refillCount = std::min(pendingBuffers_.size(), freeEntries);
+  uint32_t refillCount =
+      std::min<uint64_t>(pendingBuffers_.size(), freeEntries);
   for (uint32_t i = 0; i < refillCount; i++) {
     refillBuffer(pendingBuffers_.pop());
   }

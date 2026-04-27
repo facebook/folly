@@ -167,10 +167,8 @@ constexpr auto kPassedTests = {
     "src/strings/escaped-single-quoted-string.json5",
     "src/strings/multi-line-string.json5",
     "src/strings/single-quoted-string.json5",
-};
-
-constexpr auto kFailedTests = {
-    // Numbers
+    "src/strings/unescaped-multi-line-string.txt",
+    // Numbers - octal/noctal
     "src/numbers/negative-noctal.js",
     "src/numbers/negative-octal.txt",
     "src/numbers/negative-zero-octal.txt",
@@ -181,8 +179,6 @@ constexpr auto kFailedTests = {
     "src/numbers/positive-octal.txt",
     "src/numbers/positive-zero-octal.txt",
     "src/numbers/zero-octal.txt",
-    // Strings
-    "src/strings/unescaped-multi-line-string.txt",
 };
 
 std::string getTestResource(std::string testPath) {
@@ -204,19 +200,6 @@ TEST(Json5Test, Parse) {
     } else {
       EXPECT_TRUE(ext == ".json" || ext == ".json5");
       testJson5ParseRoundtrip(getTestResource(p), true);
-    }
-  }
-
-  for (const auto& p : kFailedTests) {
-    auto ext = std::filesystem::path{p}.extension();
-    SCOPED_TRACE(p);
-
-    if (ext == ".txt" || ext == ".js") {
-      // Since this test is marked as failed, parser is expected to accept it.
-      EXPECT_NO_THROW(parseJson5(getTestResource(p)));
-    } else {
-      EXPECT_TRUE(ext == ".json" || ext == ".json5");
-      testJson5ParseRoundtrip(getTestResource(p), false);
     }
   }
 }

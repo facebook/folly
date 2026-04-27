@@ -110,6 +110,8 @@ SCHEMA: dict[str, dict[str, object]] = {
             "required_locales": OPTIONAL,
             "rust_version": OPTIONAL,
             "build_type": OPTIONAL,
+            "sccache": OPTIONAL,
+            "timeout_minutes": OPTIONAL,
         },
     },
     "crate.pathmap": {"optional_section": True},

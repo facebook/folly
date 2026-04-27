@@ -8,7 +8,6 @@ fbcode_target(
     _kind = cpp_unittest,
     name = "observer_test",
     srcs = ["ObserverTest.cpp"],
-    headers = [],
     labels = ["oss-broken"],
     deps = [
         "//folly:demangle",

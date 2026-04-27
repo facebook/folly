@@ -308,7 +308,7 @@ struct ShouldAssume32BitHash<
 // applying a bit mixer to the user-supplied hash.
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-#if FOLLY_X64 || FOLLY_AARCH64 || FOLLY_RISCV64
+#if FOLLY_X64 || FOLLY_AARCH64 || FOLLY_RISCV64 || FOLLY_WASM64
 // 64-bit
 template <typename Hasher, typename Key>
 std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {

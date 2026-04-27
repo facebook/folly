@@ -45,8 +45,9 @@ def cpp_flags():
             "DEFAULT": select({
                 "DEFAULT": ["-DFOLLY_MOBILE=1"],
                 "ovr_config//os:windows": [],
+                "ovr_config//project/folly/constraints:mobile[disabled]": [],
             }),
-            "ovr_config//build_mode:arvr_mode": select({
+            "ovr_config//build_mode:arvr_mode[enabled]": select({
                 "DEFAULT": ["-DFOLLY_MOBILE=1"],
                 "ovr_config//os:linux": [],
                 "ovr_config//os:macos": [],
@@ -156,13 +157,17 @@ def folly_xplat_library(
         platforms = DEFAULT_PLATFORMS
 
     # We use gflags on fbcode platforms, which don't mix well when mixing static
-    # and dynamic linking.
+    # and dynamic linking. Also disable for android host tests (robolectric on
+    # macOS) — same rationale: force_static causes multiple JNI dylibs to each
+    # statically link folly, producing duplicate gflag registrations that crash
+    # on macOS (macOS lacks Linux's flat namespace symbol deduplication).
     force_static = select({
         "DEFAULT": select({
             "DEFAULT": force_static,
+            "ovr_config//runtime/constraints:android-host-test": False,
             "ovr_config//runtime:fbcode": False,
         }),
-        "ovr_config//build_mode:arvr_mode": force_static,
+        "ovr_config//build_mode:arvr_mode[enabled]": force_static,
     })
 
     # Preserve lib_name when redirecting to maintain SONAME
@@ -235,28 +240,38 @@ def folly_xplat_cxx_test(
         name,
         srcs,
         raw_headers = [],
+        headers = [],
         deps = [],
         oncall = None,
         **kwargs):
-    # resources is cherry picked because some of the other kwargs
+    # resources and env are cherry picked because some of the other kwargs
     # have issues that need to be investigated.
     # e.g., Some args are duplicated. Some args cause TSAN errors.
     # TODO(T188948036): Fix xplat/folly:folly-futures-test and folly_xplat_cxx_test
     resources = kwargs.get("resources", [])
+    env = kwargs.get("env", None)
+    modifiers = kwargs.get("modifiers", None)
 
-    oncall_kwargs = {"oncall": oncall} if oncall != None else {}
+    extra_kwargs = {}
+    if oncall != None:
+        extra_kwargs["oncall"] = oncall
+    if env != None:
+        extra_kwargs["env"] = env
+    if modifiers != None:
+        extra_kwargs["modifiers"] = modifiers
 
     fb_xplat_cxx_test(
         name = name,
         srcs = srcs,
         raw_headers = raw_headers,
+        headers = headers,
         resources = resources,
         include_directories = _compute_include_directories(),
         deps = deps + [
             "//xplat/folly/test/common:test_main",
         ],
         platforms = (CXX,),
-        **oncall_kwargs
+        **extra_kwargs
     )
 
 def folly_xplat_cxx_binary(

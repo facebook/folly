@@ -518,7 +518,6 @@ folly_add_library(
     folly_demangle
     folly_file_util
     folly_glog
-    folly_lang_bits
     folly_likely
     folly_portability_gflags
     folly_portability_sockets
@@ -540,6 +539,7 @@ folly_add_library(
     folly_io_async_io_uring_zero_copy_buffer_pool
     folly_io_async_liburing
     folly_io_iobuf
+    folly_lang_bits
     folly_network_address
     folly_optional
     folly_portability_asm
@@ -562,8 +562,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_executor
     folly_io_async_async_base
-  EXTERNAL_DEPS
-    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -668,7 +666,7 @@ folly_add_library(
   HEADERS
     IoUringZeroCopyBufferPool.h
   DEPS
-    folly_container_fixed_capacity_ring_queue
+    folly_container_dynamic_ring_queue
     folly_conv
     folly_lang_align
     folly_portability_sys_mman

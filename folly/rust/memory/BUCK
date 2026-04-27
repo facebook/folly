@@ -1,11 +1,10 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs:rust_library.bzl", "rust_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
 
 oncall("rust_libraries")
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "memory-cpp",
     srcs = [
         "memory.cpp",
@@ -24,14 +23,14 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = rust_library,
+fb_dirsync_rule(
     name = "memory",
     srcs = [
         "lib.rs",
     ],
     cpp_deps = [":memory-cpp"],
     cxx_bridge = "lib.rs",
+    fbcode_rule = rust_library,
     deps = [
         "fbsource//third-party/rust:anyhow",
         "fbsource//third-party/rust:cxx",

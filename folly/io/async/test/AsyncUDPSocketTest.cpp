@@ -702,13 +702,13 @@ TEST_F(AsyncSocketIntegrationTest, PingPongPauseResumeListening) {
   startServer();
 
   // Exchange should not happen when paused.
-  server->pauseAccepting();
+  sevb.runInEventBaseThreadAndWait([&]() { server->pauseAccepting(); });
   EXPECT_FALSE(server->isAccepting());
   auto pausedClient = performPingPongTest(server->address(), folly::none);
   ASSERT_EQ(pausedClient->pongRecvd(), 0);
 
   // Exchange does occur after resuming.
-  server->resumeAccepting();
+  sevb.runInEventBaseThreadAndWait([&]() { server->resumeAccepting(); });
   EXPECT_TRUE(server->isAccepting());
   auto pingClient = performPingPongTest(server->address(), folly::none);
   ASSERT_GT(pingClient->pongRecvd(), 0);

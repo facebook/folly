@@ -18,9 +18,11 @@
 
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <utility>
 
 #include <glog/logging.h>
+#include <folly/Likely.h>
 #include <folly/lang/Bits.h>
 
 namespace folly {
@@ -32,11 +34,18 @@ namespace folly {
 template <typename T>
 class FixedCapacityRingQueue {
  public:
+  static constexpr uint32_t kMaxCapacity = 1u << 31;
+
   FixedCapacityRingQueue() = default;
 
-  explicit FixedCapacityRingQueue(uint32_t capacity)
-      : mask_(folly::nextPowTwo(capacity) - 1),
-        buf_(std::make_unique<T[]>(mask_ + 1)) {}
+  explicit FixedCapacityRingQueue(uint32_t capacity) {
+    if (capacity > kMaxCapacity) {
+      throw std::length_error(
+          "FixedCapacityRingQueue capacity exceeds maximum");
+    }
+    mask_ = folly::nextPowTwo(capacity) - 1;
+    buf_ = std::make_unique<T[]>(mask_ + 1);
+  }
 
   ~FixedCapacityRingQueue() = default;
 
@@ -44,22 +53,25 @@ class FixedCapacityRingQueue {
   FixedCapacityRingQueue& operator=(const FixedCapacityRingQueue&) = delete;
 
   FixedCapacityRingQueue(FixedCapacityRingQueue&& other) noexcept
-      : mask_(std::exchange(other.mask_, 0)),
+      : mask_(std::exchange(other.mask_, ~0u)),
         buf_(std::move(other.buf_)),
         head_(std::exchange(other.head_, 0)),
         tail_(std::exchange(other.tail_, 0)) {}
 
   FixedCapacityRingQueue& operator=(FixedCapacityRingQueue&& other) noexcept {
-    mask_ = std::exchange(other.mask_, 0);
+    mask_ = std::exchange(other.mask_, ~0u);
     buf_ = std::move(other.buf_);
     head_ = std::exchange(other.head_, 0);
     tail_ = std::exchange(other.tail_, 0);
     return *this;
   }
 
-  void push(T val) {
-    DCHECK(size() < capacity());
+  bool push(T val) {
+    if (FOLLY_UNLIKELY(size() >= capacity())) {
+      return false;
+    }
     buf_[tail_++ & mask_] = val;
+    return true;
   }
 
   T pop() {
@@ -69,10 +81,11 @@ class FixedCapacityRingQueue {
 
   uint32_t size() const { return tail_ - head_; }
   uint32_t capacity() const { return mask_ + 1; }
+  uint32_t max_size() const noexcept { return kMaxCapacity; }
   bool empty() const { return head_ == tail_; }
 
  private:
-  uint32_t mask_{0};
+  uint32_t mask_{~0u};
   std::unique_ptr<T[]> buf_{nullptr};
   uint32_t head_{0};
   uint32_t tail_{0};

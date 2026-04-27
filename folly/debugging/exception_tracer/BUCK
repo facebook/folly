@@ -28,7 +28,7 @@ fb_dirsync_cpp_library(
         ":stacktrace",
         "//folly:portability",
         "//folly:string",
-        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/debugging/symbolizer:symbolizer",
     ],
     exported_deps = [
         "//folly/portability:config",
@@ -69,7 +69,7 @@ fb_dirsync_cpp_library(
     deps = [
         ":exception_tracer_callbacks",
         ":smart_exception_tracer_singleton",
-        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/debugging/symbolizer:symbolizer",
     ],
 )
 
@@ -98,7 +98,7 @@ fb_dirsync_cpp_library(
     apple_sdks = (IOS, MACOSX),
     use_raw_headers = True,
     deps = [
-        "//folly/experimental/symbolizer:stack_trace",
+        "//folly/debugging/symbolizer:stack_trace",
     ],
     exported_deps = [
         "//folly:portability",
@@ -114,7 +114,7 @@ fb_dirsync_cpp_library(
         "//folly:range",
         "//folly:singleton_thread_local",
         "//folly:synchronized",
-        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/debugging/symbolizer:symbolizer",
         "//folly/hash:spooky_hash_v2",
         "//folly/synchronization:rw_spin_lock",
     ],

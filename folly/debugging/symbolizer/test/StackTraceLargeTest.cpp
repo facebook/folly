@@ -19,11 +19,13 @@
 // eh_sdata8_large.lds places .eh_frame_hdr at 0x200000000 to force
 // DW_EH_PE_sdata8, exercising libunwind's sdata8 binary search path.
 
+#include <folly/debugging/symbolizer/Elf.h>
 #include <folly/debugging/symbolizer/StackTrace.h>
 #include <folly/debugging/symbolizer/Symbolizer.h>
 #include <folly/portability/GTest.h>
 
 #include <link.h>
+#include <cstring>
 #include <glog/logging.h>
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
@@ -56,6 +58,84 @@ int ehFrameHdrCallback(struct dl_phdr_info* info, size_t, void* data) {
       return 1;
     }
   }
+  return 0;
+}
+
+void skipLEB128(const uint8_t*& p) {
+  while (*p & 0x80) {
+    p++;
+  }
+  p++;
+}
+
+size_t dwEhPeSize(uint8_t enc) {
+  switch (enc & 0x0f) {
+    case 0x02: // udata2 / sdata2
+    case 0x0a:
+      return 2;
+    case 0x03: // udata4 / sdata4
+    case 0x0b:
+      return 4;
+    case 0x04: // udata8 / sdata8
+    case 0x0c:
+      return 8;
+    default:
+      return 0;
+  }
+}
+
+// Parse a CIE record from .eh_frame and return the FDE pointer encoding
+// byte ('R' augmentation). Returns 0 if no 'R' augmentation is present.
+uint8_t parseCieFdeEncoding(const uint8_t* p, size_t len) {
+  const uint8_t* end = p + len;
+
+  uint8_t version = *p++;
+
+  const char* augStr = reinterpret_cast<const char*>(p);
+  p += std::strlen(augStr) + 1;
+
+  // code_alignment_factor (ULEB128)
+  skipLEB128(p);
+  // data_alignment_factor (SLEB128 — same byte-level skip)
+  skipLEB128(p);
+  // return_address_register
+  if (version == 1) {
+    p++;
+  } else {
+    skipLEB128(p);
+  }
+
+  if (augStr[0] != 'z') {
+    return 0;
+  }
+
+  // augmentation_data_length (ULEB128)
+  skipLEB128(p);
+
+  // Walk augmentation string characters (after 'z') to locate 'R'
+  for (const char* c = augStr + 1; *c && p < end; ++c) {
+    switch (*c) {
+      case 'R':
+        return *p;
+      case 'P': {
+        uint8_t enc = *p++;
+        size_t sz = dwEhPeSize(enc);
+        if (sz == 0) {
+          return 0;
+        }
+        p += sz;
+        break;
+      }
+      case 'L':
+        p++;
+        break;
+      case 'S':
+        break;
+      default:
+        return 0;
+    }
+  }
+
   return 0;
 }
 
@@ -132,6 +212,71 @@ TEST(StackTraceLargeTest, Sdata8Encoding) {
   LOG(INFO) << ".eh_frame_hdr table_enc=0x" << std::hex
             << static_cast<int>(info.tableEnc)
             << " (DW_EH_PE_datarel | DW_EH_PE_sdata8) — confirmed.";
+}
+
+TEST(StackTraceLargeTest, EhFrameCieSdata8) {
+  ElfFile elf;
+  auto res = elf.openNoThrow("/proc/self/exe");
+  ASSERT_EQ(res, ElfFile::kSuccess)
+      << "Failed to open /proc/self/exe: " << (res.msg ? res.msg : "unknown");
+
+  const auto* shdr = elf.getSectionByName(".eh_frame");
+  ASSERT_NE(shdr, nullptr) << ".eh_frame section not found in /proc/self/exe";
+
+  auto body = elf.getSectionBody(*shdr);
+  const auto* data = reinterpret_cast<const uint8_t*>(body.data());
+  size_t ehFrameSize = body.size();
+  ASSERT_GT(ehFrameSize, 0u);
+
+  size_t offset = 0;
+  int cieCount = 0;
+
+  while (offset + 4 <= ehFrameSize) {
+    const uint8_t* entry = data + offset;
+
+    uint32_t length;
+    std::memcpy(&length, entry, 4);
+    if (length == 0) {
+      break;
+    }
+
+    const uint8_t* entryData;
+    size_t entrySize;
+    if (length == 0xFFFFFFFF) {
+      uint64_t extLength;
+      std::memcpy(&extLength, entry + 4, 8);
+      entryData = entry + 12;
+      entrySize = static_cast<size_t>(extLength);
+      offset += 12 + entrySize;
+    } else {
+      entryData = entry + 4;
+      entrySize = length;
+      offset += 4 + entrySize;
+    }
+
+    // CIE_id: 0 for CIE, non-zero offset for FDE
+    uint32_t cieId;
+    std::memcpy(&cieId, entryData, 4);
+    if (cieId != 0) {
+      continue;
+    }
+
+    uint8_t fdeEnc = parseCieFdeEncoding(entryData + 4, entrySize - 4);
+    if (fdeEnc == 0) {
+      continue;
+    }
+
+    uint8_t dataFormat = fdeEnc & 0x0f;
+    EXPECT_EQ(dataFormat, kDwEhPeSdata8)
+        << "CIE at .eh_frame offset " << (entry - data)
+        << " has FDE pointer encoding 0x" << std::hex
+        << static_cast<int>(fdeEnc) << ", expected sdata8 (low nibble 0x0c)";
+    cieCount++;
+  }
+
+  EXPECT_GT(cieCount, 0) << "No CIEs with 'R' augmentation found in .eh_frame";
+  LOG(INFO) << "Verified " << cieCount
+            << " CIE(s) in .eh_frame all use sdata8 FDE pointer encoding.";
 }
 
 TEST(StackTraceLargeTest, StackTraceWithSdata8) {

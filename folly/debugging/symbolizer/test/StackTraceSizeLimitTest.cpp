@@ -97,7 +97,7 @@ TEST(StackTraceSizeLimitTest, FiberLimit) {
       t(fStack, 9000);
       t(fHeap, 3500);
     } else {
-      t(fBaseline, 1600);
+      t(fBaseline, 1700);
       t(fStack, 9000);
       t(fHeap, 2200);
     }

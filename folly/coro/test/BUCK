@@ -1,11 +1,9 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "async_generator_bench",
     srcs = ["AsyncGeneratorBenchmark.cpp"],
     headers = [],
@@ -21,8 +19,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "async_stack_test",
     srcs = [
         "AsyncStackTest.cpp",
@@ -39,8 +36,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "value_or_error_test",
     srcs = ["ValueOrErrorTest.cpp"],
     deps = [
@@ -54,8 +50,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "blocking_wait_bench",
     srcs = ["BlockingWaitBenchmark.cpp"],
     headers = [],
@@ -67,8 +62,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "collect_all_benchmark",
     srcs = ["CollectAllBenchmark.cpp"],
     headers = [],
@@ -83,8 +77,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "collect_all_try_benchmark",
     srcs = ["CollectAllTryBenchmark.cpp"],
     headers = [],
@@ -102,8 +95,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "coro_benchmark_allocator",
     srcs = ["CoroBenchmarkAllocator.cpp"],
     headers = [],
@@ -113,8 +105,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "coro_benchmark_nrvo",
     srcs = ["CoroBenchmarkNRVO.cpp"],
     headers = [],
@@ -124,8 +115,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "async_generator_test",
     srcs = ["AsyncGeneratorTest.cpp"],
     deps = [
@@ -149,8 +139,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "coro_test",
     srcs = [
         "AccumulateTest.cpp",
@@ -236,8 +225,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "coroutine_test",
     srcs = ["CoroutineTest.cpp"],
     deps = [
@@ -247,8 +235,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "error_test",
     srcs = [
         "ErrorTest.cpp",
@@ -264,8 +251,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "generator_test",
     srcs = ["GeneratorTest.cpp"],
     headers = [],
@@ -277,8 +263,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "gmock_helpers_test",
     srcs = [
         "GmockHelpersTest.cpp",
@@ -295,8 +280,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "gtest_helpers_test",
     srcs = [
         "GtestHelpersTest.cpp",
@@ -308,8 +292,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "value_or_fatal_test",
     srcs = ["ValueOrFatalTest.cpp"],
     deps = [
@@ -322,8 +305,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "with_async_stack_test",
     srcs = ["WithAsyncStackTest.cpp"],
     deps = [
@@ -335,8 +317,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "promise_benchmark",
     srcs = ["PromiseBenchmark.cpp"],
     headers = [],
@@ -352,8 +333,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "shared_mutex_benchmark",
     srcs = ["SharedMutexBenchmark.cpp"],
     deps = [
@@ -367,8 +347,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "request_context_test",
     srcs = ["RequestContextTest.cpp"],
     deps = [
@@ -384,8 +363,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "retry_test",
     srcs = ["RetryTest.cpp"],
     headers = [],
@@ -399,8 +377,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "serial_queue_runner_test",
     srcs = ["SerialQueueRunnerTest.cpp"],
     deps = [
@@ -411,8 +388,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "shared_promise_test",
     srcs = [
         "SharedPromiseTest.cpp",
@@ -427,8 +403,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "sleep_test",
     srcs = [
         "SleepTest.cpp",
@@ -444,8 +419,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "suspended_stack_test",
     srcs = [
         "SuspendedStackTest.cpp",
@@ -462,8 +436,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "synchronized_test",
     srcs = ["SynchronizedTest.cpp"],
     deps = [
@@ -478,8 +451,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "task_bench",
     srcs = ["TaskBenchmark.cpp"],
     headers = [],
@@ -492,8 +464,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "task_wrapper_test",
     srcs = ["TaskWrapperTest.cpp"],
     deps = [
@@ -504,8 +475,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "RustAdaptorsTest",
     srcs = [
         "RustAdaptorsTest.cpp",
@@ -521,8 +491,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "PromiseTest",
     srcs = [
         "PromiseTest.cpp",

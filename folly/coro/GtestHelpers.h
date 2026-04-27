@@ -136,7 +136,12 @@ inline auto gtestLogCurrentException(Out&& out) {
       folly::coro::Task<void>,                        \
       CO_UNWRAP_BODY)
 
-#define CO_TEST_P(test_suite_name, test_name)                                  \
+/**
+ * Base macro for TEST_P() coro tests with configurable body execution.
+ * The unwrap_body parameter controls how co_TestBody() is executed,
+ * similar to how CO_TEST_ works for CO_TEST / CO_TEST_F.
+ */
+#define CO_TEST_P_(test_suite_name, test_name, unwrap_body)                    \
   class GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)                     \
       : public test_suite_name {                                               \
    public:                                                                     \
@@ -176,15 +181,16 @@ inline auto gtestLogCurrentException(Out&& out) {
       test_suite_name, test_name)::gtest_registering_dummy_ =                  \
       GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)::AddToRegistry();     \
   void GTEST_TEST_CLASS_NAME_(test_suite_name, test_name)::TestBody() {        \
-    try {                                                                      \
-      folly::coro::blockingWait(co_TestBody());                                \
-    } catch (...) {                                                            \
-      folly::detail::gtestLogCurrentException(GTEST_LOG_(ERROR));              \
-      throw;                                                                   \
-    }                                                                          \
+    unwrap_body(co_TestBody);                                                  \
   }                                                                            \
   folly::coro::Task<void> GTEST_TEST_CLASS_NAME_(                              \
       test_suite_name, test_name)::co_TestBody()
+
+/**
+ * TEST_P() for coro tests.
+ */
+#define CO_TEST_P(test_suite_name, test_name) \
+  CO_TEST_P_(test_suite_name, test_name, CO_UNWRAP_BODY)
 
 #define CO_TYPED_TEST(CaseName, TestName)                                     \
   static_assert(                                                              \
@@ -227,36 +233,42 @@ inline auto gtestLogCurrentException(Out&& out) {
   folly::coro::Task<void> GTEST_TEST_CLASS_NAME_(                             \
       CaseName, TestName)<gtest_TypeParam_>::co_TestBody()
 
-#define CO_TYPED_TEST_P(SuiteName, TestName)                      \
-  namespace GTEST_SUITE_NAMESPACE_(SuiteName) {                   \
-  template <typename gtest_TypeParam_>                            \
-  class TestName : public SuiteName<gtest_TypeParam_> {           \
-   private:                                                       \
-    typedef SuiteName<gtest_TypeParam_> TestFixture;              \
-    typedef gtest_TypeParam_ TypeParam;                           \
-    void TestBody() override;                                     \
-    folly::coro::Task<> co_TestBody();                            \
-  };                                                              \
-  [[maybe_unused]] static bool gtest_##TestName##_defined_ =      \
-      GTEST_TYPED_TEST_SUITE_P_STATE_(SuiteName).AddTestName(     \
-          __FILE__,                                               \
-          __LINE__,                                               \
-          GTEST_STRINGIFY_(SuiteName),                            \
-          GTEST_STRINGIFY_(TestName));                            \
-  }                                                               \
-  template <typename gtest_TypeParam_>                            \
-  void GTEST_SUITE_NAMESPACE_(                                    \
-      SuiteName)::TestName<gtest_TypeParam_>::TestBody() {        \
-    try {                                                         \
-      folly::coro::blockingWait(co_TestBody());                   \
-    } catch (...) {                                               \
-      folly::detail::gtestLogCurrentException(GTEST_LOG_(ERROR)); \
-      throw;                                                      \
-    }                                                             \
-  }                                                               \
-  template <typename gtest_TypeParam_>                            \
-  folly::coro::Task<void> GTEST_SUITE_NAMESPACE_(                 \
+/**
+ * Base macro for TYPED_TEST_P() coro tests with configurable body execution.
+ * The unwrap_body parameter controls how co_TestBody() is executed,
+ * similar to how CO_TEST_ works for CO_TEST / CO_TEST_F.
+ */
+#define CO_TYPED_TEST_P_(SuiteName, TestName, unwrap_body)    \
+  namespace GTEST_SUITE_NAMESPACE_(SuiteName) {               \
+  template <typename gtest_TypeParam_>                        \
+  class TestName : public SuiteName<gtest_TypeParam_> {       \
+   private:                                                   \
+    typedef SuiteName<gtest_TypeParam_> TestFixture;          \
+    typedef gtest_TypeParam_ TypeParam;                       \
+    void TestBody() override;                                 \
+    folly::coro::Task<> co_TestBody();                        \
+  };                                                          \
+  [[maybe_unused]] static bool gtest_##TestName##_defined_ =  \
+      GTEST_TYPED_TEST_SUITE_P_STATE_(SuiteName).AddTestName( \
+          __FILE__,                                           \
+          __LINE__,                                           \
+          GTEST_STRINGIFY_(SuiteName),                        \
+          GTEST_STRINGIFY_(TestName));                        \
+  }                                                           \
+  template <typename gtest_TypeParam_>                        \
+  void GTEST_SUITE_NAMESPACE_(                                \
+      SuiteName)::TestName<gtest_TypeParam_>::TestBody() {    \
+    unwrap_body(co_TestBody);                                 \
+  }                                                           \
+  template <typename gtest_TypeParam_>                        \
+  folly::coro::Task<void> GTEST_SUITE_NAMESPACE_(             \
       SuiteName)::TestName<gtest_TypeParam_>::co_TestBody()
+
+/**
+ * TYPED_TEST_P() for coro tests.
+ */
+#define CO_TYPED_TEST_P(SuiteName, TestName) \
+  CO_TYPED_TEST_P_(SuiteName, TestName, CO_UNWRAP_BODY)
 
 /**
  * Coroutine versions of GTests's Assertion predicate macros. Use these in place

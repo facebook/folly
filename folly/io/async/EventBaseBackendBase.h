@@ -41,7 +41,7 @@ class EventBaseEvent {
   EventBaseEvent(const EventBaseEvent&) = delete;
   EventBaseEvent& operator=(const EventBaseEvent&) = delete;
 
-  typedef void (*FreeFunction)(void* userData);
+  using FreeFunction = void (*)(void* userData);
 
   const struct event* getEvent() const { return &event_; }
 

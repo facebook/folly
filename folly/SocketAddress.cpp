@@ -434,6 +434,9 @@ bool SocketAddress::isFamilyInet() const {
 }
 
 void SocketAddress::getAddressStr(char* buf, size_t buflen) const {
+  if (buflen == 0) {
+    return;
+  }
   auto ret = getAddressStr();
   size_t len = std::min(buflen - 1, ret.size());
   memcpy(buf, ret.data(), len);

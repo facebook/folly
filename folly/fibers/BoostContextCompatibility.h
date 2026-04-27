@@ -138,6 +138,18 @@ class FiberImpl {
 
 #include <boost/context/detail/fcontext.hpp>
 
+#if defined(__clang__)
+#define FOLLY_DETAIL_DISABLE_TAIL_CALLS __attribute__((disable_tail_calls))
+#define FOLLY_DETAIL_TAIL_CALLS_CAN_BE_DISABLED 1
+#elif defined(__GNUC__)
+#define FOLLY_DETAIL_DISABLE_TAIL_CALLS \
+  __attribute__((optimize("no-optimize-sibling-calls")))
+#define FOLLY_DETAIL_TAIL_CALLS_CAN_BE_DISABLED 1
+#else
+#define FOLLY_DETAIL_DISABLE_TAIL_CALLS
+#define FOLLY_DETAIL_TAIL_CALLS_CAN_BE_DISABLED 0
+#endif
+
 namespace folly {
 namespace fibers {
 
@@ -151,7 +163,7 @@ class FiberImpl {
       folly::Function<void()> func, unsigned char* stackLimit, size_t stackSize)
       : func_(std::move(func)) {
     auto stackBase = stackLimit + stackSize;
-    stackBase_ = stackBase;
+    entryFrameBase_ = nullptr;
     fiberContext_ =
         boost::context::detail::make_fcontext(stackBase, stackSize, &fiberFunc);
   }
@@ -173,9 +185,9 @@ class FiberImpl {
   }
 
   void* getStackPointer() const {
-    if constexpr (kIsLinux) {
+    if constexpr (kIsLinux || kIsApple) {
       if constexpr (kIsArchAmd64) {
-        // RBP at offset 0x30 (index 6) in the x86_64 fcontext layout.
+        // RBP at offset 0x30 (index 6) in the SysV x86_64 fcontext layout.
         return reinterpret_cast<void**>(fiberContext_)[6];
       } else if constexpr (kIsArchAArch64) {
         // FP (x29) at offset 0x90 (index 18) in the arm64 fcontext layout.
@@ -186,38 +198,48 @@ class FiberImpl {
   }
 
  private:
-  static void fiberFunc(boost::context::detail::transfer_t transfer) {
+  static FOLLY_NOINLINE FOLLY_DETAIL_DISABLE_TAIL_CALLS void fiberFunc(
+      boost::context::detail::transfer_t transfer) {
     auto fiberImpl = reinterpret_cast<FiberImpl*>(transfer.data);
     fiberImpl->mainContext_ = transfer.fctx;
+#if FOLLY_HAS_BUILTIN(__builtin_frame_address) && \
+    FOLLY_DETAIL_TAIL_CALLS_CAN_BE_DISABLED
+    fiberImpl->entryFrameBase_ = __builtin_frame_address(0);
+#endif
     fiberImpl->fixStackUnwinding();
     fiberImpl->func_();
   }
 
   void fixStackUnwinding() {
-    if (kIsLinux) {
+    if (kIsLinux || kIsApple) {
       // Stitch main context stack and fiber stack so that frame-pointer-based
-      // stack walkers (e.g. jemalloc prof_backtrace_impl) can terminate
-      // cleanly at the fiber boundary.
-      auto stackBase = reinterpret_cast<void**>(stackBase_);
+      // stack walkers can terminate cleanly at the fiber boundary on the
+      // ELF and Mach-O fcontext backends.
+      auto frameBase = reinterpret_cast<void**>(entryFrameBase_);
+      if (frameBase == nullptr) {
+        return;
+      }
       auto mainContext = reinterpret_cast<void**>(mainContext_);
       if constexpr (kIsArchAmd64) {
         // Extract RBP and RIP from main context (offsets 6 and 7).
-        stackBase[-2] = mainContext[6];
-        stackBase[-1] = mainContext[7];
+        frameBase[0] = mainContext[6];
+        frameBase[1] = mainContext[7];
       } else if constexpr (kIsArchAArch64) {
         // Extract FP (x29) and LR (x30) from main context
         // (offsets 0x90 and 0x98 in the fcontext layout).
-        stackBase[-2] = mainContext[18];
-        stackBase[-1] = mainContext[19];
+        frameBase[0] = mainContext[18];
+        frameBase[1] = mainContext[19];
       }
     }
   }
 
-  unsigned char* stackBase_;
+  void* entryFrameBase_;
   folly::Function<void()> func_;
   FiberContext fiberContext_;
   MainContext mainContext_;
 };
 } // namespace fibers
 } // namespace folly
-#endif
+
+#undef FOLLY_DETAIL_TAIL_CALLS_CAN_BE_DISABLED
+#undef FOLLY_DETAIL_DISABLE_TAIL_CALLS

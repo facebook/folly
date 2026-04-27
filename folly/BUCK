@@ -294,7 +294,7 @@ non_fbcode_target(
         "//xplat/folly/memory:sanitize_leak",
     ] + select({
         "DEFAULT": [],
-        "ovr_config//os:linux": ["//xplat/folly/experimental/symbolizer:symbolizer"],
+        "ovr_config//os:linux": ["//xplat/folly/debugging/symbolizer:symbolizer"],
     }),
 )
 
@@ -372,7 +372,10 @@ fb_dirsync_cpp_library(
         ":scope_guard",
         "//folly/portability:fmt_compile",
         "//folly/portability:sys_file",
-    ],
+    ] + select({
+        "DEFAULT": ["//folly/portability:filesystem"],
+        "ovr_config//os:windows": [],
+    }),
     exported_deps = [
         ":exception_wrapper",
         ":expected",
@@ -409,40 +412,38 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "executor",
-    srcs = [
-        "Executor.cpp",
+    srcs = ["Executor.cpp"],
+    headers = [
+        "Executor.h",
     ],
     force_static = select({
         "DEFAULT": False,
-        "ovr_config//build_mode:arvr_mode": select({
+        "ovr_config//build_mode:arvr_mode[enabled]": select({
             "DEFAULT": False,
             "ovr_config//os:macos": True,
         }),
     }),
-    raw_headers = [
-        "Executor.h",
+    use_raw_headers = True,
+    deps = [
+        ":exception_string",
+        ":portability",
     ],
     exported_deps = [
-        "//third-party/glog:glog",
-        "//xplat/folly:exception_string",
-        "//xplat/folly:function",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:utility",
-        "//xplat/folly/lang:exception",
+        "fbsource//third-party/glog:glog",
+        ":function",
+        ":optional",
+        ":range",
+        ":utility",
+        "//folly/lang:exception",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "subprocess",
-    srcs = [
-        "Subprocess.cpp",
-    ],
+    srcs = ["Subprocess.cpp"],
+    headers = ["Subprocess.h"],
     cxx_deps = [
         "//xplat/third-party/linker_lib:dl",
     ],
@@ -452,24 +453,21 @@ non_fbcode_target(
     fbandroid_use_host_platform = True,
     force_static = False,
     platforms = (CXX, ANDROID, APPLE),
-    raw_headers = [
-        "Subprocess.h",
-    ],
+    use_raw_headers = True,
     deps = [
-        "fbsource//xplat/folly/portability:dirent",
         ":conv",
         ":scope_guard",
         ":string",
-        "//third-party/boost:boost_range",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/logging:logging",
-        "//xplat/folly/portability:fcntl",
-        "//xplat/folly/portability:sockets",
-        "//xplat/folly/portability:stdlib",
-        "//xplat/folly/portability:sys_syscall",
-        "//xplat/folly/portability:unistd",
-        "//xplat/folly/system:at_fork",
-        "//xplat/folly/system:shell",
+        "//folly/lang:assume",
+        "//folly/logging:logging",
+        "//folly/portability:dirent",
+        "//folly/portability:fcntl",
+        "//folly/portability:sockets",
+        "//folly/portability:stdlib",
+        "//folly/portability:sys_syscall",
+        "//folly/portability:unistd",
+        "//folly/system:at_fork",
+        "//folly/system:shell",
     ],
     exported_deps = [
         ":exception",
@@ -480,12 +478,18 @@ non_fbcode_target(
         ":optional",
         ":portability",
         ":range",
-        "//third-party/boost:boost",
-        "//third-party/boost:boost_container",
-        "//xplat/folly/container:span",
-        "//xplat/folly/gen:string",
-        "//xplat/folly/io:iobuf",
-        "//xplat/folly/portability:sys_resource",
+        "//folly/container:span",
+        "//folly/gen:string",
+        "//folly/io:iobuf",
+        "//folly/portability:sys_resource",
+    ],
+    external_deps = [
+        ("boost", None, "boost_range"),
+        ("glibc", None, "dl"),
+    ],
+    exported_external_deps = [
+        "boost",
+        ("boost", None, "boost_container"),
     ],
 )
 
@@ -671,91 +675,53 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
-    name = "conv",
-    srcs = [
-        "Conv.cpp",
-    ],
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    export_header_unit = "include",
-    export_header_unit_filter = ["folly/Conv.h"],
-    fbobjc_complete_nullability = True,
-    raw_headers = [
-        "Conv.h",
-    ],
-    deps = [
-        "fbsource//third-party/fast_float:fast_float",
-        "//xplat/folly/lang:safe_assert",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/portability:math",
-        "//third-party/double-conversion:double-conversion",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:demangle",
-        "//xplat/folly:expected",
-        "//xplat/folly:fbstring",
-        "//xplat/folly:likely",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:traits",
-        "//xplat/folly:unit",
-        "//xplat/folly:utility",
-        "//xplat/folly/lang:exception",
-        "//xplat/folly/lang:pretty",
-        "//xplat/folly/lang:to_ascii",
-    ],
-)
-
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "dynamic",
-    apple_sdks = DEFAULT_APPLE_SDKS,
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
-    export_header_unit = "include",
-    export_header_unit_filter = [".*"],
-    fbobjc_complete_nullability = True,
-    raw_headers = [
+    headers = [
         "DynamicConverter.h",
         "dynamic.h",
         "dynamic-inl.h",
         "json.h",
     ],
+    apple_sdks = DEFAULT_APPLE_SDKS,
+    compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
+    fbobjc_complete_nullability = True,
+    use_raw_headers = True,
     deps = [
-        "//xplat/folly:utility",
+        "fbsource//third-party/glog:glog",
+        ":utility",
     ],
     exported_deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "fbsource//xplat/folly/portability:constexpr",
-        "//third-party/boost:boost",
-        "//third-party/boost:boost_algorithm",
-        "//third-party/glog:glog",
-        "//xplat/folly:c_portability",
-        "//xplat/folly:conv",
-        "//xplat/folly:expected",
-        "//xplat/folly:format",
-        "//xplat/folly:function",
-        "//xplat/folly:json_pointer",
-        "//xplat/folly:likely",
-        "//xplat/folly:optional",
-        "//xplat/folly:portability",
-        "//xplat/folly:range",
-        "//xplat/folly:string",
-        "//xplat/folly:traits",
-        "//xplat/folly:unicode",
-        "//xplat/folly:utility",
-        "//xplat/folly/container:access",
-        "//xplat/folly/container:enumerate",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/detail:iterators",
-        "//xplat/folly/json:dynamic",
-        "//xplat/folly/lang:assume",
-        "//xplat/folly/lang:bits",
-        "//xplat/folly/lang:exception",
+        ":c_portability",
+        ":conv",
+        ":expected",
+        ":format",
+        ":function",
+        ":json_pointer",
+        ":likely",
+        ":optional",
+        ":portability",
+        ":range",
+        ":string",
+        ":traits",
+        ":unicode",
+        ":utility",
+        "//folly/container:access",
+        "//folly/container:enumerate",
+        "//folly/container:f14_hash",
+        "//folly/detail:iterators",
+        "//folly/hash:hash",
+        "//folly/json:dynamic",
+        "//folly/lang:assume",
+        "//folly/lang:bits",
+        "//folly/lang:exception",
+        "//folly/portability:constexpr",
+    ],
+    external_deps = [
+        "boost",
+        ("boost", None, "boost_algorithm"),
     ],
 )
 
@@ -824,15 +790,24 @@ fb_dirsync_cpp_library(
     exported_deps = [":portability"],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "config",
+    # @fb-only[end= ]: headers = ["folly-config.h"],
     apple_sdks = ALL_APPLE_SDKS,
     exported_preprocessor_flags = CPPFLAGS,
     fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
-    raw_headers = [
-        "folly-config.h",
-    ],
+    propagated_pp_flags = select({
+        "DEFAULT": [],
+        # The `liblz4.so` in the default conda channel doesn't *publicly* export
+        # symbols used for fast reset support (although they are availabel as
+        # "internal" symbols and would link statically).
+        "ovr_config//distro:conda": [
+            "-DFOLLY_USE_LZ4_FAST_RESET=0",
+        ],
+    }),
+    use_raw_headers = True,
+    headers = ["//:folly-config.h"], # @oss-only
+    labels = ["oss_dependency"], # @oss-only
 )
 
 fb_dirsync_cpp_library(
@@ -1188,6 +1163,17 @@ fb_dirsync_cpp_library(
         "//folly/portability:sys_mman",
         "//folly/portability:unistd",
         "//folly/synchronization:atomic_struct",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "get_ref_util",
+    headers = [
+        "GetRefUtil.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly:cpp_attributes",
     ],
 )
 
@@ -2300,17 +2286,17 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "utf8_string_icu",
-    apple_sdks = (IOS, MACOSX),
-    platforms = (CXX, ANDROID, APPLE),
-    raw_headers = [
+    headers = [
         "UTF8String.h",
     ],
+    apple_sdks = (IOS, MACOSX),
+    platforms = (CXX, ANDROID, APPLE),
+    use_raw_headers = True,
     deps = [
+        "fbsource//third-party/boost:boost_regex_icu",
         ":range",
-        "//third-party/boost:boost_regex_icu",
     ],
 )
 
@@ -2527,29 +2513,21 @@ fb_dirsync_cpp_library(
 ######################################################################
 # Libraries
 
-fbcode_target(
-    _kind = cpp_library,
-    name = "config",
-    # @fb-only[end= ]: headers = ["folly-config.h"],
-    propagated_pp_flags = select({
-        "DEFAULT": [],
-        # The `liblz4.so` in the default conda channel doesn't *publicly* export
-        # symbols used for fast reset support (although they are availabel as
-        # "internal" symbols and would link statically).
-        "ovr_config//distro:conda": [
-            "-DFOLLY_USE_LZ4_FAST_RESET=0",
-        ],
-    }),
-    headers = ["//:folly-config.h"], # @oss-only
-    labels = ["oss_dependency"], # @oss-only
-)
-
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "conv",
-    srcs = ["Conv.cpp"],
+    srcs = [
+        "Conv.cpp",
+    ],
     headers = ["Conv.h"],
+    export_header_unit = "include",
+    export_header_unit_filter = ["folly/Conv.h"],
+    fbobjc_complete_nullability = True,
     undefined_symbols = True,  # TODO(T23121628): fix deps and remove
+    use_export_header_unit = True,
+    use_raw_headers = True,
+    xplat_compiler_flags = [
+        "-fno-omit-frame-pointer",
+    ],
     deps = [
         "fbsource//third-party/fast_float:fast_float",
         "//folly/lang:safe_assert",
@@ -2572,41 +2550,6 @@ fbcode_target(
     ],
     exported_external_deps = [
         "double_conversion",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "dynamic",
-    headers = [
-        "DynamicConverter.h",
-        "dynamic.h",
-        "dynamic-inl.h",
-        "json.h",
-    ],
-    exported_deps = [
-        "//folly/json:dynamic",
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "executor",
-    srcs = ["Executor.cpp"],
-    headers = [
-        "Executor.h",
-    ],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        ":exception_string",
-        ":portability",
-    ],
-    exported_deps = [
-        ":function",
-        ":optional",
-        ":range",
-        ":utility",
-        "//folly/lang:exception",
     ],
 )
 
@@ -2803,7 +2746,7 @@ fbcode_target(
         "fbsource//third-party/fmt:fmt",
         ":demangle",
         ":scope_guard",
-        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/debugging/symbolizer:symbolizer",
         "//folly/lang:safe_assert",
         "//folly/portability:config",
         "//folly/portability:fmt_compile",
@@ -2828,50 +2771,6 @@ fbcode_target(
     external_deps = [
         ("glibc", None, "dl"),
         ("glibc", None, "rt"),
-    ],
-)
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "subprocess",
-    srcs = ["Subprocess.cpp"],
-    headers = ["Subprocess.h"],
-    deps = [
-        ":conv",
-        ":scope_guard",
-        ":string",
-        "//folly/lang:assume",
-        "//folly/logging:logging",
-        "//folly/portability:dirent",
-        "//folly/portability:fcntl",
-        "//folly/portability:sockets",
-        "//folly/portability:stdlib",
-        "//folly/portability:sys_syscall",
-        "//folly/portability:unistd",
-        "//folly/system:at_fork",
-        "//folly/system:shell",
-    ],
-    exported_deps = [
-        ":exception",
-        ":file",
-        ":file_util",
-        ":function",
-        ":map_util",
-        ":optional",
-        ":portability",
-        ":range",
-        "//folly/container:span",
-        "//folly/gen:string",
-        "//folly/io:iobuf",
-        "//folly/portability:sys_resource",
-    ],
-    external_deps = [
-        ("boost", None, "boost_range"),
-        ("glibc", None, "dl"),
-    ],
-    exported_external_deps = [
-        "boost",
-        ("boost", None, "boost_container"),
     ],
 )
 

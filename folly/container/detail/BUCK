@@ -4,7 +4,7 @@ load(
     "FBANDROID_CPPFLAGS",
 )
 
-oncall("ios_app_infra")
+oncall("fbcode_entropy_wardens_folly")
 
 fb_dirsync_cpp_library(
     name = "bit_iterator_detail",

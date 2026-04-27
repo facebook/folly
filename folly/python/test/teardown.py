@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pyre-unsafe
-
 import asyncio
 import unittest
 from sys import platform
@@ -40,11 +38,11 @@ class Teardown(IsolatedAsyncioTestCase):
     objects are destroyed.
     """
 
-    def test_fiber_manager_tear_down(self):
+    def test_fiber_manager_tear_down(self) -> None:
         simplebridge.get_value_x5_semifuture(1)
         simplebridge.get_value_x5_fibers(1)
 
-    def test_drive_on_teardown(self):
+    def test_drive_on_teardown(self) -> None:
         """
         A test to ensure that any pending keep-alives are respected when an
         AsyncioExecutor instance is dropped

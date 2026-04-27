@@ -1,11 +1,11 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "channel_processor_test",
     srcs = ["ChannelProcessorTest.cpp"],
     deps = [
@@ -15,29 +15,27 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "channel_test",
     srcs = ["ChannelTest.cpp"],
     labels = ["slow"],
     supports_static_listing = False,
     deps = [
+        ":channel_test_util",
         "//folly/channels:channel",
-        "//folly/channels/test:channel_test_util",
         "//folly/coro:blocking_wait",
         "//folly/executors:manual_executor",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "fanout_channel_test",
     srcs = ["FanoutChannelTest.cpp"],
     deps = [
+        ":channel_test_util",
         "//folly/channels:consume_channel",
         "//folly/channels:fanout_channel",
-        "//folly/channels/test:channel_test_util",
         "//folly/executors:manual_executor",
         "//folly/executors:serial_executor",
         "//folly/portability:gmock",
@@ -45,14 +43,13 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "fanout_sender_test",
     srcs = ["FanoutSenderTest.cpp"],
     deps = [
+        ":channel_test_util",
         "//folly/channels:consume_channel",
         "//folly/channels:fanout_sender",
-        "//folly/channels/test:channel_test_util",
         "//folly/executors:manual_executor",
         "//folly/executors:serial_executor",
         "//folly/portability:gmock",
@@ -60,8 +57,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "max_concurrent_rate_limiter_test",
     srcs = [
         "MaxConcurrentRateLimiterTest.cpp",
@@ -74,17 +70,16 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "merge_channel_test",
     srcs = [
         "MergeChannelTest.cpp",
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        ":channel_test_util",
         "//folly/channels:consume_channel",
         "//folly/channels:merge_channel",
-        "//folly/channels/test:channel_test_util",
         "//folly/executors:manual_executor",
         "//folly/executors:serial_executor",
         "//folly/portability:gmock",
@@ -97,9 +92,9 @@ fbcode_target(
     name = "merge_test",
     srcs = ["MergeTest.cpp"],
     deps = [
+        ":channel_test_util",
         "//folly/channels:consume_channel",
         "//folly/channels:merge",
-        "//folly/channels/test:channel_test_util",
         "//folly/executors:manual_executor",
         "//folly/executors:serial_executor",
         "//folly/portability:gmock",
@@ -107,15 +102,14 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "multiplex_channel_test",
     srcs = ["MultiplexChannelTest.cpp"],
     deps = [
+        ":channel_test_util",
         "//folly/channels:consume_channel",
         "//folly/channels:max_concurrent_rate_limiter",
         "//folly/channels:multiplex_channel",
-        "//folly/channels/test:channel_test_util",
         "//folly/coro:blocking_wait",
         "//folly/executors:manual_executor",
         "//folly/executors:serial_executor",
@@ -124,43 +118,40 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "producer_test",
     srcs = ["ProducerTest.cpp"],
     deps = [
+        ":channel_test_util",
         "//folly/channels:producer",
-        "//folly/channels/test:channel_test_util",
         "//folly/executors:manual_executor",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "proxy_channel_test",
     srcs = ["ProxyChannelTest.cpp"],
     deps = [
+        ":channel_test_util",
         "//folly/channels:proxy_channel",
-        "//folly/channels/test:channel_test_util",
         "//folly/executors:manual_executor",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "transform_test",
     srcs = ["TransformTest.cpp"],
     deps = [
+        ":channel_test_util",
         "//folly:scope_guard",
         "//folly:synchronized",
         "//folly/channels:consume_channel",
         "//folly/channels:max_concurrent_rate_limiter",
         "//folly/channels:transform",
-        "//folly/channels/test:channel_test_util",
         "//folly/coro:async_generator",
         "//folly/coro:detach_on_cancel",
         "//folly/executors:manual_executor",
@@ -170,8 +161,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_library,
+fb_dirsync_cpp_library(
     name = "channel_test_util",
     headers = ["ChannelTestUtil.h"],
     exported_deps = [

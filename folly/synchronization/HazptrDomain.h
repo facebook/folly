@@ -29,6 +29,7 @@
 #include <folly/synchronization/HazptrObj.h>
 #include <folly/synchronization/HazptrRec.h>
 #include <folly/synchronization/HazptrThrLocal.h>
+#include <folly/synchronization/detail/Sleeper.h>
 
 ///
 /// Classes related to hazard pointer domains.
@@ -679,6 +680,7 @@ class hazptr_domain {
 
   std::pair<size_t, Rec*> try_pop_available_hprecs(size_t num) {
     DCHECK_GE(num, 1);
+    detail::Sleeper sleeper;
     while (true) {
       uintptr_t avail = load_avail();
       if (avail == reinterpret_cast<uintptr_t>(nullptr)) {
@@ -696,7 +698,7 @@ class hazptr_domain {
           return {nn, head};
         }
       } else {
-        std::this_thread::yield();
+        sleeper.wait();
       }
     }
   }
@@ -731,6 +733,7 @@ class hazptr_domain {
     }
     uintptr_t newval = reinterpret_cast<uintptr_t>(head);
     DCHECK_EQ(newval & kLockBit, 0);
+    detail::Sleeper sleeper;
     while (true) {
       uintptr_t avail = load_avail();
       if ((avail & kLockBit) == 0) {
@@ -741,7 +744,7 @@ class hazptr_domain {
           break;
         }
       } else {
-        std::this_thread::yield();
+        sleeper.wait();
       }
     }
   }

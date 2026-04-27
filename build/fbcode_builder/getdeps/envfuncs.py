@@ -11,9 +11,12 @@ import os
 import shlex
 import sys
 from collections.abc import ItemsView, Iterator, KeysView, Mapping, ValuesView
+from typing import overload, TypeVar
+
+_T = TypeVar("_T")
 
 
-class Env:
+class Env(Mapping[str, str]):
     def __init__(self, src: Mapping[str, str] | None = None) -> None:
         self._dict: dict[str, str] = {}
         if src is None:
@@ -57,7 +60,13 @@ class Env:
             return key
         return None
 
-    def get(self, key: str, defval: str | None = None) -> str | None:
+    @overload
+    def get(self, key: str) -> str | None: ...
+
+    @overload
+    def get(self, key: str, defval: _T) -> str | _T: ...
+
+    def get(self, key: str, defval: _T | None = None) -> str | _T | None:
         resolved_key = self._key(key)
         if resolved_key is None:
             return defval

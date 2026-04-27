@@ -24,7 +24,6 @@
 #include <mutex>
 #include <string>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
 #include <glog/logging.h>
@@ -37,6 +36,7 @@
 #include <folly/SharedMutex.h>
 #include <folly/Synchronized.h>
 #include <folly/concurrency/container/atomic_grow_array.h>
+#include <folly/container/F14Map.h>
 #include <folly/container/Foreach.h>
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/detail/UniqueInstance.h>
@@ -290,7 +290,7 @@ struct ThreadEntrySet {
   ElementVector threadElements;
   // Map from ThreadEntry* to its slot in the threadElements vector to be able
   // to remove an entry quickly.
-  using EntryIndex = std::unordered_map<ThreadEntry*, ElementVector::size_type>;
+  using EntryIndex = folly::F14FastMap<ThreadEntry*, ElementVector::size_type>;
   EntryIndex entryToVectorSlot;
 
   bool basicSanity() const;

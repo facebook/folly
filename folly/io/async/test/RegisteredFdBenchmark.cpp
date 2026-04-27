@@ -84,7 +84,8 @@ class EventFD : public EventHandler {
 // static constexpr size_t kAsyncIoEvents = 2048;
 class BackendEventBase : public EventBase {
  public:
-  explicit BackendEventBase(bool useRegisteredFds, size_t capacity = 32 * 1024)
+  explicit BackendEventBase(
+      bool useRegisteredFds, uint32_t capacity = 32 * 1024)
       : EventBase(
             EventBase::Options()
                 .setBackendFactory([useRegisteredFds, capacity] {
@@ -94,7 +95,7 @@ class BackendEventBase : public EventBase {
 
  private:
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend(
-      bool useRegisteredFds, size_t capacity) {
+      bool useRegisteredFds, uint32_t capacity) {
     folly::IoUringOptions options;
     options.setCapacity(capacity)
         .setMaxSubmit(256)

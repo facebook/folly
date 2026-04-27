@@ -238,7 +238,7 @@ struct tcp_zerocopy_receive {
 #define UDP_MAX_SEGMENTS (1 << 6UL)
 #endif
 
-#if !defined(MSG_WAITFORONE) && !defined(__wasm32__)
+#if !defined(MSG_WAITFORONE) && !defined(__wasm__)
 struct mmsghdr {
   struct msghdr msg_hdr;
   unsigned int msg_len;

@@ -21,7 +21,7 @@
 #include <glog/logging.h>
 
 #include <folly/Singleton.h>
-#include <folly/experimental/symbolizer/SignalHandler.h>
+#include <folly/debugging/symbolizer/SignalHandler.h>
 #include <folly/init/Phase.h>
 #include <folly/logging/Init.h>
 #include <folly/portability/Config.h>

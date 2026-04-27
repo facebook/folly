@@ -29,6 +29,8 @@
 
 #if defined(__APPLE__)
 #define FOLLY_SYS_gettid SYS_thread_selfid
+#elif defined(__EMSCRIPTEN__)
+#define FOLLY_SYS_gettid 0
 #elif defined(SYS_gettid)
 #define FOLLY_SYS_gettid SYS_gettid
 #else

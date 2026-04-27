@@ -99,6 +99,8 @@ folly_add_library(
   NAME max_concurrent_rate_limiter
   SRCS
     MaxConcurrentRateLimiter.cpp
+  HEADERS
+    MaxConcurrentRateLimiter.h
   EXPORTED_DEPS
     folly_channels_rate_limiter
     folly_concurrency_unbounded_queue

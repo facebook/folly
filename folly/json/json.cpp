@@ -368,10 +368,16 @@ struct Printer {
 
 //////////////////////////////////////////////////////////////////////
 
+// Smart ptr that returns default constructed serialization_opts
+struct DefaultOptsPtr {
+  serialization_opts operator*() const { return {}; }
+};
+
 // Wraps our input buffer with some helper functions.
+template <class OptsPtr = serialization_opts const*>
 struct Input {
-  explicit Input(StringPiece range, json::serialization_opts const* opts)
-      : range_(range), opts_(*opts), lineNum_(0) {
+  explicit Input(StringPiece range, OptsPtr opts)
+      : range_(range), opts_(opts), lineNum_(0) {
     storeCurrent();
   }
 
@@ -431,7 +437,7 @@ struct Input {
           index++;
           continue;
         }
-        if (opts_.allow_json5_experimental &&
+        if (getOpts().allow_json5_experimental &&
             (range_[index] == '\f' || range_[index] == '\v')) {
           index++;
           continue;
@@ -445,7 +451,7 @@ struct Input {
   }
 
   bool skipComment() {
-    if (!opts_.allow_json5_experimental) {
+    if (!getOpts().allow_json5_experimental) {
       return false;
     }
     if (consume("//")) {
@@ -532,10 +538,10 @@ struct Input {
     error(what);
   }
 
-  json::serialization_opts const& getOpts() { return opts_; }
+  decltype(auto) getOpts() { return *opts_; }
 
   void incrementRecursionLevel() {
-    if (currentRecursionLevel_ > opts_.recursion_limit) {
+    if (currentRecursionLevel_ > getOpts().recursion_limit) {
       error("recursion limit exceeded");
     }
     currentRecursionLevel_++;
@@ -548,30 +554,35 @@ struct Input {
 
  private:
   StringPiece range_;
-  json::serialization_opts const& opts_;
+  [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] OptsPtr opts_;
   unsigned lineNum_;
   int current_;
   unsigned int currentRecursionLevel_{0};
 };
 
+template <class T>
 class RecursionGuard {
  public:
-  explicit RecursionGuard(Input& in) : in_(in) {
+  explicit RecursionGuard(Input<T>& in) : in_(in) {
     in_.incrementRecursionLevel();
   }
 
   ~RecursionGuard() { in_.decrementRecursionLevel(); }
 
  private:
-  Input& in_;
+  Input<T>& in_;
 };
 
-dynamic parseValue(Input& in, json::metadata_map* map);
-std::string parseString(Input& in, char quoteChar = '"');
-dynamic parseNumber(Input& in);
+template <class T>
+dynamic parseValue(Input<T>& in, json::metadata_map* map);
+template <class T>
+std::string parseString(Input<T>& in, char quoteChar = '"');
+template <class T>
+dynamic parseNumber(Input<T>& in);
 
+template <class T>
 void parseObjectKeyValue(
-    Input& in,
+    Input<T>& in,
     dynamic& ret,
     dynamic&& key,
     json::metadata_map* map,
@@ -596,7 +607,8 @@ void parseObjectKeyValue(
   }
 }
 
-dynamic parseObject(Input& in, json::metadata_map* map) {
+template <class T>
+dynamic parseObject(Input<T>& in, json::metadata_map* map) {
   DCHECK_EQ(*in, '{');
   ++in;
 
@@ -639,7 +651,8 @@ dynamic parseObject(Input& in, json::metadata_map* map) {
   return ret;
 }
 
-dynamic parseArray(Input& in, json::metadata_map* map) {
+template <class T>
+dynamic parseArray(Input<T>& in, json::metadata_map* map) {
   DCHECK_EQ(*in, '[');
   ++in;
 
@@ -677,7 +690,8 @@ dynamic parseArray(Input& in, json::metadata_map* map) {
   return ret;
 }
 
-dynamic parseNumber(Input& in) {
+template <class T>
+dynamic parseNumber(Input<T>& in) {
   bool const json5 = in.getOpts().allow_json5_experimental;
   bool const positive = *in == '+';
   if (positive && !json5) {
@@ -699,11 +713,9 @@ dynamic parseNumber(Input& in) {
   }
 
   auto integral = in.skipSignAndDigits();
-  if (positive && integral.size() < 2 && (*in != '.' || !json5)) {
-    in.error("expected digits after `+'");
-  }
-  if (negative && integral.size() < 2 && (*in != '.' || !json5)) {
-    in.error("expected digits after `-'");
+  if ((positive || negative) && integral.size() < 2 && (*in != '.' || !json5)) {
+    in.error(
+        positive ? "expected digits after `+`" : "expected digits after `-`");
   }
 
   const bool isIntegralZero =
@@ -726,6 +738,14 @@ dynamic parseNumber(Input& in) {
       return *result;
     }
     in.error("hex literal out of range");
+  }
+
+  // JSON5 forbids leading zeros (octal/noctal literals like 010, 080, 00).
+  if (json5 && !integral.empty() && !isIntegralZero) {
+    auto digitStart = integral.begin() + (positive || negative);
+    if (*digitStart == '0') {
+      in.error("leading zeros in numbers are not allowed");
+    }
   }
 
   auto const wasE = *in == 'e' || *in == 'E';
@@ -771,14 +791,15 @@ dynamic parseNumber(Input& in) {
   return val;
 }
 
-void decodeUnicodeEscape(Input& in, std::string& out) {
+template <class T>
+void decodeUnicodeEscape(Input<T>& in, std::string& out) {
   auto hexVal = [&](int c) -> uint16_t {
     // clang-format off
     return uint16_t(
         c >= '0' && c <= '9' ? c - '0' :
         c >= 'a' && c <= 'f' ? c - 'a' + 10 :
         c >= 'A' && c <= 'F' ? c - 'A' + 10 :
-        in.error<uint16_t>("invalid hex digit"));
+        in.template error<uint16_t>("invalid hex digit"));
     // clang-format on
   };
 
@@ -822,17 +843,23 @@ void decodeUnicodeEscape(Input& in, std::string& out) {
   appendCodePointToUtf8(codePoint, out);
 }
 
-std::string parseString(Input& in, char quoteChar) {
+template <class T>
+std::string parseString(Input<T>& in, char quoteChar) {
   const bool json5 = in.getOpts().allow_json5_experimental;
   DCHECK_EQ(*in, quoteChar);
   ++in;
 
   std::string ret;
   for (;;) {
-    auto range = in.skipWhile([quoteChar](char c) {
-      return c != quoteChar && c != '\\';
+    auto range = in.skipWhile([quoteChar, json5](char c) {
+      return c != quoteChar && c != '\\' &&
+          !(json5 && (c == '\n' || c == '\r'));
     });
     ret.append(range.begin(), range.end());
+
+    if (json5 && (*in == '\n' || *in == '\r')) {
+      in.error("unescaped newline in string");
+    }
 
     if (*in == quoteChar) {
       ++in;
@@ -891,7 +918,8 @@ std::string parseString(Input& in, char quoteChar) {
   return ret;
 }
 
-dynamic parseValue(Input& in, json::metadata_map* map) {
+template <class T>
+dynamic parseValue(Input<T>& in, json::metadata_map* map) {
   RecursionGuard guard(in);
   const auto json5 = in.getOpts().allow_json5_experimental;
 
@@ -914,7 +942,7 @@ dynamic parseValue(Input& in, json::metadata_map* map) {
       in.consume("NaN") ?
         (in.getOpts().parse_numbers_as_strings ? (dynamic)"NaN" :
           (dynamic)std::numeric_limits<double>::quiet_NaN()) :
-      in.error<dynamic>("expected json value");
+      in.template error<dynamic>("expected json value");
   // clang-format on
 }
 
@@ -1213,16 +1241,12 @@ std::string stripComments(StringPiece jsonC) {
 
 //////////////////////////////////////////////////////////////////////
 
-dynamic parseJsonWithMetadata(StringPiece range, json::metadata_map* map) {
-  return parseJsonWithMetadata(range, json::serialization_opts(), map);
-}
+namespace {
 
-dynamic parseJsonWithMetadata(
-    StringPiece range,
-    json::serialization_opts const& opts,
-    json::metadata_map* map) {
-  json::Input in(range, &opts);
-
+template <class OptsPtr>
+dynamic parseJsonImpl(
+    StringPiece range, OptsPtr p, json::metadata_map* map = nullptr) {
+  json::Input in{range, p};
   uint32_t n = in.getLineNum();
   auto ret = parseValue(in, map);
   if (map) {
@@ -1236,8 +1260,21 @@ dynamic parseJsonWithMetadata(
   return ret;
 }
 
+} // namespace
+
+dynamic parseJsonWithMetadata(StringPiece range, json::metadata_map* map) {
+  return parseJsonImpl(range, json::DefaultOptsPtr{}, map);
+}
+
+dynamic parseJsonWithMetadata(
+    StringPiece range,
+    json::serialization_opts const& opts,
+    json::metadata_map* map) {
+  return parseJsonImpl(range, &opts, map);
+}
+
 dynamic parseJson(StringPiece range) {
-  return parseJson(range, json::serialization_opts());
+  return parseJsonWithMetadata(range, nullptr);
 }
 
 dynamic parseJson5(StringPiece range) {
@@ -1247,14 +1284,7 @@ dynamic parseJson5(StringPiece range) {
 }
 
 dynamic parseJson(StringPiece range, json::serialization_opts const& opts) {
-  json::Input in(range, &opts);
-
-  auto ret = parseValue(in, nullptr);
-  in.skipWhitespace();
-  if (in.size() && *in != '\0') {
-    in.error("parsing didn't consume all input");
-  }
-  return ret;
+  return parseJsonImpl(range, &opts);
 }
 
 std::string toJson(dynamic const& dyn) {

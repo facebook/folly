@@ -37,11 +37,8 @@ folly_add_library(
   HEADERS
     AtomicUnorderedMapUtils.h
   EXPORTED_DEPS
-    folly_exception
     folly_lang_exception
     folly_memory_malloc
-    folly_portability_sys_mman
-    folly_portability_unistd
 )
 
 folly_add_library(
@@ -50,8 +47,9 @@ folly_add_library(
     Avx2.cpp
   HEADERS
     Avx2.h
-  EXPORTED_DEPS
+  DEPS
     folly_cpp_attributes
+  EXPORTED_DEPS
     folly_portability
 )
 
@@ -309,8 +307,9 @@ folly_add_library(
     Sse.cpp
   HEADERS
     Sse.h
-  EXPORTED_DEPS
+  DEPS
     folly_cpp_attributes
+  EXPORTED_DEPS
     folly_portability
 )
 
@@ -349,6 +348,7 @@ folly_add_library(
     folly_utility
   EXPORTED_DEPS
     folly_concurrency_container_atomic_grow_array
+    folly_container_f14_hash
     folly_container_foreach
     folly_detail_static_singleton_manager
     folly_detail_unique_instance

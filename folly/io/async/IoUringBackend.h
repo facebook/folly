@@ -140,16 +140,12 @@ class IoUringBackend : public EventBaseBackendBase {
   using FileOpCallback = folly::Function<void(int)>;
 
   void queueRead(
-      int fd,
-      void* buf,
-      unsigned int nbytes,
-      off_t offset,
-      FileOpCallback&& cb);
+      int fd, void* buf, size_t nbytes, off_t offset, FileOpCallback&& cb);
 
   void queueWrite(
       int fd,
       const void* buf,
-      unsigned int nbytes,
+      size_t nbytes,
       off_t offset,
       FileOpCallback&& cb);
 
@@ -335,7 +331,7 @@ class IoUringBackend : public EventBaseBackendBase {
 
   struct FdRegistry {
     FdRegistry() = delete;
-    FdRegistry(io_uring& ioRing, size_t n);
+    FdRegistry(io_uring& ioRing, uint32_t n);
 
     IoUringFdRegistrationRecord* alloc(int fd) noexcept;
     bool free(IoUringFdRegistrationRecord* record);
@@ -346,7 +342,7 @@ class IoUringBackend : public EventBaseBackendBase {
     bool err_{false};
     io_uring& ioRing_;
     std::vector<int> files_;
-    size_t inUse_;
+    uint32_t inUse_;
     std::vector<IoUringFdRegistrationRecord> records_;
     boost::intrusive::
         slist<IoUringFdRegistrationRecord, boost::intrusive::cache_last<false>>
@@ -759,7 +755,12 @@ class IoUringBackend : public EventBaseBackendBase {
 
     void processSubmit(io_uring_sqe* sqe) noexcept override {
       ::io_uring_prep_rw(
-          IORING_OP_RECV_ZC, sqe, fd_, nullptr, iov_.data()->iov_len, 0);
+          IORING_OP_RECV_ZC,
+          sqe,
+          fd_,
+          nullptr,
+          static_cast<unsigned int>(iov_.data()->iov_len),
+          0);
       ::io_uring_sqe_set_data(sqe, this);
       sqe->ioprio |= IORING_RECV_MULTISHOT;
     }
@@ -770,7 +771,7 @@ class IoUringBackend : public EventBaseBackendBase {
   int submitOne();
   int cancelOne(IoSqe* ioSqe);
 
-  int submitBusyCheck(int num, WaitForEventsMode waitForEvents) noexcept;
+  int submitBusyCheck(uint32_t num, WaitForEventsMode waitForEvents) noexcept;
   int submitEager();
 
   void queueFsync(int fd, FSyncFlags flags, FileOpCallback&& cb);
@@ -790,9 +791,12 @@ class IoUringBackend : public EventBaseBackendBase {
   }
 
   IoUringBackend::IoSqe* allocNewIoSqe() {
-    // allow pool alloc if numPooledIoSqeInUse_ < numEntries_
-    auto* ret = new IoSqe(this, numPooledIoSqeInUse_ < numEntries_);
-    ++numPooledIoSqeInUse_;
+    // allow pool alloc if poolAllocRemaining_ > 0
+    bool poolAlloc = poolAllocRemaining_ > 0;
+    auto* ret = new IoSqe(this, poolAlloc);
+    if (poolAlloc) {
+      --poolAllocRemaining_;
+    }
     ret->backendCb_ = IoUringBackend::processPollIoSqe;
 
     return ret;
@@ -817,7 +821,7 @@ class IoUringBackend : public EventBaseBackendBase {
   void initSubmissionLinked();
 
   Options options_;
-  size_t numEntries_;
+  uint32_t numEntries_;
   std::unique_ptr<IoSqe> timerEntry_;
   std::unique_ptr<IoSqe> signalReadEntry_;
   IoSqeList freeList_;
@@ -847,19 +851,17 @@ class IoUringBackend : public EventBaseBackendBase {
   bool processTimers_{false};
   bool processSignals_{false};
   IoSqeList activeEvents_;
-  size_t waitingToSubmit_{0};
-  size_t numInsertedEvents_{0};
-  size_t numInternalEvents_{0};
-  size_t numSendEvents_{0};
-
-  // number of pooled IoSqe instances in use
-  size_t numPooledIoSqeInUse_{0};
+  uint32_t waitingToSubmit_{0};
+  uint32_t numInsertedEvents_{0};
+  uint32_t numInternalEvents_{0};
+  uint32_t numSendEvents_{0};
 
   // io_uring related
   io_uring_params params_;
   io_uring ioRing_;
 
   FdRegistry fdRegistry_;
+  uint32_t poolAllocRemaining_{0};
 
   // poll callback to be invoked if POLL_CQ flag is set
   // every time we poll for a CQE

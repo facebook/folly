@@ -312,7 +312,7 @@ class BuildOptions:
                     # pyre-fixme[6]: For 1st argument expected
                     #  `Union[PathLike[bytes], PathLike[str], bytes, int, str]` but got
                     #  `Optional[str]`.
-                    if os.path.exists(candidate):
+                    if candidate and os.path.exists(candidate):
                         # pyre-fixme[6]: For 2nd argument expected `str` but got
                         #  `Optional[str]`.
                         os.environ["OPENSSL_ROOT_DIR"] = candidate

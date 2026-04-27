@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
+#include <array>
 #include <thread>
+
 #include <folly/Synchronized.h>
 #include <folly/ThreadLocal.h>
 #include <folly/portability/GTest.h>
@@ -297,6 +299,31 @@ TEST_F(ThreadLocalDetailTest, accessAllAndRealloc) {
   for (int32_t i = 0; i < countSubThreads; ++i) {
     threads[i].join();
   }
+}
+
+TEST(ThreadEntrySetTest, CompressTriggeredByErase) {
+  constexpr size_t const kNumEntries = 1024;
+  std::array<ThreadEntry, kNumEntries> entries{};
+
+  ThreadEntrySet set;
+  for (auto& e : entries) {
+    set.insert(&e);
+  }
+
+  EXPECT_FALSE(set.compressible());
+
+  const size_t elementsCapacity = set.threadElements.capacity();
+  const size_t indexCapacity = set.entryToVectorSlot.bucket_count();
+
+  for (size_t i = 0; i < kNumEntries - 1; ++i) {
+    set.erase(&entries[i]);
+  }
+
+  EXPECT_EQ(set.threadElements.size(), 1);
+  EXPECT_EQ(set.entryToVectorSlot.size(), 1);
+
+  EXPECT_LT(set.threadElements.capacity(), elementsCapacity);
+  EXPECT_LT(set.entryToVectorSlot.bucket_count(), indexCapacity);
 }
 
 } // namespace threadlocal_detail

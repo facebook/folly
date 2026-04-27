@@ -21,3 +21,5 @@ subdir = libunwind-f081cf42917bdd5c428b77850b473f31f81767cf
 
 [autoconf.args]
 --with-pic
+--disable-zlibdebuginfo
+--disable-minidebuginfo

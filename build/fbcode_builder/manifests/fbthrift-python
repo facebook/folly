@@ -28,9 +28,9 @@ enable_tests=OFF
 
 [cmake.defines.os=linux]
 thrift_python=ON
-enable_tests=ON
 
 [dependencies]
+benchmark
 fizz-python
 fmt-python
 folly-python

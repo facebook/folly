@@ -341,8 +341,35 @@ folly_add_library(
     dynamic-inl.h
     dynamic.h
     json.h
+  DEPS
+    folly_utility
   EXPORTED_DEPS
+    folly_c_portability
+    folly_container_access
+    folly_container_enumerate
+    folly_container_f14_hash
+    folly_conv
+    folly_detail_iterators
+    folly_expected
+    folly_format
+    folly_function
+    folly_hash_hash
     folly_json_dynamic
+    folly_json_pointer
+    folly_lang_assume
+    folly_lang_bits
+    folly_lang_exception
+    folly_likely
+    folly_optional
+    folly_portability
+    folly_portability_constexpr
+    folly_range
+    folly_string
+    folly_traits
+    folly_unicode
+    folly_utility
+  EXTERNAL_DEPS
+    Boost::headers
 )
 
 folly_add_library(
@@ -461,6 +488,7 @@ folly_add_library(
   DEPS
     folly_exception
     folly_file_util
+    folly_portability_filesystem
     folly_portability_fmt_compile
     folly_portability_sys_file
     folly_scope_guard
@@ -584,6 +612,14 @@ folly_add_library(
     folly_lang_new
     folly_portability
     folly_traits
+)
+
+folly_add_library(
+  NAME get_ref_util
+  HEADERS
+    GetRefUtil.h
+  EXPORTED_DEPS
+    folly_cpp_attributes
 )
 
 folly_add_library(
@@ -1109,8 +1145,8 @@ folly_add_library(
     Singleton-inl.h
     Singleton.h
   DEPS
+    folly_debugging_symbolizer_symbolizer
     folly_demangle
-    folly_experimental_symbolizer_symbolizer
     folly_lang_safe_assert
     folly_portability_config
     folly_portability_fmt_compile
@@ -1403,6 +1439,14 @@ folly_add_library(
     folly_range
   EXTERNAL_DEPS
     Boost::regex
+)
+
+folly_add_library(
+  NAME utf8_string_icu
+  HEADERS
+    UTF8String.h
+  DEPS
+    folly_range
 )
 
 folly_add_library(

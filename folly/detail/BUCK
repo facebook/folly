@@ -26,11 +26,8 @@ fb_dirsync_cpp_library(
     headers = ["AtomicUnorderedMapUtils.h"],
     use_raw_headers = True,
     exported_deps = [
-        "//folly:exception",
         "//folly/lang:exception",
         "//folly/memory:malloc",
-        "//folly/portability:sys_mman",
-        "//folly/portability:unistd",
     ],
 )
 
@@ -39,8 +36,8 @@ fb_dirsync_cpp_library(
     srcs = ["Avx2.cpp"],
     headers = ["Avx2.h"],
     use_raw_headers = True,
+    deps = ["//folly:cpp_attributes"],
     exported_deps = [
-        "//folly:cpp_attributes",
         "//folly:portability",
     ],
 )
@@ -253,8 +250,8 @@ fb_dirsync_cpp_library(
     srcs = ["Sse.cpp"],
     headers = ["Sse.h"],
     use_raw_headers = True,
+    deps = ["//folly:cpp_attributes"],
     exported_deps = [
-        "//folly:cpp_attributes",
         "//folly:portability",
     ],
 )
@@ -286,6 +283,7 @@ fb_dirsync_cpp_library(
         "//folly:shared_mutex",
         "//folly:synchronized",
         "//folly/concurrency/container:atomic_grow_array",
+        "//folly/container:f14_hash",
         "//folly/container:foreach",
         "//folly/lang:exception",
         "//folly/memory:malloc",
@@ -443,7 +441,7 @@ fb_dirsync_cpp_library(
         # ARVR builds (e.g. VrDriver) don't benefit from dynamic linking of
         # static_singleton_manager and it adds ~128KB to the APK size. Force
         # static linking for ARVR mode to avoid the extra .so overhead.
-        "ovr_config//build_mode:arvr_mode": True,
+        "ovr_config//build_mode:arvr_mode[enabled]": True,
     }),
     use_raw_headers = True,
     deps = [

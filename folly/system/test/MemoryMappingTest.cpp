@@ -143,6 +143,39 @@ TEST(MemoryMapping, LargeFile) {
   }
 }
 
+TEST(MemoryMapping, ExplicitLengthClipsToRegularFileSize) {
+  File f = File::temporary();
+  writeStringToFileOrDie("hello", f.fd());
+
+  struct stat st{};
+  ASSERT_EQ(0, fstat(f.fd(), &st));
+
+  MemoryMapping m(File(f.fd()), 0, 99);
+  EXPECT_EQ(st.st_size, m.data().size());
+  EXPECT_EQ(StringPiece("hello"), m.data().subpiece(0, 5));
+}
+
+TEST(MemoryMapping, WritableMappingGrowsRegularFileToRequestedLength) {
+  File f = File::temporary();
+  writeStringToFileOrDie("hello", f.fd());
+
+  {
+    MemoryMapping m(File(f.fd()), 0, 8, MemoryMapping::writable());
+    auto bytes = m.writableRange();
+    ASSERT_EQ(8, bytes.size());
+    bytes[7] = '!';
+  }
+
+  struct stat st{};
+  ASSERT_EQ(0, fstat(f.fd(), &st));
+  EXPECT_EQ(8, st.st_size);
+
+  MemoryMapping m(File(f.fd()));
+  EXPECT_EQ(8, m.data().size());
+  EXPECT_EQ('h', m.data()[0]);
+  EXPECT_EQ('!', m.data()[7]);
+}
+
 TEST(MemoryMapping, ZeroLength) {
   File f = File::temporary();
   MemoryMapping m(File(f.fd()));

@@ -1053,3 +1053,36 @@ TEST(SocketAddress, ValidFamilyInet) {
   SocketAddress addr6(ip6Addr, 8888);
   EXPECT_TRUE(addr6.isFamilyInet());
 }
+
+TEST(SocketAddress, GetAddressStrBuf_ZeroBuflen) {
+  SocketAddress addr("1.2.3.4", 4321);
+  // buflen == 0 should be a no-op and not write to the buffer.
+  char buf[1] = {'X'};
+  addr.getAddressStr(buf, 0);
+  EXPECT_EQ(buf[0], 'X');
+}
+
+TEST(SocketAddress, GetAddressStrBuf_BuflenOne) {
+  SocketAddress addr("1.2.3.4", 4321);
+  // buflen == 1 should only write the null terminator.
+  char buf[2] = {'X', 'X'};
+  addr.getAddressStr(buf, 1);
+  EXPECT_EQ(buf[0], '\0');
+}
+
+TEST(SocketAddress, GetAddressStrBuf_SufficientBuffer) {
+  SocketAddress addr("1.2.3.4", 4321);
+  char buf[32] = {};
+  addr.getAddressStr(buf, sizeof(buf));
+  EXPECT_STREQ(buf, "1.2.3.4");
+}
+
+TEST(SocketAddress, GetAddressStrBuf_TruncatedBuffer) {
+  SocketAddress addr("1.2.3.4", 4321);
+  // Buffer too small to hold the full address; should truncate and
+  // null-terminate.
+  char buf[4] = {};
+  addr.getAddressStr(buf, sizeof(buf));
+  EXPECT_EQ(buf[3], '\0');
+  EXPECT_EQ(std::string(buf), "1.2");
+}

@@ -1,7 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
-load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
     "ANDROID",
@@ -9,16 +5,27 @@ load(
     "CXX",
     "WINDOWS",
 )
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load(
     "../../defs.bzl",
     "FBANDROID_CXXFLAGS",
     "FBOBJC_CXXFLAGS",
-    "folly_xplat_cxx_test",
 )
 
 oncall("fbcode_entropy_wardens_folly")
+
+fb_dirsync_cpp_unittest(
+    name = "dynamic_ring_queue_test",
+    srcs = ["DynamicRingQueueTest.cpp"],
+    deps = [
+        "//folly/container:dynamic_ring_queue",
+        "//folly/lang:bits",
+        "//folly/portability:gtest",
+    ],
+)
 
 fb_dirsync_cpp_unittest(
     name = "fixed_capacity_ring_queue_test",
@@ -29,8 +36,7 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "f14_set-test",
     srcs = [
         "F14SetTest.cpp",
@@ -47,13 +53,10 @@ non_fbcode_target(
     platforms = (ANDROID, APPLE, CXX, WINDOWS),
     use_instrumentation_test = True,
     deps = [
-        "fbsource//third-party/boost:boost",
-        "fbsource//third-party/boost:boost_filesystem",
-        "fbsource//third-party/boost:boost_system",
-        "fbsource//third-party/double-conversion:double-conversion",
         "fbsource//third-party/glog:glog",
         "fbsource//xplat/folly:atomic_hash_map",
         "fbsource//xplat/folly:atomic_linked_list",
+        "fbsource//xplat/folly:benchmark",
         "fbsource//xplat/folly:c_portability",
         "fbsource//xplat/folly:chrono",
         "fbsource//xplat/folly:config",
@@ -99,6 +102,8 @@ non_fbcode_target(
         "fbsource//xplat/folly:spin_lock",
         "fbsource//xplat/folly:stop_watch",
         "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly:test-headers",
+        "fbsource//xplat/folly:test_test_utils",
         "fbsource//xplat/folly:thread_local",
         "fbsource//xplat/folly:traits",
         "fbsource//xplat/folly:unit",
@@ -115,6 +120,7 @@ non_fbcode_target(
         "fbsource//xplat/folly/container:heap_vector_types",
         "fbsource//xplat/folly/container:iterator",
         "fbsource//xplat/folly/container:sparse_byte_set",
+        "fbsource//xplat/folly/container/detail:f14_hash_detail",
         "fbsource//xplat/folly/detail:discriminated_ptr_detail",
         "fbsource//xplat/folly/detail:futex",
         "fbsource//xplat/folly/detail:socket_fast_open",
@@ -133,6 +139,7 @@ non_fbcode_target(
         "fbsource//xplat/folly/functional:apply_tuple",
         "fbsource//xplat/folly/functional:invoke",
         "fbsource//xplat/folly/functional:partial",
+        "fbsource//xplat/folly/hash:hash",
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/io:typed_io_buf",
         "fbsource//xplat/folly/io/async:async_base",
@@ -159,7 +166,9 @@ non_fbcode_target(
         "fbsource//xplat/folly/lang:bits",
         "fbsource//xplat/folly/lang:checked_math",
         "fbsource//xplat/folly/lang:exception",
+        "fbsource//xplat/folly/lang:keep",
         "fbsource//xplat/folly/lang:rvalue_reference_wrapper",
+        "fbsource//xplat/folly/lang:safe_assert",
         "fbsource//xplat/folly/lang:uncaught_exceptions",
         "fbsource//xplat/folly/logging:init",
         "fbsource//xplat/folly/logging:init_weak",
@@ -210,33 +219,12 @@ non_fbcode_target(
         "fbsource//xplat/folly/system:thread_name",
         "fbsource//xplat/folly/tracing:scoped_trace_section",
         "fbsource//xplat/folly/tracing:static_tracepoint",
-        "fbsource//xplat/third-party/event:event",
-        "fbsource//xplat/third-party/linker_lib:atomic",
-        "fbsource//xplat/third-party/openssl:crypto",
-        "fbsource//xplat/third-party/openssl:ssl",
         ":f14_test_util",
         ":tracking_types",
-        "//xplat/folly:benchmark",
-        "//xplat/folly:conv",
-        "//xplat/folly:fbstring",
-        "//xplat/folly:portability",
-        "//xplat/folly:test-headers",
-        "//xplat/folly:test_test_utils",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/folly/lang:keep",
-        "//xplat/third-party/linker_lib:atomic",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "fbsource//xplat/folly/portability:asm",
-        "//xplat/folly:function",
-        "//xplat/folly/container/detail:f14_hash_detail",
-        "//xplat/folly/lang:safe_assert",
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "f14_map-test",
     srcs = [
         "F14MapTest.cpp",
@@ -253,13 +241,10 @@ non_fbcode_target(
     platforms = (ANDROID, APPLE, CXX, WINDOWS),
     use_instrumentation_test = True,
     deps = [
-        "fbsource//third-party/boost:boost",
-        "fbsource//third-party/boost:boost_filesystem",
-        "fbsource//third-party/boost:boost_system",
-        "fbsource//third-party/double-conversion:double-conversion",
         "fbsource//third-party/glog:glog",
         "fbsource//xplat/folly:atomic_hash_map",
         "fbsource//xplat/folly:atomic_linked_list",
+        "fbsource//xplat/folly:benchmark",
         "fbsource//xplat/folly:c_portability",
         "fbsource//xplat/folly:chrono",
         "fbsource//xplat/folly:config",
@@ -305,6 +290,8 @@ non_fbcode_target(
         "fbsource//xplat/folly:spin_lock",
         "fbsource//xplat/folly:stop_watch",
         "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly:test-headers",
+        "fbsource//xplat/folly:test_test_utils",
         "fbsource//xplat/folly:thread_local",
         "fbsource//xplat/folly:traits",
         "fbsource//xplat/folly:unit",
@@ -321,6 +308,7 @@ non_fbcode_target(
         "fbsource//xplat/folly/container:heap_vector_types",
         "fbsource//xplat/folly/container:iterator",
         "fbsource//xplat/folly/container:sparse_byte_set",
+        "fbsource//xplat/folly/container/detail:f14_hash_detail",
         "fbsource//xplat/folly/detail:discriminated_ptr_detail",
         "fbsource//xplat/folly/detail:futex",
         "fbsource//xplat/folly/detail:socket_fast_open",
@@ -339,6 +327,7 @@ non_fbcode_target(
         "fbsource//xplat/folly/functional:apply_tuple",
         "fbsource//xplat/folly/functional:invoke",
         "fbsource//xplat/folly/functional:partial",
+        "fbsource//xplat/folly/hash:hash",
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/io:typed_io_buf",
         "fbsource//xplat/folly/io/async:async_base",
@@ -366,6 +355,7 @@ non_fbcode_target(
         "fbsource//xplat/folly/lang:checked_math",
         "fbsource//xplat/folly/lang:exception",
         "fbsource//xplat/folly/lang:rvalue_reference_wrapper",
+        "fbsource//xplat/folly/lang:safe_assert",
         "fbsource//xplat/folly/lang:uncaught_exceptions",
         "fbsource//xplat/folly/logging:init",
         "fbsource//xplat/folly/logging:init_weak",
@@ -416,27 +406,8 @@ non_fbcode_target(
         "fbsource//xplat/folly/system:thread_name",
         "fbsource//xplat/folly/tracing:scoped_trace_section",
         "fbsource//xplat/folly/tracing:static_tracepoint",
-        "fbsource//xplat/third-party/event:event",
-        "fbsource//xplat/third-party/linker_lib:atomic",
-        "fbsource//xplat/third-party/openssl:crypto",
-        "fbsource//xplat/third-party/openssl:ssl",
         ":f14_test_util",
         ":tracking_types",
-        "//xplat/folly:benchmark",
-        "//xplat/folly:conv",
-        "//xplat/folly:fbstring",
-        "//xplat/folly:portability",
-        "//xplat/folly:test-headers",
-        "//xplat/folly:test_test_utils",
-        "//xplat/folly/container:f14_hash",
-        "//xplat/third-party/linker_lib:atomic",
-    ],
-    exported_deps = [
-        "fbsource//xplat/folly/hash:hash",
-        "fbsource//xplat/folly/portability:asm",
-        "//xplat/folly:function",
-        "//xplat/folly/container/detail:f14_hash_detail",
-        "//xplat/folly/lang:safe_assert",
     ],
 )
 
@@ -519,24 +490,18 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-# !!!! fbcode/folly/container/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
-
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "access_test",
     srcs = ["AccessTest.cpp"],
-    headers = [],
     deps = [
         "//folly/container:access",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "array_test",
     srcs = ["ArrayTest.cpp"],
-    headers = [],
     supports_static_listing = False,
     deps = [
         "//folly/container:array",
@@ -544,11 +509,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "bit_iterator_bench",
     srcs = ["BitIteratorBench.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",
@@ -558,22 +521,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "bit_iterator_test",
     srcs = ["BitIteratorTest.cpp"],
-    headers = [],
     deps = [
         "//folly/container:bit_iterator",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "enumerate_test",
     srcs = ["EnumerateTest.cpp"],
-    headers = [],
     deps = [
         "//folly:range",
         "//folly/container:enumerate",
@@ -581,22 +540,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "evicting_cache_map_bench",
     srcs = ["EvictingCacheMapBench.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
         "//folly/container:evicting_cache_map",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "evicting_cache_map_test",
     srcs = ["EvictingCacheMapTest.cpp"],
-    headers = [],
     allocator = "jemalloc_debug",
     deps = [
         "//folly/container:evicting_cache_map",
@@ -614,8 +569,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_fwd_test",
     srcs = [
         "F14FwdTest.cpp",
@@ -626,8 +580,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_map_test",
     srcs = [
         "F14MapTest.cpp",
@@ -647,8 +600,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_map_fallback_test",
     srcs = [
         "F14MapTest.cpp",
@@ -669,20 +621,19 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_policy_test",
     srcs = [
         "F14PolicyTest.cpp",
     ],
     deps = [
         "//folly/container:f14_hash",
+        "//folly/container/detail:f14_intrinsics_availability",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_set_test",
     srcs = [
         "F14SetTest.cpp",
@@ -702,8 +653,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_set_fallback_test",
     srcs = [
         "F14SetTest.cpp",
@@ -724,11 +674,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "heap_vector_types_test",
     srcs = ["heap_vector_types_test.cpp"],
-    headers = [],
     deps = [
         "//folly:random",
         "//folly:range",
@@ -741,8 +689,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_interprocess_test",
     srcs = [
         "F14InterprocessTest.cpp",
@@ -760,8 +707,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "f14_small_overheads",
     srcs = [
         "F14SmallOverheads.cpp",
@@ -772,8 +718,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_asan_support_test",
     srcs = [
         "F14AsanSupportTest.cpp",
@@ -785,11 +730,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "foreach_benchmark",
     srcs = ["ForeachBenchmark.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
         "//folly:random",
@@ -799,19 +742,17 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "foreach_test",
     srcs = ["ForeachTest.cpp"],
-    headers = [],
     deps = [
+        "//folly:traits",
         "//folly/container:foreach",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "heterogeneous_access_test",
     srcs = [
         "HeterogeneousAccessTest.cpp",
@@ -827,22 +768,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "merge_test",
     srcs = ["MergeTest.cpp"],
-    headers = [],
     deps = [
         "//folly/container:merge",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "sparse_byte_set_benchmark",
     srcs = ["SparseByteSetBenchmark.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:benchmark",
@@ -852,25 +789,20 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "sparse_byte_set_test",
     srcs = ["SparseByteSetTest.cpp"],
-    headers = [],
     deps = [
         "//folly/container:sparse_byte_set",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "std_bitset_benchmark",
     srcs = ["StdBitsetBenchmark.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
-        "//folly:random",
         "//folly/container:std_bitset",
         "//folly/init:init",
     ],
@@ -889,8 +821,7 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "tape_bench",
     srcs = ["tape_bench.cpp"],
     deps = [
@@ -900,26 +831,23 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "util_test",
     srcs = ["UtilTest.cpp"],
     headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
+        ":tracking_types",
         "//folly:optional",
         "//folly:range",
         "//folly/container/detail:util",
-        "//folly/container/test:tracking_types",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "weighted_evicting_cache_map_test",
     srcs = ["WeightedEvictingCacheMapTest.cpp"],
-    headers = [],
     allocator = "jemalloc_debug",
     deps = [
         "//folly/container:weighted_evicting_cache_map",
@@ -927,11 +855,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "intrusive_heap_test",
     srcs = ["IntrusiveHeapTest.cpp"],
-    headers = [],
     deps = [
         "//folly:random",
         "//folly/container:intrusive_heap",
@@ -940,11 +866,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fb_dirsync_cpp_binary(
     name = "hash_maps_bench",
     srcs = ["HashMapsBench.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
@@ -960,8 +884,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "reserve_test",
     srcs = ["ReserveTest.cpp"],
     deps = [
@@ -971,8 +894,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "fbvector_benchmark",
     srcs = ["FBVectorBenchmark.cpp"],
     headers = ["FBVectorBenchmarks.cpp.h"],
@@ -989,8 +911,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "fbvector_test",
     srcs = ["FBVectorTest.cpp"],
     headers = [
@@ -1007,11 +928,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "map_util_test",
     srcs = ["MapUtilTest.cpp"],
-    headers = [],
     deps = [
         "//folly:map_util",
         "//folly:sorted_vector_types",
@@ -1020,11 +939,10 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "small_vector_test",
     srcs = ["small_vector_test.cpp"],
-    headers = [],
+    modifiers = ["ovr_config//build_mode:asan_ubsan_dev_sanitizer_flags[enabled]"],
     supports_static_listing = False,
     deps = [
         "fbsource//third-party/fmt:fmt",
@@ -1040,11 +958,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "sorted_vector_types_test",
     srcs = ["sorted_vector_test.cpp"],
-    headers = [],
     deps = [
         "//folly:optional",
         "//folly:range",
@@ -1056,11 +972,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "collection_util_test",
     srcs = ["CollectionUtilTest.cpp"],
-    headers = [],
     deps = [
         "//folly:small_vector",
         "//folly:sorted_vector_types",
@@ -1070,11 +984,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "irange_test",
     srcs = ["IRangeTest.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/googletest:gtest",
         "//folly/container:irange",

@@ -7,11 +7,23 @@ load(
 oncall("fbcode_entropy_wardens_folly")
 
 fb_dirsync_cpp_library(
+    name = "dynamic_ring_queue",
+    headers = ["DynamicRingQueue.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly:likely",
+        "//folly/lang:bits",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "fixed_capacity_ring_queue",
     headers = ["FixedCapacityRingQueue.h"],
     use_raw_headers = True,
     exported_deps = [
         "fbsource//third-party/glog:glog",
+        "//folly:likely",
         "//folly/lang:bits",
     ],
 )

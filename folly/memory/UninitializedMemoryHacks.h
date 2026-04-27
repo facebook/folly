@@ -343,8 +343,10 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
 #define FOLLY_ASAN_ANNOTATE_CONTIGUOUS_CONTAINER _LIBCPP_HAS_ASAN
 #elif defined(_LIBCPP_HAS_NO_ASAN)
 #define FOLLY_ASAN_ANNOTATE_CONTIGUOUS_CONTAINER 0
-#else
+#elif __has_feature(address_sanitizer)
 #define FOLLY_ASAN_ANNOTATE_CONTIGUOUS_CONTAINER 1
+#else
+#define FOLLY_ASAN_ANNOTATE_CONTIGUOUS_CONTAINER 0
 #endif
 
 #if FOLLY_ASAN_ANNOTATE_CONTIGUOUS_CONTAINER

@@ -1,14 +1,11 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "checksum_test",
     srcs = ["ChecksumTest.cpp"],
-    headers = [],
     deps = [
         "//folly:benchmark",
         "//folly:portability",
@@ -28,11 +25,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "checksum_benchmark",
     srcs = ["ChecksumBenchmark.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",
@@ -41,8 +36,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "farm_hash_test",
     srcs = ["FarmHashTest.cpp"],
     headers = [],
@@ -52,11 +46,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_benchmark,
+fb_dirsync_cpp_benchmark(
     name = "hash_benchmark",
     srcs = ["HashBenchmark.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
@@ -70,11 +62,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "hash_test",
     srcs = ["HashTest.cpp"],
-    headers = [],
     supports_static_listing = False,
     deps = [
         "//folly:conv",
@@ -87,22 +77,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "rapidhash_test",
     srcs = ["RapidHashTest.cpp"],
-    headers = [],
     deps = [
         "//folly/hash:rapidhash",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "spooky_hash_v1_test",
     srcs = ["SpookyHashV1Test.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly/hash:spooky_hash_v1",
@@ -111,11 +97,9 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "spooky_hash_v2_test",
     srcs = ["SpookyHashV2Test.cpp"],
-    headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly/hash:spooky_hash_v2",
@@ -124,44 +108,36 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "traits_test",
     srcs = ["traits_test.cpp"],
-    headers = [],
     deps = [
         "//folly/hash:traits",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "murmur_hash_test",
     srcs = ["MurmurHashTest.cpp"],
-    headers = [],
     deps = [
         "//folly/hash:murmur_hash",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "std_compatible_hash_test",
     srcs = ["StdCompatibleHashTest.cpp"],
-    headers = [],
     deps = [
         "//folly/hash:hash",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "unique_hash_key_test",
     srcs = ["UniqueHashKeyTest.cpp"],
-    headers = [],
     supports_static_listing = False,
     deps = [
         "//folly/container:f14_hash",
@@ -171,22 +147,18 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "fnv_hash_test",
     srcs = ["FnvHashTest.cpp"],
-    headers = [],
     deps = [
         "//folly/hash:fnv_hash",
         "//folly/portability:gtest",
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "hsieh_hash_test",
     srcs = ["HsiehHashTest.cpp"],
-    headers = [],
     deps = [
         "//folly/hash:hsieh_hash",
         "//folly/portability:gtest",
