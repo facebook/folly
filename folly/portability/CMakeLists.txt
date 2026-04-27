@@ -220,6 +220,7 @@ folly_add_library(
 if(WIN32)
   target_link_libraries(folly_portability_pthread_obj PUBLIC Boost::thread)
   target_link_libraries(folly_portability_pthread PUBLIC Boost::thread)
+  set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::thread)
 endif()
 
 folly_add_library(
