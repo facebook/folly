@@ -176,7 +176,7 @@ class MemoryMapping {
   ~MemoryMapping();
 
   MemoryMapping& operator=(const MemoryMapping&) = delete;
-  MemoryMapping& operator=(MemoryMapping&&);
+  MemoryMapping& operator=(MemoryMapping&&) noexcept;
 
   void swap(MemoryMapping& other) noexcept;
 
