@@ -1,3 +1,5 @@
+load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
+load("@fbsource//tools/build_defs:platform_defs.bzl", "ANDROID", "CXX", "FBCODE")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
 
@@ -60,6 +62,11 @@ fb_dirsync_cpp_unittest(
     name = "memory_mapping_test",
     srcs = ["MemoryMappingTest.cpp"],
     feature = triage_InfrastructureSupermoduleOptou,
+    platforms = (ANDROID, CXX, FBCODE),
+    use_instrumentation_test = True,
+    # TODO(T263893609): Drop this explicit override once folly_xplat_cxx_test
+    # forwards Android test attrs correctly for xplat/folly tests.
+    xplat_impl = fb_xplat_cxx_test,
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:file_util",
