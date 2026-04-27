@@ -243,3 +243,6 @@ class FiberImpl {
 
 #undef FOLLY_DETAIL_TAIL_CALLS_CAN_BE_DISABLED
 #undef FOLLY_DETAIL_DISABLE_TAIL_CALLS
+
+#endif
+
