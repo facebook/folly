@@ -70,7 +70,7 @@ struct BitIteratorBase {
       std::is_integral<
           typename std::iterator_traits<BaseIter>::value_type>::value,
       "BitIterator may only be used with integral types");
-  typedef boost::iterator_adaptor<
+  using type = boost::iterator_adaptor<
       BitIterator<BaseIter>, // Derived
       BaseIter, // Base
       bool, // Value
@@ -79,8 +79,7 @@ struct BitIteratorBase {
       bititerator_detail::BitReference<
           typename std::iterator_traits<BaseIter>::reference,
           typename std::iterator_traits<BaseIter>::value_type>, // Reference
-      ssize_t>
-      type;
+      ssize_t>;
 };
 
 } // namespace bititerator_detail

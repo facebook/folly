@@ -95,10 +95,9 @@ class BitIterator : public bititerator_detail::BitIteratorBase<BaseIter>::type {
   friend class boost::iterator_core_access;
   friend BitIterator findFirstSet<>(BitIterator, BitIterator);
 
-  typedef bititerator_detail::BitReference<
+  using BitRef = bititerator_detail::BitReference<
       typename std::iterator_traits<BaseIter>::reference,
-      typename std::iterator_traits<BaseIter>::value_type>
-      BitRef;
+      typename std::iterator_traits<BaseIter>::value_type>;
 
   void advanceInBlock(size_t n) {
     bitOffset_ += n;
