@@ -1179,9 +1179,17 @@ jobs:
             out.write("  build:\n")
             out.write("    runs-on: %s\n" % runs_on)
             out.write(f"    timeout-minutes: {timeout_minutes}\n")
+            env_vars = []
+            if build_opts.is_darwin():
+                env_vars.append(
+                    "      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer\n"
+                )
             if use_sccache:
+                env_vars.append('      SCCACHE_GHA_ENABLED: "on"\n')
+            if env_vars:
                 out.write("    env:\n")
-                out.write('      SCCACHE_GHA_ENABLED: "on"\n')
+                for line in env_vars:
+                    out.write(line)
             out.write("    steps:\n")
 
             if build_opts.is_linux():
