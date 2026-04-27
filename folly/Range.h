@@ -29,8 +29,6 @@
  * does not manage the data it refers to - just like an iterator
  * would not.)
  *
- * Additional documentation is in folly/docs/Range.md
- *
  * @refcode folly/docs/examples/folly/Range.h
  * @struct folly::range
  */
