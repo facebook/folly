@@ -33,6 +33,11 @@
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 
+#ifdef __ANDROID__
+#include <dlfcn.h>
+#include <sys/ioctl.h>
+#endif
+
 static constexpr ssize_t kDefaultMlockChunkSize = !folly::kMscVer
     // Linux implementations of unmap/mlock/munlock take a kernel
     // semaphore and block other threads from doing other memory
@@ -59,6 +64,20 @@ enum mmap_flags : int {
   populate = 0,
 #endif
 };
+
+#ifdef __ANDROID__
+constexpr unsigned long kAshmemGetSizeIoctl = 0x00007704; // _IO(0x77, 4)
+
+off64_t getAndroidSharedMemorySize(int fd) {
+  using GetSizeFn = size_t (*)(int);
+  static const auto getSize =
+      reinterpret_cast<GetSizeFn>(dlsym(RTLD_DEFAULT, "ASharedMemory_getSize"));
+  const auto size = getSize != nullptr
+      ? getSize(fd)
+      : static_cast<size_t>(ioctl(fd, kAshmemGetSizeIoctl, 0));
+  return size > 0 ? static_cast<off64_t>(size) : -1;
+}
+#endif
 
 } // namespace
 
@@ -102,6 +121,28 @@ void getDeviceOptions(dev_t device, off64_t& pageSize, bool& autoExtend) {
   }
 }
 
+off64_t getFileSize(File const& file, off64_t& pageSize, bool& autoExtend) {
+#ifdef _WIN32
+  // stat that support files larger then 4Gb
+  struct _stat64 st;
+  CHECK_ERR(_fstat64(file.fd(), &st));
+#else
+  struct stat st{};
+  CHECK_ERR(fstat(file.fd(), &st));
+#endif
+
+  if (pageSize == 0) {
+    getDeviceOptions(st.st_dev, pageSize, autoExtend);
+  }
+#ifdef __ANDROID__
+  const auto fileSize = getAndroidSharedMemorySize(file.fd());
+  if (fileSize >= 0) {
+    return fileSize;
+  }
+#endif
+  return st.st_size;
+}
+
 } // namespace
 
 void MemoryMapping::init(off64_t offset, off64_t length) {
@@ -111,28 +152,14 @@ void MemoryMapping::init(off64_t offset, off64_t length) {
 
   off64_t& pageSize = options_.pageSize;
 
-#ifdef _WIN32
-  // stat that support files larger then 4Gb
-  struct _stat64 st;
-#else
-  struct stat st;
-#endif
-
   // On Linux, hugetlbfs file systems don't require ftruncate() to grow the
   // file, and (on kernels before 2.6.24) don't even allow it. Also, the file
   // size is always a multiple of the page size.
   bool autoExtend = false;
+  off64_t fileSize = 0;
 
   if (!anon) {
-// Stat the file
-#ifdef _WIN32
-    CHECK_ERR(_fstat64(file_.fd(), &st));
-#else
-    CHECK_ERR(fstat(file_.fd(), &st));
-#endif
-    if (pageSize == 0) {
-      getDeviceOptions(st.st_dev, pageSize, autoExtend);
-    }
+    fileSize = getFileSize(file_, pageSize, autoExtend);
   } else {
     DCHECK(!file_);
     DCHECK_EQ(offset, 0);
@@ -160,7 +187,7 @@ void MemoryMapping::init(off64_t offset, off64_t length) {
     mapLength_ = (mapLength_ + pageSize - 1) / pageSize * pageSize;
   }
 
-  off64_t remaining = anon ? length : st.st_size - offset;
+  off64_t remaining = anon ? length : fileSize - offset;
 
   if (mapLength_ == -1) {
     length = mapLength_ = remaining;
@@ -313,7 +340,7 @@ bool MemoryMapping::mlock(LockMode mode, LockFlags flags) {
         // If no flags are set, mlock2() behaves exactly the same as
         // mlock(). Prefer the portable variant.
         return !flags.lockOnFault
-            ? ::mlock(addr, len)
+            ? ::mlock(addr, len) // NOLINT(facebook-hte-BadCall-mlock)
             : mlock2wrapper(addr, len, flags);
       },
       mapStart_,
@@ -413,7 +440,7 @@ void MemoryMapping::advise(int advice, size_t offset, size_t length) const {
   PLOG_IF(WARNING, ::madvise(mapStart, length, advice)) << "madvise";
 }
 
-MemoryMapping& MemoryMapping::operator=(MemoryMapping&& other) {
+MemoryMapping& MemoryMapping::operator=(MemoryMapping&& other) noexcept {
   swap(other);
   return *this;
 }

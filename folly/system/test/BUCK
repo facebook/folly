@@ -1,7 +1,45 @@
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
 load("@fbsource//tools/build_defs:platform_defs.bzl", "ANDROID", "CXX", "FBCODE")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("@fbsource//xplat/pfh/triage_InfrastructureSupermoduleOptou:DEFS.bzl", "triage_InfrastructureSupermoduleOptou")
+
+# Android API level gate for ashmem tests.  ASharedMemory_create() requires
+# API 26+.  FOLLY_TEST_HAS_ASHMEM is passed as a compiler flag so the C++
+# source does not duplicate the threshold.
+_ASHMEM_FLAG = ["-DFOLLY_TEST_HAS_ASHMEM=1"]
+
+_ASHMEM_TOOLCHAIN = ["fbsource//third-party/toolchains:android"]
+
+_ASHMEM_COMPILER_FLAGS = select({
+    "DEFAULT": [],
+    "ovr_config//os/version/android:api-level-26": _ASHMEM_FLAG,
+    "ovr_config//os/version/android:api-level-27": _ASHMEM_FLAG,
+    "ovr_config//os/version/android:api-level-28": _ASHMEM_FLAG,
+    "ovr_config//os/version/android:api-level-29": _ASHMEM_FLAG,
+    "ovr_config//os/version/android:api-level-30": _ASHMEM_FLAG,
+    "ovr_config//os/version/android:api-level-31": _ASHMEM_FLAG,
+    "ovr_config//os/version/android:api-level-32": _ASHMEM_FLAG,
+    "ovr_config//os/version/android:api-level-33": _ASHMEM_FLAG,
+    "ovr_config//os/version/android:api-level-34": _ASHMEM_FLAG,
+    "ovr_config//os/version/android:api-level-35": _ASHMEM_FLAG,
+    "ovr_config//os/version/android:api-level-36": _ASHMEM_FLAG,
+})
+
+_ASHMEM_DEPS = select({
+    "DEFAULT": [],
+    "ovr_config//os/version/android:api-level-26": _ASHMEM_TOOLCHAIN,
+    "ovr_config//os/version/android:api-level-27": _ASHMEM_TOOLCHAIN,
+    "ovr_config//os/version/android:api-level-28": _ASHMEM_TOOLCHAIN,
+    "ovr_config//os/version/android:api-level-29": _ASHMEM_TOOLCHAIN,
+    "ovr_config//os/version/android:api-level-30": _ASHMEM_TOOLCHAIN,
+    "ovr_config//os/version/android:api-level-31": _ASHMEM_TOOLCHAIN,
+    "ovr_config//os/version/android:api-level-32": _ASHMEM_TOOLCHAIN,
+    "ovr_config//os/version/android:api-level-33": _ASHMEM_TOOLCHAIN,
+    "ovr_config//os/version/android:api-level-34": _ASHMEM_TOOLCHAIN,
+    "ovr_config//os/version/android:api-level-35": _ASHMEM_TOOLCHAIN,
+    "ovr_config//os/version/android:api-level-36": _ASHMEM_TOOLCHAIN,
+})
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -61,12 +99,18 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "memory_mapping_test",
     srcs = ["MemoryMappingTest.cpp"],
+    compiler_flags = _ASHMEM_COMPILER_FLAGS,
     feature = triage_InfrastructureSupermoduleOptou,
     platforms = (ANDROID, CXX, FBCODE),
     use_instrumentation_test = True,
     # TODO(T263893609): Drop this explicit override once folly_xplat_cxx_test
     # forwards Android test attrs correctly for xplat/folly tests.
     xplat_impl = fb_xplat_cxx_test,
+    # Run with arvr Android API 34 mode so the ashmem test (gated on
+    # __ANDROID_API__ >= _ASHMEM_MIN_API) compiles and executes in CI.
+    xplat_labels = ci.labels(
+        ci.linux(ci.mode("fbsource//arvr/mode/android/apk/linux/dev")),
+    ),
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:file_util",
@@ -74,7 +118,7 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:gtest",
         "//folly/portability:sys_mman",
         "//folly/system:memory_mapping",
-    ],
+    ] + _ASHMEM_DEPS,
 )
 
 fb_dirsync_cpp_unittest(
