@@ -869,10 +869,12 @@ std::string parseString(Input<T>& in, char quoteChar) {
       ++in;
 
       bool consumed = false;
-      for (auto next : {"\r\n", "\r", "\n", "'"}) {
+      for (std::string_view next : {"\r\n", "\r", "\n", "'"}) {
         if (json5 && in.consume(next)) {
           consumed = true;
-          ret += next;
+          if (next == "'") {
+            ret += "'";
+          }
           break;
         }
       }

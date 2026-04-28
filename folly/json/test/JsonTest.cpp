@@ -1210,13 +1210,13 @@ TEST(Json5, SingleQuotedStrings) {
 }
 
 TEST(Json5Test, MultiLineStrings) {
-  EXPECT_EQ(fromJson5("\"line1\\\nline2\""), "line1\nline2");
-  EXPECT_EQ(fromJson5("\"line1\\\rline2\""), "line1\rline2");
-  EXPECT_EQ(fromJson5("\"line1\\\r\nline2\""), "line1\r\nline2");
+  EXPECT_EQ(fromJson5("\"hello, \\\nworld\""), "hello, world");
+  EXPECT_EQ(fromJson5("\"hello, \\\rworld\""), "hello, world");
+  EXPECT_EQ(fromJson5("\"hello, \\\r\nworld\""), "hello, world");
 
   // Multi-line string in object value
-  auto obj = fromJson5("{\"key\": \"hello\\\nworld\"}");
-  EXPECT_EQ(obj["key"], "hello\nworld");
+  auto obj = fromJson5("{\"key\": \"hello, \\\nworld\"}");
+  EXPECT_EQ(obj["key"], "hello, world");
 }
 
 TEST(Json5, PositivePrefix) {
