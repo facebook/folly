@@ -229,7 +229,7 @@ non_fbcode_target(
     raw_headers = [
         "Singleton-inl.h",
         "Singleton.h",
-        # Instead of depending on experimental_symbolizer_symbolizer, reference always-included headers here.
+        # Instead of depending on debugging_symbolizer_symbolizer, reference always-included headers here.
         "debugging/symbolizer/Dwarf.h",
         "debugging/symbolizer/DwarfImpl.h",
         "debugging/symbolizer/DwarfLineNumberVM.h",
@@ -242,18 +242,6 @@ non_fbcode_target(
         "debugging/symbolizer/SymbolizedFrame.h",
         "debugging/symbolizer/SymbolizePrinter.h",
         "debugging/symbolizer/StackTrace.h",
-        "experimental/symbolizer/Dwarf.h",
-        "experimental/symbolizer/DwarfImpl.h",
-        "experimental/symbolizer/DwarfLineNumberVM.h",
-        "experimental/symbolizer/DwarfSection.h",
-        "experimental/symbolizer/DwarfUtil.h",
-        "experimental/symbolizer/Elf.h",
-        "experimental/symbolizer/Elf-inl.h",
-        "experimental/symbolizer/ElfCache.h",
-        "experimental/symbolizer/Symbolizer.h",
-        "experimental/symbolizer/SymbolizedFrame.h",
-        "experimental/symbolizer/SymbolizePrinter.h",
-        "experimental/symbolizer/StackTrace.h",
     ],
     deps = [
         "fbsource//xplat/folly/portability:fmt_compile",
