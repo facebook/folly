@@ -214,3 +214,26 @@
 #else
 #define FOLLY_ATTR_CLANG_NO_THREAD_SAFETY_ANALYSIS
 #endif
+
+/**
+ * FOLLY_ATTR_MUSTTAIL requests that the compiler emit a tail call for the
+ * annotated return statement. When the attribute is supported (Clang, GCC 15+,
+ * MSVC), the compiler will enforce tail-call emission and produce a compilation
+ * error if a tail call cannot be generated. On compilers that do not support
+ * the attribute, the macro expands to nothing and tail-call optimization is
+ * not guaranteed.
+ *
+ *  int factorial_impl(int n, int acc) {
+ *    if (n <= 1) return acc;
+ *    FOLLY_ATTR_MUSTTAIL return factorial_impl(n - 1, n * acc);
+ *  }
+ */
+#if FOLLY_HAS_CPP_ATTRIBUTE(gnu::musttail)
+#define FOLLY_ATTR_MUSTTAIL [[gnu::musttail]]
+#elif FOLLY_HAS_CPP_ATTRIBUTE(clang::musttail)
+#define FOLLY_ATTR_MUSTTAIL [[clang::musttail]]
+#elif FOLLY_HAS_CPP_ATTRIBUTE(msvc::musttail)
+#define FOLLY_ATTR_MUSTTAIL [[msvc::musttail]]
+#else
+#define FOLLY_ATTR_MUSTTAIL
+#endif
