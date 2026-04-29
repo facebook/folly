@@ -585,7 +585,8 @@ class ShipitPathMap:
                     if target_name:
                         full_file_list.add(target_name)
                         if copy_if_different(full_name, target_name):
-                            filter_strip_marker(target_name, self.strip_marker)
+                            if not os.path.islink(full_name):
+                                filter_strip_marker(target_name, self.strip_marker)
                             change_status.record_change(target_name)
                             if update_count < 10:
                                 print("Updated %s -> %s" % (full_name, target_name))
