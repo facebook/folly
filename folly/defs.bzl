@@ -45,7 +45,7 @@ def cpp_flags():
             "DEFAULT": select({
                 "DEFAULT": ["-DFOLLY_MOBILE=1"],
                 "ovr_config//os:windows": [],
-                "ovr_config//project/folly/constraints:mobile[disabled]": [],
+                "ovr_config//project/folly:mobile[disabled]": [],
             }),
             "ovr_config//build_mode:arvr_mode[enabled]": select({
                 "DEFAULT": ["-DFOLLY_MOBILE=1"],
