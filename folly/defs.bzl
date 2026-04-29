@@ -280,8 +280,14 @@ def folly_xplat_cxx_binary(
         raw_headers = [],
         deps = [],
         oncall = None,
+        linker_flags = None,
+        link_style = None,
         **kwargs):
-    oncall_kwargs = {"oncall": oncall} if oncall != None else {}
+    extra_kwargs = {"oncall": oncall} if oncall != None else {}
+    if linker_flags != None:
+        extra_kwargs["linker_flags"] = linker_flags
+    if link_style != None:
+        extra_kwargs["link_style"] = link_style
 
     fb_xplat_cxx_binary(
         name = name,
@@ -290,5 +296,5 @@ def folly_xplat_cxx_binary(
         include_directories = _compute_include_directories(),
         deps = deps,
         platforms = (CXX,),
-        **oncall_kwargs
+        **extra_kwargs
     )
