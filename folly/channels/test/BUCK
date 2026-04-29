@@ -88,7 +88,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "merge_test",
     srcs = ["MergeTest.cpp"],
-    modifiers = ["ovr_config//project/folly/constraints:mobile[disabled]"],
+    modifiers = ["ovr_config//project/folly:mobile[disabled]"],
     deps = [
         ":channel_test_util",
         "//folly/channels:consume_channel",
