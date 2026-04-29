@@ -1,5 +1,3 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
     "ALL_APPLE_SDKS",
@@ -8,13 +6,10 @@ load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsy
 load(
     "@fbsource//xplat/folly:defs.bzl",
     "WINDOWS_CLANG_CXX_FLAGS",
-    "folly_xplat_library",
     "should_enable_gflags",
 )
 
 oncall("fbcode_entropy_wardens_folly")
-
-# xplat build rules
 
 fb_dirsync_cpp_library(
     name = "asm",
@@ -132,32 +127,23 @@ fb_dirsync_cpp_library(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_library,
+fb_dirsync_cpp_library(
     name = "gflags",
-    compiler_flags = [
-        "-fno-omit-frame-pointer",
-    ],
+    srcs = ["GFlags.cpp"],
+    headers = ["GFlags.h"],
+    compiler_flags = ["-fno-omit-frame-pointer"],
     exported_preprocessor_flags = select({
-        "//xplat/folly/buck_config:folly-gflags-enabled": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
         "DEFAULT": ["-DFOLLY_HAVE_LIBGFLAGS=1"] if should_enable_gflags() else ["-DFOLLY_HAVE_LIBGFLAGS=0"],
+        "fbsource//xplat/folly/buck_config:folly-gflags-enabled": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
         "ovr_config//os:linux": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
         "ovr_config//os:macos": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
         "ovr_config//os:windows": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
         # In some cases, fbandroid suffixed rules can build with the fbcode platforms.
         "ovr_config//runtime:fbcode": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
     }),
-    raw_headers = [
-        "GFlags.h",
-    ],
-    exported_deps = [":config"] + select({
-        "//xplat/folly/buck_config:folly-gflags-enabled": ["//third-party/gflags:gflags"],
-        "DEFAULT": ["//third-party/gflags:gflags"] if should_enable_gflags() else [],
-        "ovr_config//os:linux": ["//third-party/gflags:gflags"],
-        "ovr_config//os:macos": ["//third-party/gflags:gflags"],
-        "ovr_config//os:windows": ["//third-party/gflags:gflags"],
-        "ovr_config//runtime:fbcode": ["//third-party/gflags:gflags"],
-    }),
+    use_raw_headers = True,
+    exported_deps = [":config"],
+    exported_external_deps = ["gflags"],
 )
 
 fb_dirsync_cpp_library(
@@ -253,8 +239,8 @@ fb_dirsync_cpp_library(
         "//folly:portability",
     ],
     exported_external_deps = [
-        ("openssl", None, "ssl"),
         ("openssl", None, "crypto"),
+        ("openssl", None, "ssl"),
     ],
 )
 
@@ -275,8 +261,8 @@ fb_dirsync_cpp_library(
         "//folly:portability",
     ],
     external_deps = [
-        "boost",
         ("boost", None, "boost_thread"),
+        "boost",
     ],
     exported_external_deps = [
         ("glibc", None, "pthread"),
@@ -534,19 +520,4 @@ fb_dirsync_cpp_library(
             "fbsource//third-party/toolchains/win:ws2_32.lib",
         ],
     }),
-)
-
-# fbcode build rules
-
-fbcode_target(
-    _kind = cpp_library,
-    name = "gflags",
-    srcs = ["GFlags.cpp"],
-    headers = ["GFlags.h"],
-    exported_deps = [
-        ":config",
-    ],
-    exported_external_deps = [
-        "gflags",
-    ],
 )
