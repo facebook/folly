@@ -56,6 +56,7 @@ fbcode/fboss = fboss
 # NOTE: Although this directory has other thrift files might not be ready for
 # opensource, this pathmap should only be used internally `getdeps.py fetch`
 fbcode/configerator/structs/neteng/fboss/thrift = configerator/structs/neteng/fboss/thrift
+fbcode/neteng/fboss/bgp/public_tld/configerator/structs/neteng = configerator/structs/neteng
 
 [shipit.strip]
 ^fbcode/fboss/github/docs/.*
