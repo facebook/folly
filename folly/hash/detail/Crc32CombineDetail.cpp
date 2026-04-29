@@ -113,11 +113,20 @@ static uint32_t gf_multiply_crc32_hw(uint64_t crc1, uint64_t crc2, uint32_t) {
 // external/nvidia/hash/detail/Crc32cCombineDetail-inl.h
 #else
 
-static uint32_t gf_multiply_crc32c_hw(uint64_t, uint64_t, uint32_t) {
-  return 0;
+// Fallback to the SW multiply when no hardware GF-multiply is available
+// (e.g. AArch32 with __ARM_FEATURE_CRC32 but no NEON+crypto).
+// The chunk crc32_hw / crc32c_hw paths are still hardware-accelerated;
+// only the combine reduction uses SW here.
+// Returning 0 silently corrupts results, so callers always get a correct
+// combine even when crc32_hw_supported() is true.
+static uint32_t gf_multiply_crc32c_hw(
+    uint64_t crc1, uint64_t crc2, uint32_t m) {
+  return gf_multiply_sw(
+      static_cast<uint32_t>(crc1), static_cast<uint32_t>(crc2), m);
 }
-static uint32_t gf_multiply_crc32_hw(uint64_t, uint64_t, uint32_t) {
-  return 0;
+static uint32_t gf_multiply_crc32_hw(uint64_t crc1, uint64_t crc2, uint32_t m) {
+  return gf_multiply_sw(
+      static_cast<uint32_t>(crc1), static_cast<uint32_t>(crc2), m);
 }
 
 #endif // FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)

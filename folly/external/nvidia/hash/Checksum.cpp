@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(__arm__)
 
 #include <cstring>
 #include <cstddef>
@@ -28,6 +28,9 @@
 namespace folly::detail {
 
 uint32_t crc32_hw(const uint8_t* buf, size_t len, uint32_t crc) {
+#if defined(__aarch64__)
+  // AArch64 has __crc32d for 8-byte chunks; 
+  // AArch32 does not (no 64-bit GPRs), so it falls through to the 4-byte loop below.
   while (len >= 8) {
     uint64_t val = 0;
     std::memcpy(&val, buf, 8);
@@ -35,8 +38,9 @@ uint32_t crc32_hw(const uint8_t* buf, size_t len, uint32_t crc) {
     len -= 8;
     buf += 8;
   }
+#endif
 
-  if (len % 8 >= 4) {
+  while (len >= 4) {
     uint32_t val = 0;
     std::memcpy(&val, buf, 4);
     crc = __crc32w(crc, val);
@@ -44,7 +48,7 @@ uint32_t crc32_hw(const uint8_t* buf, size_t len, uint32_t crc) {
     buf += 4;
   }
 
-  if (len % 4 >= 2) {
+  if (len >= 2) {
     uint16_t val = 0;
     std::memcpy(&val, buf, 2);
     crc = __crc32h(crc, val);
@@ -52,7 +56,7 @@ uint32_t crc32_hw(const uint8_t* buf, size_t len, uint32_t crc) {
     buf += 2;
   }
 
-  if (len % 2 >= 1) {
+  if (len >= 1) {
     crc = __crc32b(crc, *buf);
   }
 
@@ -63,4 +67,4 @@ uint32_t crc32_hw(const uint8_t* buf, size_t len, uint32_t crc) {
 
 #endif // FOLLY_ARM_FEATURE_CRC32
 
-#endif // __aarch64__
+#endif // __aarch64__ || __arm__
