@@ -7,7 +7,7 @@ fb_dirsync_cpp_unittest(
     srcs = [
         "F14DetailTest.cpp",
     ],
-    modifiers = ["ovr_config//project/folly/constraints:mobile[disabled]"],
+    modifiers = ["ovr_config//project/folly:mobile[disabled]"],
     deps = [
         "//folly:traits",
         "//folly/container/detail:f14_hash_detail",
