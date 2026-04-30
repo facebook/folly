@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 #include <folly/CPortability.h>
 #include <folly/portability/Config.h>
@@ -512,6 +513,15 @@ constexpr auto kIsLinuxActual = false;
 #endif
 
 constexpr auto kIsLinux = kIsLinuxActual && !kIsMobile;
+
+// The Linux kernel never maps the first page of virtual address space, so any
+// frame pointer below this threshold is a stale or corrupt value and must not
+// be dereferenced.
+#if defined(__linux__)
+constexpr uintptr_t kMinValidAddress = 0x1000;
+#else
+constexpr uintptr_t kMinValidAddress = 0;
+#endif
 
 #if defined(__FreeBSD__)
 constexpr auto kIsFreeBSD = true;
