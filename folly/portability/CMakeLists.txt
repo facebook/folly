@@ -108,14 +108,10 @@ folly_add_library(
 
 folly_add_library(
   NAME gflags
-  SRCS
-    GFlags.cpp
   HEADERS
     GFlags.h
   EXPORTED_DEPS
     folly_portability_config
-  EXTERNAL_DEPS
-    ${GFLAGS_LIBRARIES}
 )
 
 folly_add_library(
