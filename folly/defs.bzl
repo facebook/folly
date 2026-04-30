@@ -280,14 +280,13 @@ def folly_xplat_cxx_binary(
         raw_headers = [],
         deps = [],
         oncall = None,
-        linker_flags = None,
-        link_style = None,
+        dlopen_enabled = False,
         **kwargs):
     extra_kwargs = {"oncall": oncall} if oncall != None else {}
-    if linker_flags != None:
-        extra_kwargs["linker_flags"] = linker_flags
-    if link_style != None:
-        extra_kwargs["link_style"] = link_style
+
+    if dlopen_enabled:
+        extra_kwargs["linker_flags"] = kwargs.get("linker_flags", [])
+        extra_kwargs["link_style"] = kwargs.get("link_style")
 
     fb_xplat_cxx_binary(
         name = name,
