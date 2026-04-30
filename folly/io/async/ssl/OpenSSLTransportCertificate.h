@@ -30,6 +30,11 @@ class OpenSSLTransportCertificate : virtual public AsyncTransportCertificate {
  public:
   virtual ~OpenSSLTransportCertificate() override = default;
 
+  const OpenSSLTransportCertificate* asOpenSSLTransportCertificate()
+      const override {
+    return this;
+  }
+
   /**
    * Returns an X509 structure associated with this Certificate. This may be
    * null.
@@ -59,7 +64,7 @@ class OpenSSLTransportCertificate : virtual public AsyncTransportCertificate {
 
   static ssl::X509UniquePtr tryExtractX509(
       const AsyncTransportCertificate* cert) {
-    auto opensslCert = dynamic_cast<const OpenSSLTransportCertificate*>(cert);
+    auto opensslCert = cert ? cert->asOpenSSLTransportCertificate() : nullptr;
     return opensslCert ? opensslCert->getX509() : nullptr;
   }
 };

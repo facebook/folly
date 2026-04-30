@@ -21,6 +21,8 @@
 
 namespace folly {
 
+class OpenSSLTransportCertificate;
+
 /**
  * Generic interface applications may implement to convey self or peer
  * certificate related information.
@@ -49,5 +51,10 @@ class AsyncTransportCertificate {
    * certificate itself.
    */
   virtual std::optional<std::string> getDER() const = 0;
+
+  virtual const OpenSSLTransportCertificate* asOpenSSLTransportCertificate()
+      const {
+    return nullptr;
+  }
 };
 } // namespace folly
