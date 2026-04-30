@@ -1,9 +1,9 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
-load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -58,9 +58,10 @@ fb_native.filegroup(
     srcs = ["StaticTracepointSectionTest.lds"],
 )
 
-fb_dirsync_cpp_binary(
+fb_dirsync_rule(
     name = "static_tracepoint_section_test_bin",
     srcs = ["StaticTracepointSectionTest.cpp"],
+    fbcode_rule = cpp_binary,
     linker_flags = [
         "--gc-sections",
         "-T",
@@ -73,9 +74,9 @@ fb_dirsync_cpp_binary(
     ],
 )
 
-fbcode_target(
-    _kind = custom_unittest,
+fb_dirsync_rule(
     name = "static_tracepoint_section_test",
     command = ["$(location :static_tracepoint_section_test_bin)"],
+    fbcode_rule = custom_unittest,
     type = "simple",
 )
