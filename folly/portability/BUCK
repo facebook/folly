@@ -128,8 +128,12 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    # @autodeps-skip
     name = "gflags",
-    srcs = ["GFlags.cpp"],
+    srcs = select({
+        "DEFAULT": [],
+        "ovr_config//runtime:fbcode": ["GFlags.cpp"],
+    }),
     headers = ["GFlags.h"],
     compiler_flags = ["-fno-omit-frame-pointer"],
     exported_preprocessor_flags = select({
@@ -143,7 +147,14 @@ fb_dirsync_cpp_library(
     }),
     use_raw_headers = True,
     exported_deps = [":config"],
-    exported_external_deps = ["gflags"],
+    exported_external_deps = select({
+        "DEFAULT": ["gflags"] if should_enable_gflags() else [],
+        "fbsource//xplat/folly/buck_config:folly-gflags-enabled": ["gflags"],
+        "ovr_config//os:linux": ["gflags"],
+        "ovr_config//os:macos": ["gflags"],
+        "ovr_config//os:windows": ["gflags"],
+        "ovr_config//runtime:fbcode": ["gflags"],
+    }),
 )
 
 fb_dirsync_cpp_library(
