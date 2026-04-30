@@ -111,6 +111,17 @@ FOLLY_NOINLINE folly::coro::Task<void> co_funcA() {
 
 } // namespace
 
+TEST(SmartExceptionTracer, ThrowInsideBlockingWaitDoesNotCrash) {
+  // Regression: walkNormalStack must not segfault when throwCallback fires
+  // with an active async stack root. Under --shared-libs builds the coroutine
+  // frame's sentinel BP slot (e.g. 0xa) was dereferenced before the bounds
+  // check could fire.
+  EXPECT_THAT(
+      [&] { folly::coro::blockingWait(co_funcA()); },
+      testing::ThrowsMessage<std::runtime_error>(
+          testing::HasSubstr("test ex")));
+}
+
 TEST(SmartExceptionTracer, AsyncStackTrace) {
   try {
     folly::coro::blockingWait(co_funcA());

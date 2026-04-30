@@ -234,7 +234,8 @@ FOLLY_DISABLE_THREAD_SANITIZER size_t walkNormalStack(
     StackFrame* normalStackFrame,
     StackFrame* normalStackFrameStop) {
   size_t numFrames = 0;
-  while (numFrames < maxAddresses && normalStackFrame != nullptr) {
+  while (numFrames < maxAddresses && normalStackFrame != nullptr &&
+         reinterpret_cast<uintptr_t>(normalStackFrame) >= kMinValidAddress) {
     auto* normalStackFrameNext = normalStackFrame->parentFrame;
     if (!(normalStackFrameNext > normalStackFrame &&
           normalStackFrameNext <
