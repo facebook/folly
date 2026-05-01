@@ -15,6 +15,7 @@ def copy(path, **_kwargs):
         build_script_dep = "fbcode//folly/docs/facebook:copy.py",
         output_gen_files = [path],
         strict = False,  # Remove (https://fburl.com/strict-custom-rules)
+        has_content_based_path = False,
     )
 
 # Helper function to define a custom_rule() that will emit the HTML output.
@@ -33,6 +34,7 @@ def html(src, support = None, style = "style.css", copy_support = True, **_kwarg
         build_script_dep = "fbcode//folly/docs/facebook:build_html.py",
         output_gen_files = [html],
         strict = False,  # Remove (https://fburl.com/strict-custom-rules)
+        has_content_based_path = False,
     )
 
     if copy_support:
