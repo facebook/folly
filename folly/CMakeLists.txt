@@ -1137,6 +1137,11 @@ folly_add_library(
     folly_system_thread_id
 )
 
+set(FOLLY_SINGLETON_SELECT_DEPS)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  list(APPEND FOLLY_SINGLETON_SELECT_DEPS folly_debugging_symbolizer_symbolizer)
+endif()
+
 folly_add_library(
   NAME singleton
   SRCS
@@ -1145,13 +1150,9 @@ folly_add_library(
     Singleton-inl.h
     Singleton.h
   DEPS
-    folly_debugging_symbolizer_symbolizer
-    folly_demangle
-    folly_lang_safe_assert
-    folly_portability_config
     folly_portability_fmt_compile
-    folly_scope_guard
     folly_system_at_fork
+    ${FOLLY_SINGLETON_SELECT_DEPS}
   EXPORTED_DEPS
     folly_cancellation_token
     folly_concurrency_core_cached_shared_ptr
