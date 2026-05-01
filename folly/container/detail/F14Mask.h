@@ -172,8 +172,8 @@ class SparseMaskIter {
   }
 };
 
-// A variant of SparseMaskIter but using tzcnt (x86-64/bmi1) which is more
-// efficient.
+// A variant of SparseMaskIter which tests the index of the next set bit against
+// a bound instead of the bitvector itself.
 template <unsigned BitCount>
 class BoundedMaskIter {
   MaskType mask_;
@@ -182,6 +182,7 @@ class BoundedMaskIter {
   explicit BoundedMaskIter(MaskType mask) : mask_{mask} {}
 
   bool hasNext() {
+    // ternary encourages tzcnt (x86-64/bmi1) where possible
     unsigned firstSet =
         mask_ == 0 ? (sizeof(MaskType) * 8) : findFirstSetNonZero(mask_);
     return firstSet < BitCount;
