@@ -81,6 +81,7 @@ folly_add_library(
   HEADERS
     ExceptionTracer.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_debugging_exception_tracer_exception_abi
     folly_debugging_exception_tracer_stacktrace
     folly_debugging_symbolizer_symbolizer
@@ -122,6 +123,7 @@ folly_add_library(
   HEADERS
     SmartExceptionTracer.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_container_f14_hash
     folly_debugging_exception_tracer_smart_exception_tracer_singleton
     folly_debugging_exception_tracer_stacktrace

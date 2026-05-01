@@ -55,6 +55,7 @@ folly_add_library(
   HEADERS
     DynamicRingQueue.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_lang_bits
     folly_likely
 )
@@ -128,6 +129,7 @@ folly_add_library(
   HEADERS
     FixedCapacityRingQueue.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_lang_bits
     folly_likely
 )
@@ -187,6 +189,7 @@ folly_add_library(
   HEADERS
     IntrusiveHeap.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_lang_builtin
     folly_portability
   EXTERNAL_DEPS
@@ -224,6 +227,7 @@ folly_add_library(
   HEADERS
     MapUtil.h
   EXPORTED_DEPS
+    fmt::fmt
     folly_functional_invoke
     folly_optional
     folly_range
@@ -251,6 +255,8 @@ folly_add_library(
   HEADERS
     RegexMatchCache.h
   DEPS
+    ${GLOG_LIBRARIES}
+    fmt::fmt
     folly_map_util
     folly_portability_windows
     folly_string

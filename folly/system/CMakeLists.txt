@@ -47,6 +47,7 @@ folly_add_library(
   HEADERS
     EnvUtil.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_portability_stdlib
     folly_portability_unistd
     folly_string
@@ -77,6 +78,8 @@ folly_add_library(
   HEADERS
     MemoryMapping.h
   DEPS
+    ${GLOG_LIBRARIES}
+    fmt::fmt
     folly_io_huge_pages
     folly_portability
     folly_portability_gflags
@@ -95,6 +98,7 @@ folly_add_library(
   HEADERS
     Pid.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_portability_unistd
     folly_system_at_fork
   EXPORTED_DEPS

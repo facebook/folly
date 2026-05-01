@@ -35,6 +35,8 @@ folly_add_library(
   HEADERS
     CacheLocality.h
   DEPS
+    ${GLOG_LIBRARIES}
+    fmt::fmt
     folly_container_reserve
     folly_hash_hash
     folly_indestructible
@@ -95,6 +97,7 @@ folly_add_library(
   HEADERS
     DynamicBoundedQueue.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_concurrency_cache_locality
     folly_concurrency_unbounded_queue
 )
@@ -153,6 +156,7 @@ folly_add_library(
   HEADERS
     UnboundedQueue.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_concurrency_cache_locality
     folly_constexpr_math
     folly_lang_align

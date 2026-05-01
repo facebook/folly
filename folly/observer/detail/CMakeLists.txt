@@ -18,6 +18,8 @@ folly_add_library(
   NAME graph_cycle_detector
   HEADERS
     GraphCycleDetector.h
+  EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -29,6 +31,7 @@ folly_add_library(
     Core.h
     ObserverManager.h
   DEPS
+    fmt::fmt
     folly_concurrency_unbounded_queue
     folly_exception_string
     folly_format
@@ -37,6 +40,7 @@ folly_add_library(
     folly_singleton
     folly_system_thread_name
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_fibers_core_manager
     folly_function
     folly_functional_invoke

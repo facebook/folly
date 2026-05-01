@@ -76,6 +76,7 @@ folly_add_library(
   HEADERS
     BitsClass.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_lang_bits
     folly_portability
     folly_range
@@ -131,6 +132,7 @@ folly_add_library(
   HEADERS
     cstring_view.h
   EXPORTED_DEPS
+    fmt::fmt
     folly_traits
     folly_utility
 )
@@ -154,6 +156,7 @@ folly_add_library(
     folly_lang_align
     folly_lang_new
   EXPORTED_DEPS
+    fmt::fmt
     folly_c_portability
     folly_cpp_attributes
     folly_lang_assume
@@ -301,6 +304,8 @@ folly_add_library(
   NAME strong
   HEADERS
     Strong.h
+  EXPORTED_DEPS
+    fmt::fmt
 )
 
 folly_add_library(

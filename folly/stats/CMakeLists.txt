@@ -20,6 +20,7 @@ folly_add_library(
     BucketedTimeSeries-inl.h
     BucketedTimeSeries.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_likely
     folly_stats_detail_bucket
 )
@@ -42,6 +43,7 @@ folly_add_library(
     Histogram-inl.h
     Histogram.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_c_portability
     folly_conv
     folly_lang_exception
@@ -55,6 +57,7 @@ folly_add_library(
     MultiLevelTimeSeries-inl.h
     MultiLevelTimeSeries.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_constexpr_math
     folly_stats_bucketed_time_series
     folly_string
@@ -98,6 +101,7 @@ folly_add_library(
   HEADERS
     TDigest.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_algorithm_binary_heap
     folly_lang_exception
     folly_memory_malloc

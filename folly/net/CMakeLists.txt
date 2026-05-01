@@ -61,6 +61,7 @@ folly_add_library(
     TcpInfo.h
     TcpInfoTypes.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_portability_sockets
   EXPORTED_DEPS
     folly_expected

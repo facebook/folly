@@ -26,6 +26,7 @@ folly_add_library(
     Zlib.h
     Zstd.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_compression_compression_context_pool_singletons
     folly_conv
     folly_portability_windows
@@ -34,6 +35,8 @@ folly_add_library(
     folly_utility
     folly_varint
   EXPORTED_DEPS
+    ${ZSTD_LIBRARY}
+    ZLIB::ZLIB
     folly_io_iobuf
     folly_lang_bits
     folly_memory
@@ -75,6 +78,7 @@ folly_add_library(
   HEADERS
     Instructions.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_cpu_id
     folly_lang_assume
     folly_portability
@@ -91,6 +95,7 @@ folly_add_library(
   DEPS
     folly_math
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_compression_instructions
     folly_compression_select64
     folly_format
@@ -112,6 +117,7 @@ folly_add_library(
     folly_constexpr_math
     folly_utility
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_compression_instructions
     folly_portability
 )

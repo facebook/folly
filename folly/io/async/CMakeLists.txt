@@ -49,6 +49,7 @@ folly_add_library(
     folly_system_thread_id
     folly_system_thread_name
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_container_f14_hash
     folly_exception
     folly_exception_string
@@ -97,6 +98,7 @@ folly_add_library(
   HEADERS
     AsyncBase.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_exception
     folly_format
     folly_portability_filesystem
@@ -121,6 +123,8 @@ folly_add_library(
   HEADERS
     AsyncIO.h
   DEPS
+    ${GLOG_LIBRARIES}
+    fmt::fmt
     folly_exception
     folly_likely
     folly_portability_unistd
@@ -205,6 +209,7 @@ folly_add_library(
   HEADERS
     AsyncSocket.h
   DEPS
+    fmt::fmt
     folly_exception
     folly_io_async_io_uring_backend
     folly_lang_checked_math
@@ -286,6 +291,7 @@ folly_add_library(
   HEADERS
     AsyncSSLSocket.h
   DEPS
+    fmt::fmt
     folly_indestructible
     folly_io_async_ssl_basic_transport_certificate
     folly_network_address
@@ -452,6 +458,8 @@ folly_add_library(
   HEADERS
     EventBasePoller.h
   DEPS
+    ${GLOG_LIBRARIES}
+    fmt::fmt
     folly_file_util
     folly_io_async_epoll
     folly_io_async_liburing
@@ -496,6 +504,8 @@ folly_add_library(
   HEADERS
     IoUring.h
   DEPS
+    ${GLOG_LIBRARIES}
+    fmt::fmt
     folly_exception
     folly_portability_unistd
     folly_string
@@ -528,6 +538,7 @@ folly_add_library(
     folly_synchronization_call_once
     folly_tracing_static_tracepoint
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_c_portability
     folly_conv
     folly_cpp_attributes
@@ -556,6 +567,7 @@ folly_add_library(
   HEADERS
     IoUringBufferPoolSharing.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_function
     folly_io_async_io_uring_backend
     folly_io_async_liburing
@@ -690,6 +702,7 @@ folly_add_library(
   HEADERS
     MuxIOThreadPoolExecutor.h
   DEPS
+    fmt::fmt
     folly_container_enumerate
     folly_io_async_epoll_backend
     folly_lang_align
@@ -820,6 +833,7 @@ folly_add_library(
     folly_ssl_password_collector
     folly_ssl_ssl_session_manager
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_container_access
     folly_function
     folly_io_async_ssl_openssl_utils
@@ -837,6 +851,7 @@ folly_add_library(
   HEADERS
     SSLOptions.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_format
   EXPORTED_DEPS
     folly_container_array

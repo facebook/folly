@@ -35,5 +35,6 @@ folly_add_library(
   HEADERS
     ReproducibleAccumulator.h
   EXPORTED_DEPS
+    fmt::fmt
     folly_constexpr_math
 )

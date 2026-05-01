@@ -41,6 +41,7 @@ folly_add_library(
   HEADERS
     PriorityThreadFactory.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_portability_sys_resource
     folly_portability_sys_time
     folly_string

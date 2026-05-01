@@ -21,6 +21,7 @@ folly_add_library(
   HEADERS
     Barrier.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_lang_new
     folly_scope_guard
   EXPORTED_DEPS
@@ -32,6 +33,7 @@ folly_add_library(
   HEADERS
     Cleanup.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_futures_core
 )
 

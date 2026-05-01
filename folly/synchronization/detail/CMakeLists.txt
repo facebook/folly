@@ -27,6 +27,7 @@ folly_add_library(
   HEADERS
     HazptrUtils.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_portability
     folly_synchronization_detail_sleeper
 )
@@ -49,6 +50,7 @@ folly_add_library(
     ThreadCachedReaders.h
     ThreadCachedTag.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_function
     folly_synchronization_asymmetric_thread_fence
     folly_synchronization_relaxed_atomic

@@ -20,4 +20,6 @@ folly_add_library(
     AtomicBatchDispatcher.cpp
   HEADERS
     AtomicBatchDispatcher.h
+  DEPS
+    fmt::fmt
 )

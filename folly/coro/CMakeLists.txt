@@ -30,6 +30,7 @@ folly_add_library(
   HEADERS
     AsyncGenerator.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_cancellation_token
     folly_coro_auto_cleanup_fwd
     folly_coro_base_promise
@@ -68,6 +69,7 @@ folly_add_library(
   HEADERS
     AsyncScope.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_cancellation_token
     folly_coro_coroutine
     folly_coro_current_executor
@@ -454,6 +456,7 @@ folly_add_library(
   HEADERS
     Nothrow.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_coro_via_if_async
     folly_exception_wrapper
     folly_portability
@@ -549,6 +552,7 @@ folly_add_library(
   HEADERS
     SharedLock.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_coro_coroutine
     folly_coro_task
     folly_portability
@@ -624,6 +628,7 @@ folly_add_library(
   HEADERS
     Task.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_cancellation_token
     folly_coro_base_promise
     folly_coro_coroutine
@@ -755,6 +760,7 @@ folly_add_library(
   HEADERS
     ViaIfAsync.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_coro_coroutine
     folly_coro_detail_malloc
     folly_coro_traits

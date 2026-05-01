@@ -127,6 +127,8 @@ folly_add_library(
   HEADERS
     IPAddressSource.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
+    fmt::fmt
     folly_detail_ip_address
 )
 
@@ -347,6 +349,7 @@ folly_add_library(
     folly_synchronization_call_once
     folly_utility
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_concurrency_container_atomic_grow_array
     folly_container_f14_hash
     folly_container_foreach
@@ -405,6 +408,7 @@ folly_add_library(
   HEADERS
     TurnSequencer.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_chrono_hardware
     folly_detail_futex
     folly_portability

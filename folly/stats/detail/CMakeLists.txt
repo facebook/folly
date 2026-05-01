@@ -40,6 +40,8 @@ folly_add_library(
     DoubleRadixSort.cpp
   HEADERS
     DoubleRadixSort.h
+  DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(

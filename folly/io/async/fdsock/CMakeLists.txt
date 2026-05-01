@@ -20,6 +20,8 @@ folly_add_library(
     AsyncFdSocket.cpp
   HEADERS
     AsyncFdSocket.h
+  DEPS
+    fmt::fmt
   EXPORTED_DEPS
     folly_io_async_async_socket
     folly_io_async_fdsock_socket_fds
@@ -33,5 +35,6 @@ folly_add_library(
   HEADERS
     SocketFds.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_file
 )

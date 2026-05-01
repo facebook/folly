@@ -19,6 +19,7 @@ folly_add_library(
   HEADERS
     Baton.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_fibers_async_core
     folly_fibers_core
 )
@@ -49,6 +50,7 @@ folly_add_library(
   DEPS
     folly_fibers_core
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_functional_invoke
     folly_lang_customization_point
     folly_traits
@@ -88,6 +90,7 @@ folly_add_library(
   HEADERS
     AsyncStack.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_c_portability
     folly_fibers_async_core
     folly_scope_guard

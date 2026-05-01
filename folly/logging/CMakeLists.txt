@@ -19,6 +19,8 @@ folly_add_library(
   HEADERS
     AutoTimer.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
+    fmt::fmt
     folly_conv
     folly_optional
     folly_string
@@ -45,6 +47,8 @@ folly_add_library(
   DEPS
     folly_logging_logging
     folly_utility
+  EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
 )
 
 folly_add_library(
@@ -177,6 +181,7 @@ folly_add_library(
     folly_system_thread_id
     folly_system_thread_name
   EXPORTED_DEPS
+    fmt::fmt
     folly_c_portability
     folly_conv
     folly_cpp_attributes
