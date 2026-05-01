@@ -19,6 +19,7 @@ folly_add_library(
   HEADERS
     BitVectorCoding.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_compression_elias_fano_coding_detail
     folly_compression_instructions
     folly_compression_select64
@@ -40,6 +41,7 @@ folly_add_library(
   HEADERS
     EliasFanoCoding.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_compression_elias_fano_coding_detail
     folly_compression_instructions
     folly_compression_select64

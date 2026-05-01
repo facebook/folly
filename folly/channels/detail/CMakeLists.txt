@@ -19,6 +19,7 @@ folly_add_library(
   HEADERS
     AtomicQueue.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_lang_assume
 )
 
@@ -53,6 +54,7 @@ folly_add_library(
   HEADERS
     PointerVariant.h
   EXPORTED_DEPS
+    fmt::fmt
     folly_demangle
 )
 

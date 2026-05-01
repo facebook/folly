@@ -43,6 +43,7 @@ folly_add_library(
     ChannelProcessor-inl.h
     ChannelProcessor.h
   EXPORTED_DEPS
+    fmt::fmt
     folly_channels_consume_channel
     folly_channels_detail_intrusive_ptr
     folly_channels_merge_channel
@@ -58,6 +59,7 @@ folly_add_library(
     ConsumeChannel-inl.h
     ConsumeChannel.h
   EXPORTED_DEPS
+    fmt::fmt
     folly_channels_channel
     folly_channels_channel_callback_handle
     folly_channels_detail_utility
@@ -164,6 +166,7 @@ folly_add_library(
     Producer-inl.h
     Producer.h
   EXPORTED_DEPS
+    fmt::fmt
     folly_cancellation_token
     folly_channels_channel
     folly_channels_channel_callback_handle

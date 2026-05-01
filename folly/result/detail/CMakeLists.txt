@@ -70,6 +70,8 @@ folly_add_library(
     rich_exception_ptr_storage.cpp
   HEADERS
     rich_exception_ptr_storage.h
+  DEPS
+    ${GLOG_LIBRARIES}
   EXPORTED_DEPS
     folly_portability
     folly_result_detail_immortal_exception_storage

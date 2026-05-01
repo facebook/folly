@@ -119,6 +119,7 @@ folly_add_library(
     DistributedMutex-inl.h
     DistributedMutex.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_chrono_hardware
     folly_constexpr_math
     folly_detail_futex
@@ -144,6 +145,7 @@ folly_add_library(
   HEADERS
     EventCount.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_detail_futex
     folly_lang_bits
     folly_likely
@@ -184,6 +186,7 @@ folly_add_library(
     folly_portability_gflags
     folly_scope_guard
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_c_portability
     folly_concurrency_cache_locality
     folly_concurrency_container_atomic_grow_array
@@ -354,6 +357,7 @@ folly_add_library(
   HEADERS
     SaturatingSemaphore.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_detail_futex
     folly_detail_memory_idler
     folly_lang_switch

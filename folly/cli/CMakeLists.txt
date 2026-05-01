@@ -24,6 +24,7 @@ folly_add_library(
   HEADERS
     Args.h
   DEPS
+    fmt::fmt
     folly_file_util
   EXPORTED_DEPS
     folly_container_span
@@ -39,6 +40,8 @@ folly_add_library(
     NestedCommandLineApp.h
     ProgramOptions.h
   DEPS
+    ${GLOG_LIBRARIES}
+    fmt::fmt
     folly_conv
     folly_file_util
     folly_format

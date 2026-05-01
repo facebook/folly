@@ -68,6 +68,7 @@ folly_add_library(
   HEADERS
     EDFThreadPoolExecutor.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_concurrency_process_local_unique_id
     folly_portability_gflags
     folly_synchronization_lifo_sem
@@ -98,6 +99,7 @@ folly_add_library(
     ExecutorWithPriority-inl.h
     ExecutorWithPriority.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_executor
 )
 
@@ -140,6 +142,7 @@ folly_add_library(
   HEADERS
     FunctionScheduler.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_conv
     folly_random
     folly_string
@@ -249,6 +252,7 @@ folly_add_library(
   HEADERS
     IOThreadPoolExecutor.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_detail_memory_idler
     folly_portability_gflags
   EXPORTED_DEPS
@@ -337,6 +341,7 @@ folly_add_library(
     SerialExecutor-inl.h
     SerialExecutor.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_exception_string
     folly_executors_global_executor
     folly_executors_serialized_executor
@@ -360,6 +365,8 @@ folly_add_library(
     SoftRealTimeExecutor.cpp
   HEADERS
     SoftRealTimeExecutor.h
+  DEPS
+    ${GLOG_LIBRARIES}
   EXPORTED_DEPS
     folly_executor
 )
@@ -371,6 +378,7 @@ folly_add_library(
   HEADERS
     StrandExecutor.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_exception_string
     folly_executors_global_executor
   EXPORTED_DEPS
@@ -387,6 +395,7 @@ folly_add_library(
   HEADERS
     StripedEDFThreadPoolExecutor.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_concurrency_cache_locality
     folly_container_intrusive_heap
     folly_synchronization_distributed_mutex
@@ -411,6 +420,7 @@ folly_add_library(
     folly_synchronization_asymmetric_thread_fence
     folly_tracing_static_tracepoint
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_container_span
     folly_default_keep_alive_executor
     folly_executors_global_thread_pool_list
@@ -432,6 +442,7 @@ folly_add_library(
   HEADERS
     ThreadedExecutor.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_executors_thread_factory_named_thread_factory
     folly_scope_guard
     folly_system_thread_name
@@ -449,6 +460,7 @@ folly_add_library(
   HEADERS
     ThreadedRepeatingFunctionRunner.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_system_thread_name
   EXPORTED_DEPS
     folly_function
@@ -472,6 +484,7 @@ folly_add_library(
   HEADERS
     TimekeeperScheduledExecutor.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_executors_scheduled_executor
     folly_futures_core
 )

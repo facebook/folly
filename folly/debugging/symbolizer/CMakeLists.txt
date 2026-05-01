@@ -50,6 +50,7 @@ folly_add_library(
     Elf-inl.h
     Elf.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_exception
     folly_lang_c_string
     folly_portability_sys_mman
@@ -146,6 +147,7 @@ folly_add_library(
     SymbolizePrinter.h
     Symbolizer.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_container_evicting_cache_map
     folly_debugging_symbolizer_detail_debug
     folly_debugging_symbolizer_elf

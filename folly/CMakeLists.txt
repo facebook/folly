@@ -103,6 +103,7 @@ folly_add_library(
     folly_stats_streaming_stats
     folly_string
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_benchmark_util
     folly_functional_invoke
     folly_lang_hint
@@ -125,6 +126,7 @@ folly_add_library(
   HEADERS
     BenchmarkUtil.h
   DEPS
+    fmt::fmt
     folly_lang_align
     folly_portability_sched
     folly_portability_windows
@@ -164,6 +166,7 @@ folly_add_library(
     folly_scope_guard
     folly_synchronization_detail_sleeper
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_cpp_attributes
     folly_function
     folly_operation_cancelled
@@ -219,6 +222,7 @@ folly_add_library(
     ConcurrentSkipList-inl.h
     ConcurrentSkipList.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_constexpr_math
     folly_detail_iterators
     folly_likely
@@ -250,6 +254,7 @@ folly_add_library(
   HEADERS
     ConstructorCallbackList.h
   EXPORTED_DEPS
+    fmt::fmt
     folly_detail_static_singleton_manager
     folly_format
     folly_function
@@ -303,6 +308,7 @@ folly_add_library(
   HEADERS
     DefaultKeepAliveExecutor.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_executor
     folly_executors_sequenced_executor
     folly_synchronization_baton
@@ -329,6 +335,7 @@ folly_add_library(
   HEADERS
     DiscriminatedPtr.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_detail_discriminated_ptr_detail
     folly_likely
     folly_portability
@@ -342,6 +349,7 @@ folly_add_library(
     dynamic.h
     json.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_utility
   EXPORTED_DEPS
     folly_c_portability
@@ -429,6 +437,7 @@ folly_add_library(
     folly_exception_string
     folly_portability
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_function
     folly_lang_exception
     folly_optional
@@ -459,6 +468,7 @@ folly_add_library(
   HEADERS
     FBString.h
   EXPORTED_DEPS
+    fmt::fmt
     folly_c_portability
     folly_cpp_attributes
     folly_hash_hash
@@ -486,6 +496,7 @@ folly_add_library(
   HEADERS
     File.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_exception
     folly_file_util
     folly_portability_filesystem
@@ -564,6 +575,7 @@ folly_add_library(
     folly_ssl_openssl_hash
     folly_string
   EXPORTED_DEPS
+    fmt::fmt
     folly_cpp_attributes
 )
 
@@ -627,6 +639,7 @@ folly_add_library(
   HEADERS
     GLog.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_likely
 )
 
@@ -639,6 +652,7 @@ folly_add_library(
   DEPS
     folly_container_array
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_detail_group_varint_detail
     folly_lang_bits
     folly_portability
@@ -866,6 +880,7 @@ folly_add_library(
   HEADERS
     MPMCPipeline.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_detail_mpmc_pipeline_detail
     folly_portability
 )
@@ -898,6 +913,7 @@ folly_add_library(
     MacAddress.h
     SocketAddress.h
   DEPS
+    fmt::fmt
     folly_detail_ip_address_source
     folly_exception
     folly_format
@@ -932,6 +948,7 @@ folly_add_library(
   HEADERS
     ObserverContainer.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_constructor_callback_list
     folly_function
     folly_io_async_destructor_check
@@ -975,6 +992,7 @@ folly_add_library(
   HEADERS
     PackedSyncPtr.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_portability
     folly_synchronization_small_locks
 )
@@ -1048,6 +1066,7 @@ folly_add_library(
     Random-inl.h
     Random.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_cpp_attributes
     folly_detail_file_util_detail
     folly_portability_config
@@ -1069,6 +1088,7 @@ folly_add_library(
   HEADERS
     Range.h
   EXPORTED_DEPS
+    fmt::fmt
     folly_cpu_id
     folly_detail_range_common
     folly_detail_range_simd
@@ -1154,6 +1174,7 @@ folly_add_library(
     folly_system_at_fork
     ${FOLLY_SINGLETON_SELECT_DEPS}
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_cancellation_token
     folly_concurrency_core_cached_shared_ptr
     folly_concurrency_memory_read_mostly_shared_ptr
@@ -1228,6 +1249,7 @@ folly_add_library(
     String-inl.h
     String.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_container_array
   EXPORTED_DEPS
     folly_container_reserve
@@ -1289,6 +1311,7 @@ folly_add_library(
   HEADERS
     Synchronized.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_container_foreach
     folly_function
     folly_functional_apply_tuple
@@ -1423,6 +1446,8 @@ folly_add_library(
   HEADERS
     Uri-inl.h
     Uri.h
+  DEPS
+    ${GLOG_LIBRARIES}
   EXPORTED_DEPS
     folly_conv
     folly_expected
@@ -1447,6 +1472,7 @@ folly_add_library(
   HEADERS
     UTF8String.h
   DEPS
+    Boost::headers
     folly_range
 )
 

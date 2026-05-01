@@ -34,6 +34,7 @@ folly_add_library(
   HEADERS
     FlatCombiningPriorityQueue.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_detail_futex
     folly_optional
     folly_synchronization_flat_combining
@@ -73,5 +74,6 @@ folly_add_library(
   HEADERS
     SingleWriterFixedHashMap.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_lang_bits
 )

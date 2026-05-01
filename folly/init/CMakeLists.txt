@@ -21,6 +21,7 @@ folly_add_library(
   HEADERS
     Init.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_debugging_symbolizer_symbolizer
     folly_init_phase
     folly_logging_init

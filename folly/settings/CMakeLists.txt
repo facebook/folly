@@ -21,6 +21,7 @@ folly_add_library(
   HEADERS
     CommandLineParser.h
   DEPS
+    fmt::fmt
     folly_exception_string
     folly_function
     folly_logging_logging
@@ -63,6 +64,7 @@ folly_add_library(
   DEPS
     folly_synchronized
   EXPORTED_DEPS
+    fmt::fmt
     folly_concurrency_singleton_relaxed_counter
     folly_container_f14_hash
     folly_container_map_util

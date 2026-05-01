@@ -62,6 +62,7 @@ folly_add_library(
   HEADERS
     BoostContextCompatibility.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_function
   EXTERNAL_DEPS
     Boost::context
@@ -83,6 +84,7 @@ folly_add_library(
     Promise-inl.h
     Promise.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_constexpr_math
     folly_detail_memory_idler
     folly_memory_sanitize_address
@@ -233,6 +235,7 @@ folly_add_library(
   HEADERS
     GuardPageAllocator.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_portability_sys_mman
     folly_portability_unistd
     folly_singleton

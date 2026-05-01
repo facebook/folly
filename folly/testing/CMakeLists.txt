@@ -21,6 +21,7 @@ folly_add_library(
   HEADERS
     TestUtil.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_exception
     folly_ext_test_ext
     folly_file
