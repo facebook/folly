@@ -251,6 +251,7 @@ def folly_xplat_cxx_test(
     resources = kwargs.get("resources", [])
     env = kwargs.get("env", None)
     modifiers = kwargs.get("modifiers", None)
+    compiler_flags = kwargs.get("compiler_flags", None)
 
     extra_kwargs = {}
     if oncall != None:
@@ -259,6 +260,8 @@ def folly_xplat_cxx_test(
         extra_kwargs["env"] = env
     if modifiers != None:
         extra_kwargs["modifiers"] = modifiers
+    if compiler_flags != None:
+        extra_kwargs["compiler_flags"] = compiler_flags
 
     fb_xplat_cxx_test(
         name = name,
