@@ -1,8 +1,5 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target", "non_fbcode_target")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
-load("../../../../defs.bzl", "folly_xplat_cxx_test")
 load("../../../../io/async/test/certs/defs.bzl", "alias_pem", "alias_pem_for_xplat")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -18,19 +15,22 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-non_fbcode_target(
-    _kind = folly_xplat_cxx_test,
+fb_dirsync_cpp_unittest(
     name = "basic_transport_certificate_test",
-    srcs = [
-        # "BasicTransportCertificateTest.cpp",
-    ],
+    srcs = select({
+        "DEFAULT": [],
+        "ovr_config//runtime:fbcode": ["BasicTransportCertificateTest.cpp"],
+    }),
     oncall = "secure_pipes",
-    raw_headers = [],
+    resources = [
+        ":tests-cert.pem",
+    ],
     deps = [
-        "fbsource//xplat/folly/portability:gtest",
-        "//xplat/folly:file_util",
-        "//xplat/folly/io/async/ssl:basic_transport_certificate",
-        "//xplat/folly/ssl:openssl_cert_utils",
+        "//folly:file_util",
+        "//folly/io/async/ssl:basic_transport_certificate",
+        "//folly/portability:gtest",
+        "//folly/ssl:openssl_cert_utils",
+        "//folly/testing:test_util",
     ],
 )
 
@@ -43,24 +43,6 @@ fb_dirsync_rule(
         "tests-cert.pem",
     ],
     xplat_rule = alias_pem_for_xplat,
-)
-
-fbcode_target(
-    _kind = cpp_unittest,
-    name = "basic_transport_certificate_test",
-    srcs = ["BasicTransportCertificateTest.cpp"],
-    headers = [],
-    oncall = "secure_pipes",
-    resources = [
-        ":tests-cert.pem",
-    ],
-    deps = [
-        "//folly:file_util",
-        "//folly/io/async/ssl:basic_transport_certificate",
-        "//folly/portability:gtest",
-        "//folly/ssl:openssl_cert_utils",
-        "//folly/testing:test_util",
-    ],
 )
 
 fb_dirsync_cpp_unittest(
