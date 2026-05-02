@@ -42,6 +42,8 @@ namespace json {
 
 namespace {
 
+using std::string_view_literals::operator""sv;
+
 parse_error make_parse_error(
     unsigned int line,
     std::string const& context,
@@ -173,20 +175,21 @@ struct Printer {
   void operator()(dynamic const& v, const Context* context) const {
     switch (v.type()) {
       case dynamic::DOUBLE: {
+        const double dval = v.asDouble();
         if (!allowNanInf(opts_)) {
-          if (std::isnan(v.asDouble())) {
+          if (std::isnan(dval)) {
             throw json::print_error(
                 "folly::toJson: JSON object value was a NaN when serializing " +
                 contextDescription(context));
           }
-          if (std::isinf(v.asDouble())) {
+          if (std::isinf(dval)) {
             throw json::print_error(
                 "folly::toJson: JSON object value was an INF when serializing " +
                 contextDescription(context));
           }
         }
         toAppend(
-            v.asDouble(),
+            dval,
             &out_,
             opts_.dtoa_mode,
             opts_.double_num_digits,
@@ -204,10 +207,10 @@ struct Printer {
         break;
       }
       case dynamic::BOOL:
-        out_ += v.asBool() ? "true" : "false";
+        out_.append(v.asBool() ? "true"sv : "false"sv);
         break;
       case dynamic::NULLT:
-        out_ += "null";
+        out_.append("null"sv);
         break;
       case dynamic::STRING:
         escapeString(v.stringPiece(), out_, opts_);
@@ -258,7 +261,7 @@ struct Printer {
       const {
     printKV(o, *begin, context);
     for (++begin; begin != end; ++begin) {
-      out_ += ',';
+      out_.push_back(',');
       newline();
       printKV(o, *begin, context);
     }
@@ -266,11 +269,11 @@ struct Printer {
 
   void printObject(dynamic const& o, const Context* context) const {
     if (o.empty()) {
-      out_ += "{}";
+      out_.append("{}"sv);
       return;
     }
 
-    out_ += '{';
+    out_.push_back('{');
     indent();
     newline();
     if (opts_.sort_keys || opts_.sort_keys_by) {
@@ -293,7 +296,7 @@ struct Printer {
     }
     outdent();
     newline();
-    out_ += '}';
+    out_.push_back('}');
   }
 
   static std::string toStringOr(dynamic const& v, const char* placeholder) {
@@ -320,22 +323,22 @@ struct Printer {
 
   void printArray(dynamic const& a, const Context* context) const {
     if (a.empty()) {
-      out_ += "[]";
+      out_.append("[]"sv);
       return;
     }
 
-    out_ += '[';
+    out_.push_back('[');
     indent();
     newline();
     (*this)(a[0], Context(context, dynamic(0)));
     for (auto it = std::next(a.begin()); it != a.end(); ++it) {
-      out_ += ',';
+      out_.push_back(',');
       newline();
       (*this)(*it, Context(context, dynamic(std::distance(a.begin(), it))));
     }
     outdent();
     newline();
-    out_ += ']';
+    out_.push_back(']');
   }
 
  private:
@@ -354,11 +357,12 @@ struct Printer {
   void newline() const {
     if (indentLevel_) {
       auto indent = *indentLevel_ * opts_.pretty_formatting_indent_width;
-      out_ += to<std::string>('\n', std::string(indent, ' '));
+      out_.push_back('\n');
+      out_.append(indent, ' ');
     }
   }
 
-  void mapColon() const { out_ += indentLevel_ ? ": " : ":"; }
+  void mapColon() const { out_.append(indentLevel_ ? ": "sv : ":"sv); }
 
  private:
   std::string& out_;
