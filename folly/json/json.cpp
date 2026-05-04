@@ -124,50 +124,66 @@ std::optional<dynamic> parseHexInteger(
   return std::nullopt;
 }
 
-struct Printer {
-  // Context class is allows to restore the path to element that we are about to
-  // print so that if error happens we can throw meaningful exception.
-  class Context {
-   public:
-    Context(const Context* parent_context, const dynamic& key)
-        : parent_context_(parent_context), key_(key), is_key_(false) {}
-    Context(const Context* parent_context, const dynamic& key, bool is_key)
-        : parent_context_(parent_context), key_(key), is_key_(is_key) {}
+// Context class allows to restore the path to element that we are about to
+// print so that if error happens we can throw meaningful exception.
+class Context {
+ public:
+  Context(const Context* parent_context, const dynamic& key)
+      : parent_context_(parent_context), key_(key), is_key_(false) {}
+  Context(const Context* parent_context, const dynamic& key, bool is_key)
+      : parent_context_(parent_context), key_(key), is_key_(is_key) {}
 
-    // Return location description of a context as a chain of keys
-    // ex., '"outherKey"->"innerKey"'.
-    std::string locationDescription() const {
-      std::vector<std::string> keys;
-      const Context* ptr = parent_context_;
-      while (ptr) {
-        keys.push_back(ptr->getName());
-        ptr = ptr->parent_context_;
-      }
-      keys.push_back(getName());
-      std::ostringstream stream;
-      std::reverse_copy(
-          keys.begin(),
-          keys.end() - 1,
-          std::ostream_iterator<std::string>(stream, "->"));
+  // Return location description of a context as a chain of keys
+  // ex., '"outherKey"->"innerKey"'.
+  std::string locationDescription() const;
+  std::string getName() const;
+  std::string typeDescription() const { return is_key_ ? "key" : "value"; }
 
-      // Add current key.
-      stream << keys.back();
-      return stream.str();
-    }
-    std::string getName() const {
-      return Printer::toStringOr(key_, "<unprintable>");
-    }
-    std::string typeDescription() const { return is_key_ ? "key" : "value"; }
+ private:
+  const Context* const parent_context_;
+  const dynamic& key_;
+  bool is_key_;
+};
 
-   private:
-    const Context* const parent_context_;
-    const dynamic& key_;
-    bool is_key_;
-  };
+// Forward declaration; defined after PrinterImpl below.
+std::string toStringOr(dynamic const& v, const char* placeholder);
 
-  explicit Printer(
-      std::string& out, unsigned* indentLevel, serialization_opts const* opts)
-      : out_(out), indentLevel_(indentLevel), opts_(*opts) {}
+std::string Context::locationDescription() const {
+  std::vector<std::string> keys;
+  const Context* ptr = parent_context_;
+  while (ptr) {
+    keys.push_back(ptr->getName());
+    ptr = ptr->parent_context_;
+  }
+  keys.push_back(getName());
+  std::ostringstream stream;
+  std::reverse_copy(
+      keys.begin(),
+      keys.end() - 1,
+      std::ostream_iterator<std::string>(stream, "->"));
+  // Add current key.
+  stream << keys.back();
+  return stream.str();
+}
+
+std::string Context::getName() const {
+  return toStringOr(key_, "<unprintable>");
+}
+
+std::string contextDescription(const Context* context) {
+  if (!context) {
+    return "<undefined location>";
+  }
+  return context->typeDescription() + " at " + context->locationDescription();
+}
+
+// Printer is templated on `Pretty` to let the compiler eliminate the
+// `if (indentLevel_)` runtime branches in `newline()`, `mapColon()`,
+// `indent()`, and `outdent()` for the common compact-output path.
+template <bool Pretty>
+struct PrinterImpl {
+  explicit PrinterImpl(std::string& out, serialization_opts const* opts)
+      : out_(out), opts_(*opts) {}
 
   void operator()(dynamic const& v, const Context& context) const {
     (*this)(v, &context);
@@ -299,28 +315,6 @@ struct Printer {
     out_.push_back('}');
   }
 
-  static std::string toStringOr(dynamic const& v, const char* placeholder) {
-    try {
-      std::string result;
-      unsigned indentLevel = 0;
-      serialization_opts opts;
-      opts.allow_nan_inf = true;
-      opts.allow_non_string_keys = true;
-      Printer printer(result, &indentLevel, &opts);
-      printer(v, nullptr);
-      return result;
-    } catch (...) {
-      return placeholder;
-    }
-  }
-
-  static std::string contextDescription(const Context* context) {
-    if (!context) {
-      return "<undefined location>";
-    }
-    return context->typeDescription() + " at " + context->locationDescription();
-  }
-
   void printArray(dynamic const& a, const Context* context) const {
     if (a.empty()) {
       out_.append("[]"sv);
@@ -330,45 +324,68 @@ struct Printer {
     out_.push_back('[');
     indent();
     newline();
-    (*this)(a[0], Context(context, dynamic(0)));
-    for (auto it = std::next(a.begin()); it != a.end(); ++it) {
+    auto it = a.begin();
+    auto end = a.end();
+    (*this)(*it, Context(context, dynamic(int64_t{0})));
+    ++it;
+    for (int64_t i = 1; it != end; ++it, ++i) {
       out_.push_back(',');
       newline();
-      (*this)(*it, Context(context, dynamic(std::distance(a.begin(), it))));
+      (*this)(*it, Context(context, dynamic(i)));
     }
     outdent();
     newline();
     out_.push_back(']');
   }
 
- private:
   void outdent() const {
-    if (indentLevel_) {
-      --*indentLevel_;
+    if constexpr (Pretty) {
+      --indentLevel_;
     }
   }
-
   void indent() const {
-    if (indentLevel_) {
-      ++*indentLevel_;
+    if constexpr (Pretty) {
+      ++indentLevel_;
     }
   }
-
   void newline() const {
-    if (indentLevel_) {
-      auto indent = *indentLevel_ * opts_.pretty_formatting_indent_width;
+    if constexpr (Pretty) {
       out_.push_back('\n');
-      out_.append(indent, ' ');
+      out_.append(
+          static_cast<size_t>(indentLevel_) *
+              opts_.pretty_formatting_indent_width,
+          ' ');
     }
   }
+  void mapColon() const { out_.append(Pretty ? ": "sv : ":"sv); }
 
-  void mapColon() const { out_.append(indentLevel_ ? ": "sv : ":"sv); }
-
- private:
   std::string& out_;
-  unsigned* const indentLevel_;
   serialization_opts const& opts_;
+  // Mutable because the const operator()/printX methods mutate it via
+  // indent()/outdent(); only present (logically) when Pretty.
+  mutable unsigned indentLevel_{0};
 };
+
+// Free helper used by Context::getName (and a few error paths) to print
+// a single dynamic value as a short string. Uses the pretty-format
+// instantiation to match the prior behavior — the legacy Printer was
+// instantiated with a non-null indentLevel pointer here, which made
+// composite keys (rare; only with allow_non_string_keys) render with
+// newlines + indentation in error messages. For scalar keys (the
+// common case) this is byte-identical to the compact instantiation.
+std::string toStringOr(dynamic const& v, const char* placeholder) {
+  try {
+    std::string result;
+    serialization_opts opts;
+    opts.allow_nan_inf = true;
+    opts.allow_non_string_keys = true;
+    PrinterImpl<true> printer(result, &opts);
+    printer(v, nullptr);
+    return result;
+  } catch (...) {
+    return placeholder;
+  }
+}
 
 //////////////////////////////////////////////////////////////////////
 
@@ -968,9 +985,13 @@ std::array<uint64_t, 2> buildExtraAsciiToEscapeBitmap(StringPiece chars) {
 
 std::string serialize(dynamic const& dyn, serialization_opts const& opts) {
   std::string ret;
-  unsigned indentLevel = 0;
-  Printer p(ret, opts.pretty_formatting ? &indentLevel : nullptr, &opts);
-  p(dyn, nullptr);
+  if (opts.pretty_formatting) {
+    PrinterImpl<true> p(ret, &opts);
+    p(dyn, nullptr);
+  } else {
+    PrinterImpl<false> p(ret, &opts);
+    p(dyn, nullptr);
+  }
   return ret;
 }
 
