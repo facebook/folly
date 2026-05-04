@@ -220,6 +220,7 @@ int AsyncServerSocket::stopAccepting(int shutdownFlags) {
   std::vector<CallbackInfo> callbacksCopy;
   callbacks_.swap(callbacksCopy);
   napiIdToCallback_.clear();
+  napiIdCallbackIndex_.clear();
   localCallbackIndex_ = -1;
   for (const auto& callback : callbacksCopy) {
     // consumer may not be set if we are running in primary event base
@@ -661,7 +662,7 @@ void AsyncServerSocket::addAcceptCallback(
   if (eventBase) {
     napiId = eventBase->getBackend()->getNapiId();
     if (napiId != -1) {
-      napiIdToCallback_.emplace(napiId, CallbackInfo(callback, eventBase));
+      napiIdToCallback_[napiId].emplace_back(callback, eventBase);
     }
   }
 
@@ -695,6 +696,16 @@ void AsyncServerSocket::addAcceptCallback(
     acceptor->start(eventBase, maxAtOnce);
   } catch (...) {
     callbacks_.pop_back();
+    if (napiId != -1) {
+      auto& vec = napiIdToCallback_[napiId];
+      if (!vec.empty()) {
+        vec.pop_back();
+      }
+      if (vec.empty()) {
+        napiIdToCallback_.erase(napiId);
+        napiIdCallbackIndex_.erase(napiId);
+      }
+    }
     delete acceptor;
     throw;
   }
@@ -702,7 +713,7 @@ void AsyncServerSocket::addAcceptCallback(
   if (napiId != -1) {
     if (auto it = napiIdToCallback_.find(napiId);
         it != napiIdToCallback_.end()) {
-      it->second.consumer = acceptor;
+      it->second.back().consumer = acceptor;
     }
   }
   if (localCallbackIndex_ < 0 && callbacks_.back().eventBase == eventBase_) {
@@ -740,9 +751,17 @@ void AsyncServerSocket::removeAcceptCallback(
   // as well.
   for (auto mapIt = napiIdToCallback_.begin();
        mapIt != napiIdToCallback_.end();) {
-    auto& cb = mapIt->second;
-    if (cb.callback == callback &&
-        (cb.eventBase == eventBase || eventBase == nullptr)) {
+    auto& vec = mapIt->second;
+    for (auto vecIt = vec.begin(); vecIt != vec.end();) {
+      if (vecIt->callback == callback &&
+          (vecIt->eventBase == eventBase || eventBase == nullptr)) {
+        vecIt = vec.erase(vecIt);
+      } else {
+        ++vecIt;
+      }
+    }
+    if (vec.empty()) {
+      napiIdCallbackIndex_.erase(mapIt->first);
       mapIt = napiIdToCallback_.erase(mapIt);
     } else {
       ++mapIt;
