@@ -1,0 +1,26 @@
+[manifest]
+name = bgp
+fbsource_path = facebook/neteng/fboss/bgp
+shipit_project = bgp
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/BGP.git
+
+[build.os=linux]
+builder = cmake
+job_weight_mib = 3072
+
+[build.not(os=linux)]
+builder = nop
+
+[dependencies]
+boost
+fb303
+fbthrift
+folly
+re2
+
+[shipit.pathmap]
+fbcode/neteng/fboss/bgp = neteng/fboss/bgp
+fbcode/neteng/fboss/bgp/public_tld = .
