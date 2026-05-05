@@ -782,8 +782,6 @@ if __name__ == "__main__":
             final_install_prefix=final_install_prefix,
         )
         self.defines: dict[str, str] = defines or {}
-        if extra_cmake_defines:
-            self.defines.update(extra_cmake_defines)
         self.cmake_targets: list[str] = cmake_targets or ["install"]
 
         if build_opts.is_windows():
@@ -798,6 +796,14 @@ if __name__ == "__main__":
         if build_opts.shared_libs:
             self.defines["BUILD_SHARED_LIBS"] = "ON"
             self.defines["BOOST_LINK_STATIC"] = "OFF"
+
+        # Apply caller-supplied extra defines last so a per-package
+        # --extra-cmake-defines can override defaults (notably
+        # BUILD_SHARED_LIBS=ON set by --shared-libs above), letting a
+        # single workflow build most projects shared while pinning a
+        # specific dependency to static.
+        if extra_cmake_defines:
+            self.defines.update(extra_cmake_defines)
 
     def _invalidate_cache(self) -> None:
         for name in [
