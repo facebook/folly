@@ -25,6 +25,18 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysMman.h>
 
+// FOLLY_TEST_HAS_ASHMEM is defined by Buck (compiler_flags) when the Android
+// API level is high enough for ASharedMemory_create().  Default to 0 so the
+// test compiles on non-Android and on older Android API levels.
+#ifndef FOLLY_TEST_HAS_ASHMEM
+#define FOLLY_TEST_HAS_ASHMEM 0
+#endif
+
+#if FOLLY_TEST_HAS_ASHMEM
+#include <algorithm>
+#include <android/sharedmem.h>
+#endif
+
 static constexpr double kSomeDouble = 3.14;
 
 namespace folly {
@@ -175,6 +187,25 @@ TEST(MemoryMapping, WritableMappingGrowsRegularFileToRequestedLength) {
   EXPECT_EQ('h', m.data()[0]);
   EXPECT_EQ('!', m.data()[7]);
 }
+
+#if FOLLY_TEST_HAS_ASHMEM
+TEST(MemoryMapping, ExplicitLengthUsesAshmemSize) {
+  constexpr size_t kSize = 8;
+  folly::File f(ASharedMemory_create("folly-memory-mapping-test", kSize), true);
+  ASSERT_TRUE(f);
+
+  void* const address =
+      mmap(nullptr, kSize, PROT_READ | PROT_WRITE, MAP_SHARED, f.fd(), 0);
+  ASSERT_NE(MAP_FAILED, address);
+  const StringPiece kData = "ashmem!!";
+  std::copy_n(kData.data(), kData.size(), static_cast<char*>(address));
+  ASSERT_EQ(0, munmap(address, kSize));
+
+  MemoryMapping m(File(f.fd()), 0, 99);
+  EXPECT_EQ(kSize, m.data().size());
+  EXPECT_EQ(kData, m.data().subpiece(0, kSize));
+}
+#endif
 
 TEST(MemoryMapping, ZeroLength) {
   File f = File::temporary();

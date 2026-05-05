@@ -38,6 +38,7 @@ folly_add_library(
   HEADERS
     OpenSSLHash.h
   DEPS
+    fmt::fmt
     folly_format
   EXPORTED_DEPS
     folly_exception
@@ -66,6 +67,7 @@ folly_add_library(
   HEADERS
     OpenSSLPtrTypes.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_memory
     folly_portability_openssl
 )

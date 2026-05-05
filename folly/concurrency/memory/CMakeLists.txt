@@ -33,6 +33,7 @@ folly_add_library(
   HEADERS
     PrimaryPtr.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_function
     folly_futures_cleanup
     folly_futures_core

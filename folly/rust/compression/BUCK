@@ -11,7 +11,7 @@ fb_dirsync_rule(
     crate_root = "compression.rs",
     cxx_bridge = "compression.rs",
     fbcode_rule = rust_library,
-    modifiers = ["ovr_config//project/folly/constraints:mobile[disabled]"],
+    modifiers = ["ovr_config//project/folly:mobile[disabled]"],
     deps = [
         "fbsource//third-party/rust:bytes",
         "fbsource//third-party/rust:cxx",

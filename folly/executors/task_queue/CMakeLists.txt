@@ -19,6 +19,7 @@ folly_add_library(
   HEADERS
     BlockingQueue.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_c_portability
     folly_optional
 )
@@ -38,6 +39,7 @@ folly_add_library(
   HEADERS
     PriorityLifoSemMPMCQueue.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_executor
     folly_executors_task_queue_blocking_queue
     folly_mpmc_queue

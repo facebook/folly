@@ -89,6 +89,8 @@ folly_add_library(
     WithJitter-inl.h
     WithJitter.h
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
+    fmt::fmt
     folly_default_keep_alive_executor
     folly_executors_global_executor
     folly_futures_core

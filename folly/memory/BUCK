@@ -232,7 +232,7 @@ fb_dirsync_cpp_unittest(
     headers = [],
     allocator = "jemalloc",
     labels = ["oss-broken"],
-    modifiers = ["ovr_config//project/folly/constraints:mobile[disabled]"],
+    modifiers = ["ovr_config//project/folly:mobile[disabled]"],
     deps = [
         ":jemalloc_huge_page_allocator",
         "//folly/container:f14_hash",
@@ -256,7 +256,7 @@ fb_dirsync_cpp_unittest(
     srcs = ["IoUringArenaTest.cpp"],
     headers = [],
     allocator = "jemalloc",
-    modifiers = ["ovr_config//project/folly/constraints:mobile[disabled]"],
+    modifiers = ["ovr_config//project/folly:mobile[disabled]"],
     deps = [
         ":io_uring_arena",
         "//folly/container:f14_hash",

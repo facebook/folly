@@ -344,9 +344,17 @@ class ManifestLoader:
             patchfile_path: str = os.path.join(
                 self.build_opts.fbcode_builder_dir, "patches", patchfile
             )
-            if os.path.exists(patchfile_path):
-                with open(patchfile_path, "rb") as f:
-                    hasher.update(f.read())
+            if not os.path.exists(patchfile_path):
+                raise RuntimeError(
+                    f"Patchfile '{patchfile}' is listed in the '{manifest.name}' manifest "
+                    f"but was not found at '{patchfile_path}'. "
+                    f"Possible fixes: ensure the patches/ directory is present in your "
+                    f"checkout, check that the patchfile name in the manifest matches the "
+                    f"filename on disk, or remove the 'patchfile' entry from the manifest "
+                    f"if the patch is no longer needed."
+                )
+            with open(patchfile_path, "rb") as f:
+                hasher.update(f.read())
 
         dep_list: list[str] = manifest.get_dependencies(ctx)
         for dep in dep_list:

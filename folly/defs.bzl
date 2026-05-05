@@ -45,7 +45,7 @@ def cpp_flags():
             "DEFAULT": select({
                 "DEFAULT": ["-DFOLLY_MOBILE=1"],
                 "ovr_config//os:windows": [],
-                "ovr_config//project/folly/constraints:mobile[disabled]": [],
+                "ovr_config//project/folly:mobile[disabled]": [],
             }),
             "ovr_config//build_mode:arvr_mode[enabled]": select({
                 "DEFAULT": ["-DFOLLY_MOBILE=1"],
@@ -251,6 +251,7 @@ def folly_xplat_cxx_test(
     resources = kwargs.get("resources", [])
     env = kwargs.get("env", None)
     modifiers = kwargs.get("modifiers", None)
+    compiler_flags = kwargs.get("compiler_flags", None)
 
     extra_kwargs = {}
     if oncall != None:
@@ -259,6 +260,8 @@ def folly_xplat_cxx_test(
         extra_kwargs["env"] = env
     if modifiers != None:
         extra_kwargs["modifiers"] = modifiers
+    if compiler_flags != None:
+        extra_kwargs["compiler_flags"] = compiler_flags
 
     fb_xplat_cxx_test(
         name = name,
@@ -280,8 +283,13 @@ def folly_xplat_cxx_binary(
         raw_headers = [],
         deps = [],
         oncall = None,
+        dlopen_enabled = False,
         **kwargs):
-    oncall_kwargs = {"oncall": oncall} if oncall != None else {}
+    extra_kwargs = {"oncall": oncall} if oncall != None else {}
+
+    if dlopen_enabled:
+        extra_kwargs["linker_flags"] = kwargs.get("linker_flags", [])
+        extra_kwargs["link_style"] = kwargs.get("link_style")
 
     fb_xplat_cxx_binary(
         name = name,
@@ -290,5 +298,5 @@ def folly_xplat_cxx_binary(
         include_directories = _compute_include_directories(),
         deps = deps,
         platforms = (CXX,),
-        **oncall_kwargs
+        **extra_kwargs
     )

@@ -127,24 +127,31 @@ cpu_set_state::~cpu_set_state() {
 #endif
 
 unsigned int available_concurrency() noexcept {
-  unsigned int count;
+  // Cache the result. Available concurrency does not change over a process's
+  // lifetime, and the env-var override is read at startup. Caching also avoids
+  // repeated std::getenv() calls from background threads, which races with
+  // std::setenv() in glibc and is undefined behavior.
+  static const unsigned int cached = []() noexcept {
+    unsigned int count;
 #if defined(__linux__) && !defined(__ANDROID__)
-  cpu_set_t stackset;
-  count = to_narrow(cpu_set_state::ask(&stackset).cpu_count());
+    cpu_set_t stackset;
+    count = to_narrow(cpu_set_state::ask(&stackset).cpu_count());
 #else
-  count = std::thread::hardware_concurrency();
+    count = std::thread::hardware_concurrency();
 #endif
 
-  // Allow overriding via environment variable. The returned value is capped to
-  // the smaller of the env var and the OS-reported count.
-  if (auto const* env = std::getenv(available_concurrency_max_env.c_str())) {
-    auto val = folly::tryTo<unsigned int>(env).value_or(0);
-    if (val > 0) {
-      count = std::min(count, val);
+    // Allow overriding via environment variable. The returned value is capped
+    // to the smaller of the env var and the OS-reported count.
+    if (auto const* env = std::getenv(available_concurrency_max_env.c_str())) {
+      auto val = folly::tryTo<unsigned int>(env).value_or(0);
+      if (val > 0) {
+        count = std::min(count, val);
+      }
     }
-  }
 
-  return count;
+    return count;
+  }();
+  return cached;
 }
 
 } // namespace folly

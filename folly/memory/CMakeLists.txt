@@ -39,6 +39,7 @@ folly_add_library(
   HEADERS
     IoUringArena.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_c_portability
     folly_conv
     folly_lang_align
@@ -63,6 +64,7 @@ folly_add_library(
   HEADERS
     JemallocHugePageAllocator.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_c_portability
     folly_memory_malloc
     folly_portability_malloc
@@ -78,6 +80,7 @@ folly_add_library(
   HEADERS
     JemallocNodumpAllocator.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_conv
     folly_string
 )

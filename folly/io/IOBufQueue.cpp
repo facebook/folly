@@ -311,11 +311,11 @@ void IOBufQueue::maybeReuseTail(folly::IOBuf& oldTail) {
   head_->appendToChain(std::move(newTail));
 }
 
-unique_ptr<IOBuf> IOBufQueue::split(size_t n, bool throwOnUnderflow) {
+unique_ptr<IOBuf> IOBufQueue::split(size_t n, bool throwOnUnderflow, bool pack) {
   auto guard = updateGuard();
   unique_ptr<IOBuf> result;
   while (n != 0) {
-    if (head_ == nullptr) {
+    if (FOLLY_UNLIKELY(head_ == nullptr)) {
       if (throwOnUnderflow) {
         throw std::underflow_error(
             "Attempt to remove more bytes than are present in IOBufQueue");
@@ -326,7 +326,7 @@ unique_ptr<IOBuf> IOBufQueue::split(size_t n, bool throwOnUnderflow) {
       n -= head_->length();
       chainLength_ -= head_->length();
       unique_ptr<IOBuf> remainder = head_->pop();
-      appendToChain(result, std::move(head_), false);
+      appendToChain(result, std::move(head_), pack);
       head_ = std::move(remainder);
     } else {
       unique_ptr<IOBuf> clone = head_->cloneOne();

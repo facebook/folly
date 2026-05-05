@@ -22,6 +22,7 @@ folly_add_library(
     AsyncStack-inl.h
     AsyncStack.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_indestructible
     folly_lang_hint
     folly_likely

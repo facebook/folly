@@ -104,18 +104,16 @@ folly_add_library(
   NAME fmt_compile
   HEADERS
     FmtCompile.h
+  EXPORTED_DEPS
+    fmt::fmt
 )
 
 folly_add_library(
   NAME gflags
-  SRCS
-    GFlags.cpp
   HEADERS
     GFlags.h
   EXPORTED_DEPS
     folly_portability_config
-  EXTERNAL_DEPS
-    ${GFLAGS_LIBRARIES}
 )
 
 folly_add_library(
@@ -220,6 +218,7 @@ folly_add_library(
 if(WIN32)
   target_link_libraries(folly_portability_pthread_obj PUBLIC Boost::thread)
   target_link_libraries(folly_portability_pthread PUBLIC Boost::thread)
+  set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::thread)
 endif()
 
 folly_add_library(
@@ -251,6 +250,8 @@ folly_add_library(
   NAME source_location
   HEADERS
     SourceLocation.h
+  EXPORTED_DEPS
+    fmt::fmt
 )
 
 folly_add_library(

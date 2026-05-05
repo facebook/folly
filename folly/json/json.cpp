@@ -42,6 +42,8 @@ namespace json {
 
 namespace {
 
+using std::string_view_literals::operator""sv;
+
 parse_error make_parse_error(
     unsigned int line,
     std::string const& context,
@@ -122,50 +124,66 @@ std::optional<dynamic> parseHexInteger(
   return std::nullopt;
 }
 
-struct Printer {
-  // Context class is allows to restore the path to element that we are about to
-  // print so that if error happens we can throw meaningful exception.
-  class Context {
-   public:
-    Context(const Context* parent_context, const dynamic& key)
-        : parent_context_(parent_context), key_(key), is_key_(false) {}
-    Context(const Context* parent_context, const dynamic& key, bool is_key)
-        : parent_context_(parent_context), key_(key), is_key_(is_key) {}
+// Context class allows to restore the path to element that we are about to
+// print so that if error happens we can throw meaningful exception.
+class Context {
+ public:
+  Context(const Context* parent_context, const dynamic& key)
+      : parent_context_(parent_context), key_(key), is_key_(false) {}
+  Context(const Context* parent_context, const dynamic& key, bool is_key)
+      : parent_context_(parent_context), key_(key), is_key_(is_key) {}
 
-    // Return location description of a context as a chain of keys
-    // ex., '"outherKey"->"innerKey"'.
-    std::string locationDescription() const {
-      std::vector<std::string> keys;
-      const Context* ptr = parent_context_;
-      while (ptr) {
-        keys.push_back(ptr->getName());
-        ptr = ptr->parent_context_;
-      }
-      keys.push_back(getName());
-      std::ostringstream stream;
-      std::reverse_copy(
-          keys.begin(),
-          keys.end() - 1,
-          std::ostream_iterator<std::string>(stream, "->"));
+  // Return location description of a context as a chain of keys
+  // ex., '"outherKey"->"innerKey"'.
+  std::string locationDescription() const;
+  std::string getName() const;
+  std::string typeDescription() const { return is_key_ ? "key" : "value"; }
 
-      // Add current key.
-      stream << keys.back();
-      return stream.str();
-    }
-    std::string getName() const {
-      return Printer::toStringOr(key_, "<unprintable>");
-    }
-    std::string typeDescription() const { return is_key_ ? "key" : "value"; }
+ private:
+  const Context* const parent_context_;
+  const dynamic& key_;
+  bool is_key_;
+};
 
-   private:
-    const Context* const parent_context_;
-    const dynamic& key_;
-    bool is_key_;
-  };
+// Forward declaration; defined after PrinterImpl below.
+std::string toStringOr(dynamic const& v, const char* placeholder);
 
-  explicit Printer(
-      std::string& out, unsigned* indentLevel, serialization_opts const* opts)
-      : out_(out), indentLevel_(indentLevel), opts_(*opts) {}
+std::string Context::locationDescription() const {
+  std::vector<std::string> keys;
+  const Context* ptr = parent_context_;
+  while (ptr) {
+    keys.push_back(ptr->getName());
+    ptr = ptr->parent_context_;
+  }
+  keys.push_back(getName());
+  std::ostringstream stream;
+  std::reverse_copy(
+      keys.begin(),
+      keys.end() - 1,
+      std::ostream_iterator<std::string>(stream, "->"));
+  // Add current key.
+  stream << keys.back();
+  return stream.str();
+}
+
+std::string Context::getName() const {
+  return toStringOr(key_, "<unprintable>");
+}
+
+std::string contextDescription(const Context* context) {
+  if (!context) {
+    return "<undefined location>";
+  }
+  return context->typeDescription() + " at " + context->locationDescription();
+}
+
+// Printer is templated on `Pretty` to let the compiler eliminate the
+// `if (indentLevel_)` runtime branches in `newline()`, `mapColon()`,
+// `indent()`, and `outdent()` for the common compact-output path.
+template <bool Pretty>
+struct PrinterImpl {
+  explicit PrinterImpl(std::string& out, serialization_opts const* opts)
+      : out_(out), opts_(*opts) {}
 
   void operator()(dynamic const& v, const Context& context) const {
     (*this)(v, &context);
@@ -173,20 +191,21 @@ struct Printer {
   void operator()(dynamic const& v, const Context* context) const {
     switch (v.type()) {
       case dynamic::DOUBLE: {
+        const double dval = v.asDouble();
         if (!allowNanInf(opts_)) {
-          if (std::isnan(v.asDouble())) {
+          if (std::isnan(dval)) {
             throw json::print_error(
                 "folly::toJson: JSON object value was a NaN when serializing " +
                 contextDescription(context));
           }
-          if (std::isinf(v.asDouble())) {
+          if (std::isinf(dval)) {
             throw json::print_error(
                 "folly::toJson: JSON object value was an INF when serializing " +
                 contextDescription(context));
           }
         }
         toAppend(
-            v.asDouble(),
+            dval,
             &out_,
             opts_.dtoa_mode,
             opts_.double_num_digits,
@@ -204,10 +223,10 @@ struct Printer {
         break;
       }
       case dynamic::BOOL:
-        out_ += v.asBool() ? "true" : "false";
+        out_.append(v.asBool() ? "true"sv : "false"sv);
         break;
       case dynamic::NULLT:
-        out_ += "null";
+        out_.append("null"sv);
         break;
       case dynamic::STRING:
         escapeString(v.stringPiece(), out_, opts_);
@@ -258,7 +277,7 @@ struct Printer {
       const {
     printKV(o, *begin, context);
     for (++begin; begin != end; ++begin) {
-      out_ += ',';
+      out_.push_back(',');
       newline();
       printKV(o, *begin, context);
     }
@@ -266,11 +285,11 @@ struct Printer {
 
   void printObject(dynamic const& o, const Context* context) const {
     if (o.empty()) {
-      out_ += "{}";
+      out_.append("{}"sv);
       return;
     }
 
-    out_ += '{';
+    out_.push_back('{');
     indent();
     newline();
     if (opts_.sort_keys || opts_.sort_keys_by) {
@@ -293,78 +312,80 @@ struct Printer {
     }
     outdent();
     newline();
-    out_ += '}';
-  }
-
-  static std::string toStringOr(dynamic const& v, const char* placeholder) {
-    try {
-      std::string result;
-      unsigned indentLevel = 0;
-      serialization_opts opts;
-      opts.allow_nan_inf = true;
-      opts.allow_non_string_keys = true;
-      Printer printer(result, &indentLevel, &opts);
-      printer(v, nullptr);
-      return result;
-    } catch (...) {
-      return placeholder;
-    }
-  }
-
-  static std::string contextDescription(const Context* context) {
-    if (!context) {
-      return "<undefined location>";
-    }
-    return context->typeDescription() + " at " + context->locationDescription();
+    out_.push_back('}');
   }
 
   void printArray(dynamic const& a, const Context* context) const {
     if (a.empty()) {
-      out_ += "[]";
+      out_.append("[]"sv);
       return;
     }
 
-    out_ += '[';
+    out_.push_back('[');
     indent();
     newline();
-    (*this)(a[0], Context(context, dynamic(0)));
-    for (auto it = std::next(a.begin()); it != a.end(); ++it) {
-      out_ += ',';
+    auto it = a.begin();
+    auto end = a.end();
+    (*this)(*it, Context(context, dynamic(int64_t{0})));
+    ++it;
+    for (int64_t i = 1; it != end; ++it, ++i) {
+      out_.push_back(',');
       newline();
-      (*this)(*it, Context(context, dynamic(std::distance(a.begin(), it))));
+      (*this)(*it, Context(context, dynamic(i)));
     }
     outdent();
     newline();
-    out_ += ']';
+    out_.push_back(']');
   }
 
- private:
   void outdent() const {
-    if (indentLevel_) {
-      --*indentLevel_;
+    if constexpr (Pretty) {
+      --indentLevel_;
     }
   }
-
   void indent() const {
-    if (indentLevel_) {
-      ++*indentLevel_;
+    if constexpr (Pretty) {
+      ++indentLevel_;
     }
   }
-
   void newline() const {
-    if (indentLevel_) {
-      auto indent = *indentLevel_ * opts_.pretty_formatting_indent_width;
-      out_ += to<std::string>('\n', std::string(indent, ' '));
+    if constexpr (Pretty) {
+      out_.push_back('\n');
+      out_.append(
+          static_cast<size_t>(indentLevel_) *
+              opts_.pretty_formatting_indent_width,
+          ' ');
     }
   }
+  void mapColon() const { out_.append(Pretty ? ": "sv : ":"sv); }
 
-  void mapColon() const { out_ += indentLevel_ ? ": " : ":"; }
-
- private:
   std::string& out_;
-  unsigned* const indentLevel_;
   serialization_opts const& opts_;
+  // Mutable because the const operator()/printX methods mutate it via
+  // indent()/outdent(); only present (logically) when Pretty.
+  mutable unsigned indentLevel_{0};
 };
+
+// Free helper used by Context::getName (and a few error paths) to print
+// a single dynamic value as a short string. Uses the pretty-format
+// instantiation to match the prior behavior — the legacy Printer was
+// instantiated with a non-null indentLevel pointer here, which made
+// composite keys (rare; only with allow_non_string_keys) render with
+// newlines + indentation in error messages. For scalar keys (the
+// common case) this is byte-identical to the compact instantiation.
+std::string toStringOr(dynamic const& v, const char* placeholder) {
+  try {
+    std::string result;
+    serialization_opts opts;
+    opts.allow_nan_inf = true;
+    opts.allow_non_string_keys = true;
+    PrinterImpl<true> printer(result, &opts);
+    printer(v, nullptr);
+    return result;
+  } catch (...) {
+    return placeholder;
+  }
+}
 
 //////////////////////////////////////////////////////////////////////
 
@@ -869,10 +890,12 @@ std::string parseString(Input<T>& in, char quoteChar) {
       ++in;
 
       bool consumed = false;
-      for (auto next : {"\r\n", "\r", "\n", "'"}) {
+      for (std::string_view next : {"\r\n", "\r", "\n", "'"}) {
         if (json5 && in.consume(next)) {
           consumed = true;
-          ret += next;
+          if (next == "'") {
+            ret += "'";
+          }
           break;
         }
       }
@@ -962,9 +985,13 @@ std::array<uint64_t, 2> buildExtraAsciiToEscapeBitmap(StringPiece chars) {
 
 std::string serialize(dynamic const& dyn, serialization_opts const& opts) {
   std::string ret;
-  unsigned indentLevel = 0;
-  Printer p(ret, opts.pretty_formatting ? &indentLevel : nullptr, &opts);
-  p(dyn, nullptr);
+  if (opts.pretty_formatting) {
+    PrinterImpl<true> p(ret, &opts);
+    p(dyn, nullptr);
+  } else {
+    PrinterImpl<false> p(ret, &opts);
+    p(dyn, nullptr);
+  }
   return ret;
 }
 
@@ -1163,15 +1190,55 @@ void escapeStringImpl(
   out.push_back('\"');
 }
 
+// Fast path for short ASCII-only strings with no special characters.
+//
+// On bail-out we fall through to escapeStringImpl, which handles the
+// general case identically to before.
+//
+// Caller must have verified that `extra_ascii_to_escape_bitmap` is empty
+// and `encode_non_ascii` is false.
+//
+// Limit chosen to fit comfortably in a small stack buffer and to cover
+// typical Scuba/Thrift identifier and short-value lengths.
+constexpr size_t kEscapeFastPathMax = 32;
+
+FOLLY_ALWAYS_INLINE bool tryEscapeShortAscii(
+    StringPiece input, std::string& out) {
+  const size_t n = input.size();
+  if (n > kEscapeFastPathMax) {
+    return false;
+  }
+  char buf[kEscapeFastPathMax + 2];
+  buf[0] = '"';
+  // OR-reduce a "needs escape" mask while copying. Branchless inner body
+  // lets the compiler vectorise / interleave loads with the OR.
+  uint8_t bad = 0;
+  for (size_t i = 0; i < n; ++i) {
+    const auto u = static_cast<unsigned char>(input[i]);
+    bad |= (u < 0x20) | (u >> 7) | (u == '"') | (u == '\\');
+    buf[i + 1] = static_cast<char>(u);
+  }
+  if (FOLLY_UNLIKELY(bad)) {
+    return false;
+  }
+  buf[n + 1] = '"';
+  out.append(buf, n + 2);
+  return true;
+}
+
 void escapeString(
     StringPiece input, std::string& out, const serialization_opts& opts) {
-  if (FOLLY_UNLIKELY(
-          opts.extra_ascii_to_escape_bitmap[0] ||
-          opts.extra_ascii_to_escape_bitmap[1])) {
-    escapeStringImpl<true>(input, out, opts);
-  } else {
+  if (FOLLY_LIKELY(
+          opts.extra_ascii_to_escape_bitmap[0] == 0 &&
+          opts.extra_ascii_to_escape_bitmap[1] == 0 &&
+          !opts.encode_non_ascii)) {
+    if (tryEscapeShortAscii(input, out)) {
+      return;
+    }
     escapeStringImpl<false>(input, out, opts);
+    return;
   }
+  escapeStringImpl<true>(input, out, opts);
 }
 
 std::string stripComments(StringPiece jsonC) {

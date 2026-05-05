@@ -84,6 +84,7 @@ folly_add_library(
     folly_memory_sanitize_address
     folly_portability_iovec
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_container_span
     folly_detail_iterators
     folly_fbstring
@@ -133,6 +134,7 @@ folly_add_library(
   HEADERS
     ShutdownSocketSet.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_file_util
     folly_net_net_ops
     folly_portability_sockets

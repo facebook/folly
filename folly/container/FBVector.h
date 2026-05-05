@@ -88,12 +88,12 @@ class fbvector {
   //---------------------------------------------------------------------------
   // implementation
  private:
-  typedef std::allocator_traits<Allocator> A;
+  using A = std::allocator_traits<Allocator>;
 
   struct Impl : public Allocator {
     // typedefs
-    typedef typename A::pointer pointer;
-    typedef typename A::size_type size_type;
+    using pointer = typename A::pointer;
+    using size_type = typename A::size_type;
 
     // data
     pointer b_, e_, z_;
@@ -203,31 +203,30 @@ class fbvector {
   //---------------------------------------------------------------------------
   // types and constants
  public:
-  typedef T value_type;
-  typedef value_type& reference;
-  typedef const value_type& const_reference;
-  typedef T* iterator;
-  typedef const T* const_iterator;
-  typedef size_t size_type;
-  typedef typename std::make_signed<size_type>::type difference_type;
-  typedef Allocator allocator_type;
-  typedef typename A::pointer pointer;
-  typedef typename A::const_pointer const_pointer;
-  typedef std::reverse_iterator<iterator> reverse_iterator;
-  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+  using value_type = T;
+  using reference = value_type&;
+  using const_reference = const value_type&;
+  using iterator = T*;
+  using const_iterator = const T*;
+  using size_type = size_t;
+  using difference_type = typename std::make_signed<size_type>::type;
+  using allocator_type = Allocator;
+  using pointer = typename A::pointer;
+  using const_pointer = typename A::const_pointer;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
  private:
   static constexpr bool should_pass_by_value =
       std::is_trivially_copyable<T>::value &&
       sizeof(T) <= 16; // don't force large structures to be passed by value
-  typedef typename std::conditional<should_pass_by_value, T, const T&>::type VT;
-  typedef typename std::conditional<should_pass_by_value, T, T&&>::type MT;
+  using VT = typename std::conditional<should_pass_by_value, T, const T&>::type;
+  using MT = typename std::conditional<should_pass_by_value, T, T&&>::type;
 
   static constexpr bool kUsingStdAllocator =
       std::is_same<Allocator, std::allocator<T>>::value;
-  typedef std::bool_constant<
-      kUsingStdAllocator || A::propagate_on_container_move_assignment::value>
-      moveIsSwap;
+  using moveIsSwap = std::bool_constant<
+      kUsingStdAllocator || A::propagate_on_container_move_assignment::value>;
 
   //===========================================================================
   //---------------------------------------------------------------------------
@@ -643,14 +642,12 @@ class fbvector {
   }
 
   // dispatch type trait
-  typedef std::bool_constant<
-      folly::IsRelocatable<T>::value && kUsingStdAllocator>
-      relocate_use_memcpy;
+  using relocate_use_memcpy =
+      std::bool_constant<folly::IsRelocatable<T>::value && kUsingStdAllocator>;
 
-  typedef std::bool_constant<
+  using relocate_use_move = std::bool_constant<
       (std::is_nothrow_move_constructible<T>::value && kUsingStdAllocator) ||
-      !std::is_copy_constructible<T>::value>
-      relocate_use_move;
+      !std::is_copy_constructible<T>::value>;
 
   // move
   void relocate_move(T* dest, T* first, T* last) {

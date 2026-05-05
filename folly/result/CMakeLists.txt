@@ -119,6 +119,7 @@ folly_add_library(
   HEADERS
     result.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_indestructible
   EXPORTED_DEPS
     folly_exception_wrapper
@@ -157,6 +158,7 @@ folly_add_library(
     folly_lang_safe_assert
     folly_lang_switch
   EXPORTED_DEPS
+    fmt::fmt
     folly_cpp_attributes
     folly_lang_exception
     folly_lang_pretty
@@ -178,6 +180,7 @@ folly_add_library(
   DEPS
     folly_lang_exception
   EXPORTED_DEPS
+    fmt::fmt
     folly_lang_pretty
     folly_portability
     folly_result_rich_error_base
@@ -196,6 +199,7 @@ folly_add_library(
   HEADERS
     rich_msg.h
   EXPORTED_DEPS
+    fmt::fmt
     folly_lang_exception
     folly_lang_safe_assert
     folly_portability_source_location

@@ -1,15 +1,13 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fb_dirsync_cpp_unittest(
     name = "f14_detail_test",
     srcs = [
         "F14DetailTest.cpp",
     ],
+    modifiers = ["ovr_config//project/folly:mobile[disabled]"],
     deps = [
         "//folly:traits",
         "//folly/container/detail:f14_hash_detail",

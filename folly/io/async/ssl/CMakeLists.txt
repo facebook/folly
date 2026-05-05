@@ -46,6 +46,7 @@ folly_add_library(
   HEADERS
     OpenSSLUtils.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_portability_unistd
     folly_scope_guard
     folly_ssl_detail_openssl_session

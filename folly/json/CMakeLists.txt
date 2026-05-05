@@ -25,6 +25,7 @@ folly_add_library(
     dynamic.h
     json.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_container_enumerate
     folly_hash_hash
     folly_lang_assume
@@ -60,6 +61,7 @@ folly_add_library(
     DynamicParser-inl.h
     DynamicParser.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_optional
   EXPORTED_DEPS
     folly_c_portability
@@ -87,6 +89,7 @@ folly_add_library(
   HEADERS
     json_patch.h
   DEPS
+    ${GLOG_LIBRARIES}
     folly_container_enumerate
   EXPORTED_DEPS
     folly_expected

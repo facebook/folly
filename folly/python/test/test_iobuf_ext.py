@@ -56,7 +56,3 @@ class IOBufExtTest(unittest.TestCase):
         gc.collect()
 
         self.assertEqual(bytes(buf), b"hello")
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -594,19 +594,17 @@ TEST(SortedVectorTypes, Sizes) {
       sizeof(sorted_vector_map<int, int>),
       sizeof(std::vector<std::pair<int, int>>));
 
-  typedef sorted_vector_set<
+  using SetT = sorted_vector_set<
       int,
       std::less<int>,
       std::allocator<int>,
-      OneAtATimePolicy>
-      SetT;
-  typedef sorted_vector_map<
+      OneAtATimePolicy>;
+  using MapT = sorted_vector_map<
       int,
       int,
       std::less<int>,
       std::allocator<std::pair<int, int>>,
-      OneAtATimePolicy>
-      MapT;
+      OneAtATimePolicy>;
 
   EXPECT_EQ(sizeof(SetT), sizeof(std::vector<int>));
   EXPECT_EQ(sizeof(MapT), sizeof(std::vector<std::pair<int, int>>));
@@ -657,12 +655,11 @@ TEST(SortedVectorTypes, CustomCompare) {
 }
 
 TEST(SortedVectorTypes, GrowthPolicy) {
-  typedef sorted_vector_set<
+  using SetT = sorted_vector_set<
       CountCopyCtor,
       std::less<CountCopyCtor>,
       std::allocator<CountCopyCtor>,
-      OneAtATimePolicy>
-      SetT;
+      OneAtATimePolicy>;
 
   SetT a;
   for (int i = 0; i < 20; ++i) {

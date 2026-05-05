@@ -21,7 +21,10 @@ folly_add_library(
   HEADERS
     Core.h
     Types.h
+  DEPS
+    fmt::fmt
   EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
     folly_executor
     folly_function
     folly_io_async_request_context
