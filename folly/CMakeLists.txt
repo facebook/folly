@@ -774,8 +774,6 @@ folly_add_library(
   NAME memcpy
   HEADERS
     FollyMemcpy.h
-  EXPORTED_DEPS
-    folly_memcpy-impl
 )
 
 folly_add_library(
