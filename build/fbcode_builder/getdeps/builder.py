@@ -1330,10 +1330,9 @@ if __name__ == "__main__":
                 args += ["--timeout", str(timeout)]
 
             count: int = 0
-            retcode: int | None = -1
+            retcode: int = -1
             while count <= retry:
-                # FIXME: What is this trying to accomplish? Should it fail on first or >=1 errors?
-                retcode = self._check_cmd(
+                retcode = self._run_cmd(
                     args, env=env, use_cmd_prefix=use_cmd_prefix, allow_fail=True
                 )
 
@@ -1343,7 +1342,7 @@ if __name__ == "__main__":
                     # Only add this option in the second run.
                     args += ["--rerun-failed"]
                 count += 1
-            if retcode is not None and retcode != 0:
+            if retcode != 0:
                 # Allow except clause in getdeps.main to catch and exit gracefully
                 # This allows non-testpilot runs to fail through the same logic as failed testpilot runs, which may become handy in case if post test processing is needed in the future
                 raise subprocess.CalledProcessError(retcode, args)
