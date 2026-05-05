@@ -14,6 +14,9 @@ branch = main
 [build]
 builder = cmake
 
+[cmake.defines]
+CMAKE_POSITION_INDEPENDENT_CODE=ON
+
 [dependencies]
 boost
 fbthrift
