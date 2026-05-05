@@ -1252,12 +1252,16 @@ jobs:
                 out.write('        version: "v0.14.0"\n')
                 extra_cmake_defines["CMAKE_CXX_COMPILER_LAUNCHER"] = "sccache"
 
-            if extra_cmake_defines:
-                extra_cmake_arg = (
-                    " --extra-cmake-defines '" + json.dumps(extra_cmake_defines) + "'"
-                )
-            else:
-                extra_cmake_arg = ""
+            per_package_defines = _parse_per_package_defines(
+                getattr(args, "package_extra_cmake_defines", []) or []
+            )
+
+            def cmake_arg_for(name):
+                merged = dict(extra_cmake_defines)
+                merged.update(per_package_defines.get(name, {}))
+                if merged:
+                    return " --extra-cmake-defines '" + json.dumps(merged) + "'"
+                return ""
 
             build_type_arg = ""
             if override_build_type:
@@ -1396,7 +1400,7 @@ jobs:
                             f"      if: ${{{{ steps.paths.outputs.{m.name}_SOURCE }}}}\n"
                         )
                 out.write(
-                    f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}{extra_cmake_arg}\n"
+                    f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{src_dir_arg}{free_up_disk}--no-tests {m.name}{cmake_arg_for(m.name)}\n"
                 )
 
                 if args.use_build_cache and not src_dir_arg:
@@ -1437,7 +1441,7 @@ jobs:
                 no_deps_arg = "--no-deps "
 
             out.write(
-                f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{tests_arg}{no_deps_arg}--src-dir=. {manifest.name}{project_prefix}{extra_cmake_arg}\n"
+                f"      run: {getdepscmd}{allow_sys_arg} build {build_type_arg}{tests_arg}{no_deps_arg}--src-dir=. {manifest.name}{project_prefix}{cmake_arg_for(manifest.name)}\n"
             )
 
             if use_sccache:
@@ -1569,6 +1573,45 @@ jobs:
             dest="use_build_cache",
             help="Do not attempt to use the build cache.",
         )
+        parser.add_argument(
+            "--package-extra-cmake-defines",
+            action="append",
+            default=[],
+            metavar="PACKAGE=JSON",
+            help=(
+                "Add cmake defines that apply only to the named package's "
+                "build step in the generated workflow. Example: "
+                "--package-extra-cmake-defines "
+                '\'fbthrift={"THRIFT_SERIALIZATION_ONLY":"ON"}\'. May be '
+                "passed multiple times."
+            ),
+        )
+
+
+def _parse_per_package_defines(values):
+    """Parse a list of `package=json` strings into a dict of dicts."""
+    result = {}
+    for entry in values or []:
+        if "=" not in entry:
+            raise SystemExit(
+                f"--package-extra-cmake-defines value {entry!r} must be of the "
+                "form PACKAGE=JSON"
+            )
+        package, raw = entry.split("=", 1)
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise SystemExit(
+                f"--package-extra-cmake-defines for {package!r} is not valid "
+                f"JSON: {e}"
+            )
+        if not isinstance(parsed, dict):
+            raise SystemExit(
+                f"--package-extra-cmake-defines for {package!r} must be a JSON "
+                "object"
+            )
+        result.setdefault(package, {}).update(parsed)
+    return result
 
 
 def get_arg_var_name(args):
