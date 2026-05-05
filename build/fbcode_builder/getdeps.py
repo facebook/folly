@@ -1244,7 +1244,9 @@ jobs:
 
             out.write("    - uses: actions/checkout@v6\n")
 
-            extra_cmake_defines = {}
+            extra_cmake_defines = (
+                json.loads(args.extra_cmake_defines) if args.extra_cmake_defines else {}
+            )
             if use_sccache:
                 out.write("    - name: Set up sccache\n")
                 out.write("      uses: mozilla-actions/sccache-action@v0.0.9\n")
