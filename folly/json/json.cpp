@@ -1190,15 +1190,55 @@ void escapeStringImpl(
   out.push_back('\"');
 }
 
+// Fast path for short ASCII-only strings with no special characters.
+//
+// On bail-out we fall through to escapeStringImpl, which handles the
+// general case identically to before.
+//
+// Caller must have verified that `extra_ascii_to_escape_bitmap` is empty
+// and `encode_non_ascii` is false.
+//
+// Limit chosen to fit comfortably in a small stack buffer and to cover
+// typical Scuba/Thrift identifier and short-value lengths.
+constexpr size_t kEscapeFastPathMax = 32;
+
+FOLLY_ALWAYS_INLINE bool tryEscapeShortAscii(
+    StringPiece input, std::string& out) {
+  const size_t n = input.size();
+  if (n > kEscapeFastPathMax) {
+    return false;
+  }
+  char buf[kEscapeFastPathMax + 2];
+  buf[0] = '"';
+  // OR-reduce a "needs escape" mask while copying. Branchless inner body
+  // lets the compiler vectorise / interleave loads with the OR.
+  uint8_t bad = 0;
+  for (size_t i = 0; i < n; ++i) {
+    const auto u = static_cast<unsigned char>(input[i]);
+    bad |= (u < 0x20) | (u >> 7) | (u == '"') | (u == '\\');
+    buf[i + 1] = static_cast<char>(u);
+  }
+  if (FOLLY_UNLIKELY(bad)) {
+    return false;
+  }
+  buf[n + 1] = '"';
+  out.append(buf, n + 2);
+  return true;
+}
+
 void escapeString(
     StringPiece input, std::string& out, const serialization_opts& opts) {
-  if (FOLLY_UNLIKELY(
-          opts.extra_ascii_to_escape_bitmap[0] ||
-          opts.extra_ascii_to_escape_bitmap[1])) {
-    escapeStringImpl<true>(input, out, opts);
-  } else {
+  if (FOLLY_LIKELY(
+          opts.extra_ascii_to_escape_bitmap[0] == 0 &&
+          opts.extra_ascii_to_escape_bitmap[1] == 0 &&
+          !opts.encode_non_ascii)) {
+    if (tryEscapeShortAscii(input, out)) {
+      return;
+    }
     escapeStringImpl<false>(input, out, opts);
+    return;
   }
+  escapeStringImpl<true>(input, out, opts);
 }
 
 std::string stripComments(StringPiece jsonC) {
