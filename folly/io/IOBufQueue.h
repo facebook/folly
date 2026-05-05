@@ -485,9 +485,14 @@ class IOBufQueue {
    *
    * Similar to split, but will return the entire queue instead of throwing
    * if n exceeds the number of bytes in the queue.
+   *
+   * @param pack  When true, small IOBuf nodes are packed into the
+   *         preceding node's spare tail capacity via memcpy (up to
+   *         kMaxPackCopy bytes per node), reducing chain link count.
+   *         Empty nodes are dropped. Default is false.
    */
-  std::unique_ptr<folly::IOBuf> splitAtMost(size_t n) {
-    return split(n, false);
+  std::unique_ptr<folly::IOBuf> splitAtMost(size_t n, bool pack = false) {
+    return split(n, false, pack);
   }
 
   /**
@@ -646,7 +651,9 @@ class IOBufQueue {
   std::unique_ptr<folly::IOBuf> createBuf(std::size_t capacity) const {
     return factory_ ? (*factory_)(capacity) : folly::IOBuf::create(capacity);
   }
-  std::unique_ptr<folly::IOBuf> split(size_t n, bool throwOnUnderflow);
+
+  std::unique_ptr<folly::IOBuf> split(
+      size_t n, bool throwOnUnderflow, bool pack = false);
 
   static const size_t kChainLengthNotCached = (size_t)-1;
   /** Not copyable */
