@@ -14,8 +14,9 @@ sha256 = c86bd9d9eef795b4b0d3802279419fde5221922805b073b9bd822edecb1ca28e
 BOOST_ROOT_1_69_0
 BOOST_ROOT_1_83_0
 
-[debs]
-libboost-all-dev
+# Build boost from source rather than satisfying it from libboost-all-dev.
+# The Ubuntu boost packages ship static archives without -fPIC, which
+# fails to link into our shared rebalancer library.
 
 [homebrew]
 boost
@@ -106,6 +107,12 @@ patchfile = boost_1_83_0.patch
 # RHEL hardened gcc is not compatible with PCH
 # https://bugzilla.redhat.com/show_bug.cgi?id=1806545
 pch=off
+# Build with -fPIC so the static archives we install can be linked into
+# downstream shared libraries (e.g. rebalancer's librebalancer.so).
+# Boost's b2 build does not pick this up from CMAKE_POSITION_INDEPENDENT_CODE
+# because it is not driven by CMake.
+cxxflags=-fPIC
+cflags=-fPIC
 
 [b2.args.os=darwin]
 toolset=clang
