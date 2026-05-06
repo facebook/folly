@@ -40,6 +40,15 @@ unsafe mod ffi {
         #[namespace = "facebook::rust"]
         fn set_folly_request_context(ctx: &SharedPtr<RequestContext>) -> SharedPtr<RequestContext>;
         #[namespace = "facebook::rust"]
+        fn copy_folly_request_context_as_root(
+            ctx: &SharedPtr<RequestContext>,
+            rootid: isize,
+        ) -> SharedPtr<RequestContext>;
+        #[namespace = "facebook::rust"]
+        fn copy_folly_request_context_as_child(
+            ctx: &SharedPtr<RequestContext>,
+        ) -> SharedPtr<RequestContext>;
+        #[namespace = "facebook::rust"]
         fn with_folly_request_context(
             rctx: &SharedPtr<RequestContext>,
             func: fn(&mut WithInner),
@@ -92,6 +101,16 @@ impl RequestContext {
     /// id.
     pub fn get_request_id(&self) -> String {
         format!("{:016x}", self.get_root_id())
+    }
+
+    /// Shallow-copy this context while overriding the root id.
+    pub fn copy_as_root(&self, root_id: isize) -> RequestContext {
+        RequestContext(ffi::copy_folly_request_context_as_root(&self.0, root_id))
+    }
+
+    /// Shallow-copy this context while preserving the parent's root id.
+    pub fn copy_as_child(&self) -> RequestContext {
+        RequestContext(ffi::copy_folly_request_context_as_child(&self.0))
     }
 
     /// Get current per-thread RequestContext
@@ -214,6 +233,35 @@ mod test {
         assert_eq!(restored.get_root_id(), root_id);
 
         // Clean up: clear the context for other tests.
+        RequestContext::swap_current(None);
+    }
+
+    #[test]
+    fn copy_as_root_sets_requested_root_id() {
+        RequestContext::swap_current(None);
+        RequestContext::create();
+
+        let ctx = RequestContext::get_current();
+        let original_root_id = ctx.get_root_id();
+        let copied = ctx.copy_as_root(12345);
+
+        assert_eq!(copied.get_root_id(), 12345);
+        assert_eq!(ctx.get_root_id(), original_root_id);
+
+        RequestContext::swap_current(None);
+    }
+
+    #[test]
+    fn copy_as_child_preserves_root_id() {
+        RequestContext::swap_current(None);
+        RequestContext::create();
+
+        let ctx = RequestContext::get_current();
+        let root_id = ctx.get_root_id();
+        let copied = ctx.copy_as_child();
+
+        assert_eq!(copied.get_root_id(), root_id);
+
         RequestContext::swap_current(None);
     }
 }

@@ -42,6 +42,22 @@ static inline std::shared_ptr<folly::RequestContext> set_folly_request_context(
   return folly::RequestContext::setContext(ctx);
 }
 
+// Workaround for not being able to directly call static methods from cxx.
+// NOLINTNEXTLINE(facebook-hte-NamespaceScopedStaticDeclaration)
+static inline std::shared_ptr<folly::RequestContext>
+copy_folly_request_context_as_root(
+    std::shared_ptr<folly::RequestContext> const& ctx, intptr_t rootid) {
+  return ctx ? folly::RequestContext::copyAsRoot(*ctx, rootid) : nullptr;
+}
+
+// Workaround for not being able to directly call static methods from cxx.
+// NOLINTNEXTLINE(facebook-hte-NamespaceScopedStaticDeclaration)
+static inline std::shared_ptr<folly::RequestContext>
+copy_folly_request_context_as_child(
+    std::shared_ptr<folly::RequestContext> const& ctx) {
+  return ctx ? folly::RequestContext::copyAsChild(*ctx) : nullptr;
+}
+
 std::shared_ptr<folly::RequestContext> with_folly_request_context(
     std::shared_ptr<folly::RequestContext> const& ctxt,
     ::rust::Fn<void(WithInner&)> func,
