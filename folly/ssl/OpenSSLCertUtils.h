@@ -39,6 +39,8 @@ class OpenSSLCertUtils {
 
   static std::vector<std::string> getSubjectAltNames(X509& x509);
 
+  static std::vector<std::string> getSubjectAltNameURIs(X509& x509);
+
   /**
    * Return the Extended Key Usage (EKU) entries, if any, from the cert.
    * Each entry is a dotted-decimal OID string (e.g., "1.3.6.1.5.5.7.3.1").

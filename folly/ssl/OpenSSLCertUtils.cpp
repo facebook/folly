@@ -139,6 +139,35 @@ std::vector<std::string> OpenSSLCertUtils::getSubjectAltNames(X509& x509) {
   return ret;
 }
 
+std::vector<std::string> OpenSSLCertUtils::getSubjectAltNameURIs(X509& x509) {
+  auto names = reinterpret_cast<STACK_OF(GENERAL_NAME)*>(
+      X509_get_ext_d2i(&x509, NID_subject_alt_name, nullptr, nullptr));
+  if (!names) {
+    return {};
+  }
+  SCOPE_EXIT {
+    sk_GENERAL_NAME_pop_free(names, GENERAL_NAME_free);
+  };
+
+  auto count = sk_GENERAL_NAME_num(names);
+  std::vector<std::string> ret;
+  ret.reserve(count);
+  for (int i = 0; i < count; i++) {
+    auto genName = sk_GENERAL_NAME_value(names, i);
+    if (!genName || genName->type != GEN_URI) {
+      continue;
+    }
+    auto nameData = reinterpret_cast<const char*>(
+        ASN1_STRING_get0_data(genName->d.uniformResourceIdentifier));
+    auto nameLen = ASN1_STRING_length(genName->d.uniformResourceIdentifier);
+    if (!nameData || nameLen <= 0) {
+      continue;
+    }
+    ret.emplace_back(nameData, nameLen);
+  }
+  return ret;
+}
+
 std::vector<std::string> OpenSSLCertUtils::getExtendedKeyUsage(X509& x509) {
   auto ekuExtension = reinterpret_cast<EXTENDED_KEY_USAGE*>(
       X509_get_ext_d2i(&x509, NID_ext_key_usage, nullptr, nullptr));
