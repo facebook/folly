@@ -17,6 +17,7 @@ builder = nop
 [dependencies]
 boost
 fb303
+fboss
 fbthrift
 folly
 re2
@@ -24,3 +25,4 @@ re2
 [shipit.pathmap]
 fbcode/neteng/fboss/bgp = neteng/fboss/bgp
 fbcode/neteng/fboss/bgp/public_tld = .
+fbcode/fboss/common = common
