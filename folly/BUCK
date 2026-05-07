@@ -2311,6 +2311,28 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "concurrent_b_skip_list",
+    headers = [
+        "ConcurrentBSkipList.h",
+        "ConcurrentBSkipList-detail.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        "fbsource//third-party/glog:glog",
+        ":c_portability",
+        ":micro_lock",
+        ":portability",
+        ":small_vector",
+        ":utility",
+        "//folly/lang:align",
+        "//folly/lang:assume",
+        "//folly/synchronization:relaxed_atomic",
+        "//folly/synchronization:rw_spin_lock",
+        "//folly/synchronization:sanitize_thread",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "default_keep_alive_executor",
     headers = [
         "DefaultKeepAliveExecutor.h",
