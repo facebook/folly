@@ -30,6 +30,12 @@ namespace folly {
  * the EDF policy is only honored among tasks submitted from CPUs sharing the
  * same LLC. In practice, each LLC should have enough CPUs to make the
  * approximation good enough for most use cases.
+ *
+ * Within a single stripe, deadline ties are broken by submission order: of two
+ * tasks with the same deadline submitted to the same stripe, the one submitted
+ * first is dequeued first. There is no equivalent guarantee across stripes,
+ * because tracking a global submission order would require synchronization
+ * between stripes, defeating the purpose of striping.
  */
 class StripedEDFThreadPoolExecutor
     : public SoftRealTimeExecutor,

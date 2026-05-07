@@ -41,7 +41,10 @@ class EDFPriorityQueue {
 
   void enqueue(T&& item, uint64_t deadline) {
     std::unique_ptr<Node> node{new Node{std::move(item), deadline}};
-    mutex_.lock_combine([&] { heap_.push(node.release()); });
+    mutex_.lock_combine([&] {
+      node->enqueueOrder = nextEnqueueOrder_++;
+      heap_.push(node.release());
+    });
   }
 
   T dequeue() {
@@ -57,9 +60,16 @@ class EDFPriorityQueue {
 
     T item;
     uint64_t deadline;
+    uint64_t enqueueOrder = 0;
 
+    // IntrusiveHeap is a max-heap, so the smallest deadline must compare as
+    // the greatest. On ties, the earliest submission must come out first, so
+    // the smaller enqueueOrder must compare as the greater.
     friend bool operator<(const Node& lhs, const Node& rhs) {
-      return lhs.deadline > rhs.deadline;
+      if (lhs.deadline != rhs.deadline) {
+        return lhs.deadline > rhs.deadline;
+      }
+      return lhs.enqueueOrder > rhs.enqueueOrder;
     }
   };
 
@@ -70,6 +80,7 @@ class EDFPriorityQueue {
 
   DistributedMutex mutex_;
   IntrusiveHeap<Node> heap_;
+  uint64_t nextEnqueueOrder_ = 0;
 };
 
 template <class T>
