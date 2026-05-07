@@ -176,7 +176,7 @@ class EDFPriorityBlockingQueue final : public BlockingQueueWithDeadline<T> {
 
 std::unique_ptr<BlockingQueue<CPUThreadPoolExecutor::CPUTask>> makeQueue(
     const StripedEDFThreadPoolExecutor::Options& options) {
-  if (LLCAccessSpreader::get().numStripes() > 1) {
+  if (!options.strictOrdering && LLCAccessSpreader::get().numStripes() > 1) {
     return std::make_unique<
         StripedEDFPriorityBlockingQueue<CPUThreadPoolExecutor::CPUTask>>(
         options.tlsOptions);

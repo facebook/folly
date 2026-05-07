@@ -43,6 +43,12 @@ class StripedEDFThreadPoolExecutor
  public:
   struct Options {
     ThrottledLifoSem::Options tlsOptions;
+
+    // If true, force a single stripe regardless of the CPU topology. This
+    // gives up the per-LLC scalability benefit, but in exchange the executor
+    // honors a strict global EDF policy with submission-order tie-breaking,
+    // making it equivalent to folly::EDFThreadPoolExecutor.
+    bool strictOrdering = false;
   };
 
   static constexpr uint64_t kEarliestDeadline = 0;
@@ -53,7 +59,7 @@ class StripedEDFThreadPoolExecutor
       size_t numThreads,
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("StripedEDFTP"),
-      const Options& options = {})
+      const Options& options = defaultOptions())
       : StripedEDFThreadPoolExecutor(
             {numThreads, numThreads}, std::move(threadFactory), options) {}
 
@@ -61,13 +67,16 @@ class StripedEDFThreadPoolExecutor
       std::pair<size_t, size_t> numThreads,
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("StripedEDFTP"),
-      const Options& options = {});
+      const Options& options = defaultOptions());
 
   using CPUThreadPoolExecutor::add;
 
   // SoftRealTimeExecutor
   void add(Func f, uint64_t deadline) override;
   void add(std::vector<Func> fs, uint64_t deadline) override;
+
+ private:
+  static Options defaultOptions() { return {}; }
 };
 
 } // namespace folly
