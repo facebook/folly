@@ -505,3 +505,81 @@ TEST_P(OpenSSLCertUtilsTest, TestExtendedKeyUsage) {
 
   EXPECT_EQ(ekuValues.size(), 0);
 }
+
+const std::string kTestCertWithUriSan = folly::stripLeftMargin(R"(
+  -----BEGIN CERTIFICATE-----
+  MIICETCCAbegAwIBAgIUIH5E7afnwEUM63S4lStJiCehXkcwCgYIKoZIzj0EAwIw
+  MDELMAkGA1UEBhMCVVMxDTALBgNVBAoMBFRlc3QxEjAQBgNVBAMMCTEyNy4wLjAu
+  MTAgFw0yNjA1MDcxNTAyNTZaGA8yMDUzMDkyMTE1MDI1NlowMDELMAkGA1UEBhMC
+  VVMxDTALBgNVBAoMBFRlc3QxEjAQBgNVBAMMCTEyNy4wLjAuMTBZMBMGByqGSM49
+  AgEGCCqGSM49AwEHA0IABKni6LcLvMJXOnYIbmbiN3//sQPwAfyWtojsiJV1Z2dc
+  tTSiAZZPD0sRDcfbH65HJ0Ms/KmyCzJhiONLBsWG+IWjgawwgakwHQYDVR0OBBYE
+  FFrfraxxc1ID+jO3BfN4bn7rN2ODMB8GA1UdIwQYMBaAFFrfraxxc1ID+jO3BfN4
+  bn7rN2ODMA8GA1UdEwEB/wQFMAMBAf8wVgYDVR0RBE8wTYYjc3BpZmZlOi8vZXhh
+  bXBsZS5vcmcvc2VydmljZS9yb3V0ZXKGJnNwaWZmZTovL2V4YW1wbGUub3JnL2Rh
+  dGFiYXNlL215c3FsMDAxMAoGCCqGSM49BAMCA0gAMEUCIFUbWazqQZhpxDWk8/gC
+  RNLYDEJcYbm7CtWhzGMG6Jl1AiEAi55gAQF2anIwqX+VpqdPMqQ/Af3XQFmVLHox
+  Vwkzls0=
+  -----END CERTIFICATE-----
+)");
+
+const std::string kTestCertWithMixedSan = folly::stripLeftMargin(R"(
+  -----BEGIN CERTIFICATE-----
+  MIICLTCCAdOgAwIBAgIUd46T5rS9aftfAl/EK6YrCWkqso4wCgYIKoZIzj0EAwIw
+  MDELMAkGA1UEBhMCVVMxDTALBgNVBAoMBFRlc3QxEjAQBgNVBAMMCTEyNy4wLjAu
+  MTAgFw0yNjA1MDcxNTAyNTZaGA8yMDUzMDkyMTE1MDI1NlowMDELMAkGA1UEBhMC
+  VVMxDTALBgNVBAoMBFRlc3QxEjAQBgNVBAMMCTEyNy4wLjAuMTBZMBMGByqGSM49
+  AgEGCCqGSM49AwEHA0IABKni6LcLvMJXOnYIbmbiN3//sQPwAfyWtojsiJV1Z2dc
+  tTSiAZZPD0sRDcfbH65HJ0Ms/KmyCzJhiONLBsWG+IWjgcgwgcUwHQYDVR0OBBYE
+  FFrfraxxc1ID+jO3BfN4bn7rN2ODMB8GA1UdIwQYMBaAFFrfraxxc1ID+jO3BfN4
+  bn7rN2ODMA8GA1UdEwEB/wQFMAMBAf8wcgYDVR0RBGswaYILZXhhbXBsZS5jb22G
+  I3NwaWZmZTovL2V4YW1wbGUub3JnL3NlcnZpY2Uvcm91dGVygg0qLmV4YW1wbGUu
+  Y29thiZzcGlmZmU6Ly9leGFtcGxlLm9yZy9kYXRhYmFzZS9teXNxbDAwMTAKBggq
+  hkjOPQQDAgNIADBFAiBomIYk+nISSqPAyfN/l7ZFkK8ybzP7gvV+rWXyd+apzQIh
+  APoueXrSI8fVxsn4dcI/IgQlN+wbMMiufJKcPQCtTTU/
+  -----END CERTIFICATE-----
+)");
+
+TEST_P(OpenSSLCertUtilsTest, TestX509UriSans) {
+  auto x509 = readCertFromData(kTestCertWithUriSan);
+  EXPECT_NE(x509, nullptr);
+  auto uris = folly::ssl::OpenSSLCertUtils::getSubjectAltNameURIs(*x509);
+  const std::vector<std::string> expected{
+      "spiffe://example.org/service/router",
+      "spiffe://example.org/database/mysql001",
+  };
+  EXPECT_EQ(uris, expected);
+}
+
+TEST_P(OpenSSLCertUtilsTest, TestX509UriSansExcludedFromDnsSans) {
+  auto x509 = readCertFromData(kTestCertWithUriSan);
+  EXPECT_NE(x509, nullptr);
+  auto dnsSans = folly::ssl::OpenSSLCertUtils::getSubjectAltNames(*x509);
+  EXPECT_EQ(dnsSans.size(), 0);
+}
+
+TEST_P(OpenSSLCertUtilsTest, TestX509MixedSans) {
+  auto x509 = readCertFromData(kTestCertWithMixedSan);
+  EXPECT_NE(x509, nullptr);
+
+  auto dnsSans = folly::ssl::OpenSSLCertUtils::getSubjectAltNames(*x509);
+  const std::vector<std::string> expectedDns{
+      "example.com",
+      "*.example.com",
+  };
+  EXPECT_EQ(dnsSans, expectedDns);
+
+  auto uriSans = folly::ssl::OpenSSLCertUtils::getSubjectAltNameURIs(*x509);
+  const std::vector<std::string> expectedUris{
+      "spiffe://example.org/service/router",
+      "spiffe://example.org/database/mysql001",
+  };
+  EXPECT_EQ(uriSans, expectedUris);
+}
+
+TEST_P(OpenSSLCertUtilsTest, TestX509NoUriSans) {
+  auto x509 = readCertFromData(kTestCertWithSan);
+  EXPECT_NE(x509, nullptr);
+  auto uris = folly::ssl::OpenSSLCertUtils::getSubjectAltNameURIs(*x509);
+  EXPECT_EQ(uris.size(), 0);
+}
