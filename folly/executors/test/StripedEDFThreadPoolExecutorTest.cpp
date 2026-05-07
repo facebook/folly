@@ -40,20 +40,25 @@ void pinProcessToCurrentCPU() {
 
 // StripedEDFThreadPoolExecutor is a CPUThreadPoolExecutor, so all the thread
 // pool functionality is covered by its test. We just need to verify the
-// ordering by deadline, which is only guaranteed for tasks submitted from the
-// same LLC, so we pin the process to a processor and verify the order in a SPSC
-// scenario.
+// ordering by deadline (and submission order on tie), which is only guaranteed
+// for tasks submitted from the same LLC, so we pin the process to a processor
+// and verify the order in a SPSC scenario.
 TEST(StripedEDFThreadPoolExecutor, Basic) {
   // Start with an empty pool, we'll start a single thread after all the tasks
   // have been submitted.
   folly::StripedEDFThreadPoolExecutor executor(std::pair<size_t, size_t>{0, 0});
 
   pinProcessToCurrentCPU();
-  std::vector<uint64_t> order;
-  constexpr size_t kNumTasks = 100;
+  // Pair of (deadline, submission index): with deadlines drawn from a small
+  // range there will be many ties, and within-stripe submission order must
+  // break them.
+  std::vector<std::pair<uint64_t, size_t>> order;
+  constexpr size_t kNumTasks = 1000;
+  constexpr uint64_t kNumDistinctDeadlines = 100;
   for (size_t i = 0; i < kNumTasks; ++i) {
-    auto deadline = folly::Random::rand64();
-    executor.add([deadline, &order] { order.push_back(deadline); }, deadline);
+    auto deadline = folly::Random::rand64(kNumDistinctDeadlines);
+    executor.add(
+        [deadline, i, &order] { order.emplace_back(deadline, i); }, deadline);
   }
 
   ASSERT_EQ(executor.numThreads(), 0);
