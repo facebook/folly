@@ -28,6 +28,12 @@ namespace folly::python {
 std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
     folly::Executor* executor, PyObject* py_object, void* buf, uint64_t length);
 
+// Returns a C++ IOBuf that OWNS a copy of the data from buf. Unlike
+// iobuf_from_memoryview, this does not hold any reference to Python objects,
+// making it safe for cases where the IOBuf may outlive the Python buffer.
+std::unique_ptr<folly::IOBuf> iobuf_copy_from_buffer(
+    const void* buf, std::size_t length);
+
 std::unique_ptr<folly::IOBuf> create_iobuf(std::size_t capacity);
 
 } // namespace folly::python

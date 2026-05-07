@@ -41,6 +41,28 @@ cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view):
         )
     )
 
+def copy_from_buffer(data, length=None):
+    """Create an IOBuf that OWNS a copy of the data (no Python object pinning).
+
+    Unlike IOBuf(buffer) which shares memory via Py_INCREF (and pins the
+    Python buffer until the IOBuf is destroyed), this copies data into
+    IOBuf-managed memory. Use when the IOBuf may outlive the Python buffer
+    (e.g., thrift transport retains the IOBuf after serialization).
+
+    Args:
+        data: buffer-protocol object (bytes, bytearray, memoryview)
+        length: byte length to copy. If None, uses len(data).
+    """
+    # Convert Python memoryview to bytes (Cython can't wrap a Python memoryview
+    # in a typed memoryview due to __cinit__ signature mismatch)
+    if isinstance(data, memoryview):
+        data = bytes(data)
+    cdef Py_ssize_t nbytes = length if length is not None else len(data)
+    cdef memoryview view = memoryview(data, PyBUF_C_CONTIGUOUS)
+    return from_unique_ptr(move(
+        iobuf_copy_from_buffer(view.view.buf, nbytes)
+    ))
+
 cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] ciobuf):
     inst = <IOBuf>IOBuf.__new__(IOBuf)
     inst._ours = move(ciobuf)
