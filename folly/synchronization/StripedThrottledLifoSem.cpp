@@ -87,8 +87,9 @@ class StripedThrottledLifoSemBalancer::Worker {
   Worker& operator=(Worker&&) = delete;
 
   StripedThrottledLifoSemBalancer& parent_;
-  std::thread thread_;
+  // Must be initialized before `thread_` starts.
   bool shutdown_ = false;
+  std::thread thread_;
 };
 
 /* static */ StripedThrottledLifoSemBalancer&
