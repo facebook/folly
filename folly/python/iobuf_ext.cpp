@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <cstring>
+
 #include <folly/python/Weak.h>
 #include <folly/python/iobuf_ext.h>
 
@@ -81,6 +83,19 @@ std::unique_ptr<folly::IOBuf> iobuf_from_memoryview(
         delete py_data;
       },
       pyUserData);
+}
+
+std::unique_ptr<folly::IOBuf> iobuf_copy_from_buffer(
+    const void* buf, std::size_t length) {
+  // Create an IOBuf that OWNS a copy of the data. Unlike
+  // iobuf_from_memoryview (which shares the Python buffer via Py_INCREF),
+  // this function copies data into IOBuf-managed memory. Use this when the
+  // IOBuf may outlive the Python buffer (e.g., thrift transport retains the
+  // IOBuf after the Python caller has dropped its references).
+  auto iobuf = folly::IOBuf::create(length);
+  std::memcpy(iobuf->writableData(), buf, length);
+  iobuf->append(length);
+  return iobuf;
 }
 
 std::unique_ptr<folly::IOBuf> create_iobuf(std::size_t capacity) {

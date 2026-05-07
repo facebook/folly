@@ -287,9 +287,7 @@ fb_dirsync_cpp_library(
     platforms = CYTHON_DEFAULT_PLATFORMS,
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
-    deps = [
-        ":weak",
-    ],
+    deps = [":weak"],
     exported_deps = [
         "fbsource//third-party/python:python",
         "//folly:executor",

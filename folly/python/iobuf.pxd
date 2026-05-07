@@ -80,6 +80,7 @@ cdef extern from "folly/python/iobuf.h" namespace "folly::python":
 
 cdef extern from "folly/python/iobuf_ext.h" namespace "folly::python":
     unique_ptr[cIOBuf] iobuf_from_memoryview(cFollyExecutor*, PyObject*, void*, uint64_t)
+    unique_ptr[cIOBuf] iobuf_copy_from_buffer(void*, size_t)
     unique_ptr[cIOBuf] create_iobuf(uint64_t)
 
 cdef extern from "Python.h":

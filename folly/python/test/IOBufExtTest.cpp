@@ -37,7 +37,7 @@ struct IOBufExtTest : public testing::Test {
   PyGILState_STATE gstate_{PyGILState_UNLOCKED};
 };
 
-// Regression test for S646339. When the executor passed to
+// Regression test: When the executor passed to
 // iobuf_from_memoryview is destroyed before the IOBuf, the free callback
 // dereferences a dangling Executor* pointer.
 // DISABLED: This test crashes (ASAN heap-use-after-free) until the fix lands.

@@ -17,9 +17,10 @@
 
 import asyncio
 import gc
+import sys
 import unittest
 
-from folly.iobuf import IOBuf
+from folly.iobuf import copy_from_buffer, IOBuf
 
 
 class IOBufExtTest(unittest.TestCase):
@@ -29,8 +30,7 @@ class IOBufExtTest(unittest.TestCase):
         IOBuf created from Python bytes outlives the asyncio loop that built it.
 
         Before D100259471: `iobuf_ext.cpp` stored a raw `Executor*` ->
-        use-after-free (S646339) when the executor was destroyed before the
-        IOBuf.
+        use-after-free when the executor was destroyed before the IOBuf.
 
         After D100259471 (KeepAlive fix): IOBuf holds an `Executor::KeepAlive<>`
         -> AsyncioExecutor::drop() busy-spins in
@@ -56,3 +56,50 @@ class IOBufExtTest(unittest.TestCase):
         gc.collect()
 
         self.assertEqual(bytes(buf), b"hello")
+
+    def test_copy_from_buffer_bytes(self) -> None:
+        """copy_from_buffer works with bytes input."""
+        source = b"test_payload_12345"
+        buf = copy_from_buffer(source, len(source))
+
+        self.assertEqual(bytes(buf), source)
+        self.assertIsInstance(buf, IOBuf)
+
+        # IOBuf owns its own copy — deleting source doesn't affect it
+        source_copy = source
+        del source
+        gc.collect()
+        self.assertEqual(bytes(buf), source_copy)
+
+    def test_copy_from_buffer_bytearray(self) -> None:
+        """copy_from_buffer works with bytearray input."""
+        source = bytearray(b"bytearray_data_xyz")
+        buf = copy_from_buffer(source, len(source))
+
+        self.assertEqual(bytes(buf), bytes(source))
+        self.assertIsInstance(buf, IOBuf)
+
+        # Mutating source doesn't affect the IOBuf (it's a copy)
+        expected = bytes(source)
+        source[:5] = b"\x00" * 5
+        self.assertEqual(bytes(buf), expected)
+
+    def test_copy_from_buffer_memoryview(self) -> None:
+        """copy_from_buffer works with memoryview input."""
+        source = b"memoryview_test_data"
+        mv = memoryview(source)
+        buf = copy_from_buffer(mv, len(mv))
+
+        self.assertEqual(bytes(buf), source)
+        self.assertIsInstance(buf, IOBuf)
+
+    def test_copy_from_buffer_does_not_pin_source_object(self) -> None:
+        """copy_from_buffer does NOT hold a reference to the source object."""
+        source = bytearray(b"x" * 1024)
+        initial_refcount = sys.getrefcount(source)
+
+        buf = copy_from_buffer(source, len(source))
+
+        self.assertEqual(bytes(buf), bytes(source))
+        final_refcount = sys.getrefcount(source)
+        self.assertEqual(final_refcount, initial_refcount)
