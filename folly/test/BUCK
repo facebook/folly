@@ -247,6 +247,29 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_benchmark(
+    name = "concurrent_b_skip_list_benchmark",
+    srcs = ["ConcurrentBSkipListBenchmark.cpp"],
+    headers = ["ConcurrentBSkipListTestKeys.h"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:concurrent_b_skip_list",
+        "//folly:concurrent_skip_list",
+        "//folly/init:init",
+        "//folly/portability:gflags",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "concurrent_b_skip_list_layout_test",
+    srcs = ["ConcurrentBSkipListLayoutTest.cpp"],
+    headers = ["ConcurrentBSkipListTestKeys.h"],
+    deps = [
+        "//folly:concurrent_b_skip_list",
+        "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
     name = "concurrent_skip_list_benchmark",
     srcs = ["ConcurrentSkipListBenchmark.cpp"],
     args = [
@@ -259,6 +282,23 @@ fb_dirsync_cpp_benchmark(
         "//folly/hash:hash",
         "//folly/portability:gflags",
         "//folly/synchronization:rw_spin_lock",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "concurrent_b_skip_list_test",
+    srcs = ["ConcurrentBSkipListTest.cpp"],
+    headers = ["ConcurrentBSkipListTestKeys.h"],
+    labels = [
+        # Concurrent stress tests need CPU headroom under TSAN/ASAN
+        "heavyweight8_experimental",
+    ],
+    deps = [
+        "//folly:concurrent_b_skip_list",
+        "//folly:concurrent_skip_list",
+        "//folly:conv",
+        "//folly:random",
+        "//folly/portability:gtest",
     ],
 )
 

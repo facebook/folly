@@ -200,6 +200,25 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME concurrent_b_skip_list
+  HEADERS
+    ConcurrentBSkipList-detail.h
+    ConcurrentBSkipList.h
+  EXPORTED_DEPS
+    ${GLOG_LIBRARIES}
+    folly_c_portability
+    folly_lang_align
+    folly_lang_assume
+    folly_micro_lock
+    folly_portability
+    folly_small_vector
+    folly_synchronization_relaxed_atomic
+    folly_synchronization_rw_spin_lock
+    folly_synchronization_sanitize_thread
+    folly_utility
+)
+
+folly_add_library(
   NAME concurrent_bit_set
   HEADERS
     ConcurrentBitSet.h
