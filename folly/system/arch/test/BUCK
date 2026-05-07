@@ -8,7 +8,6 @@ fb_dirsync_cpp_unittest(
     srcs = ["x86_test.cpp"],
     labels = ci.labels(
         ci.linux(ci.x86_64()),
-        ci.mac(ci.x86_64()),
         ci.windows(ci.x86_64()),
         ci.linux(ci.aarch64()),
         ci.mac(ci.aarch64()),
