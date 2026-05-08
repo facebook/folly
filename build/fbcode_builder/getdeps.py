@@ -1242,7 +1242,11 @@ jobs:
                 merged = dict(extra_cmake_defines)
                 merged.update(per_package_defines.get(name, {}))
                 if merged:
-                    return " --extra-cmake-defines '" + json.dumps(merged) + "'"
+                    return (
+                        " --extra-cmake-defines '"
+                        + json.dumps(merged, separators=(",", ":"))
+                        + "'"
+                    )
                 return ""
 
             build_type_arg = ""
