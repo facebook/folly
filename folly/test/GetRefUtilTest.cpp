@@ -135,7 +135,7 @@ struct CustomOptional {
   int val;
 
   bool has_value() const { return present; }
-  const int& value() const { return val; }
+  const int& operator*() const { return val; }
 };
 
 static_assert(IsOptionalLike<CustomOptional>);

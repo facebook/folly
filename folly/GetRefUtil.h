@@ -27,7 +27,7 @@ template <typename T>
 concept IsOptionalLike = requires {
   typename T::value_type;
 } && requires(const T t) {
-  { t.value() } -> std::convertible_to<typename T::value_type>;
+  { *t } -> std::convertible_to<typename T::value_type>;
   { t.has_value() } -> std::same_as<bool>;
 };
 
@@ -46,7 +46,7 @@ const T& getRefOrDefault(const T* FOLLY_NULLABLE ptr) {
 template <IsOptionalLike T>
 const typename T::value_type& getRefOrDefault(const T& optRef) {
   static const typename T::value_type kDefault{};
-  return optRef.has_value() ? optRef.value() : kDefault;
+  return optRef.has_value() ? *optRef : kDefault;
 }
 
 } // namespace folly
