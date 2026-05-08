@@ -1008,6 +1008,12 @@ if __name__ == "__main__":
                 self.build_opts.build_type,
                 "-j",
                 str(self.num_jobs),
+                "--",
+                # Continue building even if we see an error
+                # Increases dev velocity by surfacing all errors
+                # `-k 0` is understood by ninja - the only build system we use
+                "-k",
+                "0",
             ],
             env=env,
             preexec_fn=self.memory_limit_preexec_fn,
@@ -1047,6 +1053,12 @@ if __name__ == "__main__":
                 self.build_opts.build_type,
                 "-j",
                 str(self.num_jobs),
+                "--",
+                # Continue building even if we see an error
+                # Increases dev velocity by surfacing all errors
+                # `-k 0` is understood by ninja - the only build system we use
+                "-k",
+                "0",
             ]
         )
 
