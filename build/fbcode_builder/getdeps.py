@@ -445,19 +445,23 @@ class InstallSysDepsCmd(ProjectCmdBase):
                 all_packages[k] = merged
 
         cmd_argss = []
+        # Containers (e.g. manylinux) run as root and don't ship sudo. Only
+        # prepend "sudo" if it's actually on PATH; otherwise invoke the
+        # package manager directly.
+        sudo_cmd = ["sudo"] if shutil.which("sudo") else []
         if manager == "rpm":
             packages = sorted(set(all_packages["rpm"]))
             if packages:
                 cmd_argss.append(
-                    ["sudo", "dnf", "install", "-y", "--skip-broken"] + packages
+                    sudo_cmd + ["dnf", "install", "-y", "--skip-broken"] + packages
                 )
         elif manager == "deb":
             packages = sorted(set(all_packages["deb"]))
             if packages:
                 cmd_argss.append(
-                    [
-                        "sudo",
-                        "--preserve-env=http_proxy",
+                    sudo_cmd
+                    + (["--preserve-env=http_proxy"] if sudo_cmd else [])
+                    + [
                         "apt-get",
                         "install",
                         "-y",
