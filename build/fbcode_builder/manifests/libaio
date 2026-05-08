@@ -4,7 +4,10 @@ name = libaio
 [debs]
 libaio-dev
 
-[rpms.distro=centos_stream]
+# AlmaLinux 8 ships libaio-devel in BaseOS; centos_stream too. Without
+# this entry, getdeps falls back to source-build, which trips over the
+# pagure.io tarball's odd directory layout.
+[rpms.any(distro=centos_stream,distro=alma,distro=rocky)]
 libaio-devel
 
 [download]
