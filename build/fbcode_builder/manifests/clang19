@@ -1,6 +1,13 @@
 [manifest]
 name = clang19
 
+# Allow callers to claim clang19 is already on PATH by setting
+# CLANG19_PREINSTALLED=1 in the environment. Used by hosts that bring
+# their own toolchain (e.g. the manylinux CI container which installs
+# clang via a workflow pre-step).
+[preinstalled.env]
+CLANG19_PREINSTALLED
+
 [debs.os=linux]
 clang-19
 
