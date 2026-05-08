@@ -45,13 +45,15 @@ fb_dirsync_cpp_binary(
         "--version-script=$(location :libFollySegFault.so.v)",
     ] + select({
         "DEFAULT": [],
+        # Statically link libstdc++ to avoid an external dep.
         "ovr_config//os:linux": [
-            # Statically link libstdc++ to avoid an external dep which
-            # could make this less flexible.
-            "-static-libstdc++",
+            "--push-state",
+            "-Bstatic",
+            "-lstdc++",
+            "--pop-state",
         ],
         "ovr_config//runtime:fbcode": [
-            # Statically link libstdc++ w/ the fbcode toolchain.
+            # fbcode toolchain uses the PIC variant.
             "--push-state",
             "-Bstatic",
             "-lstdc++_pic",
