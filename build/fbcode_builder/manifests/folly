@@ -23,25 +23,12 @@ double-conversion
 fast_float
 fmt
 lz4
+openssl
 snappy
 zstd
-# no openssl or zlib in the linux case, why?
-# these are usually installed on the system
-# and are the easiest system deps to pull in.
-# In the future we want to be able to express
-# that a system dep is sufficient in the manifest
-# for eg: openssl and zlib, but for now we don't
-# have it.
 
-# macOS doesn't expose the openssl api so we need
-# to build our own.
-[dependencies.os=darwin]
-openssl
-
-# Windows has neither openssl nor zlib, so we get
-# to provide both
+# Windows has no zlib, so we get to provide it
 [dependencies.os=windows]
-openssl
 zlib
 
 [dependencies.os=linux]
@@ -70,6 +57,20 @@ BOOST_LINK_STATIC=ON
 
 [cmake.defines.os=freebsd]
 LIBDWARF_FOUND=NO
+
+# When folly is built with Homebrew LLVM clang on macOS (used by the
+# wheels CI to pick up C++23 features that AppleClang doesn't have),
+# CMake otherwise picks up Homebrew's llvm-ar, which writes BSD-style
+# archives with a "/" symbol-table member that Apple's classic linker
+# cannot parse for empty archives. Several folly portability libraries
+# have no source files on darwin and so produce exactly such empty
+# archives, which then fail to link. Forcing Apple's /usr/bin/ar and
+# /usr/bin/ranlib avoids this -- they write archives the system linker
+# always accepts. AppleClang already uses /usr/bin/ar by default, so
+# this is a no-op for AppleClang folly users.
+[cmake.defines.os=darwin]
+CMAKE_AR=/usr/bin/ar
+CMAKE_RANLIB=/usr/bin/ranlib
 
 [cmake.defines.test=on]
 BUILD_TESTS=ON
