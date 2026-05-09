@@ -16,11 +16,22 @@
 
 /**
  * GCC compatible wrappers around clang attributes.
+ *
+ * ABI STABILITY NOTE:
+ * Some attributes (notably [[no_unique_address]]) affect struct layout.
+ * When the Folly library is compiled with one C++ standard and headers are
+ * included from an application compiled with a different standard, ODR
+ * violations can occur, leading to memory corruption and crashes.
+ *
+ * This header includes logic to detect such mismatches and force the headers
+ * to use the same layout as the compiled library.
+ * See: https://github.com/facebook/folly/issues/2477
  */
 
 #pragma once
 
 #include <folly/Portability.h>
+#include <folly/portability/Config.h>
 
 #ifndef __has_attribute
 #define FOLLY_HAS_ATTRIBUTE(x) 0
@@ -115,13 +126,72 @@
  *
  *  sizeof(NonEmpty1); // may be == sizeof(int)
  *  sizeof(NonEmpty2); // must be > sizeof(int)
+ *
+ * ABI STABILITY:
+ * This attribute changes struct layout. When linking against a pre-compiled
+ * Folly library, we MUST use the same layout as the library was compiled with.
+ * If the library was compiled without [[no_unique_address]] support (e.g.,
+ * C++17), we must NOT apply the attribute even if the current compilation
+ * would support it (e.g., C++20). Doing otherwise causes ODR violations,
+ * memory corruption, and crashes.
+ * See: https://github.com/facebook/folly/issues/2477
  */
+
+// First, detect what the current compilation unit supports
 #if FOLLY_HAS_CPP_ATTRIBUTE(no_unique_address)
-#define FOLLY_ATTR_NO_UNIQUE_ADDRESS no_unique_address
+#define FOLLY_CURRENT_HAS_NO_UNIQUE_ADDRESS 1
+#define FOLLY_CURRENT_NO_UNIQUE_ADDRESS_ATTR no_unique_address
 #elif FOLLY_HAS_CPP_ATTRIBUTE(msvc::no_unique_address)
-#define FOLLY_ATTR_NO_UNIQUE_ADDRESS msvc::no_unique_address
+#define FOLLY_CURRENT_HAS_NO_UNIQUE_ADDRESS 1
+#define FOLLY_CURRENT_NO_UNIQUE_ADDRESS_ATTR msvc::no_unique_address
+#else
+#define FOLLY_CURRENT_HAS_NO_UNIQUE_ADDRESS 0
+#endif
+
+// Now determine what to actually use, respecting library ABI
+#if defined(FOLLY_LIBRARY_HAS_NO_UNIQUE_ADDRESS)
+// We have library configuration available - use it for ABI compatibility
+
+#if FOLLY_LIBRARY_HAS_NO_UNIQUE_ADDRESS && FOLLY_CURRENT_HAS_NO_UNIQUE_ADDRESS
+// Both library and current compilation support it - use the attribute
+#define FOLLY_ATTR_NO_UNIQUE_ADDRESS FOLLY_CURRENT_NO_UNIQUE_ADDRESS_ATTR
+
+#elif FOLLY_LIBRARY_HAS_NO_UNIQUE_ADDRESS && \
+    !FOLLY_CURRENT_HAS_NO_UNIQUE_ADDRESS
+// Library was compiled with it, but current compilation doesn't support it.
+// This is an error - the application will have wrong struct layouts.
+#error \
+    "Folly library was compiled with [[no_unique_address]] support, but " \
+        "current compilation does not support it. This will cause ABI " \
+        "incompatibility. Please compile with C++20 or later."
+
+#elif !FOLLY_LIBRARY_HAS_NO_UNIQUE_ADDRESS && \
+    FOLLY_CURRENT_HAS_NO_UNIQUE_ADDRESS
+// Library was compiled WITHOUT [[no_unique_address]], but current compilation
+// supports it. We MUST NOT use the attribute to maintain ABI compatibility.
+// Issue a warning to inform users of this situation.
+#if defined(__GNUC__) || defined(__clang__)
+#pragma message(                                                           \
+    "Warning: Folly library was compiled without [[no_unique_address]] "   \
+    "(likely C++17), but current compilation supports it. Disabling the "  \
+    "attribute to maintain ABI compatibility. Consider recompiling Folly " \
+    "with C++20 for optimal performance. See issue #2477.")
+#endif
+#define FOLLY_ATTR_NO_UNIQUE_ADDRESS /* disabled for ABI compatibility */
+
+#else
+// Neither library nor current compilation support it
+#define FOLLY_ATTR_NO_UNIQUE_ADDRESS
+#endif
+
+#else
+// No library configuration available (header-only use or building Folly itself)
+// Use whatever the current compilation supports
+#if FOLLY_CURRENT_HAS_NO_UNIQUE_ADDRESS
+#define FOLLY_ATTR_NO_UNIQUE_ADDRESS FOLLY_CURRENT_NO_UNIQUE_ADDRESS_ATTR
 #else
 #define FOLLY_ATTR_NO_UNIQUE_ADDRESS
+#endif
 #endif
 
 #if FOLLY_HAS_CPP_ATTRIBUTE(clang::no_destroy)
