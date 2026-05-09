@@ -48,9 +48,8 @@ struct ConcurrentLazy {
   static_assert(
       !std::is_reference<Ctor>::value, "Func should not be a reference type");
 
-  template <
-      typename F,
-      std::enable_if_t<std::is_constructible_v<Ctor, F>, int> = 0>
+  template <typename F>
+    requires std::constructible_from<Ctor, F>
   explicit ConcurrentLazy(F&& f) noexcept(
       std::is_nothrow_constructible_v<Ctor, F>)
       : ctor_(static_cast<F&&>(f)) {}
