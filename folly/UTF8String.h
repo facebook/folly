@@ -32,9 +32,8 @@ class UTF8StringPiece {
   /* implicit */ UTF8StringPiece(const folly::StringPiece piece)
       : begin_{piece.begin(), piece.begin(), piece.end()},
         end_{piece.end(), piece.begin(), piece.end()} {}
-  template <
-      typename T,
-      std::enable_if_t<std::is_convertible_v<T, folly::StringPiece>, int> = 0>
+  template <typename T>
+    requires std::convertible_to<T, folly::StringPiece>
   /* implicit */ UTF8StringPiece(const T& t)
       : UTF8StringPiece(folly::StringPiece(t)) {}
 
