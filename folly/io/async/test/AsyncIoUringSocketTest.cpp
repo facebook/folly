@@ -655,6 +655,61 @@ TEST_P(AsyncIoUringSocketTest, FastOpen) {
   }
 }
 
+// Regression test for use-after-free in ~AsyncIoUringSocket() when a
+// FastOpenSqe is in flight. The destructor must cancel fastOpenSqe_ so a
+// late TFO CQE does not invoke FastOpenSqe::callback against the freed
+// parent (which then drops into WriteSqe::callback via
+// processFastOpenResult and dereferences the dangling parent_).
+//
+// Without the fix this triggers a heap-use-after-free under ASAN whose
+// allocation site is FastOpenSqe construction in writeChain() and whose
+// use site is FastOpenSqe::callback / processFastOpenResult /
+// WriteSqe::callback.
+TEST_P(AsyncIoUringSocketTest, DestroyDuringFastOpen) {
+  MAYBE_SKIP();
+  if (!GetParam().ioUringClient) {
+    return;
+  }
+
+  AsyncIoUringSocket::UniquePtr client(
+      new AsyncIoUringSocket(base.get(), ioUringSocketOptions()));
+  client->enableTFO();
+  // The fixture itself implements ConnectCallback with no-op success and a
+  // FATAL on error; that is fine because FastOpen places the socket into
+  // State::FastOpen and fires connectSuccess() synchronously without
+  // submitting a connect SQE.
+  client->connect(this, serverAddress);
+
+  // Pushes the WriteSqe through to construct and submitSoon() a
+  // FastOpenSqe (state == State::FastOpen path in
+  // AsyncIoUringSocket::writeChain).
+  client->writeChain(
+      &nullWriteCallback, IOBuf::copyBuffer("hello"), WriteFlags::NONE);
+
+  // Get the SQE into the kernel without draining its CQE.
+  backend->submitOutstanding();
+
+  // Give the kernel a moment to start the TFO operation while
+  // fastOpenSqe_->inFlight() is still true.
+  /* sleep override */ std::this_thread::sleep_for(
+      std::chrono::milliseconds(5));
+
+  // Destroy the socket while the FastOpenSqe may still be in flight. The
+  // unique_ptr's Destructor invokes ~AsyncIoUringSocket() via
+  // DelayedDestruction.
+  client.reset();
+
+  // Drain any late CQEs so a (now-freed) FastOpenSqe's callback would
+  // fire and trip the use-after-free under ASAN. This loop does not
+  // assert: ASAN failing here is the only thing we care about.
+  auto start = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - start < std::chrono::seconds(1)) {
+    base->loopOnce(EVLOOP_NONBLOCK);
+    /* sleep override */ std::this_thread::sleep_for(
+        std::chrono::milliseconds(10));
+  }
+}
+
 TEST_P(AsyncIoUringSocketTest, BindAddressNoPort) {
   EventBase eventBase;
   test::TestServer server(true);
