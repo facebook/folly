@@ -178,6 +178,10 @@ AsyncIoUringSocket::~AsyncIoUringSocket() {
     connectSqe_->cancelTimeout();
     backend_->cancel(connectSqe_.release());
   }
+  if (fastOpenSqe_ && fastOpenSqe_->inFlight()) {
+    VLOG(3) << "cancel fastopen " << fastOpenSqe_.get();
+    backend_->cancel(fastOpenSqe_.release());
+  }
 
   VLOG(2) << "~AsyncIoUringSocket() " << this << " have active "
           << writeSqeActive_ << " queue=" << writeSqeQueue_.size();
