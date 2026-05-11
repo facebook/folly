@@ -50,6 +50,9 @@ jobs:
     - name: Fetch libaio
       if: ${{ steps.paths.outputs.libaio_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libaio
+    - name: Fetch openssl
+      if: ${{ steps.paths.outputs.openssl_SOURCE }}
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests openssl
     - name: Fetch ninja
       if: ${{ steps.paths.outputs.ninja_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests ninja
@@ -145,6 +148,22 @@ jobs:
       with:
        path: ${{ steps.paths.outputs.libaio_INSTALL }}
        key: ${{ steps.paths.outputs.libaio_CACHE_KEY }}-install
+    - name: Restore openssl from cache
+      id: restore_openssl
+      if: ${{ steps.paths.outputs.openssl_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.openssl_INSTALL }}
+       key: ${{ steps.paths.outputs.openssl_CACHE_KEY }}-install
+    - name: Build openssl
+      if: ${{ steps.paths.outputs.openssl_SOURCE && ! steps.restore_openssl.outputs.cache-hit }}
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests openssl --extra-cmake-defines '{"CMAKE_CXX_COMPILER_LAUNCHER":"sccache"}'
+    - name: Save openssl to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.openssl_SOURCE && ! steps.restore_openssl.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.openssl_INSTALL }}
+       key: ${{ steps.paths.outputs.openssl_CACHE_KEY }}-install
     - name: Restore ninja from cache
       id: restore_ninja
       if: ${{ steps.paths.outputs.ninja_SOURCE }}
