@@ -21,13 +21,16 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
+#include <mutex>
 #include <utility>
 
 #include <folly/Likely.h>
-#include <folly/MicroLock.h>
 #include <folly/Portability.h>
+#include <folly/ScopeGuard.h>
 #include <folly/SharedMutex.h>
 #include <folly/functional/Invoke.h>
+#include <folly/synchronization/AtomicNotification.h>
 
 namespace folly {
 
@@ -40,9 +43,8 @@ template <typename Mutex, template <typename> class Atom = std::atomic>
 class basic_once_flag;
 
 /**
- * An alternative flag template that can be used with call_once that uses only
- * 1 byte. Internally, compact_once_flag uses folly::MicroLock and its data
- * storage API.
+ * An alternative flag that can be used with call_once that uses only 1 byte.
+ * Uses a 3-state std::atomic<uint8_t> with wait/notify for synchronization.
  */
 class compact_once_flag;
 
@@ -189,11 +191,16 @@ class basic_once_flag {
 
 class compact_once_flag {
  public:
-  compact_once_flag() = default;
+  constexpr compact_once_flag() noexcept = default;
   compact_once_flag(const compact_once_flag&) = delete;
   compact_once_flag& operator=(const compact_once_flag&) = delete;
 
  private:
+  // kDone is 0 so test_once() compiles to test+jnz on x86.
+  static constexpr uint8_t kDone = 0;
+  static constexpr uint8_t kInit = 1;
+  static constexpr uint8_t kActive = 2;
+
   template <typename OnceFlag, typename F, typename... Args>
   friend void call_once(OnceFlag&, F&&, Args&&...);
 
@@ -206,14 +213,33 @@ class compact_once_flag {
   template <typename OnceFlag>
   friend void set_once(OnceFlag&) noexcept;
 
+  template <typename F>
+  FOLLY_ALWAYS_INLINE bool call_once_impl(F&& f) {
+    while (true) {
+      uint8_t expected = kInit;
+      if (state_.compare_exchange_weak(
+              expected, kActive, std::memory_order_acquire)) {
+        bool pass = false;
+        SCOPE_EXIT {
+          state_.store(pass ? kDone : kInit, std::memory_order_release);
+          folly::atomic_notify_all(&state_);
+        };
+        pass = f();
+        return pass;
+      }
+      if (expected == kDone) {
+        return true;
+      }
+      folly::atomic_wait(&state_, kActive);
+    }
+  }
+
   template <typename F, typename... Args>
   FOLLY_NOINLINE void call_once_slow(F&& f, Args&&... args) {
-    folly::MicroLock::LockGuardWithData guard(mutex_);
-    if (guard.loadedValue() != 0) {
-      return;
-    }
-    invoke(std::forward<F>(f), std::forward<Args>(args)...);
-    guard.storeValue(1);
+    call_once_impl([&]() -> bool {
+      invoke(std::forward<F>(f), std::forward<Args>(args)...);
+      return true;
+    });
   }
 
   template <typename OnceFlag, typename F, typename... Args>
@@ -221,31 +247,25 @@ class compact_once_flag {
 
   template <typename F, typename... Args>
   FOLLY_NOINLINE bool try_call_once_slow(F&& f, Args&&... args) noexcept {
-    folly::MicroLock::LockGuardWithData guard(mutex_);
-    if (guard.loadedValue() != 0) {
-      return true;
-    }
-    const auto pass = static_cast<bool>(
-        invoke(std::forward<F>(f), std::forward<Args>(args)...));
-    guard.storeValue(pass ? 1 : 0);
-    return pass;
+    return call_once_impl([&]() noexcept -> bool {
+      return static_cast<bool>(
+          invoke(std::forward<F>(f), std::forward<Args>(args)...));
+    });
   }
 
   FOLLY_ALWAYS_INLINE bool test_once() const noexcept {
-    return mutex_.load(std::memory_order_acquire) != 0;
+    return state_.load(std::memory_order_acquire) == kDone;
   }
 
   FOLLY_ALWAYS_INLINE void reset_once() noexcept {
-    folly::MicroLock::LockGuardWithData guard(mutex_);
-    guard.storeValue(0);
+    state_.store(kInit, std::memory_order_relaxed);
   }
 
   FOLLY_ALWAYS_INLINE void set_once() noexcept {
-    folly::MicroLock::LockGuardWithData guard(mutex_);
-    guard.storeValue(1);
+    state_.store(kDone, std::memory_order_relaxed);
   }
 
-  folly::MicroLock mutex_;
+  std::atomic<uint8_t> state_{kInit};
 };
 
 static_assert(

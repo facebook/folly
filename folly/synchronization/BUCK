@@ -88,10 +88,11 @@ fb_dirsync_cpp_library(
     headers = ["CallOnce.h"],
     exported_deps = [
         "//folly:likely",
-        "//folly:micro_lock",
         "//folly:portability",
+        "//folly:scope_guard",
         "//folly:shared_mutex",
         "//folly/functional:invoke",
+        "//folly/synchronization:atomic_notification",
     ],
 )
 
