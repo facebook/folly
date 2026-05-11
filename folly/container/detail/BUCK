@@ -69,6 +69,7 @@ fb_dirsync_cpp_library(
         "//folly/lang:exception",
         "//folly/lang:pretty",
         "//folly/lang:safe_assert",
+        "//folly/memory:allocator",
         "//folly/memory:malloc",
         "//folly/portability:builtins",
     ],

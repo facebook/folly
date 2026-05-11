@@ -129,6 +129,7 @@ Sample usage:
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/detail/Iterators.h>
+#include <folly/memory/Allocator.h>
 #include <folly/synchronization/MicroSpinLock.h>
 
 namespace folly {

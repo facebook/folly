@@ -24,6 +24,7 @@ fb_dirsync_cpp_library(
     ],
     use_raw_headers = True,
     exported_deps = [
+        ":allocator",
         ":malloc",
         "//folly:conv",
         "//folly:likely",
@@ -75,6 +76,7 @@ fb_dirsync_cpp_library(
     headers = ["ThreadCachedArena.h"],
     use_raw_headers = True,
     exported_deps = [
+        ":allocator",
         "//folly:likely",
         "//folly:synchronized",
         "//folly:thread_local",
@@ -142,6 +144,20 @@ fb_dirsync_cpp_library(
         "//folly/lang:exception",
         "//folly/memory/detail:malloc_impl",
         "//folly/portability:malloc",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "allocator",
+    headers = ["Allocator.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        ":malloc",
+        "//folly:likely",
+        "//folly:memory",
+        "//folly:traits",
+        "//folly/functional:invoke",
+        "//folly/lang:exception",
     ],
 )
 

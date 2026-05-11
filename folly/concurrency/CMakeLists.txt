@@ -110,6 +110,7 @@ folly_add_library(
     folly_concurrency_unbounded_queue
     folly_lang_align
     folly_memory
+    folly_memory_allocator
 )
 
 folly_add_library(

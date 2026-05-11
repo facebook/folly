@@ -21,6 +21,7 @@
 
 #include <folly/Memory.h>
 #include <folly/SpinLock.h>
+#include <folly/memory/Allocator.h>
 
 namespace folly {
 

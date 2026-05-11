@@ -159,6 +159,7 @@ fb_dirsync_cpp_library(
         ":unbounded_queue",
         "//folly:memory",
         "//folly/lang:align",
+        "//folly/memory:allocator",
     ],
 )
 

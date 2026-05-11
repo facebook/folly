@@ -34,6 +34,7 @@ folly_add_library(
     folly_concurrency_cache_locality
     folly_lang_bits
     folly_memory
+    folly_memory_allocator
     folly_spin_lock
 )
 

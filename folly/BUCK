@@ -46,7 +46,6 @@ fb_dirsync_cpp_library(
         "//folly/lang:align",
         "//folly/lang:exception",
         "//folly/lang:thunk",
-        "//folly/memory:malloc",
         "//folly/portability:config",
         "//folly/portability:constexpr",
         "//folly/portability:malloc",
