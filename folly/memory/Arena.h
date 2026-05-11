@@ -30,6 +30,7 @@
 #include <folly/lang/Align.h>
 #include <folly/lang/CheckedMath.h>
 #include <folly/lang/Exception.h>
+#include <folly/memory/Allocator.h>
 #include <folly/memory/Malloc.h>
 
 namespace folly {

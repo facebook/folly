@@ -30,6 +30,7 @@
 #include <folly/hash/Hash.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/SafeAssert.h>
+#include <folly/memory/Allocator.h>
 #include <folly/memory/Malloc.h>
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE

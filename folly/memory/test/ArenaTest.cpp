@@ -24,6 +24,7 @@
 
 #include <folly/Memory.h>
 #include <folly/Random.h>
+#include <folly/memory/Allocator.h>
 #include <folly/memory/MallctlHelper.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/GFlags.h>

@@ -21,6 +21,7 @@
 #include <folly/Likely.h>
 #include <folly/Synchronized.h>
 #include <folly/ThreadLocal.h>
+#include <folly/memory/Allocator.h>
 #include <folly/memory/Arena.h>
 
 namespace folly {

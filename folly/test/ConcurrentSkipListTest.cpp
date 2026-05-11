@@ -28,6 +28,7 @@
 #include <folly/Memory.h>
 #include <folly/Random.h>
 #include <folly/String.h>
+#include <folly/memory/Allocator.h>
 #include <folly/memory/Arena.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>

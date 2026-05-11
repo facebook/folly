@@ -22,6 +22,7 @@
 #include <folly/Memory.h>
 #include <folly/concurrency/UnboundedQueue.h>
 #include <folly/lang/Align.h>
+#include <folly/memory/Allocator.h>
 
 namespace folly {
 

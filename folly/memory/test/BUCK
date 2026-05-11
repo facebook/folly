@@ -11,6 +11,7 @@ fb_dirsync_cpp_unittest(
         "fbsource//third-party/glog:glog",
         "//folly:memory",
         "//folly:random",
+        "//folly/memory:allocator",
         "//folly/memory:arena",
         "//folly/memory:mallctl_helper",
         "//folly/memory:malloc",

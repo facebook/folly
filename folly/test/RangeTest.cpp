@@ -29,6 +29,7 @@
 #include <boost/range/concepts.hpp>
 
 #include <folly/Memory.h>
+#include <folly/memory/Allocator.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysMman.h>

@@ -832,7 +832,6 @@ folly_add_library(
     folly_lang_exception
     folly_lang_thunk
     folly_likely
-    folly_memory_malloc
     folly_portability
     folly_portability_config
     folly_portability_constexpr

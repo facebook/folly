@@ -29,6 +29,7 @@ fb_dirsync_cpp_library(
         "//folly:spin_lock",
         "//folly/concurrency:cache_locality",
         "//folly/lang:bits",
+        "//folly/memory:allocator",
     ],
 )
 

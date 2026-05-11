@@ -32,6 +32,7 @@
 #include <folly/CppAttributes.h>
 #include <folly/Memory.h>
 #include <folly/ThreadLocal.h>
+#include <folly/memory/Allocator.h>
 #include <folly/synchronization/MicroSpinLock.h>
 
 namespace folly {

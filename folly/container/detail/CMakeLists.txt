@@ -64,6 +64,7 @@ folly_add_library(
     folly_lang_safe_assert
     folly_likely
     folly_memory
+    folly_memory_allocator
     folly_memory_malloc
     folly_optional
     folly_portability
