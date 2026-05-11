@@ -25,7 +25,51 @@ dependencies between projects, enabling `getdeps.py` to build all dependencies
 for a project before building the project itself.
 
 
-# Shared CMake utilities
+# Manifest features
+
+A manifest may declare named *features* that toggle parts of its build. Each
+feature appears as a `feature_<name>` variable that conditional sections such
+as `[dependencies.feature_<name>=on]` or `[cmake.defines.feature_<name>=off]`
+can gate on. Consumers of a project pick which features they want by attaching
+a feature spec to the dep entry.
+
+A project that supports features looks like:
+
+```ini
+[features]
+default = rpc
+rpc =
+
+[cmake.defines.feature_rpc=off]
+THRIFT_RPC=OFF
+
+[dependencies.feature_rpc=on]
+fizz
+wangle
+```
+
+`default` lists features enabled when no consumer overrides; the other entries
+declare valid feature names. There is no CLI flag for selecting features —
+they are configured per dependency edge inside manifests.
+
+A consumer's dep entry uses comma-separated tokens after `=`:
+
+| Spec                            | Effect                                                |
+| ------------------------------- | ----------------------------------------------------- |
+| `fbthrift`                      | request the dep's default features                    |
+| `fbthrift = extra`              | defaults plus `extra`                                 |
+| `fbthrift = !default`           | this edge contributes no features                     |
+| `fbthrift = !rpc`               | prohibit `rpc` (this edge and globally for the build) |
+| `fbthrift = !default, extra`    | only `extra`, none of the dep's defaults              |
+
+Resolution composes feature requests by union across all edges in the dep
+graph, then checks prohibitions against the union; a conflict (one consumer
+requests a feature another prohibits) is a hard error. Each project produces a
+single build per invocation, so its resolved feature set is global to that
+invocation. The resolved set is folded into the project's cache hash, so a
+serialization-only build of `fbthrift` caches separately from a full build.
+
+
 
 Since this directory is copied into many Facebook open source repositories,
 it is also used to help share some CMake utility files across projects.  The

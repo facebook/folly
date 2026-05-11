@@ -142,7 +142,11 @@ class Parser:
             return func()
 
         if op == "=":
-            if name not in self.valid_variables:
+            # feature_<name> variables are always valid: they're declared
+            # per-manifest in [features] sections, so the global validator
+            # can't enforce the declaration. An undeclared feature simply
+            # evaluates to "off" at runtime.
+            if name not in self.valid_variables and not name.startswith("feature_"):
                 raise Exception("unknown variable %r in expression" % (name,))
             # remove shell quote from value so can test things with period in them, e.g "18.04"
             token = self.lex.get_token()
@@ -157,7 +161,7 @@ class Parser:
 
     def ident(self) -> str:
         ident = self.lex.get_token()
-        if ident is None or not re.match("[a-zA-Z]+", ident):
+        if ident is None or not re.match(r"[a-zA-Z][a-zA-Z0-9_]*", ident):
             raise Exception("expected identifier found %s" % ident)
         return ident
 

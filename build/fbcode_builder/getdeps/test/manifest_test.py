@@ -87,26 +87,6 @@ foo = bar
 """,
             )
 
-    def test_value_in_dependencies_section(self) -> None:
-        with self.assertRaisesRegex(
-            Exception,
-            (
-                "manifest file test section 'dependencies' has "
-                "'foo = bar' but this section doesn't allow "
-                "specifying values for its entries"
-            ),
-        ):
-            ManifestParser(
-                "test",
-                """
-[manifest]
-name = test
-
-[dependencies]
-foo = bar
-""",
-            )
-
     def test_invalid_conditional_section_name(self) -> None:
         with self.assertRaisesRegex(
             Exception,

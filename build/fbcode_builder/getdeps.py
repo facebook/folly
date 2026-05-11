@@ -1566,7 +1566,7 @@ jobs:
                 "Add cmake defines that apply only to the named package's "
                 "build step in the generated workflow. Example: "
                 "--package-extra-cmake-defines "
-                '\'fbthrift={"THRIFT_SERIALIZATION_ONLY":"ON"}\'. May be '
+                '\'fbthrift={"THRIFT_RPC":"OFF"}\'. May be '
                 "passed multiple times."
             ),
         )
