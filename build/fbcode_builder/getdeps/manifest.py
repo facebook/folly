@@ -63,7 +63,8 @@ SCHEMA: dict[str, dict[str, object]] = {
             "shipit_strip_marker": OPTIONAL,
         },
     },
-    "dependencies": {"optional_section": True, "allow_values": False},
+    "dependencies": {"optional_section": True},
+    "features": {"optional_section": True},
     "depends.environment": {"optional_section": True},
     "git": {
         "optional_section": True,
@@ -163,6 +164,32 @@ ALLOWED_EXPR_SECTIONS: list[str] = [
     "github.actions",
     "pps",
 ]
+
+
+def parse_dep_spec(spec: str | None) -> tuple[set[str], set[str], bool]:
+    """Parse the value of a [dependencies] entry into a feature spec.
+
+    Syntax: comma-separated tokens. A token is either a feature name (positive
+    request), `!feature` (prohibition), or `!default` (opt this edge out of the
+    dep's default features).
+
+    Returns (requested_features, prohibited_features, opt_out_default).
+    """
+    requested: set[str] = set()
+    prohibited: set[str] = set()
+    opt_out_default: bool = False
+    if not spec:
+        return (requested, prohibited, opt_out_default)
+    for token in (t.strip() for t in spec.split(",")):
+        if not token:
+            continue
+        if token == "!default":
+            opt_out_default = True
+        elif token.startswith("!"):
+            prohibited.add(token[1:].strip())
+        else:
+            requested.add(token)
+    return (requested, prohibited, opt_out_default)
 
 
 def parse_conditional_section_name(name: str, section_def: str) -> ExprNode:
@@ -276,6 +303,29 @@ class ManifestParser:
                 )
 
         self._config: configparser.RawConfigParser = config
+
+        # [features] section. Keys other than "default" declare valid feature
+        # names. The "default" key holds a comma-separated list of features
+        # that are enabled when a consumer references this project without an
+        # explicit feature spec. See README.md for the full feature system.
+        declared: set[str] = set()
+        defaults: set[str] = set()
+        if config.has_section("features"):
+            for key in config.options("features"):
+                if key == "default":
+                    raw = config.get("features", "default") or ""
+                    defaults = {t.strip() for t in raw.split(",") if t.strip()}
+                else:
+                    declared.add(key)
+            unknown = defaults - declared
+            if unknown:
+                raise Exception(
+                    "manifest %s [features] default lists undeclared features: %s"
+                    % (file_name, sorted(unknown))
+                )
+        self.declared_features: set[str] = declared
+        self.default_features: set[str] = defaults
+
         self.name: str = config.get("manifest", "name")
         self.fbsource_path: str | None = self.get("manifest", "fbsource_path")
         self.shipit_project: str | None = self.get("manifest", "shipit_project")
@@ -325,6 +375,21 @@ class ManifestParser:
                     return self._config.get(s, key)
 
         return defval
+
+    def get_dependency_specs(
+        self, ctx: ManifestContext
+    ) -> list[tuple[str, set[str], set[str], bool]]:
+        """Returns dependencies as (name, requested_features, prohibited_features,
+        opt_out_default) tuples, in declaration order, deduplicated by name."""
+        seen: set[str] = set()
+        specs: list[tuple[str, set[str], set[str], bool]] = []
+        for name, value in self.get_section_as_ordered_pairs("dependencies", ctx):
+            if name in seen:
+                continue
+            seen.add(name)
+            req, pro, od = parse_dep_spec(value)
+            specs.append((name, req, pro, od))
+        return specs
 
     def get_dependencies(self, ctx: ManifestContext) -> list[str]:
         dep_list = list(self.get_section_as_dict("dependencies", ctx).keys())
@@ -893,15 +958,27 @@ class ManifestContext:
     }
 
     def __init__(self, ctx_dict: dict[str, str | None]) -> None:
-        assert set(ctx_dict.keys()) == self.ALLOWED_VARIABLES
+        base_keys = {k for k in ctx_dict if not k.startswith("feature_")}
+        assert base_keys == self.ALLOWED_VARIABLES
         self.ctx_dict: dict[str, str | None] = ctx_dict
 
     def get(self, key: str) -> str | None:
+        # Undeclared/unset features evaluate to "off" so that
+        # `[section.feature_foo=off]` matches when feature_foo is absent.
+        if key.startswith("feature_"):
+            return self.ctx_dict.get(key, "off")
         return self.ctx_dict[key]
 
     def set(self, key: str, value: str | None) -> None:
-        assert key in self.ALLOWED_VARIABLES
+        assert key in self.ALLOWED_VARIABLES or key.startswith("feature_")
         self.ctx_dict[key] = value
+
+    def features(self) -> set[str]:
+        return {
+            k[len("feature_") :]
+            for k, v in self.ctx_dict.items()
+            if k.startswith("feature_") and v == "on"
+        }
 
     def copy(self) -> ManifestContext:
         return ManifestContext(dict(self.ctx_dict))
@@ -931,6 +1008,17 @@ class ContextGenerator:
             project_ctx = self.default_ctx.copy()
             self.ctx_by_project[project_name] = project_ctx
         project_ctx.set(key, value)
+
+    def set_features_for_project(self, project_name: str, features: set[str]) -> None:
+        project_ctx = self.ctx_by_project.get(project_name)
+        if project_ctx is None:
+            project_ctx = self.default_ctx.copy()
+            self.ctx_by_project[project_name] = project_ctx
+        for k in list(project_ctx.ctx_dict.keys()):
+            if k.startswith("feature_"):
+                del project_ctx.ctx_dict[k]
+        for f in features:
+            project_ctx.set("feature_" + f, "on")
 
     def set_value_for_all_projects(self, key: str, value: str | None) -> None:
         self.default_ctx.set(key, value)
