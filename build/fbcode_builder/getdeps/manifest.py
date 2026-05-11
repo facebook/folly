@@ -973,7 +973,7 @@ class ManifestContext:
         assert key in self.ALLOWED_VARIABLES or key.startswith("feature_")
         self.ctx_dict[key] = value
 
-    def features(self) -> set[str]:
+    def features(self) -> typing.Set[str]:
         return {
             k[len("feature_") :]
             for k, v in self.ctx_dict.items()
