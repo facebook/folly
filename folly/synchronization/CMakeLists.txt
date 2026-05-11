@@ -97,9 +97,10 @@ folly_add_library(
   EXPORTED_DEPS
     folly_functional_invoke
     folly_likely
-    folly_micro_lock
     folly_portability
+    folly_scope_guard
     folly_shared_mutex
+    folly_synchronization_atomic_notification
 )
 
 folly_add_library(
