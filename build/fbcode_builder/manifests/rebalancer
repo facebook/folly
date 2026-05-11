@@ -19,7 +19,10 @@ CMAKE_POSITION_INDEPENDENT_CODE=ON
 
 [dependencies]
 boost
-fbthrift
+# Rebalancer only uses fbthrift's codegen + (de)serialization. Skip the RPC
+# transport stack (fizz/wangle/mvfst, none of which it links) and the
+# benchmark executables.
+fbthrift = !rpc, !benchmark
 fmt
 folly
 gflags
