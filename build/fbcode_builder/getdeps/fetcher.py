@@ -476,7 +476,7 @@ def filter_strip_marker(dest_name: str, marker: str) -> None:
 
 
 def list_files_under_dir_newer_than_timestamp(
-    dir_to_scan: str, ts: int
+    dir_to_scan: str, ts: float
 ) -> Iterator[str]:
     for root, _dirs, files in os.walk(dir_to_scan):
         for src_file in files:
