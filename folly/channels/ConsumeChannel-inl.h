@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <concepts>
 #include <fmt/format.h>
 #include <folly/Executor.h>
 #include <folly/Format.h>
@@ -229,15 +230,10 @@ class ChannelCallbackProcessorImpl : public ChannelCallbackProcessor {
 };
 } // namespace detail
 
-template <
-    typename TReceiver,
-    typename OnNextFunc,
-    typename TValue,
-    std::enable_if_t<
-        std::is_constructible_v<
-            folly::Function<folly::coro::Task<bool>(Try<TValue>)>,
-            OnNextFunc>,
-        int>>
+template <typename TReceiver, typename OnNextFunc, typename TValue>
+  requires std::constructible_from<
+      folly::Function<folly::coro::Task<bool>(Try<TValue>)>,
+      OnNextFunc>
 ChannelCallbackHandle consumeChannelWithCallback(
     TReceiver receiver,
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
