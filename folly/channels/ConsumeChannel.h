@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <concepts>
 #include <folly/Executor.h>
 #include <folly/IntrusiveList.h>
 #include <folly/channels/Channel.h>
@@ -55,12 +56,10 @@ namespace channels {
 template <
     typename TReceiver,
     typename OnNextFunc,
-    typename TValue = typename TReceiver::ValueType,
-    std::enable_if_t<
-        std::is_constructible_v<
-            folly::Function<folly::coro::Task<bool>(Try<TValue>)>,
-            OnNextFunc>,
-        int> = 0>
+    typename TValue = typename TReceiver::ValueType>
+  requires std::constructible_from<
+      folly::Function<folly::coro::Task<bool>(Try<TValue>)>,
+      OnNextFunc>
 ChannelCallbackHandle consumeChannelWithCallback(
     TReceiver receiver,
     folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
