@@ -43,6 +43,7 @@ class IoUringZeroCopyBufferPoolImpl {
     bool importRing{false};
     bool exportRing{false};
     bool pageSize{false};
+    bool flushRq{false};
   };
 
   explicit IoUringZeroCopyBufferPoolImpl(
@@ -84,6 +85,7 @@ class IoUringZeroCopyBufferPoolImpl {
       const IoUringZeroCopyBufferPool::Params& params, uint32_t pageSize);
   void delayedDestroy(uint32_t refs) noexcept;
   void refillBuffer(Buffer* buffer) noexcept;
+  void flushRefillQueue() noexcept;
 
   struct io_uring* ring_{nullptr};
   uint32_t bufferSize_{0};
@@ -151,6 +153,7 @@ void IoUringZeroCopyBufferPoolImpl::checkZcRxFeatures() {
 
   supportedFeatures_.importRing = zcrxQuery.register_flags & ZCRX_REG_IMPORT;
   supportedFeatures_.exportRing = zcrxQuery.nr_ctrl_opcodes > ZCRX_CTRL_EXPORT;
+  supportedFeatures_.flushRq = zcrxQuery.nr_ctrl_opcodes > ZCRX_CTRL_FLUSH_RQ;
   supportedFeatures_.pageSize = zcrxQuery.features & ZCRX_FEATURE_RX_PAGE_SIZE;
 }
 
@@ -172,7 +175,9 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
         << bufferSize_ << ", adjusting to " << pageSize;
     bufferSize_ = pageSize;
   }
-  checkZcRxFeatures();
+  if (!test) {
+    checkZcRxFeatures();
+  }
 
   if (bufferSize_ > pageSize && !supportedFeatures_.pageSize) {
     LOG_FIRST_N(WARNING, 1)
@@ -378,6 +383,10 @@ void IoUringZeroCopyBufferPoolImpl::returnBuffer(Buffer* buffer) noexcept {
     freeEntries--;
   } else {
     pendingBuffers_.push(buffer);
+
+    lock.unlock();
+    flushRefillQueue();
+    return;
   }
 
   uint32_t refillCount =
@@ -389,6 +398,17 @@ void IoUringZeroCopyBufferPoolImpl::returnBuffer(Buffer* buffer) noexcept {
   if (rqTail_ != startTail) {
     io_uring_smp_store_release(rqRing_.ktail, rqTail_);
   }
+}
+
+void IoUringZeroCopyBufferPoolImpl::flushRefillQueue() noexcept {
+  if (!supportedFeatures_.flushRq) {
+    return;
+  }
+
+  struct zcrx_ctrl ctrl{};
+  ctrl.zcrx_id = id_;
+  ctrl.op = ZCRX_CTRL_FLUSH_RQ;
+  io_uring_register(ring_->ring_fd, IORING_REGISTER_ZCRX_CTRL, &ctrl, 0);
 }
 
 void IoUringZeroCopyBufferPoolImpl::delayedDestroy(uint32_t refs) noexcept {
