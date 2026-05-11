@@ -23,20 +23,43 @@ enable_tests=ON
 [cmake.defines.any(os=windows,test=off)]
 enable_tests=OFF
 
+# Features. The defaults match the historical full build. Consumers that
+# only need codegen + (de)serialization pull this dep as
+# `fbthrift = !rpc, !benchmark` to skip both the RPC link-graph and the
+# benchmark executables. See fbcode_builder/README.md for the feature system.
+[features]
+default = rpc, benchmark
+rpc =
+benchmark =
+
+[cmake.defines.feature_rpc=off]
+THRIFT_RPC=OFF
+
+[cmake.defines.feature_benchmark=off]
+THRIFT_BENCHMARKS=OFF
+
 [dependencies]
-benchmark
-fizz
 fmt
 folly
 googletest
-libsodium
-wangle
 zstd
-mvfst
 xxhash
 # Thrift also depends on openssl but since the latter requires a platform-
 # specific configuration we rely on the folly manifest to provide this
 # dependency to avoid duplication.
+
+# Pulled only when RPC is enabled; gated inside fbthrift's CMake by
+# THRIFT_RPC=ON.
+[dependencies.feature_rpc=on]
+fizz
+libsodium
+wangle
+mvfst
+
+# Pulled only when benchmark executables are enabled; gated inside fbthrift's
+# CMake by THRIFT_BENCHMARKS=ON.
+[dependencies.feature_benchmark=on]
+benchmark
 
 [shipit.pathmap]
 xplat/thrift/public_tld = .
