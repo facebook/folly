@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <concepts>
 #include <memory>
 #include <mutex>
 
@@ -33,11 +34,8 @@ namespace folly {
 
 namespace detail {
 struct cleanup_fn {
-  template <
-      class T,
-      class R = decltype(std::declval<T>().cleanup()),
-      std::enable_if_t<std::is_same_v<R, folly::SemiFuture<folly::Unit>>, int> =
-          0>
+  template <class T, class R = decltype(std::declval<T>().cleanup())>
+    requires std::same_as<R, folly::SemiFuture<folly::Unit>>
   R operator()(T&& t) const {
     return ((T&&)t).cleanup();
   }
