@@ -10,7 +10,7 @@ import os
 import tempfile
 import unittest
 
-from ..fetcher import filter_strip_marker
+from ..fetcher import filter_strip_marker, ShipitPathMap
 from ..manifest import ManifestParser
 
 
@@ -157,3 +157,43 @@ class FilterStripMarkerTest(unittest.TestCase):
                 self.assertEqual(f.read(), binary_content)
         finally:
             os.unlink(path)
+
+
+class ShipitMirrorSymlinkTest(unittest.TestCase):
+    """Regression test for mcrouter OSS getdeps build (T262442347).
+
+    mcrouter's scripts/order_centos-7.2/15_fbthrift is a relative symlink to
+    ../recipes/fbthrift.sh. os.walk visits order_centos-7.2/ before recipes/
+    alphabetically, so when mirror() copied the symlink first, filter_strip_marker
+    followed the dangling link and crashed with FileNotFoundError. mirror() must
+    skip filter_strip_marker for symlinks; the actual target file gets filtered
+    when os.walk reaches it on its own.
+    """
+
+    def test_mirror_skips_filter_for_dangling_symlinks(self) -> None:
+        with tempfile.TemporaryDirectory() as src_root, tempfile.TemporaryDirectory() as dest_root:
+            project_dir = os.path.join(src_root, "proj")
+            order_dir = os.path.join(project_dir, "scripts", "order_centos-7.2")
+            recipes_dir = os.path.join(project_dir, "scripts", "recipes")
+            os.makedirs(order_dir)
+            os.makedirs(recipes_dir)
+
+            target_file = os.path.join(recipes_dir, "fbthrift.sh")
+            with open(target_file, "w") as f:
+                f.write("#!/bin/bash\necho hello\n")
+
+            symlink_path = os.path.join(order_dir, "15_fbthrift")
+            os.symlink("../recipes/fbthrift.sh", symlink_path)
+
+            mapping = ShipitPathMap()
+            mapping.add_mapping("proj", "proj")
+            mapping.mirror(src_root, dest_root)
+
+            mirrored_symlink = os.path.join(
+                dest_root, "proj", "scripts", "order_centos-7.2", "15_fbthrift"
+            )
+            mirrored_target = os.path.join(
+                dest_root, "proj", "scripts", "recipes", "fbthrift.sh"
+            )
+            self.assertTrue(os.path.islink(mirrored_symlink))
+            self.assertTrue(os.path.isfile(mirrored_target))
