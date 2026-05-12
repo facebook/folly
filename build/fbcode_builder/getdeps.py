@@ -15,7 +15,7 @@ import os
 import sys
 
 # Make `getdeps` resolve to the package sitting next to this script.
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "getdeps"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from getdeps.cli import main  # noqa: E402
 
