@@ -28,7 +28,6 @@
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
-#include <folly/SharedMutex.h>
 #include <folly/functional/Invoke.h>
 #include <folly/synchronization/AtomicNotification.h>
 
@@ -56,11 +55,8 @@ class compact_once_flag;
  * * it deadlocks (in explicit violation of the standard) when invoked twice
  *   with a given flag, and the callable passed to the first invocation throws.
  *
- * This implementation corrects both flaws.
- *
- * The tradeoff is a slightly larger once_flag struct at 8 bytes, vs 4 bytes
- * with libstdc++ on Linux/x64. However, you may use folly::compact_once_flag
- * which is 1 byte.
+ * This implementation corrects both flaws, and is smaller at 1 byte vs 4 bytes
+ * with libstdc++ on Linux/x64.
  *
  * Does not work with std::once_flag.
  *
@@ -272,12 +268,12 @@ static_assert(
     sizeof(compact_once_flag) == 1, "compact_once_flag should be 1 byte");
 
 /**
- * The flag type to be used with call_once. An instance of basic_once_flag.
+ * The flag type to be used with call_once.
  *
  * Does not work with std::call_once.
  *
  * mimic: std::once_flag
  */
-using once_flag = basic_once_flag<SharedMutex>;
+using once_flag = compact_once_flag;
 
 } // namespace folly

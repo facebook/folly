@@ -140,16 +140,11 @@ struct DelayedInit {
     }
   }
 
-  using OnceFlag = std::conditional_t<
-      alignof(T) >= sizeof(once_flag),
-      once_flag,
-      compact_once_flag>;
-
   struct StorageTriviallyDestructible {
     union {
       std::remove_const_t<T> value;
     };
-    OnceFlag init;
+    once_flag init;
 
     StorageTriviallyDestructible() {}
   };
@@ -158,7 +153,7 @@ struct DelayedInit {
     union {
       std::remove_const_t<T> value;
     };
-    OnceFlag init;
+    once_flag init;
 
     StorageNonTriviallyDestructible() {}
     ~StorageNonTriviallyDestructible() {

@@ -99,7 +99,6 @@ folly_add_library(
     folly_likely
     folly_portability
     folly_scope_guard
-    folly_shared_mutex
     folly_synchronization_atomic_notification
 )
 
