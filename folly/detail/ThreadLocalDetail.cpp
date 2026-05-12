@@ -336,7 +336,7 @@ bool StaticMetaBase::dying() {
  * ThreadEntrySets and hence remain the responsibility of the exiting thread to
  * dispose.
  * - The thread calling destroy goes over all ThreadEntry in the ThreadEntrySet
- * of the TL object being destoryed (in popThreadEntrySetAndClearElementPtrs).
+ * of the TL object being destroyed (in popThreadEntrySetAndClearElementPtrs).
  * The ElementWrapper for the ThreadEntry found there are copied out and cleared
  * from the 'elements' array. This is done under the ThreadEntrySet lock and the
  * 'destroy' call is responsible for disposing the elements it thus claimed. The
