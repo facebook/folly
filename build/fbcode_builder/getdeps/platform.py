@@ -195,7 +195,7 @@ def is_current_host_arm() -> bool:
         return "ARM64" in os.uname().version
     else:
         machine = platform.machine().lower()
-        return "arm" in machine or "aarch" in machine
+        return "arm" in machine or "aarch" in machine or "arm64" in machine
 
 
 class HostType:
