@@ -90,8 +90,7 @@ class StripedThrottledLifoSem {
       const ThrottledLifoSem::Options& options = {})
       : numStripes_(numStripes) {
     CHECK_GT(numStripes, 0);
-    stripes_ =
-        reinterpret_cast<Stripe*>(checkedMalloc(sizeof(Stripe) * numStripes_));
+    stripes_ = checkedArrayMalloc<Stripe>(numStripes_);
     for (auto* stripe = stripes_; stripe != stripes_ + numStripes_; ++stripe) {
       new (stripe) Stripe(payloadArgs, options);
     }
@@ -110,7 +109,7 @@ class StripedThrottledLifoSem {
       stripe->~Stripe();
     }
     DCHECK_EQ(value, posts);
-    sizedFree(stripes_, sizeof(Stripe) * numStripes_);
+    sizedArrayFree(stripes_, numStripes_);
   }
 
   // TODO(ott): How to support n > 1? Would need explicit support in
