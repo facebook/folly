@@ -1,13 +1,15 @@
 [manifest]
 name = glog
 
-[download]
-url = https://github.com/google/glog/archive/v0.5.0.tar.gz
-sha256 = eede71f28371bf39aa69b45de23b329d37214016e2055269b3b5e7cfd40b59f5
+# Pinned to v0.6.0 rather than v0.7.1 because v0.7.1 raises
+# cmake_minimum_required to 3.22, above the CMake 3.20.4 that getdeps ships.
+# v0.6.0 sets cmake_minimum_required(VERSION 3.16), within getdeps' range.
+[git]
+repo_url = https://github.com/google/glog.git
+rev = b33e3bad4c46c8a6345525fd822af355e5ef9446
 
 [build]
 builder = cmake
-subdir = glog-0.5.0
 
 [dependencies]
 gflags

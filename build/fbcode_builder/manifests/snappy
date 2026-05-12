@@ -14,12 +14,12 @@ snappy-devel
 snappy
 
 [download]
-url = https://github.com/google/snappy/archive/1.1.7.tar.gz
-sha256 = 3dfa02e873ff51a11ee02b9ca391807f0c8ea0529a4924afa645fbf97163f9d4
+url = https://github.com/google/snappy/archive/27ab5f7f518430a021239bc26a5b2fd64affbc7b.tar.gz
+sha256 = d0ce758440920c0e636579da02092296a64aed5a8296e1175fdf1783a8440082
 
 [build]
 builder = cmake
-subdir = snappy-1.1.7
+subdir = snappy-27ab5f7f518430a021239bc26a5b2fd64affbc7b
 
 [cmake.defines]
 SNAPPY_BUILD_TESTS = OFF

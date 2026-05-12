@@ -13,17 +13,16 @@ libevent-devel
 [pps]
 libevent
 
-# Note that the CMakeLists.txt file is present only in
-# git repo and not in the release tarball, so take care
-# to use the github generated source tarball rather than
-# the explicitly uploaded source tarball
-[download]
-url = https://github.com/libevent/libevent/releases/download/release-2.1.12-stable/libevent-2.1.12-stable.tar.gz
-sha256 = 92e6de1be9ec176428fd2367677e61ceffc2ee1cb119035037a27d346b0403bb
+# Pinned to a specific master commit rather than release-2.1.12-stable so that
+# cmake_minimum_required is high enough for CMake 4 without needing
+# CMAKE_POLICY_VERSION_MINIMUM=3.5 in consumer workflows. release-2.2.x is still
+# alpha, so a pinned commit is the safer middle ground.
+[git]
+repo_url = https://github.com/libevent/libevent.git
+rev = 4d9b432eef84eb0f9555dfa9249c20ecc823af0d
 
 [build]
 builder = cmake
-subdir = libevent-2.1.12-stable
 
 [cmake.defines]
 EVENT__DISABLE_TESTS = ON
