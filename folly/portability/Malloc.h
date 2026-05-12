@@ -27,7 +27,7 @@
 #error \
     "Both USE_JEMALLOC/FOLLY_USE_JEMALLOC and FOLLY_ASSUME_NO_JEMALLOC defined"
 #endif
-// JEMalloc provides it's own implementation of
+// JEMalloc provides its own implementation of
 // malloc_usable_size, and that's what we should be using.
 #if defined(__FreeBSD__)
 #include <malloc_np.h> // @manual

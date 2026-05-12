@@ -140,7 +140,9 @@ fb_dirsync_cpp_library(
         ],
     }),
     exported_deps = [
+        "//folly:memory",
         "//folly:portability",
+        "//folly/lang:checked_math",
         "//folly/lang:exception",
         "//folly/memory/detail:malloc_impl",
         "//folly/portability:malloc",

@@ -120,7 +120,9 @@ folly_add_library(
   HEADERS
     Malloc.h
   EXPORTED_DEPS
+    folly_lang_checked_math
     folly_lang_exception
+    folly_memory
     folly_memory_detail_malloc_impl
     folly_portability
     folly_portability_malloc
