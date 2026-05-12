@@ -153,14 +153,16 @@ not_null_base<PtrT, NullHandlerT>::not_null_base(
     : ptr_(std::move(ptr)) {}
 
 template <typename PtrT, typename NullHandlerT>
-template <typename U, typename>
+template <typename U>
+  requires detail::is_not_null_convertible<U&&, PtrT>::value
 not_null_base<PtrT, NullHandlerT>::
     not_null_base(U&& u, implicit_tag<true>) noexcept(
         detail::is_not_null_nothrow_constructible<U&&, PtrT>::value)
     : not_null_base(std::forward<U>(u), private_tag{}) {}
 
 template <typename PtrT, typename NullHandlerT>
-template <typename U, typename>
+template <typename U>
+  requires(!detail::is_not_null_convertible<U &&, PtrT>::value)
 not_null_base<PtrT, NullHandlerT>::
     not_null_base(U&& u, implicit_tag<false>) noexcept(
         detail::is_not_null_nothrow_constructible<U&&, PtrT>::value)
