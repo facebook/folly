@@ -20,8 +20,8 @@ from collections.abc import Mapping
 from .copytree import containing_repo_type
 from .envfuncs import add_flag, add_path_entry, Env
 from .fetcher import get_fbsource_repo_data, homebrew_package_prefix
+from .getdeps_platform import get_available_ram, HostType, is_windows
 from .manifest import ContextGenerator
-from .platform import get_available_ram, HostType, is_windows
 
 if typing.TYPE_CHECKING:
     from .load import ManifestLoader

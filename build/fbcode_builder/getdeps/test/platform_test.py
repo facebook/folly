@@ -8,7 +8,7 @@
 
 import unittest
 
-from ..platform import HostType
+from ..getdeps_platform import HostType
 
 
 class PlatformTest(unittest.TestCase):

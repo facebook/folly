@@ -30,8 +30,8 @@ from .fetcher import (
     safe_extractall,
     SystemPackageFetcher,
 )
+from .getdeps_platform import HostType
 from .manifest import ManifestParser
-from .platform import HostType
 from .runcmd import check_cmd
 from .subcmd import add_subcommands, cmd, SubCmd
 

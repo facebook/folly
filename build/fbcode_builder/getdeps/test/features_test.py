@@ -11,9 +11,9 @@ import unittest
 from unittest.mock import MagicMock
 
 from ..buildopts import BuildOptions
+from ..getdeps_platform import HostType
 from ..load import Loader, ManifestLoader
 from ..manifest import ManifestContext, ManifestParser, parse_dep_spec
-from ..platform import HostType
 
 
 def _ctx_with_features(features: set[str] | None = None) -> ManifestContext:
