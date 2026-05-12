@@ -263,7 +263,6 @@ class BuilderBase:
             # 1.5 GiB is a lot to assume, but it's typical of Facebook-style C++.
             # Some manifests are even heavier and should override.
             default_job_weight = 1536
-        # pyrefly: ignore [no-matching-overload]
         return int(
             self.manifest.get(
                 "build", "job_weight_mib", str(default_job_weight), ctx=self.ctx
