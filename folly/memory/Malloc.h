@@ -25,6 +25,7 @@
 
 #include <stdexcept>
 
+#include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/lang/Exception.h>
 #include <folly/portability/Malloc.h>
@@ -59,6 +60,9 @@
 
 #include <atomic>
 #include <new>
+#include <tuple>
+
+#include <folly/lang/CheckedMath.h>
 
 namespace folly {
 
@@ -330,6 +334,107 @@ inline void sizedFree(void* ptr, size_t size) {
   } else {
     free(ptr);
   }
+}
+
+/**
+ * @brief Allocate `size` bytes aligned to `align`, throwing std::bad_alloc
+ * on failure.
+ *
+ * @methodset Allocation Wrappers
+ *
+ * @param align Alignment in bytes; must be a power of two and >= sizeof(void*).
+ * @param size  Size of the allocation in bytes; must be a multiple of `align`.
+ *
+ * @return void* pointer to the aligned buffer
+ */
+inline void* checkedAlignedMalloc(size_t align, size_t size) {
+  assert(align >= sizeof(void*));
+  assert((align & (align - 1)) == 0); // Power of 2.
+  assert(size % align == 0);
+
+  void* p =
+#if FOLLY_HAS_JEMALLOC_DEFS
+      detail::usingJEMallocOrTCMalloc()
+      // jemalloc/tcmalloc interpose aligned_alloc; using it here ensures the
+      // allocation is paired with free_aligned_sized() in sizedAlignedFree().
+      ? aligned_alloc(align, size)
+      :
+#endif
+      folly::aligned_malloc(size, align);
+
+  if (!p) {
+    throw_exception<std::bad_alloc>();
+  }
+  return p;
+}
+
+/**
+ * @brief Free a buffer previously returned by checkedAlignedMalloc.
+ *
+ * When jemalloc/tcmalloc is active, uses free_aligned_sized() to pass
+ * through the original alignment and size; otherwise falls back to
+ * folly::aligned_free() and the alignment and size arguments are unused.
+ *
+ * @param ptr   Pointer returned by checkedAlignedMalloc.
+ * @param align Alignment originally passed to checkedAlignedMalloc.
+ * @param size  Size originally passed to checkedAlignedMalloc.
+ */
+inline void sizedAlignedFree(void* ptr, size_t align, size_t size) {
+#if FOLLY_HAS_JEMALLOC_DEFS
+  if (detail::usingJEMallocOrTCMalloc()) {
+    free_aligned_sized(ptr, align, size);
+    return;
+  }
+#endif
+
+  std::ignore = align;
+  std::ignore = size;
+  aligned_free(ptr);
+}
+
+/**
+ * @brief Allocate uninitialized storage for `n` instances of `T`, suitably
+ * aligned for `T`.
+ *
+ * Throws std::bad_array_new_length if `n * sizeof(T)` would overflow size_t,
+ * std::bad_alloc on allocation failure.
+ *
+ * @methodset Allocation Wrappers
+ *
+ * @param n Number of T instances.
+ *
+ * @return T* pointer to the uninitialized buffer
+ */
+template <typename T>
+T* checkedArrayMalloc(size_t n) {
+  size_t totalBytes;
+  if (FOLLY_UNLIKELY(!checked_mul(&totalBytes, n, sizeof(T)))) {
+    throw_exception<std::bad_array_new_length>();
+  }
+  // checkedAlignedMalloc() requires align >= sizeof(void*); over-align if
+  // alignof(T) is smaller. sizedArrayFree<T> below applies the matching bump.
+  constexpr size_t kAlign =
+      alignof(T) > sizeof(void*) ? alignof(T) : sizeof(void*);
+  static_assert((kAlign & (kAlign - 1)) == 0);
+  // Round up to a multiple of kAlign so that checkedAlignedMalloc's
+  // size % align == 0 precondition holds.
+  totalBytes = (totalBytes + kAlign - 1) & ~(kAlign - 1);
+  return static_cast<T*>(checkedAlignedMalloc(kAlign, totalBytes));
+}
+
+/**
+ * @brief Free a buffer previously returned by checkedArrayMalloc<T>.
+ *
+ * @param ptr Pointer returned by checkedArrayMalloc<T>.
+ * @param n   Number originally passed to checkedArrayMalloc<T>.
+ */
+template <typename T>
+void sizedArrayFree(T* ptr, size_t n) {
+  constexpr size_t kAlign =
+      alignof(T) > sizeof(void*) ? alignof(T) : sizeof(void*);
+  static_assert((kAlign & (kAlign - 1)) == 0);
+  size_t totalBytes = (n * sizeof(T) + kAlign - 1) & ~(kAlign - 1);
+  sizedAlignedFree(ptr, kAlign, totalBytes);
 }
 
 /**

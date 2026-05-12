@@ -15,6 +15,11 @@
  */
 
 #include <folly/memory/Malloc.h>
+
+#include <cstdint>
+#include <limits>
+#include <new>
+
 #include <folly/portability/GTest.h>
 #include <folly/portability/Malloc.h>
 #include <folly/test/TestUtils.h>
@@ -25,6 +30,57 @@ TEST(MallocTest, getJEMallocMallctlArenasAll) {
   SKIP_IF(!usingJEMalloc());
 
   EXPECT_EQ(4096, getJEMallocMallctlArenasAll());
+}
+
+TEST(MallocTest, checkedAlignedMallocReturnsAlignedBuffer) {
+  for (size_t align : {alignof(std::max_align_t), size_t{64}, size_t{4096}}) {
+    void* p = checkedAlignedMalloc(align, align * 4);
+    ASSERT_NE(p, nullptr);
+    EXPECT_EQ(reinterpret_cast<uintptr_t>(p) % align, 0u);
+    sizedAlignedFree(p, align, align * 4);
+  }
+}
+
+TEST(MallocTest, checkedArrayMallocRoundTrip) {
+  struct alignas(64) Over {
+    int x;
+  };
+  constexpr size_t kN = 17;
+  Over* p = checkedArrayMalloc<Over>(kN);
+  ASSERT_NE(p, nullptr);
+  EXPECT_EQ(reinterpret_cast<uintptr_t>(p) % alignof(Over), 0u);
+  for (size_t i = 0; i < kN; ++i) {
+    p[i].x = static_cast<int>(i);
+  }
+  for (size_t i = 0; i < kN; ++i) {
+    EXPECT_EQ(p[i].x, static_cast<int>(i));
+  }
+  sizedArrayFree(p, kN);
+}
+
+TEST(MallocTest, checkedArrayMallocOverflowThrows) {
+  constexpr size_t kHuge =
+      std::numeric_limits<size_t>::max() / sizeof(int64_t) + 1;
+  EXPECT_THROW(checkedArrayMalloc<int64_t>(kHuge), std::bad_array_new_length);
+}
+
+TEST(MallocTest, checkedArrayMallocSmallAlign) {
+  // alignof(char) < sizeof(void*), so kAlign is bumped to sizeof(void*).
+  // Without rounding totalBytes up, this would violate checkedAlignedMalloc's
+  // assert(size % align == 0) precondition.
+  char* p = checkedArrayMalloc<char>(3);
+  ASSERT_NE(p, nullptr);
+  EXPECT_EQ(reinterpret_cast<uintptr_t>(p) % sizeof(void*), 0u);
+  p[0] = 'a';
+  p[1] = 'b';
+  p[2] = 'c';
+  EXPECT_EQ(p[0], 'a');
+  sizedArrayFree(p, 3);
+}
+
+TEST(MallocTest, checkedArrayMallocZero) {
+  int* p = checkedArrayMalloc<int>(0);
+  EXPECT_NO_THROW(sizedArrayFree(p, 0));
 }
 
 } // namespace folly

@@ -99,7 +99,7 @@ inline constexpr to_address_fn to_address;
     (defined(__APPLE__)) || defined(__FreeBSD__) || defined(__wasm__)
 
 inline void* aligned_malloc(size_t size, size_t align) {
-  // use posix_memalign, but mimic the behaviour of memalign
+  // Use posix_memalign, but mimic the behaviour of memalign.
   void* ptr = nullptr;
   int rc = posix_memalign(&ptr, align, size);
   return rc == 0 ? (errno = 0, ptr) : (errno = rc, nullptr);
