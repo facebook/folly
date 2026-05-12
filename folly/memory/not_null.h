@@ -130,17 +130,13 @@ class not_null_base : protected guaranteed_not_null_provider {
   not_null_base(const not_null_base& nn) = default;
   not_null_base(not_null_base&& nn) = default;
 
-  template <
-      typename U,
-      typename =
-          std::enable_if_t<detail::is_not_null_convertible<U&&, PtrT>::value>>
+  template <typename U>
+    requires detail::is_not_null_convertible<U&&, PtrT>::value
   /* implicit */ not_null_base(U&& u, implicit_tag<true> = {}) noexcept(
       detail::is_not_null_nothrow_constructible<U&&, PtrT>::value);
 
-  template <
-      typename U,
-      typename =
-          std::enable_if_t<!detail::is_not_null_convertible<U&&, PtrT>::value>>
+  template <typename U>
+    requires(!detail::is_not_null_convertible<U &&, PtrT>::value)
   explicit not_null_base(U&& u, implicit_tag<false> = {}) noexcept(
       detail::is_not_null_nothrow_constructible<U&&, PtrT>::value);
 
