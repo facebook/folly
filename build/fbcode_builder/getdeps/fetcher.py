@@ -31,7 +31,7 @@ from urllib.request import Request, urlopen
 from .copytree import prefetch_dir_if_eden
 from .envfuncs import Env
 from .errors import TransientFailure
-from .platform import HostType, is_windows
+from .getdeps_platform import HostType, is_windows
 from .runcmd import run_cmd
 
 if TYPE_CHECKING:

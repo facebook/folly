@@ -15,7 +15,7 @@ from collections.abc import Callable
 from shlex import quote as shellquote
 
 from .envfuncs import Env
-from .platform import is_windows
+from .getdeps_platform import is_windows
 
 
 class RunCommandError(Exception):

@@ -13,7 +13,7 @@ import stat
 import subprocess
 from collections.abc import Callable
 
-from .platform import is_windows
+from .getdeps_platform import is_windows
 from .runcmd import run_cmd
 
 

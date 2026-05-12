@@ -9,8 +9,8 @@ import re
 
 from .buildopts import setup_build_options
 from .cmd_base import BUILD_TYPE_ARG, ProjectCmdBase
+from .getdeps_platform import HostType
 from .load import ManifestLoader
-from .platform import HostType
 from .subcmd import cmd
 
 
