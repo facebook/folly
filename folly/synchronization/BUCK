@@ -90,7 +90,6 @@ fb_dirsync_cpp_library(
         "//folly:likely",
         "//folly:portability",
         "//folly:scope_guard",
-        "//folly:shared_mutex",
         "//folly/functional:invoke",
         "//folly/synchronization:atomic_notification",
     ],
