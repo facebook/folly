@@ -1,10 +1,6 @@
 [manifest]
 name = double-conversion
 
-[download]
-url = https://github.com/google/double-conversion/archive/v3.1.4.tar.gz
-sha256 = 95004b65e43fefc6100f337a25da27bb99b9ef8d4071a36a33b5e83eb1f82021
-
 [homebrew]
 double-conversion
 
@@ -18,6 +14,13 @@ double-conversion-devel
 [pps]
 double-conversion
 
+# Pinned to a specific master commit rather than v3.4.0 because v3.4.0 raised
+# cmake_minimum_required to 3.29, above the CMake 3.20 that getdeps ships.
+# This commit predates that bump while still being above the CMake 4 floor of
+# 3.5, so consumer workflows don't need CMAKE_POLICY_VERSION_MINIMUM=3.5.
+[git]
+repo_url = https://github.com/google/double-conversion.git
+rev = ddfd18c58ecc32fc74afc1083bb8774240b54efb
+
 [build]
 builder = cmake
-subdir = double-conversion-3.1.4
