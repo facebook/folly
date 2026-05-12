@@ -389,6 +389,8 @@ class ManifestLoader:
         return manifest.create_fetcher(self.build_opts, self, ctx)
 
     def get_project_hash(self, manifest: ManifestParser) -> str:
+        if not self._features_resolved:
+            self.manifests_in_dependency_order(manifest)
         h = self._project_hashes.get(manifest.name)
         if h is None:
             h = self._compute_project_hash(manifest)
