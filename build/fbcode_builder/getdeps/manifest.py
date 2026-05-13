@@ -973,7 +973,6 @@ class ManifestContext:
         "fb",
         "fbsource",
         "test",
-        "shared_libs",
     }
 
     def __init__(self, ctx_dict: dict[str, str | None]) -> None:

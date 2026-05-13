@@ -33,6 +33,7 @@ from .fetcher import (
 from .getdeps_platform import HostType
 from .manifest import ManifestParser
 from .runcmd import check_cmd
+from .shared_lib import apply_shared_lib_top_level_cmake_defines
 from .subcmd import add_subcommands, cmd, SubCmd
 
 try:
@@ -462,6 +463,7 @@ class BuildCmd(ProjectCmdBase):
             clean_dirs(loader.build_opts)
 
         print("Building on %s" % loader.ctx_gen.get_context(args.project))
+        loader.build_opts.top_level_manifest_name = manifest.name
         projects = loader.manifests_in_dependency_order()
 
         cache = cache_module.create_cache() if args.use_build_cache else None
@@ -522,6 +524,10 @@ class BuildCmd(ProjectCmdBase):
                     if args.extra_cmake_defines
                     else {}
                 )
+                if m == manifest:
+                    apply_shared_lib_top_level_cmake_defines(
+                        extra_cmake_defines, loader.build_opts
+                    )
 
                 extra_b2_args = args.extra_b2_args or []
                 cmake_targets = args.cmake_target or ["install"]
@@ -768,6 +774,7 @@ class TestCmd(ProjectCmdBase):
         if not self.check_built(loader, manifest):
             print("project %s has not been built" % manifest.name)
             return 1
+        loader.build_opts.top_level_manifest_name = manifest.name
         return self.create_builder(loader, manifest).run_tests(
             schedule_type=args.schedule_type,
             owner=args.test_owner,
@@ -809,6 +816,7 @@ class TestCmd(ProjectCmdBase):
 )
 class DebugCmd(ProjectCmdBase):
     def run_project_cmd(self, args, loader, manifest):
+        loader.build_opts.top_level_manifest_name = manifest.name
         self.create_builder(loader, manifest).debug(reconfigure=False)
 
 
@@ -830,6 +838,7 @@ class EnvCmd(ProjectCmdBase):
     def run_project_cmd(self, args, loader, manifest):
         if args.ostype:
             loader.build_opts.host_type.ostype = args.ostype
+        loader.build_opts.top_level_manifest_name = manifest.name
         self.create_builder(loader, manifest).printenv(reconfigure=False)
 
 
@@ -898,8 +907,11 @@ def parse_args():
         dest="facebook_internal",
     )
     add_common_arg(
-        "--shared-libs",
-        help="Build shared libraries if possible",
+        "--shared-lib",
+        help=(
+            "Build deps as static-PIC archives and the top-level project as a "
+            "shared library that links them in."
+        ),
         action="store_true",
         default=False,
     )

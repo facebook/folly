@@ -25,7 +25,6 @@ def _ctx_with_features(features: set[str] | None = None) -> ManifestContext:
             "fb": "off",
             "fbsource": "off",
             "test": "off",
-            "shared_libs": "off",
         }
     )
     for f in features or set():
@@ -56,7 +55,7 @@ def _make_loader(manifests: dict[str, str]) -> ManifestLoader:
     build_opts.host_type = HostType("linux", None, None)
     build_opts.facebook_internal = False
     build_opts.fbsource_dir = None
-    build_opts.shared_libs = False
+    build_opts.shared_lib = False
     build_opts.allow_system_packages = False
     # Hand-roll a ContextGenerator instead of pulling in BuildOptions.
     from ..manifest import ContextGenerator
@@ -69,7 +68,6 @@ def _make_loader(manifests: dict[str, str]) -> ManifestLoader:
             "fb": "off",
             "fbsource": "off",
             "test": "off",
-            "shared_libs": "off",
         }
     )
     loader = ManifestLoader(build_opts, ctx_gen)

@@ -31,7 +31,7 @@ def make_cmake_builder() -> CMakeBuilder:
     build_opts = MagicMock()
     build_opts.is_windows.return_value = False
     build_opts.is_darwin.return_value = False
-    build_opts.shared_libs = False
+    build_opts.shared_lib = False
     build_opts.build_type = "RelWithDebInfo"
     return CMakeBuilder(
         loader=loader,
@@ -45,7 +45,6 @@ def make_cmake_builder() -> CMakeBuilder:
                 "fb": "off",
                 "fbsource": "off",
                 "test": "off",
-                "shared_libs": "off",
             }
         ),
         manifest=manifest,
