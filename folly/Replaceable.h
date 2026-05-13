@@ -433,9 +433,8 @@ class alignas(T) Replaceable
    * Constructors; these are modeled very closely on the definition of
    * `std::optional` in C++17.
    */
-  template <
-      class... Args,
-      std::enable_if_t<std::is_constructible<T, Args&&...>::value, int> = 0>
+  template <class... Args>
+    requires(std::is_constructible<T, Args && ...>::value)
   constexpr explicit Replaceable(std::in_place_t, Args&&... args)
       // clang-format off
       noexcept(std::is_nothrow_constructible<T, Args&&...>::value)
@@ -444,12 +443,9 @@ class alignas(T) Replaceable
     ::new (storage_) T(std::forward<Args>(args)...);
   }
 
-  template <
-      class U,
-      class... Args,
-      std::enable_if_t<
-          std::is_constructible<T, std::initializer_list<U>, Args&&...>::value,
-          int> = 0>
+  template <class U, class... Args>
+    requires(
+        std::is_constructible<T, std::initializer_list<U>, Args && ...>::value)
   constexpr explicit Replaceable(
       std::in_place_t, std::initializer_list<U> il, Args&&... args)
       // clang-format off
@@ -462,14 +458,12 @@ class alignas(T) Replaceable
     ::new (storage_) T(il, std::forward<Args>(args)...);
   }
 
-  template <
-      class U = T,
-      std::enable_if_t<
-          std::is_constructible<T, U&&>::value &&
-              !std::is_same<std::decay_t<U>, std::in_place_t>::value &&
-              !std::is_same<Replaceable<T>, std::decay_t<U>>::value &&
-              std::is_convertible<U&&, T>::value,
-          int> = 0>
+  template <class U = T>
+    requires(
+        std::is_constructible<T, U &&>::value &&
+        !std::is_same<std::decay_t<U>, std::in_place_t>::value &&
+        !std::is_same<Replaceable<T>, std::decay_t<U>>::value &&
+        std::is_convertible<U &&, T>::value)
   constexpr /* implicit */ Replaceable(U&& other)
       // clang-format off
       noexcept(std::is_nothrow_constructible<T, U&&>::value)
@@ -478,14 +472,12 @@ class alignas(T) Replaceable
     ::new (storage_) T(std::forward<U>(other));
   }
 
-  template <
-      class U = T,
-      std::enable_if_t<
-          std::is_constructible<T, U&&>::value &&
-              !std::is_same<std::decay_t<U>, std::in_place_t>::value &&
-              !std::is_same<Replaceable<T>, std::decay_t<U>>::value &&
-              !std::is_convertible<U&&, T>::value,
-          int> = 0>
+  template <class U = T>
+    requires(
+        std::is_constructible<T, U &&>::value &&
+        !std::is_same<std::decay_t<U>, std::in_place_t>::value &&
+        !std::is_same<Replaceable<T>, std::decay_t<U>>::value &&
+        !std::is_convertible<U &&, T>::value)
   constexpr explicit Replaceable(U&& other)
       // clang-format off
       noexcept(std::is_nothrow_constructible<T, U&&>::value)
@@ -494,15 +486,12 @@ class alignas(T) Replaceable
     ::new (storage_) T(std::forward<U>(other));
   }
 
-  template <
-      class U,
-      std::enable_if_t<
-          std::is_constructible<T, const U&>::value &&
-              !replaceable_detail::is_constructible_from_replaceable<
-                  T>::value &&
-              !replaceable_detail::is_convertible_from_replaceable<T>::value &&
-              std::is_convertible<const U&, T>::value,
-          int> = 0>
+  template <class U>
+    requires(
+        std::is_constructible<T, const U&>::value &&
+        !replaceable_detail::is_constructible_from_replaceable<T>::value &&
+        !replaceable_detail::is_convertible_from_replaceable<T>::value &&
+        std::is_convertible<const U&, T>::value)
   /* implicit */ Replaceable(const Replaceable<U>& other)
       // clang-format off
       noexcept(std::is_nothrow_constructible<T, U const&>::value)
@@ -511,15 +500,12 @@ class alignas(T) Replaceable
     ::new (storage_) T(*other);
   }
 
-  template <
-      class U,
-      std::enable_if_t<
-          std::is_constructible<T, const U&>::value &&
-              !replaceable_detail::is_constructible_from_replaceable<
-                  T>::value &&
-              !replaceable_detail::is_convertible_from_replaceable<T>::value &&
-              !std::is_convertible<const U&, T>::value,
-          int> = 0>
+  template <class U>
+    requires(
+        std::is_constructible<T, const U&>::value &&
+        !replaceable_detail::is_constructible_from_replaceable<T>::value &&
+        !replaceable_detail::is_convertible_from_replaceable<T>::value &&
+        !std::is_convertible<const U&, T>::value)
   explicit Replaceable(const Replaceable<U>& other)
       // clang-format off
       noexcept(std::is_nothrow_constructible<T, U const&>::value)
@@ -528,15 +514,12 @@ class alignas(T) Replaceable
     ::new (storage_) T(*other);
   }
 
-  template <
-      class U,
-      std::enable_if_t<
-          std::is_constructible<T, U&&>::value &&
-              !replaceable_detail::is_constructible_from_replaceable<
-                  T>::value &&
-              !replaceable_detail::is_convertible_from_replaceable<T>::value &&
-              std::is_convertible<U&&, T>::value,
-          int> = 0>
+  template <class U>
+    requires(
+        std::is_constructible<T, U &&>::value &&
+        !replaceable_detail::is_constructible_from_replaceable<T>::value &&
+        !replaceable_detail::is_convertible_from_replaceable<T>::value &&
+        std::is_convertible<U &&, T>::value)
   /* implicit */ Replaceable(Replaceable<U>&& other)
       // clang-format off
       noexcept(std::is_nothrow_constructible<T, U&&>::value)
@@ -545,15 +528,12 @@ class alignas(T) Replaceable
     ::new (storage_) T(std::move(*other));
   }
 
-  template <
-      class U,
-      std::enable_if_t<
-          std::is_constructible<T, U&&>::value &&
-              !replaceable_detail::is_constructible_from_replaceable<
-                  T>::value &&
-              !replaceable_detail::is_convertible_from_replaceable<T>::value &&
-              !std::is_convertible<U&&, T>::value,
-          int> = 0>
+  template <class U>
+    requires(
+        std::is_constructible<T, U &&>::value &&
+        !replaceable_detail::is_constructible_from_replaceable<T>::value &&
+        !replaceable_detail::is_convertible_from_replaceable<T>::value &&
+        !std::is_convertible<U &&, T>::value)
   explicit Replaceable(Replaceable<U>&& other)
       // clang-format off
       noexcept(std::is_nothrow_constructible<T, U&&>::value)
