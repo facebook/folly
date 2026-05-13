@@ -717,6 +717,42 @@ TEST(ConcurrentBSkipList, SkipperSequentialAccess) {
   EXPECT_EQ(count, 1000);
 }
 
+TEST(ConcurrentBSkipList, SkipperCopyPreservesPosition) {
+  LargeNodeList list;
+
+  for (int64_t i = 0; i < 10; ++i) {
+    list.add(i);
+  }
+
+  LargeNodeList::Skipper skipper(list);
+  ASSERT_EQ(skipper.skipTo(static_cast<int64_t>(4)), 4);
+
+  auto copy = skipper;
+  EXPECT_EQ(copy.current(), 4);
+  EXPECT_EQ(skipper.current(), 4);
+
+  EXPECT_EQ(copy.advance(), 5);
+  EXPECT_EQ(skipper.current(), 4);
+  EXPECT_EQ(skipper.advance(), 5);
+}
+
+TEST(ConcurrentBSkipList, SkipperCopyAdvancesPastRemovedCurrent) {
+  LargeNodeList list;
+
+  for (int64_t i = 0; i < 10; ++i) {
+    list.add(i);
+  }
+
+  LargeNodeList::Skipper skipper(list);
+  ASSERT_EQ(skipper.skipTo(static_cast<int64_t>(4)), 4);
+
+  auto copy = skipper;
+  ASSERT_TRUE(list.remove(4));
+
+  EXPECT_EQ(copy.current(), 4);
+  EXPECT_EQ(copy.advance(), 5);
+}
+
 TEST(ConcurrentBSkipList, SkipperJumps) {
   LargeNodeList list;
 
@@ -6373,6 +6409,18 @@ TEST(BSkipPayload, UpdatePayloadModifiesPayload) {
   EXPECT_EQ(r->second, 150);
 }
 
+TEST(BSkipPayload, RemoveAndGetPayloadReturnsDeletedPayload) {
+  BSkipPayload list;
+  EXPECT_FALSE(list.removeAndGetPayload(7).has_value());
+  EXPECT_TRUE(list.add(7, uint64_t{123}));
+
+  auto payload = list.removeAndGetPayload(7);
+  ASSERT_TRUE(payload.has_value());
+  EXPECT_EQ(*payload, 123);
+  EXPECT_FALSE(list.find(7).has_value());
+  EXPECT_FALSE(list.removeAndGetPayload(7).has_value());
+}
+
 TEST(BSkipPayloadDeathTest, UpdatePayloadSentinelDChecks) {
   BSkipPayload list;
   list.add(42, uint64_t{100});
@@ -6447,6 +6495,26 @@ TEST(BSkipPayload, SkipperReturnsKeysOnly) {
   auto found = list.find(*r);
   ASSERT_TRUE(found.has_value());
   EXPECT_EQ(found->second, static_cast<uint64_t>(*r) * 3);
+}
+
+TEST(BSkipPayload, SkipperExposesCurrentPayloadLocation) {
+  BSkipPayload list;
+  for (uint32_t i = 2; i <= 100; ++i) {
+    list.add(i, static_cast<uint64_t>(i) * 13);
+  }
+
+  BSkipPayload::Skipper skipper(list);
+  auto key = skipper.skipTo(50);
+  ASSERT_TRUE(key.has_value());
+  EXPECT_GE(*key, 50u);
+  EXPECT_NE(skipper.currentLeaf(), nullptr);
+  EXPECT_EQ(skipper.peekCurrentPayload(), skipper.currPayload());
+
+  auto found = list.find(*key);
+  ASSERT_TRUE(found.has_value());
+  EXPECT_EQ(skipper.peekCurrentPayload(), found->second);
+
+  EXPECT_LT(skipper.currentSlot(), 255);
 }
 
 TEST(BSkipPayload, ConcurrentWriteReadConsistency) {
@@ -6538,6 +6606,18 @@ TEST(BSkipPayloadInline, UpdatePayloadModifiesPayload) {
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->first, 42);
   EXPECT_EQ(r->second, 150);
+}
+
+TEST(BSkipPayloadInline, RemoveAndGetPayloadReturnsDeletedPayload) {
+  BSkipPayloadInline list;
+  EXPECT_FALSE(list.removeAndGetPayload(7).has_value());
+  EXPECT_TRUE(list.add(7, uint64_t{123}));
+
+  auto payload = list.removeAndGetPayload(7);
+  ASSERT_TRUE(payload.has_value());
+  EXPECT_EQ(*payload, 123);
+  EXPECT_FALSE(list.find(7).has_value());
+  EXPECT_FALSE(list.removeAndGetPayload(7).has_value());
 }
 
 TEST(BSkipPayloadInline, SplitPreservesKeyPayloadAssociation) {

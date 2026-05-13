@@ -245,6 +245,27 @@ class ConcurrentBSkipList {
         [] { return false; });
   }
 
+  template <typename RequestedPayload = PayloadType>
+  std::optional<RequestedPayload> removeAndGetPayload(const T& key)
+    requires(!std::is_void_v<RequestedPayload>)
+  {
+    DCHECK(!isSentinel(key))
+        << "sentinel keys are reserved; inserting/removing them is undefined";
+    return traverseHohLeaf<HeldNodeLockMode::Exclusive>(
+        key,
+        [&](LeafNode* leaf, uint8_t slot) -> std::optional<RequestedPayload> {
+          if (leaf->tombstoned(slot)) {
+            return std::nullopt;
+          }
+          auto oldPayload = leaf->loadPayload(slot);
+          auto guard = leaf->seq_.writeGuard();
+          leaf->setTombstone(slot);
+          size_.fetch_sub(1);
+          return oldPayload;
+        },
+        [] { return std::optional<RequestedPayload>{}; });
+  }
+
   // Updates the payload of a live (non-tombstoned) key. Returns false if the
   // key is absent or tombstoned; use add() + updatePayload() or addOrUpdate().
   // Updater runs under the leaf mutex + seqlock write epoch; bounded work only.
@@ -479,7 +500,11 @@ class ConcurrentBSkipList {
   // (callers template on HeldNodeLockMode).
   struct CarriedParentLock : folly::NonCopyableNonMovable {
     CarriedParentLock() = default;
+    CarriedParentLock(const CarriedParentLock&) = delete;
+    CarriedParentLock(CarriedParentLock&&) = delete;
     ~CarriedParentLock() { release(); }
+    CarriedParentLock& operator=(const CarriedParentLock&) = delete;
+    CarriedParentLock& operator=(CarriedParentLock&&) = delete;
 
     void adoptShared(folly::RWSpinLock& lock) {
       DCHECK(lock_ == nullptr) << "CarriedParentLock: adopt while holding";
@@ -524,6 +549,8 @@ class ConcurrentBSkipList {
     uint8_t nodesConsumed = 0;
 
     explicit PreallocatedNodes(ConcurrentBSkipList& l) : list(l) {}
+    PreallocatedNodes(const PreallocatedNodes&) = delete;
+    PreallocatedNodes(PreallocatedNodes&&) = delete;
 
     ~PreallocatedNodes() {
       for (uint8_t i = 0; i < slotCount; ++i) {
@@ -533,6 +560,9 @@ class ConcurrentBSkipList {
         }
       }
     }
+
+    PreallocatedNodes& operator=(const PreallocatedNodes&) = delete;
+    PreallocatedNodes& operator=(PreallocatedNodes&&) = delete;
 
     template <typename NodeType>
     NodeType* peekSlot(uint8_t slot) const {
@@ -1320,7 +1350,7 @@ class ConcurrentBSkipList<
     B,
     ReadPolicy,
     StoragePolicy,
-    Policy>::Skipper : private folly::NonCopyableNonMovable {
+    Policy>::Skipper {
   using List =
       ConcurrentBSkipList<T, PayloadType, B, ReadPolicy, StoragePolicy, Policy>;
   using Traits = typename List::Traits;
@@ -1349,6 +1379,15 @@ class ConcurrentBSkipList<
     DCHECK_GE(currentLeaf_->numElements_.load(), 1u);
     initCursor(currentLeaf_);
   }
+
+  // Copying a skipper copies its current position and advisory descent cache.
+  // The copied node pointers are safe because nodes live with the list; every
+  // optimistic use still revalidates and falls back to locked descent if stale.
+  Skipper(const Skipper&) = default;
+  Skipper(Skipper&&) = default;
+  ~Skipper() = default;
+  Skipper& operator=(const Skipper&) = delete;
+  Skipper& operator=(Skipper&&) = delete;
 
   FOLLY_ALWAYS_INLINE bool good() const { return currentLeaf_ != nullptr; }
 
@@ -1417,6 +1456,16 @@ class ConcurrentBSkipList<
     DCHECK(lastPayload_.has_value());
     return *lastPayload_;
   }
+
+  PayloadType peekCurrentPayload() const
+    requires(List::kHasPayload)
+  {
+    DCHECK(currentLeaf_ != nullptr);
+    return currentLeaf_->loadPayload(leafSlot_);
+  }
+
+  LeafNode* currentLeaf() const { return currentLeaf_; }
+  uint8_t currentSlot() const { return leafSlot_; }
 
  private:
   // skipTo escalation order (each step falls through on failure):
