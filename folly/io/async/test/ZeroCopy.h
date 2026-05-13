@@ -115,7 +115,8 @@ class ZeroCopyTestAsyncSocket {
 
     void connectErr(const folly::AsyncSocketException& ex) noexcept override {
       LOG(ERROR) << "Connect error: " << ex.what();
-      parent_->onDataFinish(folly::exception_wrapper(ex));
+      parent_->onDataFinish(
+          folly::make_exception_wrapper<folly::AsyncSocketException>(ex));
     }
 
     void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
@@ -131,7 +132,8 @@ class ZeroCopyTestAsyncSocket {
     }
 
     void readErr(const folly::AsyncSocketException& ex) noexcept override {
-      parent_->onDataFinish(folly::exception_wrapper(ex));
+      parent_->onDataFinish(
+          folly::make_exception_wrapper<folly::AsyncSocketException>(ex));
     }
 
    private:
