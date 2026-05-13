@@ -61,13 +61,15 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
   schedule:
     - cron: '{args.cron}'"""
 
+        branches = args.main_branch or ["main"]
+        branch_lines = "\n".join(f"    - {b}" for b in branches)
         return f"""
   push:
     branches:
-    - {args.main_branch}
+{branch_lines}
   pull_request:
     branches:
-    - {args.main_branch}"""
+{branch_lines}"""
 
     def write_job_for_platform(self, platform, args):
         build_opts = setup_build_options(args, platform)
@@ -191,8 +193,8 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         build_type_arg = ""
         if override_build_type:
             build_type_arg = f"--build-type {override_build_type} "
-        if args.shared_libs:
-            build_type_arg += "--shared-libs "
+        if args.shared_lib:
+            build_type_arg += "--shared-lib "
 
         free_up_disk_arg = "--free-up-disk " if build_opts.free_up_disk else ""
 
@@ -385,8 +387,9 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         )
         parser.add_argument(
             "--main-branch",
-            default="main",
-            help="Main branch to trigger GitHub Action on",
+            default=[],
+            action="append",
+            help="Branch to trigger GitHub Action on. May be repeated; defaults to 'main' if not given.",
         )
         parser.add_argument(
             "--os-type",

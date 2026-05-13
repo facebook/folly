@@ -52,9 +52,6 @@ class ProjectCmdBase(SubCmd):
         else:
             ctx_gen.set_value_for_project(args.project, "test", "off")
 
-        if opts.shared_libs:
-            ctx_gen.set_value_for_all_projects("shared_libs", "on")
-
         loader = ManifestLoader(opts, ctx_gen)
         self.process_project_dir_arguments(args, loader)
 

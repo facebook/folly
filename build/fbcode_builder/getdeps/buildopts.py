@@ -62,7 +62,7 @@ class BuildOptions:
         vcvars_path: str | None = None,
         allow_system_packages: bool = False,
         lfs_path: str | None = None,
-        shared_libs: bool = False,
+        shared_lib: bool = False,
         facebook_internal: bool | None = None,
         free_up_disk: bool = False,
         build_type: str | None = None,
@@ -79,7 +79,16 @@ class BuildOptions:
         num_jobs - the level of concurrency to use while building
         use_shipit - use real shipit instead of the simple shipit transformer
         vcvars_path - Path to external VS toolchain's vsvarsall.bat
-        shared_libs - whether to build shared libraries
+        shared_lib - build every dep as a static archive of position-independent
+                     code (CMAKE_POSITION_INDEPENDENT_CODE=ON, CFLAGS/CXXFLAGS=-fPIC)
+                     and build the top-level cmake project with BUILD_SHARED_LIBS=ON
+                     so it links the dep tree into a single shared library. To stop
+                     dep symbols from leaking into the produced library's export
+                     table (and clashing with other copies in the same process):
+                       Linux: links with -Wl,--exclude-libs=ALL.
+                       macOS: deps compile with -fvisibility=hidden so their
+                              symbols become private_extern in the dylib.
+                     Refused on Windows — there is no equivalent isolation story.
         free_up_disk - take extra actions to save runner disk space
         build_type - CMAKE_BUILD_TYPE, used by cmake and cargo builders
         """
@@ -120,7 +129,20 @@ class BuildOptions:
         self.use_shipit: bool = use_shipit
         self.allow_system_packages: bool = allow_system_packages
         self.lfs_path: str | None = lfs_path
-        self.shared_libs: bool = shared_libs
+        self.shared_lib: bool = shared_lib
+        if shared_lib and self.is_windows():
+            raise Exception(
+                "--shared-lib is not supported on Windows: there is no "
+                "blanket equivalent of GNU ld's --exclude-libs=ALL or "
+                "Mach-O's hidden-visibility linkage to keep statically "
+                "linked dep symbols out of the produced DLL's export table."
+            )
+        # Set by BuildCmd to the name of the manifest the user requested,
+        # so per-dep build steps (which see only their own manifest) can
+        # tell whether they're the top-level project — needed to gate
+        # behaviors like macOS hidden-visibility that should apply to
+        # deps but not the consumer.
+        self.top_level_manifest_name: str | None = None
         self.free_up_disk: bool = free_up_disk
         self.build_type: str | None = build_type
 
@@ -244,7 +266,6 @@ class BuildOptions:
                 "fb": "on" if self.facebook_internal else "off",
                 "fbsource": "on" if self.fbsource_dir else "off",
                 "test": "off",
-                "shared_libs": "on" if self.shared_libs else "off",
             }
         )
 
@@ -721,7 +742,7 @@ def setup_build_options(
             "vcvars_path",
             "allow_system_packages",
             "lfs_path",
-            "shared_libs",
+            "shared_lib",
             "free_up_disk",
             "build_type",
         }

@@ -86,9 +86,8 @@ class ResourceLoader(Loader):
                 else:
                     yield "%s/%s" % (current, name)
 
-    def _find_manifest(self, project_name: str) -> str:
-        # pyre-fixme[20]: Call `ResourceLoader._list_manifests` expects argument `build_opts`.
-        for name in self._list_manifests():
+    def _find_manifest(self, build_opts: BuildOptions, project_name: str) -> str:
+        for name in self._list_manifests(build_opts):
             if name.endswith("/%s" % project_name):
                 return name
 
@@ -103,9 +102,8 @@ class ResourceLoader(Loader):
     def load_project(
         self, build_opts: BuildOptions, project_name: str
     ) -> ManifestParser:
-        project_name = self._find_manifest(project_name)
-        # pyre-fixme[16]: `ResourceLoader` has no attribute `_load_resource_manifest`.
-        return self._load_resource_manifest(project_name)
+        project_name = self._find_manifest(build_opts, project_name)
+        return self._load_manifest(project_name)
 
 
 LOADER: Loader = Loader()
@@ -415,7 +413,7 @@ class ManifestLoader:
         env["os"] = self.build_opts.host_type.ostype
         env["distro"] = self.build_opts.host_type.distro
         env["distro_vers"] = self.build_opts.host_type.distrovers
-        env["shared_libs"] = str(self.build_opts.shared_libs)
+        env["shared_lib"] = str(self.build_opts.shared_lib)
         env["features"] = ",".join(sorted(ctx.features()))
         for name in [
             "CXXFLAGS",

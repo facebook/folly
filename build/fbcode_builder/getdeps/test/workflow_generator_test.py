@@ -72,7 +72,7 @@ def _make_args(project: str, output_dir: str, **overrides: Any) -> argparse.Name
         "cpu_cores": None,
         "runs_on": None,
         "cron": None,
-        "main_branch": "main",
+        "main_branch": [],
         "job_file_prefix": None,
         "job_name_prefix": None,
         "free_up_disk": False,
@@ -86,7 +86,7 @@ def _make_args(project: str, output_dir: str, **overrides: Any) -> argparse.Name
         "num_jobs": None,
         "use_shipit": False,
         "facebook_internal": False,
-        "shared_libs": False,
+        "shared_lib": False,
         "extra_cmake_defines": None,
         "allow_system_packages": False,
         "verbose": False,
@@ -131,7 +131,7 @@ _SCENARIOS: list[tuple[str, str, dict[str, Any]]] = [
         "folly",
         {
             "os_types": ["linux"],
-            "shared_libs": True,
+            "shared_lib": True,
             "job_file_prefix": "getdeps_shared-libs_",
             "job_name_prefix": "Shared Libs ",
             "free_up_disk": True,
@@ -182,7 +182,10 @@ class WorkflowGeneratorGoldenTest(unittest.TestCase):
             if _UPDATE_FIXTURES:
                 os.makedirs(expected_root, exist_ok=True)
                 for name in sorted(os.listdir(tmp)):
-                    with open(os.path.join(tmp, name)) as f:
+                    src = os.path.join(tmp, name)
+                    if not os.path.isfile(src):
+                        continue
+                    with open(src) as f:
                         actual = f.read()
                     with open(os.path.join(expected_root, name), "w") as f:
                         f.write(actual)
