@@ -82,6 +82,9 @@ class ReadMostlySharedPtrCore {
   std::shared_ptr<const void> ptr_;
 };
 
+template <typename From, typename To>
+concept ptr_convertible = std::is_convertible_v<From*, To*>;
+
 } // namespace detail
 
 template <typename T, typename RefCount = DefaultRefCount>
@@ -176,30 +179,26 @@ class ReadMostlyWeakPtr {
     *this = std::move(other);
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   ReadMostlyWeakPtr(const ReadMostlyWeakPtr<T2, RefCount>& other) {
     *this = other;
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   ReadMostlyWeakPtr(ReadMostlyWeakPtr<T2, RefCount>&& other) noexcept {
     *this = std::move(other);
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   explicit ReadMostlyWeakPtr(const ReadMostlyMainPtr<T2, RefCount>& other) {
     *this = other;
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   explicit ReadMostlyWeakPtr(const ReadMostlySharedPtr<T2, RefCount>& other) {
     *this = other;
   }
@@ -215,17 +214,15 @@ class ReadMostlyWeakPtr {
     return *this;
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   ReadMostlyWeakPtr& operator=(const ReadMostlyWeakPtr<T2, RefCount>& other) {
     reset(other.impl_, other.ptrRaw_);
     return *this;
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   ReadMostlyWeakPtr& operator=(
       ReadMostlyWeakPtr<T2, RefCount>&& other) noexcept {
     reset();
@@ -234,17 +231,15 @@ class ReadMostlyWeakPtr {
     return *this;
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   ReadMostlyWeakPtr& operator=(const ReadMostlyMainPtr<T2, RefCount>& mainPtr) {
     reset(mainPtr.impl_, mainPtr.ptrRaw_);
     return *this;
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   ReadMostlyWeakPtr& operator=(
       const ReadMostlySharedPtr<T2, RefCount>& mainPtr) {
     reset(mainPtr.impl_, mainPtr.ptrRaw_);
@@ -293,31 +288,27 @@ class ReadMostlySharedPtr {
     *this = std::move(other);
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   ReadMostlySharedPtr(const ReadMostlySharedPtr<T2, RefCount>& other) {
     *this = other;
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   ReadMostlySharedPtr(ReadMostlySharedPtr<T2, RefCount>&& other) noexcept {
     *this = std::move(other);
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   explicit ReadMostlySharedPtr(const ReadMostlyWeakPtr<T2, RefCount>& other) {
     *this = other;
   }
 
   // Generally, this shouldn't be used.
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   explicit ReadMostlySharedPtr(const ReadMostlyMainPtr<T2, RefCount>& other) {
     *this = other;
   }
@@ -333,18 +324,16 @@ class ReadMostlySharedPtr {
     return *this;
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   ReadMostlySharedPtr& operator=(
       const ReadMostlySharedPtr<T2, RefCount>& other) {
     reset(other.impl_, other.ptrRaw_);
     return *this;
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   ReadMostlySharedPtr& operator=(
       ReadMostlySharedPtr<T2, RefCount>&& other) noexcept {
     reset();
@@ -353,17 +342,15 @@ class ReadMostlySharedPtr {
     return *this;
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   ReadMostlySharedPtr& operator=(const ReadMostlyWeakPtr<T2, RefCount>& other) {
     reset(other.impl_, other.ptrRaw_);
     return *this;
   }
 
-  template <
-      typename T2,
-      typename = std::enable_if_t<std::is_convertible<T2*, T*>::value>>
+  template <typename T2>
+    requires detail::ptr_convertible<T2, T>
   ReadMostlySharedPtr& operator=(const ReadMostlyMainPtr<T2, RefCount>& other) {
     reset(other.impl_, other.ptrRaw_);
     return *this;
