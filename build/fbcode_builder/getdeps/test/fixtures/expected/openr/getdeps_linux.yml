@@ -749,7 +749,7 @@ jobs:
         path: _artifacts
 
     - name: Test openr
-      run: python3 build/fbcode_builder/getdeps.py test --build-type RelWithDebInfo --src-dir=. openr --project-install-prefix openr:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py test --build-type RelWithDebInfo --src-dir=. openr --project-install-prefix openr:/usr/local --extra-cmake-defines '{"CMAKE_CXX_COMPILER_LAUNCHER":"sccache"}'
 
     - name: Show GitHub Actions cache usage
       if: always()

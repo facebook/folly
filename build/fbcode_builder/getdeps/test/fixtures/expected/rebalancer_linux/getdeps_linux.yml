@@ -652,7 +652,7 @@ jobs:
         path: _artifacts
 
     - name: Test rebalancer
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --build-type RelWithDebInfo --src-dir=. rebalancer --project-install-prefix rebalancer:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --build-type RelWithDebInfo --src-dir=. rebalancer --project-install-prefix rebalancer:/usr/local --extra-cmake-defines '{"CMAKE_POSITION_INDEPENDENT_CODE":"ON","CMAKE_CXX_COMPILER_LAUNCHER":"sccache"}'
 
     - name: Show disk space at end
       if: always()
