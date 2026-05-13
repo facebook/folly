@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -368,9 +369,8 @@ constexpr T constexpr_log2_ceil(T t) {
 /// constexpr_trunc
 ///
 /// mimic: std::trunc (C++23)
-template <
-    typename T,
-    std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
+template <typename T>
+  requires std::floating_point<T>
 constexpr T constexpr_trunc(T const t) {
   using lim = std::numeric_limits<T>;
   using int_type = std::uintmax_t;
@@ -390,7 +390,8 @@ constexpr T constexpr_trunc(T const t) {
   return neg ? -r : r;
 }
 
-template <typename T, std::enable_if_t<std::is_integral<T>::value, int> = 0>
+template <typename T>
+  requires std::integral<T>
 constexpr T constexpr_trunc(T const t) {
   return t;
 }
@@ -472,10 +473,8 @@ constexpr T constexpr_mult(T const a, T const b) {
 
 namespace detail {
 
-template <
-    typename T,
-    typename E,
-    std::enable_if_t<std::is_signed<E>::value, int> = 1>
+template <typename T, typename E>
+  requires(std::signed_integral<E> || std::floating_point<E>)
 constexpr T constexpr_ipow(T const base, E const exp) {
   if (std::is_floating_point<T>::value) {
     if (exp < E(0)) {
@@ -501,10 +500,8 @@ constexpr T constexpr_ipow(T const base, E const exp) {
   return constexpr_mult(constexpr_mult(div, div), rem);
 }
 
-template <
-    typename T,
-    typename E,
-    std::enable_if_t<std::is_unsigned<E>::value, int> = 1>
+template <typename T, typename E>
+  requires std::unsigned_integral<E>
 constexpr T constexpr_ipow(T const base, E const exp) {
   if (std::is_floating_point<T>::value) {
     if (exp == E(0)) {
@@ -538,29 +535,20 @@ constexpr T constexpr_ipow(T const base, E const exp) {
 /// until approximate convergence.
 ///
 /// mimic: std::exp (C++23, C++26)
-template <
-    typename T,
-    typename N,
-    std::enable_if_t<
-        std::is_floating_point<T>::value && std::is_integral<N>::value &&
-            !std::is_same<N, bool>::value,
-        int> = 0>
+template <typename T, typename N>
+  requires(std::floating_point<T> && std::integral<N> && !std::same_as<N, bool>)
 constexpr T constexpr_exp(N const power) {
   auto const npower = constexpr_abs(power);
   auto const result = detail::constexpr_ipow(numbers::e_v<T>, npower);
   return power < N(0) ? T(1) / result : result;
 }
-template <
-    typename N,
-    std::enable_if_t<
-        std::is_integral<N>::value && !std::is_same<N, bool>::value,
-        int> = 0>
+template <typename N>
+  requires(std::integral<N> && !std::same_as<N, bool>)
 constexpr double constexpr_exp(N const power) {
   return constexpr_exp<double>(power);
 }
-template <
-    typename T,
-    std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
+template <typename T>
+  requires std::floating_point<T>
 constexpr T constexpr_exp(T const power) {
   using lim = std::numeric_limits<T>;
 
@@ -611,9 +599,8 @@ constexpr T constexpr_exp(T const power) {
 /// The technique works best with numbers that are close enough to 1, so the
 /// implementation uses a quick shrink/growth technique as described in:
 ///   https://en.wikipedia.org/wiki/Natural_logarithm#Efficient_computation
-template <
-    typename T,
-    std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
+template <typename T>
+  requires std::floating_point<T>
 constexpr T constexpr_log(T const num) {
   using lim = std::numeric_limits<T>;
   constexpr auto& isq = constexpr_iterated_squares_desc_2_v<T>;
@@ -670,18 +657,13 @@ constexpr T constexpr_log(T const num) {
 ///   since std::pow would be required to raise error invalid.
 ///
 /// mimic: std::pow (C++26)
-template <
-    typename T,
-    typename E,
-    std::enable_if_t<
-        std::is_integral<E>::value && !std::is_same<E, bool>::value,
-        int> = 0>
+template <typename T, typename E>
+  requires(std::integral<E> && !std::same_as<E, bool>)
 constexpr T constexpr_pow(T const base, E const exp) {
   return detail::constexpr_ipow(base, exp);
 }
-template <
-    typename T,
-    std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
+template <typename T>
+  requires std::floating_point<T>
 constexpr T constexpr_pow(T const base, T const exp) {
   using lim = std::numeric_limits<T>;
 
@@ -887,8 +869,8 @@ constexpr T constexpr_sub_overflow_clamped(T a, T b) {
 // clamp_cast<int16_t>(32768u) = 32767
 
 template <typename Dst, typename Src>
-constexpr typename std::enable_if<std::is_integral<Src>::value, Dst>::type
-constexpr_clamp_cast(Src src) {
+  requires std::integral<Src>
+constexpr Dst constexpr_clamp_cast(Src src) {
   static_assert(
       std::is_integral<Dst>::value && sizeof(Dst) <= sizeof(int64_t),
       "constexpr_clamp_cast can only cast into integral type (up to 64bit)");
@@ -947,8 +929,8 @@ constexpr D constexpr_clamp_cast_helper(S src, S sl, S su, D dl, D du) {
 } // namespace detail
 
 template <typename Dst, typename Src>
-constexpr typename std::enable_if<std::is_floating_point<Src>::value, Dst>::type
-constexpr_clamp_cast(Src src) {
+  requires std::floating_point<Src>
+constexpr Dst constexpr_clamp_cast(Src src) {
   static_assert(
       std::is_integral<Dst>::value && sizeof(Dst) <= sizeof(int64_t),
       "constexpr_clamp_cast can only cast into integral type (up to 64bit)");
