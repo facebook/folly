@@ -52,10 +52,15 @@ class AsyncUDPSocket : public EventHandler {
       using Timestamp = std::array<struct timespec, 3>;
       folly::Optional<Timestamp> ts;
       uint8_t tos = 0;
+      // Destination address the packet was sent to (from IPV6_PKTINFO /
+      // IP_PKTINFO). Populated only when setRecvDstAddr(true) was called.
+      folly::Optional<folly::SocketAddress> localAddress;
 
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
       static constexpr size_t kCmsgSpace = CMSG_SPACE(sizeof(uint16_t)) +
-          CMSG_SPACE(sizeof(Timestamp)) + CMSG_SPACE(sizeof(uint8_t));
+          CMSG_SPACE(sizeof(Timestamp)) + CMSG_SPACE(sizeof(uint8_t)) +
+          CMSG_SPACE(sizeof(struct in6_pktinfo)) +
+          CMSG_SPACE(sizeof(struct in_pktinfo));
 #endif
     };
 
@@ -404,6 +409,20 @@ class AsyncUDPSocket : public EventHandler {
   virtual bool getRecvTos() { return recvTos_; }
 
   /**
+   * Set IPV6_RECVPKTINFO/IP_PKTINFO to receive the destination address each
+   * datagram was sent to. When enabled, OnDataAvailableParams::localAddress
+   * is populated for each received packet. Useful for UDP servers bound to
+   * a wildcard address that need to reply with the original destination as
+   * the source IP.
+   */
+  virtual void setRecvDstAddr(bool recvDstAddr) { recvDstAddr_ = recvDstAddr; }
+
+  /**
+   * Get IPV6_RECVPKTINFO/IP_PKTINFO status of the socket.
+   */
+  virtual bool getRecvDstAddr() { return recvDstAddr_; }
+
+  /**
    * Set reuse port mode to call bind() on the same address multiple times
    */
   virtual void setReusePort(bool reusePort) { reusePort_ = reusePort; }
@@ -644,6 +663,7 @@ class AsyncUDPSocket : public EventHandler {
   bool freeBind_{false};
   bool transparent_{false};
   bool recvTos_{false};
+  bool recvDstAddr_{false};
   int rcvBuf_{0};
   int sndBuf_{0};
   int busyPollUs_{0};
