@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <concepts>
 #include <cstring>
 #include <random>
 #include <type_traits>
@@ -44,13 +45,11 @@ struct seed_seq_generate_fn {
       traits::is_nothrow_invocable_v<T&, R*, R*>;
 
  public:
-  template <
-      typename SeedSeq,
-      typename Word,
-      std::size_t Size,
-      std::enable_if_t<std::is_trivially_copyable_v<Word>, int> = 0,
-      std::enable_if_t<Size != dynamic_extent, int> = 0,
-      std::enable_if_t<seq_inv_v<SeedSeq>, int> = 0>
+  template <typename SeedSeq, typename Word, std::size_t Size>
+    requires(
+        std::is_trivially_copyable_v<Word> && //
+        (Size != dynamic_extent) && //
+        seq_inv_v<SeedSeq>)
   void operator()(span<Word, Size> dst, SeedSeq& seq) const //
       noexcept(seq_nx_inv_v<SeedSeq>) {
     using out_t = typename SeedSeq::result_type;
@@ -70,9 +69,8 @@ constexpr inline seed_seq_generate_fn seed_seq_generate{};
 /// Handles mismatches between the std::seed_seq result-type and the input value
 /// type.
 struct make_std_seed_seq_fn {
-  template <
-      typename Word,
-      std::enable_if_t<is_non_bool_integral_v<Word>, int> = 0>
+  template <typename Word>
+    requires is_non_bool_integral_v<Word>
   std::seed_seq operator()(Word word) const {
     using val_t = std::seed_seq::result_type;
     constexpr auto vals_sz = (sizeof(Word) + sizeof(val_t) - 1) / sizeof(val_t);
