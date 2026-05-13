@@ -89,7 +89,7 @@ jobs:
         path: _artifacts
 
     - name: Test xxhash
-      run: python3 build/fbcode_builder/getdeps.py test --build-type RelWithDebInfo --src-dir=. xxhash --project-install-prefix xxhash:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py test --build-type RelWithDebInfo --src-dir=. xxhash --project-install-prefix xxhash:/usr/local --extra-cmake-defines '{"CMAKE_CXX_COMPILER_LAUNCHER":"sccache"}'
 
     - name: Show GitHub Actions cache usage
       if: always()

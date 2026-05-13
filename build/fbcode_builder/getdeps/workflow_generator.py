@@ -325,6 +325,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
             test_cmd = (
                 f"{getdepscmd}{allow_sys_arg} test {build_type_arg}{num_jobs_arg}"
                 f"--src-dir=. {manifest.name}{project_prefix}"
+                f"{cmake_arg_for(manifest.name)}"
             )
 
         return {

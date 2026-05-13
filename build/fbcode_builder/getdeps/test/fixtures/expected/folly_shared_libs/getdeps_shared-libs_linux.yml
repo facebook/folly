@@ -547,7 +547,7 @@ jobs:
         path: _artifacts
 
     - name: Test folly
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --build-type RelWithDebInfo --shared-libs --src-dir=. folly --project-install-prefix folly:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --build-type RelWithDebInfo --shared-libs --src-dir=. folly --project-install-prefix folly:/usr/local --extra-cmake-defines '{"CMAKE_CXX_COMPILER_LAUNCHER":"sccache"}'
 
     - name: Show disk space at end
       if: always()
