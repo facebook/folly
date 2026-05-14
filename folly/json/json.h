@@ -42,6 +42,7 @@
 #pragma once
 
 #include <iosfwd>
+#include <optional>
 #include <string>
 
 #include <folly/Function.h>
@@ -53,6 +54,31 @@ namespace folly {
 //////////////////////////////////////////////////////////////////////
 
 namespace json {
+
+// Specifies how to format floating-point values in serialized JSON output.
+// Each enum value maps to a fixed fmt format string at the printer dispatch
+// site, so there is no runtime fmt-spec parsing on the serialization hot path.
+//
+// Replaces the legacy `dtoa_mode` + `dtoa_flags` pair on `serialization_opts`,
+// which was backed by Google's double-conversion library. fmt's Dragonbox is
+// roughly 3x faster than Grisu3 for shortest-round-trip output.
+enum class FloatFormat {
+  // Shortest decimal that round-trips back to the exact same IEEE-754 double.
+  // Equivalent to `fmt::format("{}", x)`.
+  SHORTEST,
+  // Like SHORTEST, but always emits a decimal point and at least one fractional
+  // digit (e.g. `123` becomes `123.0`). Required by JSON wire formats that need
+  // to disambiguate floats from integers in text. Equivalent to
+  // `fmt::format("{:#}", x)`.
+  SHORTEST_TRAILING_DOT_ZERO,
+  // Fixed-point notation with `double_num_digits` digits after the decimal
+  // point. Equivalent to `fmt::format("{:.{}f}", x, double_num_digits)`.
+  FIXED,
+  // General-precision notation (`%g` semantics) with `double_num_digits`
+  // significant digits. Strips trailing zeros. Equivalent to
+  // `fmt::format("{:.{}g}", x, double_num_digits)`.
+  GENERAL,
+};
 
 struct serialization_opts {
   // If true, keys in an object can be non-strings.  (In strict
@@ -110,11 +136,19 @@ struct serialization_opts {
   // true to allow NaN or INF values
   bool allow_nan_inf{false};
 
+  // Floating-point output format. When set, takes precedence over the
+  // deprecated `dtoa_mode` / `dtoa_flags` pair below.
+  std::optional<FloatFormat> float_format{};
+
   // Options for how to print floating point values.  See Conv.h
-  // toAppend implementation for floating point for more info
+  // toAppend implementation for floating point for more info.
+  //
+  // Deprecated: prefer `float_format`. These fields are wired through the
+  // printer for backward compatibility but will be removed once all callers
+  // migrate (see T270785993).
   folly::DtoaMode dtoa_mode{};
 
-  unsigned int double_num_digits{0}; // ignored when mode is SHORTEST*
+  unsigned int double_num_digits{0}; // ignored when format is SHORTEST*
 
   folly::DtoaFlags dtoa_flags{};
 
