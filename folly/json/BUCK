@@ -15,6 +15,7 @@ fb_dirsync_cpp_library(
         "json.h",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
         "//folly:unicode",
         "//folly/container:enumerate",

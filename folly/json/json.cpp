@@ -24,6 +24,8 @@
 #include <sstream>
 #include <type_traits>
 
+#include <fmt/compile.h>
+#include <fmt/format.h>
 #include <glog/logging.h>
 
 #include <folly/Conv.h>
@@ -204,12 +206,7 @@ struct PrinterImpl {
                 contextDescription(context));
           }
         }
-        toAppend(
-            dval,
-            &out_,
-            opts_.dtoa_mode,
-            opts_.double_num_digits,
-            opts_.dtoa_flags);
+        appendDouble(dval);
         break;
       }
       case dynamic::INT64: {
@@ -358,6 +355,50 @@ struct PrinterImpl {
     }
   }
   void mapColon() const { out_.append(Pretty ? ": "sv : ":"sv); }
+
+  // Append `dval` to `out_`. When `opts_.float_format` is set, dispatches to a
+  // literal FMT_COMPILE-parsed format string (fmt's spec parsing happens at
+  // compile time). When unset, falls back to the legacy toAppend path so that
+  // existing callers that set `dtoa_mode`/`dtoa_flags` see no behavioral
+  // change.
+  void appendDouble(double dval) const {
+    // fmt formats infinity/NaN as "inf"/"nan"; preserve the double-conversion
+    // spellings "Infinity"/"-Infinity"/"NaN" for JSON compatibility.
+    if (std::isinf(dval)) {
+      out_.append(dval > 0 ? "Infinity"sv : "-Infinity"sv);
+      return;
+    }
+    if (std::isnan(dval)) {
+      out_.append("NaN"sv);
+      return;
+    }
+    if (!opts_.float_format) {
+      toAppend(
+          dval,
+          &out_,
+          opts_.dtoa_mode,
+          opts_.double_num_digits,
+          opts_.dtoa_flags);
+      return;
+    }
+    auto out = std::back_inserter(out_);
+    switch (*opts_.float_format) {
+      case FloatFormat::SHORTEST:
+        fmt::format_to(out, FMT_COMPILE("{}"), dval);
+        return;
+      case FloatFormat::SHORTEST_TRAILING_DOT_ZERO:
+        fmt::format_to(out, FMT_COMPILE("{:#}"), dval);
+        return;
+      case FloatFormat::FIXED:
+        fmt::format_to(
+            out, FMT_COMPILE("{:.{}f}"), dval, opts_.double_num_digits);
+        return;
+      case FloatFormat::GENERAL:
+        fmt::format_to(
+            out, FMT_COMPILE("{:.{}g}"), dval, opts_.double_num_digits);
+        return;
+    }
+  }
 
   std::string& out_;
   serialization_opts const& opts_;

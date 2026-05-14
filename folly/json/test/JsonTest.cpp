@@ -20,6 +20,7 @@
 #include <iterator>
 #include <limits>
 
+#include <folly/CPortability.h>
 #include <folly/portability/GTest.h>
 
 using folly::dynamic;
@@ -1428,4 +1429,61 @@ TEST(Json5, UnescapedNewlineInStringRejected) {
 
   // In an object value
   EXPECT_THROW(fromJson5("{\"key\": \"hello\nworld\"}"), std::exception);
+}
+
+TEST(Json, FloatFormatField) {
+  using folly::json::FloatFormat;
+  folly::json::serialization_opts opts;
+  opts.sort_keys = true;
+  folly::dynamic v = folly::dynamic::object("a", 1.5);
+  v["b"] = 1.0;
+
+  // Default behavior — shortest, no trailing dot.
+  EXPECT_EQ(R"({"a":1.5,"b":1})", folly::json::serialize(v, opts));
+
+  opts.float_format = FloatFormat::SHORTEST_TRAILING_DOT_ZERO;
+  EXPECT_EQ(R"({"a":1.5,"b":1.0})", folly::json::serialize(v, opts));
+
+  opts.float_format = FloatFormat::FIXED;
+  opts.double_num_digits = 3;
+  EXPECT_EQ(R"({"a":1.500,"b":1.000})", folly::json::serialize(v, opts));
+
+  opts.float_format = FloatFormat::GENERAL;
+  opts.double_num_digits = 2;
+  EXPECT_EQ(R"({"a":1.5,"b":1})", folly::json::serialize(v, opts));
+}
+
+TEST(Json, FloatFormatFieldOverridesLegacyDtoa) {
+  using folly::json::FloatFormat;
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+  folly::json::serialization_opts opts;
+  // Legacy fields would request FIXED with trailing zeros.
+  // @lint-ignore CLANGTIDY facebook-hte-Deprecated
+  opts.dtoa_mode = folly::DtoaMode::FIXED;
+  opts.double_num_digits = 4;
+  // But float_format takes precedence — request shortest output instead.
+  opts.float_format = FloatFormat::SHORTEST;
+  EXPECT_EQ("1.5", folly::json::serialize(1.5, opts));
+  FOLLY_POP_WARNING
+}
+
+TEST(Json, LegacyDtoaFieldsStillHonoredAsFallback) {
+  // When float_format is unset, the deprecated dtoa_mode/dtoa_flags pair is
+  // honored for backward compatibility while callers migrate (T270785993).
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+  folly::json::serialization_opts opts;
+  // @lint-ignore CLANGTIDY facebook-hte-Deprecated
+  opts.dtoa_mode = folly::DtoaMode::FIXED;
+  opts.double_num_digits = 2;
+  EXPECT_EQ("1.50", folly::json::serialize(1.5, opts));
+
+  // @lint-ignore CLANGTIDY facebook-hte-Deprecated
+  opts.dtoa_mode = folly::DtoaMode::SHORTEST;
+  // @lint-ignore CLANGTIDY facebook-hte-Deprecated
+  opts.dtoa_flags = folly::DtoaFlags::EMIT_TRAILING_DECIMAL_POINT |
+      folly::DtoaFlags::EMIT_TRAILING_ZERO_AFTER_POINT;
+  EXPECT_EQ("1.0", folly::json::serialize(1.0, opts));
+  FOLLY_POP_WARNING
 }

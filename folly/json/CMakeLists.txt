@@ -26,6 +26,7 @@ folly_add_library(
     json.h
   DEPS
     ${GLOG_LIBRARIES}
+    fmt::fmt
     folly_container_enumerate
     folly_hash_hash
     folly_lang_assume
