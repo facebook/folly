@@ -21,6 +21,7 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/io/IOBuf.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -578,7 +579,8 @@ class IOBufQueue {
    */
   size_t chainLength() const {
     if (FOLLY_UNLIKELY(!options_.cacheChainLength)) {
-      throw std::invalid_argument("IOBufQueue: chain length not cached");
+      folly::throw_exception<std::invalid_argument>(
+          "IOBufQueue: chain length not cached");
     }
     dcheckCacheIntegrity();
     return chainLength_ + (cachePtr_->cachedRange.first - tailStart_);
