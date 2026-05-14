@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <compare>
 #include <functional>
 #include <type_traits>
 #include <utility>
@@ -65,60 +66,50 @@ class propagate_const {
   constexpr propagate_const(propagate_const&&) = default;
   propagate_const(propagate_const const&) = delete;
 
-  template <
-      typename OtherPointer,
-      std::enable_if_t<
-          std::is_constructible<Pointer, OtherPointer&&>::value &&
-              !std::is_convertible<OtherPointer&&, Pointer>::value,
-          int> = 0>
+  template <typename OtherPointer>
+    requires(
+        std::is_constructible_v<Pointer, OtherPointer &&> &&
+        !std::is_convertible_v<OtherPointer &&, Pointer>)
   constexpr explicit propagate_const(propagate_const<OtherPointer>&& other)
       : pointer_(static_cast<OtherPointer&&>(other.pointer_)) {}
 
-  template <
-      typename OtherPointer,
-      std::enable_if_t<
-          std::is_constructible<Pointer, OtherPointer&&>::value &&
-              std::is_convertible<OtherPointer&&, Pointer>::value,
-          int> = 0>
+  template <typename OtherPointer>
+    requires(
+        std::is_constructible_v<Pointer, OtherPointer &&> &&
+        std::is_convertible_v<OtherPointer &&, Pointer>)
   constexpr propagate_const(propagate_const<OtherPointer>&& other)
       : pointer_(static_cast<OtherPointer&&>(other.pointer_)) {}
 
-  template <
-      typename OtherPointer,
-      std::enable_if_t<
-          !detail::is_decay_propagate_const<OtherPointer>::value &&
-              std::is_constructible<Pointer, OtherPointer&&>::value &&
-              !std::is_convertible<OtherPointer&&, Pointer>::value,
-          int> = 0>
+  template <typename OtherPointer>
+    requires(
+        !detail::is_decay_propagate_const<OtherPointer>::value &&
+        std::is_constructible_v<Pointer, OtherPointer &&> &&
+        !std::is_convertible_v<OtherPointer &&, Pointer>)
   constexpr explicit propagate_const(OtherPointer&& other)
       : pointer_(static_cast<OtherPointer&&>(other)) {}
 
-  template <
-      typename OtherPointer,
-      std::enable_if_t<
-          !detail::is_decay_propagate_const<OtherPointer>::value &&
-              std::is_constructible<Pointer, OtherPointer&&>::value &&
-              std::is_convertible<OtherPointer&&, Pointer>::value,
-          int> = 0>
+  template <typename OtherPointer>
+    requires(
+        !detail::is_decay_propagate_const<OtherPointer>::value &&
+        std::is_constructible_v<Pointer, OtherPointer &&> &&
+        std::is_convertible_v<OtherPointer &&, Pointer>)
   constexpr propagate_const(OtherPointer&& other)
       : pointer_(static_cast<OtherPointer&&>(other)) {}
 
   constexpr propagate_const& operator=(propagate_const&&) = default;
   propagate_const& operator=(propagate_const const&) = delete;
 
-  template <
-      typename OtherPointer,
-      typename =
-          std::enable_if_t<std::is_convertible<OtherPointer&&, Pointer>::value>>
+  template <typename OtherPointer>
+    requires(std::is_convertible_v<OtherPointer &&, Pointer>)
   constexpr propagate_const& operator=(propagate_const<OtherPointer>&& other) {
     pointer_ = static_cast<OtherPointer&&>(other.pointer_);
+    return *this;
   }
 
-  template <
-      typename OtherPointer,
-      typename = std::enable_if_t<
-          !detail::is_decay_propagate_const<OtherPointer>::value &&
-          std::is_convertible<OtherPointer&&, Pointer>::value>>
+  template <typename OtherPointer>
+    requires(
+        !detail::is_decay_propagate_const<OtherPointer>::value &&
+        std::is_convertible_v<OtherPointer &&, Pointer>)
   constexpr propagate_const& operator=(OtherPointer&& other) {
     pointer_ = static_cast<OtherPointer&&>(other);
     return *this;
@@ -146,20 +137,18 @@ class propagate_const {
 
   constexpr element_type const* operator->() const { return get(); }
 
-  template <
-      typename OtherPointer = Pointer,
-      typename = std::enable_if_t<
-          std::is_pointer<OtherPointer>::value ||
-          std::is_convertible<OtherPointer, element_type*>::value>>
+  template <typename OtherPointer = Pointer>
+    requires(
+        std::is_pointer_v<OtherPointer> ||
+        std::is_convertible_v<OtherPointer, element_type*>)
   constexpr operator element_type*() {
     return get();
   }
 
-  template <
-      typename OtherPointer = Pointer,
-      typename = std::enable_if_t<
-          std::is_pointer<OtherPointer>::value ||
-          std::is_convertible<OtherPointer, element_type const*>::value>>
+  template <typename OtherPointer = Pointer>
+    requires(
+        std::is_pointer_v<OtherPointer> ||
+        std::is_convertible_v<OtherPointer, element_type const*>)
   constexpr operator element_type const*() const {
     return get();
   }
@@ -189,26 +178,14 @@ constexpr void swap(
   a.swap(b);
 }
 
+// nullptr comparisons: != and reversed == are synthesized from this by C++20.
 template <typename Pointer>
 constexpr bool operator==(propagate_const<Pointer> const& a, std::nullptr_t) {
   return get_underlying(a) == nullptr;
 }
 
-template <typename Pointer>
-constexpr bool operator==(std::nullptr_t, propagate_const<Pointer> const& a) {
-  return nullptr == get_underlying(a);
-}
-
-template <typename Pointer>
-constexpr bool operator!=(propagate_const<Pointer> const& a, std::nullptr_t) {
-  return get_underlying(a) != nullptr;
-}
-
-template <typename Pointer>
-constexpr bool operator!=(std::nullptr_t, propagate_const<Pointer> const& a) {
-  return nullptr != get_underlying(a);
-}
-
+// Homogeneous comparisons: != is synthesized from ==; <, <=, >, >= are
+// synthesized from <=>.
 template <typename Pointer>
 constexpr bool operator==(
     propagate_const<Pointer> const& a, propagate_const<Pointer> const& b) {
@@ -216,39 +193,22 @@ constexpr bool operator==(
 }
 
 template <typename Pointer>
-constexpr bool operator!=(
-    propagate_const<Pointer> const& a, propagate_const<Pointer> const& b) {
-  return get_underlying(a) != get_underlying(b);
-}
-
-template <typename Pointer>
-constexpr bool operator<(
-    propagate_const<Pointer> const& a, propagate_const<Pointer> const& b) {
-  return get_underlying(a) < get_underlying(b);
-}
-
-template <typename Pointer>
-constexpr bool operator<=(
-    propagate_const<Pointer> const& a, propagate_const<Pointer> const& b) {
-  return get_underlying(a) <= get_underlying(b);
-}
-
-template <typename Pointer>
-constexpr bool operator>(
-    propagate_const<Pointer> const& a, propagate_const<Pointer> const& b) {
-  return get_underlying(a) > get_underlying(b);
-}
-
-template <typename Pointer>
-constexpr bool operator>=(
-    propagate_const<Pointer> const& a, propagate_const<Pointer> const& b) {
-  return get_underlying(a) >= get_underlying(b);
+constexpr auto operator<=>(
+    propagate_const<Pointer> const& a,
+    propagate_const<Pointer> const&
+        b) noexcept(noexcept(get_underlying(a) <=> get_underlying(b)))
+    -> decltype(get_underlying(a) <=> get_underlying(b)) {
+  return get_underlying(a) <=> get_underlying(b);
 }
 
 //  Note: contrary to the specification, the heterogeneous comparison operators
 //  only participate in overload resolution when the equivalent heterogeneous
 //  comparison operators on the underlying pointers, as returned by invocation
 //  of get_underlying, would also participate in overload resolution.
+//
+//  C++20: != is synthesized from ==; the reversed (Other, propagate_const)
+//  forms of == and <=> are synthesized automatically; <, <=, >, >= are
+//  synthesized from <=>.
 
 template <typename Pointer, typename Other>
 constexpr auto operator==(propagate_const<Pointer> const& a, Other const& b)
@@ -257,69 +217,9 @@ constexpr auto operator==(propagate_const<Pointer> const& a, Other const& b)
 }
 
 template <typename Pointer, typename Other>
-constexpr auto operator!=(propagate_const<Pointer> const& a, Other const& b)
-    -> decltype(get_underlying(a) != b, false) {
-  return get_underlying(a) != b;
-}
-
-template <typename Pointer, typename Other>
-constexpr auto operator<(propagate_const<Pointer> const& a, Other const& b)
-    -> decltype(get_underlying(a) < b, false) {
-  return get_underlying(a) < b;
-}
-
-template <typename Pointer, typename Other>
-constexpr auto operator<=(propagate_const<Pointer> const& a, Other const& b)
-    -> decltype(get_underlying(a) <= b, false) {
-  return get_underlying(a) <= b;
-}
-
-template <typename Pointer, typename Other>
-constexpr auto operator>(propagate_const<Pointer> const& a, Other const& b)
-    -> decltype(get_underlying(a) > b, false) {
-  return get_underlying(a) > b;
-}
-
-template <typename Pointer, typename Other>
-constexpr auto operator>=(propagate_const<Pointer> const& a, Other const& b)
-    -> decltype(get_underlying(a) >= b, false) {
-  return get_underlying(a) >= b;
-}
-
-template <typename Other, typename Pointer>
-constexpr auto operator==(Other const& a, propagate_const<Pointer> const& b)
-    -> decltype(a == get_underlying(b), false) {
-  return a == get_underlying(b);
-}
-
-template <typename Other, typename Pointer>
-constexpr auto operator!=(Other const& a, propagate_const<Pointer> const& b)
-    -> decltype(a != get_underlying(b), false) {
-  return a != get_underlying(b);
-}
-
-template <typename Other, typename Pointer>
-constexpr auto operator<(Other const& a, propagate_const<Pointer> const& b)
-    -> decltype(a < get_underlying(b), false) {
-  return a < get_underlying(b);
-}
-
-template <typename Other, typename Pointer>
-constexpr auto operator<=(Other const& a, propagate_const<Pointer> const& b)
-    -> decltype(a <= get_underlying(b), false) {
-  return a <= get_underlying(b);
-}
-
-template <typename Other, typename Pointer>
-constexpr auto operator>(Other const& a, propagate_const<Pointer> const& b)
-    -> decltype(a > get_underlying(b), false) {
-  return a > get_underlying(b);
-}
-
-template <typename Other, typename Pointer>
-constexpr auto operator>=(Other const& a, propagate_const<Pointer> const& b)
-    -> decltype(a >= get_underlying(b), false) {
-  return a >= get_underlying(b);
+constexpr auto operator<=>(propagate_const<Pointer> const& a, Other const& b)
+    -> decltype(get_underlying(a) <=> b) {
+  return get_underlying(a) <=> b;
 }
 
 } // namespace folly
