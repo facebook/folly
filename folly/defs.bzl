@@ -119,21 +119,22 @@ def _compute_include_directories():
     return ["/".join(len(folly_path.split("/")) * [".."])]
 
 def folly_xplat_library(
-        name,
-        srcs = (),
-        header_namespace = "",
-        exported_headers = (),
-        raw_headers = (),
-        raw_headers_as_headers_mode = "enabled",
-        deps = (),
-        exported_deps = (),
-        force_static = True,
-        apple_sdks = None,
-        platforms = None,
-        enable_static_variant = False,
-        labels = (),
-        redirect = True,
-        **kwargs):
+    name,
+    srcs = (),
+    header_namespace = "",
+    exported_headers = (),
+    raw_headers = (),
+    raw_headers_as_headers_mode = "enabled",
+    deps = (),
+    exported_deps = (),
+    force_static = True,
+    apple_sdks = None,
+    platforms = None,
+    enable_static_variant = False,
+    labels = (),
+    redirect = True,
+    **kwargs,
+):
     """Translate a simpler declaration into the more complete library target.
 
     When a redirect is configured via PACKAGE (using dirsync_redirect.write()),
@@ -198,26 +199,29 @@ def folly_xplat_library(
         platforms = platforms,
         enable_static_variant = enable_static_variant,
         labels = list(labels),
-        compiler_flags = CXXFLAGS + kwargs.pop("compiler_flags", []) + select({
+        compiler_flags = CXXFLAGS
+        + kwargs.pop("compiler_flags", [])
+        + select({
             "DEFAULT": [],
             "ovr_config//os:android": FBANDROID_CXXFLAGS,
             # TODO: Why appletvos, iphoneos, and macos are not marked as clang compilers?
             "ovr_config//os:appletvos": CLANG_CXX_FLAGS,
             "ovr_config//os:iphoneos": CLANG_CXX_FLAGS,
             "ovr_config//os:macos": CLANG_CXX_FLAGS + ["-fvisibility=default"],
-        }) + select({
+        })
+        + select({
             "DEFAULT": [],
             "ovr_config//os:windows-cl": WINDOWS_MSVC_CXXFLAGS,
             "ovr_config//os:windows-gcc-or-clang": WINDOWS_CLANG_CXX_FLAGS,
-        }) + [
+        })
+        + [
             "-fexceptions",
             "-frtti",
         ],
-        fbobjc_compiler_flags = kwargs.pop("fbobjc_compiler_flags", []) +
-                                FBOBJC_CXXFLAGS,
+        fbobjc_compiler_flags = kwargs.pop("fbobjc_compiler_flags", []) + FBOBJC_CXXFLAGS,
         windows_preferred_linkage = "static",
         visibility = kwargs.pop("visibility", ["PUBLIC"]),
-        **kwargs
+        **kwargs,
     )
 
     # Create redirect alias if configured
@@ -231,19 +235,9 @@ def folly_xplat_library(
         )
 
 def folly_xplat_cxx_library(name, **kwargs):
-    folly_xplat_library(
-        name = name,
-        **kwargs
-    )
+    folly_xplat_library(name = name, **kwargs)
 
-def folly_xplat_cxx_test(
-        name,
-        srcs,
-        raw_headers = [],
-        headers = [],
-        deps = [],
-        oncall = None,
-        **kwargs):
+def folly_xplat_cxx_test(name, srcs, raw_headers = [], headers = [], deps = [], oncall = None, **kwargs):
     # resources and env are cherry picked because some of the other kwargs
     # have issues that need to be investigated.
     # e.g., Some args are duplicated. Some args cause TSAN errors.
@@ -270,21 +264,15 @@ def folly_xplat_cxx_test(
         headers = headers,
         resources = resources,
         include_directories = _compute_include_directories(),
-        deps = deps + [
+        deps = deps
+        + [
             "//xplat/folly/test/common:test_main",
         ],
         platforms = (CXX,),
-        **extra_kwargs
+        **extra_kwargs,
     )
 
-def folly_xplat_cxx_binary(
-        name,
-        srcs,
-        raw_headers = [],
-        deps = [],
-        oncall = None,
-        dlopen_enabled = False,
-        **kwargs):
+def folly_xplat_cxx_binary(name, srcs, raw_headers = [], deps = [], oncall = None, dlopen_enabled = False, **kwargs):
     extra_kwargs = {"oncall": oncall} if oncall != None else {}
 
     if dlopen_enabled:
@@ -292,11 +280,5 @@ def folly_xplat_cxx_binary(
         extra_kwargs["link_style"] = kwargs.get("link_style")
 
     fb_xplat_cxx_binary(
-        name = name,
-        srcs = srcs,
-        raw_headers = raw_headers,
-        include_directories = _compute_include_directories(),
-        deps = deps,
-        platforms = (CXX,),
-        **extra_kwargs
+        name = name, srcs = srcs, raw_headers = raw_headers, include_directories = _compute_include_directories(), deps = deps, platforms = (CXX,), **extra_kwargs
     )

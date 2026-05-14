@@ -24,12 +24,7 @@ def _dwarf_size_flag(size):
     else:
         return ["-gdwarf{}".format(size)]
 
-def customized_unittest(
-        available_dwarf_versions = [],
-        avilable_split_dwarf_keys = [],
-        available_dwarf_sizes = [],
-        extra_compiler_flags = [],
-        custom_suffix = ""):
+def customized_unittest(available_dwarf_versions = [], avilable_split_dwarf_keys = [], available_dwarf_sizes = [], extra_compiler_flags = [], custom_suffix = ""):
     # Testing different combinations of the following options:
     # 1. Dwarf4 or Dwarf5.
     # 2. Dwarf32 or Dwarf 64.
@@ -42,10 +37,12 @@ def customized_unittest(
                 if split_dwarf_option == "none" or split_dwarf_option == "single_inlining":
                     for use_aaranges in [False, True]:
                         cpp_library(
-                            name = "symbolizer_test_utils_" + dwarf_version +
-                                   "_dwarf{}".format(dwarf_size) +
-                                   ("" if split_dwarf_option == "none" else "_" + split_dwarf_option) +
-                                   ("_aaranges" if use_aaranges else "_noaaranges") + custom_suffix,
+                            name = "symbolizer_test_utils_"
+                            + dwarf_version
+                            + "_dwarf{}".format(dwarf_size)
+                            + ("" if split_dwarf_option == "none" else "_" + split_dwarf_option)
+                            + ("_aaranges" if use_aaranges else "_noaaranges")
+                            + custom_suffix,
                             srcs = ["SymbolizerTestUtils.cpp"],
                             headers = [
                                 "SymbolizerTestUtils.h",
@@ -54,31 +51,34 @@ def customized_unittest(
                             # Tests rely on this library having full debug info, so use `-g` to override
                             # the platform default, and use `--emit-relocs` to prevent `--strip-debug-*`
                             # flags from dropping debug info.
-                            compiler_flags = ["-g"] +
-                                             (["-gdwarf-5"] if dwarf_version == "dwarf5" else ["-gdwarf-4"]) +
-                                             _dwarf_size_flag(dwarf_size) +
-                                             SPLIT_DWARF_FLAGS[split_dwarf_option] +
-                                             (["-gdwarf-aranges"] if use_aaranges else []) +
-                                             extra_compiler_flags,
+                            compiler_flags = ["-g"]
+                            + (["-gdwarf-5"] if dwarf_version == "dwarf5" else ["-gdwarf-4"])
+                            + _dwarf_size_flag(dwarf_size)
+                            + SPLIT_DWARF_FLAGS[split_dwarf_option]
+                            + (["-gdwarf-aranges"] if use_aaranges else [])
+                            + extra_compiler_flags,
                             private_linker_flags = [
                                 "--emit-relocs",  # makes linker ignore `--strip-debug-*` flags
                             ],
                             target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
                         )
                         cpp_unittest(
-                            name = "symbolizer_test_" + dwarf_version +
-                                   "_dwarf{}".format(dwarf_size) +
-                                   ("" if split_dwarf_option == "none" else "_" + split_dwarf_option) +
-                                   ("_aaranges" if use_aaranges else "_noaaranges") + custom_suffix,
+                            name = "symbolizer_test_"
+                            + dwarf_version
+                            + "_dwarf{}".format(dwarf_size)
+                            + ("" if split_dwarf_option == "none" else "_" + split_dwarf_option)
+                            + ("_aaranges" if use_aaranges else "_noaaranges")
+                            + custom_suffix,
                             srcs = ["SymbolizerTest.cpp"],
                             # This tests requires full debug info, so use `-g` to override the platform
                             # default, and use `--emit-relocs` to prevent `--strip-debug-*` flags from
                             # dropping debug info.
-                            compiler_flags = ["-g"] +
-                                             (["-gdwarf-5"] if dwarf_version == "dwarf5" else ["-gdwarf-4"]) +
-                                             _dwarf_size_flag(dwarf_size) +
-                                             SPLIT_DWARF_FLAGS[split_dwarf_option] +
-                                             (["-gdwarf-aranges"] if use_aaranges else []) + extra_compiler_flags,
+                            compiler_flags = ["-g"]
+                            + (["-gdwarf-5"] if dwarf_version == "dwarf5" else ["-gdwarf-4"])
+                            + _dwarf_size_flag(dwarf_size)
+                            + SPLIT_DWARF_FLAGS[split_dwarf_option]
+                            + (["-gdwarf-aranges"] if use_aaranges else [])
+                            + extra_compiler_flags,
                             labels = ["dwp"] if split_dwarf_option == "single_inlining" and use_aaranges else [],
                             linker_flags = [
                                 "--emit-relocs",  # makes linker ignore `--strip-debug-*` flags
@@ -86,10 +86,11 @@ def customized_unittest(
                             supports_static_listing = True,
                             target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
                             deps = [
-                                ":symbolizer_test_utils_" + dwarf_version +
-                                "_dwarf{}".format(dwarf_size) +
-                                ("" if split_dwarf_option == "none" else "_" + split_dwarf_option) +
-                                ("_aaranges" if use_aaranges else "_noaaranges"),  # @manual
+                                ":symbolizer_test_utils_"
+                                + dwarf_version
+                                + "_dwarf{}".format(dwarf_size)
+                                + ("" if split_dwarf_option == "none" else "_" + split_dwarf_option)
+                                + ("_aaranges" if use_aaranges else "_noaaranges"),  # @manual
                                 "//folly:demangle",
                                 "//folly:range",
                                 "//folly:scope_guard",

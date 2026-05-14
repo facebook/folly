@@ -23,5 +23,5 @@ def folly_extended_xplat_library(name, **kwargs):
             "fbsource//xplat/folly:memory",
             "fbsource//third-party/glog:glog",
         ],
-        **kwargs
+        **kwargs,
     )

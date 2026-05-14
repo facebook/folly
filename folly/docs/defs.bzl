@@ -28,9 +28,7 @@ def html(src, support = None, style = "style.css", copy_support = True, **_kwarg
     custom_rule(
         name = html,
         srcs = [src, style] + support,
-        build_args =
-            "--style %s %s" % (shell.quote(style), shell.quote(src)) +
-            " --pandoc-path $(exe fbsource//third-party/stackage-lts:pandoc)",
+        build_args = "--style %s %s" % (shell.quote(style), shell.quote(src)) + " --pandoc-path $(exe fbsource//third-party/stackage-lts:pandoc)",
         build_script_dep = "fbcode//folly/docs/facebook:build_html.py",
         output_gen_files = [html],
         strict = False,  # Remove (https://fburl.com/strict-custom-rules)

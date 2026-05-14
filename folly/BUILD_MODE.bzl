@@ -1,4 +1,4 @@
-""" build mode definitions for folly """
+"""build mode definitions for folly"""
 
 load("@fbcode//:BUILD_MODE.bzl", get_parent_modes = "get_empty_modes")
 load("@fbcode_macros//build_defs:create_build_mode.bzl", "extend_build_modes")
@@ -8,8 +8,7 @@ _extra_cflags = [
     "-Wunused-parameter",
 ]
 
-_extra_cxxflags = [
-]
+_extra_cxxflags = []
 
 _extra_clang_flags = [
     "-Wconditional-uninitialized",
@@ -64,5 +63,5 @@ _modes = extend_build_modes(
 )
 
 def get_modes():
-    """ Return modes for this file """
+    """Return modes for this file"""
     return _modes
