@@ -49,7 +49,7 @@ jobs:
        key: ${{ steps.paths.outputs.ninja_CACHE_KEY }}-install
     - name: Build ninja
       if: ${{ steps.paths.outputs.ninja_SOURCE && ! steps.restore_ninja.outputs.cache-hit }}
-      run: python3 build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --no-tests ninja --extra-cmake-defines '{"CMAKE_CXX_COMPILER_LAUNCHER":"sccache"}'
+      run: python3 build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --no-tests ninja
     - name: Save ninja to cache
       uses: actions/cache/save@v4
       if: ${{ steps.paths.outputs.ninja_SOURCE && ! steps.restore_ninja.outputs.cache-hit }}
@@ -66,7 +66,7 @@ jobs:
        key: ${{ steps.paths.outputs.cmake_CACHE_KEY }}-install
     - name: Build cmake
       if: ${{ steps.paths.outputs.cmake_SOURCE && ! steps.restore_cmake.outputs.cache-hit }}
-      run: python3 build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --no-tests cmake --extra-cmake-defines '{"CMAKE_CXX_COMPILER_LAUNCHER":"sccache"}'
+      run: python3 build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --no-tests cmake
     - name: Save cmake to cache
       uses: actions/cache/save@v4
       if: ${{ steps.paths.outputs.cmake_SOURCE && ! steps.restore_cmake.outputs.cache-hit }}
@@ -75,7 +75,7 @@ jobs:
        key: ${{ steps.paths.outputs.cmake_CACHE_KEY }}-install
 
     - name: Build xxhash
-      run: python3 build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --src-dir=. xxhash --project-install-prefix xxhash:/usr/local --extra-cmake-defines '{"CMAKE_CXX_COMPILER_LAUNCHER":"sccache"}'
+      run: python3 build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --src-dir=. xxhash --project-install-prefix xxhash:/usr/local
 
     - name: Show sccache stats
       if: always()
@@ -89,7 +89,7 @@ jobs:
         path: _artifacts
 
     - name: Test xxhash
-      run: python3 build/fbcode_builder/getdeps.py test --build-type RelWithDebInfo --src-dir=. xxhash --project-install-prefix xxhash:/usr/local --extra-cmake-defines '{"CMAKE_CXX_COMPILER_LAUNCHER":"sccache"}'
+      run: python3 build/fbcode_builder/getdeps.py test --build-type RelWithDebInfo --src-dir=. xxhash --project-install-prefix xxhash:/usr/local
 
     - name: Show GitHub Actions cache usage
       if: always()
