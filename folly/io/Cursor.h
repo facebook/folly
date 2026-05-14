@@ -1329,7 +1329,8 @@ class RWCursor
     // checking.  We only have to perform an explicit check here when calling
     // gather() on a non-head element.
     if (this->crtBuf_ != this->head() && this->totalLength() < n) {
-      throw std::overflow_error("cannot gather() past the end of the chain");
+      throw_exception<std::overflow_error>(
+          "cannot gather() past the end of the chain");
     }
     size_t offset = this->crtPos_ - this->crtBegin_;
     this->crtBuf_->gather(offset + n);

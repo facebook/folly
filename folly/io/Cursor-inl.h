@@ -48,7 +48,7 @@ std::string CursorBase<Derived, BufType>::readTerminatedString(
     }
     ++bytesRead;
     if (bytesRead >= maxLength) {
-      throw std::length_error("string overflow");
+      throw_exception<std::length_error>("string overflow");
     }
     return true;
   };
