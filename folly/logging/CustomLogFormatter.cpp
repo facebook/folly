@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <fmt/core.h>
 #include <folly/logging/CustomLogFormatter.h>
 
 #include <algorithm>
@@ -270,8 +271,8 @@ std::string CustomLogFormatter::formatMessage(
   // Most common logs will be single line logs and so we can format the entire
   // log string including the message at once.
   if (!message.containsNewlines()) {
-    return folly::sformat(
-        singleLineLogFormat_,
+    return fmt::format(
+        fmt::runtime(singleLineLogFormat_),
         getGlogLevelName(message.getLevel())[0],
         ltime.tm_mon + 1,
         ltime.tm_mday,
@@ -296,8 +297,8 @@ std::string CustomLogFormatter::formatMessage(
   // If the message contains multiple lines, ensure that the log header is
   // prepended before each message line.
   else {
-    const auto header = folly::sformat(
-        logFormat_,
+    const auto header = fmt::format(
+        fmt::runtime(logFormat_),
         getGlogLevelName(message.getLevel())[0],
         ltime.tm_mon + 1,
         ltime.tm_mday,
