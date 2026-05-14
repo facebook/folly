@@ -173,8 +173,6 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         extra_cmake_defines = (
             json.loads(args.extra_cmake_defines) if args.extra_cmake_defines else {}
         )
-        if use_sccache:
-            extra_cmake_defines["CMAKE_CXX_COMPILER_LAUNCHER"] = "sccache"
         per_package_defines = _parse_per_package_defines(
             getattr(args, "package_extra_cmake_defines", []) or []
         )
