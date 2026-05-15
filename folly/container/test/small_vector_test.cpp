@@ -920,6 +920,24 @@ TEST(smallVector, Capacity) {
   }
 }
 
+TEST(smallVector, HeapAllocationSize) {
+  // Inline: no heap allocation.
+  folly::small_vector<int, 2> vec;
+  EXPECT_EQ(vec.heap_allocation_size(), 0);
+  vec.push_back(1);
+  EXPECT_EQ(vec.heap_allocation_size(), 0);
+  vec.push_back(2);
+  EXPECT_EQ(vec.heap_allocation_size(), 0);
+
+  // Heap: allocation size >= capacity * sizeof(element).
+  vec.push_back(3);
+  EXPECT_GE(vec.heap_allocation_size(), vec.capacity() * sizeof(int));
+
+  // Larger heap allocation.
+  vec.reserve(1000);
+  EXPECT_GE(vec.heap_allocation_size(), 1000 * sizeof(int));
+}
+
 template <int N>
 void testSelfPushBack() {
   for (int i = 1; i < 33; ++i) {
