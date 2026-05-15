@@ -1420,8 +1420,11 @@ class small_vector
       detail::small_vector_detail::should_trivially_copy<Value> &&
       kMayCopyWholeInlineStorage;
 
+  // Store capacity inline when HeapPtrWithCapacity fits within the inline
+  // storage without increasing the union size. When the two are equal, the
+  // union is already sized by InlineStorageType, so storing capacity is free.
   static bool constexpr kHasInlineCapacity = !BaseType::kAlwaysUseHeap &&
-      sizeof(HeapPtrWithCapacity) < sizeof(InlineStorageType);
+      sizeof(HeapPtrWithCapacity) <= sizeof(InlineStorageType);
 
   // This value should we multiple of word size.
   static size_t constexpr kHeapifyCapacitySize = sizeof(
