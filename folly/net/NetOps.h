@@ -202,6 +202,45 @@ struct tcp_zerocopy_receive {
   __u32 msg_flags;
   __u32 reserved; /* set to 0 for now */
 };
+
+/* Copied from uapi/linux/if_xdp.h. The trailing `tx_metadata_len` field
+ * was added in Linux kernel 6.8; older kernel headers in the build env
+ * may lack it. The kernel parses XDP_UMEM_REG by `optlen`, so passing
+ * this struct on an older kernel just causes the trailing field to be
+ * ignored.
+ */
+struct xdp_umem_reg {
+  __u64 addr;
+  __u64 len;
+  __u32 chunk_size;
+  __u32 headroom;
+  __u32 flags;
+  __u32 tx_metadata_len;
+};
+
+/* Copied from uapi/linux/if_xdp.h. This type was added in Linux kernel
+ * 6.8; older kernel headers in the build env may lack it. Layout must
+ * remain byte-compatible with the kernel definition since the kernel
+ * reads it directly out of UMEM at runtime.
+ */
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wnested-anon-types")
+struct xsk_tx_metadata {
+  __u64 flags;
+
+  union {
+    struct {
+      __u16 csum_start;
+      __u16 csum_offset;
+      __u64 launch_time;
+    } request;
+
+    struct {
+      __u64 tx_timestamp;
+    } completion;
+  };
+};
+FOLLY_POP_WARNING
 } // namespace netops
 } // namespace folly
 #endif
@@ -247,6 +286,19 @@ struct mmsghdr {
 
 #ifndef IP_BIND_ADDRESS_NO_PORT
 #define IP_BIND_ADDRESS_NO_PORT 24
+#endif
+
+/* AF_XDP TX metadata flags. Added in Linux kernel 6.8. */
+#ifndef XDP_TX_METADATA
+#define XDP_TX_METADATA (1 << 1)
+#endif
+
+#ifndef XDP_TXMD_FLAGS_CHECKSUM
+#define XDP_TXMD_FLAGS_CHECKSUM (1 << 1)
+#endif
+
+#ifndef XDP_UMEM_TX_METADATA_LEN
+#define XDP_UMEM_TX_METADATA_LEN (1 << 2)
 #endif
 
 #endif
