@@ -1460,9 +1460,9 @@ class small_vector
       BaseType::kAlwaysUseHeap ||
       !is_invocable_r_v<size_t, AllocationSize, void*>;
 
-  // Threshold to control capacity heapifying.
-  static size_t constexpr kHeapifyCapacityThreshold =
-      (kMustTrackHeapifiedCapacity ? 0 : 100) * kHeapifyCapacitySize;
+  // Minimum heap allocation size (in bytes) before capacity is stored in a
+  // prefix at the front of the allocation. Zero means always store capacity.
+  static size_t constexpr kHeapifyCapacityThreshold = 0;
 
   static bool constexpr kAlwaysHasCapacity =
       kHasInlineCapacity || kMustTrackHeapifiedCapacity;
