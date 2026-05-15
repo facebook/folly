@@ -23,6 +23,7 @@ subdir = snappy-27ab5f7f518430a021239bc26a5b2fd64affbc7b
 
 [cmake.defines]
 SNAPPY_BUILD_TESTS = OFF
+SNAPPY_BUILD_BENCHMARKS = OFF
 
 # Avoid problems like `relocation R_X86_64_PC32 against symbol` on ELF systems
 # when linking rocksdb, which builds PIC even when building a static lib
