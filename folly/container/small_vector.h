@@ -877,6 +877,19 @@ class small_vector
     return MaxInline;
   }
 
+  // Returns the number of bytes used by the heap allocation, including any
+  // capacity prefix. Returns 0 when data is stored inline or not yet allocated.
+  size_t heap_allocation_size() const {
+    if (!this->isExtern() || !u.pdata_.heap_) {
+      return 0;
+    }
+    if (hasCapacity()) {
+      return u.getCapacity() * sizeof(value_type) +
+          u.pdata_.allocationExtraBytes();
+    }
+    return capacity() * sizeof(value_type);
+  }
+
   void shrink_to_fit() {
     if (!this->isExtern() || size() == capacity()) {
       return;
@@ -1464,6 +1477,7 @@ class small_vector
 
   void freeHeap() {
     if (!this->isExtern() || !u.pdata_.heap_) {
+      assert(heap_allocation_size() == 0);
       return;
     }
 
@@ -1471,8 +1485,10 @@ class small_vector
       auto extraBytes = u.pdata_.allocationExtraBytes();
       auto vp = detail::small_vector_detail::unshiftPointer(
           u.pdata_.heap_, extraBytes);
+      auto bytes = u.getCapacity() * sizeof(value_type) + extraBytes;
+      assert(heap_allocation_size() == bytes);
       annotate_object_collected(vp);
-      sizedFree(vp, u.getCapacity() * sizeof(value_type) + extraBytes);
+      sizedFree(vp, bytes);
     } else {
       auto vp = u.pdata_.heap_;
       annotate_object_collected(vp);
