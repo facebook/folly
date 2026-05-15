@@ -16,6 +16,7 @@
 
 #include <folly/small_vector.h>
 
+#include <array>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -87,6 +88,35 @@ static_assert(
 static_assert(
     sizeof(small_vector<int32_t, 1, policy_size_type<uint32_t>>) == 8 + 4,
     "small_vector<int32_t,1,uint32_t> is wrong size");
+
+// Types sized so that inline storage == HeapPtrWithCapacity size for a given
+// policy.  HeapPtrWithCapacity is packed: pointer(8) + InternalSizeType.
+// When the two are equal, capacity should be stored inline at zero cost.
+template <size_t N>
+using SizedType = std::array<char, N>;
+
+// 16 bytes == HeapPtrWithCapacity with default size_t policy (8+8).
+static_assert(sizeof(SizedType<16>) == 16);
+static_assert(
+    sizeof(small_vector<SizedType<16>, 1>) == 16 + sizeof(std::size_t),
+    "small_vector<SizedType<16>,1> should be 24 bytes — inline capacity fits "
+    "within the union at no extra cost");
+
+// 12 bytes == HeapPtrWithCapacity with uint32_t policy (8+4).
+static_assert(sizeof(SizedType<12>) == 12);
+static_assert(
+    sizeof(small_vector<SizedType<12>, 1, policy_size_type<uint32_t>>) ==
+        12 + sizeof(uint32_t),
+    "small_vector<SizedType<12>,1,uint32_t> should be 16 bytes — inline "
+    "capacity fits within the union at no extra cost");
+
+// 10 bytes == HeapPtrWithCapacity with uint16_t policy (8+2).
+static_assert(sizeof(SizedType<10>) == 10);
+static_assert(
+    sizeof(small_vector<SizedType<10>, 1, policy_size_type<uint16_t>>) ==
+        10 + sizeof(uint16_t),
+    "small_vector<SizedType<10>,1,uint16_t> should be 12 bytes — inline "
+    "capacity fits within the union at no extra cost");
 
 // Extra 2 bytes needed for alignment.
 static_assert(
