@@ -141,4 +141,28 @@ constexpr bool is_constant_evaluated_or(
 #endif
 }
 
+//  constexpr_memcpy
+//
+//  constexpr-compatible memcpy. Uses __builtin_memcpy when available as a
+//  constexpr builtin (dramatically faster in constexpr evaluation), otherwise
+//  falls back to a trivial byte-by-byte copy loop.
+template <typename T>
+constexpr T* constexpr_memcpy(
+    T* dest, const T* src, std::size_t count) noexcept {
+#if defined(__has_constexpr_builtin)
+#if __has_constexpr_builtin(__builtin_memcpy)
+  __builtin_memcpy(dest, src, count * sizeof(T));
+#else
+  for (std::size_t i = 0; i < count; ++i) {
+    dest[i] = src[i];
+  }
+#endif
+#else
+  for (std::size_t i = 0; i < count; ++i) {
+    dest[i] = src[i];
+  }
+#endif
+  return dest;
+}
+
 } // namespace folly
