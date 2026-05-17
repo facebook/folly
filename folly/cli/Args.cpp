@@ -144,6 +144,11 @@ cli_parse_result cli_parse_args_from_content(std::string_view content) {
   size_t token_start_col = 0;
   size_t token_end_line = 0;
   size_t token_end_col = 0;
+  // Byte offset in content of the last non-whitespace character seen in the
+  // current token.  Updated in every branch that also updates token_end_line/
+  // col so that the EOF path can compute length in O(1) without a backward
+  // scan of content.
+  size_t token_end_offset = 0;
 
   // Helper to finalize and push a token
   auto push_token = [&](size_t end_pos) {
@@ -187,6 +192,7 @@ cli_parse_result cli_parse_args_from_content(std::string_view content) {
         in_single_quotes = false;
         token_end_line = line;
         token_end_col = col;
+        token_end_offset = i;
         col++;
         continue;
       }
@@ -195,6 +201,7 @@ cli_parse_result cli_parse_args_from_content(std::string_view content) {
       chars_in_token++;
       token_end_line = line;
       token_end_col = col;
+      token_end_offset = i;
       if (c == '\n') {
         line++;
         col = 1;
@@ -214,6 +221,7 @@ cli_parse_result cli_parse_args_from_content(std::string_view content) {
       }
       token_end_line = line;
       token_end_col = col;
+      token_end_offset = i;
       switch (c) {
         case 'n':
           current += '\n';
@@ -265,6 +273,7 @@ cli_parse_result cli_parse_args_from_content(std::string_view content) {
       }
       token_end_line = line;
       token_end_col = col;
+      token_end_offset = i;
       escaped = true;
       col++;
       continue;
@@ -286,6 +295,7 @@ cli_parse_result cli_parse_args_from_content(std::string_view content) {
       }
       token_end_line = line;
       token_end_col = col;
+      token_end_offset = i;
       in_single_quotes = true;
       quote_start_line = line;
       quote_start_col = col;
@@ -303,6 +313,7 @@ cli_parse_result cli_parse_args_from_content(std::string_view content) {
       }
       token_end_line = line;
       token_end_col = col;
+      token_end_offset = i;
       if (in_double_quotes) {
         in_double_quotes = false;
       } else {
@@ -337,6 +348,7 @@ cli_parse_result cli_parse_args_from_content(std::string_view content) {
     if (!cli_is_space(c)) {
       token_end_line = line;
       token_end_col = col;
+      token_end_offset = i;
     }
 
     // Track @ prefix: only meaningful when outside quotes
@@ -381,29 +393,19 @@ cli_parse_result cli_parse_args_from_content(std::string_view content) {
   }
 
   if (!current.empty()) {
-    // Strip trailing whitespace from the last token
-    // This handles cases where the file ends with whitespace inside quotes
-    // or simply trailing whitespace at the end
-    while (!current.empty()) {
-      char c = current.back();
-      if (cli_is_space(c)) {
-        current.pop_back();
-      } else {
-        break;
-      }
+    // Strip trailing whitespace from the token value.  This handles the case
+    // where a token accumulates spaces while inside double-quotes that were
+    // then left open until EOF (which would have been caught above), or any
+    // other edge case that leaves spaces at the tail of `current`.
+    while (!current.empty() && cli_is_space(current.back())) {
+      current.pop_back();
     }
 
     if (!current.empty()) {
-      size_t length = content.size() - token_start;
-      // Find the actual end of the token (excluding trailing whitespace)
-      for (size_t i = content.size(); i > token_start; --i) {
-        char c = content[i - 1];
-        if (!cli_is_space(c)) {
-          length = i - token_start;
-          break;
-        }
-      }
-
+      // token_end_offset is the byte index of the last non-whitespace character
+      // in this token, maintained throughout the main scan loop.  Using it
+      // avoids a second backward scan over `content` to recompute length.
+      size_t length = token_end_offset + 1 - token_start;
       parse_result.args.push_back(
           {std::move(current),
            token_start,
