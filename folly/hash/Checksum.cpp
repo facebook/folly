@@ -19,8 +19,6 @@
 #include <algorithm>
 #include <stdexcept> // IWYU pragma: keep
 
-#include <boost/crc.hpp>
-
 #include <folly/CpuId.h>
 #include <folly/detail/TrapOnAvx512.h>
 #include <folly/external/fast-crc32/avx512_crc32c_v8s3x4.h> // @manual
@@ -177,38 +175,46 @@ bool crc32c_hw_supported_neon_eor3_sha3() {
 }
 #endif
 
-template <uint32_t CRC_POLYNOMIAL>
-uint32_t crc_sw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
-  // Reverse the bits in the starting checksum so they'll be in the
-  // right internal format for Boost's CRC engine.
-  //     O(1)-time, branchless bit reversal algorithm from
-  //     http://graphics.stanford.edu/~seander/bithacks.html
-  startingChecksum = ((startingChecksum >> 1) & 0x55555555) |
-      ((startingChecksum & 0x55555555) << 1);
-  startingChecksum = ((startingChecksum >> 2) & 0x33333333) |
-      ((startingChecksum & 0x33333333) << 2);
-  startingChecksum = ((startingChecksum >> 4) & 0x0f0f0f0f) |
-      ((startingChecksum & 0x0f0f0f0f) << 4);
-  startingChecksum = ((startingChecksum >> 8) & 0x00ff00ff) |
-      ((startingChecksum & 0x00ff00ff) << 8);
-  startingChecksum = (startingChecksum >> 16) | (startingChecksum << 16);
+namespace {
 
-  boost::crc_optimal<32, CRC_POLYNOMIAL, ~0U, 0, true, true> sum(
-      startingChecksum);
-  sum.process_bytes(data, nbytes);
-  return sum.checksum();
+template <uint32_t CRC_POLYNOMIAL_BIT_REVERSED>
+struct CrcSwTable {
+  uint32_t entries[256];
+  constexpr CrcSwTable() : entries{} {
+    for (uint32_t i = 0; i < 256; i++) {
+      uint32_t crc = i;
+      for (int j = 0; j < 8; j++) {
+        crc = (crc & 1) ? (crc >> 1) ^ CRC_POLYNOMIAL_BIT_REVERSED : (crc >> 1);
+      }
+      entries[i] = crc;
+    }
+  }
+};
+
+} // namespace
+
+template <uint32_t CRC_POLYNOMIAL_BIT_REVERSED>
+uint32_t crc_sw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
+  static constexpr CrcSwTable<CRC_POLYNOMIAL_BIT_REVERSED> table{};
+  uint32_t crc = startingChecksum;
+  for (size_t i = 0; i < nbytes; i++) {
+    crc = table.entries[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
+  }
+  return crc;
 }
 
 uint32_t crc32c_sw(
     const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
-  constexpr uint32_t CRC32C_POLYNOMIAL = 0x1EDC6F41;
-  return crc_sw<CRC32C_POLYNOMIAL>(data, nbytes, startingChecksum);
+  // Bit-reversed from CRC-32C polynomial 0x1EDC6F41
+  constexpr uint32_t CRC32C_POLYNOMIAL_BIT_REVERSED = 0x82F63B78;
+  return crc_sw<CRC32C_POLYNOMIAL_BIT_REVERSED>(data, nbytes, startingChecksum);
 }
 
 uint32_t crc32_sw(
     const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
-  constexpr uint32_t CRC32_POLYNOMIAL = 0x04C11DB7;
-  return crc_sw<CRC32_POLYNOMIAL>(data, nbytes, startingChecksum);
+  // Bit-reversed from CRC-32 polynomial 0x04C11DB7
+  constexpr uint32_t CRC32_POLYNOMIAL_BIT_REVERSED = 0xEDB88320;
+  return crc_sw<CRC32_POLYNOMIAL_BIT_REVERSED>(data, nbytes, startingChecksum);
 }
 
 } // namespace detail
