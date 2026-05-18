@@ -514,6 +514,61 @@ void benchmarkCombineHardwareCrc32c(unsigned long iters, size_t blockSize) {
   }
 }
 
+// Small blocks where per-call overhead dominates over per-byte work.
+BENCHMARK(crc32c_hardware_8B_block, iters) {
+  benchmarkHardwareCRC32C(iters, 8);
+}
+
+BENCHMARK(crc32c_software_8B_block, iters) {
+  benchmarkSoftwareCRC32C(iters, 8);
+}
+
+BENCHMARK(crc32_hardware_8B_block, iters) {
+  benchmarkHardwareCRC32(iters, 8);
+}
+
+BENCHMARK(crc32_software_8B_block, iters) {
+  benchmarkSoftwareCRC32(iters, 8);
+}
+
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(crc32c_hardware_32B_block, iters) {
+  benchmarkHardwareCRC32C(iters, 32);
+}
+
+BENCHMARK(crc32c_software_32B_block, iters) {
+  benchmarkSoftwareCRC32C(iters, 32);
+}
+
+BENCHMARK(crc32_hardware_32B_block, iters) {
+  benchmarkHardwareCRC32(iters, 32);
+}
+
+BENCHMARK(crc32_software_32B_block, iters) {
+  benchmarkSoftwareCRC32(iters, 32);
+}
+
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(crc32c_hardware_128B_block, iters) {
+  benchmarkHardwareCRC32C(iters, 128);
+}
+
+BENCHMARK(crc32c_software_128B_block, iters) {
+  benchmarkSoftwareCRC32C(iters, 128);
+}
+
+BENCHMARK(crc32_hardware_128B_block, iters) {
+  benchmarkHardwareCRC32(iters, 128);
+}
+
+BENCHMARK(crc32_software_128B_block, iters) {
+  benchmarkSoftwareCRC32(iters, 128);
+}
+
+BENCHMARK_DRAW_LINE();
+
 // This test fits easily in the L1 cache on modern server processors,
 // and thus it mainly measures the speed of the checksum computation.
 BENCHMARK(crc32c_hardware_1KB_block, iters) {
