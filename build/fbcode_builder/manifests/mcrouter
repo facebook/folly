@@ -32,6 +32,9 @@ fbcode/mcrouter = mcrouter
 [build]
 builder = cmake
 
+[build.os=windows]
+builder = nop
+
 [cmake.defines]
 BUILD_SHARED_LIBS=OFF
 
