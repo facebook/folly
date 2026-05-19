@@ -1,12 +1,15 @@
 [manifest]
 name = glog
 
-# Pinned to v0.6.0 rather than v0.7.1 because v0.7.1 raises
-# cmake_minimum_required to 3.22, above the CMake 3.20.4 that getdeps ships.
-# v0.6.0 sets cmake_minimum_required(VERSION 3.16), within getdeps' range.
+# Pinned to a post-v0.6.0 master commit rather than v0.7.x because v0.7.0
+# raises cmake_minimum_required to 3.22, above the CMake 3.20.4 that getdeps
+# ships. This rev (2023-10-04) is the last commit before that bump; it gains
+# the cmake_policy(VERSION 3.16...3.27) fix in cmake/GetCacheVariables.cmake
+# (required for CMake 4.x as shipped in ubuntu:latest Docker images) while
+# keeping cmake_minimum_required(VERSION 3.16), within getdeps' range.
 [git]
 repo_url = https://github.com/google/glog.git
-rev = b33e3bad4c46c8a6345525fd822af355e5ef9446
+rev = 3411d58669fe07e70335b252299432a00d1e7c6c
 
 [build]
 builder = cmake
