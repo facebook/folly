@@ -23,11 +23,11 @@
 #include <folly/system/ThreadName.h>
 #include <folly/tracing/StaticTracepoint.h>
 
-DEFINE_uint64(
+FOLLY_GFLAGS_DEFINE_uint64(
     folly_striped_throttled_lifo_sem_balancer_period_us,
     100'000,
     "How frequently StripedThrottledLifoSem load balancing is run");
-DEFINE_uint64(
+FOLLY_GFLAGS_DEFINE_uint64(
     folly_striped_throttled_lifo_sem_balancer_backoff_us,
     1'000,
     "When an iteration of StripedThrottledLifoSem load balancing actually "
