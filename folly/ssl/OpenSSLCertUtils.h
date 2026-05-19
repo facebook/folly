@@ -33,13 +33,13 @@ namespace ssl {
 class OpenSSLCertUtils {
  public:
   // Note: non-const until OpenSSL 1.1.0
-  static Optional<std::string> getCommonName(X509& x509);
+  static Optional<std::string> getCommonName(const X509& x509);
 
-  static Optional<std::string> getIssuerCommonName(X509& x509);
+  static Optional<std::string> getIssuerCommonName(const X509& x509);
 
-  static std::vector<std::string> getSubjectAltNames(X509& x509);
+  static std::vector<std::string> getSubjectAltNames(const X509& x509);
 
-  static std::vector<std::string> getSubjectAltNameURIs(X509& x509);
+  static std::vector<std::string> getSubjectAltNameURIs(const X509& x509);
 
   /**
    * Return the Extended Key Usage (EKU) entries, if any, from the cert.
@@ -47,31 +47,31 @@ class OpenSSLCertUtils {
    * @param x509    Reference to an X509
    * @return vector of EKU OID strings.
    */
-  static std::vector<std::string> getExtendedKeyUsage(X509& x509);
+  static std::vector<std::string> getExtendedKeyUsage(const X509& x509);
 
   /*
    * Return the subject name, if any, from the cert
    * @param x509    Reference to an X509
    * @return a folly::Optional<std::string>, or folly::none
    */
-  static Optional<std::string> getSubject(X509& x509);
+  static Optional<std::string> getSubject(const X509& x509);
 
   /*
    * Return the issuer name, if any, from the cert
    * @param x509    Reference to an X509
    * @return a folly::Optional<std::string>, or folly::none
    */
-  static Optional<std::string> getIssuer(X509& x509);
+  static Optional<std::string> getIssuer(const X509& x509);
 
   /*
    * Get a string representation of the not-before time on the certificate
    */
-  static std::string getNotBeforeTime(X509& x509);
+  static std::string getNotBeforeTime(const X509& x509);
 
   /*
    * Get a string representation of the not-after (expiration) time
    */
-  static std::string getNotAfterTime(X509& x509);
+  static std::string getNotAfterTime(const X509& x509);
 
   /*
    * Get a set of strings containing data for a given cert extension
@@ -81,7 +81,7 @@ class OpenSSLCertUtils {
    *         entries with the requested name
    */
   static std::vector<std::string> getExtension(
-      X509& x509, folly::StringPiece oid);
+      const X509& x509, folly::StringPiece oid);
 
   /*
    * return a vector of name <-> value pairs for all  extensions contaiend
@@ -91,7 +91,7 @@ class OpenSSLCertUtils {
    *         extension oid, and the second value is the extension value.
    */
   static std::vector<std::pair<std::string, std::string>> getAllExtensions(
-      X509& x509);
+      const X509& x509);
 
   /*
    * Summarize the CN, Subject, Issuer, Validity, and extensions as a string
@@ -140,8 +140,9 @@ class OpenSSLCertUtils {
    * NOTE: The returned digest will be in binary, and may need to be
    * hex-encoded
    */
-  static std::array<uint8_t, SHA_DIGEST_LENGTH> getDigestSha1(X509& x509);
-  static std::array<uint8_t, SHA256_DIGEST_LENGTH> getDigestSha256(X509& x509);
+  static std::array<uint8_t, SHA_DIGEST_LENGTH> getDigestSha1(const X509& x509);
+  static std::array<uint8_t, SHA256_DIGEST_LENGTH> getDigestSha256(
+      const X509& x509);
 
   /**
    * Read a store from a file. Throw if unable to read the file, memory
