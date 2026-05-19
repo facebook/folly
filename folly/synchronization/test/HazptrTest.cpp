@@ -361,6 +361,36 @@ void basic_protection_test() {
 }
 
 template <template <typename> class Atom = std::atomic>
+void callable_source_try_protect_test() {
+  c_.clear();
+  auto first = new Node<Atom>(1);
+  auto second = new Node<Atom>(2);
+  auto* src = first;
+  auto* ptr = first;
+
+  hazptr_holder<Atom> h = make_hazard_pointer<Atom>();
+  ASSERT_TRUE(h.try_protect(ptr, [&]() noexcept { return src; }));
+  EXPECT_EQ(ptr, first);
+
+  src = second;
+  ASSERT_FALSE(h.try_protect(ptr, [&]() noexcept { return src; }));
+  EXPECT_EQ(ptr, second);
+
+  first->retire();
+  hazptr_cleanup<Atom>();
+  EXPECT_EQ(c_.dtors(), 1);
+
+  ASSERT_TRUE(h.try_protect(ptr, [&]() noexcept { return src; }));
+  second->retire();
+  hazptr_cleanup<Atom>();
+  EXPECT_EQ(c_.dtors(), 1);
+
+  h.reset_protection();
+  hazptr_cleanup<Atom>();
+  EXPECT_EQ(c_.dtors(), 2);
+}
+
+template <template <typename> class Atom = std::atomic>
 void virtual_test() {
   struct Thing : public hazptr_obj_base<Thing, Atom> {
     virtual ~Thing() {}
@@ -1134,9 +1164,18 @@ TEST(HazptrTest, basicProtection) {
   basic_protection_test();
 }
 
+TEST(HazptrTest, callableSourceTryProtect) {
+  callable_source_try_protect_test();
+}
+
 TEST_F(HazptrPreInitTest, dsched_basic_protection) {
   DSched sched(DSched::uniform(0));
   basic_protection_test<DeterministicAtomic>();
+}
+
+TEST_F(HazptrPreInitTest, dsched_callable_source_try_protect) {
+  DSched sched(DSched::uniform(0));
+  callable_source_try_protect_test<DeterministicAtomic>();
 }
 
 TEST(HazptrTest, virtual) {
