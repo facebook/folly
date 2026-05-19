@@ -103,15 +103,16 @@ Optional<std::string> commonName(X509_NAME* name) {
 
 } // namespace
 
-Optional<std::string> OpenSSLCertUtils::getCommonName(X509& x509) {
+Optional<std::string> OpenSSLCertUtils::getCommonName(const X509& x509) {
   return commonName(X509_get_subject_name(&x509));
 }
 
-Optional<std::string> OpenSSLCertUtils::getIssuerCommonName(X509& x509) {
+Optional<std::string> OpenSSLCertUtils::getIssuerCommonName(const X509& x509) {
   return commonName(X509_get_issuer_name(&x509));
 }
 
-std::vector<std::string> OpenSSLCertUtils::getSubjectAltNames(X509& x509) {
+std::vector<std::string> OpenSSLCertUtils::getSubjectAltNames(
+    const X509& x509) {
   auto names = reinterpret_cast<STACK_OF(GENERAL_NAME)*>(
       X509_get_ext_d2i(&x509, NID_subject_alt_name, nullptr, nullptr));
   if (!names) {
@@ -139,7 +140,8 @@ std::vector<std::string> OpenSSLCertUtils::getSubjectAltNames(X509& x509) {
   return ret;
 }
 
-std::vector<std::string> OpenSSLCertUtils::getSubjectAltNameURIs(X509& x509) {
+std::vector<std::string> OpenSSLCertUtils::getSubjectAltNameURIs(
+    const X509& x509) {
   auto names = reinterpret_cast<STACK_OF(GENERAL_NAME)*>(
       X509_get_ext_d2i(&x509, NID_subject_alt_name, nullptr, nullptr));
   if (!names) {
@@ -168,7 +170,8 @@ std::vector<std::string> OpenSSLCertUtils::getSubjectAltNameURIs(X509& x509) {
   return ret;
 }
 
-std::vector<std::string> OpenSSLCertUtils::getExtendedKeyUsage(X509& x509) {
+std::vector<std::string> OpenSSLCertUtils::getExtendedKeyUsage(
+    const X509& x509) {
   auto ekuExtension = reinterpret_cast<EXTENDED_KEY_USAGE*>(
       X509_get_ext_d2i(&x509, NID_ext_key_usage, nullptr, nullptr));
   if (!ekuExtension) {
@@ -200,7 +203,7 @@ std::vector<std::string> OpenSSLCertUtils::getExtendedKeyUsage(X509& x509) {
   return ekuOids;
 }
 
-Optional<std::string> OpenSSLCertUtils::getSubject(X509& x509) {
+Optional<std::string> OpenSSLCertUtils::getSubject(const X509& x509) {
   auto subject = X509_get_subject_name(&x509);
   if (!subject) {
     return none;
@@ -219,7 +222,7 @@ Optional<std::string> OpenSSLCertUtils::getSubject(X509& x509) {
   return std::string(bioData, bioLen);
 }
 
-Optional<std::string> OpenSSLCertUtils::getIssuer(X509& x509) {
+Optional<std::string> OpenSSLCertUtils::getIssuer(const X509& x509) {
   auto issuer = X509_get_issuer_name(&x509);
   if (!issuer) {
     return none;
@@ -240,7 +243,7 @@ Optional<std::string> OpenSSLCertUtils::getIssuer(X509& x509) {
 }
 
 std::vector<std::string> OpenSSLCertUtils::getExtension(
-    X509& x509, folly::StringPiece oid) {
+    const X509& x509, folly::StringPiece oid) {
   std::vector<std::string> extValues;
   for (int i = 0; i < X509_get_ext_count(&x509); i++) {
     X509_EXTENSION* extension = X509_get_ext(&x509, i);
@@ -253,7 +256,7 @@ std::vector<std::string> OpenSSLCertUtils::getExtension(
 }
 
 std::vector<std::pair<std::string, std::string>>
-OpenSSLCertUtils::getAllExtensions(X509& x509) {
+OpenSSLCertUtils::getAllExtensions(const X509& x509) {
   std::vector<std::pair<std::string, std::string>> extensions;
   for (int i = 0; i < X509_get_ext_count(&x509); i++) {
     X509_EXTENSION* extension = X509_get_ext(&x509, i);
@@ -291,11 +294,11 @@ folly::Optional<std::string> OpenSSLCertUtils::toString(X509& x509) {
   }
 }
 
-std::string OpenSSLCertUtils::getNotAfterTime(X509& x509) {
+std::string OpenSSLCertUtils::getNotAfterTime(const X509& x509) {
   return getDateTimeStr(X509_get0_notAfter(&x509));
 }
 
-std::string OpenSSLCertUtils::getNotBeforeTime(X509& x509) {
+std::string OpenSSLCertUtils::getNotBeforeTime(const X509& x509) {
   return getDateTimeStr(X509_get0_notBefore(&x509));
 }
 
@@ -418,7 +421,7 @@ std::vector<X509UniquePtr> OpenSSLCertUtils::readCertsFromBuffer(
 }
 
 std::array<uint8_t, SHA_DIGEST_LENGTH> OpenSSLCertUtils::getDigestSha1(
-    X509& x509) {
+    const X509& x509) {
   unsigned int len;
   std::array<uint8_t, SHA_DIGEST_LENGTH> md;
   int rc = X509_digest(&x509, EVP_sha1(), md.data(), &len);
@@ -430,7 +433,7 @@ std::array<uint8_t, SHA_DIGEST_LENGTH> OpenSSLCertUtils::getDigestSha1(
 }
 
 std::array<uint8_t, SHA256_DIGEST_LENGTH> OpenSSLCertUtils::getDigestSha256(
-    X509& x509) {
+    const X509& x509) {
   unsigned int len;
   std::array<uint8_t, SHA256_DIGEST_LENGTH> md;
   int rc = X509_digest(&x509, EVP_sha256(), md.data(), &len);
