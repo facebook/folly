@@ -129,6 +129,7 @@ class IoUringProvidedBufferRing {
   };
 
   static void checkInvariants();
+  static void bufFreeFn(void*, void* userData) noexcept;
 
   // Hot fields
   alignas(folly::hardware_constructive_interference_size)
