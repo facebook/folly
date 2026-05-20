@@ -275,6 +275,7 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/glog:glog",
         ":static_singleton_manager",
         ":unique_instance",
+        "//folly:cpp_attributes",
         "//folly:exception",
         "//folly:function",
         "//folly:map_util",

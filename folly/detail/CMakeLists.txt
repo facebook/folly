@@ -353,6 +353,7 @@ folly_add_library(
     folly_concurrency_container_atomic_grow_array
     folly_container_f14_hash
     folly_container_foreach
+    folly_cpp_attributes
     folly_detail_static_singleton_manager
     folly_detail_unique_instance
     folly_exception

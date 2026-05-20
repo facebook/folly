@@ -28,6 +28,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/CppAttributes.h>
 #include <folly/Exception.h>
 #include <folly/Function.h>
 #include <folly/MapUtil.h>
@@ -674,6 +675,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     return threadEntry;
   }
 
+  [[FOLLY_ATTR_CLANG_NO_THREAD_SAFETY_ANALYSIS]]
   static bool preFork() {
     auto& meta = instance();
     bool gotLock = meta.forkHandlerLock_.try_lock(); // Make sure it's created
@@ -688,6 +690,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     return true;
   }
 
+  [[FOLLY_ATTR_CLANG_NO_THREAD_SAFETY_ANALYSIS]]
   static void onForkParent() {
     auto& meta = instance();
     meta.lock_.unlock();
@@ -695,6 +698,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     meta.forkHandlerLock_.unlock();
   }
 
+  [[FOLLY_ATTR_CLANG_NO_THREAD_SAFETY_ANALYSIS]]
   static void onForkChild() {
     auto& meta = instance();
     // only the current thread survives
