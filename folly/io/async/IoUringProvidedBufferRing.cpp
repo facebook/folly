@@ -173,14 +173,6 @@ void IoUringProvidedBufferRing::destroy() noexcept {
 }
 
 void IoUringProvidedBufferRing::returnBuffer(uint16_t i) noexcept {
-  std::unique_lock lock{mutex_};
-  if (FOLLY_UNLIKELY(wantsShutdown_)) {
-    auto refs = --shutdownReferences_;
-    lock.unlock();
-    delayedDestroy(refs);
-    return;
-  }
-
   if (useIncremental_) {
     bufferStates_[i].offset = 0;
     bufferStates_[i].refCount.store(1);
@@ -349,9 +341,17 @@ void IoUringProvidedBufferRing::incBufferState(
 }
 
 void IoUringProvidedBufferRing::decBufferState(uint16_t bufId) noexcept {
+  std::unique_lock lock{mutex_};
   returnedBuffers_++;
 
-  if (!useIncremental_ || wantsShutdown_) {
+  if (FOLLY_UNLIKELY(wantsShutdown_)) {
+    auto refs = --shutdownReferences_;
+    lock.unlock();
+    delayedDestroy(refs);
+    return;
+  }
+
+  if (!useIncremental_) {
     returnBuffer(bufId);
     return;
   }
