@@ -333,6 +333,11 @@ std::shared_ptr<U> to_shared_ptr_aliasing(std::shared_ptr<T> const& r, U* ptr) {
   return std::shared_ptr<U>(r, ptr);
 }
 
+template <typename T, typename U>
+std::shared_ptr<U> to_shared_ptr_aliasing(std::shared_ptr<T>&& r, U* ptr) {
+  return std::shared_ptr<U>(std::move(r), ptr);
+}
+
 /**
  *  to_shared_ptr_non_owning
  */
