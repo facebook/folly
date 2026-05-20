@@ -16,6 +16,10 @@
 
 #include <folly/io/async/IoUringProvidedBufferRing.h>
 
+#include <atomic>
+#include <thread>
+#include <vector>
+
 #include <gtest/gtest.h>
 
 #if FOLLY_HAS_LIBURING
@@ -33,6 +37,7 @@ class IoUringProvidedBufferRingTestHelper {
       : ring(ring) {}
 
   uint32_t getRingCount() { return ring.ringCount_; }
+  uint32_t getReturnedBuffers() { return ring.returnedBuffers_; }
 
   IoUringProvidedBufferRing& ring;
 };
@@ -105,6 +110,58 @@ TEST_F(IoUringProvidedBufferRingTest, DelayedDestruction) {
   buf1.reset();
   bufRing.reset();
   buf2.reset();
+}
+
+TEST_F(IoUringProvidedBufferRingTest, ConcurrentDecBufferState) {
+  constexpr size_t kBufsPerThread = 1024;
+  constexpr int kNumThreads = 16;
+  constexpr uint32_t kBufferCount = kBufsPerThread * kNumThreads;
+
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = kBufferCount,
+      .bufferSize = 64,
+      .useHugePages = false,
+  };
+  auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
+
+  // Acquire all buffers
+  std::vector<std::unique_ptr<IOBuf>> bufs;
+  bufs.reserve(kBufferCount);
+  for (uint32_t i = 0; i < kBufferCount; i++) {
+    bufs.push_back(bufRing->getIoBuf(i, 32, false));
+  }
+
+  // Distribute buffers across threads
+  std::atomic<bool> go{false};
+  std::vector<std::thread> threads;
+  for (int t = 0; t < kNumThreads; t++) {
+    size_t start = t * kBufsPerThread;
+    std::vector<std::unique_ptr<IOBuf>> threadBufs;
+    threadBufs.reserve(kBufsPerThread);
+    for (size_t i = start; i < start + kBufsPerThread; i++) {
+      threadBufs.push_back(std::move(bufs[i]));
+    }
+
+    threads.emplace_back([&go, threadBufs = std::move(threadBufs)]() mutable {
+      while (!go.load(std::memory_order_acquire)) {
+      }
+      // Each reset triggers free_fn -> decBufferState
+      for (auto& buf : threadBufs) {
+        buf.reset();
+      }
+    });
+  }
+
+  go.store(true, std::memory_order_release);
+  for (auto& t : threads) {
+    t.join();
+  }
+
+  IoUringProvidedBufferRingTestHelper helper(*bufRing);
+  EXPECT_EQ(helper.getReturnedBuffers(), kBufferCount);
 }
 
 #endif
