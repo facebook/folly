@@ -1399,5 +1399,79 @@ TEST(Observer, TestObservableGetName) {
   EXPECT_EQ(**observer, 42);
   EXPECT_EQ(observer.getCreatorName(), "MyName");
 }
+TEST(Observer, WithBasic) {
+  SimpleObservable<int> observable(42);
+  auto observer = observable.getObserver();
+
+  auto result = observer.with([](const int& val) { return val + 1; });
+
+  EXPECT_EQ(43, result);
+}
+
+TEST(Observer, WithStruct) {
+  struct Config {
+    std::string name;
+    int value;
+  };
+
+  SimpleObservable<Config> observable(Config{"hello", 10});
+  auto observer = observable.getObserver();
+
+  auto name = observer.with([](const Config& cfg) { return cfg.name; });
+  EXPECT_EQ("hello", name);
+
+  auto value = observer.with([](const Config& cfg) { return cfg.value; });
+  EXPECT_EQ(10, value);
+}
+
+TEST(Observer, WithReturnsDecayedType) {
+  SimpleObservable<std::string> observable("test");
+  auto observer = observable.getObserver();
+
+  auto result = observer.with([](const std::string& s) { return s; });
+  static_assert(std::is_same_v<decltype(result), std::string>);
+  EXPECT_EQ("test", result);
+}
+
+TEST(Observer, WithVoidReturn) {
+  SimpleObservable<int> observable(42);
+  auto observer = observable.getObserver();
+
+  int captured = 0;
+  observer.with([&](const int& val) { captured = val; });
+  EXPECT_EQ(42, captured);
+}
+
+TEST(Observer, WithSeesUpdatedValue) {
+  SimpleObservable<int> observable(1);
+  auto observer = observable.getObserver();
+
+  EXPECT_EQ(1, observer.with([](const int& v) { return v; }));
+
+  folly::Baton<> baton;
+  auto waitingObserver = makeObserver([observer, &baton]() {
+    *observer;
+    baton.post();
+    return folly::Unit();
+  });
+  baton.reset();
+
+  observable.setValue(2);
+  EXPECT_TRUE(baton.try_wait_for(std::chrono::seconds{1}));
+
+  EXPECT_EQ(2, observer.with([](const int& v) { return v; }));
+}
+
+TEST(Observer, WithNoexceptPropagation) {
+  SimpleObservable<int> observable(42);
+  auto observer = observable.getObserver();
+
+  auto nothrowLambda = [](const int& v) noexcept { return v; };
+  auto throwLambda = [](const int& v) { return v; };
+
+  static_assert(noexcept(observer.with(nothrowLambda)));
+  static_assert(!noexcept(observer.with(throwLambda)));
+}
+
 } // namespace observer
 } // namespace folly
