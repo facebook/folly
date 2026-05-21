@@ -299,12 +299,6 @@ class Optional : private detail::OptionalCopyAssignBase<Value> {
                                        Args...>::value)
       : Optional{PrivateConstructor{}, il, std::forward<Args>(args)...} {}
 
-  // Used only when an Optional is used with coroutines on MSVC
-  /* implicit */ Optional(const detail::OptionalPromiseReturn<Value>& p)
-      : Optional{} {
-    p.promise_->value_ = this;
-  }
-
   // Conversions to ease migration to std::optional
 
   /// Allow construction of Optional from std::optional.
