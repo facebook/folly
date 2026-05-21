@@ -88,6 +88,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         run_tests = args.enable_tests and gh("run_tests") != "off"
         rust_version = gh("rust_version") or "stable"
         use_sccache = gh("sccache") != "off" and not build_opts.is_windows()
+        use_homebrew_llvm = build_opts.is_darwin()
         override_build_type = args.build_type or gh("build_type")
         timeout_minutes = gh("timeout_minutes") or "60"
         if run_tests:
@@ -126,6 +127,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
             run_tests=run_tests,
             rust_version=rust_version,
             use_sccache=use_sccache,
+            use_homebrew_llvm=use_homebrew_llvm,
             override_build_type=override_build_type,
             timeout_minutes=timeout_minutes,
             tests_arg=tests_arg,
@@ -150,6 +152,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         run_tests: bool,
         rust_version: str,
         use_sccache: bool,
+        use_homebrew_llvm: bool,
         override_build_type,
         timeout_minutes,
         tests_arg: str,
@@ -167,6 +170,9 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
             env_lines.append(
                 "DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer"
             )
+        if use_homebrew_llvm:
+            env_lines.append("CC: /opt/homebrew/opt/llvm/bin/clang")
+            env_lines.append("CXX: /opt/homebrew/opt/llvm/bin/clang++")
         if use_sccache:
             env_lines.append('SCCACHE_GHA_ENABLED: "on"')
 
@@ -338,6 +344,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
             "is_darwin": build_opts.is_darwin(),
             "is_windows": build_opts.is_windows(),
             "use_sccache": use_sccache,
+            "use_homebrew_llvm": use_homebrew_llvm,
             "free_up_disk": build_opts.free_up_disk,
             "free_up_disk_before_build": args.free_up_disk_before_build,
             "system_deps": system_deps,

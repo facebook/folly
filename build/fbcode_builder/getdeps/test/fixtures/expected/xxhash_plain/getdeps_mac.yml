@@ -20,6 +20,8 @@ jobs:
     timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      CC: /opt/homebrew/opt/llvm/bin/clang
+      CXX: /opt/homebrew/opt/llvm/bin/clang++
       SCCACHE_GHA_ENABLED: "on"
     steps:
 
@@ -35,6 +37,9 @@ jobs:
       uses: mozilla-actions/sccache-action@v0.0.9
       with:
         version: "v0.14.0"
+
+    - name: Install Homebrew LLVM
+      run: brew install llvm
 
     - id: paths
       name: Query paths
