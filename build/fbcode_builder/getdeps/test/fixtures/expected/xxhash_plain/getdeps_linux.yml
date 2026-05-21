@@ -39,39 +39,13 @@ jobs:
       name: Query paths
       run: python3 build/fbcode_builder/getdeps.py query-paths --recursive --src-dir=. xxhash  >> "$GITHUB_OUTPUT"
 
-    - name: Restore ninja from cache
-      id: restore_ninja
-      if: ${{ steps.paths.outputs.ninja_SOURCE }}
-      uses: actions/cache/restore@v4
-      with:
-       path: ${{ steps.paths.outputs.ninja_INSTALL }}
-       key: ${{ steps.paths.outputs.ninja_CACHE_KEY }}-install
     - name: Build ninja
-      if: ${{ steps.paths.outputs.ninja_SOURCE && ! steps.restore_ninja.outputs.cache-hit }}
+      if: ${{ steps.paths.outputs.ninja_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --no-tests ninja
-    - name: Save ninja to cache
-      uses: actions/cache/save@v4
-      if: ${{ steps.paths.outputs.ninja_SOURCE && ! steps.restore_ninja.outputs.cache-hit }}
-      with:
-       path: ${{ steps.paths.outputs.ninja_INSTALL }}
-       key: ${{ steps.paths.outputs.ninja_CACHE_KEY }}-install
 
-    - name: Restore cmake from cache
-      id: restore_cmake
-      if: ${{ steps.paths.outputs.cmake_SOURCE }}
-      uses: actions/cache/restore@v4
-      with:
-       path: ${{ steps.paths.outputs.cmake_INSTALL }}
-       key: ${{ steps.paths.outputs.cmake_CACHE_KEY }}-install
     - name: Build cmake
-      if: ${{ steps.paths.outputs.cmake_SOURCE && ! steps.restore_cmake.outputs.cache-hit }}
+      if: ${{ steps.paths.outputs.cmake_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --no-tests cmake
-    - name: Save cmake to cache
-      uses: actions/cache/save@v4
-      if: ${{ steps.paths.outputs.cmake_SOURCE && ! steps.restore_cmake.outputs.cache-hit }}
-      with:
-       path: ${{ steps.paths.outputs.cmake_INSTALL }}
-       key: ${{ steps.paths.outputs.cmake_CACHE_KEY }}-install
 
     - name: Build xxhash
       run: python3 build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --src-dir=. xxhash --project-install-prefix xxhash:/usr/local

@@ -78,7 +78,7 @@ def _make_args(project: str, output_dir: str, **overrides: Any) -> argparse.Name
         "free_up_disk": False,
         "free_up_disk_before_build": False,
         "build_type": "RelWithDebInfo",
-        "use_build_cache": True,
+        "use_build_cache": False,
         "package_extra_cmake_defines": [],
         "scratch_path": None,
         "vcvars_path": None,
