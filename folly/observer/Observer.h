@@ -32,8 +32,16 @@ namespace observer {
  * their dependencies and get re-computed when any of the dependencies changes.
  *
  *
- * Given an Observer, you can get a snapshot of the current version of the
- * object it holds:
+ * The preferred way to read the observed value is with(), which keeps the
+ * snapshot alive for the duration of the lambda and prevents read-after-free:
+ *
+ *     Observer<Config> configObserver = ...;
+ *     auto result = configObserver.with([](const Config& cfg) {
+ *       return cfg.getSomeValue();
+ *     });
+ *
+ * For cases where you need to store or pass the snapshot around, you can get
+ * one explicitly:
  *
  *     Observer<int> myObserver = ...;
  *     Snapshot<int> mySnapshot = myObserver.getSnapshot();
@@ -46,7 +54,7 @@ namespace observer {
  * gets updated.
  *
  * Note: fetching a snapshot from Observer will never block/fail. And returned
- * snapshow will never contain a nullptr.
+ * snapshot will never contain a nullptr.
  *
  *
  * What makes Observer powerful is its ability to track updates to other
@@ -254,11 +262,32 @@ class Observer {
   explicit Observer(observer_detail::Core::Ptr core);
 
   /**
-   * Never throws or blocks
-   * Never returns an empty snapshot
+   * Never throws or blocks. Never returns an empty snapshot.
+   * Prefer with() for short-lived access to avoid read-after-free bugs.
    */
   Snapshot<T> getSnapshot() const noexcept;
   Snapshot<T> operator*() const noexcept { return getSnapshot(); }
+
+  /**
+   * Invoke a function with the current observed value. The snapshot is held
+   * alive for the duration of the call, preventing read-after-free when
+   * accessing members of the observed object.
+   *
+   * The return type is decayed to prevent accidentally returning a reference
+   * into the snapshot's data, which would dangle after the snapshot is
+   * destroyed.
+   *
+   * Example:
+   *   observer.with([](const auto& cfg) {
+   *     return cfg.getSomeValue();
+   *   });
+   */
+  template <typename F>
+  std::decay_t<std::invoke_result_t<F, const T&>> with(F&& f) const
+      noexcept(noexcept(static_cast<F&&>(f)(std::declval<const T&>()))) {
+    auto snapshot = getSnapshot();
+    return static_cast<F&&>(f)(*snapshot);
+  }
 
   /**
    * Check if we have a newer version of the observed object than the snapshot.
