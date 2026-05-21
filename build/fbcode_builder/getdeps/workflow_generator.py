@@ -87,7 +87,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
 
         run_tests = args.enable_tests and gh("run_tests") != "off"
         rust_version = gh("rust_version") or "stable"
-        use_sccache = gh("sccache") != "off" and not build_opts.is_windows()
+        use_sccache = gh("sccache") != "off"
         use_homebrew_llvm = build_opts.is_darwin()
         override_build_type = args.build_type or gh("build_type")
         timeout_minutes = gh("timeout_minutes") or "60"
@@ -430,11 +430,11 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         )
         parser.add_argument("--build-type", **BUILD_TYPE_ARG)
         parser.add_argument(
-            "--no-build-cache",
-            action="store_false",
-            default=True,
+            "--use-build-cache",
+            action="store_true",
+            default=False,
             dest="use_build_cache",
-            help="Do not attempt to use the build cache.",
+            help="Emit a per-dep actions/cache restore/save pyramid. Disabled by default; sccache handles compile-unit caching instead.",
         )
         parser.add_argument(
             "--package-extra-cmake-defines",
