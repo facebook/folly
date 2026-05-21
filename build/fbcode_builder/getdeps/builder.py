@@ -268,6 +268,7 @@ class BuilderBase:
             self.manifest.get(
                 "build", "job_weight_mib", str(default_job_weight), ctx=self.ctx
             )
+            or default_job_weight
         )
 
     @property
