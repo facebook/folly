@@ -28,6 +28,7 @@
 #include <cstring>
 
 #include <array>
+#include <compare>
 #include <functional>
 #include <iosfwd>
 #include <map>
@@ -543,35 +544,10 @@ class IPAddressV6 {
   }
 
   /**
-   * Return true if addr1 < addr2.
+   * Three-way comparison for IPAddressV6.
    */
-  friend inline bool operator<(
-      const IPAddressV6& addr1, const IPAddressV6& addr2) {
-    return addr1.tie() < addr2.tie();
-  }
-
-  /**
-   * Return true if addr1 > addr2.
-   */
-  friend inline bool operator>(
-      const IPAddressV6& addr1, const IPAddressV6& addr2) {
-    return addr1.tie() > addr2.tie();
-  }
-
-  /**
-   * Return true if addr1 <= addr2.
-   */
-  friend inline bool operator<=(
-      const IPAddressV6& addr1, const IPAddressV6& addr2) {
-    return addr1.tie() <= addr2.tie();
-  }
-
-  /**
-   * Return true if addr1 >= addr2.
-   */
-  friend inline bool operator>=(
-      const IPAddressV6& addr1, const IPAddressV6& addr2) {
-    return addr1.tie() >= addr2.tie();
+  friend auto operator<=>(const IPAddressV6& a, const IPAddressV6& b) noexcept {
+    return a.tie() <=> b.tie();
   }
 
  private:
