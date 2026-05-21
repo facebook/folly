@@ -107,8 +107,8 @@ void subtractHelper(ValueType& a, const ValueType& b) {
 template <
     typename ReturnType = double,
     typename Duration = std::chrono::seconds,
-    typename Interval = Duration,
-    typename = std::enable_if_t<std::is_constructible_v<Duration, Interval>>>
+    typename Interval = Duration>
+  requires std::constructible_from<Duration, Interval>
 ReturnType rateHelper(ReturnType count, Duration elapsed) {
   if (elapsed == Duration(0)) {
     return 0;
