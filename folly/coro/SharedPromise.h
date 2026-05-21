@@ -89,7 +89,8 @@ class SharedPromise {
    */
   template <typename U = T>
   void setValue(U&&);
-  template <typename U = T, typename = std::enable_if_t<std::is_void_v<U>>>
+  template <typename U = T>
+    requires std::is_void_v<U>
   void setValue();
 
   /**
@@ -180,7 +181,8 @@ void SharedPromise<T>::setValue(U&& input) {
 }
 
 template <typename T>
-template <typename U, typename>
+template <typename U>
+  requires std::is_void_v<U>
 void SharedPromise<T>::setValue() {
   setTry(TryType{unit});
 }
