@@ -71,6 +71,16 @@ enum class FloatFormat {
   // to disambiguate floats from integers in text. Equivalent to
   // `fmt::format("{:#}", x)`.
   SHORTEST_TRAILING_DOT_ZERO,
+  // Like SHORTEST, but uses single-precision rounding: finds the shortest
+  // decimal that round-trips to the same IEEE-754 float. Values originally
+  // stored as 32-bit floats benefit from this because the extra digits in their
+  // double representation are precision noise (e.g. 4.099999904632568 → "4.1").
+  // Equivalent to `fmt::format("{}", static_cast<float>(x))`.
+  SHORTEST_SINGLE,
+  // Like SHORTEST_SINGLE, but always emits a decimal point and at least one
+  // fractional digit (e.g. `123` becomes `123.0`). Equivalent to
+  // `fmt::format("{:#}", static_cast<float>(x))`.
+  SHORTEST_SINGLE_TRAILING_DOT_ZERO,
   // Fixed-point notation with `double_num_digits` digits after the decimal
   // point. Equivalent to `fmt::format("{:.{}f}", x, double_num_digits)`.
   FIXED,

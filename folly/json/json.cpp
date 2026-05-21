@@ -25,7 +25,6 @@
 #include <type_traits>
 
 #include <fmt/compile.h>
-#include <fmt/format.h>
 #include <glog/logging.h>
 
 #include <folly/Conv.h>
@@ -388,6 +387,12 @@ struct PrinterImpl {
         return;
       case FloatFormat::SHORTEST_TRAILING_DOT_ZERO:
         fmt::format_to(out, FMT_COMPILE("{:#}"), dval);
+        return;
+      case FloatFormat::SHORTEST_SINGLE:
+        fmt::format_to(out, FMT_COMPILE("{}"), static_cast<float>(dval));
+        return;
+      case FloatFormat::SHORTEST_SINGLE_TRAILING_DOT_ZERO:
+        fmt::format_to(out, FMT_COMPILE("{:#}"), static_cast<float>(dval));
         return;
       case FloatFormat::FIXED:
         fmt::format_to(

@@ -1468,6 +1468,22 @@ TEST(Json, FloatFormatFieldOverridesLegacyDtoa) {
   FOLLY_POP_WARNING
 }
 
+TEST(Json, FloatFormatShortestSingle) {
+  using folly::json::FloatFormat;
+  folly::json::serialization_opts opts;
+
+  // 4.1f is stored as the double 4.099999904632568 when widened;
+  // SHORTEST_SINGLE finds the shortest decimal that round-trips to the same
+  // float, giving "4.1".
+  opts.float_format = FloatFormat::SHORTEST_SINGLE;
+  EXPECT_EQ("4.1", folly::json::serialize(4.099999904632568, opts));
+  EXPECT_EQ("1", folly::json::serialize(1.0, opts));
+
+  opts.float_format = FloatFormat::SHORTEST_SINGLE_TRAILING_DOT_ZERO;
+  EXPECT_EQ("4.1", folly::json::serialize(4.099999904632568, opts));
+  EXPECT_EQ("1.0", folly::json::serialize(1.0, opts));
+}
+
 TEST(Json, LegacyDtoaFieldsStillHonoredAsFallback) {
   // When float_format is unset, the deprecated dtoa_mode/dtoa_flags pair is
   // honored for backward compatibility while callers migrate (T270785993).
