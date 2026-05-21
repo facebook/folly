@@ -1473,5 +1473,132 @@ TEST(Observer, WithNoexceptPropagation) {
   static_assert(!noexcept(observer.with(throwLambda)));
 }
 
+TEST(ReadMostlyTLObserver, With) {
+  struct Config {
+    std::string name;
+    int value;
+  };
+
+  SimpleObservable<Config> observable(Config{"hello", 10});
+  ReadMostlyTLObserver readMostlyObserver(observable.getObserver());
+
+  // Basic functional behavior: lambda sees the observed value.
+  auto name = readMostlyObserver.with([](const Config& cfg) {
+    return cfg.name;
+  });
+  EXPECT_EQ("hello", name);
+
+  auto value = readMostlyObserver.with([](const Config& cfg) {
+    return cfg.value;
+  });
+  EXPECT_EQ(10, value);
+
+  // Return type is decayed (no dangling refs into snapshot data).
+  auto byValue = readMostlyObserver.with([](const Config& cfg) {
+    return cfg.name;
+  });
+  static_assert(std::is_same_v<decltype(byValue), std::string>);
+
+  // Void return works.
+  int captured = 0;
+  readMostlyObserver.with([&](const Config& cfg) { captured = cfg.value; });
+  EXPECT_EQ(10, captured);
+
+  // noexcept propagates from the callable.
+  auto nothrowLambda = [](const Config&) noexcept { return 0; };
+  auto throwLambda = [](const Config&) { return 0; };
+  static_assert(noexcept(readMostlyObserver.with(nothrowLambda)));
+  static_assert(!noexcept(readMostlyObserver.with(throwLambda)));
+}
+
+TEST(Observer, TLObserverWith) {
+  struct Config {
+    std::string name;
+    int value;
+  };
+
+  SimpleObservable<Config> observable(Config{"hello", 10});
+  TLObserver<Config> tlObserver(observable.getObserver());
+
+  // Basic functional behavior: lambda sees the observed value.
+  auto name = tlObserver.with([](const Config& cfg) { return cfg.name; });
+  EXPECT_EQ("hello", name);
+
+  // Return type is decayed (no dangling refs into snapshot data).
+  auto byValue = tlObserver.with([](const Config& cfg) { return cfg.name; });
+  static_assert(std::is_same_v<decltype(byValue), std::string>);
+
+  // Void return works.
+  int captured = 0;
+  tlObserver.with([&](const Config& cfg) { captured = cfg.value; });
+  EXPECT_EQ(10, captured);
+
+  // noexcept propagates from the callable.
+  auto nothrowLambda = [](const Config&) noexcept { return 0; };
+  auto throwLambda = [](const Config&) { return 0; };
+  static_assert(noexcept(tlObserver.with(nothrowLambda)));
+  static_assert(!noexcept(tlObserver.with(throwLambda)));
+}
+
+TEST(Observer, HazptrObserverWith) {
+  struct Config {
+    std::string name;
+    int value;
+  };
+
+  SimpleObservable<Config> observable(Config{"hello", 10});
+  HazptrObserver<Config> hazptrObserver(observable.getObserver());
+
+  // Basic functional behavior: lambda sees the observed value.
+  auto name = hazptrObserver.with([](const Config& cfg) { return cfg.name; });
+  EXPECT_EQ("hello", name);
+
+  // Return type is decayed (no dangling refs into snapshot data).
+  auto byValue = hazptrObserver.with([](const Config& cfg) {
+    return cfg.name;
+  });
+  static_assert(std::is_same_v<decltype(byValue), std::string>);
+
+  // Void return works.
+  int captured = 0;
+  hazptrObserver.with([&](const Config& cfg) { captured = cfg.value; });
+  EXPECT_EQ(10, captured);
+
+  // noexcept propagates from the callable.
+  auto nothrowLambda = [](const Config&) noexcept { return 0; };
+  auto throwLambda = [](const Config&) { return 0; };
+  static_assert(noexcept(hazptrObserver.with(nothrowLambda)));
+  static_assert(!noexcept(hazptrObserver.with(throwLambda)));
+}
+
+TEST(Observer, CoreCachedObserverWith) {
+  struct Config {
+    std::string name;
+    int value;
+  };
+
+  SimpleObservable<Config> observable(Config{"hello", 10});
+  CoreCachedObserver<Config> ccObserver(observable.getObserver());
+
+  // Basic functional behavior: lambda sees the observed value.
+  auto name = ccObserver.with([](const Config& cfg) { return cfg.name; });
+  EXPECT_EQ("hello", name);
+
+  // Return type is decayed (no dangling refs into snapshot data).
+  auto byValue = ccObserver.with([](const Config& cfg) { return cfg.name; });
+  static_assert(std::is_same_v<decltype(byValue), std::string>);
+
+  // Void return works.
+  int captured = 0;
+  ccObserver.with([&](const Config& cfg) { captured = cfg.value; });
+  EXPECT_EQ(10, captured);
+
+  // noexcept propagates from the callable.
+  auto nothrowLambda = [](const Config&) noexcept { return 0; };
+  auto throwLambda = [](const Config&) { return 0; };
+  static_assert(noexcept(ccObserver.with(nothrowLambda)));
+  static_assert(!noexcept(ccObserver.with(throwLambda)));
+}
+
 } // namespace observer
 } // namespace folly

@@ -142,6 +142,24 @@ class HazptrObserver {
     return LocalSnapshot(state_, domain_);
   }
 
+  /**
+   * Invoke a function with the current observed value. The snapshot is held
+   * alive for the duration of the call, preventing read-after-free when
+   * accessing members of the observed object.
+   *
+   * The return type is decayed to prevent accidentally returning a reference
+   * into the snapshot's data, which would dangle after the snapshot is
+   * destroyed.
+   *
+   * See Observer::with() for semantics.
+   */
+  template <typename F>
+  std::decay_t<std::invoke_result_t<F, const T&>> with(F&& f) const
+      noexcept(noexcept(static_cast<F&&>(f)(std::declval<const T&>()))) {
+    auto snapshot = getSnapshot();
+    return static_cast<F&&>(f)(*snapshot);
+  }
+
   const Observer<T>& getUnderlyingObserver() const { return observer_; }
 
  private:
