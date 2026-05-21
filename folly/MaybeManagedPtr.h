@@ -40,7 +40,8 @@ class MaybeManagedPtr {
   /**
    * Construction from shared_ptr<X>, where X is derived from T.
    */
-  template <typename Q, typename = std::enable_if_t<std::is_base_of_v<T, Q>>>
+  template <typename Q>
+    requires std::is_base_of_v<T, Q>
   /* implicit */ MaybeManagedPtr(std::shared_ptr<Q> q) : t_(std::move(q)) {}
 
   /**
