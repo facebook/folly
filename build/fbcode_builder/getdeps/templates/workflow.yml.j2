@@ -91,6 +91,11 @@ jobs:
         version: "v0.14.0"
 <% endif %>
 
+<% if use_homebrew_llvm %>
+    - name: Install Homebrew LLVM
+      run: brew install llvm
+<% endif %>
+
 <% if free_up_disk and not is_windows %>
     <# Pre-build disk cleanup (linux/darwin only) #>
     - name: Show disk space at start
