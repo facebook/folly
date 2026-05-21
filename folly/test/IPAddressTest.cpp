@@ -261,6 +261,40 @@ TEST(IPAddress, Ordering) {
   EXPECT_TRUE(b1 < b2);
 }
 
+TEST(IPAddressV4, Ordering) {
+  IPAddressV4 lo("0.1.1.1");
+  IPAddressV4 hi("1.1.1.0");
+
+  EXPECT_TRUE(lo < hi);
+  EXPECT_FALSE(hi < lo);
+  EXPECT_TRUE(lo <= hi);
+  EXPECT_TRUE(lo <= lo);
+  EXPECT_TRUE(hi > lo);
+  EXPECT_FALSE(lo > hi);
+  EXPECT_TRUE(hi >= lo);
+  EXPECT_TRUE(hi >= hi);
+  EXPECT_TRUE(lo == lo);
+  EXPECT_FALSE(lo == hi);
+  EXPECT_TRUE(lo != hi);
+}
+
+TEST(IPAddressV6, Ordering) {
+  IPAddressV6 lo("::ffff:0.1.1.1");
+  IPAddressV6 hi("::ffff:1.1.1.0");
+
+  EXPECT_TRUE(lo < hi);
+  EXPECT_FALSE(hi < lo);
+  EXPECT_TRUE(lo <= hi);
+  EXPECT_TRUE(lo <= lo);
+  EXPECT_TRUE(hi > lo);
+  EXPECT_FALSE(lo > hi);
+  EXPECT_TRUE(hi >= lo);
+  EXPECT_TRUE(hi >= hi);
+  EXPECT_TRUE(lo == lo);
+  EXPECT_FALSE(lo == hi);
+  EXPECT_TRUE(lo != hi);
+}
+
 TEST(IPAddress, InvalidAddressFamilyExceptions) {
   // asV4
   {

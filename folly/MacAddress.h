@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <compare>
 #include <iosfwd>
 
 #include <folly/Conv.h>
@@ -191,17 +192,11 @@ class MacAddress {
     return packedBytes() == other.packedBytes();
   }
 
-  bool operator<(const MacAddress& other) const {
-    return u64HBO() < other.u64HBO();
-  }
-
   bool operator!=(const MacAddress& other) const { return !(*this == other); }
 
-  bool operator>(const MacAddress& other) const { return other < *this; }
-
-  bool operator>=(const MacAddress& other) const { return !(*this < other); }
-
-  bool operator<=(const MacAddress& other) const { return !(*this > other); }
+  auto operator<=>(const MacAddress& other) const noexcept {
+    return u64HBO() <=> other.u64HBO();
+  }
 
  private:
   explicit MacAddress(uint64_t valueNBO) {
