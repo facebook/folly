@@ -59,6 +59,7 @@
  */
 
 #include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <functional>
 #include <new>
@@ -308,9 +309,8 @@ class Optional : private detail::OptionalCopyAssignBase<Value> {
   // Conversions to ease migration to std::optional
 
   /// Allow construction of Optional from std::optional.
-  template <
-      typename U,
-      typename = std::enable_if_t<std::is_same_v<U, std::optional<Value>>>>
+  template <typename U>
+    requires std::same_as<U, std::optional<Value>>
   explicit Optional(U&& newValue) noexcept(
       std::is_nothrow_move_constructible<Value>::value) {
     if (newValue.has_value()) {
@@ -318,9 +318,8 @@ class Optional : private detail::OptionalCopyAssignBase<Value> {
       newValue.reset();
     }
   }
-  template <
-      typename U,
-      typename = std::enable_if_t<std::is_same_v<U, std::optional<Value>>>>
+  template <typename U>
+    requires std::same_as<U, std::optional<Value>>
   explicit Optional(const U& newValue) noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
     if (newValue.has_value()) {
