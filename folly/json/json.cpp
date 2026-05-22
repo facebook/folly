@@ -402,12 +402,6 @@ struct PrinterImpl {
         fmt::format_to(
             out, FMT_COMPILE("{:.{}g}"), dval, opts_.double_num_digits);
         return;
-      case FloatFormat::SHORTEST_SINGLE:
-        fmt::format_to(out, FMT_COMPILE("{}"), static_cast<float>(dval));
-        return;
-      case FloatFormat::SHORTEST_SINGLE_TRAILING_DOT_ZERO:
-        fmt::format_to(out, FMT_COMPILE("{:#}"), static_cast<float>(dval));
-        return;
     }
   }
 

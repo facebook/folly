@@ -1451,19 +1451,6 @@ TEST(Json, FloatFormatField) {
   opts.float_format = FloatFormat::GENERAL;
   opts.double_num_digits = 2;
   EXPECT_EQ(R"({"a":1.5,"b":1})", folly::json::serialize(v, opts));
-
-  // Single-precision variants — cast to float before formatting, so the
-  // shortest round-trip target is 32-bit IEEE-754.
-  // 4.1 stored as double(float(4.1)) ≈ 4.099999904632568; single-precision
-  // shortest representation is "4.1".
-  folly::dynamic sv = folly::dynamic::object("a", double(float(4.1)));
-  sv["b"] = 20.0;
-
-  opts.float_format = FloatFormat::SHORTEST_SINGLE;
-  EXPECT_EQ(R"({"a":4.1,"b":20})", folly::json::serialize(sv, opts));
-
-  opts.float_format = FloatFormat::SHORTEST_SINGLE_TRAILING_DOT_ZERO;
-  EXPECT_EQ(R"({"a":4.1,"b":20.0})", folly::json::serialize(sv, opts));
 }
 
 TEST(Json, FloatFormatFieldOverridesLegacyDtoa) {
