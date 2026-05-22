@@ -119,8 +119,8 @@ class hazptr_holder {
   }
 
   template <typename T, typename Src, typename Func>
-  FOLLY_ALWAYS_INLINE std::enable_if_t<std::is_invocable_r_v<T*, Src&>, bool>
-  try_protect(T*& ptr, Src&& src, Func f) noexcept(
+    requires std::is_invocable_r_v<T*, Src&>
+  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src&& src, Func f) noexcept(
       noexcept(std::declval<Src&>()()) &&
       noexcept(std::declval<Func&>()(std::declval<T*>()))) {
     auto p = ptr;
@@ -136,8 +136,9 @@ class hazptr_holder {
   }
 
   template <typename T, typename Src>
-  FOLLY_ALWAYS_INLINE std::enable_if_t<std::is_invocable_r_v<T*, Src&>, bool>
-  try_protect(T*& ptr, Src&& src) noexcept(noexcept(src())) {
+    requires std::is_invocable_r_v<T*, Src&>
+  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src&& src) noexcept(
+      noexcept(src())) {
     return try_protect(ptr, std::forward<Src>(src), [](T* t) noexcept {
       return t;
     });
