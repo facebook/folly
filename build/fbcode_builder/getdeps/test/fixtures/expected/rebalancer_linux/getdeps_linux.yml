@@ -145,7 +145,7 @@ jobs:
         df -h
 
     - name: Build rebalancer
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --recursive --src-dir=. rebalancer --project-install-prefix rebalancer:/usr/local --extra-cmake-defines '{"CMAKE_POSITION_INDEPENDENT_CODE":"ON"}'
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --src-dir=. rebalancer --project-install-prefix rebalancer:/usr/local --extra-cmake-defines '{"CMAKE_POSITION_INDEPENDENT_CODE":"ON"}'
 
     - name: Show sccache stats
       if: always()

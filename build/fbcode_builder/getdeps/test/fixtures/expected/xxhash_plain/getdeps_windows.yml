@@ -53,7 +53,7 @@ jobs:
       shell: pwsh
 
     - name: Build xxhash
-      run: python build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --recursive --src-dir=. xxhash
+      run: python build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --src-dir=. xxhash
 
     - name: Show sccache stats
       if: always()

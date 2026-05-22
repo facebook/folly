@@ -40,7 +40,7 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py query-paths --recursive --src-dir=. xxhash  >> "$GITHUB_OUTPUT"
 
     - name: Build xxhash
-      run: python3 build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --recursive --src-dir=. xxhash --project-install-prefix xxhash:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --src-dir=. xxhash --project-install-prefix xxhash:/usr/local
 
     - name: Show sccache stats
       if: always()

@@ -280,7 +280,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         # round-trips are net-negative at typical sccache hit rates.
         final_build_cmd = (
             f"{getdepscmd}{allow_sys_arg} build {build_type_arg}{tests_arg}"
-            f"--recursive --src-dir=. {manifest.name}{project_prefix}"
+            f"--src-dir=. {manifest.name}{project_prefix}"
             f"{cmake_arg_for(manifest.name)}"
         )
 
