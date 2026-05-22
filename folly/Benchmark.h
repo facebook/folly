@@ -28,6 +28,7 @@
 
 #include <cassert>
 #include <chrono>
+#include <concepts>
 #include <functional>
 #include <iosfwd>
 #include <limits>
@@ -76,9 +77,8 @@ class UserMetric {
       : value(val), type(typ) {}
 
   // Allow users to provide precision values
-  template <
-      typename T,
-      typename = std::enable_if_t<std::is_floating_point_v<T>>>
+  template <typename T>
+    requires std::floating_point<T>
   explicit UserMetric(T precision_val, Type typ = Type::CUSTOM)
       : value(convert_helper(precision_val)), type(typ) {}
 
