@@ -52,16 +52,8 @@ jobs:
       run: python build/fbcode_builder/getdeps.py query-paths --recursive --src-dir=. xxhash  >> $env:GITHUB_OUTPUT
       shell: pwsh
 
-    - name: Build ninja
-      if: ${{ steps.paths.outputs.ninja_SOURCE }}
-      run: python build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --no-tests ninja
-
-    - name: Build cmake
-      if: ${{ steps.paths.outputs.cmake_SOURCE }}
-      run: python build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --no-tests cmake
-
     - name: Build xxhash
-      run: python build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --src-dir=. xxhash
+      run: python build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --recursive --src-dir=. xxhash
 
     - name: Show sccache stats
       if: always()
