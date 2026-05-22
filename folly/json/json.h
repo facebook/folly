@@ -88,15 +88,6 @@ enum class FloatFormat {
   // significant digits. Strips trailing zeros. Equivalent to
   // `fmt::format("{:.{}g}", x, double_num_digits)`.
   GENERAL,
-  // Like SHORTEST, but casts the double to float before formatting so
-  // that the shortest round-trip target is single-precision IEEE-754.
-  // Use when serializing a value known to originate from a float that
-  // was widened to double (e.g. Thrift float fields stored in
-  // folly::dynamic).
-  SHORTEST_SINGLE,
-  // Like SHORTEST_SINGLE, but always emits a decimal point and at least
-  // one fractional digit.
-  SHORTEST_SINGLE_TRAILING_DOT_ZERO,
 };
 
 struct serialization_opts {
