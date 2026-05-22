@@ -20,6 +20,8 @@ jobs:
     timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      CC: /opt/homebrew/opt/llvm/bin/clang
+      CXX: /opt/homebrew/opt/llvm/bin/clang++
       SCCACHE_GHA_ENABLED: "on"
     steps:
 
@@ -35,6 +37,9 @@ jobs:
       uses: mozilla-actions/sccache-action@v0.0.9
       with:
         version: "v0.14.0"
+
+    - name: Install Homebrew LLVM
+      run: brew install llvm
 
     - name: Show disk space at start
       run: df -h
@@ -111,88 +116,8 @@ jobs:
       if: ${{ steps.paths.outputs.xz_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests xz
 
-    - name: Build boost
-      if: ${{ steps.paths.outputs.boost_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests boost
-
-    - name: Build openssl
-      if: ${{ steps.paths.outputs.openssl_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests openssl
-
-    - name: Build ninja
-      if: ${{ steps.paths.outputs.ninja_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests ninja
-
-    - name: Build cmake
-      if: ${{ steps.paths.outputs.cmake_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests cmake
-
-    - name: Build double-conversion
-      if: ${{ steps.paths.outputs.double-conversion_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests double-conversion
-
-    - name: Build fast_float
-      if: ${{ steps.paths.outputs.fast_float_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests fast_float
-
-    - name: Build fmt
-      if: ${{ steps.paths.outputs.fmt_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests fmt
-
-    - name: Build gflags
-      if: ${{ steps.paths.outputs.gflags_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests gflags
-
-    - name: Build glog
-      if: ${{ steps.paths.outputs.glog_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests glog
-
-    - name: Build googletest
-      if: ${{ steps.paths.outputs.googletest_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests googletest
-
-    - name: Build libdwarf
-      if: ${{ steps.paths.outputs.libdwarf_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests libdwarf
-
-    - name: Build libevent
-      if: ${{ steps.paths.outputs.libevent_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests libevent
-
-    - name: Build lz4
-      if: ${{ steps.paths.outputs.lz4_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests lz4
-
-    - name: Build snappy
-      if: ${{ steps.paths.outputs.snappy_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests snappy
-
-    - name: Build zstd
-      if: ${{ steps.paths.outputs.zstd_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests zstd
-
-    - name: Build autoconf
-      if: ${{ steps.paths.outputs.autoconf_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests autoconf
-
-    - name: Build automake
-      if: ${{ steps.paths.outputs.automake_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests automake
-
-    - name: Build libtool
-      if: ${{ steps.paths.outputs.libtool_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests libtool
-
-    - name: Build libsodium
-      if: ${{ steps.paths.outputs.libsodium_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests libsodium
-
-    - name: Build xz
-      if: ${{ steps.paths.outputs.xz_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --free-up-disk --no-tests xz
-
     - name: Build folly
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --src-dir=. folly --project-install-prefix folly:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --recursive --src-dir=. folly --project-install-prefix folly:/usr/local
 
     - name: Show sccache stats
       if: always()

@@ -5,25 +5,6 @@ Jinja delimiters here are doubled angle brackets (variables) and angle-percent
 The Jinja env is configured trim_blocks + lstrip_blocks, so block tags on
 their own line consume the whole line cleanly without `-` stripping markers.
 #>
-<% macro cache_restore(name) %>
-    - name: Restore <<name>> from cache
-      id: restore_<<name>>
-      if: ${{ steps.paths.outputs.<<name>>_SOURCE }}
-      uses: actions/cache/restore@v4
-      with:
-       path: ${{ steps.paths.outputs.<<name>>_INSTALL }}
-       key: ${{ steps.paths.outputs.<<name>>_CACHE_KEY }}-install
-<%- endmacro %>
-
-<% macro cache_save(name) %>
-    - name: Save <<name>> to cache
-      uses: actions/cache/save@v4
-      if: ${{ steps.paths.outputs.<<name>>_SOURCE && ! steps.restore_<<name>>.outputs.cache-hit }}
-      with:
-       path: ${{ steps.paths.outputs.<<name>>_INSTALL }}
-       key: ${{ steps.paths.outputs.<<name>>_CACHE_KEY }}-install
-<%- endmacro %>
-
 # This file was <<"@" + "generated">> by getdeps.py
 
 name: <<job_name>>
@@ -146,21 +127,6 @@ jobs:
 <% endfor %>
 <% endif %>
 
-    <# Per-dep build (with optional cache restore + save) #>
-<% for dep in deps %>
-<% if dep.use_cache %>
-<<cache_restore(dep.name)>>
-<% endif %>
-    - name: Build <<dep.name>>
-<% if dep.if_clause %>
-      if: ${{ <<dep.if_clause>> }}
-<% endif %>
-      run: <<dep.build_cmd>>
-<% if dep.use_cache %>
-<<cache_save(dep.name)>>
-<% endif %>
-
-<% endfor %>
 <% if free_up_disk_before_build and not is_windows %>
     - name: Free up disk space before build
       run: |
