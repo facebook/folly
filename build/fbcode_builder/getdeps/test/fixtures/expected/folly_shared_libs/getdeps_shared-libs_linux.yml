@@ -125,7 +125,7 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests xz
 
     - name: Build folly
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --shared-lib --recursive --src-dir=. folly --project-install-prefix folly:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --build-type RelWithDebInfo --shared-lib --src-dir=. folly --project-install-prefix folly:/usr/local
 
     - name: Show sccache stats
       if: always()

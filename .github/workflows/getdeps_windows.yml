@@ -111,7 +111,7 @@ jobs:
       run: python build/fbcode_builder/getdeps.py fetch --no-tests libevent
 
     - name: Build folly
-      run: python build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --recursive --src-dir=. folly
+      run: python build/fbcode_builder/getdeps.py build --build-type RelWithDebInfo --src-dir=. folly
 
     - name: Show sccache stats
       if: always()
