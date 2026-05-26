@@ -210,12 +210,8 @@ decltype(auto) poly_call(detail::PolyNode<I, Tail> const& _this, As&&... as) {
 }
 
 /// \overload
-template <
-    std::size_t N,
-    class I,
-    class Poly,
-    typename... As,
-    std::enable_if_t<detail::IsPoly<Poly>::value, int> = 0>
+template <std::size_t N, class I, class Poly, typename... As>
+  requires detail::IsPoly<Poly>::value
 auto poly_call(Poly&& _this, As&&... as) -> decltype(poly_call<N, I>(
     static_cast<Poly&&>(_this).get(), static_cast<As&&>(as)...)) {
   return poly_call<N, I>(
@@ -282,10 +278,8 @@ template <class T, class I>
 /// \endcond
 
 /// \overload
-template <
-    class T,
-    class Poly,
-    std::enable_if_t<detail::IsPoly<Poly>::value, int> = 0>
+template <class T, class Poly>
+  requires detail::IsPoly<Poly>::value
 constexpr auto poly_cast(Poly&& that)
     -> decltype(poly_cast<T>(std::declval<Poly>().get())) {
   return poly_cast<T>(static_cast<Poly&&>(that).get());
@@ -311,7 +305,8 @@ std::type_info const& poly_type(detail::PolyRoot<I> const& that) noexcept {
 /// \endcond
 
 /// \overload
-template <class Poly, std::enable_if_t<detail::IsPoly<Poly>::value, int> = 0>
+template <class Poly>
+  requires detail::IsPoly<Poly>::value
 constexpr auto poly_type(Poly const& that) noexcept
     -> decltype(poly_type(that.get())) {
   return poly_type(that.get());
@@ -363,15 +358,15 @@ constexpr bool poly_empty(Poly<I&> const&) noexcept {
  * reference type, returns a `Poly<I>&&` when given a `Poly<I>&`, like
  * `std::move`.
  */
-template <
-    class I,
-    std::enable_if_t<Negation<std::is_reference<I>>::value, int> = 0>
+template <class I>
+  requires(!std::is_reference<I>::value)
 constexpr Poly<I>&& poly_move(detail::PolyRoot<I>& that) noexcept {
   return static_cast<Poly<I>&&>(static_cast<Poly<I>&>(that));
 }
 
 /// \overload
-template <class I, std::enable_if_t<Negation<std::is_const<I>>::value, int> = 0>
+template <class I>
+  requires(!std::is_const<I>::value)
 Poly<I&&> poly_move(detail::PolyRoot<I&> const& that) noexcept {
   return detail::PolyAccess::move(that);
 }
@@ -391,7 +386,8 @@ Poly<I const&> poly_move(detail::PolyRoot<I const&> const& that) noexcept {
 /// \endcond
 
 /// \overload
-template <class Poly, std::enable_if_t<detail::IsPoly<Poly>::value, int> = 0>
+template <class Poly>
+  requires detail::IsPoly<Poly>::value
 constexpr auto poly_move(Poly& that) noexcept
     -> decltype(poly_move(that.get())) {
   return poly_move(that.get());
