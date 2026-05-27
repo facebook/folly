@@ -18,6 +18,10 @@
 
 #include <algorithm>
 #include <concepts>
+#include <iterator>
+#include <type_traits>
+
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -49,8 +53,7 @@ bool contains(const C& container, const V& value) {
 /**
  * This function checks whether container contains given key.
  * Use container specific .contains() implementation if available,
- * otherwise uses .find() implementation if available, otherwise
- * fallback to O(n) std::find() implementation.
+ * otherwise uses .find() implementation.
  */
 template <class C, class K = typename C::key_type>
 bool contains(const C& container, const K& key) {
@@ -59,11 +62,10 @@ bool contains(const C& container, const K& key) {
   } else if constexpr (detail::HasFind<C, K>) {
     return container.find(key) != container.end();
   } else {
-    // Fallback: use generic and possibly slower std::find.
-    // Inline the linear search to avoid infinite recursion — calling
-    // contains(container, key) would re-dispatch to this overload.
-    const auto e = std::end(container);
-    return std::find(std::begin(container), e, key) != e;
+    static_assert(
+        folly::always_false<C>,
+        "This branch should be unreachable. Calls to contains by containers that do "
+        "not satisfy HasContains and HasFind should default to the prior template.");
   }
 }
 
