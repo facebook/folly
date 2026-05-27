@@ -438,30 +438,29 @@ class wrap_must_use_immediately_t
   using folly_private_safe_alias_t = safe_alias_constant<safe_alias::unsafe>;
 
   // See the top-of-file docblock before defining your own `unsafe_mover`.
-  template <
-      typename Me, // not a forwarding ref; SFINAE will fail on lval refs
-      // A more conservative design would be to require `is_same_v` here, which
-      // would mean that deriving from a must-use-immediately type requires you
-      // to provide a new `unsafe_mover` (typically a clone of the one in
-      // `wrap_must_use_immediately_t`).
-      //
-      // However, reusing the `unsafe_mover` of a base-class is fairly
-      // low-risk, since we do a simple `sizeof` check for object slicing here.
-      // Undetected problems could only arise if the derived classes adds
-      // mandatory side effects in its destructor / move / assignment.
-      std::enable_if_t<std::is_base_of_v<Inner, Me>, int> = 0>
+  //
+  // `Me` is not a forwarding ref; the constraint will fail on lvalue refs.
+  //
+  // A more conservative design would be to require `is_same_v` here, which
+  // would mean that deriving from a must-use-immediately type requires you
+  // to provide a new `unsafe_mover` (typically a clone of the one in
+  // `wrap_must_use_immediately_t`).
+  //
+  // However, reusing the `unsafe_mover` of a base-class is fairly
+  // low-risk, since we do a simple `sizeof` check for object slicing here.
+  // Undetected problems could only arise if the derived classes adds
+  // mandatory side effects in its destructor / move / assignment.
+  template <typename Me>
+    requires std::is_base_of_v<Inner, Me>
   static my_curried_mover<Me> unsafe_mover(
       must_use_immediately_private_t, Me&& me) noexcept {
     return curried_unsafe_mover_from_bases_and_members<
         wrap_must_use_immediately_t>(
         tag<Inner>, vtag</*no members*/>, static_cast<Me&&>(me));
   }
-  template <
-      typename DerivedFromMe,
-      // Matches the SFINAE logic in our `unsafe_mover`
-      std::enable_if_t<
-          std::is_base_of_v<wrap_must_use_immediately_t, DerivedFromMe>,
-          int> = 0>
+  // Matches the constraint logic in our `unsafe_mover`
+  template <typename DerivedFromMe>
+    requires std::is_base_of_v<wrap_must_use_immediately_t, DerivedFromMe>
   explicit wrap_must_use_immediately_t(
       curried_unsafe_mover_private_t,
       my_curried_mover<DerivedFromMe>&& mover) noexcept(noexcept(Inner{
