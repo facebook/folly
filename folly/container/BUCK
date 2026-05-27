@@ -54,6 +54,9 @@ fb_dirsync_cpp_library(
     name = "collection_util",
     headers = ["CollectionUtil.h"],
     use_raw_headers = True,
+    exported_deps = [
+        "//folly/lang:exception",
+    ],
 )
 
 fb_dirsync_cpp_library(

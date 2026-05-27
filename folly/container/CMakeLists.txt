@@ -48,6 +48,8 @@ folly_add_library(
   NAME collection_util
   HEADERS
     CollectionUtil.h
+  EXPORTED_DEPS
+    folly_lang_exception
 )
 
 folly_add_library(
