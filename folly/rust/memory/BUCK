@@ -1,6 +1,5 @@
-load("@fbsource//tools/build_defs:rust_library.bzl", "rust_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
-load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rust_library.bzl", "fb_dirsync_rust_library")
 
 oncall("rust_libraries")
 
@@ -23,14 +22,13 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fb_dirsync_rule(
+fb_dirsync_rust_library(
     name = "memory",
     srcs = [
         "lib.rs",
     ],
     cpp_deps = [":memory-cpp"],
     cxx_bridge = "lib.rs",
-    fbcode_rule = rust_library,
     deps = [
         "fbsource//third-party/rust:anyhow",
         "fbsource//third-party/rust:cxx",
