@@ -27,6 +27,7 @@ fb_dirsync_rule(
     opaque_types = [
         "folly::(Mutable)?(StringPiece|ByteRange)",
     ],
+    pin_crate = True,
     src_includes = ["string.rs"],
     deps = [
         "fbsource//third-party/rust:cxx",
