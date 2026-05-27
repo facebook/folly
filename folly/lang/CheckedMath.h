@@ -32,7 +32,8 @@
 namespace folly {
 namespace detail {
 
-template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+template <typename T>
+  requires std::is_integral_v<T>
 bool generic_checked_add(T* result, T a, T b) {
   if constexpr (std::is_signed_v<T>) {
     if (a >= 0) {
@@ -57,7 +58,8 @@ bool generic_checked_add(T* result, T a, T b) {
   }
 }
 
-template <typename T, typename = std::enable_if_t<std::is_unsigned<T>::value>>
+template <typename T>
+  requires std::is_unsigned_v<T>
 bool generic_checked_small_mul(T* result, T a, T b) {
   static_assert(sizeof(T) < sizeof(uint64_t), "Too large");
   uint64_t res = static_cast<uint64_t>(a) * static_cast<uint64_t>(b);
@@ -70,15 +72,15 @@ bool generic_checked_small_mul(T* result, T a, T b) {
   return true;
 }
 
-template <typename T, typename = std::enable_if_t<std::is_unsigned<T>::value>>
-std::enable_if_t<sizeof(T) < sizeof(uint64_t), bool> generic_checked_mul(
-    T* result, T a, T b) {
+template <typename T>
+  requires(std::is_unsigned_v<T> && sizeof(T) < sizeof(uint64_t))
+bool generic_checked_mul(T* result, T a, T b) {
   return generic_checked_small_mul(result, a, b);
 }
 
-template <typename T, typename = std::enable_if_t<std::is_unsigned<T>::value>>
-std::enable_if_t<sizeof(T) == sizeof(uint64_t), bool> generic_checked_mul(
-    T* result, T a, T b) {
+template <typename T>
+  requires(std::is_unsigned_v<T> && sizeof(T) == sizeof(uint64_t))
+bool generic_checked_mul(T* result, T a, T b) {
   constexpr uint64_t halfBits = 32;
   constexpr uint64_t halfMask = (1ULL << halfBits) - 1ULL;
   uint64_t lhs_high = a >> halfBits;
@@ -124,7 +126,8 @@ std::enable_if_t<sizeof(T) == sizeof(uint64_t), bool> generic_checked_mul(
 }
 } // namespace detail
 
-template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+template <typename T>
+  requires std::is_integral_v<T>
 bool checked_add(T* result, T a, T b) {
 #if FOLLY_HAS_BUILTIN(__builtin_add_overflow)
   if (FOLLY_LIKELY(!__builtin_add_overflow(a, b, result))) {
@@ -137,7 +140,8 @@ bool checked_add(T* result, T a, T b) {
 #endif
 }
 
-template <typename T, typename = std::enable_if_t<std::is_unsigned<T>::value>>
+template <typename T>
+  requires std::is_unsigned_v<T>
 bool checked_add(T* result, T a, T b, T c) {
   T tmp{};
   if (FOLLY_UNLIKELY(!checked_add(&tmp, a, b))) {
@@ -152,7 +156,8 @@ bool checked_add(T* result, T a, T b, T c) {
   return true;
 }
 
-template <typename T, typename = std::enable_if_t<std::is_unsigned<T>::value>>
+template <typename T>
+  requires std::is_unsigned_v<T>
 bool checked_add(T* result, T a, T b, T c, T d) {
   T tmp{};
   if (FOLLY_UNLIKELY(!checked_add(&tmp, a, b))) {
@@ -191,7 +196,8 @@ bool checked_mod(T* result, T dividend, T divisor) {
   return true;
 }
 
-template <typename T, typename = std::enable_if_t<std::is_unsigned<T>::value>>
+template <typename T>
+  requires std::is_unsigned_v<T>
 bool checked_mul(T* result, T a, T b) {
   assert(result != nullptr);
 #if FOLLY_HAS_BUILTIN(__builtin_mul_overflow)
@@ -219,7 +225,8 @@ bool checked_mul(T* result, T a, T b) {
 #endif
 }
 
-template <typename T, typename = std::enable_if_t<std::is_unsigned<T>::value>>
+template <typename T>
+  requires std::is_unsigned_v<T>
 bool checked_muladd(T* result, T base, T mul, T add) {
   T tmp{};
   if (FOLLY_UNLIKELY(!checked_mul(&tmp, base, mul))) {
@@ -234,11 +241,8 @@ bool checked_muladd(T* result, T base, T mul, T add) {
   return true;
 }
 
-template <
-    typename T,
-    typename T2,
-    typename = std::enable_if_t<std::is_pointer<T>::value>,
-    typename = std::enable_if_t<std::is_unsigned<T2>::value>>
+template <typename T, typename T2>
+  requires(std::is_pointer_v<T> && std::is_unsigned_v<T2>)
 bool checked_add(T* result, T a, T2 b) {
   size_t out = 0;
   bool ret = checked_muladd(
