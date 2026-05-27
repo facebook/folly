@@ -67,9 +67,11 @@ enum class FloatFormat {
   // Equivalent to `fmt::format("{}", x)`.
   SHORTEST,
   // Like SHORTEST, but always emits a decimal point and at least one fractional
-  // digit (e.g. `123` becomes `123.0`). Required by JSON wire formats that need
-  // to disambiguate floats from integers in text. Equivalent to
-  // `fmt::format("{:#}", x)`.
+  // digit (e.g. `123` becomes `123.0`, `3e-06` becomes `3.0e-06`). Required by
+  // JSON wire formats that need to disambiguate floats from integers in text.
+  // Note: not equivalent to fmt's `{:#}` alternate form, which emits a bare
+  // trailing dot for integer-mantissa values in scientific notation
+  // (e.g. `"3.e-06"`), violating RFC 8259 §6.
   SHORTEST_TRAILING_DOT_ZERO,
   // Like SHORTEST, but uses single-precision rounding: finds the shortest
   // decimal that round-trips to the same IEEE-754 float. Values originally
@@ -78,8 +80,8 @@ enum class FloatFormat {
   // Equivalent to `fmt::format("{}", static_cast<float>(x))`.
   SHORTEST_SINGLE,
   // Like SHORTEST_SINGLE, but always emits a decimal point and at least one
-  // fractional digit (e.g. `123` becomes `123.0`). Equivalent to
-  // `fmt::format("{:#}", static_cast<float>(x))`.
+  // fractional digit (e.g. `123` becomes `123.0`, `3e-06` becomes `3.0e-06`).
+  // See the SHORTEST_TRAILING_DOT_ZERO note about fmt's `{:#}`.
   SHORTEST_SINGLE_TRAILING_DOT_ZERO,
   // Fixed-point notation with `double_num_digits` digits after the decimal
   // point. Equivalent to `fmt::format("{:.{}f}", x, double_num_digits)`.
