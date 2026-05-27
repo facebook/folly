@@ -20,6 +20,7 @@ fb303
 fboss
 fbthrift
 folly
+magic_enum
 re2
 
 [shipit.pathmap]
