@@ -17,6 +17,7 @@
 #include <folly/json/json.h>
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <functional>
 #include <iterator>
@@ -386,14 +387,34 @@ struct PrinterImpl {
         fmt::format_to(out, FMT_COMPILE("{}"), dval);
         return;
       case FloatFormat::SHORTEST_TRAILING_DOT_ZERO:
-        fmt::format_to(out, FMT_COMPILE("{:#}"), dval);
+        appendShortestTrailingDotZero(dval);
         return;
-      case FloatFormat::SHORTEST_SINGLE:
-        fmt::format_to(out, FMT_COMPILE("{}"), static_cast<float>(dval));
+      case FloatFormat::SHORTEST_SINGLE: {
+        const float fval = static_cast<float>(dval);
+        if (std::isinf(fval)) {
+          out_.append(fval > 0 ? "Infinity"sv : "-Infinity"sv);
+          return;
+        }
+        if (std::isnan(fval)) {
+          out_.append("NaN"sv);
+          return;
+        }
+        fmt::format_to(out, FMT_COMPILE("{}"), fval);
         return;
-      case FloatFormat::SHORTEST_SINGLE_TRAILING_DOT_ZERO:
-        fmt::format_to(out, FMT_COMPILE("{:#}"), static_cast<float>(dval));
+      }
+      case FloatFormat::SHORTEST_SINGLE_TRAILING_DOT_ZERO: {
+        const float fval = static_cast<float>(dval);
+        if (std::isinf(fval)) {
+          out_.append(fval > 0 ? "Infinity"sv : "-Infinity"sv);
+          return;
+        }
+        if (std::isnan(fval)) {
+          out_.append("NaN"sv);
+          return;
+        }
+        appendShortestTrailingDotZero(fval);
         return;
+      }
       case FloatFormat::FIXED:
         fmt::format_to(
             out, FMT_COMPILE("{:.{}f}"), dval, opts_.double_num_digits);
@@ -403,6 +424,38 @@ struct PrinterImpl {
             out, FMT_COMPILE("{:.{}g}"), dval, opts_.double_num_digits);
         return;
     }
+  }
+
+  // Format `fval` (double or float) with shortest round-trip notation,
+  // guaranteeing at least one digit after the decimal point as required by
+  // RFC 8259 §6. fmt's {:#} alternate form satisfies this for values whose
+  // shortest representation uses decimal notation, but emits a bare trailing
+  // dot for integer-mantissa values in scientific notation (e.g. 3e-6 →
+  // "3.e-06"), which is invalid JSON. We format with "{}" into a 32-byte
+  // stack buffer, then emit the three segments around the injected ".0"
+  // directly into out_, avoiding any memmove on the output string.
+  template <typename Float>
+  void appendShortestTrailingDotZero(Float fval) const {
+    // longest shortest-round-trip double is ~24 chars
+    std::array<char, 32> buf = {};
+    const auto result =
+        fmt::format_to_n(buf.data(), buf.size(), FMT_COMPILE("{}"), fval);
+    const char* const p = buf.data();
+    const char* const end = result.out;
+    for (const char* c = p; c != end; ++c) {
+      if (*c == '.') {
+        out_.append(p, end); // already has a fractional digit — no fixup
+        return;
+      }
+      if (*c == 'e' || *c == 'E') {
+        out_.append(p, c); // mantissa
+        out_.append(".0"); // injected fractional part
+        out_.append(c, end); // exponent
+        return;
+      }
+    }
+    out_.append(p, end); // integer in decimal notation: "45" → "45.0"
+    out_.append(".0");
   }
 
   std::string& out_;
