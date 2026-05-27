@@ -5,6 +5,7 @@ load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule
 oncall("fbcode_entropy_wardens_folly")
 
 fb_dirsync_cpp_binary(
+    # @autodeps-skip
     name = "folly-addr2line",
     srcs = [
         "Addr2Line.cpp",
@@ -22,6 +23,7 @@ fb_dirsync_cpp_binary(
 
 fb_dirsync_rule(
     name = "libFollySegFault.so.v",
+    src = "libFollySegFault.so.v",
     fbcode_rule = export_file,
 )
 
@@ -37,10 +39,8 @@ fb_dirsync_cpp_binary(
     ],
     dlopen_enabled = True,
     linker_flags = [
-
         # Trim runtime `DT_NEEDED` deps.
         "--as-needed",
-
         # Use a version script to prevent exporting any symbols.
         "--version-script=$(location :libFollySegFault.so.v)",
     ] + select({

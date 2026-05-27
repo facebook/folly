@@ -5,6 +5,7 @@ load("../../io/async/test/certs/defs.bzl", "alias_pem", "alias_pem_for_xplat")
 oncall("fbcode_entropy_wardens_folly")
 
 fb_dirsync_cpp_unittest(
+    # @autodeps-skip
     name = "openssl_hash_test",
     srcs = ["OpenSSLHashTest.cpp"],
     deps = [
@@ -15,6 +16,7 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
+    # @autodeps-skip
     name = "ssl_session_manager_test",
     srcs = ["SSLSessionManagerTest.cpp"],
     deps = [
@@ -27,6 +29,7 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
+    # @autodeps-skip
     name = "openssl_key_utils_test",
     srcs = ["OpenSSLKeyUtilsTest.cpp"],
     deps = [
@@ -45,10 +48,14 @@ fb_dirsync_rule(
         "tests-cert.pem",
         "ca-cert.pem",
     ],
+    # alias_pem ignores `name` and creates one alias per pem; there is no
+    # single "_pem_aliases" target to redirect to.
+    redirect = False,
     xplat_rule = alias_pem_for_xplat,
 )
 
 fb_dirsync_cpp_unittest(
+    # @autodeps-skip
     name = "openssl_cert_utils_test",
     srcs = ["OpenSSLCertUtilsTest.cpp"],
     resources = [
