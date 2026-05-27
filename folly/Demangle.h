@@ -59,11 +59,10 @@ inline fbstring demangle(const std::type_info& type) {
  *
  * This function does not allocate memory and is async-signal-safe.
  *
- * Note that the underlying function for the fbstring-returning demangle is
- * somewhat standard (abi::__cxa_demangle, which uses malloc), the underlying
- * function for this version is less so (cplus_demangle_v3_callback from
- * libiberty), so it is possible for the fbstring version to work, while this
- * version returns the original, mangled name.
+ * This function tries libiberty first (cplus_demangle_v3_callback), then falls
+ * back to cxxabi (abi::__cxa_demangle with the provided buffer) if libiberty
+ * is not available. If neither is available, it returns the original mangled
+ * name.
  */
 size_t demangle(const char* name, char* out, size_t outSize);
 inline size_t demangle(const std::type_info& type, char* buf, size_t bufSize) {
