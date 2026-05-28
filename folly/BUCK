@@ -361,6 +361,7 @@ fb_dirsync_cpp_library(
         "//folly/portability:fcntl",
         "//folly/portability:sockets",
         "//folly/portability:stdlib",
+        "//folly/portability:sys_mman",
         "//folly/portability:sys_syscall",
         "//folly/portability:unistd",
         "//folly/system:at_fork",

@@ -529,6 +529,10 @@ class Subprocess {
       return *this;
     }
 
+    /// Write the child's PID into buf before execve. The exec'd process
+    /// will see the written value (e.g. via an environment variable backed
+    /// by this buffer). On platforms where vfork does not share address
+    /// space (e.g. Apple), the write may not be visible to the parent.
     Options& addPrintPidToBuffer(span<char> buf);
 
     Options& addRLimit(
@@ -1005,6 +1009,7 @@ class Subprocess {
   struct LibcReal;
   struct SpawnRawArgs;
   struct ChildErrorInfo;
+  struct SharedErrorData;
 
   // spawn() sets up a pipe to read errors from the child,
   // then calls spawnInternal() to do the bulk of the work.  Once
@@ -1020,7 +1025,8 @@ class Subprocess {
       const char* executable,
       Options& options,
       const std::vector<std::string>* env,
-      ChildErrorInfo* err);
+      ChildErrorInfo* err,
+      int syncPipeFd = -1);
 
   static pid_t spawnInternalDoFork(SpawnRawArgs const& args);
   [[noreturn]] static void childError(
@@ -1036,6 +1042,13 @@ class Subprocess {
 
   // Closes fds inherited from parent in child process
   static void closeInheritedFds(const SpawnRawArgs& args);
+
+  template <auto Mem>
+  static int** erroutOf(Options& o) {
+    return (o.*Mem) ? &(o.*Mem)->errout : nullptr;
+  }
+
+  using ErroutAccessor = int** (*)(Options&);
 
   /**
    * Read from the error pipe, and throw SubprocessSpawnError if the child

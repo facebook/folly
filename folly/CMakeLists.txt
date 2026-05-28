@@ -1298,6 +1298,7 @@ if(NOT WIN32)
       folly_portability_fcntl
       folly_portability_sockets
       folly_portability_stdlib
+      folly_portability_sys_mman
       folly_portability_sys_syscall
       folly_portability_unistd
       folly_scope_guard
