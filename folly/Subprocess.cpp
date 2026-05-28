@@ -45,6 +45,7 @@
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Stdlib.h>
+#include <folly/portability/SysMman.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 #include <folly/system/AtFork.h>
@@ -248,6 +249,7 @@ struct Subprocess::SpawnRawArgs {
   char const* const* envv{};
   char const* executable{};
   ChildErrorInfo* err{};
+  int syncPipeFd{-1};
   sigset_t oldSignals{};
 
   explicit SpawnRawArgs(Scratch const& scratch, Options const& options)
@@ -539,6 +541,13 @@ struct Subprocess::ChildErrorInfo {
   int errnoValue;
 };
 
+struct Subprocess::SharedErrorData {
+  ChildErrorInfo childErr;
+  static constexpr size_t kNumFixedErrouts = 4;
+  static constexpr size_t kMaxErrouts = kNumFixedErrouts + RLIM_NLIMITS;
+  int errouts[kMaxErrouts];
+};
+
 [[noreturn]]
 FOLLY_DETAIL_SUBPROCESS_RAW void Subprocess::childError(
     SpawnRawArgs const& args, int errCode, int errnoValue) {
@@ -573,11 +582,90 @@ void Subprocess::spawn(
   // On error, close all pipes_ (ignoring errors, but that seems fine here).
   auto pipesGuard = makeGuard([this] { pipes_.clear(); });
 
-  ChildErrorInfo err{};
+  // Allocate shared error data for child-to-parent error communication.
+  // On Apple, vfork may be mapped to fork, so the child does not share the
+  // parent's address space. Use mmap(MAP_SHARED) there; stack elsewhere.
+  SharedErrorData localShared{};
+  SharedErrorData* shared = &localShared;
+  if constexpr (kIsApple) {
+    shared = static_cast<SharedErrorData*>(::mmap(
+        nullptr,
+        sizeof(SharedErrorData),
+        PROT_READ | PROT_WRITE,
+        MAP_SHARED | MAP_ANONYMOUS,
+        -1,
+        0));
+    checkUnixError(shared == MAP_FAILED ? -1 : 0, "mmap");
+    *shared = {};
+  }
+  SCOPE_EXIT {
+    if constexpr (kIsApple) {
+      ::munmap(shared, sizeof(SharedErrorData));
+    }
+  };
+
+  // Redirect errout pointers in Options to shadow slots in shared region.
+  // Save originals for post-sync copy-back.
+  int* origErrouts[SharedErrorData::kMaxErrouts];
+  size_t numErrouts = 0;
+  auto redirectErrout = [&](int*& errout) {
+    if (errout) {
+      origErrouts[numErrouts] = errout;
+      errout = &shared->errouts[numErrouts];
+      ++numErrouts;
+    }
+  };
+  static constexpr auto kFixedErroutAccessors = std::array{
+      erroutOf<&Options::uid_>,
+      erroutOf<&Options::gid_>,
+      erroutOf<&Options::euid_>,
+      erroutOf<&Options::egid_>,
+  };
+  static_assert(
+      kFixedErroutAccessors.size() == SharedErrorData::kNumFixedErrouts);
+  for (auto accessor : kFixedErroutAccessors) {
+    if (auto* pp = accessor(options)) {
+      redirectErrout(*pp);
+    }
+  }
+  for (auto& [_, attr] : options.rlimits_) {
+    redirectErrout(attr.errout);
+  }
+
+  // On Apple, create a sync pipe so the parent blocks until the child
+  // execs (O_CLOEXEC closes pipe) or _exits.
+  int syncFds[2] = {-1, -1};
+  if constexpr (kIsApple) {
+    checkUnixError(::pipe(syncFds), "pipe");
+    checkUnixError(::fcntl(syncFds[0], F_SETFD, FD_CLOEXEC), "fcntl");
+    checkUnixError(::fcntl(syncFds[1], F_SETFD, FD_CLOEXEC), "fcntl");
+  }
+  SCOPE_EXIT {
+    if (syncFds[0] >= 0) {
+      ::close(syncFds[0]);
+    }
+  };
 
   // Perform the actual work of setting up pipes then forking and
   // executing the child.
-  spawnInternal(std::move(argv), executable, options, env, &err);
+  spawnInternal(
+      std::move(argv), executable, options, env, &shared->childErr, syncFds[1]);
+
+  // On Apple, synchronize with the child before reading shared data.
+  if constexpr (kIsApple) {
+    ::close(syncFds[1]);
+    syncFds[1] = -1;
+    char buf;
+    ssize_t rc;
+    do {
+      rc = ::read(syncFds[0], &buf, 1);
+    } while (rc == -1 && errno == EINTR);
+  }
+
+  // Copy shadow errout values back to user's pointers
+  for (size_t i = 0; i < numErrouts; ++i) {
+    *origErrouts[i] = shared->errouts[i];
+  }
 
   // After spawnInternal() returns the child is alive.  We have to be very
   // careful about throwing after this point.  We are inside the constructor,
@@ -587,7 +675,7 @@ void Subprocess::spawn(
   // We should only throw if we got an error via the ChildErrorInfo, and we know
   // the child has exited and can be immediately waited for.  In all other
   // cases, we have no way of cleaning up the child.
-  readChildErrorNum(err, executable);
+  readChildErrorNum(shared->childErr, executable);
 
   // If we spawned a detached child, wait on the intermediate child process.
   // It always exits immediately.
@@ -604,7 +692,8 @@ void Subprocess::spawnInternal(
     const char* executable,
     Options& options,
     const std::vector<std::string>* env,
-    ChildErrorInfo* err) {
+    ChildErrorInfo* err,
+    int syncPipeFd) {
   // Parent work, pre-fork: create pipes
   std::vector<int> childFds;
   // Close all of the childFds as we leave this scope
@@ -698,6 +787,7 @@ void Subprocess::spawnInternal(
   args.envv = env ? envHolder.get() : environ;
   args.executable = executable;
   args.err = err;
+  args.syncPipeFd = syncPipeFd;
   args.oldSignals = options.sigmask_.value_or(oldSignals);
 
   // Child is alive.  We have to be very careful about throwing after this
@@ -843,7 +933,8 @@ void Subprocess::closeInheritedFds(const SpawnRawArgs& args) {
         if (errno == ERANGE || fd < 3 || end_p == entry->d_name) {
           continue;
         }
-        if ((fd != dirfd) && (args.fdActions.find(fd) == nullptr)) {
+        if ((fd != dirfd) && (fd != args.syncPipeFd) &&
+            (args.fdActions.find(fd) == nullptr)) {
           detail::subprocess_libc::close(fd);
         }
       }
@@ -855,7 +946,7 @@ void Subprocess::closeInheritedFds(const SpawnRawArgs& args) {
   // If not running on Linux or if we failed to open /proc/self/fd, try to close
   // all possible open file descriptors.
   for (auto fd = sysconf(_SC_OPEN_MAX) - 1; fd >= 3; --fd) {
-    if (args.fdActions.find(fd) == nullptr) {
+    if (fd != args.syncPipeFd && args.fdActions.find(fd) == nullptr) {
       detail::subprocess_libc::close(fd);
     }
   }

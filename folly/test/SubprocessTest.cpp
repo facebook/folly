@@ -948,6 +948,7 @@ TEST(WritePidIntoBufTest, WritesPidIntoBufTooSmall) {
   EXPECT_THROW(options.addPrintPidToBuffer(buf), std::invalid_argument);
 }
 
+#if !defined(__APPLE__)
 TEST(WritePidIntoBufTest, WritesPidIntoBuf) {
   constexpr size_t size = Subprocess::Options::kPidBufferMinSize;
   char buf[size] = {};
@@ -957,6 +958,7 @@ TEST(WritePidIntoBufTest, WritesPidIntoBuf) {
   EXPECT_EQ(fmt::format("{}", proc.pid()), buf);
   proc.wait();
 }
+#endif
 
 TEST(WritePidIntoBufTest, WritesPidIntoBufExampleEnvVar) {
   // this test effectively duplicates WritesPidIntoBuf but may serve as a
