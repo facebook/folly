@@ -207,7 +207,7 @@ FanoutSender<ValueType>& FanoutSender<ValueType>::operator=(
     return *this;
   }
   std::move(*this).close();
-  senders_ = std::move(senders_);
+  senders_ = std::move(other.senders_);
   return *this;
 }
 

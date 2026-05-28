@@ -243,5 +243,53 @@ TEST_F(FanoutSenderFixture, NumSubscribers) {
   auto receiver3 = std::make_unique<Receiver<int>>(sender.subscribe());
   EXPECT_EQ(sender.numSubscribers(), 3);
 }
+
+TEST_F(FanoutSenderFixture, MoveAssign_TransfersSingleSubscriberFromSource) {
+  auto source = FanoutSender<int>();
+  auto [handle, callback] = processValues(source.subscribe());
+  executor_.drain();
+
+  auto dest = FanoutSender<int>();
+  dest = std::move(source);
+
+  EXPECT_EQ(dest.numSubscribers(), 1);
+
+  EXPECT_CALL(*callback, onValue(42));
+  dest.write(42);
+  executor_.drain();
+
+  EXPECT_CALL(*callback, onClosed());
+  std::move(dest).close();
+  executor_.drain();
+}
+
+TEST_F(
+    FanoutSenderFixture,
+    MoveAssign_ClosesExistingSubscribersAndTransfersFromSource) {
+  auto dest = FanoutSender<int>();
+  auto [destHandle, destCallback] = processValues(dest.subscribe());
+
+  auto source = FanoutSender<int>();
+  auto [srcHandle1, srcCallback1] = processValues(source.subscribe());
+  auto [srcHandle2, srcCallback2] = processValues(source.subscribe());
+  executor_.drain();
+
+  EXPECT_CALL(*destCallback, onClosed());
+
+  dest = std::move(source);
+  executor_.drain();
+
+  EXPECT_EQ(dest.numSubscribers(), 2);
+
+  EXPECT_CALL(*srcCallback1, onValue(7));
+  EXPECT_CALL(*srcCallback2, onValue(7));
+  dest.write(7);
+  executor_.drain();
+
+  EXPECT_CALL(*srcCallback1, onClosed());
+  EXPECT_CALL(*srcCallback2, onClosed());
+  std::move(dest).close();
+  executor_.drain();
+}
 } // namespace channels
 } // namespace folly
