@@ -299,6 +299,43 @@ fbcode_target(
     ],
 )
 
+export_file(name = "gcc_except_table_large.lds")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "gcc_except_table_large_test",
+    srcs = ["GccExceptTableLargeTest.cpp"],
+    linker_flags = [
+        "--script=$(location :gcc_except_table_large.lds)",
+    ],
+    modifiers = [
+        "ovr_config//build_mode:sanitizer_type[no-san]",
+    ],
+    deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly/debugging/symbolizer:elf",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "gcc_except_table_large_test_pic",
+    srcs = ["GccExceptTableLargeTest.cpp"],
+    linker_flags = [
+        "--script=$(location :gcc_except_table_large.lds)",
+    ],
+    modifiers = [
+        "ovr_config//build_mode:sanitizer_type[no-san]",
+    ],
+    overridden_link_style = "static_pic",
+    deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly/debugging/symbolizer:elf",
+        "//folly/portability:gtest",
+    ],
+)
+
 fbcode_target(
     _kind = cpp_benchmark,
     name = "stack_trace_large_benchmark",
