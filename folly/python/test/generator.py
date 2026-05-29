@@ -24,8 +24,6 @@ from folly.python.test.simplegenerator import SimpleGenerator
 
 class GeneratorTest(unittest.TestCase):
     def test_iter_generator(self) -> None:
-        loop = asyncio.get_event_loop()
-
         async def wrapper() -> None:
             # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
             gen = SimpleGenerator("normal")
@@ -35,7 +33,7 @@ class GeneratorTest(unittest.TestCase):
                 expected += 1
             self.assertEqual(expected, 6)
 
-        loop.run_until_complete(wrapper())
+        asyncio.run(wrapper())
 
     def test_iter_generator_empty(self) -> None:
         loop = asyncio.get_event_loop()
