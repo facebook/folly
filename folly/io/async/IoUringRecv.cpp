@@ -84,6 +84,7 @@ class IoUringRecvHandle::RecvRequest
     } else {
       bufferRing_ = backend->bufferProvider();
     }
+    useBundles_ = backend->useBundles();
   }
 
   void setRecvLen(size_t len) { recvLen_ = len; }
@@ -93,6 +94,9 @@ class IoUringRecvHandle::RecvRequest
       ::io_uring_prep_recv(sqe, fd_.toFd(), nullptr, recvLen_, 0);
     } else {
       ::io_uring_prep_recv_multishot(sqe, fd_.toFd(), nullptr, 0, 0);
+      if (useBundles_) {
+        sqe->ioprio |= IORING_RECVSEND_BUNDLE;
+      }
     }
     sqe->buf_group = bufferRing_->gid();
     sqe->flags |= IOSQE_BUFFER_SELECT;
@@ -192,6 +196,7 @@ class IoUringRecvHandle::RecvRequest
   NetworkSocket fd_;
   IoUringRecvHandle* handle_;
   DestructorGuard handleGuard_;
+  bool useBundles_{false};
 
   IoUringProvidedBufferRing* bufferRing_{nullptr};
   IoUringZeroCopyBufferPool* bufferPool_{nullptr};
