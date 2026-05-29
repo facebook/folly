@@ -1543,6 +1543,10 @@ unsigned int IoUringBackend::internalProcessCqe(
     unsigned int loop_count = 0;
     io_uring_for_each_cqe(&ioRing_, head, cqe) {
       loop_count++;
+      if (FOLLY_UNLIKELY(zcBufferPool_ && zcBufferPool_->cqeIsNotif(cqe))) {
+        zcBufferPool_->processNotificationCqe(cqe);
+        continue;
+      }
       if (cqe->flags & IORING_CQE_F_MORE) {
         count_more++;
       }

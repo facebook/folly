@@ -76,6 +76,30 @@ class IoUringZeroCopyBufferPool {
       const struct io_uring_cqe* cqe,
       const struct io_uring_zcrx_cqe* rcqe) noexcept;
 
+  void processNotificationCqe(const struct io_uring_cqe* cqe) noexcept;
+
+  static constexpr uint64_t kZcrxNotifUserData = ~uint64_t{0x0};
+  bool cqeIsNotif(const struct io_uring_cqe* cqe) const noexcept {
+    return cqe->user_data == kZcrxNotifUserData;
+  }
+  uint64_t getAndResetCopyFallbackCount() noexcept;
+  uint64_t getAndResetCopyFallbackBytes() noexcept;
+  uint32_t getAndResetNoBufferCount() noexcept;
+
+  struct Stats {
+    uint64_t copyFallbackCount{0};
+    uint64_t copyFallbackBytes{0};
+    uint32_t noBufferCount{0};
+
+    auto operator<=>(const Stats&) const = default;
+  };
+
+  void getStats(Stats& stats) noexcept {
+    stats.copyFallbackCount = getAndResetCopyFallbackCount();
+    stats.copyFallbackBytes = getAndResetCopyFallbackBytes();
+    stats.noBufferCount = getAndResetNoBufferCount();
+  }
+
  private:
   explicit IoUringZeroCopyBufferPool(Params params);
 
@@ -98,6 +122,8 @@ class IoUringZeroCopyBufferPool {
   uint32_t getRingFreeCount() const noexcept;
   size_t getPendingBuffersSize() const noexcept;
   size_t getBufferSize() const noexcept;
+  void* getNotifStatsPtr() const noexcept;
+  void incNoBufferCount() noexcept;
 
   struct io_uring* ring_{nullptr};
   std::shared_ptr<IoUringZeroCopyBufferPoolImpl> impl_;

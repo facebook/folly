@@ -220,6 +220,28 @@ class IoUringBackend : public EventBaseBackendBase {
   bool importZcBufferPool(IoUringZeroCopyBufferPool::ExportHandle handle);
   IoUringZeroCopyBufferPool::ExportHandle exportZcBufferPool();
 
+  struct IoUringStats {
+    IoUringZeroCopyBufferPool::Stats zcrx;
+    IoUringProvidedBufferRing::Stats providedBuffer;
+
+    auto operator<=>(const IoUringStats&) const = default;
+  };
+
+  IoUringStats getStats() {
+    IoUringStats stats;
+    if (zcBufferPool_) {
+      zcBufferPool_->getStats(stats.zcrx);
+    }
+
+    if (hasBufferProvider()) {
+      IoUringProvidedBufferRing* bufProvider =
+          bufferProviders_[bufferProviderIdx_ & (bufferProviders_.size() - 1)]
+              .get();
+      bufProvider->getStats(stats.providedBuffer);
+    }
+    return stats;
+  }
+
  protected:
   enum class WaitForEventsMode { WAIT, DONT_WAIT };
 
