@@ -38,6 +38,9 @@ class IoUringZeroCopyBufferPoolTestHelper {
   uint32_t getRingFreeCount() { return pool.getRingFreeCount(); }
   size_t getPendingBuffersSize() { return pool.getPendingBuffersSize(); }
   size_t getBufferSize() { return pool.getBufferSize(); }
+  void* getNotifStatsPtr() { return pool.getNotifStatsPtr(); }
+  uint64_t getNotifUserData() { return pool.kZcrxNotifUserData; }
+  void incNoBufferCount() { pool.incNoBufferCount(); }
 
   void consumeRefillRingEntries(uint32_t numEntries) {
     *getHead() += numEntries;
@@ -47,6 +50,12 @@ class IoUringZeroCopyBufferPoolTestHelper {
 } // namespace folly
 
 using namespace ::folly;
+
+// TODO: T264228475: remove this once liburing/uapi headers are updated.
+struct TestZcrxNotifStats {
+  uint64_t copy_count;
+  uint64_t copy_bytes;
+};
 
 TEST(IoUringZeroCopyBufferPoolTest, GetBuf) {
   IoUringZeroCopyBufferPool::Params params = {
@@ -298,6 +307,117 @@ TEST(IoUringZeroCopyBufferPoolTest, SharedBufferRefillWithPending) {
 
   EXPECT_EQ(helper.getRingUsedCount(), 2);
   EXPECT_EQ(helper.getPendingBuffersSize(), 0);
+}
+
+TEST(IoUringZeroCopyBufferPoolTest, CqeIsNotif) {
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numBuffers = 8,
+      .bufferSizeHint = 4096,
+      .rqEntries = 4,
+      .ifindex = 0,
+      .queueId = 0,
+  };
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper helper(*pool);
+
+  io_uring_cqe cqe{};
+
+  // Notification sentinel value.
+  cqe.user_data = helper.getNotifUserData();
+  EXPECT_TRUE(pool->cqeIsNotif(&cqe));
+
+  // Regular CQE with zero user_data.
+  cqe.user_data = 0;
+  EXPECT_FALSE(pool->cqeIsNotif(&cqe));
+
+  // Regular CQE with arbitrary user_data.
+  cqe.user_data = 42;
+  EXPECT_FALSE(pool->cqeIsNotif(&cqe));
+}
+
+TEST(IoUringZeroCopyBufferPoolTest, NotifStats) {
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numBuffers = 8,
+      .bufferSizeHint = 4096,
+      .rqEntries = 4,
+      .ifindex = 0,
+      .queueId = 0,
+  };
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper helper(*pool);
+  auto* stats = static_cast<TestZcrxNotifStats*>(helper.getNotifStatsPtr());
+  ASSERT_NE(stats, nullptr);
+
+  EXPECT_EQ(pool->getAndResetCopyFallbackCount(), 0);
+  EXPECT_EQ(pool->getAndResetCopyFallbackBytes(), 0);
+
+  __atomic_store_n(&stats->copy_count, 5, __ATOMIC_RELAXED);
+  __atomic_store_n(&stats->copy_bytes, 65536, __ATOMIC_RELAXED);
+  EXPECT_EQ(pool->getAndResetCopyFallbackCount(), 5);
+  EXPECT_EQ(pool->getAndResetCopyFallbackBytes(), 65536);
+
+  EXPECT_EQ(pool->getAndResetCopyFallbackCount(), 0);
+  EXPECT_EQ(pool->getAndResetCopyFallbackBytes(), 0);
+
+  __atomic_add_fetch(&stats->copy_count, 20, __ATOMIC_RELAXED);
+  __atomic_add_fetch(&stats->copy_bytes, 131072, __ATOMIC_RELAXED);
+  EXPECT_EQ(pool->getAndResetCopyFallbackCount(), 20);
+  EXPECT_EQ(pool->getAndResetCopyFallbackBytes(), 131072);
+}
+
+TEST(IoUringZeroCopyBufferPoolTest, NoBufferCount) {
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numBuffers = 8,
+      .bufferSizeHint = 4096,
+      .rqEntries = 4,
+      .ifindex = 0,
+      .queueId = 0,
+  };
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper helper(*pool);
+
+  // Initially zero.
+  EXPECT_EQ(pool->getAndResetNoBufferCount(), 0);
+
+  // Single increment.
+  helper.incNoBufferCount();
+  EXPECT_EQ(pool->getAndResetNoBufferCount(), 1);
+
+  // Reset back to zero after read.
+  EXPECT_EQ(pool->getAndResetNoBufferCount(), 0);
+
+  // Multiple increments accumulate correctly.
+  helper.incNoBufferCount();
+  helper.incNoBufferCount();
+  helper.incNoBufferCount();
+  EXPECT_EQ(pool->getAndResetNoBufferCount(), 3);
+
+  // Resets again after read.
+  EXPECT_EQ(pool->getAndResetNoBufferCount(), 0);
+
+  // No-buffer counting works correctly interleaved with buffer ops.
+  io_uring_cqe cqe{};
+  io_uring_zcrx_cqe zcqe{};
+  cqe.res = 2048;
+  zcqe.off = 0;
+
+  auto buf1 = pool->getIoBuf(&cqe, &zcqe);
+  helper.incNoBufferCount();
+  EXPECT_EQ(pool->getAndResetNoBufferCount(), 1);
+
+  buf1.reset();
+  zcqe.off = 4096;
+  auto buf2 = pool->getIoBuf(&cqe, &zcqe);
+  helper.incNoBufferCount();
+  helper.incNoBufferCount();
+  EXPECT_EQ(pool->getAndResetNoBufferCount(), 2);
+
+  // Buffer operations don't affect the counter after reset.
+  buf2.reset();
+  EXPECT_EQ(pool->getAndResetNoBufferCount(), 0);
 }
 
 TEST(IoUringZeroCopyBufferPoolTest, BufferSizeHintFallback) {

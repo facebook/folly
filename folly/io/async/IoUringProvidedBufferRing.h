@@ -80,6 +80,18 @@ class IoUringProvidedBufferRing {
   // Returns the buffer utilization as an integer percentage (0-100).
   int getUtilPct() const noexcept;
 
+  struct Stats {
+    uint32_t enobufCount{0};
+    int utilPct{-1};
+
+    auto operator<=>(const Stats&) const = default;
+  };
+
+  void getStats(Stats& stats) noexcept {
+    stats.enobufCount = getAndResetEnobufCount();
+    stats.utilPct = getUtilPct();
+  }
+
  private:
   explicit IoUringProvidedBufferRing(io_uring* ioRingPtr, Options options);
 
