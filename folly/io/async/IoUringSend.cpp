@@ -58,9 +58,6 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
         data_(std::move(data)),
         flags_(flags),
         fd_(fd) {
-    if (data_) {
-      CHECK_EQ(data_->countChainElements(), iovCount);
-    }
     memcpy(iov_, iov, sizeof(struct iovec) * iovCount);
     msg_.msg_iov = iov_;
     msg_.msg_iovlen = std::min<size_t>(iovRemaining_, kIovMax);
