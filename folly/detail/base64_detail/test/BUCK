@@ -16,7 +16,7 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
-fb_dirsync_cpp_library(
+fb_dirsync_cpp_unittest(
     name = "base64_platform_test",
     srcs = ["Base64PlatformTest.cpp"],
     deps = [

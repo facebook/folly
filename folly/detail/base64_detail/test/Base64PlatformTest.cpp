@@ -14,13 +14,11 @@
  * limitations under the License.
  */
 
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
 #include <numeric>
 #include <string_view>
-#include <vector>
 #include <folly/portability/GTest.h>
 
 #include <folly/detail/base64_detail/Base64_SSE4_2_Platform.h>
@@ -61,9 +59,9 @@ std::array<std::uint8_t, 16> expectedPackIndexesToBytes(
   return res;
 }
 
-constexpr char kBase64EncodeTable[] =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-    "="; // \0 is also at the end.
+// sizeof captures '\0' at the end, giving a view over all 66 bytes.
+constexpr std::string_view kBase64EncodeTable{
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="};
 
 std::array<std::uint8_t, 16> expectedLookupByIndex(
     std::array<std::uint8_t, 16> in, std::string_view sampleTable) {
@@ -153,10 +151,9 @@ TYPED_TEST(Base64PlatformTest, EncodeToIndexes) {
 TYPED_TEST(Base64PlatformTest, IndexLookup) {
   using RegBytes = typename TestFixture::RegBytesArray;
 
-  std::uint8_t max_index =
-      std::strlen(kBase64EncodeTable) + 1; // to include '\0'
-
-  for (std::uint8_t i = 0; i != max_index + 1 - RegBytes{}.size(); i += 1) {
+  for (std::uint8_t i = 0;
+       i != kBase64EncodeTable.size() + 1 - RegBytes{}.size();
+       i += 1) {
     RegBytes in;
     std::iota(in.begin(), in.end(), i);
     RegBytes expected = expectedLookupByIndex(in, kBase64EncodeTable);
