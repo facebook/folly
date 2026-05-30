@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <array>
 #include <functional>
 #include <type_traits>
 
@@ -420,7 +421,8 @@ struct invoke_first_match : private Invoker... {
   using at = type_pack_element_t<Idx, Invoker...>;
   template <size_t... Idx, typename... A>
   static constexpr size_t first_(std::index_sequence<Idx...>, tag_t<A...>) {
-    constexpr bool r[] = {is_invocable_v<at<Idx> const&, A...>..., false};
+    constexpr std::array<bool, sizeof...(Idx) + 1> r = {
+        is_invocable_v<at<Idx> const&, A...>..., false};
     for (size_t i = 0; i < sizeof...(Invoker); ++i) {
       if (r[i]) {
         return i;
