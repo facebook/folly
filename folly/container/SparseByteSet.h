@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <array>
 #include <cassert>
 #include <cstdint>
 
@@ -117,8 +116,8 @@ class SparseByteSet {
  private:
   uint16_t size_; // can't use uint8_t because it would overflow if all
                   // possible values were inserted.
-  std::array<uint8_t, kCapacity> sparse_{};
-  std::array<uint8_t, kCapacity> dense_{};
+  uint8_t sparse_[kCapacity];
+  uint8_t dense_[kCapacity];
 };
 
 } // namespace folly

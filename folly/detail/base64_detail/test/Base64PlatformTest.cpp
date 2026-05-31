@@ -18,7 +18,6 @@
 #include <cstdint>
 #include <cstring>
 #include <numeric>
-#include <string_view>
 #include <folly/portability/GTest.h>
 
 #include <folly/detail/base64_detail/Base64_SSE4_2_Platform.h>
@@ -31,15 +30,27 @@ std::array<std::uint8_t, 16> expectedEncodeToIndexes(
     std::array<std::uint8_t, 16> in) {
   std::array<std::uint8_t, 16> res{};
 
-  for (std::size_t fi = 0, oi = 0; oi < 16; fi += 3, oi += 4) {
-    std::uint8_t aaab = in[fi];
-    std::uint8_t bbcc = in[fi + 1];
-    std::uint8_t cddd = in[fi + 2];
+  std::uint8_t const* f = in.data();
+  std::uint8_t* o = res.data();
+  std::uint8_t* const oEnd = res.data() + res.size();
 
-    res[oi] = aaab >> 2;
-    res[oi + 1] = ((aaab << 4) | (bbcc >> 4)) & 0x3f;
-    res[oi + 2] = ((bbcc << 2) | (cddd >> 6)) & 0x3f;
-    res[oi + 3] = cddd & 0x3f;
+  while (o != oEnd) {
+    std::uint8_t aaab = f[0];
+    std::uint8_t bbcc = f[1];
+    std::uint8_t cddd = f[2];
+
+    std::uint8_t aaa = aaab >> 2;
+    std::uint8_t bbb = ((aaab << 4) | (bbcc >> 4)) & 0x3f;
+    std::uint8_t ccc = ((bbcc << 2) | (cddd >> 6)) & 0x3f;
+    std::uint8_t ddd = cddd & 0x3f;
+
+    o[0] = aaa;
+    o[1] = bbb;
+    o[2] = ccc;
+    o[3] = ddd;
+
+    f += 3;
+    o += 4;
   }
 
   return res;
@@ -50,10 +61,26 @@ std::array<std::uint8_t, 16> expectedPackIndexesToBytes(
   std::array<std::uint8_t, 16> res{};
   res.fill(0);
 
-  for (std::size_t fi = 0, oi = 0; fi < 16; fi += 4, oi += 3) {
-    res[oi] = (in[fi] << 2) | (in[fi + 1] >> 4);
-    res[oi + 1] = (in[fi + 1] << 4) | (in[fi + 2] >> 2);
-    res[oi + 2] = (in[fi + 2] << 6) | in[fi + 3];
+  std::uint8_t const* f = in.data();
+  std::uint8_t const* const inEnd = in.data() + in.size();
+  std::uint8_t* o = res.data();
+
+  while (f != inEnd) {
+    std::uint8_t aaa = f[0];
+    std::uint8_t bbb = f[1];
+    std::uint8_t ccc = f[2];
+    std::uint8_t ddd = f[3];
+
+    std::uint8_t aaab = (aaa << 2) | (bbb >> 4);
+    std::uint8_t bbcc = (bbb << 4) | (ccc >> 2);
+    std::uint8_t cddd = (ccc << 6) | ddd;
+
+    o[0] = aaab;
+    o[1] = bbcc;
+    o[2] = cddd;
+
+    f += 4;
+    o += 3;
   }
 
   return res;
@@ -64,7 +91,7 @@ constexpr std::string_view kBase64EncodeTable{
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="};
 
 std::array<std::uint8_t, 16> expectedLookupByIndex(
-    std::array<std::uint8_t, 16> in, std::string_view sampleTable) {
+    std::array<std::uint8_t, 16> in, const char* sampleTable) {
   std::array<std::uint8_t, 16> res{};
 
   for (std::size_t i = 0; i != in.size(); ++i) {
@@ -139,7 +166,7 @@ TYPED_TEST(Base64PlatformTest, EncodeToIndexes) {
 
   for (std::uint16_t v = 0; v != 256; v += 8) {
     RegBytes in;
-    std::iota(in.begin(), in.end(), static_cast<std::uint8_t>(v));
+    std::iota(in.data(), in.data() + in.size(), static_cast<std::uint8_t>(v));
 
     RegBytes expected = expectedEncodeToIndexes(in);
     RegBytes actual = TestFixture::actualEncodeToIndexes(in);
@@ -155,7 +182,7 @@ TYPED_TEST(Base64PlatformTest, IndexLookup) {
        i != kBase64EncodeTable.size() + 1 - RegBytes{}.size();
        i += 1) {
     RegBytes in;
-    std::iota(in.begin(), in.end(), i);
+    std::iota(in.data(), in.data() + in.size(), i);
     RegBytes expected = expectedLookupByIndex(in, kBase64EncodeTable);
     RegBytes actual = TestFixture::actualLookupByIndex(in);
     ASSERT_EQ(expected, actual);
@@ -203,7 +230,7 @@ TYPED_TEST(Base64PlatformTest, decodeToIndexSuccess) {
   // Some cases
   for (std::uint16_t v = 0; v < 256; v += 1) {
     RegBytes in;
-    std::iota(in.begin(), in.end(), static_cast<std::uint8_t>(v));
+    std::iota(in.data(), in.data() + in.size(), static_cast<std::uint8_t>(v));
 
     for (auto& x : in) {
       x = x % 64;
@@ -223,9 +250,8 @@ TYPED_TEST(Base64PlatformTest, packIndexesToBytes) {
   for (std::uint16_t v = 0; v < 256; v += 1) {
     RegBytes in;
     in.fill(0);
-    for (std::size_t i = 0; i < in.size() / 4 * 3; ++i) {
-      in[i] = static_cast<std::uint8_t>(static_cast<std::uint8_t>(v) + i);
-    }
+    std::iota(
+        in.data(), in.data() + in.size() / 4 * 3, static_cast<std::uint8_t>(v));
 
     for (auto& x : in) {
       x = x % 64;
