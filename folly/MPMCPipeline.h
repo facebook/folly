@@ -95,12 +95,11 @@ class MPMCPipelineStage;
  */
 template <class In, class... Stages>
 class MPMCPipeline {
-  typedef std::tuple<detail::PipelineStageInfo<Stages>...> StageInfos;
-  typedef std::tuple<
+  using StageInfos = std::tuple<detail::PipelineStageInfo<Stages>...>;
+  using StageTuple = std::tuple<
       detail::MPMCPipelineStageImpl<In>,
       detail::MPMCPipelineStageImpl<
-          typename detail::PipelineStageInfo<Stages>::value_type>...>
-      StageTuple;
+          typename detail::PipelineStageInfo<Stages>::value_type>...>;
   static constexpr size_t kAmplification =
       detail::AmplificationProduct<StageInfos>::value;
 
