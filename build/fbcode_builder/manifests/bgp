@@ -27,3 +27,15 @@ re2
 fbcode/neteng/fboss/bgp = neteng/fboss/bgp
 fbcode/neteng/fboss/bgp/public_tld = .
 fbcode/fboss/common = common
+
+[shipit.strip]
+^fbcode/neteng/fboss/bgp/.*facebook.*
+^fbcode/neteng/fboss/bgp/.*\.bzl
+^fbcode/neteng/fboss/bgp/\.llms/.*
+^fbcode/neteng/fboss/bgp/tools/.*
+^fbcode/neteng/fboss/bgp/cpp/rib/RibBB\..*
+^fbcode/neteng/fboss/bgp/cpp/nexthopTracker/NetlinkWrapper\..*
+^fbcode/neteng/fboss/bgp/cpp/common/platform/bb/.*
+^fbcode/neteng/fboss/bgp/cpp/tests/NetlinkWrapperTest\.cpp
+^fbcode/neteng/fboss/bgp/cpp/tests/PlatformConstantBbTest\.cpp
+^fbcode/neteng/fboss/bgp/cpp/tests/FibEbbTest\.cpp
