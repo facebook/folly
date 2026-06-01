@@ -500,14 +500,14 @@ class SSLContext {
   /**
    * Set the ServerNameCallback
    */
-  typedef std::function<ServerNameCallbackResult(SSL* ssl)> ServerNameCallback;
+  using ServerNameCallback = std::function<ServerNameCallbackResult(SSL* ssl)>;
   virtual void setServerNameCallback(const ServerNameCallback& cb);
 
   /**
    * Generic callbacks that are run after we get the Client Hello (right
    * before we run the ServerNameCallback)
    */
-  typedef std::function<void(SSL* ssl)> ClientHelloCallback;
+  using ClientHelloCallback = std::function<void(SSL* ssl)>;
   virtual void addClientHelloCallback(const ClientHelloCallback& cb);
 
   /**
@@ -737,6 +737,6 @@ class SSLContext {
   static int newSessionCallback(SSL* ssl, SSL_SESSION* session);
 };
 
-typedef std::shared_ptr<SSLContext> SSLContextPtr;
+using SSLContextPtr = std::shared_ptr<SSLContext>;
 
 } // namespace folly
