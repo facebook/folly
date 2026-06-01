@@ -17,6 +17,8 @@
 #pragma once
 
 #include <mutex>
+
+#include <folly/CancellationToken.h>
 #include <folly/synchronization/detail/Sleeper.h>
 
 namespace folly {
@@ -51,8 +53,22 @@ bool MutexWaiter<BatonType>::try_wait_until(Deadline deadline) {
 
 template <class BatonType>
 void MutexWaiter<BatonType>::wake() {
-  baton_.post();
-  posted_.store(true, std::memory_order_release);
+  if (coroWaiter_) {
+    // For coroutine waiters, set posted_ before baton_.post(). baton_.post()
+    // resumes the coroutine synchronously via h_(), and the coroutine frame
+    // (containing this MutexWaiter) may be destroyed on another thread before
+    // baton_.post() returns. Setting posted_ first ensures wake() never
+    // accesses the waiter after the baton post.
+    //
+    // This ordering is NOT safe for fiber/thread waiters: the destructor
+    // spin-waits on posted_, so setting it first would allow the destructor
+    // to return and destroy the baton before baton_.post() completes.
+    posted_.store(true, std::memory_order_release);
+    baton_.post();
+  } else {
+    baton_.post();
+    posted_.store(true, std::memory_order_release);
+  }
 }
 
 } // namespace detail
@@ -195,6 +211,81 @@ inline void TimedMutex::unlock() {
 
   locked_ = false;
 }
+
+#if FOLLY_HAS_COROUTINES
+inline folly::coro::Task<void> TimedMutex::co_lock() {
+  {
+    std::lock_guard lg(lock_);
+    if (!locked_) {
+      locked_ = true;
+      co_return;
+    }
+  }
+
+  while (true) {
+    MutexWaiter waiter(/*coroWaiter=*/true);
+
+    {
+      std::lock_guard lg(lock_);
+      if (!locked_) {
+        locked_ = true;
+        waiter.wake();
+        co_return;
+      }
+
+      // Coroutine waiters use fiberWaiters_ because they share the same
+      // cooperative semantics: they yield (not block), are stealable by
+      // thread waiters, and get lower priority than threads in unlock().
+      fiberWaiters_.push_back(waiter);
+    }
+
+    bool cancelled = false;
+    {
+      const auto& ct = co_await folly::coro::co_current_cancellation_token;
+      folly::CancellationCallback cb{
+          ct, [&] {
+            {
+              std::lock_guard lg(lock_);
+              if (!waiter.hook.is_linked()) {
+                // Cancellation fired, but unlock() already dequeued this
+                // waiter and granted the lock. The lock is acquired; let
+                // co_lock() return success.
+                return;
+              }
+              cancelled = true;
+              fiberWaiters_.erase(fiberWaiters_.iterator_to(waiter));
+            }
+            waiter.wake();
+          }};
+
+      co_await waiter.baton();
+    }
+
+    if (cancelled) {
+      co_yield folly::coro::co_stopped_may_throw;
+    }
+
+    auto lockStolen = [&] {
+      std::lock_guard lg(lock_);
+      auto stolen = notifiedFiber_ != &waiter;
+      if (!stolen) {
+        notifiedFiber_ = nullptr;
+      }
+      return stolen;
+    }();
+
+    if (!lockStolen) {
+      co_return;
+    }
+  }
+}
+
+inline folly::coro::Task<std::unique_lock<TimedMutex>>
+TimedMutex::co_scoped_lock() {
+  co_await co_lock();
+  co_return std::unique_lock<TimedMutex>{*this, std::adopt_lock};
+}
+#endif
 
 //
 // TimedRWMutexImpl implementation

@@ -2709,6 +2709,415 @@ TEST(TimedMutex, ThreadFiberDeadlockRace) {
   EXPECT_EQ(0, fm.hasTasks());
 }
 
+#if FOLLY_HAS_COROUTINES
+
+CO_TEST(TimedMutex, CoLockUncontended) {
+  TimedMutex mutex;
+  int counter = 0;
+
+  for (int i = 0; i < 100; i++) {
+    co_await mutex.co_lock();
+    counter++;
+    mutex.unlock();
+  }
+  EXPECT_EQ(100, counter);
+}
+
+TEST(TimedMutex, CoLockContended) {
+  TimedMutex mutex;
+  std::atomic<int> counter{0};
+  constexpr int kNumThreads = 10;
+  constexpr int kIncPerThread = 100;
+
+  std::vector<std::thread> threads;
+  threads.reserve(kNumThreads);
+  for (int i = 0; i < kNumThreads; i++) {
+    threads.emplace_back([&] {
+      folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+        for (int j = 0; j < kIncPerThread; j++) {
+          co_await mutex.co_lock();
+          counter.fetch_add(1, std::memory_order_relaxed);
+          mutex.unlock();
+        }
+      }());
+    });
+  }
+
+  for (auto& t : threads) {
+    t.join();
+  }
+  EXPECT_EQ(kNumThreads * kIncPerThread, counter.load());
+}
+
+namespace {
+folly::coro::Task<void> coLockSingleThreadTask(
+    TimedMutex& mutex, std::atomic<int>& counter, int iters) {
+  for (int j = 0; j < iters; j++) {
+    co_await mutex.co_lock();
+    counter.fetch_add(1, std::memory_order_relaxed);
+    // Yield while holding the lock so other coroutines on this
+    // thread run and contend on co_lock().
+    co_await folly::coro::co_reschedule_on_current_executor;
+    mutex.unlock();
+  }
+}
+} // namespace
+
+TEST(TimedMutex, CoLockSingleThreadContended) {
+  folly::ScopedEventBaseThread evbThread;
+  auto* evb = evbThread.getEventBase();
+  TimedMutex mutex;
+  std::atomic<int> counter{0};
+  constexpr int kNumCoros = 4;
+  constexpr int kIncPerCoro = 100;
+
+  std::vector<folly::SemiFuture<folly::Unit>> futures;
+  futures.reserve(kNumCoros);
+  for (int i = 0; i < kNumCoros; i++) {
+    futures.push_back(
+        folly::coro::co_withExecutor(
+            evb, coLockSingleThreadTask(mutex, counter, kIncPerCoro))
+            .start());
+  }
+
+  for (auto& f : futures) {
+    std::move(f).get();
+  }
+  EXPECT_EQ(kNumCoros * kIncPerCoro, counter.load());
+}
+
+TEST(TimedMutex, CoLockAndThreadLockContended) {
+  TimedMutex mutex;
+  std::atomic<int> counter{0};
+  constexpr int kNumCoroThreads = 5;
+  constexpr int kNumPlainThreads = 5;
+  constexpr int kIncPerThread = 100;
+
+  std::vector<std::thread> threads;
+  threads.reserve(kNumPlainThreads + kNumCoroThreads);
+
+  for (int i = 0; i < kNumPlainThreads; i++) {
+    threads.emplace_back([&] {
+      for (int j = 0; j < kIncPerThread; j++) {
+        mutex.lock();
+        counter.fetch_add(1, std::memory_order_relaxed);
+        mutex.unlock();
+      }
+    });
+  }
+
+  for (int i = 0; i < kNumCoroThreads; i++) {
+    threads.emplace_back([&] {
+      folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+        for (int j = 0; j < kIncPerThread; j++) {
+          co_await mutex.co_lock();
+          counter.fetch_add(1, std::memory_order_relaxed);
+          mutex.unlock();
+        }
+      }());
+    });
+  }
+
+  for (auto& t : threads) {
+    t.join();
+  }
+  EXPECT_EQ(
+      (kNumCoroThreads + kNumPlainThreads) * kIncPerThread, counter.load());
+}
+
+TEST(TimedMutex, CoLockAndFiberLockContended) {
+  TimedMutex mutex;
+  std::atomic<int> counter{0};
+  constexpr int kNumCoroThreads = 5;
+  constexpr int kNumFiberTasks = 10;
+  constexpr int kIncPerTask = 100;
+
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+
+  for (int i = 0; i < kNumFiberTasks; i++) {
+    fm.addTask([&] {
+      for (int j = 0; j < kIncPerTask; j++) {
+        mutex.lock();
+        counter.fetch_add(1, std::memory_order_relaxed);
+        mutex.unlock();
+      }
+    });
+  }
+
+  std::thread fiberThread([&] { evb.loop(); });
+
+  std::vector<std::thread> coroThreads;
+  coroThreads.reserve(kNumCoroThreads);
+  for (int i = 0; i < kNumCoroThreads; i++) {
+    coroThreads.emplace_back([&] {
+      folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+        for (int j = 0; j < kIncPerTask; j++) {
+          co_await mutex.co_lock();
+          counter.fetch_add(1, std::memory_order_relaxed);
+          mutex.unlock();
+        }
+      }());
+    });
+  }
+
+  for (auto& t : coroThreads) {
+    t.join();
+  }
+  fiberThread.join();
+  EXPECT_EQ((kNumCoroThreads + kNumFiberTasks) * kIncPerTask, counter.load());
+}
+
+TEST(TimedMutex, FiberHoldsLockCoroCoAwaits) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  TimedMutex mutex;
+  int step = 0;
+
+  fm.addTask([&] {
+    mutex.lock();
+    step = 1;
+    Baton b;
+    b.try_wait_for(std::chrono::milliseconds(50));
+    step = 2;
+    mutex.unlock();
+  });
+
+  fm.addTask([&] {
+    folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+      co_await mutex.co_lock();
+      EXPECT_EQ(2, step);
+      step = 3;
+      mutex.unlock();
+    }());
+  });
+
+  evb.loop();
+  EXPECT_EQ(0, fm.hasTasks());
+  EXPECT_EQ(3, step);
+}
+
+TEST(TimedMutex, FiberSyncLockFromCoroOnFiberTakesThreadPath) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  bool isOnFiberInCoro = false;
+
+  fm.addTask([&] {
+    folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+      isOnFiberInCoro = onFiber();
+      co_return;
+    }());
+  });
+
+  evb.loop();
+
+  // A coroutine running inside blockingWait on a fiber sees onFiber() == false.
+  // This means mutex.lock() takes the thread path (waitThread), blocking the
+  // OS thread via futex. On a single-threaded EventBase, this prevents other
+  // fibers from running, deadlocking if another fiber holds the lock.
+  // Coroutines must use co_await mutex.co_lock() instead.
+  EXPECT_FALSE(isOnFiberInCoro);
+}
+
+TEST(TimedMutex, FiberAndCoroAlternateLock) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  TimedMutex mutex;
+  int counter = 0;
+  constexpr int kIters = 100;
+
+  fm.addTask([&] {
+    for (int i = 0; i < kIters; i++) {
+      mutex.lock();
+      counter++;
+      mutex.unlock();
+    }
+  });
+
+  fm.addTask([&] {
+    folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+      for (int i = 0; i < kIters; i++) {
+        co_await mutex.co_lock();
+        counter++;
+        mutex.unlock();
+      }
+    }());
+  });
+
+  evb.loop();
+  EXPECT_EQ(0, fm.hasTasks());
+  EXPECT_EQ(2 * kIters, counter);
+}
+
+TEST(TimedMutex, MultipleFibersWithCoroCoAwait) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  TimedMutex mutex;
+  int counter = 0;
+  constexpr int kNumFibers = 8;
+  constexpr int kIters = 50;
+
+  for (int i = 0; i < kNumFibers; i++) {
+    fm.addTask([&] {
+      folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+        for (int j = 0; j < kIters; j++) {
+          co_await mutex.co_lock();
+          counter++;
+          mutex.unlock();
+        }
+      }());
+    });
+  }
+
+  evb.loop();
+  EXPECT_EQ(0, fm.hasTasks());
+  EXPECT_EQ(kNumFibers * kIters, counter);
+}
+
+CO_TEST(TimedMutex, CoScopedLock) {
+  TimedMutex mutex;
+  {
+    auto lock = co_await mutex.co_scoped_lock();
+    EXPECT_TRUE(lock.owns_lock());
+  }
+  EXPECT_TRUE(mutex.try_lock());
+  mutex.unlock();
+}
+
+CO_TEST(TimedMutex, CoLockPreCancelled) {
+  TimedMutex mutex;
+  mutex.lock();
+
+  folly::CancellationSource cancelSource;
+  cancelSource.requestCancellation();
+
+  EXPECT_THROW(
+      co_await folly::coro::co_withCancellation(
+          cancelSource.getToken(),
+          [&]() -> folly::coro::Task<void> {
+            co_await mutex.co_lock();
+            mutex.unlock();
+          }()),
+      folly::OperationCancelled);
+
+  mutex.unlock();
+}
+
+CO_TEST(TimedMutex, CoLockCancelledWhileWaiting) {
+  TimedMutex mutex;
+  mutex.lock();
+
+  folly::CancellationSource cancelSource;
+
+  auto t = std::thread([&] {
+    /* sleep override */ std::this_thread::sleep_for(
+        std::chrono::milliseconds(50));
+    cancelSource.requestCancellation();
+  });
+
+  EXPECT_THROW(
+      co_await folly::coro::co_withCancellation(
+          cancelSource.getToken(),
+          [&]() -> folly::coro::Task<void> {
+            co_await mutex.co_lock();
+            mutex.unlock();
+          }()),
+      folly::OperationCancelled);
+
+  t.join();
+  mutex.unlock();
+}
+
+// Races cancellation against unlock on a contended mutex. Each iteration
+// must resolve to exactly one outcome: either the lock is acquired (unlock
+// wins) or OperationCancelled is thrown (cancel wins). Neither path should
+// crash, deadlock, or trigger a sanitizer warning.
+TEST(TimedMutex, CoLockCancelRaceWithUnlock) {
+  constexpr int kIters = 100;
+  std::atomic<int> cancelCount{0};
+  std::atomic<int> unlockCount{0};
+
+  for (int i = 0; i < kIters; i++) {
+    TimedMutex mutex;
+    mutex.lock();
+
+    folly::CancellationSource cancelSource;
+    std::atomic<bool> waiting{false};
+
+    std::thread coroThread([&] {
+      try {
+        folly::coro::blockingWait(
+            folly::coro::co_withCancellation(
+                cancelSource.getToken(), [&]() -> folly::coro::Task<void> {
+                  waiting.store(true, std::memory_order_release);
+                  co_await mutex.co_lock();
+                  mutex.unlock();
+                }()));
+        unlockCount.fetch_add(1, std::memory_order_relaxed);
+      } catch (const folly::OperationCancelled&) {
+        cancelCount.fetch_add(1, std::memory_order_relaxed);
+      }
+    });
+
+    while (!waiting.load(std::memory_order_acquire)) {
+      std::this_thread::yield();
+    }
+
+    // Give the coroutine time to enqueue its waiter and suspend on the
+    // baton before we fire cancel and unlock.
+    /* sleep override */ std::this_thread::sleep_for(
+        std::chrono::milliseconds(1));
+
+    // Run unlock and cancel on separate threads to allow either to win.
+    std::thread unlockThread([&] { mutex.unlock(); });
+    std::thread cancelThread([&] { cancelSource.requestCancellation(); });
+
+    coroThread.join();
+    cancelThread.join();
+    unlockThread.join();
+  }
+
+  LOG(INFO) << "CoLockCancelRaceWithUnlock: cancel=" << cancelCount.load()
+            << " unlock=" << unlockCount.load() << " total=" << kIters;
+  EXPECT_EQ(cancelCount.load() + unlockCount.load(), kIters);
+}
+
+CO_TEST(TimedMutex, CoLockNotCancelledIfLockAcquired) {
+  TimedMutex mutex;
+
+  folly::CancellationSource cancelSource;
+
+  co_await folly::coro::co_withCancellation(
+      cancelSource.getToken(), [&]() -> folly::coro::Task<void> {
+        co_await mutex.co_lock();
+        cancelSource.requestCancellation();
+        mutex.unlock();
+      }());
+}
+
+CO_TEST(TimedMutex, CoLockTimeoutNoDiscard) {
+  TimedMutex mutex;
+
+  // Uncontended: should acquire well within the timeout.
+  co_await folly::coro::timeoutNoDiscard(
+      mutex.co_lock(), std::chrono::milliseconds(100));
+  mutex.unlock();
+
+  // Contended: hold the lock, timeout should fire. timeoutNoDiscard
+  // propagates OperationCancelled from co_lock() directly, unlike
+  // timeout() which converts it to FutureTimeout. To disambiguate
+  // timeout from parent cancellation, callers can inspect their own
+  // cancellation token.
+  mutex.lock();
+  EXPECT_THROW(
+      co_await folly::coro::timeoutNoDiscard(
+          mutex.co_lock(), std::chrono::milliseconds(10)),
+      folly::OperationCancelled);
+  mutex.unlock();
+}
+
+#endif // FOLLY_HAS_COROUTINES
+
 namespace {
 
 template <class Mutex>

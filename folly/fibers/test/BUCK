@@ -10,8 +10,14 @@ fb_dirsync_cpp_benchmark(
     headers = [],
     deps = [
         "//folly:benchmark",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
+        "//folly/fibers:core_manager",
+        "//folly/fibers:fiber_manager_map",
         "//folly/fibers:timed_mutex",
         "//folly/init:init",
+        "//folly/io/async:async_base",
+        "//folly/io/async:scoped_event_base_thread",
     ],
 )
 

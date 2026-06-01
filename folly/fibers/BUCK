@@ -332,9 +332,11 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     exported_deps = [
         ":generic_baton",
+        "//folly:cancellation_token",
         "//folly:intrusive_list",
         "//folly:portability",
         "//folly:spin_lock",
+        "//folly/coro:task",
         "//folly/synchronization:call_once",
         "//folly/synchronization/detail:sleeper",
     ],

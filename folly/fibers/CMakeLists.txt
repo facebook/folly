@@ -302,6 +302,8 @@ folly_add_library(
     TimedMutex-inl.h
     TimedMutex.h
   EXPORTED_DEPS
+    folly_cancellation_token
+    folly_coro_task
     folly_fibers_generic_baton
     folly_intrusive_list
     folly_portability

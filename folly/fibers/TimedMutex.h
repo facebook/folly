@@ -21,6 +21,10 @@
 #include <folly/SpinLock.h>
 #include <folly/fibers/GenericBaton.h>
 
+#if FOLLY_HAS_COROUTINES
+#include <folly/coro/Task.h>
+#endif
+
 namespace folly {
 namespace fibers {
 
@@ -36,7 +40,7 @@ namespace detail {
 template <class BatonType>
 class MutexWaiter {
  public:
-  MutexWaiter() = default;
+  explicit MutexWaiter(bool coroWaiter = false) : coroWaiter_(coroWaiter) {}
   ~MutexWaiter();
 
   void wait();
@@ -46,6 +50,10 @@ class MutexWaiter {
 
   void wake();
 
+#if FOLLY_HAS_COROUTINES
+  BatonType& baton() { return baton_; }
+#endif
+
   folly::SafeIntrusiveListHook hook;
 
  private:
@@ -53,6 +61,7 @@ class MutexWaiter {
   // This is silly, but Baton implementations do not allow to check the state
   // after a timed out wait, so we need to duplicate the state.
   std::atomic<bool> posted_{false};
+  bool coroWaiter_{false};
 };
 
 } // namespace detail
@@ -106,6 +115,23 @@ class TimedMutex {
 
   // Unlock the mutex and wake up a waiter if there is one
   void unlock();
+
+#if FOLLY_HAS_COROUTINES
+  // Lock the mutex asynchronously. The coroutine is suspended until the mutex
+  // is free. Unlike lock(), this does not block the OS thread when called from
+  // a coroutine context.
+  //
+  // Supports cancellation via CancellationToken.
+  // IMPORTANT: when wrapping with folly::coro::timeout, use
+  // timeoutNoDiscard() — timeout() discards the result even when the lock
+  // was acquired, leaking the mutex.
+  [[nodiscard]] folly::coro::Task<void> co_lock();
+
+  // Lock the mutex asynchronously, returning an RAII guard that releases the
+  // lock when it goes out of scope.
+  [[nodiscard]] folly::coro::Task<std::unique_lock<TimedMutex>>
+  co_scoped_lock();
+#endif
 
  private:
   enum class LockResult { SUCCESS, TIMEOUT, STOLEN };
