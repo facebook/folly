@@ -24,6 +24,12 @@ subdir = snappy-27ab5f7f518430a021239bc26a5b2fd64affbc7b
 [cmake.defines]
 SNAPPY_BUILD_TESTS = OFF
 SNAPPY_BUILD_BENCHMARKS = OFF
+# folly's Compression.cpp dynamic_casts snappy::Source/Sink and needs their
+# typeinfo. Snappy hardcodes -fno-rtti in CMAKE_CXX_FLAGS; override via the
+# per-config flags variable, which is appended after (last -f wins in gcc).
+CMAKE_CXX_FLAGS_RELWITHDEBINFO = -O2 -g -DNDEBUG -frtti
+CMAKE_CXX_FLAGS_RELEASE = -O3 -DNDEBUG -frtti
+CMAKE_CXX_FLAGS_DEBUG = -g -frtti
 
 # Avoid problems like `relocation R_X86_64_PC32 against symbol` on ELF systems
 # when linking rocksdb, which builds PIC even when building a static lib
