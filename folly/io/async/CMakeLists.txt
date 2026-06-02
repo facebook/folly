@@ -369,6 +369,7 @@ folly_add_library(
     folly_io_async_async_base
     folly_io_async_async_socket_base
     folly_io_async_async_socket_exception
+    folly_io_async_async_transport
     folly_io_iobuf
     folly_io_socket_option_map
     folly_net_net_ops

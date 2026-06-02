@@ -356,6 +356,7 @@ fb_dirsync_cpp_library(
         ":async_base",
         ":async_socket_base",
         ":async_socket_exception",
+        ":async_transport",
         "//folly:function",
         "//folly:network_address",
         "//folly:scope_guard",

@@ -76,6 +76,7 @@ struct MockAsyncUDPSocketT : public Base {
   MOCK_METHOD(void, appendNontrivialCmsgs, (const SocketNontrivialCmsgMap&));
   MOCK_METHOD(
       void, applyOptions, (const SocketOptionMap&, SocketOptionKey::ApplyPos));
+  MOCK_METHOD(bool, setZeroCopy, (bool));
 };
 
 using MockAsyncUDPSocket = MockAsyncUDPSocketT<>;

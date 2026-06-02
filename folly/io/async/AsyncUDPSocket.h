@@ -26,6 +26,7 @@
 #include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/AsyncSocketException.h>
+#include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/net/NetOps.h>
@@ -142,6 +143,79 @@ class AsyncUDPSocket : public EventHandler {
     virtual void errMessageError(const AsyncSocketException& ex) noexcept = 0;
   };
 
+  using ReleaseIOBufCallback = folly::AsyncWriter::ReleaseIOBufCallback;
+
+  /**
+   * Per-write callback for UDP writes. Only purpose today is to deliver a
+   * ReleaseIOBufCallback for the buf passed to a zerocopy write, but kept
+   * as a class so the API can be extended (e.g. writeStarting/writeErr)
+   * later without source-breaking callers.
+   */
+  class WriteCallback {
+   public:
+    virtual ~WriteCallback() = default;
+
+    virtual ReleaseIOBufCallback* getReleaseIOBufCallback() noexcept {
+      return nullptr;
+    }
+  };
+
+  /**
+   * Per-fd bookkeeping for MSG_ZEROCOPY completions. The Linux kernel's
+   * sk_zckey counter and SO_EE_ORIGIN_ZEROCOPY error-queue cmsgs are
+   * per-fd, so when multiple AsyncUDPSocket instances share one fd (e.g.
+   * via setFD(SHARED)) they must share the same bookkeeping instance.
+   *
+   * Every AsyncUDPSocket is constructed with its own bookkeeping;
+   * sharing across fd-aliasing instances is internal to folly.
+   *
+   * Not thread safe: all sharing AsyncUDPSocket instances are expected to
+   * run on the same EventBase.
+   */
+  class ZeroCopyFdBookkeeping {
+   public:
+    ZeroCopyFdBookkeeping() = default;
+    ~ZeroCopyFdBookkeeping() = default;
+    ZeroCopyFdBookkeeping(const ZeroCopyFdBookkeeping&) = delete;
+    ZeroCopyFdBookkeeping& operator=(const ZeroCopyFdBookkeeping&) = delete;
+    ZeroCopyFdBookkeeping(ZeroCopyFdBookkeeping&&) = delete;
+    ZeroCopyFdBookkeeping& operator=(ZeroCopyFdBookkeeping&&) = delete;
+
+    /**
+     * Register a buf for the next MSG_ZEROCOPY send on this fd. Must be
+     * called immediately after the kernel accepted the send so the
+     * monotonic id assigned here matches the kernel's sk_zckey.
+     * cb may be null; if null, the buf is held until its completion id
+     * arrives and then dropped (no callback fired).
+     */
+    void registerBuf(
+        std::unique_ptr<folly::IOBuf>&& buf, ReleaseIOBufCallback* cb) noexcept;
+
+    /**
+     * Dispatch a completion range [lo, hi] (inclusive) from the kernel.
+     * For each registered id in the range, invokes the bound callback
+     * (if any) and drops the buf. Ids in the range that aren't
+     * registered are silently ignored — they may belong to a different
+     * AsyncUDPSocket on the same fd whose bookkeeping was attached late
+     * or to sends issued before this bookkeeping was installed.
+     */
+    void onCompletion(uint32_t lo, uint32_t hi) noexcept;
+
+    /** True if any registered bufs are still awaiting completion. */
+    bool hasPending() const noexcept { return !bufs_.empty(); }
+
+    /** Next id this bookkeeping will assign (for tests and diagnostics). */
+    uint32_t nextId() const noexcept { return nextId_; }
+
+   private:
+    uint32_t nextId_{0};
+    struct Entry {
+      std::unique_ptr<folly::IOBuf> buf;
+      ReleaseIOBufCallback* cb;
+    };
+    std::unordered_map<uint32_t, Entry> bufs_;
+  };
+
   static void fromMsg(
       [[maybe_unused]] ReadCallback::OnDataAvailableParams& params,
       [[maybe_unused]] struct msghdr& msg);
@@ -227,10 +301,8 @@ class AsyncUDPSocket : public EventHandler {
    */
   virtual void setFD(NetworkSocket fd, FDOwnership ownership);
 
-  bool setZeroCopy(bool enable);
+  virtual bool setZeroCopy(bool enable);
   bool getZeroCopy() const { return zeroCopyEnabled_; }
-
-  uint32_t getZeroCopyBufId() const { return zeroCopyBufId_; }
 
   size_t getZeroCopyReenableThreshold() const {
     return zeroCopyReenableThreshold_;
@@ -303,6 +375,20 @@ class AsyncUDPSocket : public EventHandler {
       WriteOptions options);
 
   virtual ssize_t writeChain(
+      const folly::SocketAddress& address,
+      std::unique_ptr<folly::IOBuf>&& buf,
+      WriteOptions options);
+
+  /**
+   * writeChain variant that takes a per-write WriteCallback. When the
+   * write goes out as MSG_ZEROCOPY successfully, wcb->getReleaseIOBufCallback()
+   * (if non-null) will be invoked once with the buf after the kernel
+   * completes it. For non-zerocopy writes or zerocopy writes that fall
+   * back to a copy via ENOBUFS, the buf is freed via ioBufFreeFunc_ (if set)
+   * at the end of this call.
+   */
+  virtual ssize_t writeChain(
+      WriteCallback* wcb,
       const folly::SocketAddress& address,
       std::unique_ptr<folly::IOBuf>&& buf,
       WriteOptions options);
@@ -511,6 +597,14 @@ class AsyncUDPSocket : public EventHandler {
 
   bool setGSO(int val);
 
+  // Called to free every IOBuf the socket takes ownership of. Covers:
+  //  - non-zerocopy sends and the ENOBUFS copy-fallback (fired synchronously
+  //    in writeChain), and
+  //  - MSG_ZEROCOPY completions issued without a per-write WriteCallback
+  //    (fired from handleErrMessages when the kernel completion arrives,
+  //    via IOBufFreeFuncReleaseCb).
+  // For zerocopy writes that do supply a WriteCallback, the per-write
+  // ReleaseIOBufCallback takes precedence over this free func.
   void setIOBufFreeFunc(IOBufFreeFunc&& ioBufFreeFunc) {
     ioBufFreeFunc_ = std::move(ioBufFreeFunc);
   }
@@ -691,17 +785,32 @@ class AsyncUDPSocket : public EventHandler {
   size_t zeroCopyReenableThreshold_{0};
   size_t zeroCopyReenableCounter_{0};
 
-  uint32_t zeroCopyBufId_{0};
-
   int getZeroCopyFlags();
   static bool isZeroCopyMsg([[maybe_unused]] const cmsghdr& cmsg);
   void processZeroCopyMsg([[maybe_unused]] const cmsghdr& cmsg);
-  void addZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf);
-  void releaseZeroCopyBuf(uint32_t id);
 
-  uint32_t getNextZeroCopyBufId() { return zeroCopyBufId_++; }
+  // Per-fd bookkeeping for MSG_ZEROCOPY completions. See class doc.
+  std::shared_ptr<ZeroCopyFdBookkeeping> zeroCopyBookkeeping_;
 
-  std::unordered_map<uint32_t, std::unique_ptr<folly::IOBuf>> idZeroCopyBufMap_;
+  // Adapter that exposes ioBufFreeFunc_ as a ReleaseIOBufCallback so a
+  // MSG_ZEROCOPY write issued without a per-write WriteCallback still
+  // drains through the same free function on kernel completion. Preserves
+  // the pre-bookkeeping contract that ioBufFreeFunc_ fires for every
+  // IOBuf the socket takes ownership of.
+  class IOBufFreeFuncReleaseCb : public ReleaseIOBufCallback {
+   public:
+    explicit IOBufFreeFuncReleaseCb(AsyncUDPSocket* owner) noexcept
+        : owner_(owner) {}
+    void releaseIOBuf(std::unique_ptr<folly::IOBuf> buf) noexcept override {
+      if (owner_->ioBufFreeFunc_) {
+        owner_->ioBufFreeFunc_(std::move(buf));
+      }
+    }
+
+   private:
+    AsyncUDPSocket* const owner_;
+  };
+  IOBufFreeFuncReleaseCb ioBufFreeFuncReleaseCb_;
 
   IOBufFreeFunc ioBufFreeFunc_;
 

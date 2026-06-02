@@ -15,9 +15,11 @@
  */
 
 #include <chrono>
+#include <limits>
 #include <vector>
 
 #include <folly/SocketAddress.h>
+#include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncUDPSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GTest.h>
@@ -29,6 +31,7 @@
 
 using folly::AsyncUDPSocket;
 using folly::EventBase;
+using folly::IOBuf;
 using folly::SocketAddress;
 
 namespace {
@@ -181,6 +184,94 @@ TEST_F(AsyncUDPSocketZeroCopyTest, Writev_ZerocopyFalse_ProducesNoCmsg) {
   // into the flags.
   EXPECT_FALSE(waitForZeroCopyCmsg(
       sender_->getNetworkSocket().toFd(), std::chrono::milliseconds(100)));
+}
+
+// Records every IOBuf it receives so the test can assert which bufs the
+// bookkeeping handed back, in what order, and how many times.
+class RecordingReleaseCb : public AsyncUDPSocket::ReleaseIOBufCallback {
+ public:
+  void releaseIOBuf(std::unique_ptr<folly::IOBuf> buf) noexcept override {
+    bufs.push_back(std::move(buf));
+  }
+  std::vector<std::unique_ptr<folly::IOBuf>> bufs;
+};
+
+// Unit test of the bookkeeping in isolation: a freshly constructed
+// bookkeeping assigns monotonic ids starting at 0, and onCompletion
+// hands back exactly the buf that was registered for each id.
+TEST(AsyncUDPSocketZeroCopyBookkeepingTest, RegisterAndComplete) {
+  AsyncUDPSocket::ZeroCopyFdBookkeeping bk;
+  RecordingReleaseCb cb;
+
+  auto buf0 = IOBuf::create(8);
+  auto buf1 = IOBuf::create(8);
+  auto* raw0 = buf0.get();
+  auto* raw1 = buf1.get();
+
+  bk.registerBuf(std::move(buf0), &cb);
+  bk.registerBuf(std::move(buf1), &cb);
+  EXPECT_TRUE(bk.hasPending());
+
+  bk.onCompletion(0, 1);
+  EXPECT_FALSE(bk.hasPending());
+  ASSERT_EQ(cb.bufs.size(), 2);
+  EXPECT_EQ(cb.bufs[0].get(), raw0);
+  EXPECT_EQ(cb.bufs[1].get(), raw1);
+}
+
+// onCompletion must silently ignore ids that aren't registered; this is
+// what makes the shared-fd case work — a listener processes the whole
+// kernel-emitted [lo, hi] range but only some ids belong to a given
+// bookkeeping. Without this tolerance, a separate-bookkeeping-on-same-fd
+// scenario would CHECK-fail.
+TEST(AsyncUDPSocketZeroCopyBookkeepingTest, ToleratesUnknownIdsInRange) {
+  AsyncUDPSocket::ZeroCopyFdBookkeeping bk;
+  RecordingReleaseCb cb;
+
+  auto buf = IOBuf::create(8);
+  auto* raw = buf.get();
+  bk.registerBuf(std::move(buf), &cb);
+
+  bk.onCompletion(0, 5); // ids 1..5 are unknown
+  EXPECT_FALSE(bk.hasPending());
+  ASSERT_EQ(cb.bufs.size(), 1);
+  EXPECT_EQ(cb.bufs[0].get(), raw);
+}
+
+// A null ReleaseIOBufCallback means "the buf has no owner that needs to
+// know about completion — just hold it alive until the kernel is done."
+// onCompletion drops the buf without calling anything.
+TEST(AsyncUDPSocketZeroCopyBookkeepingTest, NullCallbackDropsBufOnCompletion) {
+  AsyncUDPSocket::ZeroCopyFdBookkeeping bk;
+
+  auto buf = IOBuf::create(8);
+  bk.registerBuf(std::move(buf), nullptr);
+  EXPECT_TRUE(bk.hasPending());
+
+  bk.onCompletion(0, 0);
+  EXPECT_FALSE(bk.hasPending());
+}
+
+// Regression: onCompletion's loop walks [lo, hi] inclusive and must not
+// overflow uint32_t when hi == UINT32_MAX, even on iterations that don't
+// match a registered id. Reaching this test at all means we didn't hang.
+TEST(AsyncUDPSocketZeroCopyBookkeepingTest, OnCompletionAtUint32MaxBoundary) {
+  AsyncUDPSocket::ZeroCopyFdBookkeeping bk;
+  RecordingReleaseCb cb;
+
+  // Single unknown id at the max — no registered entries at all.
+  bk.onCompletion(
+      std::numeric_limits<uint32_t>::max(),
+      std::numeric_limits<uint32_t>::max());
+  EXPECT_FALSE(bk.hasPending());
+  EXPECT_TRUE(cb.bufs.empty());
+
+  // Two-id range ending at UINT32_MAX with neither id registered.
+  bk.onCompletion(
+      std::numeric_limits<uint32_t>::max() - 1,
+      std::numeric_limits<uint32_t>::max());
+  EXPECT_FALSE(bk.hasPending());
+  EXPECT_TRUE(cb.bufs.empty());
 }
 
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
