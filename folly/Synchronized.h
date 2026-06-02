@@ -1285,8 +1285,8 @@ class LockedPtr {
       detail::SynchronizedDataType<SynchronizedType, AllowsConcurrentAccess>;
 
   template <typename LockPolicyOther>
-  using EnableIfSameLevel =
-      std::enable_if_t<LockPolicy::level == LockPolicyOther::level>;
+  static constexpr bool kSameLevelAs =
+      LockPolicy::level == LockPolicyOther::level;
 
   template <typename, typename>
   friend class LockedPtr;
@@ -1334,22 +1334,17 @@ class LockedPtr {
    * Move constructor.
    */
   LockedPtr(LockedPtr&& rhs) noexcept = default;
-  template <
-      typename Type = SynchronizedType,
-      std::enable_if_t<std::is_const<Type>::value, int> = 0>
+  template <typename Type = SynchronizedType>
+    requires std::is_const_v<Type>
   /* implicit */ LockedPtr(LockedPtr<Synchronized, LockPolicy>&& rhs) noexcept
       : lock_{std::move(rhs.lock_)} {}
-  template <
-      typename LockPolicyType,
-      EnableIfSameLevel<LockPolicyType>* = nullptr>
+  template <typename LockPolicyType>
+    requires kSameLevelAs<LockPolicyType>
   explicit LockedPtr(
       LockedPtr<SynchronizedType, LockPolicyType>&& other) noexcept
       : lock_{std::move(other.lock_)} {}
-  template <
-      typename Type = SynchronizedType,
-      typename LockPolicyType,
-      std::enable_if_t<std::is_const<Type>::value, int> = 0,
-      EnableIfSameLevel<LockPolicyType>* = nullptr>
+  template <typename Type = SynchronizedType, typename LockPolicyType>
+    requires std::is_const_v<Type> && kSameLevelAs<LockPolicyType>
   explicit LockedPtr(LockedPtr<Synchronized, LockPolicyType>&& rhs) noexcept
       : lock_{std::move(rhs.lock_)} {}
 
@@ -1357,19 +1352,15 @@ class LockedPtr {
    * Move assignment operator.
    */
   LockedPtr& operator=(LockedPtr&& rhs) noexcept = default;
-  template <
-      typename LockPolicyType,
-      EnableIfSameLevel<LockPolicyType>* = nullptr>
+  template <typename LockPolicyType>
+    requires kSameLevelAs<LockPolicyType>
   LockedPtr& operator=(
       LockedPtr<SynchronizedType, LockPolicyType>&& other) noexcept {
     lock_ = std::move(other.lock_);
     return *this;
   }
-  template <
-      typename Type = SynchronizedType,
-      typename LockPolicyType,
-      std::enable_if_t<std::is_const<Type>::value, int> = 0,
-      EnableIfSameLevel<LockPolicyType>* = nullptr>
+  template <typename Type = SynchronizedType, typename LockPolicyType>
+    requires std::is_const_v<Type> && kSameLevelAs<LockPolicyType>
   LockedPtr& operator=(
       LockedPtr<Synchronized, LockPolicyType>&& other) noexcept {
     lock_ = std::move(other.lock_);
@@ -1543,19 +1534,13 @@ class LockedPtr {
   static constexpr bool is_try =
       LP::method == detail::SynchronizedMutexMethod::TryLock;
 
-  template <
-      typename MT,
-      typename LT = LockType,
-      typename LP = LockPolicy,
-      std::enable_if_t<is_try<LP>, int> = 0>
+  template <typename MT, typename LT = LockType, typename LP = LockPolicy>
+    requires is_try<LP>
   FOLLY_ERASE static LT doLock(MT& mutex) {
     return LT{mutex, std::try_to_lock};
   }
-  template <
-      typename MT,
-      typename LT = LockType,
-      typename LP = LockPolicy,
-      std::enable_if_t<!is_try<LP>, int> = 0>
+  template <typename MT, typename LT = LockType, typename LP = LockPolicy>
+    requires(!is_try<LP>)
   FOLLY_ERASE static LT doLock(MT& mutex) {
     return LT{mutex};
   }
