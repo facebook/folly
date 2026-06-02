@@ -295,6 +295,43 @@ TEST(IPAddressV6, Ordering) {
   EXPECT_TRUE(lo != hi);
 }
 
+TEST(IPAddress, SpaceshipOrdering) {
+  // Same-family V4
+  IPAddress lo4("0.1.1.1");
+  IPAddress hi4("1.1.1.0");
+  EXPECT_EQ(lo4 <=> lo4, std::strong_ordering::equal);
+  EXPECT_EQ(lo4 <=> hi4, std::strong_ordering::less);
+  EXPECT_EQ(hi4 <=> lo4, std::strong_ordering::greater);
+
+  // Same-family V6
+  IPAddress lo6("::ffff:0.1.1.1");
+  IPAddress hi6("::ffff:1.1.1.0");
+  EXPECT_EQ(lo6 <=> lo6, std::strong_ordering::equal);
+  EXPECT_EQ(lo6 <=> hi6, std::strong_ordering::less);
+  EXPECT_EQ(hi6 <=> lo6, std::strong_ordering::greater);
+
+  // Cross-family: pure V6 (non-mapped) vs V4 — V4 promoted to mapped V6
+  // ::ffff:1.2.3.4 < 2001:db8::1 so V4 "1.2.3.4" < pure V6 "2001:db8::1"
+  IPAddress v4("1.2.3.4");
+  IPAddress pureV6("2001:db8::1");
+  EXPECT_EQ(v4 <=> pureV6, std::strong_ordering::less);
+  EXPECT_EQ(pureV6 <=> v4, std::strong_ordering::greater);
+
+  // Cross-family: IPv4-mapped V6 vs V4 — compared as V4
+  IPAddress mappedLo("::ffff:0.1.1.1"); // same bytes as lo4 but wrapped as V6
+  EXPECT_EQ(mappedLo <=> lo4, std::strong_ordering::equal);
+  EXPECT_EQ(mappedLo <=> hi4, std::strong_ordering::less);
+  EXPECT_EQ(hi4 <=> mappedLo, std::strong_ordering::greater);
+
+  // Consistency: (a <=> b) == 0 iff (a == b), even with non-zero scope on a
+  // mapped V6. operator== ignores scope for mapped addresses; <=> must too.
+  auto v6WithScope = IPAddressV6("::ffff:1.2.3.4");
+  v6WithScope.setScopeId(1);
+  IPAddress mappedWithScope(v6WithScope);
+  EXPECT_EQ(mappedWithScope, v4); // operator== ignores scope
+  EXPECT_EQ(mappedWithScope <=> v4, std::strong_ordering::equal); // <=> agrees
+}
+
 TEST(IPAddress, InvalidAddressFamilyExceptions) {
   // asV4
   {

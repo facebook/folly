@@ -16,6 +16,7 @@
 
 #include <folly/IPAddress.h>
 
+#include <compare>
 #include <limits>
 #include <ostream>
 #include <string>
@@ -424,32 +425,52 @@ bool operator==(const IPAddress& addr1, const IPAddress& addr2) {
   return false;
 }
 
-bool operator<(const IPAddress& addr1, const IPAddress& addr2) {
+namespace {
+std::strong_ordering compareV6(
+    const IPAddressV6& a, const IPAddressV6& b) noexcept {
+  if (a == b) {
+    return std::strong_ordering::equal;
+  }
+  return a < b ? std::strong_ordering::less : std::strong_ordering::greater;
+}
+} // namespace
+
+std::strong_ordering operator<=>(
+    const IPAddress& addr1, const IPAddress& addr2) noexcept {
   if (addr1.empty() || addr2.empty()) {
-    return addr1.empty() < addr2.empty();
+    // empty() == false (0) < empty() == true (1), so non-empty < empty
+    return addr1.empty() <=> addr2.empty();
   }
   if (addr1.family() == addr2.family()) {
     if (addr1.isV6()) {
-      return (addr1.asV6() < addr2.asV6());
+      return compareV6(addr1.asV6(), addr2.asV6());
     } else if (addr1.isV4()) {
-      return (addr1.asV4() < addr2.asV4());
+      return addr1.asV4().toLongHBO() <=> addr2.asV4().toLongHBO();
     } else {
       CHECK_EQ(addr1.family(), AF_UNSPEC);
-      // Two default initialized AF_UNSPEC addresses can not be less than each
-      // other. AF_UNSPEC is the only other value for which an IPAddress can be
-      // created, in the default constructor case.
-      return false;
+      // Two default initialized AF_UNSPEC addresses are equal.
+      return std::strong_ordering::equal;
     }
   }
   if (addr1.isV6()) {
-    // means addr2 is v4, convert it to a mapped v6 address and compare
-    return addr1.asV6() < addr2.asV4().createIPv6();
+    // means addr2 is v4
+    if (addr1.asV6().isIPv4Mapped()) {
+      // Compare as V4 to be consistent with operator==, which ignores scope.
+      return IPAddress::createIPv4(addr1).toLongHBO() <=>
+          addr2.asV4().toLongHBO();
+    }
+    return compareV6(addr1.asV6(), addr2.asV4().createIPv6());
   }
   if (addr2.isV6()) {
-    // means addr2 is v6, convert addr1 to v4 mapped and compare
-    return addr1.asV4().createIPv6() < addr2.asV6();
+    // means addr1 is v4
+    if (addr2.asV6().isIPv4Mapped()) {
+      // Compare as V4 to be consistent with operator==, which ignores scope.
+      return addr1.asV4().toLongHBO() <=>
+          IPAddress::createIPv4(addr2).toLongHBO();
+    }
+    return compareV6(addr1.asV4().createIPv6(), addr2.asV6());
   }
-  return false;
+  return std::strong_ordering::equal;
 }
 
 CIDRNetwork IPAddress::longestCommonPrefix(
