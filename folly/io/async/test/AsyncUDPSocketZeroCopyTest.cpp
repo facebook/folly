@@ -18,6 +18,7 @@
 #include <limits>
 #include <vector>
 
+#include <folly/ScopeGuard.h>
 #include <folly/SocketAddress.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncUDPSocket.h>
@@ -187,14 +188,107 @@ TEST_F(AsyncUDPSocketZeroCopyTest, Writev_ZerocopyFalse_ProducesNoCmsg) {
 }
 
 // Records every IOBuf it receives so the test can assert which bufs the
-// bookkeeping handed back, in what order, and how many times.
+// bookkeeping handed back, in what order, and how many times. If an
+// EventBase is supplied, terminates the loop on the first release so
+// shared-fd tests can wait via evb.loopForever() rather than polling.
 class RecordingReleaseCb : public AsyncUDPSocket::ReleaseIOBufCallback {
  public:
+  RecordingReleaseCb() = default;
+  explicit RecordingReleaseCb(EventBase* terminateOnFire)
+      : terminateOnFire_(terminateOnFire) {}
   void releaseIOBuf(std::unique_ptr<folly::IOBuf> buf) noexcept override {
     bufs.push_back(std::move(buf));
+    if (terminateOnFire_) {
+      terminateOnFire_->terminateLoopSoon();
+    }
   }
   std::vector<std::unique_ptr<folly::IOBuf>> bufs;
+
+ private:
+  EventBase* terminateOnFire_{nullptr};
 };
+
+// Stashes the IOBuf the test wants the writer to retain a reference to,
+// so a single IOBuf identity round-trips from `writeChain` to
+// `releaseIOBuf`. The other AsyncUDPSocket::WriteCallback methods aren't
+// invoked on the UDP zerocopy path so they're left unimplemented.
+class RecordingWriteCb : public AsyncUDPSocket::WriteCallback {
+ public:
+  explicit RecordingWriteCb(AsyncUDPSocket::ReleaseIOBufCallback* cb)
+      : releaseCb_(cb) {}
+  AsyncUDPSocket::ReleaseIOBufCallback*
+  getReleaseIOBufCallback() noexcept override {
+    return releaseCb_;
+  }
+
+ private:
+  AsyncUDPSocket::ReleaseIOBufCallback* releaseCb_;
+};
+
+// The shared-fd test needs a ReadCallback on the listener so resumeRead
+// is satisfied; the actual recv path is not exercised here, only the
+// POLLERR drain that piggybacks on the same EventHandler registration.
+class NoopReadCallback : public AsyncUDPSocket::ReadCallback {
+ public:
+  void getReadBuffer(void**, size_t*) noexcept override {}
+  void onDataAvailable(
+      const folly::SocketAddress&, size_t, bool, OnDataAvailableParams) noexcept
+      override {}
+  void onReadError(const folly::AsyncSocketException&) noexcept override {}
+  void onReadClosed() noexcept override {}
+};
+
+// End-to-end check that createPeerOnSameFd correctly wires up shared
+// bookkeeping: a writer created from the listener via the factory
+// registers an IOBuf for a MSG_ZEROCOPY send, and when the kernel posts
+// the completion, the listener's POLLERR drain invokes the writer's
+// release callback with the original IOBuf. This is the canonical
+// SO_REUSEPORT-worker pattern (e.g. mvfst's QuicServerWorker).
+TEST_F(
+    AsyncUDPSocketZeroCopyTest,
+    CreatePeerOnSameFd_ReleaseCallbackFiresViaListener) {
+  if (!supported_) {
+    GTEST_SKIP() << "SO_ZEROCOPY not supported on this kernel";
+  }
+  auto writer = sender_->createPeerOnSameFd();
+  if (writer == nullptr) {
+    FAIL() << "createPeerOnSameFd returned null";
+  }
+  auto& writerRef = *writer;
+
+  // Listener owns the read side and the POLLERR drain. SCOPE_EXIT
+  // guarantees the stack-local readCb is unregistered on every exit
+  // path, including ASSERT failures — otherwise sender_ would outlive
+  // readCb and hold a dangling pointer until fixture teardown.
+  NoopReadCallback readCb;
+  sender_->resumeRead(&readCb);
+  SCOPE_EXIT {
+    sender_->pauseRead();
+  };
+
+  RecordingReleaseCb releaseCb(&evb_);
+  RecordingWriteCb writeCb(&releaseCb);
+
+  const std::vector<uint8_t> payloadData(16 * 1024, 'A');
+  auto payload = IOBuf::copyBuffer(payloadData.data(), payloadData.size());
+  auto* rawBuf = payload.get();
+
+  const auto ret = writerRef.writeChain(
+      &writeCb,
+      receiverAddr_,
+      std::move(payload),
+      AsyncUDPSocket::WriteOptions(0 /*gso*/, true /*zerocopy*/));
+  ASSERT_GT(ret, 0) << "writeChain failed: errno=" << errno;
+
+  // Safety deadline: if the release never fires, this terminates the
+  // loop so the test fails fast rather than hanging.
+  evb_.tryRunAfterDelay([this]() { evb_.terminateLoopSoon(); }, 500 /*ms*/);
+  evb_.loopForever();
+
+  ASSERT_EQ(releaseCb.bufs.size(), 1)
+      << "release callback did not fire via listener drain";
+  EXPECT_EQ(releaseCb.bufs[0].get(), rawBuf);
+}
 
 // Unit test of the bookkeeping in isolation: a freshly constructed
 // bookkeeping assigns monotonic ids starting at 0, and onCompletion

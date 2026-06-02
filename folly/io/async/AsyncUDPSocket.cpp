@@ -512,6 +512,16 @@ void AsyncUDPSocket::setFD(NetworkSocket fd, FDOwnership ownership) {
   localAddress_.setFromLocalAddress(fd_);
 }
 
+std::unique_ptr<AsyncUDPSocket> AsyncUDPSocket::createPeerOnSameFd() {
+  CHECK_NE(NetworkSocket(), fd_)
+      << "createPeerOnSameFd called before this socket is bound";
+  auto peer = std::make_unique<AsyncUDPSocket>(eventBase_);
+  peer->zeroCopyBookkeeping_ = zeroCopyBookkeeping_;
+  peer->setFD(fd_, FDOwnership::SHARED);
+  peer->setZeroCopy(true);
+  return peer;
+}
+
 bool AsyncUDPSocket::setZeroCopy(bool enable) {
   if (msgErrQueueSupported) {
     zeroCopyVal_ = enable;

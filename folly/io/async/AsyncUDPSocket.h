@@ -301,6 +301,34 @@ class AsyncUDPSocket : public EventHandler {
    */
   virtual void setFD(NetworkSocket fd, FDOwnership ownership);
 
+  /**
+   * Create a new AsyncUDPSocket on `evb` that shares this socket's
+   * kernel fd and MSG_ZEROCOPY bookkeeping. The returned socket:
+   *   - holds the same fd via FDOwnership::SHARED (it will not close
+   *     the fd on destruction)
+   *   - shares this socket's per-fd ZeroCopyFdBookkeeping so kernel
+   *     completions posted to whichever instance drains the error
+   *     queue route through to the AsyncUDPSocket that registered the
+   *     IOBuf
+   *   - has setZeroCopy(true) so its sends actually carry MSG_ZEROCOPY
+   *
+   * Intended for SO_REUSEPORT workers that need a single fd shared
+   * across many AsyncUDPSocket instances on the same EventBase (e.g.
+   * a listener plus per-connection writers). Only the listener should
+   * call resumeRead and drain POLLERR for the shared fd.
+   *
+   * Preconditions: this socket must already be bound. setZeroCopy(true)
+   * is invoked on the peer; the underlying SO_ZEROCOPY setsockopt is
+   * per-fd and idempotent, so it succeeds even if the listener already
+   * has ZC enabled.
+   *
+   * The peer is constructed on this socket's EventBase. Migrating the
+   * peer (or the listener) to a different EventBase after this call
+   * would violate the ZeroCopyFdBookkeeping thread-safety invariant; a
+   * follow-up will CHECK against attach/detach for fd-shared sockets.
+   */
+  virtual std::unique_ptr<AsyncUDPSocket> createPeerOnSameFd();
+
   virtual bool setZeroCopy(bool enable);
   bool getZeroCopy() const { return zeroCopyEnabled_; }
 
