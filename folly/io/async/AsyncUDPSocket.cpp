@@ -772,7 +772,7 @@ ssize_t AsyncUDPSocket::writev(
 }
 
 ssize_t AsyncUDPSocket::writevImpl(
-    netops::Msgheader* msg, [[maybe_unused]] WriteOptions options) {
+    netops::Msgheader* msg, WriteOptions options) {
 #if defined(FOLLY_HAVE_MSG_ERRQUEUE) || defined(_WIN32)
   XPLAT_CMSGHDR* cm = nullptr;
 
@@ -833,7 +833,18 @@ ssize_t AsyncUDPSocket::writevImpl(
 #ifdef _WIN32
   return netops::wsaSendMsgDirect(fd_, msg->getMsg());
 #else
-  return sendmsg(fd_, msg->getMsg(), 0);
+  int msg_flags = options.zerocopy ? getZeroCopyFlags() : 0;
+  auto ret = sendmsg(fd_, msg->getMsg(), msg_flags);
+  if (msg_flags && ret < 0 && errno == ENOBUFS) {
+    LOG(INFO) << "ENOBUFS...";
+    // workaround for running with zerocopy enabled but without a big enough
+    // memlock value - see ulimit -l
+    // Also see /proc/sys/net/core/optmem_max
+    zeroCopyEnabled_ = false;
+    zeroCopyReenableCounter_ = zeroCopyReenableThreshold_;
+    ret = sendmsg(fd_, msg->getMsg(), 0);
+  }
+  return ret;
 #endif
 }
 

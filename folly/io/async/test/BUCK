@@ -372,6 +372,19 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
+fb_dirsync_cpp_unittest(
+    name = "async_udp_socket_zero_copy_test",
+    srcs = ["AsyncUDPSocketZeroCopyTest.cpp"],
+    oncall = "thrift",
+    deps = [
+        "//folly:network_address",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_udp_socket",
+        "//folly/portability:gtest",
+        "//folly/portability:sockets",
+    ],
+)
+
 fb_dirsync_cpp_library(
     name = "blocking_socket",
     headers = ["BlockingSocket.h"],
