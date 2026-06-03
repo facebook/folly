@@ -45,6 +45,7 @@ fb_dirsync_rule(
     name = "request_context_tokio_bench",
     srcs = ["benches/request_context_tokio_bench.rs"],
     fbcode_rule = rust_binary,
+    pin_crate = True,
     unittests = False,
     deps = [
         "fbsource//third-party/rust:criterion",
