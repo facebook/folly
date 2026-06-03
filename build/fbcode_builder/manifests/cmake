@@ -18,24 +18,24 @@ cmake
 ninja
 
 [download.os=windows]
-url = https://github.com/Kitware/CMake/releases/download/v3.20.4/cmake-3.20.4-windows-x86_64.zip
-sha256 = 965d2f001c3ca807d288f2b6b15c42b25579a0e73ef12c2a72c95f4c69123638
+url = https://github.com/Kitware/CMake/releases/download/v3.31.12/cmake-3.31.12-windows-x86_64.zip
+sha256 = 0c4baa40f28b3f8225eb3fdf6946c987b4fe901403b4eaf2fbbd9378100aaa0c
 
 [download.os=darwin]
-url = https://github.com/Kitware/CMake/releases/download/v3.20.4/cmake-3.20.4-macos-universal.tar.gz
-sha256 = df90016635e3183834143c6d94607f0804fe9762f7cc6032f6a4afd7c19cd43b
+url = https://github.com/Kitware/CMake/releases/download/v3.31.12/cmake-3.31.12-macos-universal.tar.gz
+sha256 = 799af7fd545db9bf1b9cfe72f8095880e727a2d4e0df0e3dffc3bc7b95c2d3b0
 
 [download.any(os=linux,os=freebsd)]
-url = https://github.com/Kitware/CMake/releases/download/v3.20.4/cmake-3.20.4.tar.gz
-sha256 = 87a4060298f2c6bb09d479de1400bc78195a5b55a65622a7dceeb3d1090a1b16
+url = https://github.com/Kitware/CMake/releases/download/v3.31.12/cmake-3.31.12.tar.gz
+sha256 = 5f3fd5a54dfa65602bdbed64f981a72673cc19f2d304cc2955cf0dfa0cfd8272
 
 [build.os=windows]
 builder = nop
-subdir = cmake-3.20.4-windows-x86_64
+subdir = cmake-3.31.12-windows-x86_64
 
 [build.os=darwin]
 builder = nop
-subdir = cmake-3.20.4-macos-universal
+subdir = cmake-3.31.12-macos-universal
 
 [install.files.os=darwin]
 CMake.app/Contents/bin = bin
@@ -43,7 +43,7 @@ CMake.app/Contents/share = share
 
 [build.any(os=linux,os=freebsd)]
 builder = cmakebootstrap
-subdir = cmake-3.20.4
+subdir = cmake-3.31.12
 
 [make.install_args.any(os=linux,os=freebsd)]
 install

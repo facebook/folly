@@ -857,6 +857,12 @@ if __name__ == "__main__":
             f.write(script_contents.encode())
         os.chmod(build_script_path, 0o755)
 
+    def _dep_install_dir(self, name: str) -> str | None:
+        for dep_manifest, install_dir in zip(self.dep_manifests, self.install_dirs):
+            if dep_manifest.name == name:
+                return install_dir
+        return None
+
     def _compute_cmake_define_args(self, env: Env) -> list[str]:
         defines = {
             "CMAKE_INSTALL_PREFIX": self.final_install_prefix or self.inst_dir,
@@ -919,6 +925,25 @@ if __name__ == "__main__":
             # executables during the build to discover the set of
             # tests.
             defines["CMAKE_BUILD_WITH_INSTALL_RPATH"] = "ON"
+
+            # CMake's FindOpenSSL probes `brew --prefix openssl` on macOS when
+            # OPENSSL_ROOT_DIR is unset, which can select a wrong-arch Homebrew
+            # keg (e.g. an x86_64 openssl@1.1 on an arm64 host) over the OpenSSL
+            # getdeps built. Point it at our OpenSSL so dependents like liboqs
+            # link the right libcrypto.
+            openssl_dir = self._dep_install_dir("openssl")
+            if openssl_dir:
+                defines["OPENSSL_ROOT_DIR"] = openssl_dir
+
+        if self.build_opts.is_windows():
+            # Use embedded debug info (/Z7) instead of MSVC's default /Zi, which
+            # writes debug info to a single shared .pdb. /Zi can't be wrapped by
+            # sccache and races under parallel ninja (fatal error C1041); /Z7 is
+            # self-contained per .obj. Requires CMake >= 3.25, and the policy
+            # default forces CMP0141=NEW into deps whose cmake_minimum_required
+            # predates 3.25 so the variable actually takes effect.
+            defines["CMAKE_MSVC_DEBUG_INFORMATION_FORMAT"] = "Embedded"
+            defines["CMAKE_POLICY_DEFAULT_CMP0141"] = "NEW"
 
         defines.update(self.defines)
         define_args = ["-D%s=%s" % (k, v) for (k, v) in defines.items()]
