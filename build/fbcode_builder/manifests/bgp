@@ -1,6 +1,6 @@
 [manifest]
 name = bgp
-fbsource_path = facebook/neteng/fboss/bgp
+fbsource_path = fbcode/neteng/fboss/bgp
 shipit_project = bgp
 shipit_fbcode_builder = true
 
@@ -19,13 +19,18 @@ boost
 fb303
 fboss
 fbthrift
+fizz
+fmt
 folly
 magic_enum
+wangle
 re2
+zstd
+gcc12
 
 [shipit.pathmap]
-fbcode/neteng/fboss/bgp = neteng/fboss/bgp
 fbcode/neteng/fboss/bgp/public_tld = .
+fbcode/neteng/fboss/bgp = neteng/fboss/bgp
 fbcode/fboss/common = common
 
 [shipit.strip]
