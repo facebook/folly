@@ -178,7 +178,7 @@ class MergeChannelProcessor
    * Adds a new receiver to be merged, along with a key to allow for later
    * removal.
    */
-  void addNewReceiver(KeyType key, Receiver<ValueType> receiver) {
+  void addNewReceiver(KeyType key, Receiver<ValueType> receiver) override {
     auto state = state_.wlock();
     if (state->getSenderState() != ChannelState::Active) {
       return;
@@ -214,7 +214,7 @@ class MergeChannelProcessor
   /**
    * Removes the receiver with the given key.
    */
-  void removeReceiver(KeyType key) {
+  void removeReceiver(KeyType key) override {
     auto state = state_.wlock();
     if (state->getSenderState() != ChannelState::Active) {
       return;
@@ -235,7 +235,7 @@ class MergeChannelProcessor
             keyToRemove, MergeChannelReceiverRemoved{}});
   }
 
-  folly::F14FastSet<KeyType> getReceiverKeys() {
+  folly::F14FastSet<KeyType> getReceiverKeys() override {
     auto state = state_.rlock();
     auto receiverKeys = folly::F14FastSet<KeyType>();
     receiverKeys.reserve(state->receiversByKey.size());
@@ -254,7 +254,7 @@ class MergeChannelProcessor
   /**
    * Called when the user's MergeChannel object is destroyed.
    */
-  void destroyHandle(CloseResult closeResult) {
+  void destroyHandle(CloseResult closeResult) override {
     auto state = state_.wlock();
     processHandleDestroyed(state, std::move(closeResult));
   }
