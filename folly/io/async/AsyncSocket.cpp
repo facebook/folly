@@ -3634,13 +3634,25 @@ void AsyncSocket::checkForImmediateRead() noexcept {
   // is definitely data available immediately.
   EventBase* originalEventBase = eventBase_;
   if (preReceivedData_ && !preReceivedData_->empty()) {
-    // Even with io_uring requiring ReadCallbacks to take IOBufs via
-    // readBufferAvailable, if the ReadCallback is a small (peeking) read, go
-    // through the normal handleRead() path with
-    // getReadBuffer()/readBufferAvailable().
-    if (iouRecvHandle_ &&
-        readCallback_->maxBufferSize() >= IoUringRecvHandle::kSmallRecvSize) {
-      readCallback_->readBufferAvailable(std::move(preReceivedData_));
+    // With io_uring, always deliver preReceivedData via
+    // readBufferAvailable, matching the path that io_uring recv uses.
+    // Mixing readDataAvailable (for preReceivedData) with
+    // readBufferAvailable (for io_uring recv) breaks callers that
+    // track data differently per callback path.
+    if (iouRecvHandle_) {
+      // Drain in a loop, re-reading the callback's maxBufferSize() each
+      // iteration: some callbacks (e.g. peekers) only accept a bounded
+      // number of bytes per invocation, and the active callback can swap
+      // mid-drain (e.g. peeker hands off to the real reader). This mirrors
+      // the chunking the non-io_uring handleRead() path gets for free via
+      // the getReadBuffer/readDataAvailable contract.
+      folly::IOBufQueue preRecvData;
+      preRecvData.append(std::move(preReceivedData_));
+      while (!preRecvData.empty() && readCallback_) {
+        readCallback_->readBufferAvailable(
+            preRecvData.splitAtMost(readCallback_->maxBufferSize()));
+      }
+      preReceivedData_ = preRecvData.move();
     } else {
       handleRead();
     }
