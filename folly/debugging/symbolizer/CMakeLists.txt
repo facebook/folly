@@ -161,6 +161,7 @@ folly_add_library(
     folly_portability_sys_mman
     folly_portability_sys_syscall
     folly_scope_guard
+    folly_small_vector
     folly_synchronized
     folly_tracing_async_stack
   EXPORTED_DEPS

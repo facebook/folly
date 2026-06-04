@@ -156,6 +156,7 @@ fb_dirsync_cpp_library(
         "//folly:memory",
         "//folly:portability",
         "//folly:scope_guard",
+        "//folly:small_vector",
         "//folly:synchronized",
         "//folly/container:evicting_cache_map",
         "//folly/debugging/symbolizer/detail:debug",

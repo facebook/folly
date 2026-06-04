@@ -33,6 +33,7 @@
 #include <folly/portability/Config.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
+#include <folly/small_vector.h>
 #include <folly/tracing/AsyncStack.h>
 
 #if FOLLY_HAVE_SWAPCONTEXT
@@ -192,9 +193,9 @@ void setSymbolizedFrame(
 
 // SymbolCache contains mapping between an address and its frames. The first
 // frame is the normal function call, and the following are stacked inline
-// function calls if any.
-using CachedSymbolizedFrames =
-    std::array<SymbolizedFrame, 1 + kMaxInlineLocationInfoPerFrame>;
+// function calls if any. Most addresses have no inlined frames, so optimize for
+// the single-entry case using small_vector.
+using CachedSymbolizedFrames = folly::small_vector<SymbolizedFrame, 1>;
 
 using UnsyncSymbolCache = EvictingCacheMap<uintptr_t, CachedSymbolizedFrames>;
 
@@ -332,7 +333,7 @@ size_t Symbolizer::symbolize(
 
         auto const iter = lockedSymbolCache->find(addr);
         if (iter != lockedSymbolCache->end()) {
-          size_t numCachedFrames = countFrames(folly::range(iter->second));
+          size_t numCachedFrames = iter->second.size();
           // 1 entry in cache is the non-inlined function call and that one
           // already has space reserved at `frames[i]`
           auto numInlineFrames = numCachedFrames - 1;
@@ -386,14 +387,12 @@ size_t Symbolizer::symbolize(
         }
         --remaining;
         if (symbolCache_) {
-          // frame may already have been set here.  That's ok, we'll just
-          // overwrite, which doesn't cause a correctness problem.
-          CachedSymbolizedFrames cacheFrames;
-          std::copy(
-              frames.begin() + i,
-              frames.begin() + i + std::min(numInlined + 1, cacheFrames.size()),
-              cacheFrames.begin());
-          symbolCache_->wlock()->set(addr, cacheFrames);
+          // Frames may already have been set here. It's fine to overwrite as
+          // the value should be the same.
+          symbolCache_->wlock()->set(
+              addr,
+              CachedSymbolizedFrames(
+                  frames.begin() + i, frames.begin() + i + numInlined + 1));
         }
         // Skip over the newly added inlined items.
         i += numInlined;
