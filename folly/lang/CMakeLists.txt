@@ -133,6 +133,7 @@ folly_add_library(
     cstring_view.h
   EXPORTED_DEPS
     fmt::fmt
+    folly_portability
     folly_traits
     folly_utility
 )

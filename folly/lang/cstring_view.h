@@ -24,8 +24,11 @@
 
 #include <fmt/format.h>
 
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+
+static_assert(FOLLY_CPLUSPLUS >= 202002L, "__cplusplus >= 202002L");
 
 namespace folly {
 
@@ -286,7 +289,6 @@ class basic_cstring_view {
     view_.swap(other.view_);
   }
 
-#if __cpp_lib_starts_ends_with >= 201711L
   constexpr bool starts_with(view_type sv) const noexcept {
     return view_.starts_with(sv);
   }
@@ -304,7 +306,6 @@ class basic_cstring_view {
     return view_.ends_with(ch);
   }
   constexpr bool ends_with(Char const* s) const { return view_.ends_with(s); }
-#endif
 
 #if defined(__cpp_lib_string_contains) && __cpp_lib_string_contains >= 202011L
   constexpr bool contains(view_type sv) const noexcept {
