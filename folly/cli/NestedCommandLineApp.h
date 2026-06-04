@@ -60,16 +60,14 @@ class FOLLY_EXPORT ProgramExit : public std::runtime_error {
  */
 class NestedCommandLineApp {
  public:
-  typedef std::function<void(
+  using InitFunction = std::function<void(
       const std::string& command,
       const boost::program_options::variables_map& options,
-      const std::vector<std::string>& args)>
-      InitFunction;
+      const std::vector<std::string>& args)>;
 
-  typedef std::function<void(
+  using Command = std::function<void(
       const boost::program_options::variables_map& options,
-      const std::vector<std::string>&)>
-      Command;
+      const std::vector<std::string>&)>;
 
   struct CommandInfo {
     std::string argStr;
