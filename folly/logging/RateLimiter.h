@@ -27,11 +27,11 @@ namespace folly {
 namespace logging {
 
 /**
- * A rate limiter that can rate limit events to N events per M milliseconds.
+ * Rate limiter allowing up to N events per fixed window of M milliseconds.
  *
- * It is intended to be fast to check when messages are not being rate limited.
- * When messages are being rate limited it is slightly slower, as it has to
- * check the clock each time check() is called in this case.
+ * Unlike a token bucket, this does not smooth events across the window: a
+ * burst of N is accepted as fast as it arrives at the start of each interval,
+ * after which all calls are rejected until the next interval begins.
  */
 class IntervalRateLimiter {
  public:
@@ -42,34 +42,40 @@ class IntervalRateLimiter {
       : maxPerInterval_{maxPerInterval}, interval_{interval} {}
 
   bool check() {
+    // Fast path: when the current interval is saturated, skip the contended
+    // RMW on count_.
+    auto now = clock::now().time_since_epoch().count();
+    auto intervalEnd = timestamp_.load(std::memory_order_acquire);
+    if (now < intervalEnd &&
+        count_.load(std::memory_order_relaxed) >= maxPerInterval_) {
+      return false;
+    }
     auto origCount = count_.fetch_add(1, std::memory_order_acq_rel);
     if (origCount < maxPerInterval_) {
       return true;
     }
-    return checkSlow();
+    return checkSlow(now);
   }
 
  private:
-  // First check should always succeed, so initial timestamp is at the beginning
-  // of time.
+  // Sentinel for "no interval has started yet"; any real `now` exceeds it,
+  // so the first check() falls through to checkSlow() to initialize state.
   static_assert(
       std::is_signed<clock::rep>::value,
       "Need signed time point to represent initial time");
   constexpr static auto kInitialTimestamp =
       std::numeric_limits<clock::rep>::min();
 
-  bool checkSlow();
+  bool checkSlow(clock::rep now);
 
   const uint64_t maxPerInterval_;
   const clock::time_point::duration interval_;
 
-  // Initialize count_ to the maximum possible value so that the first
-  // call to check() will call checkSlow() to initialize timestamp_,
-  // but subsequent calls will hit the fast-path and avoid checkSlow()
+  // Initialized to the max representable value so the first check() wraps
+  // on fetch_add and falls into checkSlow() to set up the initial interval.
   std::atomic<uint64_t> count_{std::numeric_limits<uint64_t>::max()};
-  // Ideally timestamp_ would be a
-  // std::atomic<clock::time_point>, but this does not
-  // work since time_point's constructor is not noexcept
+  // End of the current interval. clock::rep rather than time_point because
+  // time_point's constructor is not noexcept.
   std::atomic<clock::rep> timestamp_{kInitialTimestamp};
 };
 

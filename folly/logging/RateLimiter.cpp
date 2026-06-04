@@ -19,33 +19,38 @@
 namespace folly {
 namespace logging {
 
-bool IntervalRateLimiter::checkSlow() {
-  auto ts = timestamp_.load();
-  auto now = clock::now().time_since_epoch().count();
-  if (now < (ts + interval_.count())) {
+bool IntervalRateLimiter::checkSlow(clock::rep now) {
+  auto intervalEnd = timestamp_.load(std::memory_order_acquire);
+  if (now < intervalEnd) {
     return false;
   }
 
-  if (!timestamp_.compare_exchange_strong(ts, now)) {
-    // We raced with another thread that reset the timestamp.
-    // We treat this as if we fell into the previous interval, and so we
-    // rate-limit ourself.
+  auto newEnd = now + interval_.count();
+  if (!timestamp_.compare_exchange_strong(
+          intervalEnd,
+          newEnd,
+          std::memory_order_acq_rel,
+          std::memory_order_relaxed)) {
+    // Another thread already rolled the interval forward; rate-limit ourself.
     return false;
   }
 
-  if (ts == kInitialTimestamp) {
-    // If we initialized timestamp_ for the very first time increment count_ by
-    // one instead of setting it to 0.  Our original increment made it roll over
-    // to 0, so other threads may have already incremented it again and passed
-    // the check.
+  if (intervalEnd == kInitialTimestamp) {
+    // Our increment in check() wrapped count_ to 0, so re-increment instead
+    // of storing 1: other threads may already have incremented it further.
     auto origCount = count_.fetch_add(1, std::memory_order_acq_rel);
-    // Check to see if other threads already hit the rate limit cap before we
-    // finished checkSlow().
     return (origCount < maxPerInterval_);
   }
 
-  // In the future, if we wanted to return the number of dropped events we
-  // could use (count_.exchange(0) - maxPerInterval_) here.
+  // count_ is reset AFTER the CAS that publishes the new interval end. The
+  // fast path in check() loads timestamp_ (acquire) before count_, so a
+  // reader between the CAS and this store can see the new end alongside a
+  // stale (saturated) count and falsely reject. That is acceptable: rate
+  // limiting is unordered across threads, so a falsely-rejected call is
+  // indistinguishable from one that arrived a few nanoseconds earlier, just
+  // before the boundary. Resetting count_ before the CAS would avoid the
+  // window but would let a losing CAS stomp the winner's count, admitting
+  // up to maxPerInterval_ extra events.
   count_.store(1, std::memory_order_release);
   return true;
 }
