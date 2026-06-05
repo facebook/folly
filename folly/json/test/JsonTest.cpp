@@ -20,7 +20,6 @@
 #include <iterator>
 #include <limits>
 
-#include <folly/CPortability.h>
 #include <folly/portability/GTest.h>
 
 using folly::dynamic;
@@ -1466,21 +1465,6 @@ TEST(Json, FloatFormatField) {
   EXPECT_EQ(R"({"a":4.1,"b":20.0})", folly::json::serialize(sv, opts));
 }
 
-TEST(Json, FloatFormatFieldOverridesLegacyDtoa) {
-  using folly::json::FloatFormat;
-  FOLLY_PUSH_WARNING
-  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
-  folly::json::serialization_opts opts;
-  // Legacy fields would request FIXED with trailing zeros.
-  // @lint-ignore CLANGTIDY facebook-hte-Deprecated
-  opts.dtoa_mode = folly::DtoaMode::FIXED;
-  opts.double_num_digits = 4;
-  // But float_format takes precedence — request shortest output instead.
-  opts.float_format = FloatFormat::SHORTEST;
-  EXPECT_EQ("1.5", folly::json::serialize(1.5, opts));
-  FOLLY_POP_WARNING
-}
-
 TEST(Json, FloatFormatShortestSingle) {
   using folly::json::FloatFormat;
   folly::json::serialization_opts opts;
@@ -1497,22 +1481,35 @@ TEST(Json, FloatFormatShortestSingle) {
   EXPECT_EQ("1.0", folly::json::serialize(1.0, opts));
 }
 
-TEST(Json, LegacyDtoaFieldsStillHonoredAsFallback) {
-  // When float_format is unset, the deprecated dtoa_mode/dtoa_flags pair is
-  // honored for backward compatibility while callers migrate (T270785993).
-  FOLLY_PUSH_WARNING
-  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+// SHORTEST_TRAILING_DOT_ZERO must produce RFC 8259-valid JSON for all three
+// representational cases: values that fmt already emits with a decimal point
+// (e.g. "1.5"), values that fmt emits as a plain integer string (e.g. "45"),
+// and — the historically failing case — values that fmt emits in scientific
+// notation without a decimal point (e.g. "3e-06").  All three must parse back
+// through folly::parseJson without error.
+TEST(Json, FloatFormatTrailingDotZeroScientific) {
+  using folly::json::FloatFormat;
   folly::json::serialization_opts opts;
-  // @lint-ignore CLANGTIDY facebook-hte-Deprecated
-  opts.dtoa_mode = folly::DtoaMode::FIXED;
-  opts.double_num_digits = 2;
-  EXPECT_EQ("1.50", folly::json::serialize(1.5, opts));
+  opts.float_format = FloatFormat::SHORTEST_TRAILING_DOT_ZERO;
 
-  // @lint-ignore CLANGTIDY facebook-hte-Deprecated
-  opts.dtoa_mode = folly::DtoaMode::SHORTEST;
-  // @lint-ignore CLANGTIDY facebook-hte-Deprecated
-  opts.dtoa_flags = folly::DtoaFlags::EMIT_TRAILING_DECIMAL_POINT |
-      folly::DtoaFlags::EMIT_TRAILING_ZERO_AFTER_POINT;
-  EXPECT_EQ("1.0", folly::json::serialize(1.0, opts));
-  FOLLY_POP_WARNING
+  // Already has a decimal point — emitted unchanged.
+  EXPECT_EQ("1.5", folly::json::serialize(1.5, opts));
+
+  // Integer-valued double — ".0" appended.
+  EXPECT_EQ("45.0", folly::json::serialize(45.0, opts));
+
+  // Small value whose SHORTEST form uses scientific notation with no dot
+  // (fmt produces "3e-06"); SHORTEST_TRAILING_DOT_ZERO must inject ".0"
+  // between mantissa and exponent to produce valid JSON ("3.0e-06"), not the
+  // RFC 8259-violating bare-dot form ("3.e-06") that fmt's {:#} would give.
+  EXPECT_EQ("3.0e-06", folly::json::serialize(3e-6, opts));
+
+  // Large value, positive exponent.
+  EXPECT_EQ("1.0e+20", folly::json::serialize(1e20, opts));
+
+  // All serialized forms must round-trip through folly::parseJson.
+  for (double d : {1.5, 45.0, 3e-6, 1e20}) {
+    EXPECT_NO_THROW(folly::parseJson(folly::json::serialize(d, opts)))
+        << "parseJson rejected SHORTEST_TRAILING_DOT_ZERO output for " << d;
+  }
 }

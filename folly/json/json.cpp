@@ -356,14 +356,9 @@ struct PrinterImpl {
   }
   void mapColon() const { out_.append(Pretty ? ": "sv : ":"sv); }
 
-  // Append `dval` to `out_`. When `opts_.float_format` is set, dispatches to a
-  // literal FMT_COMPILE-parsed format string (fmt's spec parsing happens at
-  // compile time). When unset, falls back to the legacy toAppend path so that
-  // existing callers that set `dtoa_mode`/`dtoa_flags` see no behavioral
-  // change.
+  // Append `dval` to `out_` using fmt's Dragonbox. Infinity/NaN use the
+  // JSON spellings ("Infinity"/"-Infinity"/"NaN") since fmt emits "inf"/"nan".
   void appendDouble(double dval) const {
-    // fmt formats infinity/NaN as "inf"/"nan"; preserve the double-conversion
-    // spellings "Infinity"/"-Infinity"/"NaN" for JSON compatibility.
     if (std::isinf(dval)) {
       out_.append(dval > 0 ? "Infinity"sv : "-Infinity"sv);
       return;
@@ -372,17 +367,8 @@ struct PrinterImpl {
       out_.append("NaN"sv);
       return;
     }
-    if (!opts_.float_format) {
-      toAppend(
-          dval,
-          &out_,
-          opts_.dtoa_mode,
-          opts_.double_num_digits,
-          opts_.dtoa_flags);
-      return;
-    }
     auto out = std::back_inserter(out_);
-    switch (*opts_.float_format) {
+    switch (opts_.float_format.value_or(FloatFormat::SHORTEST)) {
       case FloatFormat::SHORTEST:
         fmt::format_to(out, FMT_COMPILE("{}"), dval);
         return;
