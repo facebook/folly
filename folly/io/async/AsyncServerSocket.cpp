@@ -378,7 +378,9 @@ bool AsyncServerSocket::setZeroCopy(bool enable) {
 }
 
 void AsyncServerSocket::bindInternal(
-    const SocketAddress& address, const std::string& ifName) {
+    const SocketAddress& address,
+    const std::string& ifName,
+    const SocketOptionMap& socketOptions) {
   if (eventBase_) {
     eventBase_->dcheckIsInEventBaseThread();
   }
@@ -389,7 +391,7 @@ void AsyncServerSocket::bindInternal(
   // error occurs.
   NetworkSocket fd;
   if (sockets_.empty()) {
-    fd = createSocket(address.getFamily());
+    fd = createSocket(address.getFamily(), socketOptions);
   } else if (sockets_.size() == 1) {
     if (address.getFamily() != sockets_[0].addressFamily_) {
       throw std::invalid_argument(
@@ -405,16 +407,35 @@ void AsyncServerSocket::bindInternal(
 }
 
 void AsyncServerSocket::bind(const SocketAddress& address) {
-  bindInternal(address, "");
+  bind(address, emptySocketOptionMap);
+}
+
+void AsyncServerSocket::bind(
+    const SocketAddress& address, const SocketOptionMap& socketOptions) {
+  bindInternal(address, "", socketOptions);
 }
 
 void AsyncServerSocket::bind(
     const SocketAddress& address, const std::string& ifName) {
-  bindInternal(address, ifName);
+  bind(address, ifName, emptySocketOptionMap);
+}
+
+void AsyncServerSocket::bind(
+    const SocketAddress& address,
+    const std::string& ifName,
+    const SocketOptionMap& socketOptions) {
+  bindInternal(address, ifName, socketOptions);
 }
 
 void AsyncServerSocket::bind(
     const std::vector<IPAddress>& ipAddresses, uint16_t port) {
+  bind(ipAddresses, port, emptySocketOptionMap);
+}
+
+void AsyncServerSocket::bind(
+    const std::vector<IPAddress>& ipAddresses,
+    uint16_t port,
+    const SocketOptionMap& socketOptions) {
   if (ipAddresses.empty()) {
     throw std::invalid_argument("No ip addresses were provided");
   }
@@ -424,7 +445,7 @@ void AsyncServerSocket::bind(
 
   for (const IPAddress& ipAddress : ipAddresses) {
     SocketAddress address(ipAddress.toFullyQualified(), port);
-    auto fd = createSocket(address.getFamily());
+    auto fd = createSocket(address.getFamily(), socketOptions);
 
     bindSocket(fd, address, false, "");
   }
@@ -436,6 +457,13 @@ void AsyncServerSocket::bind(
 
 void AsyncServerSocket::bind(
     const std::vector<IPAddressIfNamePair>& addresses, uint16_t port) {
+  bind(addresses, port, emptySocketOptionMap);
+}
+
+void AsyncServerSocket::bind(
+    const std::vector<IPAddressIfNamePair>& addresses,
+    uint16_t port,
+    const SocketOptionMap& socketOptions) {
   if (addresses.empty()) {
     throw std::invalid_argument("No ip addresses were provided");
   }
@@ -445,7 +473,7 @@ void AsyncServerSocket::bind(
 
   for (const auto& addr : addresses) {
     SocketAddress address(addr.first.toFullyQualified(), port);
-    auto fd = createSocket(address.getFamily());
+    auto fd = createSocket(address.getFamily(), socketOptions);
 
     bindSocket(fd, address, false, addr.second);
   }
@@ -456,6 +484,11 @@ void AsyncServerSocket::bind(
 }
 
 void AsyncServerSocket::bind(uint16_t port) {
+  bind(port, emptySocketOptionMap);
+}
+
+void AsyncServerSocket::bind(
+    uint16_t port, const SocketOptionMap& socketOptions) {
   struct addrinfo hints, *res0;
   char sport[sizeof("65536")];
 
@@ -468,6 +501,7 @@ void AsyncServerSocket::bind(uint16_t port) {
   // On Windows the value we need to pass to bind to all available
   // addresses is an empty string. Everywhere else, it's nullptr.
   constexpr const char* kWildcardNode = kIsWindows ? "" : nullptr;
+  // patternlint-disable-next-line cpp-dns-deps
   if (getaddrinfo(kWildcardNode, sport, &hints, &res0)) {
     throw std::invalid_argument(
         "Attempted to bind address to socket with "
@@ -487,7 +521,7 @@ void AsyncServerSocket::bind(uint16_t port) {
     CHECK_NE(s, NetworkSocket());
 
     try {
-      setupSocket(s, res->ai_family);
+      setupSocket(s, res->ai_family, socketOptions);
     } catch (...) {
       closeNoInt(s);
       throw;
@@ -843,14 +877,15 @@ void AsyncServerSocket::pauseAccepting() {
   }
 }
 
-NetworkSocket AsyncServerSocket::createSocket(int family) {
+NetworkSocket AsyncServerSocket::createSocket(
+    int family, const SocketOptionMap& socketOptions) {
   auto fd = netops::socket(family, SOCK_STREAM, 0);
   if (fd == NetworkSocket()) {
     folly::throwSystemError(errno, "error creating async server socket");
   }
 
   try {
-    setupSocket(fd, family);
+    setupSocket(fd, family, socketOptions);
   } catch (...) {
     closeNoInt(fd);
     throw;
@@ -915,7 +950,21 @@ void AsyncServerSocket::setListenerTos(uint32_t tos) {
   listenerTos_ = tos;
 }
 
-void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
+void AsyncServerSocket::setupSocket(
+    NetworkSocket fd, int family, const SocketOptionMap& socketOptions) {
+  // Apply caller-provided PRE_BIND socket options.
+  for (const auto& opt : validateSocketOptions(
+           socketOptions, family, SocketOptionKey::ApplyPos::PRE_BIND)) {
+    if (opt.first.apply(fd, opt.second) != 0) {
+      const auto errnoCopy = errno;
+      LOG(ERROR)
+          << "failed to apply socket option on async server socket"
+          << " fd=" << fd << " level=" << opt.first.level
+          << " optname=" << opt.first.optname << " applyPos=PRE_BIND"
+          << " value=" << opt.second << ": " << errnoStr(errnoCopy);
+    }
+  }
+
   // Put the socket in non-blocking mode
   if (netops::set_socket_non_blocking(fd) != 0) {
     folly::throwSystemError(errno, "failed to put socket in non-blocking mode");

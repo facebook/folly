@@ -30,6 +30,7 @@
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
 #include <folly/io/ShutdownSocketSet.h>
+#include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/DelayedDestruction.h>
@@ -379,52 +380,88 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * the s = accept sockets inherit it
    */
   bool setZeroCopy(bool enable);
-  using IPAddressIfNamePair = std::pair<IPAddress, std::string>;
+
   /**
    * Bind to the specified address.
    *
    * This must be called from the primary EventBase thread.
    *
+   * @socketOptions: socket options to be applied before binding.
+   * Only PRE_BIND socket options in the map will be applied.
+   * Options configured through setters take precedence if there is a conflict.
+   *
    * Throws AsyncSocketException on error.
    */
   virtual void bind(const SocketAddress& address);
+  virtual void bind(
+      const SocketAddress& address, const SocketOptionMap& socketOptions);
 
   /**
    * Bind to the specified address/if name
    *
    * This must be called from the primary EventBase thread.
    *
+   * @socketOptions: socket options to be applied before binding.
+   * Only PRE_BIND socket options in the map will be applied.
+   * Options configured through setters take precedence if there is a conflict.
+   *
    * Throws AsyncSocketException on error.
    */
   virtual void bind(const SocketAddress& address, const std::string& ifName);
+  virtual void bind(
+      const SocketAddress& address,
+      const std::string& ifName,
+      const SocketOptionMap& socketOptions);
 
   /**
    * Bind to the specified port for the specified addresses.
    *
    * This must be called from the primary EventBase thread.
    *
+   * @socketOptions: socket options to be applied before binding.
+   * Only PRE_BIND socket options in the map will be applied.
+   * Options configured through setters take precedence if there is a conflict.
+   *
    * Throws AsyncSocketException on error.
    */
   virtual void bind(const std::vector<IPAddress>& ipAddresses, uint16_t port);
+  virtual void bind(
+      const std::vector<IPAddress>& ipAddresses,
+      uint16_t port,
+      const SocketOptionMap& socketOptions);
 
   /**
    * Bind to the specified port for the specified addresses/if names.
    *
    * This must be called from the primary EventBase thread.
    *
+   * @socketOptions: socket options to be applied before binding.
+   * Only PRE_BIND socket options in the map will be applied.
+   * Options configured through setters take precedence if there is a conflict.
+   *
    * Throws AsyncSocketException on error.
    */
+  using IPAddressIfNamePair = std::pair<IPAddress, std::string>;
   virtual void bind(
       const std::vector<IPAddressIfNamePair>& addresses, uint16_t port);
+  virtual void bind(
+      const std::vector<IPAddressIfNamePair>& addresses,
+      uint16_t port,
+      const SocketOptionMap& socketOptions);
 
   /**
    * Bind to the specified port.
    *
    * This must be called from the primary EventBase thread.
    *
+   * @socketOptions: socket options to be applied before binding.
+   * Only PRE_BIND socket options in the map will be applied.
+   * Options configured through setters take precedence if there is a conflict.
+   *
    * Throws AsyncSocketException on error.
    */
   virtual void bind(uint16_t port);
+  virtual void bind(uint16_t port, const SocketOptionMap& socketOptions);
 
   /**
    * Get the local address to which the socket is bound.
@@ -947,9 +984,16 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   virtual void handlerReady(
       uint16_t events, NetworkSocket fd, sa_family_t family) noexcept;
 
-  NetworkSocket createSocket(int family);
-  void setupSocket(NetworkSocket fd, int family);
-  void bindInternal(const SocketAddress& address, const std::string& ifName);
+  NetworkSocket createSocket(
+      int family, const SocketOptionMap& socketOptions = emptySocketOptionMap);
+  void setupSocket(
+      NetworkSocket fd,
+      int family,
+      const SocketOptionMap& socketOptions = emptySocketOptionMap);
+  void bindInternal(
+      const SocketAddress& address,
+      const std::string& ifName,
+      const SocketOptionMap& socketOptions = emptySocketOptionMap);
   void bindSocket(
       NetworkSocket fd,
       const SocketAddress& address,

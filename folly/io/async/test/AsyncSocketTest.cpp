@@ -44,6 +44,64 @@ TEST(AsyncSocketTest, getSockOpt) {
   EXPECT_EQ(expectedRc, actualRc);
 }
 
+namespace {
+
+int getReceiveLowWatermark(const AsyncServerSocket& serverSocket) {
+  int value = 0;
+  socklen_t valueLength = sizeof(value);
+  EXPECT_EQ(
+      netops::getsockopt(
+          serverSocket.getNetworkSocket(),
+          SOL_SOCKET,
+          SO_RCVLOWAT,
+          &value,
+          &valueLength),
+      0);
+  return value;
+}
+
+int getTcpMaxSegment(const AsyncServerSocket& serverSocket) {
+  int value = 0;
+  socklen_t valueLength = sizeof(value);
+  EXPECT_EQ(
+      netops::getsockopt(
+          serverSocket.getNetworkSocket(),
+          IPPROTO_TCP,
+          TCP_MAXSEG,
+          &value,
+          &valueLength),
+      0);
+  return value;
+}
+
+} // namespace
+
+TEST(AsyncSocketTest, BindAppliesOnlyPreBindSocketOptions) {
+  EventBase base;
+  auto baselineSocket = AsyncServerSocket::newSocket(&base);
+  baselineSocket->bind(0);
+  const auto baselineLowWatermark = getReceiveLowWatermark(*baselineSocket);
+  ASSERT_NE(baselineLowWatermark, 2);
+
+  auto postBindSocket = AsyncServerSocket::newSocket(&base);
+  SocketOptionMap postBindOptions;
+  postBindOptions[{
+      SOL_SOCKET, SO_RCVLOWAT, SocketOptionKey::ApplyPos::POST_BIND}] = 2;
+  postBindSocket->bind(0, postBindOptions);
+  EXPECT_EQ(getReceiveLowWatermark(*postBindSocket), baselineLowWatermark);
+
+  auto preBindSocket = AsyncServerSocket::newSocket(&base);
+  SocketOptionMap preBindOptions;
+  preBindOptions[{
+      SOL_SOCKET, SO_RCVLOWAT, SocketOptionKey::ApplyPos::PRE_BIND}] = 2;
+  preBindOptions[{SOL_SOCKET, -1, SocketOptionKey::ApplyPos::PRE_BIND}] = 1;
+  preBindOptions[{
+      IPPROTO_TCP, TCP_MAXSEG, SocketOptionKey::ApplyPos::PRE_BIND}] = 1200;
+  preBindSocket->bind(0, preBindOptions);
+  EXPECT_EQ(getReceiveLowWatermark(*preBindSocket), 2);
+  EXPECT_EQ(getTcpMaxSegment(*preBindSocket), 1200);
+}
+
 TEST(AsyncSocketTest, REUSEPORT) {
   EventBase base;
   auto serverSocket = AsyncServerSocket::newSocket(&base);

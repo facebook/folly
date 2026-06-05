@@ -514,6 +514,7 @@ fb_dirsync_cpp_library(
         "//folly:network_address",
         "//folly:string",
         "//folly/io:shutdown_socket_set",
+        "//folly/io:socket_option_map",
         "//folly/net:net_ops",
         "//folly/net:network_socket",
         "//folly/observer:observer",

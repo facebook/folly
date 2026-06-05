@@ -789,6 +789,7 @@ folly_add_library(
     folly_io_async_async_socket_base
     folly_io_async_delayed_destruction
     folly_io_shutdown_socket_set
+    folly_io_socket_option_map
     folly_net_net_ops
     folly_net_network_socket
     folly_network_address
