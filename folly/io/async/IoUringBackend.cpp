@@ -480,7 +480,7 @@ IoUringBackend::IoUringBackend(Options options)
   if (options_.taskRunCoop) {
     params_.flags |= IORING_SETUP_COOP_TASKRUN;
   }
-  if (options_.deferTaskRun && kernelSupportsDeferTaskrun()) {
+  if (options_.deferTaskRun) {
     params_.flags |= IORING_SETUP_SINGLE_ISSUER;
     params_.flags |= IORING_SETUP_DEFER_TASKRUN;
     params_.flags |= IORING_SETUP_SUBMIT_ALL;
@@ -1921,129 +1921,6 @@ void IoUringBackend::processRecvZc(
       buf->data(),
       buf->length());
   ioSqe->offset_ += cqe->res;
-}
-
-namespace {
-
-static bool doKernelSupportsRecvmsgMultishot() {
-  try {
-    struct S : IoSqeBase {
-      explicit S(IoUringProvidedBufferRing* bp) : bp_(bp) {
-        fd = fileops::open("/dev/null", O_RDONLY);
-        memset(&msg, 0, sizeof(msg));
-      }
-      ~S() override {
-        if (fd >= 0) {
-          fileops::close(fd);
-        }
-      }
-      void processSubmit(io_uring_sqe* sqe) noexcept override {
-        io_uring_prep_recvmsg_multishot(sqe, fd, &msg, 0);
-
-        sqe->buf_group = bp_->gid();
-        sqe->flags |= IOSQE_BUFFER_SELECT;
-      }
-
-      void callback(const io_uring_cqe* cqe) noexcept override {
-        supported = cqe->res != -EINVAL;
-      }
-
-      void callbackCancelled(const io_uring_cqe*) noexcept override {
-        delete this;
-      }
-
-      IoUringProvidedBufferRing* bp_;
-      bool supported = false;
-      msghdr msg;
-      int fd = -1;
-    };
-
-    std::unique_ptr<S> s;
-    IoUringBackend io(
-        std::move(IoUringOptions().setInitialProvidedBuffers(1024, 1)));
-    if (!io.bufferProvider()) {
-      return false;
-    }
-    s = std::make_unique<S>(io.bufferProvider());
-    io.submitNow(*s);
-    io.eb_event_base_loop(EVLOOP_NONBLOCK);
-    bool ret = s->supported;
-    if (s->inFlight()) {
-      LOG(ERROR) << "Unexpectedly sqe still in flight";
-      ret = false;
-    }
-    return ret;
-  } catch (IoUringBackend::NotAvailable const&) {
-    return false;
-  }
-}
-
-static bool doKernelSupportsDeferTaskrun() {
-  io_uring ring;
-  int ret = io_uring_queue_init(
-      1, &ring, IORING_SETUP_SINGLE_ISSUER | IORING_SETUP_DEFER_TASKRUN);
-  if (ret == 0) {
-    io_uring_queue_exit(&ring);
-    return true;
-  }
-
-  // fallthrough
-  return false;
-}
-
-static bool doKernelSupportsSendZC() {
-  io_uring ring;
-
-  int ret = io_uring_queue_init(4, &ring, 0);
-  if (ret) {
-    LOG(ERROR)
-        << "doKernelSupportsSendZC: Unexpectedly io_uring_queue_init failed";
-    return false;
-  }
-  SCOPE_EXIT {
-    io_uring_queue_exit(&ring);
-  };
-
-  auto* sqe = ::io_uring_get_sqe(&ring);
-  if (!sqe) {
-    LOG(ERROR) << "doKernelSupportsSendZC: no sqe?";
-    return false;
-  }
-
-  io_uring_prep_sendmsg_zc(sqe, -1, nullptr, 0);
-  ret = ::io_uring_submit(&ring);
-  if (ret != 1) {
-    return false;
-  }
-
-  io_uring_cqe* cqe = nullptr;
-  ret = ::io_uring_wait_cqe(&ring, &cqe);
-  if (ret) {
-    return false;
-  }
-
-  if (!(cqe->flags & IORING_CQE_F_MORE)) {
-    return false; // zerocopy sends two notifications
-  }
-
-  return (cqe->flags & IORING_CQE_F_NOTIF) || (cqe->res == -EBADF);
-}
-
-} // namespace
-
-bool IoUringBackend::kernelSupportsRecvmsgMultishot() {
-  static bool const ret = doKernelSupportsRecvmsgMultishot();
-  return ret;
-}
-
-bool IoUringBackend::kernelSupportsDeferTaskrun() {
-  static bool const ret = doKernelSupportsDeferTaskrun();
-  return ret;
-}
-
-bool IoUringBackend::kernelSupportsSendZC() {
-  static bool const ret = doKernelSupportsSendZC();
-  return ret;
 }
 
 } // namespace folly

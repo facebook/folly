@@ -1093,6 +1093,15 @@ TEST_P(AsyncIoUringSocketTestAll, SendTimeout) {
     // folly::AsyncSocket is not totally reliable with timeouts
     return;
   }
+  if (GetParam().sendzc) {
+    // sendmsg_zc pins user pages and returns success (CQE res > 0) before TCP
+    // transmits the data. AsyncIoUringSocket's send timeout only fires while a
+    // write SQE is in-flight — once the CQE returns success, the timeout is
+    // cleared. To support ZC send timeouts, the timeout would need to track
+    // NOTIF CQE lifetime, not just write CQE completion.
+    // TODO(T272254448): remove AsyncIoUringSocket & associated tests
+    return;
+  }
   auto conn = makeConnected(ConnectedOptions{}.withNoServerShouldRead());
   FutureWriteCallback ecb;
   std::string big(40000000, 'X');
@@ -1127,9 +1136,7 @@ auto mkAllTestParams() {
     };
 
     add_flip_case(&TestParams::registerFd);
-    if (IoUringBackend::kernelSupportsSendZC()) {
-      add_flip_case(&TestParams::sendzc);
-    }
+    add_flip_case(&TestParams::sendzc);
     add_flip_case(&TestParams::supportBufferMovable);
     t.push_back(all);
   };

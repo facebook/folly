@@ -119,9 +119,6 @@ class IoUringBackend : public EventBaseBackendBase {
   // returns true if the current Linux kernel version
   // supports the io_uring backend
   static bool isAvailable();
-  static bool kernelSupportsRecvmsgMultishot();
-  static bool kernelSupportsDeferTaskrun();
-  static bool kernelSupportsSendZC();
 
   IoUringFdRegistrationRecord* registerFd(int fd) noexcept {
     return fdRegistry_.alloc(fd);

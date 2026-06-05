@@ -2148,10 +2148,6 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
 }
 
 TEST(IoUringBackend, DeferTaskRun) {
-  if (!folly::IoUringBackend::kernelSupportsDeferTaskrun()) {
-    return;
-  }
-
   std::atomic<int> doneA{0};
   std::atomic<int> doneB{0};
   struct N : folly::IoSqeBase {
