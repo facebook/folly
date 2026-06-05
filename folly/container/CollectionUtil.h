@@ -16,11 +16,7 @@
 
 #pragma once
 
-#include <algorithm>
 #include <concepts>
-#include <iterator>
-#include <type_traits>
-
 #include <folly/lang/Exception.h>
 
 namespace folly {
@@ -36,19 +32,6 @@ concept HasFind = requires(T& t, const K& k) {
   { t.find(k) } -> std::convertible_to<typename T::const_iterator>;
 };
 } // namespace detail
-/**
- * This function check whether container contains given value.
- * Can be used for non-associative containers.
- * Notes:
- * Runtime = O(n)
- * Work with vector, map.
- */
-template <class C, class V = typename C::value_type>
-  requires(!detail::HasContains<C, V> && !detail::HasFind<C, V>)
-bool contains(const C& container, const V& value) {
-  const auto e = std::end(container);
-  return std::find(std::begin(container), e, value) != e;
-}
 
 /**
  * This function checks whether container contains given key.
@@ -56,17 +39,12 @@ bool contains(const C& container, const V& value) {
  * otherwise uses .find() implementation.
  */
 template <class C, class K = typename C::key_type>
+  requires(detail::HasContains<C, K> || detail::HasFind<C, K>)
 bool contains(const C& container, const K& key) {
   if constexpr (detail::HasContains<C, K>) {
     return container.contains(key);
-  } else if constexpr (detail::HasFind<C, K>) {
-    return container.find(key) != container.end();
   } else {
-    static_assert(
-        folly::always_false<C>,
-        "This branch should be unreachable. Calls to contains by containers that do "
-        "not satisfy HasContains and HasFind should default to the prior template.");
+    return container.find(key) != container.end();
   }
 }
-
 } // namespace folly

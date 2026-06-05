@@ -53,33 +53,6 @@ TEST(CollectionUtilTest, simpleContains) {
   set_test(std::unordered_set<std::string>{});
   set_test(folly::F14FastSet<std::string>{});
   set_test(folly::sorted_vector_set<std::string>{});
-
-  // test string type
-  std::string s = "aloha";
-  EXPECT_TRUE(folly::contains(s, 'h'));
-  EXPECT_FALSE(folly::contains(s, 'x'));
-
-  // test array types
-  std::array<int, 5> arr{1, 2, 3, 4, 5};
-  int raw_array[5]{1, 2, 3, 4, 5};
-  EXPECT_TRUE(folly::contains(arr, 4));
-  EXPECT_TRUE(folly::contains(raw_array, 4));
-  EXPECT_FALSE(folly::contains(arr, 100));
-  EXPECT_FALSE(folly::contains(raw_array, 100));
-}
-
-TEST(CollectionUtilTest, vectorContains) {
-  auto vector_test = [](auto&& vec) {
-    vec.push_back(5);
-    vec.push_back(1);
-    EXPECT_TRUE(folly::contains(vec, 5));
-    EXPECT_TRUE(folly::contains(vec, 1));
-    EXPECT_FALSE(folly::contains(vec, 0));
-  };
-  vector_test(std::vector<int>{});
-  vector_test(folly::small_vector<int, 10>{});
-  vector_test(std::list<int>{});
-  vector_test(std::deque<int>{});
 }
 
 TEST(CollectionUtilTest, hasContains) {
@@ -152,21 +125,6 @@ TEST(CollectionUtilTest, hasFind) {
 
   OnlyHasFind<int, int> myMap2;
   EXPECT_FALSE(folly::contains(myMap, 0));
-}
-
-TEST(CollectionUtilTest, containsFallbackWithKeyType) {
-  // Regression test: a container with key_type but no .contains() or .find()
-  // previously caused infinite recursion (stack overflow).
-  static_assert(
-      !detail::HasContains<HasKeyTypeOnly<int>, int> &&
-      !detail::HasFind<HasKeyTypeOnly<int>, int>);
-
-  HasKeyTypeOnly<int> c;
-  c.push_back(1);
-  c.push_back(2);
-  c.push_back(3);
-  EXPECT_TRUE(folly::contains(c, 2));
-  EXPECT_FALSE(folly::contains(c, 4));
 }
 
 TEST(CollectionUtilTest, dynamicContains) {
