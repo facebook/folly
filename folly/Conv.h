@@ -127,8 +127,6 @@
 #include <charconv>
 #endif
 
-#include <double-conversion/double-conversion.h> // V8 JavaScript implementation
-
 #include <folly/CPortability.h>
 
 #include <folly/Demangle.h>
@@ -647,197 +645,37 @@ estimateSpaceNeeded(Src value) {
  * Conversions from floating-point types to string types.
  */
 
-/// Operating mode for the floating point type version of
-/// `folly::ToAppend`. This is modeled after
-/// `double_conversion::DoubleToStringConverter::DtoaMode`.
-/// Dtoa is an acronym for Double to ASCII.
-enum class DtoaMode {
-  /// Outputs the shortest representation of a `double`.
-  /// The output is either in decimal or exponential notation; which ever is
-  /// shortest.
-  SHORTEST,
-  /// Outputs the shortest representation of a `float`.
-  /// This outputs in either decimal or exponential notation, which ever is
-  /// shortest.
-  SHORTEST_SINGLE,
-  /// Outputs fixed precision after the decimal point. Similar to
-  /// `printf`'s %f.
-  /// The output is in decimal notation.
-  /// Use the `numDigits` parameter to specify the precision.
-  FIXED,
-  /// Outputs with a precision that is independent of the decimal point.
-  /// The outputs is either decimal or exponential notation, depending on the
-  /// value and the precision.
-  /// Similar to `printf`'s %g formatting.
-  /// Use the `numDigits` parameter to specify the precision.
-  PRECISION,
-};
-
-/// Flags for the floating point type version of `folly::ToAppend`.
-/// This is modeled after `double_conversion::DoubleToStringConverter::Flags`.
-/// Dtoa is an acronym for Double to ASCII.
-/// This enum is used to store bit wise flags, so a variable of this type may be
-/// a bitwise combination of these definitions.
-enum class DtoaFlags {
-  NO_FLAGS = 0,
-  /// Emits a plus sign for positive exponents. e.g., 1.2e+3
-  EMIT_POSITIVE_EXPONENT_SIGN = 1,
-  /// Emits a trailing decimal point. e.g., 123.
-  EMIT_TRAILING_DECIMAL_POINT = 2,
-  /// Emits a trailing decimal point. e.g., 123.0
-  /// Requires `EMIT_TRAILING_DECIMAL_POINT` to be set.
-  EMIT_TRAILING_ZERO_AFTER_POINT = 4,
-  /// -0.0 outputs as 0.0
-  UNIQUE_ZERO = 8,
-  /// Trailing zeros are removed from the fractional portion
-  /// of the result in precision mode. Matches `printf`'s %g.
-  /// When `EMIT_TRAILING_ZERO_AFTER_POINT` is also given, one trailing zero is
-  /// preserved.
-  NO_TRAILING_ZERO = 16,
-};
-
-constexpr DtoaFlags operator|(DtoaFlags a, DtoaFlags b) {
-  return static_cast<DtoaFlags>(to_underlying(a) | to_underlying(b));
-}
-
-constexpr DtoaFlags operator&(DtoaFlags a, DtoaFlags b) {
-  return static_cast<DtoaFlags>(to_underlying(a) & to_underlying(b));
-}
-
 namespace detail {
-constexpr int kConvMaxDecimalInShortestLow = -6;
-/// 10^kConvMaxDecimalInShortestLow. Replace with constexpr std::pow in C++26.
-constexpr double kConvMaxDecimalInShortestLowValue = 0.000001;
-constexpr int kConvMaxDecimalInShortestHigh = 21;
-/// 10^kConvMaxDecimalInShortestHigh. Replace with constexpr std::pow in C++26.
-constexpr double kConvMaxDecimalInShortestHighValue =
-    1'000'000'000'000'000'000'000.0;
-constexpr int kBase10MaximalLength = 17;
-
-constexpr int kConvMaxFixedDigitsAfterPoint =
-    double_conversion::DoubleToStringConverter::kMaxFixedDigitsAfterPoint;
-constexpr int kConvMaxPrecisionDigits =
-    double_conversion::DoubleToStringConverter::kMaxPrecisionDigits;
-
-/// Converts `DtoaMode` to
-/// `double_conversion::DoubleToStringConverter::DtoaMode`.
-/// This is temporary until
-/// `double_conversion::DoubleToStringConverter::DtoaMode` is removed.
-constexpr double_conversion::DoubleToStringConverter::DtoaMode convert(
-    DtoaMode mode) {
-  switch (mode) {
-    case DtoaMode::SHORTEST:
-      return double_conversion::DoubleToStringConverter::SHORTEST;
-    case DtoaMode::SHORTEST_SINGLE:
-      return double_conversion::DoubleToStringConverter::SHORTEST_SINGLE;
-    case DtoaMode::FIXED:
-      return double_conversion::DoubleToStringConverter::FIXED;
-    case DtoaMode::PRECISION:
-      return double_conversion::DoubleToStringConverter::PRECISION;
-    default: /* unexpected */
-      assert(false);
-      // Default to PRECISION per existing behavior.
-      return double_conversion::DoubleToStringConverter::PRECISION;
-  }
-}
-
-/// Converts `DtoaFlags` to
-/// `double_conversion::DoubleToStringConverter::DtoaFlags`.
-/// This is temporary until
-/// `double_conversion::DoubleToStringConverter::DtoaFlags` is removed.
-constexpr double_conversion::DoubleToStringConverter::Flags convert(
-    DtoaFlags flags) {
-  return static_cast<double_conversion::DoubleToStringConverter::Flags>(flags);
-}
+// Formats value as the shortest round-trip decimal into buf (up to bufSize
+// bytes). Returns the number of characters written. Defined in Conv.cpp so
+// that fmt/format.h is not exposed through this header.
+size_t formatDouble(double value, char* buf, size_t bufSize);
 } // namespace detail
 
-/**
- * `numDigits` is only used with `FIXED` && `PRECISION`.
- */
-template <class Tgt, class Src>
-typename std::enable_if<
-    std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
-toAppend(
-    Src value,
-    Tgt* result,
-    DtoaMode mode,
-    unsigned int numDigits,
-    DtoaFlags flags = DtoaFlags::NO_FLAGS) {
-  double_conversion::DoubleToStringConverter::Flags dcFlags =
-      detail::convert(flags);
-  double_conversion::DoubleToStringConverter conv(
-      dcFlags,
-      "Infinity",
-      "NaN",
-      'E',
-      detail::kConvMaxDecimalInShortestLow,
-      detail::kConvMaxDecimalInShortestHigh,
-      6, // max leading padding zeros
-      1); // max trailing padding zeros
-  char buffer[256];
-  double_conversion::StringBuilder builder(buffer, sizeof(buffer));
-  double_conversion::DoubleToStringConverter::DtoaMode dcMode =
-      detail::convert(mode);
-  FOLLY_PUSH_WARNING
-  FOLLY_CLANG_DISABLE_WARNING("-Wcovered-switch-default")
-  switch (dcMode) {
-    case double_conversion::DoubleToStringConverter::SHORTEST:
-      conv.ToShortest(value, &builder);
-      break;
-    case double_conversion::DoubleToStringConverter::SHORTEST_SINGLE:
-      conv.ToShortestSingle(static_cast<float>(value), &builder);
-      break;
-    case double_conversion::DoubleToStringConverter::FIXED:
-      conv.ToFixed(value, int(numDigits), &builder);
-      break;
-    case double_conversion::DoubleToStringConverter::PRECISION:
-    default:
-      assert(dcMode == double_conversion::DoubleToStringConverter::PRECISION);
-      conv.ToPrecision(value, int(numDigits), &builder);
-      break;
-  }
-  FOLLY_POP_WARNING
-  const size_t length = size_t(builder.position());
-  builder.Finalize();
-  result->append(buffer, length);
-}
-
-/**
- * As above, but for floating point
- */
 template <class Tgt, class Src>
 typename std::enable_if<
     std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
 toAppend(Src value, Tgt* result) {
-  toAppend(value, result, DtoaMode::SHORTEST, 0);
+  using namespace std::string_view_literals;
+  if (std::isinf(value)) {
+    result->append(value > 0 ? "Infinity"sv : "-Infinity"sv);
+  } else if (std::isnan(value)) {
+    result->append("NaN"sv);
+  } else {
+    char buf[25];
+    result->append(buf, detail::formatDouble(double(value), buf, sizeof(buf)));
+  }
 }
 
 /**
- * Upper bound of the length of the output from
- * DoubleToStringConverter::ToShortest(double, StringBuilder*),
- * as used in toAppend(double, string*).
+ * Upper bound of the length of fmt's shortest representation of any
+ * IEEE-754 double: 17-digit mantissa + decimal point + sign + "e-308" = 24,
+ * plus one for a negative sign on the value itself.
  */
 template <class Src>
 typename std::enable_if<std::is_floating_point<Src>::value, size_t>::type
 estimateSpaceNeeded(Src value) {
-  // kBase10MaximalLength is 17. We add 1 for decimal point,
-  // e.g. 10.0/9 is 17 digits and 18 characters, including the decimal point.
-  constexpr int kMaxMantissaSpace = detail::kBase10MaximalLength + 1;
-  // strlen("E-") + digits10(numeric_limits<double>::max_exponent10)
-  constexpr int kMaxExponentSpace = 2 + 3;
-  static const int kMaxPositiveSpace = std::max({
-      // E.g. 1.1111111111111111E-100.
-      kMaxMantissaSpace + kMaxExponentSpace,
-      // E.g. 0.000001.1111111111111111, if kConvMaxDecimalInShortestLow is -6.
-      kMaxMantissaSpace - detail::kConvMaxDecimalInShortestLow,
-      // If kConvMaxDecimalInShortestHigh is 21, then 1e21 is the smallest
-      // number > 1 which ToShortest outputs in exponential notation,
-      // so 21 is the longest non-exponential number > 1.
-      detail::kConvMaxDecimalInShortestHigh,
-  });
-  return size_t(
-      kMaxPositiveSpace +
-      (value < 0 ? 1 : 0)); // +1 for minus sign, if negative
+  return 24 + (value < 0 ? 1 : 0);
 }
 
 template <class Src>

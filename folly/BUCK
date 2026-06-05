@@ -1121,6 +1121,7 @@ fb_dirsync_cpp_library(
     name = "mpmc_queue",
     headers = ["MPMCQueue.h"],
     use_raw_headers = True,
+    deps = [":portability"],
     exported_deps = [
         ":traits",
         "//folly/concurrency:cache_locality",
@@ -2296,6 +2297,10 @@ fb_dirsync_cpp_library(
         "ConcurrentSkipList-inl.h",
     ],
     use_raw_headers = True,
+    deps = [
+        ":cpp_attributes",
+        "//folly/memory:allocator",
+    ],
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":constexpr_math",
@@ -2317,6 +2322,7 @@ fb_dirsync_cpp_library(
         "ConcurrentBSkipList-detail.h",
     ],
     use_raw_headers = True,
+    deps = ["//folly/portability:asm"],
     exported_deps = [
         "fbsource//third-party/glog:glog",
         ":c_portability",
@@ -2436,6 +2442,7 @@ fb_dirsync_cpp_library(
     ],
     deps = [
         "fbsource//third-party/fast_float:fast_float",
+        "fbsource//third-party/fmt:fmt",
         "//folly/lang:safe_assert",
     ],
     exported_deps = [
@@ -2453,9 +2460,6 @@ fb_dirsync_cpp_library(
         "//folly/lang:pretty",
         "//folly/lang:to_ascii",
         "//folly/portability:math",
-    ],
-    exported_external_deps = [
-        "double_conversion",
     ],
 )
 

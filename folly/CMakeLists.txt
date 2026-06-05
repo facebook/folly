@@ -287,6 +287,7 @@ folly_add_library(
   HEADERS
     Conv.h
   DEPS
+    fmt::fmt
     folly_lang_safe_assert
   EXPORTED_DEPS
     folly_c_portability

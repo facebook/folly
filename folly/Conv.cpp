@@ -19,6 +19,7 @@
 #include <array>
 #include <istream>
 
+#include <fmt/format.h>
 #include <folly/lang/SafeAssert.h>
 
 #include <fast_float/fast_float.h>
@@ -710,6 +711,11 @@ template Expected<__int128, ConversionCode> str_to_integral<__int128>(
 template Expected<unsigned __int128, ConversionCode>
 str_to_integral<unsigned __int128>(StringPiece* src) noexcept;
 #endif
+size_t formatDouble(double value, char* buf, size_t bufSize) {
+  auto result = fmt::format_to_n(buf, bufSize, "{}", value);
+  return result.out - buf;
+}
+
 } // namespace detail
 
 ConversionError makeConversionError(ConversionCode code, StringPiece input) {
