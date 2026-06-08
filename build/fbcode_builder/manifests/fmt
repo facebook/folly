@@ -9,9 +9,16 @@ sha256 = ea7de4299689e12b6dddd392f9896f08fb0777ac7168897a244a6d6085043fea
 builder = cmake
 subdir = fmt-12.1.0
 
+[features]
+default =
+shared_libs =
+
 [cmake.defines]
 FMT_TEST = OFF
 FMT_DOC = OFF
+
+[cmake.defines.feature_shared_libs=on]
+BUILD_SHARED_LIBS = ON
 
 [homebrew]
 fmt

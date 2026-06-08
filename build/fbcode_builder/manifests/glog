@@ -13,6 +13,12 @@ rev = 3411d58669fe07e70335b252299432a00d1e7c6c
 
 [build]
 builder = cmake
+# The patchfile removes glog's unconditional CMAKE_CXX_VISIBILITY_PRESET=hidden
+# (cmake_minimum_required(VERSION 3.16) forces CMP0063=NEW, making
+# CMAKE_POLICY_DEFAULT_CMP0063=OLD ineffective). Applied unconditionally;
+# default-visibility symbols in a static archive are harmless for consumers
+# that don't need the shared_libs feature.
+patchfile = glog_default_visibility.patch
 
 [dependencies]
 gflags
@@ -35,4 +41,3 @@ libgoogle-glog-dev
 
 [rpms.distro=fedora]
 glog-devel
-

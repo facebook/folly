@@ -35,6 +35,13 @@ zlib
 libaio
 libiberty
 libunwind
+# folly uses OpenSSL on every platform (SSL contexts, hashing, etc.).
+# On Linux, openssl's manifest uses builder=nop and resolves via the
+# distro's openssl-devel package, so listing it here only causes
+# install-system-deps --recursive to pick that package up. Without
+# this, downstream consumers that don't otherwise pull in fizz/wangle/
+# fbthrift have to discover this transitive system dep themselves.
+openssl
 
 # xz depends on autoconf which does not build on
 # Windows
@@ -49,8 +56,15 @@ fbcode/folly = folly
 ^fbcode/folly/folly-config\.h$
 ^fbcode/folly/public_tld/build/facebook_.*
 
+[features]
+default =
+shared_libs =
+
 [cmake.defines]
 BUILD_SHARED_LIBS=OFF
+
+[cmake.defines.feature_shared_libs=on]
+BUILD_SHARED_LIBS=ON
 
 [cmake.defines.not(os=windows)]
 BOOST_LINK_STATIC=ON

@@ -12,7 +12,6 @@ subdir = gflags-2.3.0
 [cmake.defines]
 BUILD_SHARED_LIBS = ON
 BUILD_STATIC_LIBS = ON
-#BUILD_gflags_nothreads_LIB = OFF
 BUILD_gflags_LIB = ON
 
 [homebrew]

@@ -23,6 +23,9 @@ enable_tests=ON
 [cmake.defines.any(os=windows,test=off)]
 enable_tests=OFF
 
+[cmake.defines.all(os=linux,feature_shared_libs=on)]
+BUILD_SHARED_LIBS=ON
+
 # Features. The defaults match the historical full build. Consumers that
 # only need codegen + (de)serialization pull this dep as
 # `fbthrift = !rpc, !benchmark` to skip both the RPC link-graph and the
@@ -31,6 +34,7 @@ enable_tests=OFF
 default = rpc, benchmark
 rpc =
 benchmark =
+shared_libs =
 
 [cmake.defines.feature_rpc=off]
 THRIFT_RPC=OFF
