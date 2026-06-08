@@ -501,6 +501,7 @@ fb_dirsync_cpp_library(
         "-fno-omit-frame-pointer",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         ":constexpr_math",
         "//folly/container:array",
     ],
@@ -518,9 +519,6 @@ fb_dirsync_cpp_library(
         "//folly/lang:exception",
         "//folly/lang:to_ascii",
         "//folly/portability:windows",
-    ],
-    external_deps = [
-        "double_conversion",
     ],
 )
 

@@ -16,13 +16,15 @@
 
 #include <folly/Format.h>
 
-#include <cassert>
+#include <array>
+#include <cmath>
+#include <cstring>
+
+#include <fmt/format.h>
 
 #include <folly/ConstexprMath.h>
 #include <folly/Portability.h>
 #include <folly/container/Array.h>
-
-#include <double-conversion/double-conversion.h> // @donotremove
 
 namespace folly {
 namespace detail {
@@ -96,34 +98,31 @@ using namespace folly::detail;
 
 void FormatValue<double>::formatHelper(
     fbstring& piece, int& prefixLen, FormatArg& arg) const {
-  using ::double_conversion::DoubleToStringConverter;
-  using ::double_conversion::StringBuilder;
-
   arg.validate(FormatArg::Type::FLOAT);
+
+  // Track whether the user wrote bare '{}' (no explicit specifier or precision).
+  // In that case we use fmt's shortest round-trip representation, matching the
+  // old double-conversion ToShortest behavior.  Any explicit specifier or
+  // precision (e.g. '{:g}', '{:.4}') goes through the precision-based path.
+  const bool useShortestRoundTrip =
+      (arg.presentation == FormatArg::kDefaultPresentation) &&
+      (arg.precision == FormatArg::kDefaultPrecision);
 
   if (arg.presentation == FormatArg::kDefaultPresentation) {
     arg.presentation = 'g';
   }
 
-  const char* infinitySymbol = isupper(arg.presentation) ? "INF" : "inf";
-  const char* nanSymbol = isupper(arg.presentation) ? "NAN" : "nan";
-  char exponentSymbol = isupper(arg.presentation) ? 'E' : 'e';
-
-  if (arg.precision == FormatArg::kDefaultPrecision) {
+  if (!useShortestRoundTrip && arg.precision == FormatArg::kDefaultPrecision) {
     arg.precision = 6;
   }
 
-  // 2+: for null terminator and optional sign shenanigans.
-  constexpr int bufLen =
-      2 +
-      constexpr_max(
-          2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
-              DoubleToStringConverter::kMaxFixedDigitsAfterPoint,
-          constexpr_max(
-              8 + DoubleToStringConverter::kMaxExponentialDigits,
-              7 + DoubleToStringConverter::kMaxPrecisionDigits));
-  char buf[bufLen];
-  StringBuilder builder(buf + 1, bufLen - 1);
+  // Precision bounds from double-conversion v3.4.0:
+  //   kMaxFixedDigitsAfterPoint = 100, kMaxExponentialDigits = 120,
+  //   kMaxPrecisionDigits = 120, kMinPrecisionDigits = 1.
+  static constexpr int kMaxFixedPrecision = 100;
+  static constexpr int kMaxExpPrecision = 120;
+  static constexpr int kMaxGenPrecision = 120;
+  static constexpr int kMinGenPrecision = 1;
 
   char plusSign;
   switch (arg.sign) {
@@ -141,93 +140,142 @@ void FormatValue<double>::formatHelper(
       break;
   }
 
-  auto flags = DoubleToStringConverter::EMIT_POSITIVE_EXPONENT_SIGN |
-      (arg.trailingDot ? DoubleToStringConverter::EMIT_TRAILING_DECIMAL_POINT
-                       : 0);
-
   double val = val_;
+  char convSpec = arg.presentation;
+  bool isPercent = false;
+
   switch (arg.presentation) {
     case '%':
       val *= 100;
+      convSpec = 'f';
+      isPercent = true;
       [[fallthrough]];
     case 'f':
-    case 'F': {
-      if (arg.precision > DoubleToStringConverter::kMaxFixedDigitsAfterPoint) {
-        arg.precision = DoubleToStringConverter::kMaxFixedDigitsAfterPoint;
+    case 'F':
+      if (arg.precision > kMaxFixedPrecision) {
+        arg.precision = kMaxFixedPrecision;
       }
-      DoubleToStringConverter conv(
-          flags,
-          infinitySymbol,
-          nanSymbol,
-          exponentSymbol,
-          -4,
-          arg.precision,
-          0,
-          0);
-      arg.enforce(
-          conv.ToFixed(val, arg.precision, &builder),
-          "fixed double conversion failed");
       break;
-    }
     case 'e':
-    case 'E': {
-      if (arg.precision > DoubleToStringConverter::kMaxExponentialDigits) {
-        arg.precision = DoubleToStringConverter::kMaxExponentialDigits;
+    case 'E':
+      if (arg.precision > kMaxExpPrecision) {
+        arg.precision = kMaxExpPrecision;
       }
-
-      DoubleToStringConverter conv(
-          flags,
-          infinitySymbol,
-          nanSymbol,
-          exponentSymbol,
-          -4,
-          arg.precision,
-          0,
-          0);
-      arg.enforce(conv.ToExponential(val, arg.precision, &builder));
       break;
-    }
     case 'n': // should be locale-aware, but isn't
+      convSpec = 'g';
+      [[fallthrough]];
     case 'g':
-    case 'G': {
-      if (arg.precision < DoubleToStringConverter::kMinPrecisionDigits) {
-        arg.precision = DoubleToStringConverter::kMinPrecisionDigits;
-      } else if (arg.precision > DoubleToStringConverter::kMaxPrecisionDigits) {
-        arg.precision = DoubleToStringConverter::kMaxPrecisionDigits;
+    case 'G':
+      if (!useShortestRoundTrip) {
+        if (arg.precision < kMinGenPrecision) {
+          arg.precision = kMinGenPrecision;
+        } else if (arg.precision > kMaxGenPrecision) {
+          arg.precision = kMaxGenPrecision;
+        }
       }
-      DoubleToStringConverter conv(
-          flags,
-          infinitySymbol,
-          nanSymbol,
-          exponentSymbol,
-          -4,
-          arg.precision,
-          0,
-          0);
-      arg.enforce(conv.ToShortest(val, &builder));
       break;
-    }
     default:
       arg.error("invalid specifier '", arg.presentation, "'");
   }
 
-  auto len = builder.position();
-  builder.Finalize();
-  assert(len > 0);
+  // buf[0] reserved for optional sign; fmt writes into buf[1..] (at most
+  // bufLen-2 bytes). Unlike double-conversion, fmt places no inherent bound on
+  // fixed-notation output — e.g. DBL_MAX as 'f' with precision 100 exceeds
+  // 400 chars. The enforce check below is the actual safety guard; when output
+  // would overflow it throws rather than silently overwriting memory.
+  constexpr std::size_t bufLen = 256;
+  // SAFETY: the enforce check (fmtLen < bufLen - 2) caps fmt output at
+  // bufLen - 3 bytes. At most 3 bytes are written post-enforce:
+  //   buf[1 + fmtLen]  trailing '.'  (trailingDot, optional)
+  //   buf[1 + len]     '%' suffix    (isPercent, optional)
+  //   buf[0]           sign prefix   (plusSign, optional, prepend)
+  // Together these exactly fill the buffer in the worst case.
+  // If post-enforce additions grow or the enforce bound relaxes, this
+  // static_assert will catch the mismatch at compile time.
+  static_assert(
+      (bufLen - 2 - 1) + 1 /* trailing dot */ + 1 /* '%' */ + 1 /* sign */ ==
+          bufLen,
+      "enforce bound must tighten if post-enforce byte additions increase");
+  std::array<char, bufLen> buf{};
 
-  // Add '+' or ' ' sign if needed
-  char* p = buf + 1;
-  // anything that's neither negative nor nan
+  // Dispatch to a compile-time format string based on convSpec.
+  // The inner {} in "{:.{}f}" takes precision from the second argument.
+  std::size_t fmtSize = 0;
+#define FOLLY_FORMAT_HELPER(spec)                                           \
+  fmtSize =                                                                 \
+      fmt::format_to_n(                                                     \
+          buf.data() + 1, bufLen - 2, "{:.{}" spec "}", val, arg.precision) \
+          .size
+  if (useShortestRoundTrip) {
+    // Bare '{}': use fmt's shortest round-trip representation, equivalent to
+    // double-conversion's ToShortest (all significant digits, no truncation).
+    fmtSize =
+        fmt::format_to_n(buf.data() + 1, bufLen - 2, "{}", val).size;
+  } else {
+    switch (convSpec) {
+      case 'f':
+        FOLLY_FORMAT_HELPER("f");
+        break;
+      case 'F':
+        FOLLY_FORMAT_HELPER("F");
+        break;
+      case 'e':
+        FOLLY_FORMAT_HELPER("e");
+        break;
+      case 'E':
+        FOLLY_FORMAT_HELPER("E");
+        break;
+      case 'g':
+        FOLLY_FORMAT_HELPER("g");
+        break;
+      case 'G':
+        FOLLY_FORMAT_HELPER("G");
+        break;
+      default:
+        arg.error("invalid specifier '", arg.presentation, "'");
+    }
+  }
+#undef FOLLY_FORMAT_HELPER
+
+  const int fmtLen = static_cast<int>(fmtSize);
+  arg.enforce(
+      fmtLen > 0 && fmtLen < static_cast<int>(bufLen) - 2,
+      "float conversion failed");
+
+  // If trailingDot is requested, append a bare '.' when the result is a
+  // whole-number decimal with no decimal point (e.g. "100000" → "100000.").
+  // For exponential notation (e.g. "1e+06") the dot is not added.
+  // This mirrors double-conversion's EMIT_TRAILING_DECIMAL_POINT without the
+  // trailing zeros that fmt's '#' alternative-form flag would produce.
+  int trailingDotAdded = 0;
+  if (arg.trailingDot && !std::isinf(val) && !std::isnan(val) &&
+      !std::memchr(buf.data() + 1, '.', fmtLen) &&
+      !std::memchr(buf.data() + 1, 'e', fmtLen) &&
+      !std::memchr(buf.data() + 1, 'E', fmtLen)) {
+    buf[1 + fmtLen] = '.';
+    trailingDotAdded = 1;
+  }
+  const int len = fmtLen + trailingDotAdded;
+
+  if (isPercent) {
+    buf[1 + len] = '%';
+  }
+
+  // Add '+' or ' ' sign if needed — anything that's neither negative nor
+  // nan/inf already has its sign in the output.
+  char* p = buf.data() + 1;
   prefixLen = 0;
+  int signLen = 0;
   if (plusSign && (*p != '-' && *p != 'n' && *p != 'N')) {
     *--p = plusSign;
-    ++len;
     prefixLen = 1;
+    signLen = 1;
   } else if (*p == '-') {
     prefixLen = 1;
   }
 
-  piece = fbstring(p, size_t(len));
+  piece = fbstring(p, size_t(len + (isPercent ? 1 : 0) + signLen));
 }
 
 void FormatArg::initSlow() {

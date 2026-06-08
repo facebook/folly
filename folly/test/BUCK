@@ -1498,9 +1498,6 @@ fb_dirsync_cpp_benchmark(
         "//folly:stop_watch",
         "//folly:traits",
     ],
-    external_deps = [
-        "double_conversion",
-    ],
 )
 
 fb_dirsync_cpp_unittest(

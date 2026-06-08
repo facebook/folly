@@ -16,6 +16,7 @@
 
 #include <folly/Format.h>
 
+#include <limits>
 #include <string>
 
 #include <folly/Utility.h>
@@ -190,16 +191,16 @@ TEST(Format, Float) {
   EXPECT_EQ("0.01", sformat("{}", 0.01));
   EXPECT_EQ("0.001", sformat("{}", 0.001));
   EXPECT_EQ("0.0001", sformat("{}", 0.0001));
-  EXPECT_EQ("1e-5", sformat("{}", 0.00001));
-  EXPECT_EQ("1e-6", sformat("{}", 0.000001));
+  EXPECT_EQ("1e-05", sformat("{}", 0.00001));
+  EXPECT_EQ("1e-06", sformat("{}", 0.000001));
 
   EXPECT_EQ("10", sformat("{}", 10.0));
   EXPECT_EQ("100", sformat("{}", 100.0));
   EXPECT_EQ("1000", sformat("{}", 1000.0));
   EXPECT_EQ("10000", sformat("{}", 10000.0));
   EXPECT_EQ("100000", sformat("{}", 100000.0));
-  EXPECT_EQ("1e+6", sformat("{}", 1000000.0));
-  EXPECT_EQ("1e+7", sformat("{}", 10000000.0));
+  EXPECT_EQ("1000000", sformat("{}", 1000000.0));
+  EXPECT_EQ("10000000", sformat("{}", 10000000.0));
 
   EXPECT_EQ("1.00", sformat("{:.2f}", 1.0));
   EXPECT_EQ("0.10", sformat("{:.2f}", 0.1));
@@ -208,11 +209,41 @@ TEST(Format, Float) {
 
   EXPECT_EQ("100000. !== 100000", sformat("{:.} !== {:.}", 100000.0, 100000));
   EXPECT_EQ("100000.", sformat("{:.}", 100000.0));
-  EXPECT_EQ("1e+6", sformat("{:.}", 1000000.0));
+  EXPECT_EQ("1000000.", sformat("{:.}", 1000000.0));
   EXPECT_EQ(" 100000.", sformat("{:8.}", 100000.0));
   EXPECT_EQ("100000.", sformat("{:4.}", 100000.0));
   EXPECT_EQ("  100000", sformat("{:8.8}", 100000.0));
   EXPECT_EQ(" 100000.", sformat("{:8.8.}", 100000.0));
+
+  // '%' multiplies by 100 and appends a '%' suffix (Python-compatible).
+  EXPECT_EQ("50.000000%", sformat("{:%}", 0.5));
+  EXPECT_EQ("3.14%", sformat("{:.2%}", 0.0314));
+
+  // '{}' uses fmt's shortest round-trip representation (equivalent to the old
+  // double-conversion ToShortest), preserving all significant digits needed
+  // to uniquely identify the double.  Explicit '{:g}' still uses 6 sig digits.
+  EXPECT_EQ("1234567.89", sformat("{}", 1234567.89));
+  EXPECT_EQ("98765432.1", sformat("{}", 98765432.1));
+  EXPECT_EQ("0.04296875", sformat("{}", 0.04296875));
+  EXPECT_EQ("1.23457e+06", sformat("{:g}", 1234567.89));
+  EXPECT_EQ("1.23457E+06", sformat("{:G}", 1234567.89));
+}
+
+TEST(Format, FloatSignWithSpecialValues) {
+  const double inf = std::numeric_limits<double>::infinity();
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+
+  // Positive infinity with '+' and ' ' sign specifiers.
+  EXPECT_EQ("+inf", sformat("{:+}", inf));
+  EXPECT_EQ(" inf", sformat("{: }", inf));
+
+  // Negative infinity: sign already present in fmt output, no extra prepend.
+  EXPECT_EQ("-inf", sformat("{:+}", -inf));
+  EXPECT_EQ("-inf", sformat("{: }", -inf));
+
+  // NaN: sign is not prepended (fmt outputs "nan"; 'n' prefix suppresses it).
+  EXPECT_EQ("nan", sformat("{:+}", nan));
+  EXPECT_EQ("nan", sformat("{: }", nan));
 }
 
 TEST(Format, MultiLevel) {

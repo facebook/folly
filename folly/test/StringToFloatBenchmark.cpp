@@ -22,7 +22,6 @@
 // - `std::strtof` with a copy (needed for non-null-terminated strings)
 // - `std::strtofl` with the C locale (for locale-indepent processing)
 // - `std::from_chars`
-// - libdouble-conversion
 // - libfast_float
 //
 // The functions are benchmarked on different inputs.
@@ -44,7 +43,6 @@
 #include <folly/Traits.h>
 #include <folly/stop_watch.h>
 
-#include <double-conversion/double-conversion.h>
 #include <fast_float/fast_float.h>
 
 template <typename T, typename... A>
@@ -74,15 +72,6 @@ constexpr std::string_view kDecimalStr(kDecimalCStr);
 /// An arbitrary hardcoded exponent number to benchmark
 constexpr const char* kexponentialNotationCStr = "1.1234567890987654E21";
 constexpr std::string_view kexponentialNotationStr(kexponentialNotationCStr);
-
-static double_conversion::StringToDoubleConverter conv(
-    double_conversion::StringToDoubleConverter::ALLOW_TRAILING_JUNK |
-        double_conversion::StringToDoubleConverter::ALLOW_LEADING_SPACES,
-    0.0,
-    // return this for junk input string
-    std::numeric_limits<double>::quiet_NaN(),
-    nullptr,
-    nullptr);
 
 /// test data that is initialized in `main`
 static std::vector<std::string> randomValues;
@@ -150,16 +139,6 @@ BENCHMARK(hardcoded_decimal_notation_STD_FROM_CHARS, n) {
   }
 }
 
-BENCHMARK(hardcoded_decimal_notation_DoubleConversion, n) {
-  int processedCharsCount;
-  for (unsigned int i = 0; i < n; ++i) {
-    conv.StringToFloat(
-        kDecimalStr.data(),
-        static_cast<int>(kDecimalStr.size()),
-        &processedCharsCount);
-  }
-}
-
 BENCHMARK(hardcoded_decimal_notation_FAST_FLOAT, n) {
   double value{};
   for (unsigned int i = 0; i < n; ++i) {
@@ -202,16 +181,6 @@ BENCHMARK(hardcoded_exponential_notation_STD_FROM_CHARS, n) {
   }
 }
 
-BENCHMARK(hardcoded_exponential_notation_DoubleConversion, n) {
-  int processedCharsCount;
-  for (unsigned int i = 0; i < n; ++i) {
-    conv.StringToFloat(
-        kexponentialNotationStr.data(),
-        static_cast<int>(kexponentialNotationStr.size()),
-        &processedCharsCount);
-  }
-}
-
 BENCHMARK(hardcoded_exponential_notation_FAST_FLOAT, n) {
   double value{};
   for (unsigned int i = 0; i < n; ++i) {
@@ -219,17 +188,6 @@ BENCHMARK(hardcoded_exponential_notation_FAST_FLOAT, n) {
         kexponentialNotationStr.data(),
         kexponentialNotationStr.data() + kexponentialNotationStr.size(),
         value);
-  }
-}
-
-int doubleConversionRandomInputIndex = 0;
-BENCHMARK(random_input_DoubleConversion, n) {
-  int processedCharsCount;
-  for (unsigned int i = 0; i < n; ++i) {
-    std::string& input = randomValues[doubleConversionRandomInputIndex];
-    doubleConversionRandomInputIndex += 1;
-    conv.StringToFloat(
-        input.data(), static_cast<int>(input.size()), &processedCharsCount);
   }
 }
 
@@ -245,30 +203,10 @@ BENCHMARK(random_input_FAST_FLOAT, n) {
   }
 }
 
-BENCHMARK(zero_input_DoubleConversion, n) {
-  int processedCharsCount;
-  for (unsigned int i = 0; i < n; ++i) {
-    doubleConversionRandomInputIndex += 1;
-    conv.StringToFloat(kInputZero, 1, &processedCharsCount);
-  }
-}
-
 BENCHMARK(zero_input_FAST_FLOAT, n) {
   double value{};
   for (unsigned int i = 0; i < n; ++i) {
     fast_float::from_chars(kInputZero, kInputZero + 1, value);
-  }
-}
-
-BENCHMARK(single_digit_ints_DoubleConversion, n) {
-  int processedCharsCount;
-  // mask to select one of the first 8 out of 10 values.
-  // this is done to avoid additional branching or modulus.
-  constexpr std::size_t kSelectionMask = 8 - 1;
-  for (std::size_t i = 0; i < n; i++) {
-    std::string& input = singleDigitIntValues[i & kSelectionMask];
-    conv.StringToFloat(
-        input.data(), static_cast<int>(input.size()), &processedCharsCount);
   }
 }
 
@@ -283,18 +221,6 @@ BENCHMARK(single_digit_ints_FAST_FLOAT, n) {
   }
 }
 
-BENCHMARK(double_digit_ints_DoubleConversion, n) {
-  int processedCharsCount;
-  // mask to select one of the first 64 out of 100 values.
-  // this is done to avoid additional branching or modulus.
-  constexpr std::size_t kSelectioMask = 64 - 1;
-  for (std::size_t i = 0; i < n; i++) {
-    std::string& input = doubleDigitIntValues[i & kSelectioMask];
-    conv.StringToFloat(
-        input.data(), static_cast<int>(input.size()), &processedCharsCount);
-  }
-}
-
 BENCHMARK(double_digit_ints_FAST_FLOAT, n) {
   double value{};
   constexpr std::size_t kSelectioMask = 64 - 1;
@@ -303,18 +229,6 @@ BENCHMARK(double_digit_ints_FAST_FLOAT, n) {
     char* b = input.data();
     char* e = b + input.size();
     fast_float::from_chars(b, e, value);
-  }
-}
-
-BENCHMARK(four_digit_percentages_DoubleConversion, n) {
-  int processedCharsCount;
-  // mask to select one of the first 8096 out of 10,000 values.
-  // this is done to avoid additional branching or modulus.
-  constexpr std::size_t kSelectioMask = 8096 - 1;
-  for (std::size_t i = 0; i < n; i++) {
-    std::string& input = fourDigitPercentageValues[i & kSelectioMask];
-    conv.StringToFloat(
-        input.data(), static_cast<int>(input.size()), &processedCharsCount);
   }
 }
 
