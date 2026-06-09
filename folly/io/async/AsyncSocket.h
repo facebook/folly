@@ -2072,6 +2072,7 @@ class AsyncSocket
   bool closeOnFailedWrite_{true};
 
   bool useIoUring_{false};
+  bool iouRecvHandleDetached_{false};
   IoUringConnectHandle::UniquePtr iouConnectHandle_;
   IoUringSendHandle::UniquePtr iouSendHandle_;
   IoUringRecvHandle::UniquePtr iouRecvHandle_;

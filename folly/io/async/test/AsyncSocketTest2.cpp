@@ -11190,3 +11190,57 @@ TEST(AsyncSocketTest, BindAddressNoPort) {
   EXPECT_NE(callback.assignedPort, 0);
   socket->close();
 }
+
+TEST_P(AsyncSocketTest, MoveSocketWithActiveRead) {
+  TestServer server;
+  EventBase& evb = getEventBase();
+
+  auto socket = AsyncSocket::newSocket(&evb);
+  ConnCallback connCb;
+  socket->connect(&connCb, server.getAddress(), 30);
+  evb.loop();
+  ASSERT_EQ(connCb.state, STATE_SUCCEEDED);
+
+  auto acceptedFd = server.acceptFD();
+  auto serverSock = AsyncSocket::UniquePtr(new AsyncSocket(&evb, acceptedFd));
+
+  // Read first batch on the original socket
+  ReadCallback readCb;
+  readCb.dataAvailableCallback = [&] { evb.terminateLoopSoon(); };
+  serverSock->setReadCB(&readCb);
+
+  const std::string data = "hello from client";
+  WriteCallback writeCb;
+  socket->write(&writeCb, data.data(), data.size());
+  evb.loop();
+
+  ASSERT_FALSE(readCb.buffers.empty());
+  size_t firstBytes = 0;
+  for (auto& buf : readCb.buffers) {
+    firstBytes += buf.length;
+  }
+  EXPECT_EQ(firstBytes, data.size());
+
+  // Move socket — triggers async detach of io_uring recv handle
+  serverSock->setReadCB(nullptr);
+  auto movedSock = AsyncSocket::UniquePtr(new AsyncSocket(serverSock.get()));
+  serverSock.reset();
+
+  // Read second batch on the moved socket
+  ReadCallback readCb2;
+  readCb2.dataAvailableCallback = [&] { evb.terminateLoopSoon(); };
+  movedSock->setReadCB(&readCb2);
+
+  socket->write(&writeCb, data.data(), data.size());
+  evb.loop();
+
+  ASSERT_FALSE(readCb2.buffers.empty());
+  size_t secondBytes = 0;
+  for (auto& buf : readCb2.buffers) {
+    secondBytes += buf.length;
+  }
+  EXPECT_EQ(secondBytes, data.size());
+
+  movedSock->close();
+  socket->close();
+}

@@ -762,6 +762,16 @@ AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
       observerContainer_(this, std::move(oldAsyncSocket->observerContainer_)) {
   // delay detaching network socket until observers moved to prevent spurious
   // detachFd and close notifications
+  if (oldAsyncSocket->useIoUring_ && oldAsyncSocket->iouRecvHandle_) {
+    // io_uring recv operations are async — detach the handle so in-flight
+    // recvs complete into a DetachedReadCallback. The detached handle is
+    // transferred to the new socket and passed to IoUringRecvHandle::clone()
+    // in setReadCB(), which inherits any queued data and pending reads.
+    oldAsyncSocket->iouRecvHandle_->detachEventBase();
+    iouRecvHandle_ = std::move(oldAsyncSocket->iouRecvHandle_);
+    iouRecvHandleDetached_ = true;
+  }
+  oldAsyncSocket->iouSendHandle_.reset();
   oldAsyncSocket->detachNetworkSocket();
 
   VLOG(5) << "move AsyncSocket(" << oldAsyncSocket << "->" << this
@@ -1385,6 +1395,11 @@ void AsyncSocket::setReadCB(ReadCallback* callback) {
           iouRecvHandle_ =
               IoUringRecvHandle::create(eventBase_, fd_, addr_, this);
           CHECK(iouRecvHandle_);
+        } else if (useIoUring_ && iouRecvHandleDetached_) {
+          iouRecvHandle_ = IoUringRecvHandle::clone(
+              eventBase_, fd_, addr_, this, std::move(iouRecvHandle_));
+          CHECK(iouRecvHandle_);
+          iouRecvHandleDetached_ = false;
         }
       } else {
         eventFlags_ &= ~EventHandler::READ;
