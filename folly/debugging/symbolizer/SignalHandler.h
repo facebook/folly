@@ -17,6 +17,7 @@
 #pragma once
 
 #include <bitset>
+#include <cstdint>
 
 namespace folly {
 namespace symbolizer {
@@ -60,6 +61,23 @@ void installFatalSignalCallbacks();
  * True if a fatal signal was received (i.e. the process is crashing).
  */
 bool fatalSignalReceived();
+
+namespace detail {
+
+// Claims the single-handler gate for threadId (CAS from 0); returns 0 on
+// success, else the thread id already holding it (== threadId if recursive).
+uintptr_t tryClaimFatalSignalThread(uintptr_t threadId);
+void releaseFatalSignalThread();
+
+uintptr_t currentFatalSignalThreadId();
+void setFatalSignalReceived(bool received);
+
+#ifdef _WIN32
+void installFatalSignalHandlerWindows();
+void invokeFatalSignalCallbacks();
+#endif // _WIN32
+
+} // namespace detail
 
 } // namespace symbolizer
 } // namespace folly

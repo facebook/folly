@@ -113,6 +113,10 @@ FatalSignalCallbackRegistry* getFatalSignalCallbackRegistry() {
   return fatalSignalCallbackRegistry;
 }
 
+// Plain global for async-signal-safe access from the signal handler.
+// NOLINTNEXTLINE(facebook-avoid-non-const-global-variables)
+std::atomic<bool> gFatalSignalReceived{false};
+
 } // namespace
 
 void addFatalSignalCallback(SignalCallback cb) {
@@ -122,6 +126,46 @@ void addFatalSignalCallback(SignalCallback cb) {
 void installFatalSignalCallbacks() {
   getFatalSignalCallbackRegistry()->markInstalled();
 }
+
+namespace detail {
+
+// Plain globals (not function-local statics) so they stay async-signal-safe to
+// touch from a signal handler.
+// NOLINTNEXTLINE(facebook-avoid-non-const-global-variables)
+std::atomic<uintptr_t> gFatalSignalThread{0};
+// NOLINTNEXTLINE(facebook-avoid-non-const-global-variables)
+std::atomic<bool> gInRecursiveFatalSignalHandler{false};
+
+uintptr_t tryClaimFatalSignalThread(uintptr_t threadId) {
+  uintptr_t expected = 0;
+  gFatalSignalThread.compare_exchange_strong(expected, threadId);
+  return expected;
+}
+
+void releaseFatalSignalThread() {
+  gFatalSignalThread.store(0);
+}
+
+void setFatalSignalReceived(bool received) {
+  gFatalSignalReceived.store(received, std::memory_order_relaxed);
+}
+
+} // namespace detail
+
+#ifdef _WIN32
+
+namespace detail {
+
+void invokeFatalSignalCallbacks() {
+  if (auto* reg =
+          gFatalSignalCallbackRegistry.load(std::memory_order_acquire)) {
+    reg->run();
+  }
+}
+
+} // namespace detail
+
+#endif // _WIN32
 
 #ifndef _WIN32
 
@@ -225,7 +269,7 @@ void signalHandler(int signum, siginfo_t* info, void* uctx);
   raise(signum);
 }
 
-#if FOLLY_USE_SYMBOLIZER
+#if defined(FOLLY_USE_SYMBOLIZER) && FOLLY_USE_SYMBOLIZER
 
 // Note: not thread-safe, but that's okay, as we only let one thread
 // in our signal handler at a time.
@@ -504,27 +548,38 @@ void dumpSignalInfo(int signum, siginfo_t* siginfo) {
   print("), stack trace: ***\n");
 }
 
-// On Linux, pthread_t is a pointer, so 0 is an invalid value, which we
-// take to indicate "no thread in the signal handler".
-//
-// POSIX defines PTHREAD_NULL for this purpose, but that's not available.
-constexpr pthread_t kInvalidThreadId = 0;
+} // namespace
 
-std::atomic<pthread_t> gSignalThread(kInvalidThreadId);
-std::atomic<bool> gInRecursiveSignalHandler(false);
+namespace detail {
+
+uintptr_t currentFatalSignalThreadId() {
+  pthread_t t = pthread_self();
+  static_assert(
+      sizeof(t) <= sizeof(uintptr_t), "pthread_t larger than uintptr_t");
+  uintptr_t out = 0;
+  std::memcpy(&out, &t, sizeof(t));
+  return out;
+}
+
+} // namespace detail
+
+namespace {
 
 // Here be dragons.
 void innerSignalHandler(int signum, siginfo_t* info, void* /* uctx */) {
   // First, let's only let one thread in here at a time.
-  pthread_t myId = pthread_self();
+  const uintptr_t threadId = detail::currentFatalSignalThreadId();
 
-  pthread_t prevSignalThread = kInvalidThreadId;
-  while (!gSignalThread.compare_exchange_strong(prevSignalThread, myId)) {
-    if (pthread_equal(prevSignalThread, myId)) {
+  for (;;) {
+    const uintptr_t holder = detail::tryClaimFatalSignalThread(threadId);
+    if (holder == 0) {
+      break;
+    }
+    if (holder == threadId) {
       // First time here. Try to dump the stack trace without symbolization.
       // If we still fail, well, we're mightily screwed, so we do nothing the
       // next time around.
-      if (!gInRecursiveSignalHandler.exchange(true)) {
+      if (!detail::gInRecursiveFatalSignalHandler.exchange(true)) {
         print("Entered fatal signal handler recursively. We're in trouble.\n");
         gStackTracePrinter->printStackTrace(false); // no symbolization
       }
@@ -536,8 +591,6 @@ void innerSignalHandler(int signum, siginfo_t* info, void* /* uctx */) {
     ts.tv_sec = 0;
     ts.tv_nsec = 100L * 1000 * 1000; // 100ms
     nanosleep(&ts, nullptr);
-
-    prevSignalThread = kInvalidThreadId;
   }
 
   dumpTimeInfo();
@@ -551,12 +604,8 @@ void innerSignalHandler(int signum, siginfo_t* info, void* /* uctx */) {
   }
 }
 
-namespace {
-std::atomic<bool> gFatalSignalReceived{false};
-} // namespace
-
 void signalHandler(int signum, siginfo_t* info, void* uctx) {
-  gFatalSignalReceived.store(true, std::memory_order_relaxed);
+  detail::setFatalSignalReceived(true);
 
   int savedErrno = errno;
   SCOPE_EXIT {
@@ -565,7 +614,7 @@ void signalHandler(int signum, siginfo_t* info, void* uctx) {
   };
   innerSignalHandler(signum, info, uctx);
 
-  gSignalThread = kInvalidThreadId;
+  detail::releaseFatalSignalThread();
   // Kill ourselves with the previous handler.
   callPreviousSignalHandler(signum, info);
 }
@@ -615,7 +664,10 @@ void installFatalSignalHandler(std::bitset<64> signals) {
   gFatalSignalCallbackRegistry.store(
       getFatalSignalCallbackRegistry(), std::memory_order_release);
 
-#if FOLLY_USE_SYMBOLIZER
+#ifdef _WIN32
+  (void)signals; // bitset has no meaning under Windows VEH.
+  detail::installFatalSignalHandlerWindows();
+#elif defined(FOLLY_USE_SYMBOLIZER) && FOLLY_USE_SYMBOLIZER
   // If a small sigaltstack is enabled (ex. Rust stdlib might use sigaltstack
   // to set a small stack), the default SafeStackTracePrinter would likely
   // stack overflow. Replace it with the unsafe self-allocate printer.
@@ -632,7 +684,7 @@ void installFatalSignalHandler(std::bitset<64> signals) {
     gStackTracePrinter = new SafeStackTracePrinter();
   }
 
-  struct sigaction sa;
+  struct sigaction sa{};
   memset(&sa, 0, sizeof(sa));
   if (useUnsafePrinter) {
     // The signal handler is not async-signal-safe. Block all signals to
@@ -661,11 +713,7 @@ void installFatalSignalHandler(std::bitset<64> signals) {
 }
 
 bool fatalSignalReceived() {
-#ifdef FOLLY_USE_SYMBOLIZER
   return gFatalSignalReceived.load(std::memory_order_relaxed);
-#else
-  return false;
-#endif
 }
 
 } // namespace symbolizer

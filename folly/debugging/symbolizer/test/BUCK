@@ -5,6 +5,7 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_sh_binary")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load(":validate_folly_symbolizer.bzl", "SPLIT_DWARF_FLAGS", "customized_unittest", "validate_folly_symbolizer", "validate_symbolizer_dwp")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -164,6 +165,17 @@ fbcode_target(
         "//folly/debugging/symbolizer:symbolizer",
         "//folly/executors:io_thread_pool_executor",
         "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "signal_handler_windows_test",
+    srcs = ["SignalHandlerWindowsTest.cpp"],
+    deps = [
+        "//folly:c_portability",
+        "//folly/debugging/symbolizer:symbolizer",
+        "//folly/portability:gtest",
+        "//folly/portability:windows",
     ],
 )
 

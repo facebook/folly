@@ -139,6 +139,7 @@ fb_dirsync_cpp_library(
     name = "symbolizer",
     srcs = [
         "SignalHandler.cpp",
+        "SignalHandlerWindows.cpp",
         "SymbolizePrinter.cpp",
         "Symbolizer.cpp",
     ],
@@ -153,6 +154,7 @@ fb_dirsync_cpp_library(
         ":elf",
         "//folly:demangle",
         "//folly:file_util",
+        "//folly:indestructible",
         "//folly:memory",
         "//folly:portability",
         "//folly:scope_guard",
@@ -179,7 +181,12 @@ fb_dirsync_cpp_library(
         "//folly/io:iobuf",
         "//folly/portability:config",
         "//folly/portability:unistd",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        # DbgHelp drives StackWalk64 + SymFromAddr in the Windows VEH
+        # arm in SignalHandlerWindows.cpp.
+        "ovr_config//os:windows": ["fbsource//third-party/toolchains/win:dbghelp.lib"],
+    }),
 )
 
 fb_dirsync_cpp_library(

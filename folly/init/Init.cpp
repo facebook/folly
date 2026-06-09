@@ -37,7 +37,7 @@ InitOptions::InitOptions() noexcept
 
 namespace {
 
-#if FOLLY_USE_SYMBOLIZER
+#if defined(FOLLY_USE_SYMBOLIZER) && FOLLY_USE_SYMBOLIZER
 // Newer versions of glog require the function passed to InstallFailureFunction
 // to be noreturn. But glog spells that in multiple possible ways, depending on
 // platform. But glog's choice of spelling does not match how the
@@ -55,11 +55,10 @@ static void wrapped_abort() {
 #endif
 
 void initImpl(int* argc, char*** argv, InitOptions options) {
-#if !defined(_WIN32)
   // Install the handler now, to trap errors received during startup.
-  // The callbacks, if any, can be installed later
+  // The callbacks, if any, can be installed later. On Windows this
+  // installs a Vectored Exception Handler (VEH) via DbgHelp.
   folly::symbolizer::installFatalSignalHandler(options.fatal_signals);
-#endif
 
   // Indicate ProcessPhase::Regular and register handler to
   // indicate ProcessPhase::Exit.
@@ -83,7 +82,7 @@ void initImpl(int* argc, char*** argv, InitOptions options) {
   auto programName = argc && argv && *argc > 0 ? (*argv)[0] : "unknown";
   google::InitGoogleLogging(programName);
 
-#if FOLLY_USE_SYMBOLIZER
+#if defined(FOLLY_USE_SYMBOLIZER) && FOLLY_USE_SYMBOLIZER
   // Don't use glog's DumpStackTraceAndExit; rely on our signal handler.
   google::InstallFailureFunction(wrapped_abort);
 
