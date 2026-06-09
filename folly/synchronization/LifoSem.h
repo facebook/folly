@@ -95,7 +95,7 @@ struct LifoSemImpl;
 ///
 /// All LifoSem operations except valueGuess() are guaranteed to be
 /// linearizable.
-typedef LifoSemImpl<> LifoSem;
+using LifoSem = LifoSemImpl<>;
 
 /// The exception thrown when wait()ing on an isShutdown() LifoSem
 class FOLLY_EXPORT ShutdownSemError : public std::runtime_error {
@@ -140,13 +140,12 @@ struct LifoSemRawNode {
     next.store(uint32_t(-1), std::memory_order_relaxed);
   }
 
-  typedef folly::IndexedMemPool<
+  using Pool = folly::IndexedMemPool<
       LifoSemRawNode<Atom>,
       32,
       200,
       Atom,
-      IndexedMemPoolTraitsLazyRecycle<LifoSemRawNode<Atom>>>
-      Pool;
+      IndexedMemPoolTraitsLazyRecycle<LifoSemRawNode<Atom>>>;
 
   /// Storage for all of the waiter nodes for LifoSem-s that use Atom
   static Pool& pool() { return detail::createGlobal<PoolImpl, void>(); }
@@ -574,9 +573,9 @@ struct LifoSemBase {
 
   /// The type of a std::unique_ptr that will automatically return a
   /// LifoSemNode to the appropriate IndexedMemPool
-  typedef std::
-      unique_ptr<LifoSemNode<Handoff, Atom>, LifoSemNodeRecycler<Handoff, Atom>>
-          UniquePtr;
+  using UniquePtr = std::unique_ptr<
+      LifoSemNode<Handoff, Atom>,
+      LifoSemNodeRecycler<Handoff, Atom>>;
 
   /// Returns a node that can be passed to decrOrLink
   template <typename... Args>

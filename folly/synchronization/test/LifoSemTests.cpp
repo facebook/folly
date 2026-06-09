@@ -28,8 +28,8 @@
 using namespace folly;
 using namespace folly::test;
 
-typedef LifoSemImpl<DeterministicAtomic> DLifoSem;
-typedef DeterministicSchedule DSched;
+using DLifoSem = LifoSemImpl<DeterministicAtomic>;
+using DSched = DeterministicSchedule;
 
 class LifoSemTest : public testing::Test {
  private:
