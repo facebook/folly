@@ -61,10 +61,8 @@ struct InputRange {
   iterator end() const { return iterator{c_.end()}; }
 };
 
-#if defined(__cpp_lib_ranges)
 static_assert(!std::forward_iterator<InputIter<int*>>);
 static_assert(std::input_iterator<InputIter<int*>>);
-#endif
 
 template <typename T>
 auto asRange(const std::vector<T>& c, std::input_iterator_tag) {
@@ -102,9 +100,7 @@ static_assert( //
         folly::Range<const int*>,
         folly::tape<folly::small_vector<int, 4>>::reference>);
 
-#if defined(__cpp_lib_ranges)
 static_assert(std::ranges::random_access_range<folly::string_tape>);
-#endif
 
 TEST(Tape, SmokeTest) {
   folly::string_tape st;

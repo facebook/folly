@@ -31,17 +31,9 @@
 #include <type_traits>
 #include <vector>
 
-#if defined(__cpp_lib_ranges)
 #include <ranges>
-#endif
 
 namespace folly {
-
-#if defined(__cpp_lib_ranges)
-#define FOLLY_TAPE_CONTAINER_REQUIRES std::ranges::random_access_range
-#else
-#define FOLLY_TAPE_CONTAINER_REQUIRES typename
-#endif
 
 /* # Tape
  *
@@ -105,13 +97,13 @@ namespace folly {
  * Name tape is taken from a lecture by Alexander Stepanov but we are not 100%
  * sure if this is the container he had in mind.
  */
-template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+template <std::ranges::random_access_range Container>
 class tape;
 
 // string_tape - a common usecase.
 using string_tape = tape<std::vector<char>>;
 
-template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+template <std::ranges::random_access_range Container>
 class tape {
   using ref_traits = detail::tape_reference_traits<Container>;
 
@@ -163,19 +155,16 @@ class tape {
   // constructors -----
   tape() noexcept = default;
 
-  template <
-      typename I,
-      typename S,
-      typename = std::enable_if_t<iterator_of_records<I>>>
+  template <typename I, typename S>
+    requires iterator_of_records<I>
   explicit tape(I f, S l) {
     range_constructor(f, l);
   }
 
-  template <
-      typename R,
-      typename = std::enable_if_t<
-          std::is_convertible_v<R, const_reference> || // const char*
-          range_of_records<R>>>
+  template <typename R>
+    requires(
+        std::is_convertible_v<R, const_reference> || // const char*
+        range_of_records<R>)
   explicit tape(std::initializer_list<R> il) {
     range_constructor(il.begin(), il.end());
   }
@@ -225,16 +214,17 @@ class tape {
   // push / emplace_back --------
 
   template <typename I, typename S>
-  auto push_back(I f, S l) -> std::enable_if_t<iterator_of_scalars<I>> {
+    requires iterator_of_scalars<I>
+  void push_back(I f, S l) {
     data_.insert(data_.end(), f, l);
     markers_.push_back(static_cast<difference_type>(data_.size()));
   }
 
   template <typename R>
-  auto push_back(R&& r) -> std::enable_if_t<
-      range_of_scalars<R> &&
-      !std::is_convertible_v<R, const_reference>> // handle \0 separately
-  {
+    requires(
+        range_of_scalars<R> &&
+        !std::is_convertible_v<R, const_reference>) // handle \0 separately
+  void push_back(R&& r) {
     push_back(std::begin(r), std::end(r));
   }
 
@@ -257,17 +247,18 @@ class tape {
 
   // requires to have enough capacity
   template <typename I, typename S>
-  auto push_back_unsafe(I f, S l) -> std::enable_if_t<iterator_of_scalars<I>> {
+    requires iterator_of_scalars<I>
+  void push_back_unsafe(I f, S l) {
     // basic exception guarantee is preserved here.
     detail::append_range_unsafe(data_, f, l);
     markers_.push_back(static_cast<difference_type>(data_.size()));
   }
 
   template <typename R>
-  auto push_back_unsafe(R&& r) -> std::enable_if_t<
-      range_of_scalars<R> &&
-      !std::is_convertible_v<R, const_reference>> // handle \0 separately
-  {
+    requires(
+        range_of_scalars<R> &&
+        !std::is_convertible_v<R, const_reference>) // handle \0 separately
+  void push_back_unsafe(R&& r) {
     push_back_unsafe(std::begin(r), std::end(r));
   }
 
@@ -287,14 +278,35 @@ class tape {
 
   // insert one record ----------
 
+  // clang-format off
   template <typename I, typename S>
-  auto insert(const_iterator pos, I f, S l)
-      -> std::enable_if_t<iterator_of_scalars<I>, iterator>;
+    requires iterator_of_scalars<I>
+  iterator insert(const_iterator pos, I f, S l) {
+    // clang-format on
+    auto data_pos = data_.begin() + markers_[pos.get_index()];
+    size_type old_size = data_.size();
+    data_.insert(data_pos, f, l);
+
+    auto inserted_len = static_cast<difference_type>(data_.size() - old_size);
+
+    difference_type start = markers_[pos.get_index()];
+
+    auto markers_tail =
+        markers_.insert(markers_.begin() + pos.get_index(), start);
+    ++markers_tail;
+
+    std::transform(
+        markers_tail, markers_.end(), markers_tail, [&](difference_type m) {
+          return m + inserted_len;
+        });
+
+    // both tape* and index stayed the same
+    return pos;
+  }
 
   template <typename R>
-  auto insert(const_iterator pos, R&& r) -> std::enable_if_t<
-      range_of_scalars<R> && !std::is_convertible_v<R, const_reference>,
-      iterator> {
+    requires(range_of_scalars<R> && !std::is_convertible_v<R, const_reference>)
+  iterator insert(const_iterator pos, R&& r) {
     return insert(pos, std::begin(r), std::end(r));
   }
 
@@ -387,7 +399,7 @@ class tape {
 // to how you would `std::vector`.
 // Typical workflow is you `push_back` a bunch of individual elements and then
 // `commit()`.
-template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+template <std::ranges::random_access_range Container>
 class tape<Container>::record_builder {
  public:
   record_builder(const record_builder&) = delete;
@@ -488,12 +500,12 @@ class tape<Container>::record_builder {
   tape* self_;
 };
 
-template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+template <std::ranges::random_access_range Container>
 auto tape<Container>::new_record_builder() -> record_builder {
   return record_builder{*this};
 }
 
-template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+template <std::ranges::random_access_range Container>
 auto tape<Container>::last_record_builder() -> record_builder {
   assert(!empty());
   markers_.pop_back();
@@ -502,7 +514,7 @@ auto tape<Container>::last_record_builder() -> record_builder {
 
 // tape methods -----
 
-template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+template <std::ranges::random_access_range Container>
 tape<Container>::tape(tape&& x) noexcept
     : markers_(std::move(x.markers_)), data_(std::move(x.data_)) {
   // we assume that allocations never fail
@@ -510,7 +522,7 @@ tape<Container>::tape(tape&& x) noexcept
   x.data_.clear();
 }
 
-template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+template <std::ranges::random_access_range Container>
 tape<Container>& tape<Container>::operator=(tape&& x) noexcept {
   if (this != &x) {
     markers_ = std::move(x.markers_);
@@ -522,7 +534,7 @@ tape<Container>& tape<Container>::operator=(tape&& x) noexcept {
   return *this;
 }
 
-template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+template <std::ranges::random_access_range Container>
 template <typename I, typename S>
 void tape<Container>::range_constructor(I f, S l) {
   if constexpr (auto maybe = detail::compute_total_tape_len_if_possible(f, l);
@@ -542,7 +554,7 @@ void tape<Container>::range_constructor(I f, S l) {
   }
 }
 
-template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+template <std::ranges::random_access_range Container>
 template <typename... Args>
 void tape<Container>::resize(size_type new_size, const Args&... args) {
   if (new_size >= size()) {
@@ -557,32 +569,7 @@ void tape<Container>::resize(size_type new_size, const Args&... args) {
   markers_.resize(new_size + 1);
 }
 
-template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
-template <typename I, typename S>
-auto tape<Container>::insert(const_iterator pos, I f, S l)
-    -> std::enable_if_t<iterator_of_scalars<I>, iterator> {
-  auto data_pos = data_.begin() + markers_[pos.get_index()];
-  size_type old_size = data_.size();
-  data_.insert(data_pos, f, l);
-
-  auto inserted_len = static_cast<difference_type>(data_.size() - old_size);
-
-  difference_type start = markers_[pos.get_index()];
-
-  auto markers_tail =
-      markers_.insert(markers_.begin() + pos.get_index(), start);
-  ++markers_tail;
-
-  std::transform(
-      markers_tail, markers_.end(), markers_tail, [&](difference_type m) {
-        return m + inserted_len;
-      });
-
-  // both tape* and index stayed the same
-  return pos;
-}
-
-template <FOLLY_TAPE_CONTAINER_REQUIRES Container>
+template <std::ranges::random_access_range Container>
 auto tape<Container>::erase(const_iterator f, const_iterator l) -> iterator {
   difference_type from = f.get_index();
   difference_type to = l.get_index();
@@ -603,7 +590,5 @@ auto tape<Container>::erase(const_iterator f, const_iterator l) -> iterator {
   // both tape* and index stayed the same
   return f;
 }
-
-#undef FOLLY_TAPE_CONTAINER_REQUIRES
 
 } // namespace folly
