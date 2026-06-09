@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+#include <fstream>
+#include <string>
+#include <vector>
+
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
@@ -35,6 +39,24 @@ FOLLY_ATTR_WEAK int main(int argc, char** argv);
 int main(int argc, char** argv) {
   // Enable glog logging to stderr by default.
   FLAGS_logtostderr = true;
+
+  // Support tpx:supports_argsfiles https://fburl.com/workplace/tjehnnlm
+  std::vector<std::string> args;
+  std::vector<char*> new_argv;
+  if (argc == 2 && *argv[1] == '@') {
+    // Parse Tpx argsfile
+    std::ifstream argsfile(argv[1] + 1);
+    std::string line;
+    while (std::getline(argsfile, line)) {
+      args.push_back(line);
+    }
+    new_argv.push_back(argv[0]);
+    for (const auto& arg : args) {
+      new_argv.push_back(const_cast<char*>(arg.c_str()));
+    }
+    argc = static_cast<int>(new_argv.size());
+    argv = new_argv.data();
+  }
 
   ::testing::InitGoogleTest(&argc, argv);
   folly::Init init(&argc, &argv);
