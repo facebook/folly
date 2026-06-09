@@ -179,6 +179,11 @@ if (CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
   list(APPEND FOLLY_LINK_LIBRARIES "execinfo")
 endif ()
 
+find_library(BLAKE3_LIBRARY NAMES blake3)
+if (BLAKE3_LIBRARY)
+  list(APPEND FOLLY_LINK_LIBRARIES ${BLAKE3_LIBRARY})
+endif()
+
 cmake_push_check_state()
 set(CMAKE_REQUIRED_DEFINITIONS -D_XOPEN_SOURCE)
 check_cxx_symbol_exists(swapcontext ucontext.h FOLLY_HAVE_SWAPCONTEXT)
