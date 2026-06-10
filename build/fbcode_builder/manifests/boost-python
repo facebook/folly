@@ -107,7 +107,8 @@ builder = nop
 # https://bugzilla.redhat.com/show_bug.cgi?id=1806545
 pch=off
 # Python extensions need -fPIC for static library linking into shared objects
-cxxflags="-fPIC"
+cxxflags=-fPIC
+cflags=-fPIC
 
 [b2.args.os=darwin]
 toolset=clang
