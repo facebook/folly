@@ -291,20 +291,6 @@ struct IntegralSizePolicyBase {
     }
   }
 
-  std::size_t isHeapifiedCapacity() const {
-    return AlwaysUseHeap || kCapacityMask & size_;
-  }
-
-  void setHeapifiedCapacity(bool b) {
-    if (AlwaysUseHeap) {
-      return;
-    }
-    if (b) {
-      size_ |= kCapacityMask;
-    } else {
-      size_ &= ~kCapacityMask;
-    }
-  }
   void setSize(std::size_t sz) {
     assert(sz <= policyMaxSize());
     size_ = AlwaysUseHeap ? sz : (kClearMask & size_) | SizeType(sz);
@@ -332,6 +318,8 @@ struct IntegralSizePolicyBase {
   static SizeType constexpr kExternMask =
       kShouldUseHeap ? SizeType(1) << (sizeof(SizeType) * 8 - 1) : 0;
 
+  // Reserved but unused. Kept so kClearMask (and thus policyMaxSize) stays
+  // unchanged.
   static SizeType constexpr kCapacityMask =
       kShouldUseHeap ? SizeType(1) << (sizeof(SizeType) * 8 - 2) : 0;
 
@@ -863,16 +851,8 @@ class small_vector
   void reserve(size_type sz) { makeSize(sz); }
 
   size_type capacity() const {
-    struct Unreachable {
-      size_t operator()(void*) const { assume_unreachable(); }
-    };
-    using AllocationSizeOrUnreachable =
-        conditional_t<kMustTrackHeapifiedCapacity, Unreachable, AllocationSize>;
     if (this->isExtern()) {
-      if (hasCapacity()) {
-        return u.getCapacity();
-      }
-      return AllocationSizeOrUnreachable{}(u.pdata_.heap_) / sizeof(value_type);
+      return u.getCapacity();
     }
     return MaxInline;
   }
@@ -883,11 +863,8 @@ class small_vector
     if (!this->isExtern() || !u.pdata_.heap_) {
       return 0;
     }
-    if (hasCapacity()) {
-      return u.getCapacity() * sizeof(value_type) +
-          u.pdata_.allocationExtraBytes();
-    }
-    return capacity() * sizeof(value_type);
+    return u.getCapacity() * sizeof(value_type) +
+        u.pdata_.allocationExtraBytes();
   }
 
   void shrink_to_fit() {
@@ -1302,11 +1279,9 @@ class small_vector
       throw_exception<std::length_error>(
           "Requested new size exceeds size representable by size_type");
     }
-    // If the capacity isn't explicitly stored inline, but the heap
-    // allocation is grown to over some threshold, we should store
-    // a capacity at the front of the heap allocation.
-    const bool heapifyCapacity =
-        !kHasInlineCapacity && needBytes >= kHeapifyCapacityThreshold;
+    // Store capacity at the front of the heap allocation when it doesn't
+    // fit inline in the union.
+    const bool heapifyCapacity = !kHasInlineCapacity;
     const size_t allocationExtraBytes =
         heapifyCapacity ? kHeapifyCapacitySize : 0;
     size_t needAllocSizeBytes = needBytes;
@@ -1352,9 +1327,7 @@ class small_vector
     annotate_object_leaked(newh);
     std::destroy(begin(), end());
     freeHeap();
-    // Store shifted pointer if capacity is heapified
     u.pdata_.heap_ = newp;
-    this->setHeapifiedCapacity(heapifyCapacity);
     this->setExtern(true);
     this->setCapacity(newCapacity);
   }
@@ -1365,10 +1338,8 @@ class small_vector
    */
   void setCapacity(size_type newCapacity) {
     assert(this->isExtern());
-    if (hasCapacity()) {
-      assert(newCapacity < std::numeric_limits<InternalSizeType>::max());
-      u.setCapacity(newCapacity);
-    }
+    assert(newCapacity < std::numeric_limits<InternalSizeType>::max());
+    u.setCapacity(newCapacity);
   }
 
  private:
@@ -1443,37 +1414,8 @@ class small_vector
   static size_t constexpr kHeapifyCapacitySize = sizeof(
       folly::aligned_storage_t<sizeof(InternalSizeType), alignof(value_type)>);
 
-  struct AllocationSize {
-    auto operator()(void* ptr) const {
-      (void)ptr;
-#if defined(FOLLY_HAVE_MALLOC_USABLE_SIZE)
-      return malloc_usable_size(ptr);
-#endif
-      // it is important that this method not return a size_t if we can't call
-      // malloc_usable_size! kMustTrackHeapifiedCapacity uses the deduced return
-      // type of this function in order to decide whether small_vector must
-      // track its own capacity or not.
-    }
-  };
-
-  static bool constexpr kMustTrackHeapifiedCapacity =
-      BaseType::kAlwaysUseHeap ||
-      !is_invocable_r_v<size_t, AllocationSize, void*>;
-
-  // Minimum heap allocation size (in bytes) before capacity is stored in a
-  // prefix at the front of the allocation. Zero means always store capacity.
-  static size_t constexpr kHeapifyCapacityThreshold = 0;
-
-  static bool constexpr kAlwaysHasCapacity =
-      kHasInlineCapacity || kMustTrackHeapifiedCapacity;
-
   using PointerType = typename std::
       conditional<kHasInlineCapacity, HeapPtrWithCapacity, HeapPtr>::type;
-
-  bool hasCapacity() const {
-    return kAlwaysHasCapacity || !kHeapifyCapacityThreshold ||
-        this->isHeapifiedCapacity();
-  }
 
   void freeHeap() {
     if (!this->isExtern() || !u.pdata_.heap_) {
@@ -1481,19 +1423,13 @@ class small_vector
       return;
     }
 
-    if (hasCapacity()) {
-      auto extraBytes = u.pdata_.allocationExtraBytes();
-      auto vp = detail::small_vector_detail::unshiftPointer(
-          u.pdata_.heap_, extraBytes);
-      auto bytes = u.getCapacity() * sizeof(value_type) + extraBytes;
-      assert(heap_allocation_size() == bytes);
-      annotate_object_collected(vp);
-      sizedFree(vp, bytes);
-    } else {
-      auto vp = u.pdata_.heap_;
-      annotate_object_collected(vp);
-      free(vp);
-    }
+    auto extraBytes = u.pdata_.allocationExtraBytes();
+    auto vp =
+        detail::small_vector_detail::unshiftPointer(u.pdata_.heap_, extraBytes);
+    auto bytes = u.getCapacity() * sizeof(value_type) + extraBytes;
+    assert(heap_allocation_size() == bytes);
+    annotate_object_collected(vp);
+    sizedFree(vp, bytes);
   }
 
   union Data {
