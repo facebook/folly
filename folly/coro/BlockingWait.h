@@ -103,9 +103,8 @@ class BlockingWaitPromise final : public BlockingWaitPromiseBase {
     result_->emplaceException(folly::exception_wrapper{current_exception()});
   }
 
-  template <
-      typename U = T,
-      std::enable_if_t<std::is_convertible<U, T>::value, int> = 0>
+  template <typename U = T>
+    requires std::is_convertible_v<U, T>
   void return_value(U&& value) noexcept(
       std::is_nothrow_constructible<T, U&&>::value) {
     result_->emplace(static_cast<U&&>(value));
@@ -256,18 +255,14 @@ BlockingWaitPromise<void>::get_return_object() noexcept {
       coroutine_handle<BlockingWaitPromise<void>>::from_promise(*this)};
 }
 
-template <
-    typename Awaitable,
-    typename Result = await_result_t<Awaitable>,
-    std::enable_if_t<std::is_void<Result>::value, int> = 0>
+template <typename Awaitable, typename Result = await_result_t<Awaitable>>
+  requires std::is_void_v<Result>
 BlockingWaitTask<void> makeRefBlockingWaitTask(Awaitable&& awaitable) {
   co_await static_cast<Awaitable&&>(awaitable);
 }
 
-template <
-    typename Awaitable,
-    typename Result = await_result_t<Awaitable>,
-    std::enable_if_t<!std::is_void<Result>::value, int> = 0>
+template <typename Awaitable, typename Result = await_result_t<Awaitable>>
+  requires(!std::is_void_v<Result>)
 auto makeRefBlockingWaitTask(Awaitable&& awaitable)
     -> BlockingWaitTask<std::add_lvalue_reference_t<Result>> {
   co_yield co_await static_cast<Awaitable&&>(awaitable);
@@ -383,11 +378,8 @@ struct blocking_wait_fn {
             .get(frame));
   }
 
-  template <
-      typename SemiAwaitable,
-      std::enable_if_t<
-          !folly::ext::must_use_immediately_v<SemiAwaitable>,
-          int> = 0>
+  template <typename SemiAwaitable>
+    requires(!folly::ext::must_use_immediately_v<SemiAwaitable>)
   FOLLY_NOINLINE auto operator()(
       SemiAwaitable&& awaitable, folly::DrivableExecutor* executor) const
       -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
@@ -407,10 +399,8 @@ struct blocking_wait_fn {
                 static_cast<SemiAwaitable&&>(awaitable)))
             .getVia(executor, frame));
   }
-  template <
-      typename SemiAwaitable,
-      std::enable_if_t<folly::ext::must_use_immediately_v<SemiAwaitable>, int> =
-          0>
+  template <typename SemiAwaitable>
+    requires folly::ext::must_use_immediately_v<SemiAwaitable>
   FOLLY_NOINLINE auto operator()(
       SemiAwaitable awaitable, folly::DrivableExecutor* executor) const
       -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
@@ -432,12 +422,10 @@ struct blocking_wait_fn {
             .getVia(executor, frame));
   }
 
-  template <
-      typename SemiAwaitable,
-      std::enable_if_t<!is_awaitable_v<SemiAwaitable>, int> = 0,
-      std::enable_if_t<
-          !folly::ext::must_use_immediately_v<SemiAwaitable>,
-          int> = 0>
+  template <typename SemiAwaitable>
+    requires(
+        !is_awaitable_v<SemiAwaitable> &&
+        !folly::ext::must_use_immediately_v<SemiAwaitable>)
   auto operator()(SemiAwaitable&& awaitable) const
       -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
     std::exception_ptr eptr;
@@ -451,11 +439,10 @@ struct blocking_wait_fn {
     }
     std::rethrow_exception(eptr);
   }
-  template <
-      typename SemiAwaitable,
-      std::enable_if_t<!is_awaitable_v<SemiAwaitable>, int> = 0,
-      std::enable_if_t<folly::ext::must_use_immediately_v<SemiAwaitable>, int> =
-          0>
+  template <typename SemiAwaitable>
+    requires(
+        !is_awaitable_v<SemiAwaitable> &&
+        folly::ext::must_use_immediately_v<SemiAwaitable>)
   auto operator()(SemiAwaitable awaitable) const
       -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
     std::exception_ptr eptr;
