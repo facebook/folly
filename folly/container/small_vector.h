@@ -314,17 +314,11 @@ struct IntegralSizePolicyBase {
   static bool constexpr kAlwaysUseHeap = AlwaysUseHeap;
 
  private:
-  // We reserve two most significant bits of size_.
+  // We reserve the most significant bit of size_ for the extern flag.
   static SizeType constexpr kExternMask =
       kShouldUseHeap ? SizeType(1) << (sizeof(SizeType) * 8 - 1) : 0;
 
-  // Reserved but unused. Kept so kClearMask (and thus policyMaxSize) stays
-  // unchanged.
-  static SizeType constexpr kCapacityMask =
-      kShouldUseHeap ? SizeType(1) << (sizeof(SizeType) * 8 - 2) : 0;
-
-  static SizeType constexpr kClearMask =
-      kShouldUseHeap ? SizeType(3) << (sizeof(SizeType) * 8 - 2) : 0;
+  static SizeType constexpr kClearMask = kExternMask;
 
   SizeType size_;
 };

@@ -780,7 +780,7 @@ TEST(smallVector, NoHeap) {
 
   // Check max_size works right with various policy combinations.
   folly::small_vector<std::string, 32, policy_size_type<uint32_t>> v4;
-  EXPECT_EQ(v4.max_size(), (uint32_t(1) << 30) - 1);
+  EXPECT_EQ(v4.max_size(), (uint32_t(1) << 31) - 1);
 
   /*
    * Test that even when we ask for a small number inlined it'll still
@@ -803,9 +803,9 @@ TEST(smallVector, NoHeap) {
 
 TEST(smallVector, MaxSize) {
   folly::small_vector<int, 2, policy_size_type<uint8_t>> vec;
-  EXPECT_EQ(vec.max_size(), 63);
+  EXPECT_EQ(vec.max_size(), 127);
   folly::small_vector<int, 2, policy_size_type<uint16_t>> vec2;
-  EXPECT_EQ(vec2.max_size(), (1 << 14) - 1);
+  EXPECT_EQ(vec2.max_size(), (1 << 15) - 1);
 }
 
 TEST(smallVector, AllHeap) {
