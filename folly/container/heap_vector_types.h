@@ -85,6 +85,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <compare>
 #include <functional>
 #include <initializer_list>
 #include <iterator>
@@ -1309,18 +1310,20 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
     return !operator==(other);
   }
 
-  bool operator<(const heap_vector_container& other) const {
-    return std::lexicographical_compare(
-        begin(), end(), other.begin(), other.end(), value_comp());
-  }
-  bool operator>(const heap_vector_container& other) const {
-    return other < *this;
-  }
-  bool operator<=(const heap_vector_container& other) const {
-    return !operator>(other);
-  }
-  bool operator>=(const heap_vector_container& other) const {
-    return !operator<(other);
+  auto operator<=>(const heap_vector_container& other) const {
+    return std::lexicographical_compare_three_way(
+        begin(),
+        end(),
+        other.begin(),
+        other.end(),
+        [cmp = value_comp()](const auto& a, const auto& b) {
+          if (cmp(a, b)) {
+            return std::weak_ordering::less;
+          } else if (cmp(b, a)) {
+            return std::weak_ordering::greater;
+          }
+          return std::weak_ordering::equivalent;
+        });
   }
 
   // Use underlying vector iterators to quickly traverse heap container.
