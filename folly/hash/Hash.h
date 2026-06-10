@@ -434,7 +434,8 @@ template <typename K>
 struct IsAvalanchingHasher<hasher<cstring_view>, K> : std::true_type {};
 
 template <typename T>
-struct hasher<T, std::enable_if_t<std::is_enum<T>::value>> {
+  requires std::is_enum_v<T>
+struct hasher<T> {
   size_t operator()(T key) const noexcept {
     auto u = to_underlying(key);
     return hasher<decltype(u)>{}(u);
@@ -442,9 +443,9 @@ struct hasher<T, std::enable_if_t<std::is_enum<T>::value>> {
 };
 
 template <typename T, typename K>
-struct IsAvalanchingHasher<
-    hasher<T, std::enable_if_t<std::is_enum<T>::value>>,
-    K> : IsAvalanchingHasher<hasher<std::underlying_type_t<T>>, K> {};
+  requires std::is_enum_v<T>
+struct IsAvalanchingHasher<hasher<T>, K>
+    : IsAvalanchingHasher<hasher<std::underlying_type_t<T>>, K> {};
 
 namespace detail {
 struct hash_one_fn {

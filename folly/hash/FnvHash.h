@@ -20,7 +20,6 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
-#include <type_traits>
 
 namespace folly {
 namespace hash {
@@ -66,6 +65,9 @@ inline constexpr bool is_hashable_byte_v<signed char> = true;
 template <>
 inline constexpr bool is_hashable_byte_v<unsigned char> = true;
 
+template <typename C>
+concept HashableByte = is_hashable_byte_v<C>;
+
 } // namespace detail
 
 /**
@@ -76,7 +78,7 @@ inline constexpr bool is_hashable_byte_v<unsigned char> = true;
  * @see fnv32
  * @methodset fnv
  */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+template <detail::HashableByte C>
 constexpr uint32_t fnv32_buf_BROKEN(
     const C* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
   for (size_t i = 0; i < n; ++i) {
@@ -149,7 +151,7 @@ constexpr uint32_t fnv32_append_byte_FIXED(uint32_t hash, uint8_t c) noexcept {
  * @see fnv32
  * @methodset fnv
  */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+template <detail::HashableByte C>
 constexpr uint32_t fnv32_buf_FIXED(
     const C* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
   for (size_t i = 0; i < n; ++i) {
@@ -221,7 +223,7 @@ constexpr uint32_t fnva32_append_byte(uint32_t hash, uint8_t c) noexcept {
  * @see fnv32
  * @methodset fnv
  */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+template <detail::HashableByte C>
 constexpr uint32_t fnva32_buf(
     const C* buf, size_t n, uint32_t hash = fnva32_hash_start) noexcept {
   for (size_t i = 0; i < n; ++i) {
@@ -274,7 +276,7 @@ constexpr uint64_t fnv64_append_byte_FIXED(uint64_t hash, uint8_t c) {
  * @see fnv32
  * @methodset fnv
  */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+template <detail::HashableByte C>
 constexpr uint64_t fnv64_buf_FIXED(
     const C* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
   for (size_t i = 0; i < n; ++i) {
@@ -350,7 +352,7 @@ constexpr uint64_t fnv64_append_byte_BROKEN(uint64_t hash, uint8_t c) {
  * @see fnv32
  * @methodset fnv
  */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+template <detail::HashableByte C>
 constexpr uint64_t fnv64_buf_BROKEN(
     const C* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
   for (size_t i = 0; i < n; ++i) {
@@ -415,7 +417,7 @@ constexpr uint32_t fnv32_append_byte(uint32_t hash, uint8_t c) noexcept {
  * @see fnv32_BROKEN
  * @methodset fnv
  */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+template <detail::HashableByte C>
 constexpr uint32_t fnv32_buf(
     const C* buf, size_t n, uint32_t hash = fnv32_hash_start) noexcept {
   return fnv32_buf_BROKEN(buf, n, hash);
@@ -461,7 +463,7 @@ constexpr uint64_t fnv64_append_byte(uint64_t hash, uint8_t c) {
  * @see fnv32_BROKEN
  * @methodset fnv
  */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+template <detail::HashableByte C>
 constexpr uint64_t fnv64_buf(
     const C* buf, size_t n, uint64_t hash = fnv64_hash_start) noexcept {
   return fnv64_buf_BROKEN(buf, n, hash);
@@ -519,7 +521,7 @@ constexpr uint64_t fnva64_append_byte(uint64_t hash, uint8_t c) {
  * @see fnv32
  * @methodset fnv
  */
-template <typename C, std::enable_if_t<detail::is_hashable_byte_v<C>, int> = 0>
+template <detail::HashableByte C>
 constexpr uint64_t fnva64_buf(
     const C* buf, size_t n, uint64_t hash = fnva64_hash_start) noexcept {
   for (size_t i = 0; i < n; ++i) {
