@@ -265,7 +265,7 @@ class TaskPromise<void> final
   using TaskPromiseCrtpBase<TaskPromise<void>, void>::yield_value;
 
   auto yield_value(co_result<Unit>&& result) {
-    this->result_ = std::move(result.result());
+    this->result_ = result.result();
     return final_suspend();
   }
 };
