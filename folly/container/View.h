@@ -58,17 +58,15 @@ struct order_preserving_reinsertion_view_or_default_fn {
   using fn = order_preserving_reinsertion_view_fn;
 
  public:
-  template <
-      typename Container,
-      std::enable_if_t<is_tag_invocable_v<fn, Container const&>, int> = 0>
+  template <typename Container>
+    requires is_tag_invocable_v<fn, Container const&>
   FOLLY_ERASE constexpr auto operator()(Container const& container) const
       noexcept(is_nothrow_tag_invocable_v<fn, Container const&>)
           -> tag_invoke_result_t<fn, Container const&> {
     return tag_invoke(fn{}, container);
   }
-  template <
-      typename Container,
-      std::enable_if_t<!is_tag_invocable_v<fn, Container const&>, int> = 0>
+  template <typename Container>
+    requires(!is_tag_invocable_v<fn, Container const&>)
   FOLLY_ERASE constexpr Container const& operator()(
       Container const& container) const noexcept {
     return container;

@@ -96,9 +96,6 @@ class span {
   static inline constexpr std::size_t extent = Extent;
 
  private:
-  template <bool C>
-  using if_ = std::enable_if_t<C, int>;
-
   template <typename U, typename V = std::remove_cv_t<U>>
   static inline constexpr bool array_element_match_v =
       std::is_same_v<V, value_type> && std::is_convertible_v<U*, pointer>;
@@ -126,7 +123,8 @@ class span {
   [[FOLLY_ATTR_NO_UNIQUE_ADDRESS]] span_extent<extent> extent_;
 
  public:
-  template <size_type E = extent, if_<E == dynamic_extent || E == 0> = 0>
+  template <size_type E = extent>
+    requires(E == dynamic_extent || E == 0)
   constexpr span() noexcept : data_{}, extent_{} {}
 
   constexpr span(pointer const first, size_type const count)
@@ -137,32 +135,23 @@ class span {
     assert(!(last < first));
   }
 
-  template <
-      std::size_t N,
-      std::size_t E = extent,
-      if_<E == dynamic_extent || E == N> = 0>
+  template <std::size_t N, std::size_t E = extent>
+    requires(E == dynamic_extent || E == N)
   /* implicit */ constexpr span(type_t<element_type> (&arr)[N]) noexcept
       : data_{arr}, extent_{N} {}
 
-  template <
-      typename U,
-      std::size_t N,
-      std::size_t E = extent,
-      if_<E == dynamic_extent || E == N> = 0,
-      if_<array_element_match_v<U>> = 0>
+  template <typename U, std::size_t N, std::size_t E = extent>
+    requires((E == dynamic_extent || E == N) && array_element_match_v<U>)
   /* implicit */ constexpr span(std::array<U, N>& arr) noexcept
       : data_{arr.data()}, extent_{N} {}
 
-  template <
-      typename U,
-      std::size_t N,
-      std::size_t E = extent,
-      if_<E == dynamic_extent || E == N> = 0,
-      if_<array_element_match_v<U const>> = 0>
+  template <typename U, std::size_t N, std::size_t E = extent>
+    requires((E == dynamic_extent || E == N) && array_element_match_v<U const>)
   /* implicit */ constexpr span(std::array<U, N> const& arr) noexcept
       : data_{arr.data()}, extent_{N} {}
 
-  template <typename Rng, if_<is_range_v<Rng&>> = 0>
+  template <typename Rng>
+    requires is_range_v<Rng&>
   /* implicit */ constexpr span(Rng&& range)
       : data_{access::data(range)}, extent_{access::size(range)} {}
 
@@ -392,10 +381,8 @@ auto as_bytes(span<T, Extent> s) noexcept {
 /// as_writable_bytes
 ///
 /// mimic: std::as_writable_bytes, C++20
-template <
-    typename T,
-    std::size_t Extent,
-    std::enable_if_t<!std::is_const_v<T>, int> = 0>
+template <typename T, std::size_t Extent>
+  requires(!std::is_const_v<T>)
 auto as_writable_bytes(span<T, Extent> s) noexcept {
   return reinterpret_span_cast<std::byte>(s);
 }
