@@ -392,9 +392,12 @@ template <class T>
   struct Cursor : folly::Range<const Centroid*> {
     using folly::Range<const Centroid*>::Range;
 
+    // We always expect non-empty ranges on construction
+    double key = front().mean();
+
     bool operator<(const Cursor& rhs) const {
       // In a max-heap we want the top to be the minimum.
-      return front().mean() > rhs.front().mean();
+      return key > rhs.key;
     }
   };
 
@@ -436,6 +439,8 @@ template <class T>
     if (top.empty()) {
       top = cursors.back();
       cursors.pop_back();
+    } else {
+      top.key = top.front().mean();
     }
     down_heap(cursors.begin(), cursors.end());
   }
