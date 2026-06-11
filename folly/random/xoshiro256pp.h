@@ -74,7 +74,8 @@ class xoshiro256pp {
 
   xoshiro256pp(result_type value = default_seed) noexcept { seed(value); }
 
-  template <typename SeedSeq, typename = std::enable_if_t<is_seed_seq<SeedSeq>>>
+  template <typename SeedSeq>
+    requires is_seed_seq<SeedSeq>
   explicit xoshiro256pp(SeedSeq& seq) noexcept {
     seed(seq);
   }
@@ -108,7 +109,8 @@ class xoshiro256pp {
   ///
   /// Deterministically fills the internal state with uniformly-distributed data
   /// generated from seq.
-  template <typename SeedSeq, std::enable_if_t<is_seed_seq<SeedSeq>, int> = 0>
+  template <typename SeedSeq>
+    requires is_seed_seq<SeedSeq>
   void seed(SeedSeq& seq) {
     state_array arr;
     std::memcpy(&arr, &state, sizeof(state_array));
