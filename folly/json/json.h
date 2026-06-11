@@ -42,7 +42,6 @@
 #pragma once
 
 #include <iosfwd>
-#include <optional>
 #include <string>
 
 #include <folly/Function.h>
@@ -144,8 +143,7 @@ struct serialization_opts {
   // true to allow NaN or INF values
   bool allow_nan_inf{false};
 
-  // Floating-point output format. Defaults to SHORTEST when not set.
-  std::optional<FloatFormat> float_format{};
+  FloatFormat float_format{FloatFormat::SHORTEST};
 
   unsigned int double_num_digits{0}; // used by FIXED and GENERAL formats
 

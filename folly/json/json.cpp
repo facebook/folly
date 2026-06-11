@@ -368,7 +368,7 @@ struct PrinterImpl {
       return;
     }
     auto out = std::back_inserter(out_);
-    switch (opts_.float_format.value_or(FloatFormat::SHORTEST)) {
+    switch (opts_.float_format) {
       case FloatFormat::SHORTEST:
         fmt::format_to(out, FMT_COMPILE("{}"), dval);
         return;
