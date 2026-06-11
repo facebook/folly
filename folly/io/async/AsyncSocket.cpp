@@ -4883,9 +4883,11 @@ void AsyncSocket::recvEOF() noexcept {
     return;
   }
 
-  ReadCallback* callback = readCallback_;
-  readCallback_ = nullptr;
-  callback->readEOF();
+  if (readCallback_ != nullptr) {
+    ReadCallback* callback = readCallback_;
+    readCallback_ = nullptr;
+    callback->readEOF();
+  }
 }
 
 void AsyncSocket::recvErr(
