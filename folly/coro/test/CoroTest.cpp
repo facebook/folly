@@ -665,6 +665,8 @@ TEST_F(CoroTest, DefaultConstructible) {
   }());
 }
 
+FOLLY_PUSH_WARNING
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 TEST(Coro, CoReturnTry) {
   EXPECT_EQ(42, folly::coro::blockingWait([]() -> folly::coro::Task<int> {
               co_return folly::Try<int>(42);
@@ -688,7 +690,20 @@ TEST(Coro, CoReturnTry) {
               const folly::Try<int> tConst(42);
               co_return tConst;
             }()));
+
+  EXPECT_EQ(
+      folly::unit,
+      folly::coro::blockingWait([]() -> folly::coro::Task<folly::Unit> {
+        co_return folly::Try<folly::Unit>(folly::unit);
+      }()));
+
+  EXPECT_EQ(
+      folly::unit,
+      folly::coro::blockingWait([]() -> folly::coro::Task<folly::Unit> {
+        co_return folly::Try<void>();
+      }()));
 }
+FOLLY_POP_WARNING
 
 TEST(Coro, CoThrow) {
   struct ExpectedException : public std::runtime_error {

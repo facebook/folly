@@ -228,25 +228,29 @@ class TaskPromise final : public TaskPromiseCrtpBase<TaskPromise<T>, T> {
   using StorageType =
       typename TaskPromiseCrtpBase<TaskPromise<T>, T>::StorageType;
 
+  template <typename U>
+  static constexpr bool IsDeprecatedTryReturn =
+      std::is_same_v<remove_cvref_t<U>, Try<StorageType>> ||
+      (std::is_same_v<StorageType, Unit> &&
+       std::is_same_v<remove_cvref_t<U>, Try<void>>);
+
   TaskPromise() noexcept = default;
 
   template <typename U = T>
+    requires IsDeprecatedTryReturn<U>
+  [[deprecated("Use `co_yield co_result(...)` instead.")]]
   void return_value(U&& value) {
-    if constexpr (std::is_same_v<remove_cvref_t<U>, Try<StorageType>>) {
-      DCHECK(value.hasValue() || (value.hasException() && value.exception()));
-      this->result_ = static_cast<U&&>(value);
-    } else if constexpr (
-        std::is_same_v<remove_cvref_t<U>, Try<void>> &&
-        std::is_same_v<remove_cvref_t<T>, Unit>) {
-      // special-case to make task -> semifuture -> task preserve void type
-      DCHECK(value.hasValue() || (value.hasException() && value.exception()));
-      this->result_ = static_cast<Try<Unit>>(static_cast<U&&>(value));
-    } else {
-      static_assert(
-          std::is_convertible<U&&, StorageType>::value,
-          "cannot convert return value to type T");
-      this->result_.emplace(static_cast<U&&>(value));
-    }
+    DCHECK(value.hasValue() || (value.hasException() && value.exception()));
+    this->result_ = static_cast<Try<StorageType>>(static_cast<U&&>(value));
+  }
+
+  template <typename U = T>
+    requires(!IsDeprecatedTryReturn<U>)
+  void return_value(U&& value) {
+    static_assert(
+        std::is_convertible_v<U&&, StorageType>,
+        "cannot convert return value to type T");
+    this->result_.emplace(static_cast<U&&>(value));
   }
 };
 
