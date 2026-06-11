@@ -145,7 +145,8 @@ class IPAddress {
    *
    * Same as tryCreateNetwork() but throws on error.
    *
-   * @throws IPAddressFormatException
+   * @throws IPAddressFormatException if `ipSlashCidr` is not a valid
+   *         CIDR-formatted address
    * @return pair with IPAddress network and uint8_t mask
    */
   static CIDRNetwork createNetwork(
