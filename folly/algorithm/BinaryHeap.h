@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <utility>
 
 #include <folly/lang/Builtin.h>
 
@@ -30,6 +31,11 @@ namespace folly {
 template <class RandomIt, class Compare>
 void down_heap(RandomIt first, RandomIt last, Compare comp) {
   size_t size = last - first;
+  if (size == 0) {
+    return;
+  }
+
+  auto heap_top = std::move(first[0]);
   size_t parent = 0;
   size_t child;
   // Iterate while both left and right children exist.
@@ -38,18 +44,21 @@ void down_heap(RandomIt first, RandomIt last, Compare comp) {
     child = FOLLY_BUILTIN_UNPREDICTABLE(comp(first[child], first[child - 1]))
         ? child - 1
         : child;
-    if (comp(first[parent], first[child])) {
-      std::iter_swap(first + parent, first + child);
+    if (comp(heap_top, first[child])) {
+      first[parent] = std::move(first[child]);
       parent = child;
     } else {
+      first[parent] = std::move(heap_top);
       return;
     }
   }
 
   // Now parent can have either no children or only a left child.
-  if (--child < size && comp(first[parent], first[child])) {
-    std::iter_swap(first + parent, first + child);
+  if (--child < size && comp(heap_top, first[child])) {
+    first[parent] = std::move(first[child]);
+    parent = child;
   }
+  first[parent] = std::move(heap_top);
 }
 
 template <class RandomIt>
