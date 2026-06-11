@@ -804,8 +804,14 @@ TEST(smallVector, NoHeap) {
 TEST(smallVector, MaxSize) {
   folly::small_vector<int, 2, policy_size_type<uint8_t>> vec;
   EXPECT_EQ(vec.max_size(), 127);
+  vec.reserve(127);
   folly::small_vector<int, 2, policy_size_type<uint16_t>> vec2;
   EXPECT_EQ(vec2.max_size(), (1 << 15) - 1);
+  vec2.reserve((1 << 15) - 1);
+
+  folly::small_vector<int, 0, policy_size_type<uint8_t>> vec3;
+  EXPECT_EQ(vec3.max_size(), 255);
+  vec3.reserve(255);
 }
 
 TEST(smallVector, AllHeap) {

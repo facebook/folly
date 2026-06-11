@@ -26,6 +26,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
@@ -272,7 +273,11 @@ struct IntegralSizePolicyBase {
   IntegralSizePolicyBase() : size_(0) {}
 
  protected:
-  static constexpr std::size_t policyMaxSize() { return SizeType(~kClearMask); }
+  static constexpr std::size_t policyMaxSize() {
+    return AlwaysUseHeap
+        ? std::numeric_limits<SizeType>::max()
+        : SizeType(~kClearMask);
+  }
 
   std::size_t doSize() const {
     return AlwaysUseHeap ? size_ : size_ & ~kClearMask;
@@ -1332,7 +1337,7 @@ class small_vector
    */
   void setCapacity(size_type newCapacity) {
     assert(this->isExtern());
-    assert(newCapacity < std::numeric_limits<InternalSizeType>::max());
+    assert(newCapacity <= std::numeric_limits<InternalSizeType>::max());
     u.setCapacity(newCapacity);
   }
 
