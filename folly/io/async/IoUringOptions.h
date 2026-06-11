@@ -184,6 +184,12 @@ struct IoUringOptions {
     return *this;
   }
 
+  IoUringOptions& setDisableIoWait(bool v) {
+    disableIoWait = v;
+
+    return *this;
+  }
+
   IoUringOptions& setTimeout(std::chrono::microseconds v) {
     timeout = v;
 
@@ -306,6 +312,15 @@ struct IoUringOptions {
   bool registerRingFd{false};
   bool taskRunCoop{false};
   bool deferTaskRun{false};
+
+  // Disable io_uring iowait accounting by passing IORING_ENTER_NO_IOWAIT on
+  // io_uring_enter, so that waiting for completions is not charged as iowait
+  // time. This stops io_uring from inflating cgroup io.pressure / iowait
+  // accounting when backend threads park in io_uring_enter with no real I/O
+  // outstanding. Requires a kernel with IORING_FEAT_NO_IOWAIT; otherwise
+  // io_uring_set_iowait is a no-op that returns -EOPNOTSUPP. Independent of
+  // request batching.
+  bool disableIoWait{false};
 
   // Maximum amount of time to wait (in microseconds) per io_uring_enter
   // Both timeout _and_ batchSize must be set for io_uring_enter wait_nr to be

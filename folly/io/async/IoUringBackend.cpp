@@ -1111,8 +1111,11 @@ void IoUringBackend::delayedInit() {
     initSubmissionLinked();
   }
 
-  if (useReqBatching()) {
-    ::io_uring_set_iowait(&ioRing_, false);
+  if (useReqBatching() || options_.disableIoWait) {
+    auto ret = ::io_uring_set_iowait(&ioRing_, false);
+    if (ret && ret != -EOPNOTSUPP) {
+      LOG(ERROR) << "io_uring_set_iowait gave " << folly::errnoStr(-ret);
+    }
   }
 
   if (options_.registerRingFd) {

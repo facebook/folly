@@ -19,7 +19,16 @@
 
 namespace folly::test {
 
-TEST(IoUringBackendSetupTest, SetupPollNoGroup) {
+class IoUringBackendSetupTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    if (!IoUringBackend::isAvailable()) {
+      GTEST_SKIP() << "io_uring not available";
+    }
+  }
+};
+
+TEST_F(IoUringBackendSetupTest, SetupPollNoGroup) {
   IoUringBackend::Options options;
   options.setFlags(IoUringBackend::Options::Flags::POLL_SQ);
 
@@ -31,7 +40,7 @@ TEST(IoUringBackendSetupTest, SetupPollNoGroup) {
   EXPECT_FALSE(io.params().flags & IORING_SETUP_ATTACH_WQ);
 }
 
-TEST(IoUringBackendSetupTest, SetupPollWithGroup) {
+TEST_F(IoUringBackendSetupTest, SetupPollWithGroup) {
   auto makeOptions = []() {
     IoUringBackend::Options options;
     options.setFlags(IoUringBackend::Options::Flags::POLL_SQ)
@@ -55,7 +64,7 @@ TEST(IoUringBackendSetupTest, SetupPollWithGroup) {
   EXPECT_EQ(io2.params().wq_fd, io1.ioRingPtr()->ring_fd);
 }
 
-TEST(IoUringBackendSetupTest, SetupPollWithGroupAndCpu) {
+TEST_F(IoUringBackendSetupTest, SetupPollWithGroupAndCpu) {
   auto makeOptions = []() {
     IoUringBackend::Options options;
     options.setFlags(IoUringBackend::Options::Flags::POLL_SQ)
@@ -94,6 +103,28 @@ TEST(IoUringBackendSetupTest, SetupPollWithGroupAndCpu) {
   EXPECT_TRUE(io3.params().flags & IORING_SETUP_SQPOLL);
   EXPECT_FALSE(io3.params().flags & IORING_SETUP_SQ_AFF);
   EXPECT_TRUE(io3.params().flags & IORING_SETUP_ATTACH_WQ);
+}
+
+TEST_F(IoUringBackendSetupTest, DisableIoWaitAppliesNoIoWait) {
+  IoUringBackend::Options options;
+  options.setDisableIoWait(true);
+  IoUringBackend io(std::move(options));
+
+  io.eb_event_base_loop(EVLOOP_NONBLOCK);
+
+  io_uring* ring = io.ioRingPtr();
+  if (!(ring->features & IORING_FEAT_NO_IOWAIT)) {
+    GTEST_SKIP() << "kernel lacks IORING_FEAT_NO_IOWAIT";
+  }
+  EXPECT_TRUE(ring->int_flags & IORING_ENTER_NO_IOWAIT);
+}
+
+TEST_F(IoUringBackendSetupTest, DefaultDoesNotDisableIoWait) {
+  IoUringBackend::Options options;
+  IoUringBackend io(std::move(options));
+  io.eb_event_base_loop(EVLOOP_NONBLOCK);
+
+  EXPECT_FALSE(io.ioRingPtr()->int_flags & IORING_ENTER_NO_IOWAIT);
 }
 
 } // namespace folly::test
