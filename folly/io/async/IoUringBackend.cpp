@@ -471,9 +471,6 @@ IoUringBackend::IoUringBackend(Options options)
     throw std::runtime_error("invalid zero copy rx options");
   }
 
-  ::memset(&ioRing_, 0, sizeof(ioRing_));
-  ::memset(&params_, 0, sizeof(params_));
-
   params_.flags |= IORING_SETUP_CQSIZE;
   params_.cq_entries = options_.capacity;
 
@@ -713,7 +710,7 @@ void IoUringBackend::scheduleTimeout() {
 }
 
 void IoUringBackend::scheduleTimeout(const std::chrono::microseconds& us) {
-  itimerspec val;
+  itimerspec val{};
   timerSet_ = us.count() != 0;
   val.it_interval = {0, 0};
   val.it_value.tv_sec =
@@ -845,7 +842,7 @@ size_t IoUringBackend::processSignals() {
   static_assert(
       NSIG < 256, "Use a different data type to cover all the signal values");
   std::array<bool, NSIG> processed{};
-  std::array<uint8_t, kNumEntries> signals;
+  std::array<uint8_t, kNumEntries> signals{};
 
   ssize_t num =
       folly::readNoInt(signalFds_.readFd(), signals.data(), signals.size());
@@ -1431,7 +1428,7 @@ int IoUringBackend::doInnerWait(io_uring_cqe*& cqe) noexcept {
     submitBusyCheck(waitingToSubmit_, WaitForEventsMode::WAIT);
     return ::io_uring_peek_cqe(&ioRing_, &cqe);
   } else if (useReqBatching()) {
-    struct __kernel_timespec timeout;
+    struct __kernel_timespec timeout{};
     timeout.tv_sec = 0;
     timeout.tv_nsec = options_.timeout.count() * 1000;
     return ::io_uring_wait_cqes(
@@ -1628,7 +1625,7 @@ int IoUringBackend::submitBusyCheck(
       } else {
         if (useReqBatching()) {
           io_uring_cqe* cqe;
-          struct __kernel_timespec timeout;
+          struct __kernel_timespec timeout{};
           timeout.tv_sec = 0;
           timeout.tv_nsec = options_.timeout.count() * 1000;
           res = ::io_uring_submit_and_wait_timeout(

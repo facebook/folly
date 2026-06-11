@@ -880,8 +880,8 @@ class IoUringBackend : public EventBaseBackendBase {
   uint32_t numSendEvents_{0};
 
   // io_uring related
-  io_uring_params params_;
-  io_uring ioRing_;
+  io_uring_params params_{};
+  io_uring ioRing_{};
 
   FdRegistry fdRegistry_;
   uint32_t poolAllocRemaining_{0};
