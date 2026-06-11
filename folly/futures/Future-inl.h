@@ -936,7 +936,7 @@ Future<T> Future<T>::via(Executor::KeepAlive<> executor) & {
         p_2.setTry(std::move(t));
       };
   using R = futures::detail::tryExecutorCallableResult<T, decltype(func)>;
-  this->thenImplementation(
+  std::ignore = this->thenImplementation(
       std::move(func), R{}, futures::detail::InlineContinuation::forbid);
   // Construct future from semifuture manually because this may not have
   // an executor set due to legacy code. This means we can bypass the executor
