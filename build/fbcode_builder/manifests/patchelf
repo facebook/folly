@@ -11,10 +11,9 @@ patchelf
 patchelf
 
 [download]
-url = https://github.com/NixOS/patchelf/archive/0.10.tar.gz
-sha256 = b3cb6bdedcef5607ce34a350cf0b182eb979f8f7bc31eae55a93a70a3f020d13
+url = https://github.com/NixOS/patchelf/archive/0.18.0.tar.gz
+sha256 = 1451d01ee3a21100340aed867d0b799f46f0b1749680028d38c3f5d0128fb8a7
 
 [build]
 builder = autoconf
-subdir = patchelf-0.10
-
+subdir = patchelf-0.18.0
