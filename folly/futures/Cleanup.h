@@ -160,9 +160,8 @@ class Cleanup {
   // calls to addCleanup() must not overlap with each other and must not overlap
   // with a running SemiFuture returned from addCleanup().
   //
-  template <
-      class OtherCleanup,
-      std::enable_if_t<is_cleanup_v<OtherCleanup>, int> = 0>
+  template <class OtherCleanup>
+    requires is_cleanup_v<OtherCleanup>
   void addCleanup(OtherCleanup&& c) {
     addCleanup(((OtherCleanup&&)c).cleanup());
   }
