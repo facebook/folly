@@ -37,8 +37,8 @@ namespace folly {
 
 class TimeoutQueue {
  public:
-  typedef int64_t Id;
-  typedef std::function<void(Id, int64_t)> Callback;
+  using Id = int64_t;
+  using Callback = std::function<void(Id, int64_t)>;
 
   TimeoutQueue() : nextId_(1) {}
 
@@ -102,14 +102,13 @@ class TimeoutQueue {
     Callback callback;
   };
 
-  typedef boost::multi_index_container<
+  using Set = boost::multi_index_container<
       Event,
       boost::multi_index::indexed_by<
           boost::multi_index::ordered_unique<
               boost::multi_index::member<Event, Id, &Event::id>>,
           boost::multi_index::ordered_non_unique<
-              boost::multi_index::member<Event, int64_t, &Event::expiration>>>>
-      Set;
+              boost::multi_index::member<Event, int64_t, &Event::expiration>>>>;
 
   enum {
     BY_ID = 0,
