@@ -80,6 +80,15 @@ namespace detail {
 inline void* thunk_return_nullptr() {
   return nullptr;
 }
+
+template <class T>
+inline constexpr bool fbvector_should_pass_by_value =
+    std::is_trivially_copyable_v<T> &&
+    sizeof(T) <= 16; // don't force large structures to be passed by value
+
+template <class T>
+using fbvector_value_param_t =
+    std::conditional_t<fbvector_should_pass_by_value<T>, T, const T&>;
 } // namespace detail
 
 template <class T, class Allocator>
@@ -217,12 +226,6 @@ class fbvector {
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
  private:
-  static constexpr bool should_pass_by_value =
-      std::is_trivially_copyable<T>::value &&
-      sizeof(T) <= 16; // don't force large structures to be passed by value
-  using VT = typename std::conditional<should_pass_by_value, T, const T&>::type;
-  using MT = typename std::conditional<should_pass_by_value, T, T&&>::type;
-
   static constexpr bool kUsingStdAllocator =
       std::is_same<Allocator, std::allocator<T>>::value;
   using moveIsSwap = std::bool_constant<
@@ -397,7 +400,9 @@ class fbvector {
     impl_.e_ += sz;
   }
 
-  void M_uninitialized_fill_n_e(size_type sz, VT value) {
+  template <class U = T>
+  void M_uninitialized_fill_n_e(
+      size_type sz, detail::fbvector_value_param_t<U> value) {
     D_uninitialized_fill_n_a(impl_.e_, sz, value);
     impl_.e_ += sz;
   }
@@ -411,7 +416,9 @@ class fbvector {
     }
   }
 
-  void D_uninitialized_fill_n_a(T* dest, size_type sz, VT value) {
+  template <class U = T>
+  void D_uninitialized_fill_n_a(
+      T* dest, size_type sz, detail::fbvector_value_param_t<U> value) {
     if constexpr (kUsingStdAllocator) {
       S_uninitialized_fill_n(dest, sz, value);
     } else {
@@ -641,35 +648,22 @@ class fbvector {
     relocate_done(newB, impl_.b_, impl_.e_);
   }
 
-  // dispatch type trait
-  using relocate_use_memcpy =
-      std::bool_constant<folly::IsRelocatable<T>::value && kUsingStdAllocator>;
-
-  using relocate_use_move = std::bool_constant<
-      (std::is_nothrow_move_constructible<T>::value && kUsingStdAllocator) ||
-      !std::is_copy_constructible<T>::value>;
-
   // move
   void relocate_move(T* dest, T* first, T* last) {
-    relocate_move_or_memcpy(dest, first, last, relocate_use_memcpy());
-  }
-
-  void relocate_move_or_memcpy(T* dest, T* first, T* last, std::true_type) {
-    if (first != nullptr) {
-      std::memcpy((void*)dest, (void*)first, (last - first) * sizeof(T));
+    constexpr bool useMemcpy =
+        folly::IsRelocatable<T>::value && kUsingStdAllocator;
+    constexpr bool useMove =
+        (std::is_nothrow_move_constructible_v<T> && kUsingStdAllocator) ||
+        !std::is_copy_constructible_v<T>;
+    if constexpr (useMemcpy) {
+      if (first != nullptr) {
+        std::memcpy((void*)dest, (void*)first, (last - first) * sizeof(T));
+      }
+    } else if constexpr (useMove) {
+      D_uninitialized_move_a(dest, first, last);
+    } else {
+      D_uninitialized_copy_a(dest, first, last);
     }
-  }
-
-  void relocate_move_or_memcpy(T* dest, T* first, T* last, std::false_type) {
-    relocate_move_or_copy(dest, first, last, relocate_use_move());
-  }
-
-  void relocate_move_or_copy(T* dest, T* first, T* last, std::true_type) {
-    D_uninitialized_move_a(dest, first, last);
-  }
-
-  void relocate_move_or_copy(T* dest, T* first, T* last, std::false_type) {
-    D_uninitialized_copy_a(dest, first, last);
   }
 
   // done
@@ -711,7 +705,11 @@ class fbvector {
     M_uninitialized_fill_n_e(n);
   }
 
-  fbvector(size_type n, VT value, const Allocator& a = Allocator())
+  template <class U = T>
+  fbvector(
+      size_type n,
+      detail::fbvector_value_param_t<U> value,
+      const Allocator& a = Allocator())
       : impl_(n, a) {
     M_uninitialized_fill_n_e(n, value);
   }
@@ -787,7 +785,8 @@ class fbvector {
     assign(first, last, Category());
   }
 
-  void assign(size_type n, VT value) {
+  template <class U = T>
+  void assign(size_type n, detail::fbvector_value_param_t<U> value) {
     if (n > capacity()) {
       // Not enough space. Do not reserve in place, since we will
       // discard the old values anyways.
@@ -883,7 +882,7 @@ class fbvector {
 
   // contract dispatch for aliasing under VT optimization
   bool dataIsInternalAndNotVT(const T& t) {
-    if constexpr (should_pass_by_value) {
+    if constexpr (detail::fbvector_should_pass_by_value<T>) {
       return false;
     } else {
       return dataIsInternal(t);
@@ -940,7 +939,8 @@ class fbvector {
     }
   }
 
-  void resize(size_type n, VT t) {
+  template <class U = T>
+  void resize(size_type n, detail::fbvector_value_param_t<U> t) {
     if (n <= size()) {
       M_destroy_range_e(impl_.b_ + n);
     } else if (dataIsInternalAndNotVT(t) && n > capacity()) {
@@ -1549,7 +1549,11 @@ class fbvector {
         [&](iterator start) { M_destroy(start); });
   }
 
-  iterator insert(const_iterator cpos, size_type n, VT value) {
+  template <class U = T>
+  iterator insert(
+      const_iterator cpos,
+      size_type n,
+      detail::fbvector_value_param_t<U> value) {
     return do_real_insert(
         cpos,
         n,

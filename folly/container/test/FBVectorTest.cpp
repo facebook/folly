@@ -104,6 +104,20 @@ TEST(fbvector, worksWithUserDefinedType) {
   v.push_back(UserDefinedType());
 }
 
+namespace {
+struct SelfReferentialUserDefinedType {
+  // SelfReferentialUserDefinedType is incomplete here,
+  // but fbvector should still be able to compile.
+  fbvector<SelfReferentialUserDefinedType> children;
+};
+} // namespace
+
+TEST(fbvector, selfReferentialType) {
+  SelfReferentialUserDefinedType root;
+  root.children.push_back(SelfReferentialUserDefinedType{});
+  EXPECT_EQ(root.children.size(), 1);
+}
+
 TEST(fbvector, moveConstruction) {
   fbvector<int> v1(100, 100);
   fbvector<int> v2;
