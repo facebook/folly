@@ -22,7 +22,8 @@ namespace folly {
 namespace observer {
 
 template <typename T>
-template <typename, typename>
+template <typename U>
+  requires std::is_default_constructible<U>::value
 SimpleObservable<T>::SimpleObservable()
     : context_(std::make_shared<Context>(std::make_shared<T>())) {}
 
