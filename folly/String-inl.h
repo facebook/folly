@@ -492,11 +492,11 @@ Expected<Unit, SubstringConversionCode> trySplitTo(
 //////////////////////////////////////////////////////////////////////
 
 template <class Delim, class String, class OutputType>
-std::enable_if_t<
-    (!detail::IsSimdSupportedDelim<Delim>::value ||
-     !detail::HasSimdSplitCompatibleValueType<OutputType>::value) &&
-    detail::IsSplitSupportedContainer<OutputType>::value>
-split(
+  requires(
+      (!detail::IsSimdSupportedDelim<Delim>::value ||
+       !detail::HasSimdSplitCompatibleValueType<OutputType>::value) &&
+      detail::IsSplitSupportedContainer<OutputType>::value)
+void split(
     const Delim& delimiter,
     const String& input,
     OutputType& out,
@@ -509,7 +509,8 @@ split(
 }
 
 template <class Delim, class String, class OutputType>
-std::enable_if_t<detail::IsSplitSupportedContainer<OutputType>::value> split(
+  requires detail::IsSplitSupportedContainer<OutputType>::value
+void split(
     const Delim& delimiter,
     const String& input,
     OutputType& out,
@@ -552,19 +553,17 @@ void splitTo(
 }
 
 template <class Delim, class... OutputTypes>
-typename std::enable_if<
-    StrictConjunction<IsConvertible<OutputTypes>...>::value,
-    Expected<Unit, SubstringConversionCode>>::type
-trySplitTo(StringPiece input, const Delim& delim, OutputTypes&... outputs) {
+  requires StrictConjunction<IsConvertible<OutputTypes>...>::value
+Expected<Unit, SubstringConversionCode> trySplitTo(
+    StringPiece input, const Delim& delim, OutputTypes&... outputs) {
   return detail::trySplitTo(input, detail::prepareDelim(delim), outputs...);
 }
 
 template <bool exact, class Delim, class... OutputTypes>
-typename std::enable_if<
-    StrictConjunction<IsConvertible<OutputTypes>...>::value &&
-        sizeof...(OutputTypes) >= 1,
-    bool>::type
-split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs) {
+  requires(
+      StrictConjunction<IsConvertible<OutputTypes>...>::value &&
+      sizeof...(OutputTypes) >= 1)
+bool split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs) {
   return detail::splitFixed<exact>(
       detail::prepareDelim(delimiter), input, outputs...);
 }

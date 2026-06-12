@@ -549,11 +549,11 @@ struct IsSimdSupportedDelim<char> : std::true_type {};
  */
 
 template <class Delim, class String, class OutputType>
-FOLLY_ALWAYS_INLINE std::enable_if_t<
-    detail::IsSimdSupportedDelim<Delim>::value &&
-    detail::HasSimdSplitCompatibleValueType<OutputType>::value &&
-    detail::IsSplitSupportedContainer<OutputType>::value>
-split(
+  requires(
+      detail::IsSimdSupportedDelim<Delim>::value &&
+      detail::HasSimdSplitCompatibleValueType<OutputType>::value &&
+      detail::IsSplitSupportedContainer<OutputType>::value)
+FOLLY_ALWAYS_INLINE void split(
     const Delim& delimiter,
     const String& input,
     OutputType& out,
@@ -562,11 +562,11 @@ split(
 }
 
 template <class Delim, class String, class OutputType>
-std::enable_if_t<
-    (!detail::IsSimdSupportedDelim<Delim>::value ||
-     !detail::HasSimdSplitCompatibleValueType<OutputType>::value) &&
-    detail::IsSplitSupportedContainer<OutputType>::value>
-split(
+  requires(
+      (!detail::IsSimdSupportedDelim<Delim>::value ||
+       !detail::HasSimdSplitCompatibleValueType<OutputType>::value) &&
+      detail::IsSplitSupportedContainer<OutputType>::value)
+void split(
     const Delim& delimiter,
     const String& input,
     OutputType& out,
@@ -580,7 +580,8 @@ split(
  * when splitting large strings with many expected tokens.
  */
 template <class Delim, class String, class OutputType>
-std::enable_if_t<detail::IsSplitSupportedContainer<OutputType>::value> split(
+  requires detail::IsSplitSupportedContainer<OutputType>::value
+void split(
     const Delim& delimiter,
     const String& input,
     OutputType& out,
@@ -650,11 +651,10 @@ struct IsConvertible : detail::IsConvertible<void, OutputType> {};
  * type, in which case folly::to<> will throw an exception.
  */
 template <bool exact = true, class Delim, class... OutputTypes>
-typename std::enable_if<
-    StrictConjunction<IsConvertible<OutputTypes>...>::value &&
-        sizeof...(OutputTypes) >= 1,
-    bool>::type
-split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs);
+  requires(
+      StrictConjunction<IsConvertible<OutputTypes>...>::value &&
+      sizeof...(OutputTypes) >= 1)
+bool split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs);
 
 // Error type for trySplitTo(), below.
 struct SubstringConversionCode {
@@ -688,10 +688,9 @@ struct SubstringConversionCode {
  *
  */
 template <class Delim, class... OutputTypes>
-typename std::enable_if<
-    StrictConjunction<IsConvertible<OutputTypes>...>::value,
-    Expected<Unit, SubstringConversionCode>>::type
-trySplitTo(StringPiece input, const Delim& delimiter, OutputTypes&... outputs);
+  requires StrictConjunction<IsConvertible<OutputTypes>...>::value
+Expected<Unit, SubstringConversionCode> trySplitTo(
+    StringPiece input, const Delim& delimiter, OutputTypes&... outputs);
 
 /**
  * Join list of tokens.
