@@ -136,7 +136,7 @@ fb_dirsync_cpp_library(
     deps = select({
         "DEFAULT": [],
         "ovr_config//os:linux": [
-            "third-party//jemalloc:headers",
+            "fbsource//third-party/jemalloc:headers",
         ],
     }),
     exported_deps = [

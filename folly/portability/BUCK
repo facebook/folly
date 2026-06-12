@@ -215,7 +215,7 @@ fb_dirsync_cpp_library(
         "//folly:c_portability",
     ] + select({
         "DEFAULT": [],
-        "ovr_config//os:linux": ["third-party//jemalloc:headers"],
+        "ovr_config//os:linux": ["fbsource//third-party/jemalloc:headers"],
     }),
 )
 
