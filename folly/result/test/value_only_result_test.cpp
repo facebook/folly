@@ -16,6 +16,10 @@
 
 #include <gtest/gtest.h>
 
+#include <concepts>
+#include <functional>
+#include <utility>
+
 #include <folly/result/gtest_helpers.h>
 #include <folly/result/value_only_result_coro.h>
 
@@ -31,6 +35,11 @@ void selfCopy(T& x) {
   auto* p = &x;
   x = *p;
 }
+
+template <typename Source>
+concept HasMemberGetPointer = requires(Source&& source) {
+  std::forward<Source>(source).get_pointer();
+};
 
 // value_only_result<V>: copyable when V is, movable
 static_assert(std::is_copy_constructible_v<value_only_result<int>>);
@@ -120,6 +129,40 @@ TEST(ValueOnlyResult, ofVoid) {
 
     EXPECT_TRUE(result<void>(r3).has_value()); // explicit conversion to result
   }
+}
+
+TEST(ValueOnlyResult, getPointer) {
+  {
+    value_only_result<int> value{7};
+    EXPECT_EQ(&value.value_or_throw(), value.get_pointer());
+    *value.get_pointer() = 9;
+    EXPECT_EQ(9, value.value_or_throw());
+
+    EXPECT_EQ(
+        &std::as_const(value).value_or_throw(),
+        std::as_const(value).get_pointer());
+    static_assert(requires(const value_only_result<int>& source) {
+      { source.get_pointer() } -> std::same_as<const int*>;
+    });
+  }
+
+  static_assert(HasMemberGetPointer<value_only_result<int>&>);
+  static_assert(!HasMemberGetPointer<value_only_result<int>&&>);
+  static_assert(!HasMemberGetPointer<value_only_result<void>&>);
+  static_assert(!HasMemberGetPointer<value_only_result<int&&>&>);
+}
+
+TEST(ValueOnlyResult, getPointerReference) {
+  int value = 7;
+  value_only_result<int&> ref{std::ref(value)};
+  EXPECT_EQ(&value, ref.get_pointer());
+  *ref.get_pointer() = 9;
+  EXPECT_EQ(9, value);
+
+  EXPECT_EQ(&value, std::as_const(ref).get_pointer());
+  static_assert(requires(const value_only_result<int&>& source) {
+    { source.get_pointer() } -> std::same_as<const int*>;
+  });
 }
 
 RESULT_CO_TEST(ValueOnlyResult, CTAD) {

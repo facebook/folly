@@ -16,6 +16,10 @@
 
 #include <gtest/gtest.h>
 
+#include <concepts>
+#include <functional>
+#include <utility>
+
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Traits.h>
 #include <folly/coro/safe/NowTask.h>
@@ -37,6 +41,11 @@ using namespace folly::detail;
 
 class MyError : public std::runtime_error {
   using std::runtime_error::runtime_error;
+};
+
+template <typename Source>
+concept HasMemberGetPointer = requires(Source&& source) {
+  std::forward<Source>(source).get_pointer();
 };
 
 // Type that always throws on move, for testing exception handling.
@@ -290,6 +299,57 @@ TEST(Result, resultOfVoid) {
     result<ConvertToResultVoid> convFail = ConvertToResultVoid{.fail_ = true};
     result<void> fail{convFail};
     ASSERT_EQ(std::string("failed"), get_exception<MyError>(fail)->what());
+  }
+}
+
+TEST(Result, getPointer) {
+  {
+    result<int> value{7};
+    EXPECT_EQ(&value.value_or_throw(), value.get_pointer());
+    *value.get_pointer() = 9;
+    EXPECT_EQ(9, value.value_or_throw());
+
+    EXPECT_EQ(
+        &std::as_const(value).value_or_throw(),
+        std::as_const(value).get_pointer());
+    static_assert(requires(const result<int>& source) {
+      { source.get_pointer() } -> std::same_as<const int*>;
+    });
+  }
+
+  {
+    result<int> error{error_or_stopped{MyError{"error"}}};
+    EXPECT_EQ(nullptr, error.get_pointer());
+  }
+
+  {
+    result<int> stopped{stopped_result};
+    EXPECT_EQ(nullptr, stopped.get_pointer());
+  }
+
+  static_assert(HasMemberGetPointer<result<int>&>);
+  static_assert(!HasMemberGetPointer<result<int>&&>);
+  static_assert(!HasMemberGetPointer<result<void>&>);
+  static_assert(!HasMemberGetPointer<result<int&&>&>);
+}
+
+TEST(Result, getPointerReference) {
+  {
+    int value = 7;
+    result<int&> ref{std::ref(value)};
+    EXPECT_EQ(&value, ref.get_pointer());
+    *ref.get_pointer() = 9;
+    EXPECT_EQ(9, value);
+
+    EXPECT_EQ(&value, std::as_const(ref).get_pointer());
+    static_assert(requires(const result<int&>& source) {
+      { source.get_pointer() } -> std::same_as<const int*>;
+    });
+  }
+
+  {
+    result<int&> error{error_or_stopped{MyError{"error"}}};
+    EXPECT_EQ(nullptr, error.get_pointer());
   }
 }
 

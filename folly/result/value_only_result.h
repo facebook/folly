@@ -27,6 +27,8 @@
 /// This API is a partial mirror of `result<T>`, so comments here are minimal
 /// to reduce copy-pasta. The main differences are:
 ///   - It is statically guaranteed to be in the `has_value() == true` state.
+///   - Provides `get_pointer()`, which always returns the value pointer for
+///     non-`void`, non-`T&&` results.
 ///   - Provides `value_only()`, equivalent to `value_or_throw()`, for those
 ///     scenarios where you wish to assert you have a `value_only_result`.
 ///   - Omits some APIs (for now) -- see "Potential extensions"
@@ -346,6 +348,26 @@ class [[nodiscard]]
   {
     return std::move(this->value_).get();
   }
+
+  /// Pointer to the contained value.
+  ///
+  /// This mirrors `result<T>::get_pointer()` for generic code.  It never
+  /// returns `nullptr`, since `value_only_result` is always value-state.
+  /// Rvalue overloads are deleted to avoid pointers into temporaries or
+  /// single-use rvalue references.
+  [[nodiscard]] auto get_pointer() const& noexcept
+    requires(!std::is_rvalue_reference_v<T>)
+  {
+    return std::addressof(this->value_or_throw());
+  }
+
+  [[nodiscard]] auto get_pointer() & noexcept
+    requires(!std::is_rvalue_reference_v<T>)
+  {
+    return std::addressof(this->value_or_throw());
+  }
+
+  void get_pointer() && = delete;
 
   explicit operator result<T>() && noexcept { // T is nothrow-movable
     return result<T>{std::move(*this).value_or_throw()};

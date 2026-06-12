@@ -943,6 +943,20 @@ result final : public detail::result_crtp<result<T>, T> {
     return std::move(this->value_).get();
   }
 
+  [[nodiscard]] auto get_pointer() const& noexcept
+    requires(!std::is_rvalue_reference_v<T>)
+  {
+    return this->has_value() ? std::addressof(this->value_or_throw()) : nullptr;
+  }
+
+  [[nodiscard]] auto get_pointer() & noexcept
+    requires(!std::is_rvalue_reference_v<T>)
+  {
+    return this->has_value() ? std::addressof(this->value_or_throw()) : nullptr;
+  }
+
+  void get_pointer() && = delete;
+
   /// PRIVATE: See comments in the base class.
   explicit result(typename base::has_value_sigil_t s) noexcept : base{s} {}
   result(typename base::has_value_sigil_t s, result*& ptr) noexcept : base{s} {

@@ -144,8 +144,8 @@ A few reasons, in order of importance:
   - **Better API**: As a clean-slate design for coroutine plumbing, `result`
     gets API enhancements that are prohibitive to make in `Try`:
     * Implicitly-throwing `value()` was renamed to `value_or_throw()`, and
-      operators `*` / `->` were omitted. This encourages explicit, non-throwing
-      error handling and/or `or_unwind` usage.
+      operators `*` / `->` were omitted. This encourages explicit value
+      branching via `get_pointer()` and propagation via `or_unwind`.
     * `error_or_stopped()` + `has_stopped()` instead of `exception()` encourages
       [C++26-aligned](https://wg21.link/P2300) separation of "stopped" and
       "error" error handling.
@@ -245,7 +245,10 @@ This choice was made because this sort of code is common:
 
 ```cpp
 const auto& r = obj.foo();  // returns `result<V&>`
-auto& v = r.value_or_throw();  // Without const propagation: Bug! `v` is mutable
+// Buggy without const propagation: `v` would be `V*`
+if (auto* v = r.get_pointer()) {
+  // ...
+}
 ```
 
 If `foo()` returns `result<V&>`, the user may expect `r` to be deeply const.
