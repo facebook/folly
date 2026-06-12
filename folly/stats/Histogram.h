@@ -451,15 +451,13 @@ class Histogram {
   };
 
  private:
-  template <typename S, typename = std::enable_if_t<std::is_integral<S>::value>>
-  static constexpr std::make_unsigned_t<S> to_unsigned(S s) {
-    return static_cast<std::make_unsigned_t<S>>(s);
-  }
-  template <
-      typename S,
-      typename = std::enable_if_t<!std::is_integral<S>::value>>
-  static constexpr S to_unsigned(S s) {
-    return s;
+  template <typename S>
+  static constexpr auto to_unsigned(S s) {
+    if constexpr (std::is_integral_v<S>) {
+      return static_cast<std::make_unsigned_t<S>>(s);
+    } else {
+      return s;
+    }
   }
 
   detail::HistogramBuckets<ValueType, Bucket> buckets_;
