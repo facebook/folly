@@ -211,6 +211,39 @@ TEST(Dynamic, ObjectBasics) {
   EXPECT_EQ(mergeObj1, combinedPreferObj1);
 }
 
+TEST(Dynamic, ObjectEraseIntoMovesKeyAndValueAfterExtraction) {
+  dynamic obj = dynamic::object("a", "one")("b", "two")("c", "three");
+  std::vector<std::pair<std::string, std::string>> drained;
+
+  // eraseInto extracts the entry, makes the next iterator, and only then
+  // exposes the mutable key.
+  for (auto it = obj.items().begin(); it != obj.items().end();) {
+    it = obj.eraseInto(it, [&](dynamic&& key, dynamic&& value) {
+      drained.emplace_back(
+          std::move(key).getString(), std::move(value).getString());
+    });
+  }
+
+  std::sort(drained.begin(), drained.end());
+  EXPECT_TRUE(obj.empty());
+  EXPECT_EQ(
+      drained,
+      (std::vector<std::pair<std::string, std::string>>{
+          {"a", "one"}, {"b", "two"}, {"c", "three"}}));
+}
+
+TEST(Dynamic, ObjectEraseIntoEmptyObjectIsNoOp) {
+  dynamic obj = dynamic::object();
+  bool erased = false;
+
+  for (auto it = obj.items().begin(); it != obj.items().end();) {
+    it = obj.eraseInto(it, [&](dynamic&&, dynamic&&) { erased = true; });
+  }
+
+  EXPECT_FALSE(erased);
+  EXPECT_TRUE(obj.empty());
+}
+
 TEST(Dynamic, ArrayInsertErase) {
   auto arr = dynamic::array(1, 2, 3, 4, 5, 6);
 

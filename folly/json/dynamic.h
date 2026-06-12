@@ -1068,6 +1068,34 @@ struct dynamic {
   item_iterator erase(const_item_iterator first, const_item_iterator last);
 
   /**
+   * Erase one object item and move its key and value into a callback.
+   *
+   * Use this when transforming an object by repeatedly removing entries:
+   *
+   *   for (auto it = obj.items().begin(); it != obj.items().end();) {
+   *     it = obj.eraseInto(it, [&](dynamic&& key, dynamic&& value) {
+   *       out.insert(std::move(key), std::move(value));
+   *     });
+   *   }
+   *
+   * Invalidates iterators to the element being erased.
+   *
+   * Returns a new iterator to the first element beyond the removed item, or
+   * end() if there is none. The callback is invoked as
+   * beforeDestroy(dynamic&& key, dynamic&& value).
+   *
+   * The entry is extracted before the callback runs. eraseInto makes the next
+   * iterator, removes the item from the backing table, and only then exposes a
+   * mutable key and value. This avoids mutating a resident table key through
+   * items().
+   *
+   * @methodset Object
+   */
+  template <typename BeforeDestroy>
+  item_iterator eraseInto(
+      const_item_iterator it, BeforeDestroy&& beforeDestroy);
+
+  /**
    * Append elements to an array.
    *
    * If this is not an array, throws TypeError.

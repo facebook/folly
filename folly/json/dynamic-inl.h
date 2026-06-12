@@ -989,6 +989,14 @@ inline dynamic::item_iterator dynamic::erase(
   return item_iterator(get<ObjectImpl>().erase(first.base(), last.base()));
 }
 
+template <typename BeforeDestroy>
+inline dynamic::item_iterator dynamic::eraseInto(
+    const_item_iterator it, BeforeDestroy&& beforeDestroy) {
+  return item_iterator(
+      get<ObjectImpl>().eraseInto(
+          it.base(), std::forward<BeforeDestroy>(beforeDestroy)));
+}
+
 inline void dynamic::resize(std::size_t sz, dynamic const& c) {
   auto& arr = get<Array>();
   arr.resize(sz, c);
