@@ -212,6 +212,15 @@ void IOBuf::SharedInfo::releaseStorage(
 
 void* IOBuf::operator new(size_t size) {
   DCHECK_GE(size, sizeof(IOBuf));
+  // Fast path: virtually all callers allocate a plain IOBuf, so size equals
+  // sizeof(IOBuf) and the additionalBuffer is 0. Passing a literal 0 (via the
+  // default argument) lets the compiler statically eliminate the
+  // goodMallocSize() branch and the storedSize truncation check inside the
+  // always-inlined allocateStorage().
+  if (FOLLY_LIKELY(size == sizeof(IOBuf))) {
+    auto [storage, mallocSize] = allocateStorage<HeapStorage>();
+    return &storage->buf;
+  }
   auto [storage, mallocSize] =
       allocateStorage<HeapStorage>(nullptr, size - sizeof(IOBuf));
   return &storage->buf;
