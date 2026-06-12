@@ -1368,7 +1368,6 @@ non_fbcode_target(
     ],
     exported_deps = [
         "fbsource//third-party/boost:boost",
-        "fbsource//third-party/double-conversion:double-conversion",
         "fbsource//third-party/glog:glog",
         "fbsource//xplat/folly:atomic_hash_map",
         "fbsource//xplat/folly:atomic_linked_list",
@@ -1603,7 +1602,6 @@ non_fbcode_target(
         "fbsource//third-party/boost:boost",
         "fbsource//third-party/boost:boost_filesystem",
         "fbsource//third-party/boost:boost_system",
-        "fbsource//third-party/double-conversion:double-conversion",
         "fbsource//third-party/glog:glog",
         "fbsource//xplat/folly:atomic_hash_map",
         "fbsource//xplat/folly:atomic_linked_list",
@@ -1796,7 +1794,6 @@ non_fbcode_target(
         "fbsource//third-party/boost:boost",
         "fbsource//third-party/boost:boost_filesystem",
         "fbsource//third-party/boost:boost_system",
-        "fbsource//third-party/double-conversion:double-conversion",
         "fbsource//third-party/glog:glog",
         "fbsource//xplat/folly:atomic_hash_map",
         "fbsource//xplat/folly:atomic_linked_list",
@@ -2733,7 +2730,6 @@ fb_dirsync_cpp_library(
         "ovr_config//os:linux": ["//folly/debugging/symbolizer:symbolizer"],
     }) + select({
         "DEFAULT": [
-            "fbsource//third-party/double-conversion:double-conversion",
             ":c_portability",
             ":conv",
             ":fbstring",
