@@ -192,8 +192,9 @@ class TaskPromiseCrtpBase
     return final_suspend();
   }
 
-  auto yield_value(co_result<StorageType>&& result) {
-    result_ = std::move(result.result());
+  template <typename ContainerRef>
+  auto yield_value(co_result<StorageType, ContainerRef> result) {
+    std::move(result).assignTo(result_);
     return final_suspend();
   }
 
@@ -268,8 +269,9 @@ class TaskPromise<void> final
 
   using TaskPromiseCrtpBase<TaskPromise<void>, void>::yield_value;
 
-  auto yield_value(co_result<Unit>&& result) {
-    this->result_ = result.result();
+  template <typename ContainerRef>
+  auto yield_value(co_result<Unit, ContainerRef> result) {
+    std::move(result).assignTo(this->result_);
     return final_suspend();
   }
 };

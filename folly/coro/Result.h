@@ -20,49 +20,191 @@
 #include <type_traits>
 
 #include <folly/Try.h>
+#include <folly/Utility.h>
 #include <folly/coro/Error.h> // compat: used to be the same header
+#include <folly/lang/MustUseImmediately.h>
 #include <folly/result/try.h>
 #include <folly/result/value_only_result.h>
 
 namespace folly::coro {
 
+namespace detail {
+
+template <typename Promise, typename T>
+class TaskPromiseCrtpBase;
+
 template <typename T>
-class co_result final {
+class TaskPromise;
+
+template <typename Reference, typename Value, bool RequiresCleanup>
+class AsyncGeneratorPromise;
+
+} // namespace detail
+
+template <typename T, typename ContainerRef = Try<T>&&>
+  requires(
+      std::is_same_v<std::remove_cvref_t<ContainerRef>, Try<T>>
+#if FOLLY_HAS_RESULT
+      || std::is_same_v<std::remove_cvref_t<ContainerRef>, folly::result<T>> ||
+      std::is_same_v<
+          std::remove_cvref_t<ContainerRef>,
+          folly::value_only_result<T>>
+#endif
+      )
+class co_result final
+    : public folly::ext::must_use_immediately_crtp<co_result<T, ContainerRef>> {
+  using Container = std::remove_cvref_t<ContainerRef>;
+
  public:
-  explicit co_result(Try<T>&& result) noexcept(
-      std::is_nothrow_move_constructible<T>::value)
-      : result_(std::move(result)) {
-    assert(!result_.hasException() || result_.exception());
+  explicit co_result(ContainerRef result) noexcept
+      : result_(static_cast<ContainerRef>(result)) {
+    if constexpr (std::is_same_v<Container, Try<T>>) {
+      assert(!result_.hasException() || result_.exception());
+    }
   }
 
-#if FOLLY_HAS_RESULT
-  // Covered in `ValueOrErrorTest.cpp`, unlike the rest of this file, which is
-  // covered in `TaskTest.cpp`.
-  template <std::same_as<folly::result<T>> U> // no implicit ctors for `result`
-  explicit co_result(U result) noexcept(
-      std::is_nothrow_move_constructible<T>::value)
-      : co_result(result_to_try(std::move(result))) {}
+ private:
+  // Only for `assignTo()`
+  template <typename Promise, typename U>
+  friend class detail::TaskPromiseCrtpBase;
 
-  // value_only_result always has a value, so conversion to Try is simple.
-  template <std::same_as<folly::value_only_result<T>> U>
-  explicit co_result(U valueOnlyResult) noexcept(
-      std::is_nothrow_move_constructible<T>::value)
-      : result_(std::move(valueOnlyResult).value_or_throw()) {}
-#endif
+  // Only for `assignTo()` in `Task<void>`
+  template <typename U>
+  friend class detail::TaskPromise;
 
-  const Try<T>& result() const { return result_; }
+  // Only for `consumeIntoGenerator()`
+  template <typename Reference, typename Value, bool RequiresCleanup>
+  friend class detail::AsyncGeneratorPromise;
 
-  Try<T>& result() { return result_; }
+ public:
+  class unsafe_mover_t {
+   public:
+    explicit unsafe_mover_t(ContainerRef result) noexcept
+        : result_(static_cast<ContainerRef>(result)) {}
+
+    co_result operator()() && noexcept {
+      return co_result(static_cast<ContainerRef>(result_));
+    }
+
+   private:
+    ContainerRef result_;
+  };
+
+  static unsafe_mover_t unsafe_mover(
+      folly::ext::must_use_immediately_private_t /*unused*/,
+      co_result&& me) noexcept {
+    return unsafe_mover_t(static_cast<ContainerRef>(me.result_));
+  }
 
  private:
-  Try<T> result_;
+  void assignTo(Try<T>& out) && {
+    if constexpr (std::is_same_v<Container, Try<T>>) {
+      out = static_cast<ContainerRef>(result_);
+    } else {
+#if FOLLY_HAS_RESULT
+      if constexpr (std::is_same_v<Container, folly::result<T>>) {
+        out = result_to_try(static_cast<ContainerRef>(result_));
+      } else {
+        static_assert(std::is_same_v<Container, folly::value_only_result<T>>);
+        // `value_only_result` cannot carry errors.
+        if constexpr (std::is_void_v<T>) {
+          out.emplace();
+        } else {
+          out.emplace(static_cast<ContainerRef>(result_).value_or_throw());
+        }
+      }
+#endif
+    }
+  }
+
+  // Legacy `Unit`-as-void bridge for `Task<void>`
+  void assignTo(Try<void>& out) &&
+    requires std::is_same_v<T, Unit>
+  {
+    if constexpr (std::is_same_v<Container, Try<Unit>>) {
+      if (result_.hasException()) {
+        out.emplaceException(static_cast<ContainerRef>(result_).exception());
+      } else {
+        out.emplace();
+      }
+    } else {
+#if FOLLY_HAS_RESULT
+      if constexpr (std::is_same_v<Container, folly::result<Unit>>) {
+        if (result_.has_value()) {
+          out.emplace();
+        } else {
+          out.emplaceException(
+              folly::copy(static_cast<ContainerRef>(result_).error_or_stopped())
+                  .get_legacy_error_or_cancellation_slow(
+                      folly::detail::result_private_t{}));
+        }
+      } else {
+        static_assert(
+            std::is_same_v<Container, folly::value_only_result<Unit>>);
+        out.emplace();
+      }
+#endif
+    }
+  }
+
+  // Decode the input result object without materializing an owning Try<T>.
+  template <typename ValueFn, typename ExceptionFn, typename EmptyTryFn>
+  decltype(auto) consumeIntoGenerator(
+      ValueFn&& valueFn,
+      ExceptionFn&& exceptionFn,
+      EmptyTryFn&& emptyTryFn) && {
+    if constexpr (std::is_same_v<Container, Try<T>>) {
+      if (result_.hasValue()) {
+        return static_cast<ValueFn&&>(valueFn)(
+            static_cast<ContainerRef>(result_).value());
+      } else if (result_.hasException()) {
+        return static_cast<ExceptionFn&&>(exceptionFn)(
+            static_cast<ContainerRef>(result_).exception());
+      } else {
+        return static_cast<EmptyTryFn&&>(emptyTryFn)();
+      }
+#if FOLLY_HAS_RESULT
+    } else if constexpr (std::is_same_v<Container, folly::result<T>>) {
+      if (result_.has_value()) {
+        return static_cast<ValueFn&&>(valueFn)(
+            static_cast<ContainerRef>(result_).value_or_throw());
+      } else {
+        return static_cast<ExceptionFn&&>(exceptionFn)(
+            folly::copy(static_cast<ContainerRef>(result_).error_or_stopped())
+                .get_legacy_error_or_cancellation_slow(
+                    folly::detail::result_private_t{}));
+      }
+    } else {
+      static_assert(std::is_same_v<Container, folly::value_only_result<T>>);
+      return static_cast<ValueFn&&>(valueFn)(
+          static_cast<ContainerRef>(result_).value_or_throw());
+#endif
+    }
+  }
+
+  ContainerRef result_;
 };
 
+template <typename T>
+co_result(Try<T>&&) -> co_result<T, Try<T>&&>;
+template <typename T>
+co_result(Try<T>&) -> co_result<T, const Try<T>&>;
+template <typename T>
+co_result(const Try<T>&) -> co_result<T, const Try<T>&>;
 #if FOLLY_HAS_RESULT
 template <typename T>
-co_result(result<T>) -> co_result<T>;
+co_result(result<T>&&) -> co_result<T, result<T>&&>;
 template <typename T>
-co_result(value_only_result<T>) -> co_result<T>;
+co_result(result<T>&) -> co_result<T, const result<T>&>;
+template <typename T>
+co_result(const result<T>&) -> co_result<T, const result<T>&>;
+template <typename T>
+co_result(value_only_result<T>&&) -> co_result<T, value_only_result<T>&&>;
+template <typename T>
+co_result(value_only_result<T>&) -> co_result<T, const value_only_result<T>&>;
+template <typename T>
+co_result(const value_only_result<T>&)
+    -> co_result<T, const value_only_result<T>&>;
 #endif
 
 } // namespace folly::coro

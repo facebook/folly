@@ -19,6 +19,7 @@
 
 #include <folly/coro/Baton.h>
 #include <folly/coro/BlockingWait.h>
+#include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Invoke.h>
 #include <folly/coro/Mutex.h>
 #include <folly/coro/SharedMutex.h>
@@ -390,6 +391,50 @@ TEST_F(TaskTest, FutureRoundtrip) {
                             .semi()));
       }()),
       std::runtime_error);
+}
+
+CO_TEST_F(TaskTest, CoResultUnitCompletesVoidTask) {
+  { // `Try<Unit>` value
+    auto res = co_await co_awaitTry([]() -> folly::coro::Task<void> {
+      co_yield folly::coro::co_result(folly::Try<folly::Unit>{folly::unit});
+    }());
+    EXPECT_TRUE(res.hasValue());
+  }
+  { // `Try<Unit>` error
+    auto res = co_await co_awaitTry([]() -> folly::coro::Task<void> {
+      co_yield folly::coro::co_result(
+          folly::Try<folly::Unit>{
+              folly::make_exception_wrapper<std::runtime_error>("try")});
+    }());
+    auto* ex = res.tryGetExceptionObject<std::runtime_error>();
+    CO_ASSERT_NE(nullptr, ex);
+    EXPECT_STREQ("try", ex->what());
+  }
+#if FOLLY_HAS_RESULT
+  { // `result<Unit>` value
+    auto res = co_await co_awaitTry([]() -> folly::coro::Task<void> {
+      co_yield folly::coro::co_result(folly::result<folly::Unit>{folly::unit});
+    }());
+    EXPECT_TRUE(res.hasValue());
+  }
+  { // `result<Unit>` error
+    auto res = co_await co_awaitTry([]() -> folly::coro::Task<void> {
+      co_yield folly::coro::co_result(
+          folly::result<folly::Unit>{
+              folly::error_or_stopped{std::runtime_error{"result"}}});
+    }());
+    auto* ex = res.tryGetExceptionObject<std::runtime_error>();
+    CO_ASSERT_NE(nullptr, ex);
+    EXPECT_STREQ("result", ex->what());
+  }
+  { // `value_only_result<Unit>` value
+    auto res = co_await co_awaitTry([]() -> folly::coro::Task<void> {
+      co_yield folly::coro::co_result(
+          folly::value_only_result<folly::Unit>{folly::unit});
+    }());
+    EXPECT_TRUE(res.hasValue());
+  }
+#endif
 }
 
 namespace {

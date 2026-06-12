@@ -689,34 +689,42 @@ class AsyncGeneratorPromise final
     return {};
   }
 
-  YieldAwaiter yield_value(co_result<Value>&& res) noexcept {
-    if (res.result().hasValue()) {
-      return yield_value(std::move(res.result().value()));
-    } else if (res.result().hasException()) {
-      return yield_value(co_error(res.result().exception()));
-    } else {
-      return_void();
-      return {};
-    }
+  template <typename ContainerRef>
+  YieldAwaiter yield_value(co_result<Value, ContainerRef> res) {
+    return std::move(res).consumeIntoGenerator(
+        [this](auto&& value) {
+          return this->yield_value(static_cast<decltype(value)&&>(value));
+        },
+        [this](exception_wrapper ex) {
+          return this->yield_value(co_error(std::move(ex)));
+        },
+        [this] {
+          this->return_void();
+          return YieldAwaiter{};
+        });
   }
 
+  template <typename ContainerRef>
   YieldAwaiter yield_value(
-      co_result<typename AsyncGenerator<Reference, Value, RequiresCleanup>::
-                    NextResult>&& res) noexcept {
-    DCHECK(
-        res.result().hasValue() ||
-        (res.result().hasException() && res.result().exception()));
-    if (res.result().hasException()) {
-      return yield_value(co_error(res.result().exception()));
-    } else if (res.result().hasValue()) {
-      if (res.result()->has_value()) {
-        return yield_value(std::move(res.result()->value()));
-      } else {
-        return_void();
-        return {};
-      }
-    }
-    return yield_value(co_error(UsingUninitializedTry{}));
+      co_result<
+          typename AsyncGenerator<Reference, Value, RequiresCleanup>::
+              NextResult,
+          ContainerRef> res) {
+    return std::move(res).consumeIntoGenerator(
+        [this](auto&& result) {
+          if (result.has_value()) {
+            return this->yield_value(std::move(result.value()));
+          } else {
+            this->return_void();
+            return YieldAwaiter{};
+          }
+        },
+        [this](exception_wrapper ex) {
+          return this->yield_value(co_error(std::move(ex)));
+        },
+        [this] {
+          return this->yield_value(co_error(UsingUninitializedTry{}));
+        });
   }
 
   using BasePromise<AsyncGeneratorPromiseState>::await_transform;

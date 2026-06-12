@@ -59,7 +59,7 @@
 ///   - Only add them in your wrapper.
 ///   - Add them via `UnsafeTaskWrapperCrtp` deriving from `TaskWrapperCrtp`.
 ///   - Add boolean flags to the configuration struct, and gate the methods via
-///     `enable_if`.  NB: You probably cannot gate these on `Derived` **not**
+///     `requires`.  NB: You probably cannot gate these on `Derived` **not**
 ///     being must-use-immediately, since CRTP bases see an incomplete type.
 ///
 /// ### WARNING: Beware of object slicing in "unwrapping" APIs
@@ -199,10 +199,26 @@ class TaskPromiseWrapperBase {
         folly::ext::must_use_immediately_unsafe_mover(std::move(what))());
   }
 
-  auto yield_value(auto&& v)
-    requires requires { promise_.yield_value(std::forward<decltype(v)>(v)); }
+  template <typename Value>
+  auto yield_value(Value&& v)
+    requires(
+        !folly::ext::must_use_immediately_v<Value> &&
+        requires { promise_.yield_value(std::forward<Value>(v)); })
   {
-    return promise_.yield_value(std::forward<decltype(v)>(v));
+    return promise_.yield_value(std::forward<Value>(v));
+  }
+
+  template <typename Value>
+  auto yield_value(Value v)
+    requires(
+        folly::ext::must_use_immediately_v<Value> &&
+        requires {
+          promise_.yield_value(
+              folly::ext::must_use_immediately_unsafe_mover(std::move(v))());
+        })
+  {
+    return promise_.yield_value(
+        folly::ext::must_use_immediately_unsafe_mover(std::move(v))());
   }
 
   void unhandled_exception() noexcept { promise_.unhandled_exception(); }
