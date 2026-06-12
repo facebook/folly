@@ -72,7 +72,6 @@ CLANG_CXX_FLAGS = [
     "-Werror",
     "-Wno-unused-variable",
     "-Wno-sign-compare",
-    "-Wno-return-type",
     "-Wno-global-constructors",
     "-Wno-missing-prototypes",
     "-Wno-nullability-completeness",
