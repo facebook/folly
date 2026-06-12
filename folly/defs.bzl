@@ -70,7 +70,6 @@ CLANG_CXX_FLAGS = [
     "-fexceptions",
     "-Wall",
     "-Werror",
-    "-Wno-unused-variable",
     "-Wno-sign-compare",
     "-Wno-global-constructors",
     "-Wno-missing-prototypes",
