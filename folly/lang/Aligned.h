@@ -37,36 +37,31 @@ class aligned {
   aligned() = default;
   aligned(aligned const&) = default;
   aligned(aligned&&) = default;
-  template <
-      typename S = T,
-      std::enable_if_t<std::is_copy_constructible<S>::value, int> = 0>
+  template <typename S = T>
+    requires std::is_copy_constructible<S>::value
   aligned(T const& value) noexcept(std::is_nothrow_copy_constructible<T>::value)
       : value_(value) {}
-  template <
-      typename S = T,
-      std::enable_if_t<std::is_move_constructible<S>::value, int> = 0>
+  template <typename S = T>
+    requires std::is_move_constructible<S>::value
   aligned(T&& value) noexcept(std::is_nothrow_move_constructible<T>::value)
       : value_(static_cast<T&&>(value)) {}
-  template <
-      typename... A,
-      std::enable_if_t<std::is_constructible<T, A...>::value, int> = 0>
+  template <typename... A>
+    requires std::is_constructible<T, A...>::value
   explicit aligned(std::in_place_t, A&&... a) noexcept(
       std::is_nothrow_constructible<T, A...>::value)
       : value_(static_cast<A&&>(a)...) {}
 
   aligned& operator=(aligned const&) = default;
   aligned& operator=(aligned&&) = default;
-  template <
-      typename S = T,
-      std::enable_if_t<std::is_copy_assignable<S>::value, int> = 0>
+  template <typename S = T>
+    requires std::is_copy_assignable<S>::value
   aligned& operator=(T const& value) noexcept(
       std::is_nothrow_copy_assignable<T>::value) {
     value_ = value;
     return *this;
   }
-  template <
-      typename S = T,
-      std::enable_if_t<std::is_move_assignable<S>::value, int> = 0>
+  template <typename S = T>
+    requires std::is_move_assignable<S>::value
   aligned& operator=(T&& value) noexcept(
       std::is_nothrow_move_assignable<T>::value) {
     value_ = std::move(value);
