@@ -80,6 +80,7 @@ CLANG_CXX_FLAGS = [
     "-fexceptions",
     "-Wall",
     "-Werror",
+    "-Wno-global-constructors",
     "-Wno-missing-prototypes",
     "-Wno-nullability-completeness",
     "-Wno-undef",
