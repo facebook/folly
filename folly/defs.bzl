@@ -27,12 +27,22 @@ def is_folly_mobile_flag():
     return native.read_config("cpp_flags", "preprocessing", "") == "DFOLLY_MOBILE"
 
 def cpp_flags():
-    flags = [
-        "-DFOLLY_HAVE_LIBJEMALLOC=0",
-        "-DFOLLY_HAVE_PREADV=0",
-        "-DFOLLY_HAVE_PWRITEV=0",
-        "-DFOLLY_HAVE_TFO=0",
-    ]
+    # In the fbcode/server configuration (project/folly:mobile[disabled]),
+    # xplat/folly must behave like fbcode//folly, which exports no folly feature
+    # overrides and relies on the autoconf folly-config.h. Forcing the portable
+    # (mobile) feature set there flips #if branches in the shared, dirsynced
+    # headers -- e.g. disabling F14 vector intrinsics and changing jemalloc/type
+    # layouts -- which breaks fbcode targets built against xplat/folly. So drop
+    # these overrides when mobile is disabled and let autoconf match fbcode.
+    flags = select({
+        "DEFAULT": [
+            "-DFOLLY_HAVE_LIBJEMALLOC=0",
+            "-DFOLLY_HAVE_PREADV=0",
+            "-DFOLLY_HAVE_PWRITEV=0",
+            "-DFOLLY_HAVE_TFO=0",
+        ],
+        "ovr_config//project/folly:mobile[disabled]": [],
+    })
 
     if is_folly_mobile_flag():
         flags += select({
