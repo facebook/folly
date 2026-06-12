@@ -248,25 +248,20 @@ AtomicNotificationQueue<Task>::tryPush(Task&& task, uint32_t maxSize) {
 }
 
 namespace detail {
-template <
-    typename Task,
-    typename Consumer,
-    typename = std::enable_if_t<std::is_same<
-        invoke_result_t<Consumer, Task&&>,
-        AtomicNotificationQueueTaskStatus>::value>>
+template <typename Task, typename Consumer>
+  requires std::is_same<
+      invoke_result_t<Consumer, Task&&>,
+      AtomicNotificationQueueTaskStatus>::value
 AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
     Consumer&& consumer, Task&& task, std::shared_ptr<RequestContext>&& rctx) {
   RequestContextScopeGuard rcsg(std::move(rctx));
   return consumer(std::forward<Task>(task));
 }
 
-template <
-    typename Task,
-    typename Consumer,
-    typename = std::enable_if_t<std::is_same<
-        invoke_result_t<Consumer, Task&&, std::shared_ptr<RequestContext>&&>,
-        AtomicNotificationQueueTaskStatus>::value>,
-    typename = void>
+template <typename Task, typename Consumer>
+  requires std::is_same<
+      invoke_result_t<Consumer, Task&&, std::shared_ptr<RequestContext>&&>,
+      AtomicNotificationQueueTaskStatus>::value
 AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
     Consumer&& consumer, Task&& task, std::shared_ptr<RequestContext>&& rctx) {
   return consumer(
@@ -274,13 +269,8 @@ AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
       std::forward<std::shared_ptr<RequestContext>>(rctx));
 }
 
-template <
-    typename Task,
-    typename Consumer,
-    typename = std::enable_if_t<
-        std::is_same<invoke_result_t<Consumer, Task&&>, void>::value>,
-    typename = void,
-    typename = void>
+template <typename Task, typename Consumer>
+  requires std::is_same<invoke_result_t<Consumer, Task&&>, void>::value
 AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
     Consumer&& consumer, Task&& task, std::shared_ptr<RequestContext>&& rctx) {
   RequestContextScopeGuard rcsg(std::move(rctx));
@@ -288,15 +278,10 @@ AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
   return AtomicNotificationQueueTaskStatus::CONSUMED;
 }
 
-template <
-    typename Task,
-    typename Consumer,
-    typename = std::enable_if_t<std::is_same<
-        invoke_result_t<Consumer, Task&&, std::shared_ptr<RequestContext>&&>,
-        void>::value>,
-    typename = void,
-    typename = void,
-    typename = void>
+template <typename Task, typename Consumer>
+  requires std::is_same<
+      invoke_result_t<Consumer, Task&&, std::shared_ptr<RequestContext>&&>,
+      void>::value
 AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
     Consumer&& consumer, Task&& task, std::shared_ptr<RequestContext>&& rctx) {
   consumer(
