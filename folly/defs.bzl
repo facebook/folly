@@ -76,7 +76,6 @@ CLANG_CXX_FLAGS = [
     "-Wno-global-constructors",
     "-Wno-missing-prototypes",
     "-Wno-nullability-completeness",
-    "-Wno-c++17-extensions",
     "-Wno-undef",
     "-Wno-unreachable-code",
     "-Wno-deprecated-declarations",
