@@ -439,6 +439,7 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/glog:glog",
         "//folly/detail:memory_idler",
         "//folly/portability:gflags",
+        "//folly/system:thread_id",
     ],
     exported_deps = [
         ":io_executor",

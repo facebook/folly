@@ -20,6 +20,7 @@
 
 #include <folly/detail/MemoryIdler.h>
 #include <folly/portability/GFlags.h>
+#include <folly/system/ThreadId.h>
 
 FOLLY_GFLAGS_DEFINE_bool(
     dynamic_iothreadpoolexecutor,

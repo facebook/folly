@@ -16,9 +16,21 @@
 
 #include <folly/detail/MemoryIdler.h>
 
+#include <chrono>
+
 #include <folly/Benchmark.h>
 
 using namespace folly::detail;
+using namespace std::chrono;
+
+BENCHMARK(getVariationTimeout, iters) {
+  steady_clock::duration idle = seconds(5);
+  for (size_t i = 0; i < iters; ++i) {
+    folly::makeUnpredictable(idle);
+    auto r = MemoryIdler::getVariationTimeout(idle, 0.5f);
+    folly::doNotOptimizeAway(r);
+  }
+}
 
 BENCHMARK(releaseStack, iters) {
   for (size_t i = 0; i < iters; ++i) {

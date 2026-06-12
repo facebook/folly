@@ -154,13 +154,13 @@ folly_add_library(
     folly_portability_pthread
     folly_portability_sys_mman
     folly_portability_unistd
+    folly_random
     folly_scope_guard
     folly_system_pid
+    folly_system_thread_id
   EXPORTED_DEPS
     folly_detail_futex
-    folly_hash_hash
     folly_synchronization_atomic_struct
-    folly_system_thread_id
 )
 
 folly_add_library(

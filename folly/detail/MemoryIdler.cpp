@@ -17,10 +17,12 @@
 #include <folly/detail/MemoryIdler.h>
 
 #include <climits>
+#include <cstdint>
 #include <cstring>
 
 #include <folly/GLog.h>
 #include <folly/Portability.h>
+#include <folly/Random.h>
 #include <folly/ScopeGuard.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/memory/MallctlHelper.h>
@@ -47,6 +49,18 @@ namespace detail {
 
 AtomicStruct<std::chrono::steady_clock::duration>
     MemoryIdler::defaultIdleTimeout(std::chrono::seconds(5));
+
+uint64_t MemoryIdler::getVariationTimeoutCount(
+    uint64_t idleTimeoutCount, float timeoutVariationFrac) {
+  // Add a uniform random correction in [0, idleTimeoutCount * frac]. Scale in
+  // double so the (potentially large) tick count keeps its precision; float
+  // would round counts above 2^24.
+  const double scaledFrac =
+      static_cast<double>(timeoutVariationFrac) * Random::rand32() * 0x1.0p-32;
+  const uint64_t correction =
+      static_cast<uint64_t>(static_cast<double>(idleTimeoutCount) * scaledFrac);
+  return idleTimeoutCount + correction;
+}
 
 bool MemoryIdler::isUnmapUnusedStackAvailable() noexcept {
   // Linux uses an automatic stack expansion mechanism to expand the main thread

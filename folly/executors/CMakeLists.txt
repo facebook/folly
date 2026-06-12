@@ -255,6 +255,7 @@ folly_add_library(
     ${GLOG_LIBRARIES}
     folly_detail_memory_idler
     folly_portability_gflags
+    folly_system_thread_id
   EXPORTED_DEPS
     folly_executors_io_executor
     folly_executors_queue_observer

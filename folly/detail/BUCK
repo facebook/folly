@@ -119,6 +119,7 @@ fb_dirsync_cpp_library(
     deps = [
         "//folly:glog",
         "//folly:portability",
+        "//folly:random",
         "//folly:scope_guard",
         "//folly/concurrency:cache_locality",
         "//folly/memory:mallctl_helper",
@@ -128,12 +129,11 @@ fb_dirsync_cpp_library(
         "//folly/portability:sys_mman",
         "//folly/portability:unistd",
         "//folly/system:pid",
+        "//folly/system:thread_id",
     ],
     exported_deps = [
         ":futex",
-        "//folly/hash:hash",
         "//folly/synchronization:atomic_struct",
-        "//folly/system:thread_id",
     ],
 )
 

@@ -19,11 +19,10 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 
 #include <folly/detail/Futex.h>
-#include <folly/hash/Hash.h>
 #include <folly/synchronization/AtomicStruct.h>
-#include <folly/system/ThreadId.h>
 
 namespace folly {
 namespace detail {
@@ -80,21 +79,8 @@ struct MemoryIdler {
     if (idleTimeout <= IdleTime::zero() || timeoutVariationFrac <= 0) {
       return idleTimeout;
     }
-
-    // hash the pthread_t and the time to get the adjustment
-    // Standard hash func isn't very good, so bit mix the result
-    uint64_t h = folly::hash::twang_mix64(
-        folly::hash::hash_combine(
-            getCurrentThreadID(),
-            std::chrono::system_clock::now().time_since_epoch().count()));
-
-    // multiplying the duration by a floating point doesn't work, grr
-    auto extraFrac = timeoutVariationFrac /
-        static_cast<float>(std::numeric_limits<uint64_t>::max()) *
-        static_cast<float>(h);
-    auto tics =
-        uint64_t(static_cast<float>(idleTimeout.count()) * (1 + extraFrac));
-    return IdleTime(tics);
+    return IdleTime(getVariationTimeoutCount(
+        static_cast<uint64_t>(idleTimeout.count()), timeoutVariationFrac));
   }
 
   /// Equivalent to fut.futexWait(expected, waitMask), but calls
@@ -172,6 +158,11 @@ struct MemoryIdler {
   }
 
  private:
+  // Applies a uniform random variation in [0, timeoutVariationFrac] to a
+  // positive idle timeout expressed in ticks.
+  static uint64_t getVariationTimeoutCount(
+      uint64_t idleTimeoutCount, float timeoutVariationFrac);
+
   template <typename Futex, typename Deadline, typename IdleTime>
   static bool futexWaitPreIdle(
       FutexResult& _ret,
