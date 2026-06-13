@@ -852,6 +852,25 @@ inline void toLowerAscii(std::string& str) {
 }
 
 /**
+ * Convert ascii to uppercase, in-place.
+ *
+ * Leaves all other characters unchanged, including those with the 0x80
+ * bit set.
+ * @param str String to convert
+ * @param length Length of str, in bytes
+ */
+void toUpperAscii(char* str, size_t length);
+
+inline void toUpperAscii(MutableStringPiece str) {
+  toUpperAscii(str.begin(), str.size());
+}
+
+inline void toUpperAscii(std::string& str) {
+  // str[0] is legal also if the string is empty.
+  toUpperAscii(&str[0], str.size());
+}
+
+/**
  * Returns if string contains std::isspace or std::iscntrl characters.
  **/
 inline bool hasSpaceOrCntrlSymbols(folly::StringPiece s) {

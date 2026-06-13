@@ -57,6 +57,17 @@ BENCHMARK(folly_toLowerAscii, iters) {
   }
 }
 
+BENCHMARK(folly_toUpperAscii, iters) {
+  static const size_t kSize = 256;
+  static char input[kSize];
+  for (size_t i = 0; i < kSize; i++) {
+    input[i] = (char)(i & 0xff);
+  }
+  for (auto i = iters; i > 0; i--) {
+    folly::toUpperAscii(input, kSize);
+  }
+}
+
 // A simple benchmark that tests various output sizes for a simple
 // input; the goal is to measure the output buffer resize code cost.
 const size_t kAppendBufSize = 300000;

@@ -1452,9 +1452,37 @@ void testToLowerAscii(Range<const char*> src) {
   char* test = copyWithSameAlignment(testBuf.data(), src.begin(), src.size());
 
   for (size_t i = 0; i < src.size(); i++) {
-    control[i] = tolower(control[i]);
+    // std::tolower agrees with toLowerAscii only for 7-bit inputs; for bytes
+    // with the high bit set, toLowerAscii leaves them unchanged on purpose,
+    // and passing them to std::tolower would be locale-dependent (and is
+    // technically UB on signed-char platforms, where the value after promotion
+    // isn't representable as unsigned char -- C11 §7.4 p1, summarised at
+    // https://en.cppreference.com/w/cpp/string/byte/tolower).
+    auto u8 = uint8_t(control[i]);
+    control[i] = u8 < 0x80 ? char(tolower(u8)) : char(u8);
   }
   toLowerAscii(test, src.size());
+  for (size_t i = 0; i < src.size(); i++) {
+    EXPECT_EQ(control[i], test[i]);
+  }
+}
+
+void testToUpperAscii(Range<const char*> src) {
+  // Allocate extra space so we can make copies that start at the
+  // same alignment (byte, word, quadword, etc) as the source buffer.
+  auto controlBuf = std::vector<char>(src.size() + 7);
+  char* control =
+      copyWithSameAlignment(controlBuf.data(), src.begin(), src.size());
+
+  auto testBuf = std::vector<char>(src.size() + 7);
+  char* test = copyWithSameAlignment(testBuf.data(), src.begin(), src.size());
+
+  for (size_t i = 0; i < src.size(); i++) {
+    // Mirror of testToLowerAscii: high-bit bytes pass through unchanged.
+    auto u8 = uint8_t(control[i]);
+    control[i] = u8 < 0x80 ? char(toupper(u8)) : char(u8);
+  }
+  toUpperAscii(test, src.size());
   for (size_t i = 0; i < src.size(); i++) {
     EXPECT_EQ(control[i], test[i]);
   }
@@ -1487,6 +1515,68 @@ TEST(String, toLowerAsciiUnaligned) {
       testToLowerAscii(Range<const char*>(input + offset, length));
     }
   }
+}
+
+TEST(String, toLowerAsciiOverloads) {
+  std::string s = "Hello, World! \xff\xe1";
+  toLowerAscii(s);
+  EXPECT_EQ("hello, world! \xff\xe1", s);
+
+  std::string buf = "MixedCASE";
+  toLowerAscii(MutableStringPiece(&buf[0], buf.size()));
+  EXPECT_EQ("mixedcase", buf);
+
+  // The inline std::string overload promises &str[0] is legal on an empty
+  // string, and the raw char*/size_t entry point must accept length=0.
+  std::string empty;
+  toLowerAscii(empty);
+  EXPECT_EQ("", empty);
+  char zero[1] = {'X'};
+  toLowerAscii(zero, 0);
+  EXPECT_EQ('X', zero[0]);
+}
+
+TEST(String, toUpperAsciiAligned) {
+  static const size_t kSize = 256;
+  char input[kSize];
+  for (size_t i = 0; i < kSize; i++) {
+    input[i] = (char)(i & 0xff);
+  }
+  testToUpperAscii(Range<const char*>(input, kSize));
+}
+
+TEST(String, toUpperAsciiUnaligned) {
+  static const size_t kSize = 256;
+  char input[kSize];
+  for (size_t i = 0; i < kSize; i++) {
+    input[i] = (char)(i & 0xff);
+  }
+  // Mirrors toLowerAsciiUnaligned: exercise every length/offset pair that
+  // straddles the 32/64-bit alignment boundaries inside toUpperAscii().
+  for (size_t length = 1; length < 23; length++) {
+    for (size_t offset = 0; offset + length <= kSize; offset++) {
+      testToUpperAscii(Range<const char*>(input + offset, length));
+    }
+  }
+}
+
+TEST(String, toUpperAsciiOverloads) {
+  std::string s = "Hello, World! \xff\xe1";
+  toUpperAscii(s);
+  EXPECT_EQ("HELLO, WORLD! \xff\xe1", s);
+
+  std::string buf = "mixedCASE";
+  toUpperAscii(MutableStringPiece(&buf[0], buf.size()));
+  EXPECT_EQ("MIXEDCASE", buf);
+
+  // The inline std::string overload promises &str[0] is legal on an empty
+  // string, and the raw char*/size_t entry point must accept length=0.
+  std::string empty;
+  toUpperAscii(empty);
+  EXPECT_EQ("", empty);
+  char zero[1] = {'x'};
+  toUpperAscii(zero, 0);
+  EXPECT_EQ('x', zero[0]);
 }
 
 TEST(String, whitespace) {

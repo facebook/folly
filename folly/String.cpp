@@ -629,6 +629,43 @@ void toLowerAscii64(uint64_t& c) {
   c += rotated;
 }
 
+void toUpperAscii8(char& c) {
+  // Mirror of toLowerAscii8: the input-rotating trick retuned so the high bit
+  // is set only for 'a'-'z', then we subtract (rather than add) 0x20.
+  auto rotated = uint8_t(c & 0x7f);
+  rotated += 0x05;
+  rotated &= 0x7f;
+  rotated += 0x1a;
+  rotated &= ~c;
+  rotated >>= 2;
+  rotated &= 0x20;
+  c -= char(rotated);
+}
+
+void toUpperAscii32(uint32_t& c) {
+  // Packed version of toUpperAscii8; see toLowerAscii32 for the rationale.
+  uint32_t rotated = c & uint32_t(0x7f7f7f7fUL);
+  rotated += uint32_t(0x05050505UL);
+  rotated &= uint32_t(0x7f7f7f7fUL);
+  rotated += uint32_t(0x1a1a1a1aUL);
+  rotated &= ~c;
+  rotated >>= 2;
+  rotated &= uint32_t(0x20202020UL);
+  c -= rotated;
+}
+
+void toUpperAscii64(uint64_t& c) {
+  // 64-bit version of toUpper32
+  uint64_t rotated = c & uint64_t(0x7f7f7f7f7f7f7f7fULL);
+  rotated += uint64_t(0x0505050505050505ULL);
+  rotated &= uint64_t(0x7f7f7f7f7f7f7f7fULL);
+  rotated += uint64_t(0x1a1a1a1a1a1a1a1aULL);
+  rotated &= ~c;
+  rotated >>= 2;
+  rotated &= uint64_t(0x2020202020202020ULL);
+  c -= rotated;
+}
+
 } // namespace
 
 void toLowerAscii(char* str, size_t length) {
@@ -674,6 +711,53 @@ void toLowerAscii(char* str, size_t length) {
   // Convert any characters remaining after the last 4-byte aligned group
   while (offset < length) {
     toLowerAscii8(str[offset]);
+    offset++;
+  }
+}
+
+void toUpperAscii(char* str, size_t length) {
+  static const size_t kAlignMask64 = 7;
+  static const size_t kAlignMask32 = 3;
+
+  // Convert a character at a time until we reach an address that
+  // is at least 32-bit aligned
+  auto n = (size_t)str;
+  n &= kAlignMask32;
+  n = std::min(n, length);
+  size_t offset = 0;
+  if (n != 0) {
+    n = std::min(4 - n, length);
+    do {
+      toUpperAscii8(str[offset]);
+      offset++;
+    } while (offset < n);
+  }
+
+  n = (size_t)(str + offset);
+  n &= kAlignMask64;
+  if ((n != 0) && (offset + 4 <= length)) {
+    // The next address is 32-bit aligned but not 64-bit aligned.
+    // Convert the next 4 bytes in order to get to the 64-bit aligned
+    // part of the input.
+    toUpperAscii32(*(uint32_t*)(str + offset));
+    offset += 4;
+  }
+
+  // Convert 8 characters at a time
+  while (offset + 8 <= length) {
+    toUpperAscii64(*(uint64_t*)(str + offset));
+    offset += 8;
+  }
+
+  // Convert 4 characters at a time
+  while (offset + 4 <= length) {
+    toUpperAscii32(*(uint32_t*)(str + offset));
+    offset += 4;
+  }
+
+  // Convert any characters remaining after the last 4-byte aligned group
+  while (offset < length) {
+    toUpperAscii8(str[offset]);
     offset++;
   }
 }
