@@ -627,7 +627,7 @@ void signalHandler(int signum, siginfo_t* info, void* uctx) {
 // 54016 is known to cause the signal handler to stack overflow during
 // symbolization of less trivial async stacks. Setting 64KB to have a bit larger
 // and "less" magical threshold.
-constexpr size_t kSmallSigAltStackSize = 65536;
+[[maybe_unused]] constexpr size_t kSmallSigAltStackSize = 65536;
 
 [[maybe_unused]] bool isSmallSigAltStackEnabled() {
 #if FOLLY_APPLE_TVOS
