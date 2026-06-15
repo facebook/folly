@@ -175,8 +175,11 @@ struct Dereferencer<std::pair<F, S>> {
 
 template <typename T, typename It>
 class Transformer
-    : public boost::
-          iterator_adaptor<Transformer<T, It>, It, typename T::value_type> {
+    : public boost::iterator_adaptor<
+          Transformer<T, It>,
+          It,
+          typename T::value_type,
+          std::input_iterator_tag> {
   friend class boost::iterator_core_access;
 
   using ttype = typename T::value_type;
