@@ -278,18 +278,14 @@ class CancellationCallback {
   using VoidFunction = folly::Function<void()>;
 
  public:
-  template <
-      typename Callable,
-      std::enable_if_t<
-          std::is_constructible<VoidFunction, Callable>::value,
-          int> = 0>
-  CancellationCallback(CancellationToken&& ct, Callable&& callable);
-  template <
-      typename Callable,
-      std::enable_if_t<
-          std::is_constructible<VoidFunction, Callable>::value,
-          int> = 0>
-  CancellationCallback(const CancellationToken& ct, Callable&& callable);
+  template <typename Callable>
+    requires std::
+        is_constructible<CancellationCallback::VoidFunction, Callable>::value
+      CancellationCallback(CancellationToken&& ct, Callable&& callable);
+  template <typename Callable>
+    requires std::
+        is_constructible<CancellationCallback::VoidFunction, Callable>::value
+      CancellationCallback(const CancellationToken& ct, Callable&& callable);
 
   /**
    * Deregisters the callback from the CancellationToken.

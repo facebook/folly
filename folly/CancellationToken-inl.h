@@ -248,12 +248,9 @@ inline CancellationSource::CancellationSource(
     detail::CancellationStateSourcePtr&& state) noexcept
     : state_(std::move(state)) {}
 
-template <
-    typename Callable,
-    std::enable_if_t<
-        std::is_constructible<CancellationCallback::VoidFunction, Callable>::
-            value,
-        int>>
+template <typename Callable>
+  requires std::is_constructible<CancellationCallback::VoidFunction, Callable>::
+               value
 inline CancellationCallback::CancellationCallback(
     CancellationToken&& ct, Callable&& callable)
     : next_(nullptr),
@@ -267,12 +264,9 @@ inline CancellationCallback::CancellationCallback(
   }
 }
 
-template <
-    typename Callable,
-    std::enable_if_t<
-        std::is_constructible<CancellationCallback::VoidFunction, Callable>::
-            value,
-        int>>
+template <typename Callable>
+  requires std::is_constructible<CancellationCallback::VoidFunction, Callable>::
+               value
 inline CancellationCallback::CancellationCallback(
     const CancellationToken& ct, Callable&& callable)
     : next_(nullptr),
