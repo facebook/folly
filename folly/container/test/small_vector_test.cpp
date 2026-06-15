@@ -17,6 +17,7 @@
 #include <folly/small_vector.h>
 
 #include <array>
+#include <forward_list>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -1143,6 +1144,31 @@ TEST(smallVector, InputIterator) {
   ASSERT_EQ(smallV.size(), expected.size());
   for (size_t i = 0; i < expected.size(); i++) {
     ASSERT_EQ(smallV[i], expected[i]);
+  }
+}
+
+TEST(smallVector, InsertFromInputIterator) {
+  small_vector<int, 2> v{1, 2, 9};
+  std::istringstream is("3 4 5");
+  v.insert(
+      v.begin() + 2,
+      std::istream_iterator<int>(is),
+      std::istream_iterator<int>());
+  const std::vector<int> expected{1, 2, 3, 4, 5, 9};
+  ASSERT_EQ(v.size(), expected.size());
+  for (size_t i = 0; i < expected.size(); i++) {
+    EXPECT_EQ(v[i], expected[i]);
+  }
+}
+
+TEST(smallVector, InsertFromForwardIterator) {
+  small_vector<int, 2> v{1, 2, 9};
+  const std::forward_list<int> src{3, 4, 5};
+  v.insert(v.begin() + 2, src.begin(), src.end());
+  const std::vector<int> expected{1, 2, 3, 4, 5, 9};
+  ASSERT_EQ(v.size(), expected.size());
+  for (size_t i = 0; i < expected.size(); i++) {
+    EXPECT_EQ(v[i], expected[i]);
   }
 }
 

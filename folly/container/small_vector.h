@@ -1121,7 +1121,21 @@ class small_vector
     }
     using categ = typename std::iterator_traits<It>::iterator_category;
     using it_ref = typename std::iterator_traits<It>::reference;
-    if (std::is_same<categ, std::input_iterator_tag>::value) {
+    if constexpr (std::is_base_of_v<std::bidirectional_iterator_tag, categ>) {
+      auto const distance = std::distance(first, last);
+      auto const offset = pos - begin();
+      auto currentSize = size();
+      assert(distance >= 0);
+      assert(offset >= 0);
+      makeSize(currentSize + distance);
+      detail::small_vector_detail::moveObjectsRightAndCreate(
+          data() + offset,
+          data() + currentSize,
+          data() + currentSize + distance,
+          [&, in = last]() mutable -> it_ref { return *--in; });
+      this->incrementSize(distance);
+      return begin() + offset;
+    } else {
       auto offset = pos - begin();
       while (first != last) {
         pos = insert(pos, *first++);
@@ -1129,20 +1143,6 @@ class small_vector
       }
       return begin() + offset;
     }
-
-    auto const distance = std::distance(first, last);
-    auto const offset = pos - begin();
-    auto currentSize = size();
-    assert(distance >= 0);
-    assert(offset >= 0);
-    makeSize(currentSize + distance);
-    detail::small_vector_detail::moveObjectsRightAndCreate(
-        data() + offset,
-        data() + currentSize,
-        data() + currentSize + distance,
-        [&, in = last]() mutable -> it_ref { return *--in; });
-    this->incrementSize(distance);
-    return begin() + offset;
   }
 
   iterator insertImpl(
