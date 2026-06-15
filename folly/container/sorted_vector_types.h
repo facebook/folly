@@ -65,6 +65,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <compare>
 #include <initializer_list>
 #include <iterator>
 #include <memory>
@@ -753,25 +754,12 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     return !operator==(other);
   }
 
-  bool operator<(const sorted_vector_set& other) const {
-    return m_.cont_ < other.m_.cont_;
-  }
-  bool operator>(const sorted_vector_set& other) const { return other < *this; }
-  bool operator<=(const sorted_vector_set& other) const {
-    return !operator>(other);
-  }
-  bool operator>=(const sorted_vector_set& other) const {
-    return !operator<(other);
-  }
-
-#if FOLLY_CPLUSPLUS >= 202002L && defined(__cpp_impl_three_way_comparison)
   template <typename U = Container>
   friend auto operator<=>(
       const sorted_vector_set& lhs, const sorted_vector_set& rhs)
       -> decltype(std::declval<const U&>() <=> std::declval<const U&>()) {
     return lhs.m_.cont_ <=> rhs.m_.cont_;
   }
-#endif // FOLLY_CPLUSPLUS >= 202002L && defined(__cpp_impl_three_way_comparison)
 
   const value_type* data() const noexcept { return m_.cont_.data(); }
 
@@ -1502,25 +1490,12 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     return !operator==(other);
   }
 
-  bool operator<(const sorted_vector_map& other) const {
-    return m_.cont_ < other.m_.cont_;
-  }
-  bool operator>(const sorted_vector_map& other) const { return other < *this; }
-  bool operator<=(const sorted_vector_map& other) const {
-    return !operator>(other);
-  }
-  bool operator>=(const sorted_vector_map& other) const {
-    return !operator<(other);
-  }
-
-#if FOLLY_CPLUSPLUS >= 202002L && defined(__cpp_impl_three_way_comparison)
   template <typename U = Container>
   friend auto operator<=>(
       const sorted_vector_map& lhs, const sorted_vector_map& rhs)
       -> decltype(std::declval<const U&>() <=> std::declval<const U&>()) {
     return lhs.m_.cont_ <=> rhs.m_.cont_;
   }
-#endif // FOLLY_CPLUSPLUS >= 202002L && defined(__cpp_impl_three_way_comparison)
 
   const value_type* data() const noexcept { return m_.cont_.data(); }
 
