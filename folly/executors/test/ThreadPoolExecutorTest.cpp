@@ -369,6 +369,45 @@ TYPED_TEST(ThreadPoolExecutorTypedTest, TaskObserver) {
   }
 }
 
+// taskDequeued() and taskProcessed() run inside runTask()'s
+// RequestContextScopeGuard, so observers see the task's RequestContext -- the
+// same one task.func_ runs under. Verify both callbacks observe the
+// RequestContext that was active when the task was submitted, for CPU and IO.
+TEST(ThreadPoolExecutorTest, ObserverCallbacksRunUnderRequestContext) {
+  struct ContextObserver : ThreadPoolExecutor::TaskObserver {
+    void taskDequeued(
+        const ThreadPoolExecutor::DequeuedTaskInfo&) noexcept override {
+      dequeuedCtx = RequestContext::get();
+    }
+    void taskProcessed(
+        const ThreadPoolExecutor::ProcessedTaskInfo&) noexcept override {
+      processedCtx = RequestContext::get();
+    }
+    std::atomic<RequestContext*> dequeuedCtx{nullptr};
+    std::atomic<RequestContext*> processedCtx{nullptr};
+  };
+
+  auto check = [&](ThreadPoolExecutor& ex, const char* /*label*/) {
+    auto observer = std::make_unique<ContextObserver>();
+    auto* observerPtr = observer.get();
+    ex.addTaskObserver(std::move(observer));
+
+    RequestContextScopeGuard rctx;
+    RequestContext* submitCtx = RequestContext::get();
+    ex.add([] {});
+    ex.join();
+
+    EXPECT_EQ(observerPtr->dequeuedCtx.load(), submitCtx);
+    EXPECT_EQ(observerPtr->processedCtx.load(), submitCtx);
+  };
+
+  CPUThreadPoolExecutor cpu{1};
+  check(cpu, "CPUThreadPoolExecutor");
+
+  IOThreadPoolExecutor io{1};
+  check(io, "IOThreadPoolExecutor");
+}
+
 TEST(ThreadPoolExecutorTest, GetUsedCpuTime) {
 #ifdef __linux__
   CPUThreadPoolExecutor e(4);

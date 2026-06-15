@@ -136,10 +136,17 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
       taskInfo.enqueueTime.time_since_epoch().count(),
       taskInfo.waitTime.count(),
       taskInfo.taskId);
-  forEachTaskObserver([&](auto& observer) { observer.taskDequeued(taskInfo); });
 
   {
     folly::RequestContextScopeGuard rctx(task.context_);
+    // taskDequeued() and taskProcessed() run inside this scope so observers see
+    // the task's RequestContext -- the same context task.func_ runs under --
+    // letting them associate executor accounting (e.g. queue wait) with the
+    // request. (taskEnqueued() already runs under the request context: it fires
+    // synchronously in add() on the submitting thread.)
+    forEachTaskObserver([&](auto& observer) {
+      observer.taskDequeued(taskInfo);
+    });
     if (task.expiration_ != nullptr &&
         taskInfo.waitTime >= task.expiration_->expiration) {
       task.func_ = nullptr;
@@ -156,28 +163,28 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
         task.expiration_->expireCallback = nullptr;
       }
     }
-  }
-  if (!taskInfo.expired) {
-    taskInfo.runTime = std::chrono::steady_clock::now() - startTime;
-  }
+    if (!taskInfo.expired) {
+      taskInfo.runTime = std::chrono::steady_clock::now() - startTime;
+    }
 
-  // Times in this USDT use granularity of std::chrono::steady_clock::duration,
-  // which is platform dependent. On Facebook servers, the granularity is
-  // nanoseconds. We explicitly do not perform any unit conversions to avoid
-  // unnecessary costs and leave it to consumers of this data to know what
-  // effective clock resolution is.
-  FOLLY_SDT(
-      folly,
-      thread_pool_executor_task_stats,
-      threadFactory_->getNamePrefix().c_str(),
-      taskInfo.requestId,
-      taskInfo.enqueueTime.time_since_epoch().count(),
-      taskInfo.waitTime.count(),
-      taskInfo.runTime.count(),
-      taskInfo.taskId);
-  forEachTaskObserver([&](auto& observer) {
-    observer.taskProcessed(taskInfo);
-  });
+    // Times in this USDT use granularity of
+    // std::chrono::steady_clock::duration, which is platform dependent. On
+    // Facebook servers, the granularity is nanoseconds. We explicitly do not
+    // perform any unit conversions to avoid unnecessary costs and leave it to
+    // consumers of this data to know what effective clock resolution is.
+    FOLLY_SDT(
+        folly,
+        thread_pool_executor_task_stats,
+        threadFactory_->getNamePrefix().c_str(),
+        taskInfo.requestId,
+        taskInfo.enqueueTime.time_since_epoch().count(),
+        taskInfo.waitTime.count(),
+        taskInfo.runTime.count(),
+        taskInfo.taskId);
+    forEachTaskObserver([&](auto& observer) {
+      observer.taskProcessed(taskInfo);
+    });
+  }
 
   thread->processedTasks = thread->processedTasks + 1;
 
