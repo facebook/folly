@@ -643,12 +643,12 @@ fb_dirsync_cpp_library(
     ],
     exported_deps = [
         "//folly/io/async:async_base_class",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": ["fbsource//third-party/libaio:aio"],
+    }),
     external_deps = [
         "boost",
-    ],
-    exported_external_deps = [
-        ("libaio", None, "aio"),
     ],
 )
 
