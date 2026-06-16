@@ -668,6 +668,16 @@ class UpperBitsReader
 
 } // namespace detail
 
+/**
+ * Forward/random-access reader over an Elias-Fano-encoded, non-decreasing
+ * sequence of integers produced by EliasFanoEncoder.
+ *
+ * The reader maintains a current position. It starts positioned before the
+ * first element; advance it with next()/skip()/skipTo() or jump to an
+ * absolute position or value with jump()/jumpTo(). While valid(), value()
+ * returns the current element. Sequential and skip-based access are
+ * sub-linear thanks to the encoded skip/forward pointers.
+ */
 // If kUnchecked = true the caller must guarantee that all the operations return
 // valid elements, i.e., they would never return false if checked.
 //
@@ -688,6 +698,11 @@ class EliasFanoReader {
   using ValueType = typename Encoder::ValueType;
   using SizeType = SizeT;
 
+  /**
+   * Constructs a reader over the given compressed list. The reader starts
+   * positioned before the first element, so call next() (or skipTo()/jump())
+   * before reading value().
+   */
   explicit EliasFanoReader(const typename Encoder::CompressedList& list)
       : upper_(list),
         lower_(list.lower),
@@ -697,8 +712,13 @@ class EliasFanoReader {
     DCHECK(Instructions::supported());
   }
 
+  /** Repositions the reader before the first element. */
   void reset() { upper_.reset(); }
 
+  /**
+   * Moves to the previous element. Returns false and resets to before the
+   * first element if there is no previous element.
+   */
   bool previous() {
     if (FOLLY_LIKELY(upper_.previous())) {
       return setValue(readCurrentValue());
@@ -707,6 +727,10 @@ class EliasFanoReader {
     return false;
   }
 
+  /**
+   * Advances to the next element. Returns false if the end of the list has
+   * been reached.
+   */
   bool next() {
     if (FOLLY_LIKELY(upper_.next())) {
       return setValue(readCurrentValue());
@@ -840,6 +864,10 @@ class EliasFanoReader {
     return skipTo(value);
   }
 
+  /**
+   * Returns the value immediately preceding the current one without moving
+   * the reader. Requires 0 < position() < size().
+   */
   ValueType previousValue() const {
     DCHECK_GT(position(), 0);
     DCHECK_LT(position(), size());
@@ -847,12 +875,22 @@ class EliasFanoReader {
         (upper_.previousValue() << numLowerBits_);
   }
 
+  /** Returns the number of elements in the list. */
   SizeType size() const { return upper_.size(); }
 
+  /**
+   * Whether the reader is positioned on a valid element, i.e. not before the
+   * first element and not past the last one.
+   */
   bool valid() const { return upper_.valid(); }
 
+  /**
+   * Returns the zero-based index of the current element. Before the first
+   * advance the position is kBeforeFirstPos.
+   */
   SizeType position() const { return upper_.position(); }
 
+  /** Returns the value of the current element. Requires valid(). */
   ValueType value() const {
     DCHECK(valid());
     return value_;
