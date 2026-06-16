@@ -72,7 +72,7 @@ class LoopController {
   /**
    * Should return true only if is the same thread that is (if called from
    * within runLoop()) or will be calling runLoop() or a thread that is
-   * syncronized with the thread that will be calling runLoop() (i.e. the
+   * synchronized with the thread that will be calling runLoop() (i.e. the
    * currently executing "task" has to be completed before runLoop() is called).
    */
   virtual bool isInLoopThread() = 0;
