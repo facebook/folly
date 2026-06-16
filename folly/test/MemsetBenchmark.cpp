@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <deque>
 #include <string>
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <folly/Benchmark.h>
 #include <folly/Preprocessor.h>
 #include <folly/portability/GFlags.h>
