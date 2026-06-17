@@ -1440,7 +1440,11 @@ AsyncSocket::ReadCallback* AsyncSocket::getReadCallback() const {
 }
 
 bool AsyncSocket::setZeroCopy(bool enable) {
-  CHECK(!useIoUring_ || !enable);
+  if (useIoUring_) {
+    zeroCopyVal_ = enable;
+    zeroCopyEnabled_ = enable;
+    return true;
+  }
   if (msgErrQueueSupported) {
     zeroCopyVal_ = enable;
 
@@ -1994,50 +1998,64 @@ void AsyncSocket::writeImpl(
 
       callbackWithState.notifyOnWrite();
 
-      auto writeResult = performWrite(
-          vec,
-          uint32_t(count),
-          flags,
-          &countWritten,
-          &partialWritten,
-          WriteRequestTag{ioBuf.get()});
-      bytesWritten = writeResult.writeReturn;
-      if (bytesWritten < 0) {
-        auto errnoCopy = errno;
-        if (writeResult.exception) {
-          return failWrite(__func__, callback, 0, *writeResult.exception);
-        }
-        AsyncSocketException ex(
-            AsyncSocketException::INTERNAL_ERROR,
-            withAddr("writev failed"),
-            errnoCopy);
-        return failWrite(__func__, callback, 0, ex);
-      } else if (countWritten == count) {
-        // done, add the whole buffer
-        if (countWritten && isZeroCopyRequest(flags)) {
-          addZeroCopyBuf(std::move(ioBuf), releaseIOBufCallback);
-        } else {
-          releaseIOBuf(std::move(ioBuf), releaseIOBufCallback);
-        }
-
-        // We successfully wrote everything.
-        // Invoke the callback and return.
-        if (callback) {
-          callback->writeSuccess();
-        }
-        return;
-      } else { // continue writing the next writeReq
-        // add just the ptr
-        if (bytesWritten && isZeroCopyRequest(flags)) {
-          addZeroCopyBuf(ioBuf.get());
-        }
-      }
-      if (!connecting()) {
-        // Writes might put the socket back into connecting state
-        // if TFO is enabled, and using TFO fails.
-        // This means that write timeouts would not be active, however
-        // connect timeouts would affect this stage.
+      if (useIoUring_ && isZeroCopyRequest(flags) &&
+          state_ != StateEnum::FAST_OPEN) {
         mustRegister = true;
+      } else {
+        // For io_uring + zero-copy + TFO, strip the zero-copy flag on the first
+        // (FAST_OPEN) write: the TFO SYN-data probe has to be a synchronous
+        // sendmsg while io_uring SEND_ZC is async. A copy here is fine; later
+        // writes use SEND_ZC once ESTABLISHED. This only applies to io_uring --
+        // a non-io_uring TFO socket keeps its zero-copy semantics.
+        if (useIoUring_ && isZeroCopyRequest(flags) &&
+            state_ == StateEnum::FAST_OPEN) {
+          flags = unSet(flags, folly::WriteFlags::WRITE_MSG_ZEROCOPY);
+        }
+        auto writeResult = performWrite(
+            vec,
+            uint32_t(count),
+            flags,
+            &countWritten,
+            &partialWritten,
+            WriteRequestTag{ioBuf.get()});
+        bytesWritten = writeResult.writeReturn;
+        if (bytesWritten < 0) {
+          auto errnoCopy = errno;
+          if (writeResult.exception) {
+            return failWrite(__func__, callback, 0, *writeResult.exception);
+          }
+          AsyncSocketException ex(
+              AsyncSocketException::INTERNAL_ERROR,
+              withAddr("writev failed"),
+              errnoCopy);
+          return failWrite(__func__, callback, 0, ex);
+        } else if (countWritten == count) {
+          // done, add the whole buffer
+          if (countWritten && isZeroCopyRequest(flags)) {
+            addZeroCopyBuf(std::move(ioBuf), releaseIOBufCallback);
+          } else {
+            releaseIOBuf(std::move(ioBuf), releaseIOBufCallback);
+          }
+
+          // We successfully wrote everything.
+          // Invoke the callback and return.
+          if (callback) {
+            callback->writeSuccess();
+          }
+          return;
+        } else { // continue writing the next writeReq
+          // add just the ptr
+          if (bytesWritten && isZeroCopyRequest(flags)) {
+            addZeroCopyBuf(ioBuf.get());
+          }
+        }
+        if (!connecting()) {
+          // Writes might put the socket back into connecting state
+          // if TFO is enabled, and using TFO fails.
+          // This means that write timeouts would not be active, however
+          // connect timeouts would affect this stage.
+          mustRegister = true;
+        }
       }
     }
   } else if (!connecting()) {

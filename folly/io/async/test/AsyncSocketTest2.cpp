@@ -998,6 +998,95 @@ TEST_P(AsyncSocketConnectTFOTest, ConnectWriteAndClose) {
 }
 
 /**
+ * Test calling two sequential writes for zero-copy. 1st with TFO
+ * we fallback to turn off the zc flag and for following writes
+ * we continue as usual.
+ */
+TEST_P(AsyncSocketConnectTFOTest, ConnectWriteZeroCopyFastOpen) {
+  if (getBackendType() != BackendType::IO_URING ||
+      getTFOState() != TFOState::ENABLED) {
+    GTEST_SKIP() << "only exercises the io_uring SEND_ZC + TFO first send";
+  }
+
+  TestServer server(/*enableTFO=*/true);
+  EventBase& evb = getEventBase();
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  socket->enableTFO();
+  ASSERT_TRUE(socket->setZeroCopy(true));
+  EXPECT_TRUE(socket->getZeroCopy());
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+
+  // 1st write w/ TFO + zc = turn off zc flag and do a copy potentially
+  constexpr size_t kLen = 128;
+  char firstBuf[kLen];
+  memset(firstBuf, 'a', kLen);
+  WriteCallback wcb1(true /*enableReleaseIOBufCallback*/);
+  socket->writeChain(
+      &wcb1, IOBuf::copyBuffer(firstBuf, kLen), WriteFlags::WRITE_MSG_ZEROCOPY);
+  evb.loop();
+  ASSERT_EQ(wcb1.state, STATE_SUCCEEDED);
+  ASSERT_TRUE(socket->getTFOAttempted());
+
+  // 2nd write with just zc, should work as expected.
+  char secondBuf[kLen];
+  memset(secondBuf, 'b', kLen);
+  WriteCallback wcb2(true /*enableReleaseIOBufCallback*/);
+  socket->writeChain(
+      &wcb2,
+      IOBuf::copyBuffer(secondBuf, kLen),
+      WriteFlags::WRITE_MSG_ZEROCOPY);
+  evb.loop();
+  ASSERT_EQ(wcb2.state, STATE_SUCCEEDED);
+
+  socket->close();
+
+  char expected[2 * kLen];
+  memset(expected, 'a', kLen);
+  memset(expected + kLen, 'b', kLen);
+  server.verifyConnection(expected, sizeof(expected));
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
+}
+
+/**
+ * Zero-copy write on an established (non-TFO) io_uring socket. Exercises the
+ * IORING_OP_SENDMSG_ZC fast path directly -- no TFO/FAST_OPEN involved, so the
+ * zero-copy flag is not stripped.
+ */
+TEST_P(AsyncSocketTest, ConnectWriteZeroCopy) {
+  if (GetParam() != BackendType::IO_URING) {
+    GTEST_SKIP() << "SEND_ZC fast path is io_uring-only";
+  }
+
+  TestServer server;
+  EventBase& evb = getEventBase();
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  ASSERT_TRUE(socket->setZeroCopy(true));
+  EXPECT_TRUE(socket->getZeroCopy());
+
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+  evb.loop();
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+
+  // Established + zero-copy: takes the io_uring SEND_ZC path (mustRegister),
+  // not the synchronous performWrite path.
+  constexpr size_t kLen = 128;
+  char buf[kLen];
+  memset(buf, 'a', kLen);
+  WriteCallback wcb(true /*enableReleaseIOBufCallback*/);
+  socket->writeChain(
+      &wcb, IOBuf::copyBuffer(buf, kLen), WriteFlags::WRITE_MSG_ZEROCOPY);
+  evb.loop();
+  ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
+
+  socket->close();
+  server.verifyConnection(buf, kLen);
+}
+
+/**
  * Test calling close() immediately after connect()
  */
 TEST_P(AsyncSocketTest, ConnectAndClose) {
