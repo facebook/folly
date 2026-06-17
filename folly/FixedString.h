@@ -19,6 +19,7 @@
 #pragma once
 
 #include <cassert>
+#include <compare>
 #include <cstddef>
 #include <initializer_list>
 #include <iosfwd>
@@ -2592,128 +2593,35 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     return !(a == b);
   }
 
-  friend constexpr bool operator<(
+  friend constexpr std::strong_ordering operator<=>(
       const Char* a, const BasicFixedString& b) noexcept {
-    return ordering::lt ==
-        detail::fixedstring::compare_(
-               a, 0u, folly::constexpr_strlen(a), b.data_, 0u, b.size_);
+    return static_cast<int>(detail::fixedstring::compare_(
+               a, 0u, folly::constexpr_strlen(a), b.data_, 0u, b.size_)) <=> 0;
   }
 
   /**
    * \overload
    */
-  friend constexpr bool operator<(
+  friend constexpr std::strong_ordering operator<=>(
       const BasicFixedString& a, const Char* b) noexcept {
-    return ordering::lt ==
-        detail::fixedstring::compare_(
-               a.data_, 0u, a.size_, b, 0u, folly::constexpr_strlen(b));
+    return a.compare(b) <=> 0;
   }
 
   /**
    * \overload
    */
-  friend constexpr bool operator<(
+  friend constexpr std::strong_ordering operator<=>(
       Range<const Char*> a, const BasicFixedString& b) noexcept {
-    return ordering::lt ==
-        detail::fixedstring::compare_(
-               a.begin(), 0u, a.size(), b.data_, 0u, b.size_);
+    return static_cast<int>(detail::fixedstring::compare_(
+               a.begin(), 0u, a.size(), b.data_, 0u, b.size_)) <=> 0;
   }
 
   /**
    * \overload
    */
-  friend constexpr bool operator<(
+  friend constexpr std::strong_ordering operator<=>(
       const BasicFixedString& a, Range<const Char*> b) noexcept {
-    return ordering::lt ==
-        detail::fixedstring::compare_(
-               a.data_, 0u, a.size_, b.begin(), 0u, b.size());
-  }
-
-  friend constexpr bool operator>(
-      const Char* a, const BasicFixedString& b) noexcept {
-    return b < a;
-  }
-
-  /**
-   * \overload
-   */
-  friend constexpr bool operator>(
-      const BasicFixedString& a, const Char* b) noexcept {
-    return b < a;
-  }
-
-  /**
-   * \overload
-   */
-  friend constexpr bool operator>(
-      Range<const Char*> a, const BasicFixedString& b) noexcept {
-    return b < a;
-  }
-
-  /**
-   * \overload
-   */
-  friend constexpr bool operator>(
-      const BasicFixedString& a, Range<const Char*> b) noexcept {
-    return b < a;
-  }
-
-  friend constexpr bool operator<=(
-      const Char* a, const BasicFixedString& b) noexcept {
-    return !(b < a);
-  }
-
-  /**
-   * \overload
-   */
-  friend constexpr bool operator<=(
-      const BasicFixedString& a, const Char* b) noexcept {
-    return !(b < a);
-  }
-
-  /**
-   * \overload
-   */
-  friend constexpr bool operator<=(
-      Range<const Char*> const& a, const BasicFixedString& b) noexcept {
-    return !(b < a);
-  }
-
-  /**
-   * \overload
-   */
-  friend constexpr bool operator<=(
-      const BasicFixedString& a, Range<const Char*> b) noexcept {
-    return !(b < a);
-  }
-
-  friend constexpr bool operator>=(
-      const Char* a, const BasicFixedString& b) noexcept {
-    return !(a < b);
-  }
-
-  /**
-   * \overload
-   */
-  friend constexpr bool operator>=(
-      const BasicFixedString& a, const Char* b) noexcept {
-    return !(a < b);
-  }
-
-  /**
-   * \overload
-   */
-  friend constexpr bool operator>=(
-      Range<const Char*> a, const BasicFixedString& b) noexcept {
-    return !(a < b);
-  }
-
-  /**
-   * \overload
-   */
-  friend constexpr bool operator>=(
-      const BasicFixedString& a, Range<const Char*> const& b) noexcept {
-    return !(a < b);
+    return a.compare(b) <=> 0;
   }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
@@ -2802,38 +2710,10 @@ constexpr bool operator!=(
 }
 
 template <class Char, std::size_t A, std::size_t B>
-constexpr bool operator<(
+constexpr std::strong_ordering operator<=>(
     const BasicFixedString<Char, A>& a,
     const BasicFixedString<Char, B>& b) noexcept {
-  return ordering::lt ==
-      detail::fixedstring::compare_(
-             detail::fixedstring::Helper::data_(a),
-             0u,
-             a.size(),
-             detail::fixedstring::Helper::data_(b),
-             0u,
-             b.size());
-}
-
-template <class Char, std::size_t A, std::size_t B>
-constexpr bool operator>(
-    const BasicFixedString<Char, A>& a,
-    const BasicFixedString<Char, B>& b) noexcept {
-  return b < a;
-}
-
-template <class Char, std::size_t A, std::size_t B>
-constexpr bool operator<=(
-    const BasicFixedString<Char, A>& a,
-    const BasicFixedString<Char, B>& b) noexcept {
-  return !(b < a);
-}
-
-template <class Char, std::size_t A, std::size_t B>
-constexpr bool operator>=(
-    const BasicFixedString<Char, A>& a,
-    const BasicFixedString<Char, B>& b) noexcept {
-  return !(a < b);
+  return a.compare(b) <=> 0;
 }
 
 /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
