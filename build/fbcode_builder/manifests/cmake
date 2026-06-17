@@ -23,7 +23,7 @@ sha256 = 0c4baa40f28b3f8225eb3fdf6946c987b4fe901403b4eaf2fbbd9378100aaa0c
 
 [download.os=darwin]
 url = https://github.com/Kitware/CMake/releases/download/v3.31.12/cmake-3.31.12-macos-universal.tar.gz
-sha256 = 799af7fd545db9bf1b9cfe72f8095880e727a2d4e0df0e3dffc3bc7b95c2d3b0
+sha256 = 7098ade6a0ecef2b6454f7389653fddcd7083f12cd5af181615b72d1743dc30f
 
 [download.any(os=linux,os=freebsd)]
 url = https://github.com/Kitware/CMake/releases/download/v3.31.12/cmake-3.31.12.tar.gz
