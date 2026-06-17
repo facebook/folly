@@ -615,12 +615,13 @@ void Subprocess::spawn(
       ++numErrouts;
     }
   };
-  static constexpr auto kFixedErroutAccessors = std::array{
-      erroutOf<&Options::uid_>,
-      erroutOf<&Options::gid_>,
-      erroutOf<&Options::euid_>,
-      erroutOf<&Options::egid_>,
-  };
+  static constexpr std::array<ErroutAccessor, SharedErrorData::kNumFixedErrouts>
+      kFixedErroutAccessors{{
+          erroutOf<&Options::uid_>,
+          erroutOf<&Options::gid_>,
+          erroutOf<&Options::euid_>,
+          erroutOf<&Options::egid_>,
+      }};
   static_assert(
       kFixedErroutAccessors.size() == SharedErrorData::kNumFixedErrouts);
   for (auto accessor : kFixedErroutAccessors) {
