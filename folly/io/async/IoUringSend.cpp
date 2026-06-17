@@ -23,10 +23,6 @@ namespace folly {
 
 #if FOLLY_HAS_LIBURING
 
-/*
- * SendRequest
- */
-
 class IoUringSendHandle::SendRequest : public IoSqeBase {
  public:
   static void* alloc(size_t iovCount) {
@@ -69,6 +65,9 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   }
 
   void destroy() {
+    if (--refs_) {
+      return;
+    }
     if (data_ && releaseCb_) {
       releaseCb_->releaseIOBuf(std::move(data_));
     }
@@ -85,6 +84,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   AsyncWriter::WriteCallback* getCallback() { return callback_; }
   size_t getTotalBytesWritten() { return bytesWritten_; }
   folly::IOBuf* getData() const { return data_.get(); }
+  bool notifPending() const { return refs_ > 1; }
 
   folly::SemiFuture<int> detachEventBase() {
     handle_ = nullptr;
@@ -121,12 +121,17 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
    * IoSqeBase
    */
   void processSubmit(struct io_uring_sqe* sqe) noexcept override {
-    ::io_uring_prep_sendmsg(sqe, fd_.toFd(), &msg_, flags());
+    if (folly::isSet(flags_, WriteFlags::WRITE_MSG_ZEROCOPY)) {
+      ::io_uring_prep_sendmsg_zc(sqe, fd_.toFd(), &msg_, flags() | MSG_WAITALL);
+    } else {
+      ::io_uring_prep_sendmsg(sqe, fd_.toFd(), &msg_, flags());
+    }
     handle_->onSendStarted();
   }
 
   void callback(const struct io_uring_cqe* cqe) noexcept override {
     auto res = cqe->res;
+    auto flags = cqe->flags;
 
     if (!handle_) {
       detachedSignal_(res);
@@ -134,6 +139,15 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
     }
 
     if (cancelled()) {
+      return;
+    }
+
+    if (flags & IORING_CQE_F_MORE) {
+      ++refs_;
+    }
+
+    if (flags & IORING_CQE_F_NOTIF) {
+      destroy();
       return;
     }
 
@@ -150,7 +164,12 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
     }
   }
 
-  void callbackCancelled(const io_uring_cqe*) noexcept override { destroy(); }
+  void callbackCancelled(const io_uring_cqe* cqe) noexcept override {
+    if (cqe->flags & IORING_CQE_F_MORE) {
+      return;
+    }
+    destroy();
+  }
 
  private:
   int flags() {
@@ -185,9 +204,8 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
       bytes -= msg_.msg_iov->iov_len;
       ++msg_.msg_iov;
       --iovRemaining_;
-
       // There is a 1:1 relationship between IOBufs and iovecs.
-      if (data_) {
+      if (data_ && !folly::isSet(flags_, WriteFlags::WRITE_MSG_ZEROCOPY)) {
         auto next = data_->pop();
         handle_->onReleaseIOBuf(std::move(data_), releaseCb_);
         data_ = std::move(next);
@@ -204,6 +222,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   std::unique_ptr<IOBuf> data_;
   WriteFlags flags_;
   NetworkSocket fd_;
+  int refs_{1};
 
   IoUringSendHandle* handle_{nullptr};
   DestructorGuard handleGuard_{nullptr};
@@ -358,7 +377,7 @@ void IoUringSendHandle::failWrite(const AsyncSocketException& ex) {
     sendCallback_->detachIOBuf(*buf);
   }
 
-  if (req->inFlight()) {
+  if (req->inFlight() && !req->notifPending()) {
     backend_->cancel(req);
   } else {
     req->destroy();
@@ -383,7 +402,9 @@ void IoUringSendHandle::trySubmit() {
 }
 
 void IoUringSendHandle::onSendStarted() {
-  requestHead_->getCallback()->writeStarting();
+  if (auto* cb = requestHead_->getCallback()) {
+    cb->writeStarting();
+  }
 }
 
 void IoUringSendHandle::onSendPartial(size_t bytesWritten) {
@@ -395,7 +416,7 @@ void IoUringSendHandle::onSendPartial(size_t bytesWritten) {
 void IoUringSendHandle::onSendComplete(size_t bytesWritten) {
   DestructorGuard dg(this);
   CHECK(requestHead_ != nullptr);
-  auto req = requestHead_;
+  auto* req = requestHead_;
   requestHead_ = req->getNext();
   if (requestHead_ == nullptr) {
     requestTail_ = nullptr;
@@ -404,6 +425,14 @@ void IoUringSendHandle::onSendComplete(size_t bytesWritten) {
   }
 
   auto* callback = req->getCallback();
+
+  if (auto* buf = req->getData()) {
+    // This decouples, the bit accounting from the iobuf
+    // releasing but both still happen for the non-zc path
+    // making it a no-op.
+    sendCallback_->detachIOBuf(*buf);
+  }
+
   req->destroy();
   if (callback) {
     callback->writeSuccess();
