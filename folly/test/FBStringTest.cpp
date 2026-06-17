@@ -49,10 +49,8 @@ template <typename A, typename B>
 using detect_gt = decltype(FOLLY_DECLVAL(A) > FOLLY_DECLVAL(B));
 template <typename A, typename B>
 using detect_ge = decltype(FOLLY_DECLVAL(A) >= FOLLY_DECLVAL(B));
-#if FOLLY_CPLUSPLUS >= 202002
 template <typename A, typename B>
 using detect_3w = decltype(FOLLY_DECLVAL(A) <=> FOLLY_DECLVAL(B));
-#endif
 
 static_assert(!std::is_constructible_v<fbstring, nullptr_t>);
 static_assert(!std::is_assignable_v<fbstring, nullptr_t>);
@@ -71,10 +69,8 @@ static_assert(!is_detected_v<detect_le, nullptr_t, fbstring>);
 static_assert(!is_detected_v<detect_gt, nullptr_t, fbstring>);
 static_assert(!is_detected_v<detect_ge, nullptr_t, fbstring>);
 
-#if FOLLY_CPLUSPLUS >= 202002
 static_assert(!is_detected_v<detect_3w, fbstring, nullptr_t>);
 static_assert(!is_detected_v<detect_3w, nullptr_t, fbstring>);
-#endif
 
 namespace {
 
@@ -1848,8 +1844,6 @@ TEST(FBString, OverLarge) {
       std::length_error);
 }
 
-#if FOLLY_CPLUSPLUS >= 202002L
-
 TEST(FBString, SpaceshipOperator) {
   folly::fbstring a{"a"};
   EXPECT_TRUE((a <=> a) == std::strong_ordering::equal);
@@ -1868,5 +1862,3 @@ TEST(FBString, SpaceshipOperator) {
   EXPECT_TRUE((a <=> "0") == std::strong_ordering::greater);
   EXPECT_TRUE(("0" <=> a) == std::strong_ordering::less);
 }
-
-#endif // FOLLY_CPLUSPLUS >= 202002L

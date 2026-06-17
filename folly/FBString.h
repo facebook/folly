@@ -43,9 +43,7 @@
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 
-#if FOLLY_CPLUSPLUS >= 202002L
 #include <compare>
-#endif
 
 FOLLY_PUSH_WARNING
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
@@ -1755,7 +1753,6 @@ class basic_fbstring {
     return r != 0 ? r : n1 > n2 ? 1 : n1 < n2 ? -1 : 0;
   }
 
-#if FOLLY_CPLUSPLUS >= 202002L
   friend auto operator<=>(
       const basic_fbstring& lhs, const basic_fbstring& rhs) {
     return lhs.spaceship(rhs.data(), rhs.size());
@@ -1768,10 +1765,8 @@ class basic_fbstring {
       const basic_fbstring& lhs, const std::basic_string<E, T, A2>& rhs) {
     return lhs.spaceship(rhs.data(), rhs.size());
   }
-#endif // FOLLY_CPLUSPLUS >= 202002L
 
  private:
-#if FOLLY_CPLUSPLUS >= 202002L
   auto spaceship(const value_type* rhsData, size_type rhsSize) const {
     auto c = compare(0, size(), rhsData, rhsSize);
     if (c == 0) {
@@ -1782,7 +1777,6 @@ class basic_fbstring {
       return std::strong_ordering::greater;
     }
   }
-#endif // FOLLY_CPLUSPLUS >= 202002L
 
   // Data
   Storage store_;
@@ -2519,130 +2513,12 @@ inline bool operator!=(
 }
 
 template <typename E, class T, class A, class S>
-inline bool operator<(
-    const basic_fbstring<E, T, A, S>& lhs,
-    const basic_fbstring<E, T, A, S>& rhs) {
-  return lhs.compare(rhs) < 0;
-}
-
-template <typename E, class T, class A, class S>
-inline bool operator<(const basic_fbstring<E, T, A, S>&, std::nullptr_t) =
-    delete;
-
-template <typename E, class T, class A, class S>
-inline bool operator<(
-    const basic_fbstring<E, T, A, S>& lhs,
-    const typename basic_fbstring<E, T, A, S>::value_type* rhs) {
-  return lhs.compare(rhs) < 0;
-}
-
-template <typename E, class T, class A, class S>
-inline bool operator<(std::nullptr_t, const basic_fbstring<E, T, A, S>&) =
-    delete;
-
-template <typename E, class T, class A, class S>
-inline bool operator<(
-    const typename basic_fbstring<E, T, A, S>::value_type* lhs,
-    const basic_fbstring<E, T, A, S>& rhs) {
-  return rhs.compare(lhs) > 0;
-}
-
-template <typename E, class T, class A, class S>
-inline bool operator>(
-    const basic_fbstring<E, T, A, S>& lhs,
-    const basic_fbstring<E, T, A, S>& rhs) {
-  return rhs < lhs;
-}
-
-template <typename E, class T, class A, class S>
-inline bool operator>(const basic_fbstring<E, T, A, S>&, std::nullptr_t) =
-    delete;
-
-template <typename E, class T, class A, class S>
-inline bool operator>(
-    const basic_fbstring<E, T, A, S>& lhs,
-    const typename basic_fbstring<E, T, A, S>::value_type* rhs) {
-  return rhs < lhs;
-}
-
-template <typename E, class T, class A, class S>
-inline bool operator>(std::nullptr_t, const basic_fbstring<E, T, A, S>&) =
-    delete;
-
-template <typename E, class T, class A, class S>
-inline bool operator>(
-    const typename basic_fbstring<E, T, A, S>::value_type* lhs,
-    const basic_fbstring<E, T, A, S>& rhs) {
-  return rhs < lhs;
-}
-
-template <typename E, class T, class A, class S>
-inline bool operator<=(
-    const basic_fbstring<E, T, A, S>& lhs,
-    const basic_fbstring<E, T, A, S>& rhs) {
-  return !(rhs < lhs);
-}
-
-template <typename E, class T, class A, class S>
-inline bool operator<=(const basic_fbstring<E, T, A, S>&, std::nullptr_t) =
-    delete;
-
-template <typename E, class T, class A, class S>
-inline bool operator<=(
-    const basic_fbstring<E, T, A, S>& lhs,
-    const typename basic_fbstring<E, T, A, S>::value_type* rhs) {
-  return !(rhs < lhs);
-}
-
-template <typename E, class T, class A, class S>
-inline bool operator<=(std::nullptr_t, const basic_fbstring<E, T, A, S>&) =
-    delete;
-
-template <typename E, class T, class A, class S>
-inline bool operator<=(
-    const typename basic_fbstring<E, T, A, S>::value_type* lhs,
-    const basic_fbstring<E, T, A, S>& rhs) {
-  return !(rhs < lhs);
-}
-
-template <typename E, class T, class A, class S>
-inline bool operator>=(
-    const basic_fbstring<E, T, A, S>& lhs,
-    const basic_fbstring<E, T, A, S>& rhs) {
-  return !(lhs < rhs);
-}
-
-template <typename E, class T, class A, class S>
-inline bool operator>=(const basic_fbstring<E, T, A, S>&, std::nullptr_t) =
-    delete;
-
-template <typename E, class T, class A, class S>
-inline bool operator>=(
-    const basic_fbstring<E, T, A, S>& lhs,
-    const typename basic_fbstring<E, T, A, S>::value_type* rhs) {
-  return !(lhs < rhs);
-}
-
-template <typename E, class T, class A, class S>
-inline bool operator>=(std::nullptr_t, const basic_fbstring<E, T, A, S>&) =
-    delete;
-
-template <typename E, class T, class A, class S>
-inline bool operator>=(
-    const typename basic_fbstring<E, T, A, S>::value_type* lhs,
-    const basic_fbstring<E, T, A, S>& rhs) {
-  return !(lhs < rhs);
-}
-
-#if FOLLY_CPLUSPLUS >= 202002
-template <typename E, class T, class A, class S>
 inline bool operator<=>(std::nullptr_t, const basic_fbstring<E, T, A, S>&) =
     delete;
 
 template <typename E, class T, class A, class S>
 inline bool operator<=>(const basic_fbstring<E, T, A, S>&, std::nullptr_t) =
     delete;
-#endif
 
 // C++11 21.4.8.8
 template <typename E, class T, class A, class S>
