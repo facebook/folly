@@ -183,11 +183,10 @@ struct make_atomic_ref_t {
       typename T,
       typename...,
       typename TD = remove_cvref_t<T>,
-      typename ATD = std::atomic<TD>,
-      std::enable_if_t<
-          std::is_trivially_copyable_v<TD> && //
-              sizeof(TD) == sizeof(ATD) && alignof(TD) == alignof(ATD),
-          int> = 0>
+      typename ATD = std::atomic<TD>>
+    requires(
+        std::is_trivially_copyable_v<TD> && //
+        sizeof(TD) == sizeof(ATD) && alignof(TD) == alignof(ATD))
   atomic_ref<T> operator()(T& ref) const {
     return atomic_ref<T>{ref};
   }

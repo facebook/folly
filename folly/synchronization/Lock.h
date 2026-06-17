@@ -99,8 +99,6 @@ class lock_base {
  private:
   static constexpr bool has_state_ = !std::is_void<state_type>::value;
   using owner_type = conditional_t<has_state_, state_type, bool>;
-  template <bool C, typename V = int>
-  using if_ = std::enable_if_t<C, V>;
 
   static bool owner_true_(tag_t<bool>) noexcept { return true; }
   static owner_type owner_true_(tag_t<state_type>) noexcept { return {}; }
@@ -113,16 +111,19 @@ class lock_base {
   [[nodiscard]] lock_base(lock_base&& that) noexcept
       : mutex_{std::exchange(that.mutex_, nullptr)},
         state_{std::exchange(that.state_, owner_type{})} {}
-  template <typename M = mutex_type, if_<!has_state_, M>* = nullptr>
+  template <typename M = mutex_type>
+    requires(!has_state_)
   [[nodiscard]] lock_base(type_t<M>& mutex, std::adopt_lock_t)
       : mutex_{std::addressof(mutex)}, state_{owner_true_(tag<owner_type>)} {}
-  template <typename M = mutex_type, if_<has_state_, M>* = nullptr>
+  template <typename M = mutex_type>
+    requires(has_state_)
   [[nodiscard]] lock_base(
       type_t<M>& mutex, std::adopt_lock_t, owner_type const& state)
       : mutex_{std::addressof(mutex)}, state_{state} {
     state_ || (check_fail_<true>(), 0);
   }
-  template <typename M = mutex_type, if_<has_state_, M>* = nullptr>
+  template <typename M = mutex_type>
+    requires(has_state_)
   [[nodiscard]] lock_base(
       type_t<M>& mutex, adopt_lock_state_t, owner_type const& state)
       : lock_base{mutex, std::adopt_lock, state} {}
@@ -214,7 +215,8 @@ class lock_base {
 
   mutex_type* mutex() const noexcept { return mutex_; }
 
-  template <bool C = has_state_, if_<C> = 0>
+  template <bool C = has_state_>
+    requires(C)
   state_type state() const noexcept {
     return state_;
   }
@@ -255,8 +257,6 @@ class lock_guard_base
 
   static constexpr bool has_state_ = !std::is_void<lock_state_type_>::value;
   using state_type_ = conditional_t<has_state_, lock_state_type_, bool>;
-  template <bool C>
-  using if_ = std::enable_if_t<C, int>;
 
  public:
   using mutex_type = Mutex;
@@ -264,14 +264,17 @@ class lock_guard_base
   lock_guard_base(lock_guard_base const&) = delete;
   lock_guard_base(lock_guard_base&&) = delete;
   explicit lock_guard_base(mutex_type& mutex) : lock_{mutex} {}
-  template <bool C = has_state_, if_<!C> = 0>
+  template <bool C = has_state_>
+    requires(!C)
   lock_guard_base(mutex_type& mutex, std::adopt_lock_t)
       : lock_{mutex, std::adopt_lock} {}
-  template <bool C = has_state_, if_<C> = 0>
+  template <bool C = has_state_>
+    requires(C)
   lock_guard_base(
       mutex_type& mutex, std::adopt_lock_t, state_type_ const& state)
       : lock_{mutex, std::adopt_lock, state} {}
-  template <bool C = has_state_, if_<C> = 0>
+  template <bool C = has_state_>
+    requires(C)
   lock_guard_base(
       mutex_type& mutex, adopt_lock_state_t, state_type_ const& state)
       : lock_{mutex, std::adopt_lock, state} {}

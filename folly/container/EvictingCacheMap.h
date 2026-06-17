@@ -90,13 +90,10 @@ class EvictingCacheMap {
     explicit iterator_base(TIterator it)
         : iterator_base::iterator_adaptor_(it) {}
 
-    template <
-        typename V,
-        typename I,
-        std::enable_if_t<
-            std::is_same<V const, Value>::value &&
-                std::is_convertible<I, TIterator>::value,
-            int> = 0>
+    template <typename V, typename I>
+      requires(
+          std::is_same<V const, Value>::value &&
+          std::is_convertible<I, TIterator>::value)
     /* implicit */ iterator_base(iterator_base<V, I> const& other)
         : iterator_base::iterator_adaptor_(other.base()) {}
 
@@ -126,30 +123,27 @@ class EvictingCacheMap {
   static constexpr std::size_t kApproximateEntryMemUsage = 13 + sizeof(Node);
 
  private:
-  template <typename K, typename T>
-  using EnableHeterogeneousFind = std::enable_if_t<
-      detail::EligibleForHeterogeneousFind<TKey, THash, TKeyEqual, K>::value,
-      T>;
-
-  template <typename K, typename T>
-  using EnableHeterogeneousInsert = std::enable_if_t<
-      detail::EligibleForHeterogeneousInsert<TKey, THash, TKeyEqual, K>::value,
-      T>;
-
   template <typename K>
   using IsIter = Disjunction<
       std::is_same<iterator, remove_cvref_t<K>>,
       std::is_same<const_iterator, remove_cvref_t<K>>>;
 
-  template <typename K, typename T>
-  using EnableHeterogeneousErase = std::enable_if_t<
+  template <typename K>
+  static constexpr bool kEligibleForHeterogeneousFind =
+      detail::EligibleForHeterogeneousFind<TKey, THash, TKeyEqual, K>::value;
+
+  template <typename K>
+  static constexpr bool kEligibleForHeterogeneousInsert =
+      detail::EligibleForHeterogeneousInsert<TKey, THash, TKeyEqual, K>::value;
+
+  template <typename K>
+  static constexpr bool kEligibleForHeterogeneousErase =
       detail::EligibleForHeterogeneousFind<
           TKey,
           THash,
           TKeyEqual,
           std::conditional_t<IsIter<K>::value, TKey, K>>::value &&
-          !IsIter<K>::value,
-      T>;
+      !IsIter<K>::value;
 
  public:
   /**
@@ -209,7 +203,8 @@ class EvictingCacheMap {
    */
   bool exists(const TKey& key) const { return existsImpl(key); }
 
-  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  template <typename K>
+    requires kEligibleForHeterogeneousFind<K>
   bool exists(const K& key) const {
     return existsImpl(key);
   }
@@ -223,7 +218,8 @@ class EvictingCacheMap {
    */
   TValue& get(const TKey& key) { return getImpl(key); }
 
-  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  template <typename K>
+    requires kEligibleForHeterogeneousFind<K>
   TValue& get(const K& key) {
     return getImpl(key);
   }
@@ -237,7 +233,8 @@ class EvictingCacheMap {
    */
   iterator find(const TKey& key) { return findImpl(*this, key); }
 
-  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  template <typename K>
+    requires kEligibleForHeterogeneousFind<K>
   iterator find(const K& key) {
     return findImpl(*this, key);
   }
@@ -253,7 +250,8 @@ class EvictingCacheMap {
     return getWithoutPromotionImpl(*this, key);
   }
 
-  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  template <typename K>
+    requires kEligibleForHeterogeneousFind<K>
   const TValue& getWithoutPromotion(const K& key) const {
     return getWithoutPromotionImpl(*this, key);
   }
@@ -262,7 +260,8 @@ class EvictingCacheMap {
     return getWithoutPromotionImpl(*this, key);
   }
 
-  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  template <typename K>
+    requires kEligibleForHeterogeneousFind<K>
   TValue& getWithoutPromotion(const K& key) {
     return getWithoutPromotionImpl(*this, key);
   }
@@ -278,7 +277,8 @@ class EvictingCacheMap {
     return findWithoutPromotionImpl(*this, key);
   }
 
-  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  template <typename K>
+    requires kEligibleForHeterogeneousFind<K>
   const_iterator findWithoutPromotion(const K& key) const {
     return findWithoutPromotionImpl(*this, key);
   }
@@ -287,7 +287,8 @@ class EvictingCacheMap {
     return findWithoutPromotionImpl(*this, key);
   }
 
-  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  template <typename K>
+    requires kEligibleForHeterogeneousFind<K>
   iterator findWithoutPromotion(const K& key) {
     return findWithoutPromotionImpl(*this, key);
   }
@@ -304,7 +305,8 @@ class EvictingCacheMap {
     return eraseKeyImpl(key, eraseHook);
   }
 
-  template <typename K, EnableHeterogeneousErase<K, int> = 0>
+  template <typename K>
+    requires kEligibleForHeterogeneousErase<K>
   bool erase(const K& key, PruneHookCall eraseHook = nullptr) {
     return eraseKeyImpl(key, eraseHook);
   }
@@ -349,7 +351,8 @@ class EvictingCacheMap {
     setImpl(key, std::move(tmp), promote, pruneHook);
   }
 
-  template <typename K, EnableHeterogeneousInsert<K, int> = 0>
+  template <typename K>
+    requires kEligibleForHeterogeneousInsert<K>
   void set(
       const K& key,
       TValue&& value,
@@ -358,7 +361,8 @@ class EvictingCacheMap {
     setImpl(key, std::move(value), promote, pruneHook);
   }
 
-  template <typename K, EnableHeterogeneousInsert<K, int> = 0>
+  template <typename K>
+    requires kEligibleForHeterogeneousInsert<K>
   void set(
       const K& key,
       const TValue& value,
@@ -388,13 +392,15 @@ class EvictingCacheMap {
     return insertImpl(key, std::move(tmp), pruneHook);
   }
 
-  template <typename K, EnableHeterogeneousInsert<K, int> = 0>
+  template <typename K>
+    requires kEligibleForHeterogeneousInsert<K>
   std::pair<iterator, bool> insert(
       const K& key, TValue&& value, PruneHookCall pruneHook = nullptr) {
     return insertImpl(key, std::move(value), pruneHook);
   }
 
-  template <typename K, EnableHeterogeneousInsert<K, int> = 0>
+  template <typename K>
+    requires kEligibleForHeterogeneousInsert<K>
   std::pair<iterator, bool> insert(
       const K& key, const TValue& value, PruneHookCall pruneHook = nullptr) {
     TValue tmp{value}; // can't yet rely on temporary materialization

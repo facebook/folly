@@ -94,11 +94,8 @@ struct DelayedInit {
   T& try_emplace(A&&... a) {
     return try_emplace_with([&] { return T(static_cast<A&&>(a)...); });
   }
-  template <
-      typename U,
-      typename... A,
-      typename = std::enable_if_t<
-          std::is_constructible<T, std::initializer_list<U>, A...>::value>>
+  template <typename U, typename... A>
+    requires std::is_constructible<T, std::initializer_list<U>, A...>::value
   T& try_emplace(std::initializer_list<U> ilist, A&&... a) {
     return try_emplace_with([&] { return T(ilist, static_cast<A&&>(a)...); });
   }
