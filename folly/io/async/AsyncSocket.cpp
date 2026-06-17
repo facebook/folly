@@ -1583,9 +1583,7 @@ void AsyncSocket::drainZeroCopyQueue() {
     std::vector<std::unique_ptr<folly::IOBuf>> bufs;
     for (auto& info : std::exchange(idZeroCopyBufInfoMap_, {})) {
       if (info.second.buf_) {
-        const size_t allocated = info.second.buf_->computeChainCapacity();
-        DCHECK_GE(allocatedBytesBuffered_, allocated);
-        allocatedBytesBuffered_ -= allocated;
+        detachIOBuf(*info.second.buf_);
         bufs.emplace_back(std::move(info.second.buf_));
       }
     }
@@ -1650,14 +1648,18 @@ void AsyncSocket::processZeroCopyMsg(const cmsghdr& cmsg) {
 #endif
 }
 
+void AsyncSocket::detachIOBuf(const folly::IOBuf& buf) {
+  size_t bytes = buf.computeChainCapacity();
+  DCHECK_GE(allocatedBytesBuffered_, bytes);
+  allocatedBytesBuffered_ -= bytes;
+}
+
 void AsyncSocket::releaseIOBuf(
     std::unique_ptr<folly::IOBuf> buf, ReleaseIOBufCallback* callback) {
   if (!buf) {
     return;
   }
-  const size_t allocated = buf->computeChainCapacity();
-  DCHECK_GE(allocatedBytesBuffered_, allocated);
-  allocatedBytesBuffered_ -= allocated;
+  detachIOBuf(*buf);
   if (callback) {
     callback->releaseIOBuf(std::move(buf));
   }

@@ -34,6 +34,7 @@ class IoUringSendCallback {
   virtual void releaseIOBuf(
       std::unique_ptr<IOBuf> buf,
       AsyncWriter::ReleaseIOBufCallback* callback) = 0;
+  virtual void detachIOBuf(const IOBuf& buf) = 0;
 };
 
 class EventBase;

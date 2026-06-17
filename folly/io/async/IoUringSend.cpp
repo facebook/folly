@@ -53,6 +53,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
       NetworkSocket fd)
       : IoSqeBase(IoSqeBase::Type::Write),
         callback_(callback),
+        releaseCb_(callback ? callback->getReleaseIOBufCallback() : nullptr),
         iovRemaining_(iovCount),
         bytesWritten_(bytesWritten),
         data_(std::move(data)),
@@ -68,9 +69,8 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   }
 
   void destroy() {
-    if (!cancelled() && handle_) {
-      handle_->onReleaseIOBuf(
-          std::move(data_), callback_->getReleaseIOBufCallback());
+    if (data_ && releaseCb_) {
+      releaseCb_->releaseIOBuf(std::move(data_));
     }
     this->~SendRequest();
     free(this);
@@ -84,12 +84,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   void append(SendRequest* request) { next_ = request; }
   AsyncWriter::WriteCallback* getCallback() { return callback_; }
   size_t getTotalBytesWritten() { return bytesWritten_; }
-
-  void releaseIOBuf(IoUringSendHandle* handle) {
-    CHECK(!cancelled());
-    handle->onReleaseIOBuf(
-        std::move(data_), callback_->getReleaseIOBufCallback());
-  }
+  folly::IOBuf* getData() const { return data_.get(); }
 
   folly::SemiFuture<int> detachEventBase() {
     handle_ = nullptr;
@@ -194,8 +189,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
       // There is a 1:1 relationship between IOBufs and iovecs.
       if (data_) {
         auto next = data_->pop();
-        handle_->onReleaseIOBuf(
-            std::move(data_), callback_->getReleaseIOBufCallback());
+        handle_->onReleaseIOBuf(std::move(data_), releaseCb_);
         data_ = std::move(next);
       }
     }
@@ -204,6 +198,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   }
 
   AsyncWriter::WriteCallback* callback_;
+  AsyncWriter::ReleaseIOBufCallback* releaseCb_;
   size_t iovRemaining_;
   size_t bytesWritten_;
   std::unique_ptr<IOBuf> data_;
@@ -345,22 +340,32 @@ void IoUringSendHandle::write(
 }
 
 void IoUringSendHandle::failWrite(const AsyncSocketException& ex) {
-  if (requestHead_ != nullptr) {
-    auto req = requestHead_;
-    requestHead_ = req->getNext();
-    auto* callback = req->getCallback();
-    auto bytesWritten = req->getTotalBytesWritten();
+  if (!requestHead_) {
+    return;
+  }
+  auto* req = requestHead_;
+  requestHead_ = req->getNext();
+  auto* callback = req->getCallback();
+  auto bytesWritten = req->getTotalBytesWritten();
 
-    req->releaseIOBuf(this);
-    if (req->inFlight()) {
-      backend_->cancel(req);
-    } else {
-      req->destroy();
-    }
+  // AsyncSocket maintains allocatedBytesBuffered_, a count of bytes sent by the
+  // application but not yet sent over the socket transport. For ordinary sends,
+  // allocatedBytesBuffered_ can be updated at the same time as when the
+  // data buffers are freed .However this can't be done for zero copy sends as
+  // data buffers may outlive the socket. Always update allocatedBytesBuffered_
+  // here prior to potentially detaching a pending request.
+  if (auto* buf = req->getData()) {
+    sendCallback_->detachIOBuf(*buf);
+  }
 
-    if (callback) {
-      callback->writeErr(bytesWritten, ex);
-    }
+  if (req->inFlight()) {
+    backend_->cancel(req);
+  } else {
+    req->destroy();
+  }
+
+  if (callback) {
+    callback->writeErr(bytesWritten, ex);
   }
 }
 

@@ -1902,6 +1902,7 @@ class AsyncSocket
   void releaseIOBuf(
       std::unique_ptr<folly::IOBuf> buf,
       ReleaseIOBufCallback* callback) override;
+  void detachIOBuf(const folly::IOBuf& buf) override;
 
   ReadCode processZeroCopyRead();
   ReadCode processNormalRead();
