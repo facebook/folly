@@ -1,0 +1,4 @@
+__generated__/**
+node_modules/**
+vendor/**
+buck-out/**
