@@ -38,6 +38,13 @@ struct BridgeFromGoogleLogging : ::google::LogSink {
   BridgeFromGoogleLogging();
   ~BridgeFromGoogleLogging() noexcept override;
 
+  // This class registers itself as a glog LogSink on construction and
+  // unregisters on destruction, so it must not be copied or moved.
+  BridgeFromGoogleLogging(const BridgeFromGoogleLogging&) = delete;
+  BridgeFromGoogleLogging(BridgeFromGoogleLogging&&) = delete;
+  BridgeFromGoogleLogging& operator=(const BridgeFromGoogleLogging&) = delete;
+  BridgeFromGoogleLogging& operator=(BridgeFromGoogleLogging&&) = delete;
+
   using ::google::LogSink::send;
 
   void send(
