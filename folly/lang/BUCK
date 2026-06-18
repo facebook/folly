@@ -144,10 +144,8 @@ fb_dirsync_cpp_library(
     srcs = ["Exception.cpp"],
     headers = ["Exception.h"],
     compiler_flags = selects.with_or({
-        (
-            "ovr_config//os:android"
-        ): ["-Wno-error=deprecated-dynamic-exception-spec"],
         "DEFAULT": [],
+        ("ovr_config//os:android"): ["-Wno-error=deprecated-dynamic-exception-spec"],
     }),
     exported_linker_flags = selects.with_or({
         (

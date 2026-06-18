@@ -42,7 +42,8 @@ fb_dirsync_cpp_unittest(
         "F14SetTest.cpp",
     ],
     fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
-    fbobjc_compiler_flags = FBOBJC_CXXFLAGS + [
+    fbobjc_compiler_flags = FBOBJC_CXXFLAGS
+    + [
         "-Wno-format",
         "-Wno-missing-prototypes",
         "-Wno-shadow",
@@ -230,7 +231,8 @@ fb_dirsync_cpp_unittest(
         "F14MapTest.cpp",
     ],
     fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
-    fbobjc_compiler_flags = FBOBJC_CXXFLAGS + [
+    fbobjc_compiler_flags = FBOBJC_CXXFLAGS
+    + [
         "-Wno-format",
         "-Wno-missing-prototypes",
         "-Wno-shadow",

@@ -9,8 +9,7 @@ fb_dirsync_cpp_unittest(
     env = {
         "FOLLY_NESTED_CMDLINE_HELPER": "$(exe_target :nested_command_line_app_test_helper)",
     },
-    resources = [
-    ],
+    resources = [],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:subprocess",

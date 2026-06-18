@@ -24,7 +24,8 @@ create_forwarding_aliases(
         APPLE,
         FBCODE,
         WINDOWS,
-    ] + ([ANDROID] if is_xplat() else []),
+    ]
+    + ([ANDROID] if is_xplat() else []),
     sdks = (IOS, MACOSX),
     visibility = ["PUBLIC"],
 ) if is_xplat() else None
@@ -42,7 +43,8 @@ create_forwarding_aliases(
         APPLE,
         FBCODE,
         WINDOWS,
-    ] + ([ANDROID] if is_xplat() else []),
+    ]
+    + ([ANDROID] if is_xplat() else []),
     sdks = (IOS, MACOSX),
     visibility = ["PUBLIC"],
 ) if is_xplat() else None
@@ -78,7 +80,8 @@ rust_bindgen_library(
         APPLE,
         FBCODE,
         WINDOWS,
-    ] + ([ANDROID] if is_xplat() else []),
+    ]
+    + ([ANDROID] if is_xplat() else []),
     src_includes = ["iobuf_sys.rs"],
     visibility = [],
 )
@@ -91,7 +94,8 @@ fb_xplat_cxx_library(
         CXX,
         APPLE,
         WINDOWS,
-    ] + ([ANDROID] if is_xplat() else []),
+    ]
+    + ([ANDROID] if is_xplat() else []),
     preferred_linkage = "static",
     visibility = [
         "fbcode//folly/rust/iobuf/...",
@@ -123,7 +127,8 @@ fb_xplat_rust_library(
         CXX,
         APPLE,
         WINDOWS,
-    ] + ([ANDROID] if is_xplat() else []),
+    ]
+    + ([ANDROID] if is_xplat() else []),
     test_deps = [
         "fbsource//third-party/rust:quickcheck",
         "fbsource//xplat/thrift/lib/rust/src/dep_tests:test_if-rust",

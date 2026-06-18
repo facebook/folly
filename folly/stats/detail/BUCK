@@ -41,8 +41,7 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "sliding_window",
-    srcs = [
-    ],
+    srcs = [],
     headers = [
         "SlidingWindow.h",
         "SlidingWindow-inl.h",

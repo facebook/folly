@@ -119,7 +119,8 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:gtest",
         "//folly/portability:sys_mman",
         "//folly/system:memory_mapping",
-    ] + _ASHMEM_DEPS,
+    ]
+    + _ASHMEM_DEPS,
 )
 
 fb_dirsync_cpp_unittest(

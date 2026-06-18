@@ -26,7 +26,9 @@ fb_dirsync_rule(
         "std::.*",
     ],
     pin_crate = True,
-    rustc_flags = ["-Aunused-crate-dependencies"],  # because of fbsource//third-party/rust:rand which is only used in tests and test_deps not defined in rust_bindgen_library
+    rustc_flags = [
+        "-Aunused-crate-dependencies"
+    ],  # because of fbsource//third-party/rust:rand which is only used in tests and test_deps not defined in rust_bindgen_library
     src_includes = ["tdigest.rs"],
     deps = [
         "fbsource//third-party/rust:cxx",

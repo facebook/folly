@@ -301,7 +301,7 @@ fb_dirsync_cpp_library(
         "XlogHeader2.h",
     ],
     xplat_compiler_flags = [
-        "-DFOLLY_XLOG_STRIP_PREFIXES=\"xplat\"",
+        '-DFOLLY_XLOG_STRIP_PREFIXES="xplat"',
     ],
     exported_deps = [
         "//folly:range",
@@ -330,7 +330,7 @@ fb_dirsync_cpp_unittest(
     name = "xlog_test",
     srcs = ["XlogTest.cpp"],
     xplat_compiler_flags = [
-        "-DFOLLY_XLOG_STRIP_PREFIXES=\"xplat\"",
+        '-DFOLLY_XLOG_STRIP_PREFIXES="xplat"',
     ],
     deps = [
         ":test_handler",

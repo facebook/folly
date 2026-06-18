@@ -1351,7 +1351,8 @@ non_fbcode_target(
     name = "test-util",
     header_namespace = "",
     apple_sdks = DEFAULT_APPLE_SDKS,
-    compiler_flags = CXXFLAGS + [
+    compiler_flags = CXXFLAGS
+    + [
         "-Wno-narrowing",
     ],
     fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
@@ -1576,7 +1577,8 @@ non_fbcode_target(
     _kind = fb_xplat_cxx_test,
     name = "folly-test",
     srcs = glob(FOLLY_TEST_SRCS),
-    compiler_flags = CXXFLAGS + [
+    compiler_flags = CXXFLAGS
+    + [
         "-Wno-unused-private-field",
     ],
     fbandroid_compiler_flags = FBANDROID_CXXFLAGS,
@@ -1584,16 +1586,19 @@ non_fbcode_target(
         "64bit",
         None,
     ],
-    fbobjc_compiler_flags = FBOBJC_CXXFLAGS + [
+    fbobjc_compiler_flags = FBOBJC_CXXFLAGS
+    + [
         "-Wno-format",
         "-Wno-missing-prototypes",
         "-Wno-shadow",
     ],
     oncall = "folly",
     platforms = (ANDROID, APPLE, CXX, WINDOWS),
-    preprocessor_flags = CPPFLAGS + [
+    preprocessor_flags = CPPFLAGS
+    + [
         "-DFOLLY_SKIP_AS_FAILURE=0",
-    ] + select({
+    ]
+    + select({
         "DEFAULT": [],
         "ovr_config//os:linux": FBANDROID_CPPFLAGS,
     }),
@@ -2690,7 +2695,8 @@ fb_dirsync_cpp_library(
     deps = [
         "//folly/portability:fmt_compile",
         "//folly/system:at_fork",
-    ] + select({
+    ]
+    + select({
         "DEFAULT": [],
         "ovr_config//os:android": [
             "fbsource//xplat/third-party/linker_lib:dl",
@@ -2699,7 +2705,8 @@ fb_dirsync_cpp_library(
             "fbsource//third-party/toolchains:rt",
             "fbsource//xplat/third-party/linker_lib:dl",
         ],
-    }) + select({
+    })
+    + select({
         "DEFAULT": [],
         "ovr_config//runtime:fbcode": [
             "fbsource//third-party/fmt:fmt",
@@ -2725,10 +2732,12 @@ fb_dirsync_cpp_library(
         "//folly/lang:exception",
         "//folly/memory:sanitize_leak",
         "//folly/synchronization:baton",
-    ] + select({
+    ]
+    + select({
         "DEFAULT": [],
         "ovr_config//os:linux": ["//folly/debugging/symbolizer:symbolizer"],
-    }) + select({
+    })
+    + select({
         "DEFAULT": [
             ":c_portability",
             ":conv",
