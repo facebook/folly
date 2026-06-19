@@ -31,8 +31,8 @@ template <const auto* P>
 class ptr_immortal_exception_storage : immortal_exception_storage {
  private:
   // Map `const immortal_rich_error_storage<B>*` -> `B`
-  using UserBase = std::remove_const_t<std::remove_pointer_t<decltype(P)>>::
-      folly_private_immortal_rich_error_base;
+  using UserBase = typename std::remove_const_t<std::remove_pointer_t<
+      decltype(P)>>::folly_private_immortal_rich_error_base;
   using LeafRichError = ::folly::rich_error<UserBase>;
 
   LeafRichError* immutable_leaf_rich_error_singleton() const {
