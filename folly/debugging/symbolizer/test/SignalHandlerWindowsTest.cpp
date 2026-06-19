@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-#include <folly/debugging/symbolizer/SignalHandler.h>
-
 #include <folly/portability/GTest.h>
 
 #ifdef _WIN32
 #include <stdexcept>
 
 #include <folly/CPortability.h>
+#include <folly/debugging/symbolizer/SignalHandler.h>
 #include <folly/portability/Windows.h>
 
 namespace folly {
