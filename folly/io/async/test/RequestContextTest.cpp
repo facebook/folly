@@ -472,7 +472,8 @@ TEST_F(RequestContextTest, ThreadId) {
   std::sort(rootids.begin(), rootids.end(), [](const auto& a, const auto& b) {
     auto aname = folly::getThreadName(a.tid);
     auto bname = folly::getThreadName(b.tid);
-    return (aname ? *aname : "zzz") < (bname ? *bname : "zzz");
+    static const std::string kUnnamed = "zzz";
+    return (aname ? *aname : kUnnamed) < (bname ? *bname : kUnnamed);
   });
 
   EXPECT_EQ(*folly::getThreadName(rootids[0].tid), "DummyThread");
