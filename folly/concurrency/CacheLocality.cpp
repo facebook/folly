@@ -180,7 +180,8 @@ static size_t parseLeadingNumber(const std::string& line) {
   return val;
 }
 
-CacheLocality CacheLocality::readFromSysfsTree(std::string_view root) {
+CacheLocality CacheLocality::readFromSysfsTree(
+    [[maybe_unused]] std::string_view root) {
 #if defined(_WIN32)
   // windows does not have openat and open flag constants
   return CacheLocality::uniform(0);

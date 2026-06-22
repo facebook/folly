@@ -126,7 +126,9 @@ struct SkipAtForkHandlers {
 thread_local bool SkipAtForkHandlers::value;
 
 void invoke_pthread_atfork(
-    void (*prepare)(), void (*parent)(), void (*child)()) {
+    [[maybe_unused]] void (*prepare)(),
+    [[maybe_unused]] void (*parent)(),
+    [[maybe_unused]] void (*child)()) {
   int ret = 0;
 #if FOLLY_HAVE_PTHREAD_ATFORK // if no pthread_atfork, probably no fork either
   ret = pthread_atfork(prepare, parent, child);

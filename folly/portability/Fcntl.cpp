@@ -81,7 +81,10 @@ int fcntl(int fd, int cmd, ...) {
   return res;
 }
 
-int posix_fallocate(int fd, off_t offset, off_t len) {
+int posix_fallocate(
+    [[maybe_unused]] int fd,
+    [[maybe_unused]] off_t offset,
+    [[maybe_unused]] off_t len) {
   // We'll pretend we always have enough space. We
   // can't exactly pre-allocate on windows anyways.
   return 0;
@@ -90,7 +93,7 @@ int posix_fallocate(int fd, off_t offset, off_t len) {
 } // namespace portability
 
 namespace fileops {
-int open(char const* fn, int of, int pm) {
+int open(char const* fn, int of, [[maybe_unused]] int pm) {
   int fh;
   int realMode = _S_IREAD;
   if ((of & _O_RDWR) == _O_RDWR) {
