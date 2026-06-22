@@ -93,7 +93,7 @@ unsigned int* uncaught_exceptions_ptr() noexcept {
 #if defined(__ia64__) && defined(__hpux__)
 typedef unsigned _Unwind_Ptr __attribute__((__mode__(__word__)));
 #else
-typedef unsigned _Unwind_Ptr __attribute__((__mode__(__pointer__)));
+using _Unwind_Ptr = unsigned long __attribute__((__mode__(__pointer__)));
 #endif
 
 namespace __cxxabiv1 {
