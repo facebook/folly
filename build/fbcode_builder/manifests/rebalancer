@@ -25,6 +25,7 @@ CMAKE_POSITION_INDEPENDENT_CODE=ON
 # workflow's --extra-cmake-defines.
 [cmake.defines.test=on]
 EXAMPLES=ON
+TESTS=ON
 
 [dependencies]
 boost
