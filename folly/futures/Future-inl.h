@@ -188,7 +188,10 @@ FutureBase<T>::FutureBase(Future<T>&& other) noexcept : core_(other.core_) {
 }
 
 template <class T>
-template <class T2, typename>
+template <class T2>
+  requires(
+      !FutureBaseType<std::decay_t<T2>> && !FutureType<std::decay_t<T2>> &&
+      !SemiFutureType<std::decay_t<T2>> && std::is_constructible_v<Try<T>, T2>)
 FutureBase<T>::FutureBase(T2&& val)
     : core_(Core::make(Try<T>(static_cast<T2&&>(val)))) {}
 
@@ -327,25 +330,27 @@ FutureBase<T>::FutureBase(futures::detail::EmptyConstruct) noexcept
 // be fixed for MSVC 2017 Update 8.
 // TODO: Remove.
 namespace detail_msvc_15_7_workaround {
-template <typename R, std::size_t S>
-using IfArgsSizeIs = std::enable_if_t<R::Arg::ArgsSize::value == S, int>;
-template <typename R, typename State, typename T, IfArgsSizeIs<R, 0> = 0>
+template <typename R, typename State, typename T>
+  requires(R::Arg::ArgsSize::value == 0)
 decltype(auto) invoke(
     R, State& state, Executor::KeepAlive<>&&, Try<T>&& /* t */) {
   return state.invoke();
 }
-template <typename R, typename State, typename T, IfArgsSizeIs<R, 2> = 0>
+template <typename R, typename State, typename T>
+  requires(R::Arg::ArgsSize::value == 2)
 decltype(auto) invoke(R, State& state, Executor::KeepAlive<>&& ka, Try<T>&& t) {
   using Arg1 = typename R::Arg::ArgList::Tail::FirstArg;
   return state.invoke(
       std::move(ka), std::move(t).template get<R::Arg::isTry(), Arg1>());
 }
-template <typename R, typename State, typename T, IfArgsSizeIs<R, 0> = 0>
+template <typename R, typename State, typename T>
+  requires(R::Arg::ArgsSize::value == 0)
 decltype(auto) tryInvoke(
     R, State& state, Executor::KeepAlive<>&&, Try<T>&& /* t */) {
   return state.tryInvoke();
 }
-template <typename R, typename State, typename T, IfArgsSizeIs<R, 2> = 0>
+template <typename R, typename State, typename T>
+  requires(R::Arg::ArgsSize::value == 2)
 decltype(auto) tryInvoke(
     R, State& state, Executor::KeepAlive<>&& ka, Try<T>&& t) {
   using Arg1 = typename R::Arg::ArgList::Tail::FirstArg;
@@ -610,16 +615,16 @@ SemiFuture<T> makeSemiFuture(exception_wrapper ew) {
 }
 
 template <class T, class E>
-std::enable_if_t<std::is_base_of_v<std::exception, decay_t<E>>, SemiFuture<T>>
-makeSemiFuture(E&& e) {
+  requires std::is_base_of_v<std::exception, decay_t<E>>
+SemiFuture<T> makeSemiFuture(E&& e) {
   return makeSemiFuture(Try<T>(make_exception_wrapper<E>(std::forward<E>(e))));
 }
 
 // DEPRECATED const-ref overload for users who EXPLICITLY specify BOTH template
 // parameters
 template <class T, class E>
-std::enable_if_t<std::is_base_of_v<std::exception, E>, SemiFuture<T>>
-makeSemiFuture(const folly::type_identity_t<E>& e) {
+  requires std::is_base_of_v<std::exception, E>
+SemiFuture<T> makeSemiFuture(const folly::type_identity_t<E>& e) {
   return makeSemiFuture(Try<T>(make_exception_wrapper<E>(e)));
 }
 
@@ -898,9 +903,8 @@ Future<T>& Future<T>::operator=(Future<T>&& other) noexcept {
 
 template <class T>
 template <class F>
-typename std::
-    enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
-    Future<T>::unwrap() && {
+  requires FutureType<F>
+Future<typename isFuture<T>::Inner> Future<T>::unwrap() && {
   return std::move(*this).thenValue(
       [](Future<typename isFuture<T>::Inner> internal_future) {
         return internal_future;
@@ -1377,16 +1381,16 @@ Future<T> makeFuture(exception_wrapper ew) {
 }
 
 template <class T, class E>
-std::enable_if_t<std::is_base_of_v<std::exception, decay_t<E>>, Future<T>>
-makeFuture(E&& e) {
+  requires std::is_base_of_v<std::exception, decay_t<E>>
+Future<T> makeFuture(E&& e) {
   return makeFuture(Try<T>(make_exception_wrapper<E>(std::forward<E>(e))));
 }
 
 // DEPRECATED const-ref overload for users who EXPLICITLY specify BOTH template
 // parameters
 template <class T, class E>
-std::enable_if_t<std::is_base_of_v<std::exception, E>, Future<T>> makeFuture(
-    const folly::type_identity_t<E>& e) {
+  requires std::is_base_of_v<std::exception, E>
+Future<T> makeFuture(const folly::type_identity_t<E>& e) {
   return makeFuture(Try<T>(make_exception_wrapper<E>(e)));
 }
 
@@ -2615,7 +2619,8 @@ auto times(const int n, F&& thunk) {
 }
 
 namespace futures {
-template <class It, class F, class ItT, class Tag, class Result>
+template <class It, class F, class ItT, class Result>
+  requires is_invocable_v<F, typename ItT::value_type&&>
 std::vector<Future<Result>> mapValue(It first, It last, F func) {
   std::vector<Future<Result>> results;
   results.reserve(std::distance(first, last));
@@ -2625,7 +2630,8 @@ std::vector<Future<Result>> mapValue(It first, It last, F func) {
   return results;
 }
 
-template <class It, class F, class ItT, class Tag, class Result>
+template <class It, class F, class ItT, class Result>
+  requires(!is_invocable_v<F, typename ItT::value_type &&>)
 std::vector<Future<Result>> mapTry(It first, It last, F func, int) {
   std::vector<Future<Result>> results;
   results.reserve(std::distance(first, last));
@@ -2635,7 +2641,8 @@ std::vector<Future<Result>> mapTry(It first, It last, F func, int) {
   return results;
 }
 
-template <class It, class F, class ItT, class Tag, class Result>
+template <class It, class F, class ItT, class Result>
+  requires is_invocable_v<F, typename ItT::value_type&&>
 std::vector<Future<Result>> mapValue(
     Executor& exec, It first, It last, F func) {
   std::vector<Future<Result>> results;
@@ -2646,7 +2653,8 @@ std::vector<Future<Result>> mapValue(
   return results;
 }
 
-template <class It, class F, class ItT, class Tag, class Result>
+template <class It, class F, class ItT, class Result>
+  requires(!is_invocable_v<F, typename ItT::value_type &&>)
 std::vector<Future<Result>> mapTry(
     Executor& exec, It first, It last, F func, int) {
   std::vector<Future<Result>> results;

@@ -76,6 +76,34 @@ struct isFutureOrSemiFuture<SemiFuture<Try<T>>> : std::true_type {
   typedef T Inner;
 };
 
+// C++20 concepts for Future/SemiFuture type constraints.
+// These wrap the isFuture/isSemiFuture/isFutureOrSemiFuture traits and are
+// used throughout Future.h and Future-inl.h to replace enable_if SFINAE.
+template <typename T>
+concept FutureType = isFuture<T>::value;
+
+template <typename T>
+concept SemiFutureType = isSemiFuture<T>::value;
+
+template <typename T>
+concept FutureOrSemiFutureType = isFutureOrSemiFuture<T>::value;
+
+namespace futures {
+namespace detail {
+template <class T>
+class FutureBase;
+} // namespace detail
+} // namespace futures
+
+template <typename T>
+struct isFutureBase : std::false_type {};
+
+template <typename T>
+struct isFutureBase<futures::detail::FutureBase<T>> : std::true_type {};
+
+template <typename T>
+concept FutureBaseType = isFutureBase<T>::value;
+
 namespace futures {
 namespace detail {
 

@@ -152,12 +152,11 @@ class FutureBase {
   /// - `valid() == true`
   /// - `isReady() == true`
   /// - `hasValue() == true`
-  template <
-      class T2 = T,
-      typename = typename std::enable_if<
-          !isFuture<typename std::decay<T2>::type>::value &&
-          !isSemiFuture<typename std::decay<T2>::type>::value &&
-          std::is_constructible<Try<T>, T2>::value>::type>
+  template <class T2 = T>
+    requires(
+        !FutureBaseType<std::decay_t<T2>> && !FutureType<std::decay_t<T2>> &&
+        !SemiFutureType<std::decay_t<T2>> &&
+        std::is_constructible_v<Try<T>, T2>)
   /* implicit */ FutureBase(T2&& val);
 
   /// Construct a (logical) FutureBase-of-void.
@@ -171,10 +170,8 @@ class FutureBase {
   /* implicit */ FutureBase(
       typename std::enable_if<std::is_same<Unit, T2>::value>::type*);
 
-  template <
-      class... Args,
-      typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
-          type = 0>
+  template <class... Args>
+    requires std::is_constructible_v<T, Args&&...>
   explicit FutureBase(std::in_place_t, Args&&... args)
       : core_(Core::make(std::in_place, static_cast<Args&&>(args)...)) {}
 
@@ -547,12 +544,11 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// - `hasValue() == true`
   /// - `hasException() == false`
   /// - `value()`, `get()`, `result()` will return the forwarded `T`
-  template <
-      class T2 = T,
-      typename = typename std::enable_if<
-          !isFuture<typename std::decay<T2>::type>::value &&
-          !isSemiFuture<typename std::decay<T2>::type>::value &&
-          std::is_constructible<Try<T>, T2>::value>::type>
+  template <class T2 = T>
+    requires(
+        !FutureBaseType<std::decay_t<T2>> && !FutureType<std::decay_t<T2>> &&
+        !SemiFutureType<std::decay_t<T2>> &&
+        std::is_constructible_v<Try<T>, T2>)
   /* implicit */ SemiFuture(T2&& val) : Base(static_cast<T2&&>(val)) {}
 
   /// Construct a (logical) SemiFuture-of-void.
@@ -576,10 +572,8 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// - `hasValue() == true`
   /// - `hasException() == false`
   /// - `value()`, `get()`, `result()` will return the newly constructed `T`
-  template <
-      class... Args,
-      typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
-          type = 0>
+  template <class... Args>
+    requires std::is_constructible_v<T, Args&&...>
   explicit SemiFuture(std::in_place_t, Args&&... args)
       : Base(std::in_place, static_cast<Args&&>(args)...) {}
 
@@ -1077,12 +1071,11 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `isReady() == true`
   /// - `hasValue() == true`
   /// - `value()`, `get()`, `result()` will return the forwarded `T`
-  template <
-      class T2 = T,
-      typename = typename std::enable_if<
-          !isFuture<typename std::decay<T2>::type>::value &&
-          !isSemiFuture<typename std::decay<T2>::type>::value &&
-          std::is_constructible<Try<T>, T2>::value>::type>
+  template <class T2 = T>
+    requires(
+        !FutureBaseType<std::decay_t<T2>> && !FutureType<std::decay_t<T2>> &&
+        !SemiFutureType<std::decay_t<T2>> &&
+        std::is_constructible_v<Try<T>, T2>)
   /* implicit */ Future(T2&& val) : Base(static_cast<T2&&>(val)) {}
 
   /// Construct a (logical) Future-of-void.
@@ -1106,10 +1099,8 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `hasValue() == true`
   /// - `hasException() == false`
   /// - `value()`, `get()`, `result()` will return the newly constructed `T`
-  template <
-      class... Args,
-      typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
-          type = 0>
+  template <class... Args>
+    requires std::is_constructible_v<T, Args&&...>
   explicit Future(std::in_place_t, Args&&... args)
       : Base(std::in_place, static_cast<Args&&>(args)...) {}
 
@@ -1118,36 +1109,28 @@ class Future : private futures::detail::FutureBase<T> {
   Future(Future<T>&&) noexcept;
 
   // converting move
-  template <
-      class T2,
-      typename std::enable_if<
-          !std::is_same<T, typename std::decay<T2>::type>::value &&
-              std::is_constructible<T, T2&&>::value &&
-              std::is_convertible<T2&&, T>::value,
-          int>::type = 0>
+  template <class T2>
+    requires(
+        !std::is_same_v<T, std::decay_t<T2>> &&
+        std::is_constructible_v<T, T2 &&> && std::is_convertible_v<T2 &&, T>)
   /* implicit */ Future(Future<T2>&& other)
       : Future(std::move(other).thenValue([](T2&& v) {
           return T(std::move(v));
         })) {}
 
-  template <
-      class T2,
-      typename std::enable_if<
-          !std::is_same<T, typename std::decay<T2>::type>::value &&
-              std::is_constructible<T, T2&&>::value &&
-              !std::is_convertible<T2&&, T>::value,
-          int>::type = 0>
+  template <class T2>
+    requires(
+        !std::is_same_v<T, std::decay_t<T2>> &&
+        std::is_constructible_v<T, T2 &&> && !std::is_convertible_v<T2 &&, T>)
   explicit Future(Future<T2>&& other)
       : Future(std::move(other).thenValue([](T2&& v) {
           return T(std::move(v));
         })) {}
 
-  template <
-      class T2,
-      typename std::enable_if<
-          !std::is_same<T, typename std::decay<T2>::type>::value &&
-              std::is_constructible<T, T2&&>::value,
-          int>::type = 0>
+  template <class T2>
+    requires(
+        !std::is_same_v<T, std::decay_t<T2>> &&
+        std::is_constructible_v<T, T2 &&>)
   Future& operator=(Future<T2>&& other) {
     return operator=(std::move(other).thenValue([](T2 && v) {
       return T(std::move(v));
@@ -1214,9 +1197,8 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class F = T>
-  typename std::
-      enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
-      unwrap() &&;
+    requires FutureType<F>
+  Future<typename isFuture<T>::Inner> unwrap() &&;
 
   /// Returns a Future which will call back on the other side of executor.
   ///
@@ -2073,9 +2055,9 @@ template <
     class It,
     class F,
     class ItT = typename std::iterator_traits<It>::value_type,
-    class Tag = std::enable_if_t<is_invocable_v<F, typename ItT::value_type&&>>,
     class Result = typename decltype(std::declval<ItT>().thenValue(
         std::declval<F>()))::value_type>
+  requires is_invocable_v<F, typename ItT::value_type&&>
 std::vector<Future<Result>> mapValue(It first, It last, F func);
 
 /**
@@ -2086,10 +2068,9 @@ template <
     class It,
     class F,
     class ItT = typename std::iterator_traits<It>::value_type,
-    class Tag =
-        std::enable_if_t<!is_invocable_v<F, typename ItT::value_type&&>>,
     class Result = typename decltype(std::declval<ItT>().thenTry(
         std::declval<F>()))::value_type>
+  requires(!is_invocable_v<F, typename ItT::value_type &&>)
 std::vector<Future<Result>> mapTry(It first, It last, F func, int = 0);
 
 /**
@@ -2101,11 +2082,11 @@ template <
     class It,
     class F,
     class ItT = typename std::iterator_traits<It>::value_type,
-    class Tag = std::enable_if_t<is_invocable_v<F, typename ItT::value_type&&>>,
     class Result =
         typename decltype(std::move(std::declval<ItT>())
                               .via(std::declval<Executor*>())
                               .thenValue(std::declval<F>()))::value_type>
+  requires is_invocable_v<F, typename ItT::value_type&&>
 std::vector<Future<Result>> mapValue(Executor& exec, It first, It last, F func);
 
 /**
@@ -2117,12 +2098,11 @@ template <
     class It,
     class F,
     class ItT = typename std::iterator_traits<It>::value_type,
-    class Tag =
-        std::enable_if_t<!is_invocable_v<F, typename ItT::value_type&&>>,
     class Result =
         typename decltype(std::move(std::declval<ItT>())
                               .via(std::declval<Executor*>())
                               .thenTry(std::declval<F>()))::value_type>
+  requires(!is_invocable_v<F, typename ItT::value_type &&>)
 std::vector<Future<Result>> mapTry(
     Executor& exec, It first, It last, F func, int = 0);
 
@@ -2234,8 +2214,8 @@ SemiFuture<T> makeSemiFuture(exception_wrapper ew);
 /** Make a SemiFuture from an exception type E that can be passed to
   std::make_exception_ptr(). */
 template <class T, class E>
-std::enable_if_t<std::is_base_of_v<std::exception, decay_t<E>>, SemiFuture<T>>
-makeSemiFuture(E&& e);
+  requires std::is_base_of_v<std::exception, decay_t<E>>
+SemiFuture<T> makeSemiFuture(E&& e);
 
 /** Make a SemiFuture from an exception type E that can be passed to
   std::make_exception_ptr().
@@ -2244,9 +2224,9 @@ makeSemiFuture(E&& e);
   compiler.
  */
 template <class T, class E>
+  requires std::is_base_of_v<std::exception, E>
 [[deprecated("do not specify exception type template parameter explicitly")]]
-std::enable_if_t<std::is_base_of_v<std::exception, E>, SemiFuture<T>>
-makeSemiFuture(const folly::type_identity_t<E>& e);
+SemiFuture<T> makeSemiFuture(const folly::type_identity_t<E>& e);
 
 /** Make a Future out of a Try */
 template <class T>
@@ -2336,8 +2316,8 @@ Future<T> makeFuture(exception_wrapper ew);
        valid Future where necessary.
  */
 template <class T, class E>
-std::enable_if_t<std::is_base_of_v<std::exception, decay_t<E>>, Future<T>>
-makeFuture(E&& e);
+  requires std::is_base_of_v<std::exception, decay_t<E>>
+Future<T> makeFuture(E&& e);
 
 /** Make a Future from an exception type E that can be passed to
   std::make_exception_ptr().
@@ -2346,9 +2326,9 @@ makeFuture(E&& e);
   compiler.
  */
 template <class T, class E>
+  requires std::is_base_of_v<std::exception, E>
 [[deprecated("do not specify exception type template parameter explicitly")]]
-std::enable_if_t<std::is_base_of_v<std::exception, E>, Future<T>> makeFuture(
-    const folly::type_identity_t<E>& e);
+Future<T> makeFuture(const folly::type_identity_t<E>& e);
 
 /**
   Make a Future out of a Try
