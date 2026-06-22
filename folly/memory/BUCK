@@ -150,6 +150,18 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "hybrid_alloc",
+    headers = ["HybridAlloc.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        ":malloc",
+        "//folly:memory",
+        "//folly:portability",
+        "//folly/lang:safe_assert",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "allocator",
     headers = ["Allocator.h"],
     use_raw_headers = True,
