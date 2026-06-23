@@ -108,7 +108,7 @@ static ssize_t doVecOperation(int fd, const iovec* iov, int count) {
   if (!count) {
     return 0;
   }
-  if (count < 0 || count > folly::kIovMax) {
+  if (count < 0 || static_cast<size_t>(count) > folly::kIovMax) {
     errno = EINVAL;
     return -1;
   }

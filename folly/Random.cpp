@@ -49,7 +49,7 @@ void readRandomDevice(void* data, size_t size) {
     HCRYPTPROV prov;
     if (!CryptAcquireContext(
             &prov, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
-      if (GetLastError() == NTE_BAD_KEYSET) {
+      if (GetLastError() == static_cast<DWORD>(NTE_BAD_KEYSET)) {
         // Mostly likely cause of this is that no key container
         // exists yet, so try to create one.
         PCHECK(CryptAcquireContext(

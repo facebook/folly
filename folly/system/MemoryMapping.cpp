@@ -332,7 +332,8 @@ bool MemoryMapping::mlock(LockMode mode, LockFlags flags) {
   size_t amountSucceeded = 0;
   locked_ = memOpInChunks(
       [flags](void* addr, size_t len) -> int {
-        if (flags.tryCollapseToTHP && len >= kDefaultMlockChunkSize) {
+        if (flags.tryCollapseToTHP &&
+            len >= static_cast<size_t>(kDefaultMlockChunkSize)) {
           if (madvise(addr, len, MADV_POPULATE_READ) == 0) {
             madvise(addr, len, MADV_COLLAPSE);
           }
