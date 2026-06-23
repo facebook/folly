@@ -21,7 +21,6 @@ import tempfile
 import time
 import traceback
 import unittest
-import warnings
 from importlib.machinery import PathFinder
 
 
