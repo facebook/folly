@@ -1087,6 +1087,47 @@ TEST_P(AsyncSocketTest, ConnectWriteZeroCopy) {
 }
 
 /**
+ * Move AsyncSocket between EVBs while a SEND_ZC write is in
+ * flight, validating IoUringSendHandle's detach/clone two-CQE path.
+ */
+TEST_P(AsyncSocketTest, MoveEventBaseWithInflightZeroCopyWrite) {
+  if (GetParam() != BackendType::IO_URING) {
+    GTEST_SKIP() << "SEND_ZC + EventBase move is io_uring-only";
+  }
+
+  TestServer server;
+  EventBase& evb = getEventBase();
+  auto evb2 = makeEventBase();
+
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  ASSERT_TRUE(socket->setZeroCopy(true));
+
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+  evb.loop();
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+
+  constexpr size_t kLen = 128;
+  char buf[kLen];
+  memset(buf, 'a', kLen);
+  WriteCallback wcb(true /*enableReleaseIOBufCallback*/);
+  socket->writeChain(
+      &wcb, IOBuf::copyBuffer(buf, kLen), WriteFlags::WRITE_MSG_ZEROCOPY);
+  evb.loopOnce();
+
+  ASSERT_TRUE(socket->isDetachable());
+  socket->detachEventBase();
+  socket->attachEventBase(evb2.get());
+
+  evb.loop();
+  evb2->loop();
+  ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
+
+  socket->close();
+  server.verifyConnection(buf, kLen);
+}
+
+/**
  * Test calling close() immediately after connect()
  */
 TEST_P(AsyncSocketTest, ConnectAndClose) {

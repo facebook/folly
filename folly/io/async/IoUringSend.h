@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <utility>
+#include <vector>
+
 #include <folly/futures/Future.h>
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/DelayedDestruction.h>
@@ -43,6 +46,7 @@ class IoUringBackend;
 class IoUringSendHandle : public DelayedDestruction {
  public:
   using UniquePtr = std::unique_ptr<IoUringSendHandle, Destructor>;
+  using VecResFlags = std::vector<std::pair<int, uint32_t>>;
 
   static UniquePtr create(
       EventBase* evb,
@@ -99,7 +103,7 @@ class IoUringSendHandle : public DelayedDestruction {
   SendRequest* requestTail_{nullptr};
 
   bool sendEnabled_{false};
-  Optional<SemiFuture<int>> detachedFuture_;
+  Optional<SemiFuture<VecResFlags>> detachedFuture_;
 };
 
 } // namespace folly

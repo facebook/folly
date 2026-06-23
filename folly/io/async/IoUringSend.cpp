@@ -86,13 +86,19 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   folly::IOBuf* getData() const { return data_.get(); }
   bool notifPending() const { return refs_ > 1; }
 
-  folly::SemiFuture<int> detachEventBase() {
+  folly::SemiFuture<VecResFlags> detachEventBase() {
     handle_ = nullptr;
     setEventBase(nullptr);
 
-    auto [promise, future] = makePromiseContract<int>();
-    detachedSignal_ = [p = std::move(promise)](int res) mutable {
-      p.setValue(res);
+    auto [promise, future] = makePromiseContract<VecResFlags>();
+    detachedSignal_ = [p = std::move(promise),
+                       ret = VecResFlags()](int res, uint32_t flags) mutable {
+      ret.emplace_back(res, flags);
+      // Final non-ZC completion has flags = 0
+      // Final ZC completion has flags = F_NOTIF
+      if (flags == 0 || flags & IORING_CQE_F_NOTIF) {
+        p.setValue(std::move(ret));
+      }
     };
     return std::move(future);
   }
@@ -109,6 +115,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
         std::move(data_),
         flags_,
         fd_);
+    clone->refs_ = refs_;
     clone->append(next_);
     if (inFlight()) {
       clone->internalMarkInflight(true);
@@ -134,7 +141,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
     auto flags = cqe->flags;
 
     if (!handle_) {
-      detachedSignal_(res);
+      detachedSignal_(res, flags);
       return;
     }
 
@@ -228,7 +235,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   DestructorGuard handleGuard_{nullptr};
   SendRequest* next_{nullptr};
   struct msghdr msg_{};
-  folly::Function<void(int)> detachedSignal_;
+  folly::Function<void(int, uint32_t)> detachedSignal_;
 
   struct iovec iov_[];
 };
@@ -290,16 +297,19 @@ IoUringSendHandle::IoUringSendHandle(
       CHECK(newReq->inFlight());
       std::move(*other->detachedFuture_)
           .via(evb)
-          .thenValue([oldReq, newReq, evb](int res) {
+          .thenValue([oldReq, newReq, evb](const VecResFlags& results) {
             // The result res is from detachSignal_ in the previous request
             oldReq->destroy();
-            struct io_uring_cqe cqe{};
-            cqe.res = res;
-            evb->bumpHandlingTime();
-            if (newReq->cancelled()) {
-              newReq->callbackCancelled(&cqe);
-            } else {
-              newReq->callback(&cqe);
+            for (auto& [res, flags] : results) {
+              struct io_uring_cqe cqe{};
+              cqe.res = res;
+              cqe.flags = flags;
+              evb->bumpHandlingTime();
+              if (newReq->cancelled()) {
+                newReq->callbackCancelled(&cqe);
+              } else {
+                newReq->callback(&cqe);
+              }
             }
           });
     }
@@ -312,7 +322,7 @@ void IoUringSendHandle::detachEventBase() {
   backend_ = nullptr;
 
   if (requestHead_ && requestHead_->inFlight()) {
-    detachedFuture_ = requestHead_->detachEventBase();
+    detachedFuture_.emplace(requestHead_->detachEventBase());
   }
 }
 
