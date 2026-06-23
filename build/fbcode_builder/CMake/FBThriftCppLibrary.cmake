@@ -44,7 +44,7 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
   # Generate relative paths in #includes
   file(
     RELATIVE_PATH include_prefix
-    "${CMAKE_SOURCE_DIR}"
+    "${PROJECT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/${THRIFT_FILE}"
   )
   get_filename_component(include_prefix ${include_prefix} DIRECTORY)
@@ -122,7 +122,7 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
       -o "${output_dir}"
       "${CMAKE_CURRENT_SOURCE_DIR}/${THRIFT_FILE}"
     WORKING_DIRECTORY
-      "${CMAKE_BINARY_DIR}"
+      "${PROJECT_BINARY_DIR}"
     MAIN_DEPENDENCY
       "${THRIFT_FILE}"
     DEPENDS
@@ -145,7 +145,7 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
   target_include_directories(
     "${LIB_NAME}"
     PUBLIC
-      "$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>"
+      "$<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>"
       "$<INSTALL_INTERFACE:${ARG_INCLUDE_DIR}>"
       ${Xxhash_INCLUDE_DIR}
   )
@@ -182,7 +182,7 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
   target_include_directories(
     "${LIB_NAME}.thrift_includes"
     INTERFACE
-      "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>"
+      "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>"
       "$<INSTALL_INTERFACE:${ARG_THRIFT_INCLUDE_DIR}>"
   )
   foreach(dep IN LISTS ARG_DEPENDS)
