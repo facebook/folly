@@ -36,7 +36,7 @@ static void duration_to_ts(
 }
 
 #if !FOLLY_HAVE_CLOCK_GETTIME || FOLLY_FORCE_CLOCK_GETTIME_DEFINITION
-#if __MACH__
+#if defined(__MACH__) && __MACH__
 #include <errno.h>
 #include <mach/mach_init.h> // @manual
 #include <mach/mach_port.h> // @manual

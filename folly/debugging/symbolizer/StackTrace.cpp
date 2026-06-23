@@ -23,13 +23,13 @@
 #include <folly/Portability.h>
 #include <folly/portability/Config.h>
 
-#if FOLLY_HAVE_LIBUNWIND
+#if defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
 // Must be first to ensure that UNW_LOCAL_ONLY is defined
 #define UNW_LOCAL_ONLY 1
 #include <folly/portability/Libunwind.h>
 #endif
 
-#if FOLLY_HAVE_BACKTRACE
+#if defined(FOLLY_HAVE_BACKTRACE) && FOLLY_HAVE_BACKTRACE
 #include <execinfo.h> // @donotremove
 #endif
 
@@ -60,13 +60,14 @@ ssize_t getStackTrace(
   //
   // When unw_backtrace is not available, fall back on the standard
   // `backtrace` function from execinfo.h.
-#if FOLLY_HAVE_LIBUNWIND && defined(UNW_VERSION)
+#if defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND && \
+    defined(UNW_VERSION)
   int r = unw_backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
   return r < 0 ? -1 : r;
-#elif FOLLY_HAVE_BACKTRACE
+#elif defined(FOLLY_HAVE_BACKTRACE) && FOLLY_HAVE_BACKTRACE
   int r = backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
   return r < 0 ? -1 : r;
-#elif FOLLY_HAVE_LIBUNWIND
+#elif defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
   return getStackTraceSafe(addresses, maxAddresses);
 #else
   return -1;
@@ -84,7 +85,7 @@ constexpr size_t kMaxExpectedStackFrameSizeLg2 = sizeof(size_t) == 8
 constexpr size_t kMaxExpectedStackFrameSize //
     = size_t(1) << kMaxExpectedStackFrameSizeLg2;
 
-#if FOLLY_HAVE_LIBUNWIND
+#if defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
 
 struct FrameInfo {
   /// The instruction pointer (ip) of the frame.
@@ -192,7 +193,7 @@ ssize_t getStackTraceSafe(
   // https://opensource.apple.com/source/Libc/Libc-1353.60.8/, and it is
   // widely used in signal handlers in practice.
   return backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
-#elif FOLLY_HAVE_LIBUNWIND
+#elif defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
   unw_context_t context;
   unw_cursor_t cursor;
   return getStackTraceInPlace(context, cursor, addresses, maxAddresses);
@@ -205,7 +206,7 @@ ssize_t getStackTraceHeap(
     [[maybe_unused]] uintptr_t* addresses,
     [[maybe_unused]] size_t maxAddresses) {
   std::ignore = sInit;
-#if FOLLY_HAVE_LIBUNWIND
+#if defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
   struct Ctx {
     unw_context_t context;
     unw_cursor_t cursor;

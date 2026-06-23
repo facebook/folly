@@ -130,7 +130,8 @@ void invoke_pthread_atfork(
     [[maybe_unused]] void (*parent)(),
     [[maybe_unused]] void (*child)()) {
   int ret = 0;
-#if FOLLY_HAVE_PTHREAD_ATFORK // if no pthread_atfork, probably no fork either
+#if defined(FOLLY_HAVE_PTHREAD_ATFORK) && \
+    FOLLY_HAVE_PTHREAD_ATFORK // if no pthread_atfork, probably no fork either
   ret = pthread_atfork(prepare, parent, child);
 #endif
   if (ret != 0) {
