@@ -22,7 +22,6 @@ boost-python
 libdwarf-python
 libevent-python
 libsodium
-double-conversion-python
 fast_float
 fmt-python
 lz4-python

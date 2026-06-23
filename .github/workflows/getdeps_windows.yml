@@ -69,9 +69,6 @@ jobs:
     - name: Fetch cmake
       if: ${{ steps.paths.outputs.cmake_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests cmake
-    - name: Fetch double-conversion
-      if: ${{ steps.paths.outputs.double-conversion_SOURCE }}
-      run: python build/fbcode_builder/getdeps.py fetch --no-tests double-conversion
     - name: Fetch fast_float
       if: ${{ steps.paths.outputs.fast_float_SOURCE }}
       run: python build/fbcode_builder/getdeps.py fetch --no-tests fast_float

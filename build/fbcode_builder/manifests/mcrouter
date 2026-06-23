@@ -20,7 +20,6 @@ boost
 libevent
 openssl
 zlib
-double-conversion
 
 [shipit.pathmap]
 fbcode/mcrouter/public_tld = .

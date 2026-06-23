@@ -232,16 +232,6 @@ Install the required packages from MacPorts:
     zlib
 ```
 
-Download and install double-conversion:
-
-```
-  git clone https://github.com/google/double-conversion.git
-  cd double-conversion
-  cmake -DBUILD_SHARED_LIBS=ON .
-  make
-  sudo make install
-```
-
 Download and install folly with the parameters listed below:
 
 ```
