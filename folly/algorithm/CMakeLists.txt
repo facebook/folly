@@ -27,6 +27,11 @@ folly_add_library(
   HEADERS
     StableRadixSort.h
   EXPORTED_DEPS
+    folly_constexpr_math
+    folly_container_hybrid_vector
+    folly_container_iterator
+    folly_lang_assume
+    folly_memset
     folly_traits
 )
 
