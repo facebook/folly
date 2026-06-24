@@ -133,6 +133,17 @@ template <typename Iter>
 using iterator_mapped_type_t =
     typename iterator_value_type_t<Iter>::second_type;
 
+//  is_reverse_iterator
+//
+//  Whether an iterator type is a std::reverse_iterator specialization.
+template <typename T>
+struct is_reverse_iterator : std::false_type {};
+template <typename Iter>
+struct is_reverse_iterator<std::reverse_iterator<Iter>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_reverse_iterator_v = is_reverse_iterator<T>::value;
+
 /**
  * Argument tuple for variadic emplace/constructor calls. Stores arguments by
  * (decayed) value. Restores original argument types with reference qualifiers

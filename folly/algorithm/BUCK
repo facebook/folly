@@ -16,6 +16,11 @@ fb_dirsync_cpp_library(
     headers = ["StableRadixSort.h"],
     use_raw_headers = True,
     exported_deps = [
+        "//folly:constexpr_math",
+        "//folly:memset",
         "//folly:traits",
+        "//folly/container:hybrid_vector",
+        "//folly/container:iterator",
+        "//folly/lang:assume",
     ],
 )
