@@ -33,7 +33,7 @@ struct isSemiFuture : std::false_type {
 
 template <typename T>
 struct isSemiFuture<SemiFuture<T>> : std::true_type {
-  typedef T Inner;
+  using Inner = T;
 };
 
 template <typename T>
@@ -43,7 +43,7 @@ struct isFuture : std::false_type {
 
 template <typename T>
 struct isFuture<Future<T>> : std::true_type {
-  typedef T Inner;
+  using Inner = T;
 };
 
 template <typename T>
@@ -58,22 +58,22 @@ struct isFutureOrSemiFuture<Try<T>> : std::false_type {
 
 template <typename T>
 struct isFutureOrSemiFuture<Future<T>> : std::true_type {
-  typedef T Inner;
+  using Inner = T;
 };
 
 template <typename T>
 struct isFutureOrSemiFuture<Future<Try<T>>> : std::true_type {
-  typedef T Inner;
+  using Inner = T;
 };
 
 template <typename T>
 struct isFutureOrSemiFuture<SemiFuture<T>> : std::true_type {
-  typedef T Inner;
+  using Inner = T;
 };
 
 template <typename T>
 struct isFutureOrSemiFuture<SemiFuture<Try<T>>> : std::true_type {
-  typedef T Inner;
+  using Inner = T;
 };
 
 // C++20 concepts for Future/SemiFuture type constraints.
@@ -112,13 +112,13 @@ struct ArgType;
 
 template <typename Arg, typename... Args>
 struct ArgType<Arg, Args...> {
-  typedef Arg FirstArg;
-  typedef ArgType<Args...> Tail;
+  using FirstArg = Arg;
+  using Tail = ArgType<Args...>;
 };
 
 template <>
 struct ArgType<> {
-  typedef void FirstArg;
+  using FirstArg = void;
 };
 
 template <bool isTry_, typename F, typename... Args>
@@ -131,30 +131,30 @@ struct argResult {
 
 template <typename T, typename F>
 struct tryCallableResult {
-  typedef detail::argResult<true, F, Try<T>&&> Arg;
-  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
-  typedef typename ReturnsFuture::Inner value_type;
+  using Arg = detail::argResult<true, F, Try<T>&&>;
+  using ReturnsFuture = isFutureOrSemiFuture<typename Arg::Result>;
+  using value_type = typename ReturnsFuture::Inner;
 };
 
 template <typename T, typename F>
 struct tryExecutorCallableResult {
-  typedef detail::argResult<true, F, Executor::KeepAlive<>&&, Try<T>&&> Arg;
-  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
-  typedef typename ReturnsFuture::Inner value_type;
+  using Arg = detail::argResult<true, F, Executor::KeepAlive<>&&, Try<T>&&>;
+  using ReturnsFuture = isFutureOrSemiFuture<typename Arg::Result>;
+  using value_type = typename ReturnsFuture::Inner;
 };
 
 template <typename T, typename F>
 struct valueCallableResult {
-  typedef detail::argResult<false, F, T&&> Arg;
-  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
-  typedef typename ReturnsFuture::Inner value_type;
+  using Arg = detail::argResult<false, F, T&&>;
+  using ReturnsFuture = isFutureOrSemiFuture<typename Arg::Result>;
+  using value_type = typename ReturnsFuture::Inner;
 };
 
 template <typename T, typename F>
 struct valueExecutorCallableResult {
-  typedef detail::argResult<false, F, Executor::KeepAlive<>&&, T&&> Arg;
-  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
-  typedef typename ReturnsFuture::Inner value_type;
+  using Arg = detail::argResult<false, F, Executor::KeepAlive<>&&, T&&>;
+  using ReturnsFuture = isFutureOrSemiFuture<typename Arg::Result>;
+  using value_type = typename ReturnsFuture::Inner;
 };
 
 class DeferredExecutor;
