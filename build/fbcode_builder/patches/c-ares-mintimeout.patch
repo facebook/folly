@@ -1,0 +1,77 @@
+diff --git a/include/ares.h b/include/ares.h
+--- a/include/ares.h
++++ b/include/ares.h
+@@ -265,6 +265,7 @@
+ #define ARES_OPT_QUERY_CACHE     (1 << 21)
+ #define ARES_OPT_EVENT_THREAD    (1 << 22)
+ #define ARES_OPT_SERVER_FAILOVER (1 << 23)
++#define ARES_OPT_MINTIMEOUTMS    (1 << 24)
+ 
+ /* Nameinfo flag values */
+ #define ARES_NI_NOFQDN        (1 << 0)
+@@ -391,6 +392,7 @@
+   char              *hosts_path;
+   int                udp_max_queries;
+   int                maxtimeout; /* in milliseconds */
++  int                mintimeout; /* in milliseconds */
+   unsigned int qcache_max_ttl;   /* Maximum TTL for query cache, 0=disabled */
+   ares_evsys_t evsys;
+   struct ares_server_failover_options server_failover_opts;
+diff --git a/src/lib/ares_metrics.c b/src/lib/ares_metrics.c
+--- a/src/lib/ares_metrics.c
++++ b/src/lib/ares_metrics.c
+@@ -247,8 +247,12 @@
+   }
+ 
+   /* don't go below lower bounds */
+-  if (timeout_ms < MIN_TIMEOUT_MS) {
+-    timeout_ms = MIN_TIMEOUT_MS;
++  {
++    size_t min_timeout_ms =
++      channel->mintimeout ? channel->mintimeout : MIN_TIMEOUT_MS;
++    if (timeout_ms < min_timeout_ms) {
++      timeout_ms = min_timeout_ms;
++    }
+   }
+ 
+   /* don't go above upper bounds */
+diff --git a/src/lib/ares_options.c b/src/lib/ares_options.c
+--- a/src/lib/ares_options.c
++++ b/src/lib/ares_options.c
+@@ -128,6 +128,10 @@
+     options->maxtimeout = (int)channel->maxtimeout;
+   }
+ 
++  if (channel->optmask & ARES_OPT_MINTIMEOUTMS) {
++    options->mintimeout = (int)channel->mintimeout;
++  }
++
+   if (channel->optmask & ARES_OPT_UDP_PORT) {
+     options->udp_port = channel->udp_port;
+   }
+@@ -335,6 +339,14 @@
+     }
+   }
+ 
++  if (optmask & ARES_OPT_MINTIMEOUTMS) {
++    if (options->mintimeout <= 0) {
++      optmask &= ~(ARES_OPT_MINTIMEOUTMS);
++    } else {
++      channel->mintimeout = (size_t)options->mintimeout;
++    }
++  }
++
+   if (optmask & ARES_OPT_ROTATE) {
+     channel->rotate = ARES_TRUE;
+   }
+diff --git a/src/lib/ares_private.h b/src/lib/ares_private.h
+--- a/src/lib/ares_private.h
++++ b/src/lib/ares_private.h
+@@ -189,6 +189,7 @@
+   size_t               tries;
+   size_t               ndots;
+   size_t               maxtimeout;                 /* in milliseconds */
++  size_t               mintimeout;                 /* in milliseconds */
+   ares_bool_t          rotate;
+   unsigned short       udp_port;                   /* stored in network order */
+   unsigned short       tcp_port;                   /* stored in network order */
