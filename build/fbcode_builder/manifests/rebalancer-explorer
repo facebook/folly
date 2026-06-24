@@ -1,0 +1,68 @@
+[manifest]
+name = rebalancer-explorer
+fbsource_path = fbcode/rebalancer/explorer/
+shipit_project = facebookincubator/rebalancer
+shipit_fbcode_builder = true
+use_shipit = true
+
+[git]
+# To git clone on devserver, setup fwdproxy:
+# https://www.internalfb.com/wiki/Open_Source/Maintain_a_FB_OSS_Project/Devserver_GitHub_Access/
+repo_url = https://github.com/facebookincubator/rebalancer.git
+branch = main
+
+[build]
+builder = cmake
+
+[cmake.defines]
+CMAKE_POSITION_INDEPENDENT_CODE=ON
+REBALANCER_BUILD_EXPLORER=ON
+
+# Build examples when tests are enabled (default unless --no-tests). Mirrors the
+# `rebalancer` manifest; lets the bundles image get examples without EXAMPLES=ON
+# in --extra-cmake-defines, which would change every dep's hash and break sharing
+# the prebuilt deps.
+[cmake.defines.test=on]
+EXAMPLES=ON
+
+[dependencies]
+boost
+# fbthrift kept for RPC, benchmarks off. shared_libs makes folly/fbthrift/fmt
+# (and gflags/glog) single shared libs; as static archives they'd be linked into
+# several of the explorer's .so/exe and double-register gflags, aborting startup.
+fbthrift = !benchmark, shared_libs
+fmt = shared_libs
+folly = shared_libs
+gflags
+glog
+googletest
+highs-optimizer
+# Required by the HTTP/JSON proxy (rebalancer_explorer_proxy) for its HTTP server.
+proxygen
+re2
+xxhash
+
+[dependencies.os=linux]
+clang19
+
+[cmake.defines.os=linux]
+CMAKE_C_COMPILER=clang-19
+CMAKE_CXX_COMPILER=clang++-19
+
+[shipit.strip]
+^.*/fb/.*$
+^fbcode/rebalancer/explorer/CLAUDE\.md$
+^fbcode/rebalancer/explorer/PACKAGE$
+
+[shipit.pathmap]
+fbcode/algopt/rebalancer/oss_root = .
+fbcode/algopt/rebalancer = algopt/rebalancer
+fbcode/algopt/lp = algopt/lp
+fbcode/rebalancer/explorer = rebalancer/explorer
+
+[dependencies.all(distro=centos_stream,distro_vers=9)]
+clang19
+
+[cmake.defines.all(distro=centos_stream,distro_vers=9)]
+CMAKE_C_COMPILER=clang-19
+CMAKE_CXX_COMPILER=clang++-19
