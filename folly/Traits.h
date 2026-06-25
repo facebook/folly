@@ -23,6 +23,7 @@
 #include <memory>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 #include <folly/Portability.h>
 
@@ -240,6 +241,36 @@ concept uncvref_instantiated_from =
     is_instantiation_of_v<Templ, std::remove_cvref_t<T>>;
 
 #endif
+
+template <typename T>
+  requires is_instantiation_of_v<std::pair, T>
+struct is_trivially_destructible : std::is_trivially_destructible<T> {};
+
+namespace detail {
+
+template <typename T>
+constexpr bool is_trivially_destructible_impl() {
+  if constexpr (std::is_trivially_destructible_v<T>) {
+    return true;
+  }
+  // std::pair is the only type that has this problem of having a non trivial
+  // default destructor.
+  else if constexpr (is_instantiation_of_v<std::pair, std::remove_cv_t<T>>) {
+    return is_trivially_destructible_impl<typename T::first_type>() &&
+        is_trivially_destructible_impl<typename T::second_type>();
+  }
+}
+
+} // namespace detail
+
+/*
+ * Extension of std::is_trivially_destructible_v that will also
+ * say "true" for certain known aggregate types from the standard,
+ * like std::pair.
+ */
+template <typename T>
+constexpr bool is_trivially_destructible_v =
+    detail::is_trivially_destructible_impl<T>();
 
 /// member_pointer_traits
 ///
