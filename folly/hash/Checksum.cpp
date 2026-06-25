@@ -177,16 +177,27 @@ bool crc32c_hw_supported_neon_eor3_sha3() {
 
 namespace {
 
+// Slice-by-4 CRC tables. entries[0] is the standard byte-at-a-time table:
+// entries[0][i] is the CRC of byte i starting from CRC value 0.
+// For k > 0, entries[k][i] is the CRC of byte i followed by k zero bytes,
+// starting from CRC value 0. These are used to consume 4 input bytes per
+// loop iteration, exploiting the linearity of CRC over GF(2).
 template <uint32_t CRC_POLYNOMIAL_BIT_REVERSED>
 struct CrcSwTable {
-  uint32_t entries[256];
+  uint32_t entries[4][256];
   constexpr CrcSwTable() : entries{} {
     for (uint32_t i = 0; i < 256; i++) {
       uint32_t crc = i;
       for (int j = 0; j < 8; j++) {
         crc = (crc & 1) ? (crc >> 1) ^ CRC_POLYNOMIAL_BIT_REVERSED : (crc >> 1);
       }
-      entries[i] = crc;
+      entries[0][i] = crc;
+    }
+    for (uint32_t k = 0; k < 3; k++) {
+      for (uint32_t i = 0; i < 256; i++) {
+        uint32_t v = entries[k][i];
+        entries[k + 1][i] = (v >> 8) ^ entries[0][v & 0xFF];
+      }
     }
   }
 };
@@ -197,8 +208,22 @@ template <uint32_t CRC_POLYNOMIAL_BIT_REVERSED>
 uint32_t crc_sw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
   static constexpr CrcSwTable<CRC_POLYNOMIAL_BIT_REVERSED> table{};
   uint32_t crc = startingChecksum;
+  // Process 4 bytes per iteration using the slice-by-4 algorithm. This is
+  // mathematically equivalent to four byte-at-a-time CRC steps, by linearity
+  // of CRC over GF(2).
+  while (nbytes >= 4) {
+    uint8_t b0 = data[0] ^ static_cast<uint8_t>(crc);
+    uint8_t b1 = data[1] ^ static_cast<uint8_t>(crc >> 8);
+    uint8_t b2 = data[2] ^ static_cast<uint8_t>(crc >> 16);
+    uint8_t b3 = data[3] ^ static_cast<uint8_t>(crc >> 24);
+    crc = table.entries[3][b0] ^ table.entries[2][b1] ^ table.entries[1][b2] ^
+        table.entries[0][b3];
+    data += 4;
+    nbytes -= 4;
+  }
+  // Process any remaining bytes (0 to 3) one at a time.
   for (size_t i = 0; i < nbytes; i++) {
-    crc = table.entries[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
+    crc = table.entries[0][(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
   }
   return crc;
 }
