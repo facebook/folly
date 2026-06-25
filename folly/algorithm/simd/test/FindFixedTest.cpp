@@ -35,7 +35,14 @@ namespace {
 template <typename T, std::size_t N>
 void allTestsForN(std::span<T, N> buf) {
   auto errorMsg = [&] {
-    return fmt::format("looking in: {}, sizeof(T): {}", buf, sizeof(T));
+    // std::byte (and similar) is not directly formattable by fmt, so widen
+    // each element to an integer for the diagnostic message.
+    std::vector<std::uint64_t> values;
+    values.reserve(buf.size());
+    for (const auto& x : buf) {
+      values.push_back(static_cast<std::uint64_t>(x));
+    }
+    return fmt::format("looking in: {}, sizeof(T): {}", values, sizeof(T));
   };
 
   T foundX = static_cast<T>(0);
