@@ -17,6 +17,8 @@
 #include <folly/debugging/symbolizer/StackTrace.h>
 #include <folly/tracing/AsyncStack.h>
 
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <optional>
 
@@ -68,6 +70,21 @@ static bool isProcMapQueryAvailable() noexcept {
 // first use in signal handlers. This ordering is only guaranteed within this
 // translation unit; cross-TU dynamic-init order is unspecified.
 static const bool sProcMapQueryInit = isProcMapQueryAvailable();
+
+// Runtime opt-in check via environment variable.
+// The frame-pointer unwinder is enabled only when FOLLY_FB_UNWINDER_ENABLED is
+// set to exactly "1"; any other value (or unset) leaves it disabled.
+static bool isFramePointerUnwinderEnabled() noexcept {
+  static const bool enabled = []() {
+    const char* env = std::getenv("FOLLY_FB_UNWINDER_ENABLED");
+    return env != nullptr && std::strcmp(env, "1") == 0;
+  }();
+  return enabled;
+}
+
+// Force initialization of enable flag during static init phase.
+static const bool sFramePointerUnwinderEnabledInit =
+    isFramePointerUnwinderEnabled();
 } // namespace
 
 ssize_t getStackTrace(
