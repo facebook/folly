@@ -33,6 +33,18 @@
 #include <execinfo.h> // @donotremove
 #endif
 
+// Weak symbols for frame-pointer unwinder integration.
+// A bridge library in folly/facebook/ provides strong definitions that
+// delegate to services_efficiency/backtrace. If the bridge is not linked,
+// these remain nullptr and the code falls back to libunwind/DWARF.
+// When the backtrace library becomes public/OSS, folly can take a direct
+// dependency and these weak symbols can be removed.
+#if FOLLY_HAVE_WEAK_SYMBOLS
+extern "C" FOLLY_ATTR_WEAK bool folly_debugging_have_proc_map_query();
+#else
+static bool (*folly_debugging_have_proc_map_query)() = nullptr;
+#endif
+
 namespace folly {
 namespace symbolizer {
 
@@ -41,6 +53,21 @@ namespace {
 // libunwind tdep_init
 static uintptr_t sAddr = 0;
 static ssize_t sInit = getStackTrace(&sAddr, 0);
+
+// Uses the C++11 "magic static" pattern: `available` is initialized once on
+// first call, with thread-safety guaranteed by the C++ standard.
+static bool isProcMapQueryAvailable() noexcept {
+  static const bool available =
+      folly_debugging_have_proc_map_query != nullptr &&
+      folly_debugging_have_proc_map_query();
+  return available;
+}
+
+// Eagerly run this TU's magic-static during the static-init phase (before
+// main) so have_proc_map_query()'s pthread_once is completed ahead of normal
+// first use in signal handlers. This ordering is only guaranteed within this
+// translation unit; cross-TU dynamic-init order is unspecified.
+static const bool sProcMapQueryInit = isProcMapQueryAvailable();
 } // namespace
 
 ssize_t getStackTrace(
