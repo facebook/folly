@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <exception>
 #include <functional>
+#include <memory>
 
 #include <boost/intrusive/list.hpp>
 #include <boost/iterator/iterator_adaptor.hpp>
