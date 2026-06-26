@@ -12,3 +12,4 @@ subdir = range-v3-0.11.0
 
 [cmake.defines]
 RANGE_V3_EXAMPLES=OFF
+RANGE_V3_TESTS=OFF
