@@ -195,6 +195,7 @@ struct detect_promise_return_object_eager_conversion_ {
       }
 
       promise_type* promise;
+      bool body_ran = false;
     };
 
     ~promise_type() {
@@ -208,14 +209,26 @@ struct detect_promise_return_object_eager_conversion_ {
     void unhandled_exception() {}
 
     return_object get_return_object() noexcept { return {*this}; }
-    void return_void() {}
+    //  Record that the coroutine body has run. Guarded on `object` so that, in
+    //  the eager case where the return-object temporary is already destroyed
+    //  (it nulls `object` in its destructor), this is a safe no-op.
+    void return_void() {
+      if (object) {
+        object->body_ran = true;
+      }
+    }
 
     return_object* object = nullptr;
   };
 
+  //  Conversion is eager iff it happens before the coroutine body runs. This is
+  //  measured directly via `body_ran` rather than via promise liveness: some
+  //  compilers (clang >= 22) destroy the promise after the return-object
+  //  conversion rather than before, so the promise may still be alive at
+  //  conversion time even when conversion is deferred.
   /* implicit */ detect_promise_return_object_eager_conversion_(
       promise_type::return_object const& o) noexcept
-      : eager{!!o.promise} {}
+      : eager{!o.body_ran} {}
   //  letting the coroutine type be trivially-copyable makes the coroutine crash
   //  under clang; to work around, provide an empty but not trivial destructor
   ~detect_promise_return_object_eager_conversion_() {}
