@@ -24,7 +24,7 @@ jobs:
     runs-on: macOS-latest
     timeout-minutes: 60
     env:
-      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
       CC: /opt/homebrew/opt/llvm/bin/clang
       CXX: /opt/homebrew/opt/llvm/bin/clang++
       SCCACHE_GHA_ENABLED: "on"
