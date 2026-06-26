@@ -234,19 +234,17 @@ class Arena {
 
   // cache_last<true> makes the list keep a pointer to the last element, so we
   // have push_back() and constant time splice_after()
-  typedef boost::intrusive::slist<
+  using BlockList = boost::intrusive::slist<
       Block,
       boost::intrusive::member_hook<Block, BlockLink, &Block::link>,
       boost::intrusive::constant_time_size<false>,
-      boost::intrusive::cache_last<true>>
-      BlockList;
+      boost::intrusive::cache_last<true>>;
 
-  typedef boost::intrusive::slist<
+  using LargeBlockList = boost::intrusive::slist<
       LargeBlock,
       boost::intrusive::member_hook<LargeBlock, BlockLink, &LargeBlock::link>,
       boost::intrusive::constant_time_size<false>,
-      boost::intrusive::cache_last<true>>
-      LargeBlockList;
+      boost::intrusive::cache_last<true>>;
 
   void* allocateSlow(size_t size);
 
