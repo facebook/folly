@@ -69,6 +69,15 @@ struct CountingAllocator : std::allocator<T> {
     nAllocations += 1;
     return std::allocator<T>::allocate(n);
   }
+#ifdef __cpp_lib_allocate_at_least
+  // Since C++23, std::vector allocates via allocator_traits::allocate_at_least,
+  // which std::allocator provides; without this override that inherited method
+  // would bypass the counting allocate() above and leave nAllocations at 0.
+  auto allocate_at_least(std::size_t n) {
+    nAllocations += 1;
+    return std::allocator<T>::allocate_at_least(n);
+  }
+#endif
   int nAllocations{0};
 
   template <typename U>
