@@ -168,7 +168,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         env_lines = []
         if build_opts.is_darwin():
             env_lines.append(
-                "DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer"
+                "DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer"
             )
         if use_homebrew_llvm:
             env_lines.append("CC: /opt/homebrew/opt/llvm/bin/clang")
