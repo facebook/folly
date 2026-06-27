@@ -16,6 +16,10 @@ job_weight_mib = 3072
 # boost.fiber is required and that is not available on macos.
 builder = nop
 
+[github.actions]
+# openr uses a 4-core runner, so allow extra build time.
+timeout_minutes = 120
+
 [dependencies]
 boost
 fb303
