@@ -51,6 +51,26 @@
 namespace folly {
 namespace symbolizer {
 
+namespace detail {
+
+folly::StringPiece getNullTerminatedPathComponent(
+    folly::StringPiece section) noexcept {
+  auto const* begin = section.data();
+  auto const* nul =
+      static_cast<const char*>(memchr(begin, '\0', section.size()));
+  if (nul == nullptr || nul == begin) {
+    return {};
+  }
+  auto const nameLen = static_cast<size_t>(nul - begin);
+  if (memchr(begin, '/', nameLen) != nullptr ||
+      memchr(begin, '\\', nameLen) != nullptr) {
+    return {};
+  }
+  return folly::StringPiece(begin, nameLen);
+}
+
+} // namespace detail
+
 ElfFile::ElfFile() noexcept
     : fd_(-1),
       file_(static_cast<char*>(MAP_FAILED)),
@@ -144,15 +164,21 @@ ElfFile::OpenResult ElfFile::openAndFollow(
 
   // The section starts with the filename, with any leading directory
   // components removed, followed by a zero byte.
-  auto debugFileName = getSectionBody(*debuginfo);
-  auto debugFileLen = strlen(debugFileName.begin());
-  if (dirlen + debugFileLen >= PATH_MAX) {
+  auto debugFileName =
+      detail::getNullTerminatedPathComponent(getSectionBody(*debuginfo));
+  if (debugFileName.empty()) {
+    return result;
+  }
+
+  auto debugFileLen = debugFileName.size();
+  if (dirlen + debugFileLen + 1 > PATH_MAX) {
     return result;
   }
 
   char linkname[PATH_MAX];
   memcpy(linkname, name, dirlen);
-  memcpy(linkname + dirlen, debugFileName.begin(), debugFileLen + 1);
+  memcpy(linkname + dirlen, debugFileName.data(), debugFileLen);
+  linkname[dirlen + debugFileLen] = '\0';
   reset();
   result = openNoThrow(linkname, options);
   if (result == kSuccess) {
