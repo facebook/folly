@@ -754,6 +754,8 @@ class AsyncUDPSocket : public EventHandler {
   // explicitly before bind()/connect() and socket opts application.
   void init(sa_family_t family, BindOptions bindOptions = BindOptions());
 
+  size_t drainErrMessages() noexcept { return handleErrMessages(); }
+
  protected:
   struct full_sockaddr_storage {
     sockaddr_storage storage;
