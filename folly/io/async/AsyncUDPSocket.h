@@ -207,6 +207,37 @@ class AsyncUDPSocket : public EventHandler {
     /** Next id this bookkeeping will assign (for tests and diagnostics). */
     uint32_t nextId() const noexcept { return nextId_; }
 
+    /**
+     * Record one completion cmsg covering ids [lo, hi]. The cmsg carries
+     * a single SO_EE_CODE_ZEROCOPY_COPIED flag for the whole range — the
+     * kernel does not distinguish per-send within a cmsg — so a COPIED
+     * cmsg buckets all (hi - lo + 1) sends into the "MaybeCopied" tallies.
+     * See public counter doc on AsyncUDPSocket for the lower-bound
+     * ZC-fraction interpretation.
+     */
+    void recordCompletion(uint32_t lo, uint32_t hi, bool copied) noexcept {
+      // (hi - lo) computed in u32 wraps correctly when a single cmsg
+      // straddles the sk_zckey wrap boundary (e.g. lo=0xFFFFFFFE, hi=1
+      // covers 4 sends).
+      const uint64_t range = uint64_t{static_cast<uint32_t>(hi - lo)} + 1;
+      if (copied) {
+        ++completionsCopied_;
+        sendsAckedMaybeCopied_ += range;
+      } else {
+        ++completionsZc_;
+        sendsAckedZc_ += range;
+      }
+    }
+
+    uint64_t getCompletionsZc() const noexcept { return completionsZc_; }
+    uint64_t getCompletionsCopied() const noexcept {
+      return completionsCopied_;
+    }
+    uint64_t getSendsAckedZc() const noexcept { return sendsAckedZc_; }
+    uint64_t getSendsAckedMaybeCopied() const noexcept {
+      return sendsAckedMaybeCopied_;
+    }
+
    private:
     uint32_t nextId_{0};
     struct Entry {
@@ -214,6 +245,15 @@ class AsyncUDPSocket : public EventHandler {
       ReleaseIOBufCallback* cb;
     };
     std::unordered_map<uint32_t, Entry> bufs_;
+    // MSG_ZEROCOPY completion counters; per-fd because sk_zckey and the
+    // SO_EE_ORIGIN_ZEROCOPY error-queue are per-fd. Plain uint64_t (no
+    // atomics) — the surrounding ZeroCopyFdBookkeeping is documented as
+    // not-thread-safe, all sharing AsyncUDPSocket instances run on the
+    // same EventBase.
+    uint64_t completionsZc_{0};
+    uint64_t completionsCopied_{0};
+    uint64_t sendsAckedZc_{0};
+    uint64_t sendsAckedMaybeCopied_{0};
   };
 
   static void fromMsg(
@@ -331,6 +371,27 @@ class AsyncUDPSocket : public EventHandler {
 
   virtual bool setZeroCopy(bool enable);
   bool getZeroCopy() const { return zeroCopyEnabled_; }
+
+  /**
+   * MSG_ZEROCOPY completion counters drained from the error queue by
+   * processZeroCopyMsg. Completions* counts cmsgs; SendsAcked* weights
+   * each cmsg by its (hi - lo + 1) sk_zckey range. The kernel does not
+   * distinguish per-send within a cmsg, so a lower bound on the real-ZC
+   * fraction is SendsAckedZc / (SendsAckedZc + SendsAckedMaybeCopied).
+   * Counters keep incrementing after the kill-switch latches.
+   */
+  uint64_t getZeroCopyCompletionsZc() const noexcept {
+    return zeroCopyBookkeeping_->getCompletionsZc();
+  }
+  uint64_t getZeroCopyCompletionsCopied() const noexcept {
+    return zeroCopyBookkeeping_->getCompletionsCopied();
+  }
+  uint64_t getZeroCopySendsAckedZc() const noexcept {
+    return zeroCopyBookkeeping_->getSendsAckedZc();
+  }
+  uint64_t getZeroCopySendsAckedMaybeCopied() const noexcept {
+    return zeroCopyBookkeeping_->getSendsAckedMaybeCopied();
+  }
 
   size_t getZeroCopyReenableThreshold() const {
     return zeroCopyReenableThreshold_;

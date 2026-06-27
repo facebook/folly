@@ -1300,6 +1300,8 @@ void AsyncUDPSocket::processZeroCopyMsg([[maybe_unused]] const cmsghdr& cmsg) {
       reinterpret_cast<const struct sock_extended_err*>(CMSG_DATA(&cmsg));
   uint32_t hi = serr->ee_data;
   uint32_t lo = serr->ee_info;
+  zeroCopyBookkeeping_->recordCompletion(
+      lo, hi, (serr->ee_code & SO_EE_CODE_ZEROCOPY_COPIED) != 0);
   // disable zero copy if the buffer was actually copied
   if ((serr->ee_code & SO_EE_CODE_ZEROCOPY_COPIED) && zeroCopyEnabled_) {
     VLOG(2) << "AsyncSocket::processZeroCopyMsg(): setting "

@@ -290,6 +290,112 @@ TEST_F(
   EXPECT_EQ(releaseCb.bufs[0].get(), rawBuf);
 }
 
+// Exercises the MSG_ZEROCOPY completion counters and kill-switch state.
+// On loopback the kernel cannot do real ZC and always responds with
+// SO_EE_CODE_ZEROCOPY_COPIED set, so a single writeChain produces a
+// single cmsg over range [N, N] that lands in the "Copied" buckets and
+// latches zeroCopyEnabled to false. Without these counters, that latch
+// is invisible to callers and silent ZC fallbacks look like successful
+// ZC sends.
+TEST_F(
+    AsyncUDPSocketZeroCopyTest,
+    CountersAndKillSwitchOnLoopbackCopiedCompletion) {
+  if (!supported_) {
+    GTEST_SKIP() << "SO_ZEROCOPY not supported on this kernel";
+  }
+  // Pre-state: nothing has happened yet.
+  EXPECT_EQ(sender_->getZeroCopyCompletionsZc(), 0u);
+  EXPECT_EQ(sender_->getZeroCopyCompletionsCopied(), 0u);
+  EXPECT_EQ(sender_->getZeroCopySendsAckedZc(), 0u);
+  EXPECT_EQ(sender_->getZeroCopySendsAckedMaybeCopied(), 0u);
+  EXPECT_TRUE(sender_->getZeroCopy());
+
+  // POLLERR drain is what fires processZeroCopyMsg, so we need a read
+  // registration to wake the EventBase on err-queue activity.
+  NoopReadCallback readCb;
+  sender_->resumeRead(&readCb);
+  SCOPE_EXIT {
+    sender_->pauseRead();
+  };
+
+  RecordingReleaseCb releaseCb(&evb_);
+  RecordingWriteCb writeCb(&releaseCb);
+
+  const std::vector<uint8_t> payloadData(16 * 1024, 'C');
+  auto payload = IOBuf::copyBuffer(payloadData.data(), payloadData.size());
+  const auto ret = sender_->writeChain(
+      &writeCb,
+      receiverAddr_,
+      std::move(payload),
+      AsyncUDPSocket::WriteOptions(0 /*gso*/, true /*zerocopy*/));
+  ASSERT_GT(ret, 0) << "writeChain failed: errno=" << errno;
+
+  // Safety deadline so the loop terminates even if no completion fires.
+  evb_.tryRunAfterDelay([this]() { evb_.terminateLoopSoon(); }, 500);
+  evb_.loopForever();
+  ASSERT_EQ(releaseCb.bufs.size(), 1u)
+      << "ZC completion did not drain via POLLERR";
+
+  // One send → one cmsg → range == 1, COPIED bit set on loopback.
+  EXPECT_EQ(sender_->getZeroCopyCompletionsZc(), 0u);
+  EXPECT_EQ(sender_->getZeroCopyCompletionsCopied(), 1u);
+  EXPECT_EQ(sender_->getZeroCopySendsAckedZc(), 0u);
+  EXPECT_EQ(sender_->getZeroCopySendsAckedMaybeCopied(), 1u);
+  // First COPIED-marked completion latches the kill-switch.
+  EXPECT_FALSE(sender_->getZeroCopy());
+}
+
+// Regression test for counter placement: when MSG_ZEROCOPY counters live
+// on ZeroCopyFdBookkeeping (the per-fd shared object), a writer created
+// via createPeerOnSameFd observes the same counter values as the listener
+// — because both AsyncUDPSocket instances hold a shared_ptr to the same
+// bookkeeping. If counters had been put on AsyncUDPSocket itself, this
+// test would fail with writer counters at 0 while the listener's moved,
+// reproducing the silent footgun for callers (e.g. mvfst QuicServerWorker)
+// that hold a worker rather than the listener.
+TEST_F(AsyncUDPSocketZeroCopyTest, CountersAreSharedAcrossCreatePeerOnSameFd) {
+  if (!supported_) {
+    GTEST_SKIP() << "SO_ZEROCOPY not supported on this kernel";
+  }
+  auto writer = sender_->createPeerOnSameFd();
+  ASSERT_NE(writer, nullptr) << "createPeerOnSameFd returned null";
+  auto& writerRef = *writer;
+
+  // Listener owns the read side and the POLLERR drain.
+  NoopReadCallback readCb;
+  sender_->resumeRead(&readCb);
+  SCOPE_EXIT {
+    sender_->pauseRead();
+  };
+
+  RecordingReleaseCb releaseCb(&evb_);
+  RecordingWriteCb writeCb(&releaseCb);
+
+  const std::vector<uint8_t> payloadData(16 * 1024, 'S');
+  auto payload = IOBuf::copyBuffer(payloadData.data(), payloadData.size());
+  const auto ret = writerRef.writeChain(
+      &writeCb,
+      receiverAddr_,
+      std::move(payload),
+      AsyncUDPSocket::WriteOptions(0 /*gso*/, true /*zerocopy*/));
+  ASSERT_GT(ret, 0) << "writeChain failed: errno=" << errno;
+
+  evb_.tryRunAfterDelay([this]() { evb_.terminateLoopSoon(); }, 500);
+  evb_.loopForever();
+  ASSERT_EQ(releaseCb.bufs.size(), 1u)
+      << "ZC completion did not drain via listener";
+
+  // The same per-fd kernel completion must be visible from both handles.
+  EXPECT_EQ(
+      writerRef.getZeroCopyCompletionsCopied(),
+      sender_->getZeroCopyCompletionsCopied());
+  EXPECT_EQ(
+      writerRef.getZeroCopySendsAckedMaybeCopied(),
+      sender_->getZeroCopySendsAckedMaybeCopied());
+  EXPECT_EQ(sender_->getZeroCopyCompletionsCopied(), 1u);
+  EXPECT_EQ(sender_->getZeroCopySendsAckedMaybeCopied(), 1u);
+}
+
 // Unit test of the bookkeeping in isolation: a freshly constructed
 // bookkeeping assigns monotonic ids starting at 0, and onCompletion
 // hands back exactly the buf that was registered for each id.
@@ -366,6 +472,28 @@ TEST(AsyncUDPSocketZeroCopyBookkeepingTest, OnCompletionAtUint32MaxBoundary) {
       std::numeric_limits<uint32_t>::max());
   EXPECT_FALSE(bk.hasPending());
   EXPECT_TRUE(cb.bufs.empty());
+}
+
+// Regression: recordCompletion must compute the range correctly when a
+// single cmsg straddles the sk_zckey wrap boundary (hi < lo). Without
+// u32-wrap-aware subtraction the SendsAcked* counters jump by ~2^32 per
+// cmsg, silently poisoning the lower-bound ZC-fraction estimate.
+TEST(AsyncUDPSocketZeroCopyBookkeepingTest, RecordCompletionAcrossWrap) {
+  AsyncUDPSocket::ZeroCopyFdBookkeeping bk;
+
+  // Single-id at UINT32_MAX (no wrap, sanity).
+  bk.recordCompletion(
+      std::numeric_limits<uint32_t>::max(),
+      std::numeric_limits<uint32_t>::max(),
+      /*copied=*/false);
+  EXPECT_EQ(bk.getSendsAckedZc(), 1u);
+
+  // Straddling cmsg: lo=UINT32_MAX-1, hi=1 → covers 4 sends.
+  bk.recordCompletion(
+      std::numeric_limits<uint32_t>::max() - 1,
+      1,
+      /*copied=*/false);
+  EXPECT_EQ(bk.getSendsAckedZc(), 1u + 4u);
 }
 
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
