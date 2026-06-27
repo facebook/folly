@@ -454,6 +454,12 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
   apply_folly_compile_options_to_target(folly_test_support)
 
   folly_define_tests(
+    DIRECTORY algorithm/test/
+      TEST algorithm_binary_heap_test SOURCES BinaryHeapTest.cpp
+      TEST algorithm_stable_radix_sort_test SOURCES StableRadixSortTest.cpp
+      BENCHMARK algorithm_stable_radix_sort_benchmark
+        SOURCES StableRadixSortBenchmark.cpp
+
     DIRECTORY algorithm/simd/detail/test/
       TEST algorithm_simd_detail_simd_any_of_test SOURCES SimdAnyOfTest.cpp
       TEST algorithm_simd_detail_simd_for_each_test SOURCES SimdForEachTest.cpp
@@ -508,6 +514,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST container_foreach_test SOURCES ForeachTest.cpp
       BENCHMARK container_hash_maps_bench SOURCES HashMapsBench.cpp
       TEST container_heap_vector_types_test SOURCES heap_vector_types_test.cpp
+      TEST container_hybrid_vector_test SOURCES HybridVectorTest.cpp
       TEST container_map_util_test WINDOWS_DISABLED SOURCES MapUtilTest.cpp
       TEST container_merge_test SOURCES MergeTest.cpp
       TEST container_regex_match_cache_test SOURCES RegexMatchCacheTest.cpp

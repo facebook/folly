@@ -1240,6 +1240,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME hybrid_vector
+  HEADERS
+    hybrid_vector.h
+  EXPORTED_DEPS
+    folly_container_hybrid_vector
+)
+
+folly_add_library(
   NAME sorted_vector_types
   HEADERS
     sorted_vector_types.h
