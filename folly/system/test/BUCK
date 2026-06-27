@@ -100,6 +100,14 @@ fb_dirsync_cpp_unittest(
     name = "memory_mapping_test",
     srcs = ["MemoryMappingTest.cpp"],
     compiler_flags = _ASHMEM_COMPILER_FLAGS,
+    # Run with arvr Android API 34 mode so the ashmem test (gated on
+    # __ANDROID_API__ >= _ASHMEM_MIN_API) compiles and executes in CI.
+    # Scoped to Android only: under unified v2 the unsuffixed/Default target is a
+    # plain cxx_test, and applying this Android APK mode to it cross-compiles an
+    # aarch64 binary that fails test listing (qemu can't load the Android linker).
+    fbandroid_labels = ci.labels(
+        ci.linux(ci.mode("fbsource//arvr/mode/android/apk/linux/dev")),
+    ),
     fbandroid_run_individual_tests_ait = False,
     feature = triage_InfrastructureSupermoduleOptou,
     platforms = (ANDROID, CXX, FBCODE),
@@ -107,11 +115,6 @@ fb_dirsync_cpp_unittest(
     # TODO(T263893609): Drop this explicit override once folly_xplat_cxx_test
     # forwards Android test attrs correctly for xplat/folly tests.
     xplat_impl = fb_xplat_cxx_test,
-    # Run with arvr Android API 34 mode so the ashmem test (gated on
-    # __ANDROID_API__ >= _ASHMEM_MIN_API) compiles and executes in CI.
-    xplat_labels = ci.labels(
-        ci.linux(ci.mode("fbsource//arvr/mode/android/apk/linux/dev")),
-    ),
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:file_util",
