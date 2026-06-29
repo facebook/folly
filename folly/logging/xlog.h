@@ -523,7 +523,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
  *   - a pointer to the LogCategory
  *
  *   If the __INCLUDE_LEVEL__ macro is available (both gcc and clang support
- *   this), then we we can detect when we are inside a .cpp file versus a
+ *   this), then we can detect when we are inside a .cpp file versus a
  *   header file.  If we are inside a .cpp file, we can avoid declaring these
  *   variables once per XLOG() statement, and instead we only declare one copy
  *   of these variables for the entire file.

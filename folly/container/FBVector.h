@@ -638,7 +638,7 @@ class fbvector {
   //  deficiency. In lieu of a strong exception guarantee, relocate_undo does
   //  the next best thing: it provides a weak exception guarantee by
   //  destroying the new data, but leaving the old data in an indeterminate
-  //  state. Note that that indeterminate state will be valid, since the
+  //  state. Note that indeterminate state will be valid, since the
   //  old data has not been destroyed; it has merely been the source of a
   //  move, which is required to leave the source in a valid state.
 

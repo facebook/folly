@@ -333,7 +333,7 @@ class rcu_domain {
   rcu_domain& operator=(const rcu_domain&) = delete;
   rcu_domain& operator=(rcu_domain&&) = delete;
 
-  // Reader locks: Prevent any calls from occuring, retired memory
+  // Reader locks: Prevent any calls from occurring, retired memory
   // from being freed, and synchronize() calls from completing until
   // all preceding lock() sections are finished.
 
