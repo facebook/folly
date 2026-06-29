@@ -446,6 +446,7 @@ fb_dirsync_cpp_library(
     headers = ["Request.h"],
     use_raw_headers = True,
     deps = [
+        "//folly:demangle",
         "//folly:glog",
         "//folly/concurrency/container:single_writer_fixed_hash_map",
         "//folly/tracing:static_tracepoint",

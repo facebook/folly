@@ -742,6 +742,7 @@ folly_add_library(
     Request.h
   DEPS
     folly_concurrency_container_single_writer_fixed_hash_map
+    folly_demangle
     folly_glog
     folly_tracing_static_tracepoint
   EXPORTED_DEPS

@@ -16,6 +16,7 @@
 
 #include <folly/io/async/Request.h>
 
+#include <folly/Demangle.h>
 #include <folly/GLog.h>
 #include <folly/concurrency/container/SingleWriterFixedHashMap.h>
 #include <folly/tracing/StaticTracepoint.h>
@@ -175,9 +176,10 @@ struct RequestContext::State::Combined : hazptr_obj_base<Combined> {
       size_t numHasCallback = 0;
       for (auto it = requestData_.begin(); it != requestData_.end(); ++it) {
         ++numRequestData;
-        if (it.value() && it.value()->hasCallback()) {
+        if (auto* p = it.value(); p && p->hasCallback()) {
           ++numHasCallback;
-          CHECK(callbackData_.contains(it.value()))
+          CHECK(callbackData_.contains(p))
+              << folly::demangle(typeid(*p)) << " "
               << it.key().getDebugString();
         }
       }
@@ -185,7 +187,9 @@ struct RequestContext::State::Combined : hazptr_obj_base<Combined> {
       size_t numCallbackData = 0;
       for (auto it = callbackData_.begin(); it != callbackData_.end(); ++it) {
         ++numCallbackData;
-        CHECK(it.key());
+        auto* p = it.key();
+        CHECK(p);
+        CHECK(p->hasCallback()) << folly::demangle(typeid(*p));
       }
       CHECK_EQ(numHasCallback, numCallbackData);
       CHECK_EQ(numCallbackData, callbackData_.size());
