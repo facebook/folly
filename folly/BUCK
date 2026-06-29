@@ -1243,6 +1243,17 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "hybrid_vector",
+    headers = [
+        "hybrid_vector.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/container:hybrid_vector",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "sorted_vector_types",
     headers = [
         "sorted_vector_types.h",

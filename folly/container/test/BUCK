@@ -37,6 +37,15 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
+    name = "hybrid_vector_test",
+    srcs = ["HybridVectorTest.cpp"],
+    deps = [
+        "//folly/container:hybrid_vector",
+        "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
     name = "f14_set-test",
     srcs = [
         "F14SetTest.cpp",
