@@ -1,6 +1,7 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
@@ -366,5 +367,54 @@ fbcode_target(
         "//folly:benchmark",
         "//folly/debugging/symbolizer:stack_trace",
         "//folly/init:init",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "frame_pointer_unwinder_test",
+    srcs = ["FramePointerUnwinderTest.cpp"],
+    env = {
+        "FOLLY_FB_UNWINDER_ENABLED": "1",
+    },
+    deps = [
+        "//folly/debugging/symbolizer:stack_trace",
+        "//folly/facebook/fp_unwinder:fp_unwinder",  # @manual
+        "//folly/lang:hint",
+        "//folly/portability:config",
+        "//folly/portability:gtest",
+        "//services_efficiency/backtrace:mapping_range_lib",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "omit_frame_pointer_func",
+    srcs = ["OmitFramePointerFunc.cpp"],
+    headers = ["OmitFramePointerFunc.h"],
+    compiler_flags = [
+        "-fomit-frame-pointer",
+        "-g",
+    ],
+    private_linker_flags = [
+        "--emit-relocs",
+    ],
+    deps = [
+        "//folly/lang:hint",
+    ],
+    exported_deps = ["//folly:c_portability"],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "omit_frame_pointer_test",
+    srcs = ["OmitFramePointerTest.cpp"],
+    deps = [
+        ":omit_frame_pointer_func",
+        "//folly/debugging/symbolizer:stack_trace",
+        "//folly/debugging/symbolizer:symbolizer",
+        "//folly/lang:hint",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
     ],
 )
