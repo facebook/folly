@@ -19,6 +19,7 @@
 #include <atomic>
 #include <memory>
 
+#include <folly/CppAttributes.h>
 #include <folly/Synchronized.h>
 #include <folly/observer/Observer.h>
 #include <folly/observer/detail/ObserverManager.h>
@@ -57,9 +58,13 @@ class HazptrObserver {
       ptr_ = get(holder_).protect(state)->snapshot_.get();
     }
 
-    const T& operator*() const { return *get(); }
-    const T* operator->() const { return get(); }
-    const T* get() const { return ptr_; }
+    const T& operator*() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+      return *get();
+    }
+    const T* operator->() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+      return get();
+    }
+    const T* get() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return ptr_; }
 
    private:
     static void make(hazptr_holder<Atom>& holder, hazptr_domain<Atom>& domain) {

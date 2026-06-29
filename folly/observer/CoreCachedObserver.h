@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include <folly/CppAttributes.h>
 #include <folly/concurrency/CoreCachedSharedPtr.h>
 #include <folly/observer/Observer.h>
 #include <folly/observer/detail/ObserverManager.h>
@@ -31,9 +32,15 @@ class CoreCachedObserver {
     explicit CoreCachedSnapshot(std::shared_ptr<const T> data)
         : data_(std::move(data)) {}
 
-    const T& operator*() const { return *get(); }
-    const T* operator->() const { return get(); }
-    const T* get() const { return data_.get(); }
+    const T& operator*() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+      return *get();
+    }
+    const T* operator->() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+      return get();
+    }
+    const T* get() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+      return data_.get();
+    }
 
     std::shared_ptr<const T> getShared() const& { return data_; }
     std::shared_ptr<const T> getShared() && { return std::move(data_); }

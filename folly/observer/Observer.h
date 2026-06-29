@@ -19,6 +19,7 @@
 #include <atomic>
 #include <memory>
 
+#include <folly/CppAttributes.h>
 #include <folly/SharedMutex.h>
 #include <folly/ThreadLocal.h>
 #include <folly/observer/Observer-pre.h>
@@ -418,8 +419,10 @@ class TLObserver {
   TLObserver(const TLObserver<T>& other);
   TLObserver(TLObserver<T>&& other) noexcept;
 
-  const Snapshot<T>& getSnapshotRef() const;
-  const Snapshot<T>& operator*() const { return getSnapshotRef(); }
+  const Snapshot<T>& getSnapshotRef() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
+  const Snapshot<T>& operator*() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return getSnapshotRef();
+  }
 
   /**
    * Invoke a function with the current observed value. The snapshot is held
