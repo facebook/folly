@@ -560,7 +560,7 @@ static_assert(sizeof(RequestContext) <= 64, "unexpected size");
  * RequestContextScopeGuard which replaces the current context in construction.
  *
  * This enables taking advantage of the optimization in setContext() which skips
- * invoking the RequestData callbacks if the new context is the the same as the
+ * invoking the RequestData callbacks if the new context is the same as the
  * current one. The use case is processing tasks in a loop which are likely to
  * share the same context.
  */
