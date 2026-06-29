@@ -132,8 +132,10 @@ struct Haswell : public Nehalem {
     // Encode parameters in `pattern` where `pattern[0:7]` is `start` and
     // `pattern[8:15]` is `length`.
     // Ref: Intel Advanced Vector Extensions Programming Reference
-    uint64_t pattern = start & 0xFF;
-    pattern = pattern | ((length & 0xFF) << 8);
+    // BEXTR reads `start` from control bits [7:0] and `length` from control
+    // bits [15:8]; bits above 15 are ignored. Masking `length` to a byte is
+    // therefore unnecessary -- only the low 8 bits land in the length field.
+    const uint64_t pattern = (start & 0xFF) | (uint64_t(length) << 8);
     uint64_t result;
     asm("bextrq %2, %1, %0" : "=r"(result) : "r"(value), "r"(pattern));
     return result;
