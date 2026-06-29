@@ -385,13 +385,15 @@ void IoUringRecvHandle::processPendingRead() {
     auto data = std::move(*pendingRead_).get();
     pendingRead_.reset();
 
-    if (!queuedReceivedData_) {
-      queuedReceivedData_ = std::move(data);
-    } else {
-      queuedReceivedData_->appendToChain(std::move(data));
+    if (data) {
+      if (!queuedReceivedData_) {
+        queuedReceivedData_ = std::move(data);
+      } else {
+        queuedReceivedData_->appendToChain(std::move(data));
+      }
     }
 
-    if (readEnabled_) {
+    if (readEnabled_ && queuedReceivedData_) {
       recvCallback_->recvSuccess(std::move(queuedReceivedData_));
     }
 
