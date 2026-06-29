@@ -17,8 +17,10 @@
 #include <folly/debugging/symbolizer/StackTrace.h>
 #include <folly/tracing/AsyncStack.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <memory>
 #include <optional>
 
@@ -43,8 +45,12 @@
 // dependency and these weak symbols can be removed.
 #if FOLLY_HAVE_WEAK_SYMBOLS
 extern "C" FOLLY_ATTR_WEAK bool folly_debugging_have_proc_map_query();
+extern "C" FOLLY_ATTR_WEAK void folly_debugging_backtrace_raw(
+    void** vec, unsigned* len, unsigned max_len);
 #else
 static bool (*folly_debugging_have_proc_map_query)() = nullptr;
+static void (*folly_debugging_backtrace_raw)(
+    void** vec, unsigned* len, unsigned max_len) = nullptr;
 #endif
 
 namespace folly {
@@ -85,6 +91,30 @@ static bool isFramePointerUnwinderEnabled() noexcept {
 // Force initialization of enable flag during static init phase.
 static const bool sFramePointerUnwinderEnabledInit =
     isFramePointerUnwinderEnabled();
+
+// Returns frame count (>= 0) when the frame-pointer unwinder is enabled,
+// available, and produced at least one frame; returns -1 otherwise (caller
+// should fall through to the next unwinder). Mirrors the ssize_t/-1
+// convention used by getStackTraceInPlace and the public stack-trace APIs.
+FOLLY_ALWAYS_INLINE ssize_t
+tryFramePointerUnwind(uintptr_t* addresses, size_t maxAddresses) noexcept {
+  // Prevent LTO from optimizing away static initialization that pre-runs
+  // pthread_once before any signal handlers are installed.
+  std::ignore = sProcMapQueryInit;
+
+  if (folly_debugging_backtrace_raw == nullptr ||
+      !isFramePointerUnwinderEnabled() || !isProcMapQueryAvailable()) {
+    return -1;
+  }
+  unsigned len = 0;
+  folly_debugging_backtrace_raw(
+      reinterpret_cast<void**>(addresses),
+      &len,
+      static_cast<unsigned>(std::min(
+          maxAddresses,
+          static_cast<size_t>(std::numeric_limits<unsigned>::max()))));
+  return len > 0 ? static_cast<ssize_t>(len) : -1;
+}
 } // namespace
 
 ssize_t getStackTrace(
@@ -93,6 +123,11 @@ ssize_t getStackTrace(
   static_assert(
       sizeof(uintptr_t) == sizeof(void*), "uintptr_t / pointer size mismatch");
   std::ignore = sInit;
+
+  if (ssize_t n = tryFramePointerUnwind(addresses, maxAddresses); n >= 0) {
+    return n;
+  }
+
   // The libunwind documentation says that unw_backtrace is
   // async-signal-safe but, as of libunwind 1.0.1, it isn't
   // (tdep_trace allocates memory on x86_64)
@@ -237,12 +272,17 @@ ssize_t getStackTraceSafe(
   // https://opensource.apple.com/source/Libc/Libc-1353.60.8/, and it is
   // widely used in signal handlers in practice.
   return backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
-#elif defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
+#else
+  if (ssize_t n = tryFramePointerUnwind(addresses, maxAddresses); n >= 0) {
+    return n;
+  }
+#if defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
   unw_context_t context;
   unw_cursor_t cursor;
   return getStackTraceInPlace(context, cursor, addresses, maxAddresses);
 #else
   return -1;
+#endif
 #endif
 }
 
@@ -250,6 +290,12 @@ ssize_t getStackTraceHeap(
     [[maybe_unused]] uintptr_t* addresses,
     [[maybe_unused]] size_t maxAddresses) {
   std::ignore = sInit;
+
+  // Frame-pointer unwinding needs no large context, so no heap alloc.
+  if (ssize_t n = tryFramePointerUnwind(addresses, maxAddresses); n >= 0) {
+    return n;
+  }
+
 #if defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
   struct Ctx {
     unw_context_t context;
