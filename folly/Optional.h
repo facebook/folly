@@ -68,6 +68,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
@@ -467,22 +468,22 @@ class Optional : private detail::OptionalCopyAssignBase<Value> {
 
   /// Get the value. Must have value.
   /// @methodset Getters
-  constexpr const Value& value() const& {
+  constexpr const Value& value() const& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     require_value();
     return this->storage_.value;
   }
 
-  constexpr Value& value() & {
+  constexpr Value& value() & [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     require_value();
     return this->storage_.value;
   }
 
-  constexpr Value&& value() && {
+  constexpr Value&& value() && [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     require_value();
     return std::move(this->storage_.value);
   }
 
-  constexpr const Value&& value() const&& {
+  constexpr const Value&& value() const&& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     require_value();
     return std::move(this->storage_.value);
   }
@@ -511,15 +512,28 @@ class Optional : private detail::OptionalCopyAssignBase<Value> {
 
   /// Get the value. Must have value.
   /// @methodset Getters
-  constexpr const Value& operator*() const& { return value(); }
-  constexpr Value& operator*() & { return value(); }
-  constexpr const Value&& operator*() const&& { return std::move(value()); }
-  constexpr Value&& operator*() && { return std::move(value()); }
+  constexpr const Value& operator*() const& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return value();
+  }
+  constexpr Value& operator*() & [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return value();
+  }
+  constexpr const Value&& operator*()
+      const&& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return std::move(value());
+  }
+  constexpr Value&& operator*() && [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return std::move(value());
+  }
 
   /// Get the value. Must have value.
   /// @methodset Getters
-  constexpr const Value* operator->() const { return &value(); }
-  constexpr Value* operator->() { return &value(); }
+  constexpr const Value* operator->() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return &value();
+  }
+  constexpr Value* operator->() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return &value();
+  }
 
   /// Return a copy of the value if set, or a given default if not.
   /// @methodset Getters
