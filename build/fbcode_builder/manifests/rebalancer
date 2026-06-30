@@ -16,6 +16,11 @@ builder = cmake
 
 [cmake.defines]
 CMAKE_POSITION_INDEPENDENT_CODE=ON
+# Build the packaging smoke-test binary as part of every getdeps build so
+# it is included in the cache key. Without this, test_solve would have to
+# be built outside getdeps, which requires replicating cmake's full link
+# graph (folly, fbthrift, glog, etc.) manually — impractical and fragile.
+PACKAGING_TEST=ON
 
 # Build the example/demo executables only when getdeps is invoked with
 # tests enabled (test=on -- the default for `getdeps build` without
