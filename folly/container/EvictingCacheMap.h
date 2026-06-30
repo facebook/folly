@@ -24,6 +24,7 @@
 #include <boost/intrusive/list.hpp>
 #include <boost/iterator/iterator_adaptor.hpp>
 
+#include <folly/CppAttributes.h>
 #include <folly/container/F14Set.h>
 #include <folly/container/HeterogeneousAccess.h>
 #include <folly/lang/Exception.h>
@@ -217,11 +218,13 @@ class EvictingCacheMap {
    * @return the value if it exists
    * @throw std::out_of_range exception of the key does not exist
    */
-  TValue& get(const TKey& key) { return getImpl(key); }
+  TValue& get(const TKey& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return getImpl(key);
+  }
 
   template <typename K>
     requires kEligibleForHeterogeneousFind<K>
-  TValue& get(const K& key) {
+  TValue& get(const K& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return getImpl(key);
   }
 
@@ -247,23 +250,26 @@ class EvictingCacheMap {
    * @return the value if it exists
    * @throw std::out_of_range exception of the key does not exist
    */
-  const TValue& getWithoutPromotion(const TKey& key) const {
+  const TValue& getWithoutPromotion(const TKey& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return getWithoutPromotionImpl(*this, key);
   }
 
   template <typename K>
     requires kEligibleForHeterogeneousFind<K>
-  const TValue& getWithoutPromotion(const K& key) const {
+  const TValue& getWithoutPromotion(const K& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return getWithoutPromotionImpl(*this, key);
   }
 
-  TValue& getWithoutPromotion(const TKey& key) {
+  TValue& getWithoutPromotion(const TKey& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return getWithoutPromotionImpl(*this, key);
   }
 
   template <typename K>
     requires kEligibleForHeterogeneousFind<K>
-  TValue& getWithoutPromotion(const K& key) {
+  TValue& getWithoutPromotion(const K& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return getWithoutPromotionImpl(*this, key);
   }
 
