@@ -138,7 +138,7 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
       taskInfo.taskId);
 
   {
-    folly::RequestContextScopeGuard rctx(task.context_);
+    folly::RequestContextScopeGuard rctx(std::move(task.context_));
     // taskDequeued() and taskProcessed() run inside this scope so observers see
     // the task's RequestContext -- the same context task.func_ runs under --
     // letting them associate executor accounting (e.g. queue wait) with the
