@@ -418,3 +418,21 @@ fbcode_target(
         "//folly/test:test_utils",
     ],
 )
+
+fbcode_target(
+    _kind = cpp_benchmark,
+    name = "frame_pointer_unwinder_benchmark",
+    srcs = ["FramePointerUnwinderBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:c_portability",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
+        "//folly/debugging/symbolizer:stack_trace",
+        "//folly/facebook/fp_unwinder:fp_unwinder",  # @manual
+        "//folly/fibers:core_manager",
+        "//folly/fibers:simple_loop_controller",
+        "//folly/init:init",
+        "//services_efficiency/backtrace:mapping_range_lib",
+    ],
+)
