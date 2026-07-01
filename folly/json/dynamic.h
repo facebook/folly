@@ -67,6 +67,7 @@
 #include <utility>
 #include <vector>
 
+#include <folly/CppAttributes.h>
 #include <folly/Expected.h>
 #include <folly/Range.h>
 #include <folly/Traits.h>
@@ -499,14 +500,14 @@ struct dynamic {
    *
    * @methodset Extraction
    */
-  const std::string& getString() const&;
+  const std::string& getString() const& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
   /// @copydoc getString
   double getDouble() const&;
   /// @copydoc getString
   int64_t getInt() const&;
   /// @copydoc getString
   bool getBool() const&;
-  std::string& getString() &;
+  std::string& getString() & [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
   double& getDouble() &;
   int64_t& getInt() &;
   bool& getBool() &;
@@ -683,14 +684,16 @@ struct dynamic {
    * @methodset Element access
    */
   template <typename K>
-  IfIsNonStringDynamicConvertible<K, dynamic const&> at(K&&) const&;
+  IfIsNonStringDynamicConvertible<K, dynamic const&> at(
+      K&&) const& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
   template <typename K>
-  IfIsNonStringDynamicConvertible<K, dynamic&> at(K&&) &;
+  IfIsNonStringDynamicConvertible<K, dynamic&> at(
+      K&&) & [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
   template <typename K>
   IfIsNonStringDynamicConvertible<K, dynamic&&> at(K&&) &&;
 
-  dynamic const& at(StringPiece) const&;
-  dynamic& at(StringPiece) &;
+  dynamic const& at(StringPiece) const& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
+  dynamic& at(StringPiece) & [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
   dynamic&& at(StringPiece) &&;
 
   /*
@@ -823,14 +826,17 @@ struct dynamic {
    * @methodset Element access
    */
   template <typename K>
-  IfIsNonStringDynamicConvertible<K, dynamic&> operator[](K&&) &;
+  IfIsNonStringDynamicConvertible<K, dynamic&> operator[](
+      K&&) & [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
   template <typename K>
-  IfIsNonStringDynamicConvertible<K, dynamic const&> operator[](K&&) const&;
+  IfIsNonStringDynamicConvertible<K, dynamic const&> operator[](
+      K&&) const& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
   template <typename K>
   IfIsNonStringDynamicConvertible<K, dynamic&&> operator[](K&&) &&;
 
-  dynamic& operator[](StringPiece) &;
-  dynamic const& operator[](StringPiece) const&;
+  dynamic& operator[](StringPiece) & [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
+  dynamic const& operator[](
+      StringPiece) const& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
   dynamic&& operator[](StringPiece) &&;
 
   /**

@@ -38,6 +38,7 @@ folly_add_library(
     folly_container_access
     folly_container_f14_hash
     folly_conv
+    folly_cpp_attributes
     folly_detail_iterators
     folly_expected
     folly_format

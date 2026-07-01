@@ -27,6 +27,7 @@ fb_dirsync_cpp_library(
     exported_deps = [
         "//folly:c_portability",
         "//folly:conv",
+        "//folly:cpp_attributes",
         "//folly:expected",
         "//folly:format",
         "//folly:function",
