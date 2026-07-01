@@ -21,6 +21,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/CppAttributes.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
@@ -186,7 +187,7 @@ class Try
    *
    * @returns mutable reference to the contained value
    */
-  T& value() &;
+  T& value() & [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
   /*
    * Get a rvalue reference to the contained value.
    * [Re]throws if the Try contains an exception or is empty.
@@ -200,7 +201,7 @@ class Try
    *
    * @returns const reference to the contained value
    */
-  const T& value() const&;
+  const T& value() const& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
   /*
    * Get a const rvalue reference to the contained value.
    * [Re]throws if the Try contains an exception or is empty.
@@ -233,13 +234,15 @@ class Try
    *
    * @returns const reference to the contained value
    */
-  const T& operator*() const& { return value(); }
+  const T& operator*() const& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return value();
+  }
   /*
    * Dereference operator. If the Try contains an exception it will be rethrown.
    *
    * @returns mutable reference to the contained value
    */
-  T& operator*() & { return value(); }
+  T& operator*() & [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return value(); }
   /*
    * Mutable rvalue dereference operator.  If the Try contains an exception it
    * will be rethrown.
@@ -261,13 +264,15 @@ class Try
    *
    * @returns const reference to the contained value
    */
-  const T* operator->() const { return &value(); }
+  const T* operator->() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return &value();
+  }
   /*
    * Arrow operator. If the Try contains an exception it will be rethrown.
    *
    * @returns mutable reference to the contained value
    */
-  T* operator->() { return &value(); }
+  T* operator->() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return &value(); }
 
   /*
    * @returns True if the Try contains a value, false otherwise
