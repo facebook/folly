@@ -230,7 +230,7 @@ TEST(AtomicSharedPtr, StressTest) {
           auto newv = std::make_shared<bool>();
           // Alternate between store and CAS.
           if (num_stores++ % 2 == 0) {
-            ptr.store(std::move(newv), std::memory_order_release);
+            ptr.store(std::move(newv), std::memory_order_acq_rel);
           } else {
             v = ptr.load(std::memory_order_relaxed);
             ptr.compare_exchange_strong(
