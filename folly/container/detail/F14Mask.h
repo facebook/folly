@@ -177,20 +177,21 @@ class SparseMaskIter {
 template <unsigned BitCount>
 class BoundedMaskIter {
   MaskType mask_;
+  unsigned firstSet_{sizeof(MaskType) * 8};
 
  public:
   explicit BoundedMaskIter(MaskType mask) : mask_{mask} {}
 
   bool hasNext() {
     // ternary encourages tzcnt (x86-64/bmi1) where possible
-    unsigned firstSet =
+    firstSet_ =
         mask_ == 0 ? (sizeof(MaskType) * 8) : findFirstSetNonZero(mask_);
-    return firstSet < BitCount;
+    return firstSet_ < BitCount;
   }
 
   unsigned next() {
-    FOLLY_SAFE_DCHECK(hasNext());
-    unsigned i = findFirstSetNonZero(mask_);
+    FOLLY_SAFE_DCHECK(firstSet_ < BitCount);
+    unsigned i = firstSet_;
     mask_ &= mask_ - 1;
     return i;
   }
