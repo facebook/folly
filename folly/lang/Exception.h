@@ -17,6 +17,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstring>
 #include <exception>
 #include <functional>
 #include <string>
