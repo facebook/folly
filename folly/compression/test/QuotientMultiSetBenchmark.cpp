@@ -283,29 +283,25 @@ BENCHMARK_DRAW_LINE();
 
 BENCHMARK_MULTI(F14MapHits) {
   const auto& baseline = getF14Baseline();
-  return benchmarkHits([&](uint64_t key) {
-    return baseline.find(key) != baseline.end();
-  });
+  return benchmarkHits([&](uint64_t key) { return baseline.contains(key); });
 }
 
 BENCHMARK_MULTI(F14MapRandom) {
   const auto& baseline = getF14Baseline();
-  return benchmarkRandom([&](uint64_t key) {
-    return baseline.find(key) != baseline.end();
-  });
+  return benchmarkRandom([&](uint64_t key) { return baseline.contains(key); });
 }
 
 BENCHMARK_MULTI(F14MapHitsSmallWorkingSet) {
   const auto& baseline = getF14Baseline();
   return benchmarkHitsSmallWorkingSet([&](uint64_t key) {
-    return baseline.find(key) != baseline.end();
+    return baseline.contains(key);
   });
 }
 
 BENCHMARK_MULTI(F14MapMixtureSerialized) {
   const auto& baseline = getF14Baseline();
   return benchmarkMixtureSerialized([&](uint64_t key) {
-    return baseline.find(key) != baseline.end();
+    return baseline.contains(key);
   });
 }
 
