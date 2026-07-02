@@ -206,7 +206,7 @@ using namespace folly;
 //-----------------------------------------------------------------------------
 // Flags
 
-typedef uint32_t Flags;
+using Flags = uint32_t;
 
 // each method has 3 options: normal, noexcept, throw, and deleted
 // normal is the default
@@ -648,15 +648,15 @@ map<void*, int> AllocTracker::Owner;
 
 template <class T>
 struct Alloc : AllocTracker, Ticker {
-  typedef typename std::allocator_traits<std::allocator<T>>::pointer pointer;
-  typedef typename std::allocator_traits<std::allocator<T>>::const_pointer
-      const_pointer;
-  typedef typename std::allocator_traits<std::allocator<T>>::difference_type
-      difference_type;
-  typedef
-      typename std::allocator_traits<std::allocator<T>>::size_type size_type;
-  typedef
-      typename std::allocator_traits<std::allocator<T>>::value_type value_type;
+  using pointer = typename std::allocator_traits<std::allocator<T>>::pointer;
+  using const_pointer =
+      typename std::allocator_traits<std::allocator<T>>::const_pointer;
+  using difference_type =
+      typename std::allocator_traits<std::allocator<T>>::difference_type;
+  using size_type =
+      typename std::allocator_traits<std::allocator<T>>::size_type;
+  using value_type =
+      typename std::allocator_traits<std::allocator<T>>::value_type;
 
   //-----
   // impl
@@ -734,9 +734,9 @@ struct Alloc : AllocTracker, Ticker {
     return Alloc(id + 1);
   }
 
-  typedef isPropCopy<T> propagate_on_container_copy_assignment;
-  typedef isPropMove<T> propagate_on_container_move_assignment;
-  typedef isPropSwap<T> propagate_on_container_swap;
+  using propagate_on_container_copy_assignment = isPropCopy<T>;
+  using propagate_on_container_move_assignment = isPropMove<T>;
+  using propagate_on_container_swap = isPropSwap<T>;
 };
 
 //=============================================================================
@@ -973,42 +973,42 @@ uint64_t ReadTSC() {
 //-----------------------------------------------------------------------------
 // Test Types
 
-typedef Data<> ED1;
-typedef Data<0, 4080> ED2;
-typedef Data<MC_NOEXCEPT> ED3;
-typedef Data<MC_NOEXCEPT | CC_DELETE> ED4;
-typedef Data<IS_RELOCATABLE> ED5;
+using ED1 = Data<>;
+using ED2 = Data<0, 4080>;
+using ED3 = Data<MC_NOEXCEPT>;
+using ED4 = Data<MC_NOEXCEPT | CC_DELETE>;
+using ED5 = Data<IS_RELOCATABLE>;
 
-typedef VECTOR_<int, std::allocator<int>> _TVIS;
-typedef VECTOR_<int, Alloc<int>> _TVI;
-typedef VECTOR_<ED1, std::allocator<ED1>> _TV1;
-typedef VECTOR_<ED2, std::allocator<ED2>> _TV2;
-typedef VECTOR_<ED3, std::allocator<ED3>> _TV3;
-typedef VECTOR_<ED4, std::allocator<ED4>> _TV4;
-typedef VECTOR_<ED5, std::allocator<ED5>> _TV5v1;
-typedef VECTOR_<ED5, Alloc<ED5>> _TV5;
+using _TVIS = VECTOR_<int, std::allocator<int>>;
+using _TVI = VECTOR_<int, Alloc<int>>;
+using _TV1 = VECTOR_<ED1, std::allocator<ED1>>;
+using _TV2 = VECTOR_<ED2, std::allocator<ED2>>;
+using _TV3 = VECTOR_<ED3, std::allocator<ED3>>;
+using _TV4 = VECTOR_<ED4, std::allocator<ED4>>;
+using _TV5v1 = VECTOR_<ED5, std::allocator<ED5>>;
+using _TV5 = VECTOR_<ED5, Alloc<ED5>>;
 
-typedef Data<PROP_COPY> EP1;
-typedef Data<PROP_MOVE> EP2;
-typedef Data<PROP_SWAP> EP3;
+using EP1 = Data<PROP_COPY>;
+using EP2 = Data<PROP_MOVE>;
+using EP3 = Data<PROP_SWAP>;
 
-typedef VECTOR_<EP1, Alloc<EP1>> _TP1;
-typedef VECTOR_<EP2, Alloc<EP2>> _TP2;
-typedef VECTOR_<EP3, Alloc<EP3>> _TP3;
+using _TP1 = VECTOR_<EP1, Alloc<EP1>>;
+using _TP2 = VECTOR_<EP2, Alloc<EP2>>;
+using _TP3 = VECTOR_<EP3, Alloc<EP3>>;
 
 #define TEST_TYPES \
   (_TVIS)(_TVI)(_TV1)(_TV2)(_TV3)(_TV4)(_TV5v1)(_TV5)(_TP1)(_TP2)(_TP3)
 
-typedef Data<ALL_DELETE> DD1; // unoperable
-typedef Data<DC_DELETE | CC_DELETE | MC_DELETE> DD2; // unconstructible
-typedef Data<CA_DELETE | MA_DELETE> DD3; // unassignable
-typedef Data<CC_DELETE | MC_DELETE> DD4; // uncopyable
-typedef Data<ALL_DELETE & ~DC_DELETE> DD5; // only default constructible
-typedef Data<CC_DELETE> DD6; // move-only copy construction
-typedef Data<CA_DELETE> DD7; // move-only assignment
+using DD1 = Data<ALL_DELETE>; // unoperable
+using DD2 = Data<DC_DELETE | CC_DELETE | MC_DELETE>; // unconstructible
+using DD3 = Data<CA_DELETE | MA_DELETE>; // unassignable
+using DD4 = Data<CC_DELETE | MC_DELETE>; // uncopyable
+using DD5 = Data<ALL_DELETE & ~DC_DELETE>; // only default constructible
+using DD6 = Data<CC_DELETE>; // move-only copy construction
+using DD7 = Data<CA_DELETE>; // move-only assignment
 
-typedef Data<ALL_DELETE | PROP_MOVE> DDSMA;
-typedef VECTOR_<DDSMA, Alloc<DDSMA>> _TSpecialMA;
+using DDSMA = Data<ALL_DELETE | PROP_MOVE>;
+using _TSpecialMA = VECTOR_<DDSMA, Alloc<DDSMA>>;
 
 // clang-format off
 #define INTERFACE_TYPES \
@@ -1527,7 +1527,7 @@ int convertToInt(const Alloc<T>& a) {
 
 template <class Vector>
 class DataState {
-  typedef typename Vector::size_type size_type;
+  using size_type = typename Vector::size_type;
   size_type size_;
   int* data_;
 
