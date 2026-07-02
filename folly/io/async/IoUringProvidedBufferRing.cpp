@@ -231,7 +231,11 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBufSingle(
 
 std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
     uint16_t startBufId, size_t totalLength, bool hasMore) noexcept {
-  if (totalLength <= sizePerBuffer_) {
+  size_t currentAvailable = sizePerBuffer_;
+  if (useIncremental_) {
+    currentAvailable -= bufferStates_[startBufId].offset;
+  }
+  if (totalLength <= currentAvailable) {
     return getIoBufSingle(startBufId, totalLength, hasMore);
   }
 

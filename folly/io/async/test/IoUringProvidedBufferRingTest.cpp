@@ -164,4 +164,27 @@ TEST_F(IoUringProvidedBufferRingTest, ConcurrentDecBufferState) {
   EXPECT_EQ(helper.getReturnedBuffers(), kBufferCount);
 }
 
+TEST_F(
+    IoUringProvidedBufferRingTest, IncrementalPartiallyConsumedSingleBuffer) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 4,
+      .bufferSize = 64,
+      .useHugePages = false,
+      .useIncrementalBuffers = true,
+  };
+  auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
+
+  auto first = bufRing->getIoBuf(0, 30, true);
+  EXPECT_EQ(first->length(), 30);
+
+  auto second = bufRing->getIoBuf(0, 40, false);
+  EXPECT_TRUE(second->isChained());
+  EXPECT_EQ(second->computeChainDataLength(), 40);
+  EXPECT_EQ(second->length(), 34);
+  EXPECT_EQ(second->next()->length(), 6);
+}
+
 #endif
