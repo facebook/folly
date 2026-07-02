@@ -111,16 +111,17 @@ inline void EventBaseLoopController::scheduleThreadSafe() {
      2) We move the promise to another thread (this move is a memory fence)
      3) We fulfill the promise from the other thread. */
   assert(eventBaseAttached_);
-  eventBase_->getEventBase().runInEventBaseThread(
-      [this, keepAlive = getKeepAliveToken(eventBase_)]() {
-        if (fm_->shouldRunLoopRemote()) {
-          return runLoop();
-        }
 
-        if (!fm_->hasTasks()) {
-          eventBaseKeepAlive_.reset();
-        }
-      });
+  // VirtualEventBase::runInEventBaseThread captures its own keep-alive token.
+  eventBase_->runInEventBaseThread([this]() {
+    if (fm_->shouldRunLoopRemote()) {
+      return runLoop();
+    }
+
+    if (!fm_->hasTasks()) {
+      eventBaseKeepAlive_.reset();
+    }
+  });
 }
 
 inline HHWheelTimer* EventBaseLoopController::timer() {
