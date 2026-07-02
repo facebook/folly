@@ -29,6 +29,7 @@
 #include <stdexcept>
 #include <tuple>
 
+#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/Traits.h>
@@ -712,36 +713,42 @@ class F14BasicMap {
 
   /// Get a value for a key
   /// @methodset Element Access
-  FOLLY_ALWAYS_INLINE mapped_type& at(key_type const& key) {
+  FOLLY_ALWAYS_INLINE mapped_type& at(key_type const& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return at(*this, key);
   }
 
-  FOLLY_ALWAYS_INLINE mapped_type const& at(key_type const& key) const {
+  FOLLY_ALWAYS_INLINE mapped_type const& at(key_type const& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return at(*this, key);
   }
 
   template <typename K>
-  EnableHeterogeneousFind<K, mapped_type&> at(K const& key) {
+  EnableHeterogeneousFind<K, mapped_type&> at(K const& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return at(*this, key);
   }
 
   template <typename K>
-  EnableHeterogeneousFind<K, mapped_type const&> at(K const& key) const {
+  EnableHeterogeneousFind<K, mapped_type const&> at(K const& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return at(*this, key);
   }
 
   /// Get a value for a key; create the value if it doesn't already exist
   /// @methodset Element Access
-  mapped_type& operator[](key_type const& key) {
+  mapped_type& operator[](key_type const& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return try_emplace(key).first->second;
   }
 
-  mapped_type& operator[](key_type&& key) {
+  mapped_type& operator[](key_type&& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return try_emplace(std::move(key)).first->second;
   }
 
   template <typename K>
-  EnableHeterogeneousInsert<K, mapped_type&> operator[](K&& key) {
+  EnableHeterogeneousInsert<K, mapped_type&> operator[](K&& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return try_emplace(std::forward<K>(key)).first->second;
   }
 

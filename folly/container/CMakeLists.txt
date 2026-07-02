@@ -94,6 +94,7 @@ folly_add_library(
     folly_container_f14_hash_fwd
     folly_container_iterator
     folly_container_view
+    folly_cpp_attributes
     folly_lang_exception
     folly_lang_safe_assert
     folly_portability

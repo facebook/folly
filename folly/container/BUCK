@@ -40,6 +40,7 @@ fb_dirsync_cpp_library(
         ":f14_hash_fwd",
         ":iterator",
         ":view",
+        "//folly:cpp_attributes",
         "//folly:portability",
         "//folly:range",
         "//folly:traits",
