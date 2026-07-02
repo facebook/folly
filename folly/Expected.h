@@ -1183,12 +1183,12 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
 
   using Base::uninitializedByException;
 
-  const Value& value() const& {
+  const Value& value() const& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     requireValue();
     return this->Base::value();
   }
 
-  Value& value() & {
+  Value& value() & [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     requireValue();
     return this->Base::value();
   }
@@ -1203,12 +1203,12 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
     return std::move(this->Base::value());
   }
 
-  const Error& error() const& {
+  const Error& error() const& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     requireError();
     return this->Base::error();
   }
 
-  Error& error() & {
+  Error& error() & [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     requireError();
     return this->Base::error();
   }
@@ -1242,15 +1242,23 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
 
   explicit constexpr operator bool() const noexcept { return hasValue(); }
 
-  const Value& operator*() const& { return this->value(); }
+  const Value& operator*() const& [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return this->value();
+  }
 
-  Value& operator*() & { return this->value(); }
+  Value& operator*() & [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return this->value();
+  }
 
   Value&& operator*() && { return std::move(std::move(*this).value()); }
 
-  const Value* operator->() const { return std::addressof(this->value()); }
+  const Value* operator->() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return std::addressof(this->value());
+  }
 
-  Value* operator->() { return std::addressof(this->value()); }
+  Value* operator->() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return std::addressof(this->value());
+  }
 
   const Value* get_pointer() const& noexcept {
     return hasValue() ? std::addressof(this->value_) : nullptr;
