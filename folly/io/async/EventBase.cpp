@@ -618,12 +618,13 @@ EventBase::LoopStatus EventBase::loopMain(int flags, LoopOptions options) {
       }
       ++nextLoopCnt_;
 
-      // Run the before-loop callbacks
-      LoopCallbackList callbacks;
-      callbacks.swap(runBeforeLoopCallbacks_);
       // Before-loop callbacks must by definition all run regardless of
-      // timeslice, so do not pass a deadline.
-      runLoopCallbackList(callbacks, LoopCallbacksDeadline{});
+      // timeslice, so do not enforce a deadline.
+      LoopCallbackList currentCallbacks;
+      swapAndRunLoopCallbackList(
+          runBeforeLoopCallbacks_,
+          currentCallbacks,
+          /* enforceDeadline */ false);
     }
 
     // nobody can add loop callbacks from within this thread if
@@ -656,11 +657,13 @@ EventBase::LoopStatus EventBase::loopMain(int flags, LoopOptions options) {
 
     bool ranLoopCallbacks = runLoopCallbacks();
 
-    // Run the after-loop callback. Like the before-loop, no deadline.
     {
-      LoopCallbackList callbacks;
-      callbacks.swap(runAfterLoopCallbacks_);
-      runLoopCallbackList(callbacks, LoopCallbacksDeadline{});
+      // Like the before-loop callbacks, after-loop do not enforce deadlines.
+      LoopCallbackList currentCallbacks;
+      swapAndRunLoopCallbackList(
+          runAfterLoopCallbacks_,
+          currentCallbacks,
+          /* enforceDeadline */ false);
     }
 
     if (enableTimeMeasurement_) {
@@ -1005,10 +1008,24 @@ void EventBase::runImmediatelyOrRunInEventBaseThread(Func fn) noexcept {
   }
 }
 
-void EventBase::runLoopCallbackList(
-    LoopCallbackList& currentCallbacks, const LoopCallbacksDeadline& deadline) {
-  if (currentCallbacks.empty()) {
-    return;
+// Swap callbacks with currentCallbacks and execute currentCallbacks, so that if
+// any of these callbacks in turn schedule more callbacks, those new callbacks
+// won't be run until the next iteration around the event loop.  This prevents
+// runInLoop() callbacks from being able to start file descriptor and timeout
+// based events.
+bool EventBase::swapAndRunLoopCallbackList(
+    LoopCallbackList& callbacks,
+    LoopCallbackList& currentCallbacks,
+    bool enforceDeadline) {
+  DCHECK(currentCallbacks.empty());
+  if (callbacks.empty()) {
+    return false;
+  }
+  currentCallbacks.swap(callbacks);
+
+  LoopCallbacksDeadline deadline;
+  if (enforceDeadline) {
+    deadline.reset(*this);
   }
 
   RequestContextSaverScopeGuard ctxGuard;
@@ -1027,32 +1044,23 @@ void EventBase::runLoopCallbackList(
         folly::ExecutionObserver::CallbackType::Loop);
     callback->runLoopCallback();
   } while (!currentCallbacks.empty() && !deadline.expired());
+
+  return true;
 }
 
 bool EventBase::runLoopCallbacks() {
   bumpHandlingTime();
-  if (!loopCallbacks_.empty()) {
-    // Swap the loopCallbacks_ list with a temporary list on our stack.
-    // This way we will only run callbacks scheduled at the time
-    // runLoopCallbacks() was invoked.
-    //
-    // If any of these callbacks in turn call runInLoop() to schedule more
-    // callbacks, those new callbacks won't be run until the next iteration
-    // around the event loop.  This prevents runInLoop() callbacks from being
-    // able to start file descriptor and timeout based events.
-    LoopCallbackList currentCallbacks;
-    currentCallbacks.swap(loopCallbacks_);
-    runOnceCallbacks_ = &currentCallbacks;
-
-    LoopCallbacksDeadline deadline;
-    deadline.reset(*this);
-    runLoopCallbackList(currentCallbacks, deadline);
-
+  LoopCallbackList currentCallbacks;
+  // Store a reference to the temporary callback list to runOnceCallbacks_, so
+  // that runInLoop(..., thisIteration = true) can append directly to it.
+  runOnceCallbacks_ = &currentCallbacks;
+  SCOPE_EXIT {
+    runOnceCallbacks_ = nullptr;
+  };
+  if (swapAndRunLoopCallbackList(loopCallbacks_, currentCallbacks)) {
     // If the deadline expired before the list was fully consumed, prepend the
     // leftover callbacks to the list to run on the next iteration.
     loopCallbacks_.splice(loopCallbacks_.begin(), currentCallbacks);
-
-    runOnceCallbacks_ = nullptr;
     return true;
   }
   return false;

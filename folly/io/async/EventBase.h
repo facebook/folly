@@ -1002,9 +1002,10 @@ class EventBase
   LoopStatus loopMain(int flags, LoopOptions options);
   void loopMainCleanup();
 
-  void runLoopCallbackList(
+  bool swapAndRunLoopCallbackList(
+      LoopCallbackList& callbacks,
       LoopCallbackList& currentCallbacks,
-      const LoopCallbacksDeadline& deadline);
+      bool enforceDeadline = true);
 
   // executes any callbacks queued by runInLoop(); returns false if none found
   bool runLoopCallbacks();
