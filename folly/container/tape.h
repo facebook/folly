@@ -163,8 +163,9 @@ class tape {
 
   template <typename R>
     requires(
-        std::is_convertible_v<R, const_reference> || // const char*
-        range_of_records<R>)
+        !std::is_same_v<std::remove_cvref_t<R>, tape> &&
+        (std::is_convertible_v<R, const_reference> || // const char*
+         range_of_records<R>))
   explicit tape(std::initializer_list<R> il) {
     range_constructor(il.begin(), il.end());
   }

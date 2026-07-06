@@ -209,6 +209,7 @@ class [[nodiscard]]
   /* implicit */ value_only_result(T&& t) noexcept(
       noexcept(ref_wrapped_t(std::move(t))))
     requires(
+        !is_instantiation_of_v<value_only_result, std::remove_cvref_t<T>> &&
         !std::is_reference_v<T> && std::is_constructible_v<ref_wrapped_t, T &&>)
       : base{std::in_place, std::move(t)} {}
   value_only_result& operator=(T&& t) noexcept(
