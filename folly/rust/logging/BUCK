@@ -30,6 +30,7 @@ fb_dirsync_rust_library(
         ":logging-ffi",
     ],
     cxx_bridge = "lib.rs",
+    modifiers = ["ovr_config//project/folly:folly[fbcode]"],
     deps = [
         "fbsource//third-party/rust:cxx",
         "//common/rust/shed/fbinit:fbinit",
