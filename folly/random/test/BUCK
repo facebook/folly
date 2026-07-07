@@ -35,15 +35,6 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
-    name = "splitmix64_test",
-    srcs = ["SplitMix64Test.cpp"],
-    deps = [
-        "//folly/portability:gtest",
-        "//folly/random:splitmix64",
-    ],
-)
-
-fb_dirsync_cpp_unittest(
     name = "xoshiro256pp_test",
     srcs = ["Xoshiro256ppTest.cpp"],
     deps = [
