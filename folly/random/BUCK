@@ -30,6 +30,19 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "splitmix64",
+    headers = [
+        "splitmix64.h",
+    ],
+    use_raw_headers = True,
+    exported_deps = [
+        ":seed_seq",
+        "//folly/container:span",
+        "//folly/functional:invoke",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "xoshiro256pp",
     headers = [
         "xoshiro256pp.h",
@@ -37,6 +50,7 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     exported_deps = [
         ":seed_seq",
+        ":splitmix64",
         "//folly:likely",
         "//folly:portability",
         "//folly/container:span",

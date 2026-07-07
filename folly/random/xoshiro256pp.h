@@ -28,6 +28,7 @@
 #include <folly/container/span.h>
 #include <folly/functional/Invoke.h>
 #include <folly/random/seed_seq.h>
+#include <folly/random/splitmix64.h>
 
 #if FOLLY_X64
 #include <immintrin.h>
@@ -149,13 +150,6 @@ class xoshiro256pp {
     } else {
       return T(splitmix64(seed));
     }
-  }
-
-  static inline uint64_t splitmix64(uint64_t& cur) noexcept {
-    uint64_t z = (cur += 0x9e3779b97f4a7c15);
-    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
-    z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
-    return z ^ (z >> 31);
   }
 
   FOLLY_ALWAYS_INLINE static vector_type rotl(

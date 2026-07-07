@@ -34,6 +34,16 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME splitmix64
+  HEADERS
+    splitmix64.h
+  EXPORTED_DEPS
+    folly_container_span
+    folly_functional_invoke
+    folly_random_seed_seq
+)
+
+folly_add_library(
   NAME xoshiro256pp
   HEADERS
     xoshiro256pp.h
@@ -43,4 +53,5 @@ folly_add_library(
     folly_likely
     folly_portability
     folly_random_seed_seq
+    folly_random_splitmix64
 )
