@@ -20,8 +20,5 @@ FMT_DOC = OFF
 [cmake.defines.feature_shared_libs=on]
 BUILD_SHARED_LIBS = ON
 
-[homebrew]
-fmt
-
 [rpms.distro=fedora]
 fmt-devel
