@@ -128,6 +128,7 @@ fb_dirsync_cpp_library(
         "//folly/portability:pthread",
         "//folly/portability:sys_mman",
         "//folly/portability:unistd",
+        "//folly/random:splitmix64",
         "//folly/system:pid",
         "//folly/system:thread_id",
     ],

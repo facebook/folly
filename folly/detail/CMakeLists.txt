@@ -155,6 +155,7 @@ folly_add_library(
     folly_portability_sys_mman
     folly_portability_unistd
     folly_random
+    folly_random_splitmix64
     folly_scope_guard
     folly_system_pid
     folly_system_thread_id

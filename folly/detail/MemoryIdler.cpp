@@ -19,6 +19,8 @@
 #include <climits>
 #include <cstdint>
 #include <cstring>
+#include <functional>
+#include <thread>
 
 #include <folly/GLog.h>
 #include <folly/Portability.h>
@@ -31,6 +33,7 @@
 #include <folly/portability/PThread.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
+#include <folly/random/splitmix64.h>
 #include <folly/system/Pid.h>
 #include <folly/system/ThreadId.h>
 
@@ -52,11 +55,16 @@ AtomicStruct<std::chrono::steady_clock::duration>
 
 uint64_t MemoryIdler::getVariationTimeoutCount(
     uint64_t idleTimeoutCount, float timeoutVariationFrac) {
+  // A cheap thread-local PRNG seeded on thread id; avoids the initialization
+  // overhead of ThreadLocalPRNG.
+  thread_local splitmix64_engine engine(
+      std::hash<std::thread::id>{}(std::this_thread::get_id()));
+
   // Add a uniform random correction in [0, idleTimeoutCount * frac]. Scale in
   // double so the (potentially large) tick count keeps its precision; float
   // would round counts above 2^24.
   const double scaledFrac =
-      static_cast<double>(timeoutVariationFrac) * Random::rand32() * 0x1.0p-32;
+      static_cast<double>(timeoutVariationFrac) * Random::randDouble01(engine);
   const uint64_t correction =
       static_cast<uint64_t>(static_cast<double>(idleTimeoutCount) * scaledFrac);
   return idleTimeoutCount + correction;
