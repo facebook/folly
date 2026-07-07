@@ -127,7 +127,7 @@ class tape {
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  // concepts ------
+  // concepts (defined as statics because no local concepts) ------
 
   template <typename I>
   static constexpr bool iterator_of_scalars =
@@ -155,9 +155,10 @@ class tape {
   // constructors -----
   tape() noexcept = default;
 
-  template <typename I, typename S>
+  template <typename I, std::sentinel_for<I> S>
+  explicit tape(I f, S l)
     requires iterator_of_records<I>
-  explicit tape(I f, S l) {
+  {
     range_constructor(f, l);
   }
 
@@ -214,18 +215,20 @@ class tape {
 
   // push / emplace_back --------
 
-  template <typename I, typename S>
+  template <typename I, std::sentinel_for<I> S>
+  void push_back(I f, S l)
     requires iterator_of_scalars<I>
-  void push_back(I f, S l) {
+  {
     data_.insert(data_.end(), f, l);
     markers_.push_back(static_cast<difference_type>(data_.size()));
   }
 
   template <typename R>
+  void push_back(R&& r)
     requires(
         range_of_scalars<R> &&
         !std::is_convertible_v<R, const_reference>) // handle \0 separately
-  void push_back(R&& r) {
+  {
     push_back(std::begin(r), std::end(r));
   }
 
@@ -247,19 +250,21 @@ class tape {
   // happened to give a 2x performance improvements on certain benchmarks.
 
   // requires to have enough capacity
-  template <typename I, typename S>
+  template <typename I, std::sentinel_for<I> S>
+  void push_back_unsafe(I f, S l)
     requires iterator_of_scalars<I>
-  void push_back_unsafe(I f, S l) {
+  {
     // basic exception guarantee is preserved here.
     detail::append_range_unsafe(data_, f, l);
     markers_.push_back(static_cast<difference_type>(data_.size()));
   }
 
   template <typename R>
+  void push_back_unsafe(R&& r)
     requires(
         range_of_scalars<R> &&
         !std::is_convertible_v<R, const_reference>) // handle \0 separately
-  void push_back_unsafe(R&& r) {
+  {
     push_back_unsafe(std::begin(r), std::end(r));
   }
 
@@ -279,35 +284,14 @@ class tape {
 
   // insert one record ----------
 
-  // clang-format off
-  template <typename I, typename S>
-    requires iterator_of_scalars<I>
-  iterator insert(const_iterator pos, I f, S l) {
-    // clang-format on
-    auto data_pos = data_.begin() + markers_[pos.get_index()];
-    size_type old_size = data_.size();
-    data_.insert(data_pos, f, l);
-
-    auto inserted_len = static_cast<difference_type>(data_.size() - old_size);
-
-    difference_type start = markers_[pos.get_index()];
-
-    auto markers_tail =
-        markers_.insert(markers_.begin() + pos.get_index(), start);
-    ++markers_tail;
-
-    std::transform(
-        markers_tail, markers_.end(), markers_tail, [&](difference_type m) {
-          return m + inserted_len;
-        });
-
-    // both tape* and index stayed the same
-    return pos;
-  }
+  template <typename I, std::sentinel_for<I> S>
+  iterator insert(const_iterator pos, I f, S l)
+    requires iterator_of_scalars<I>;
 
   template <typename R>
+  iterator insert(const_iterator pos, R&& r)
     requires(range_of_scalars<R> && !std::is_convertible_v<R, const_reference>)
-  iterator insert(const_iterator pos, R&& r) {
+  {
     return insert(pos, std::begin(r), std::end(r));
   }
 
@@ -568,6 +552,32 @@ void tape<Container>::resize(size_type new_size, const Args&... args) {
 
   data_.resize(markers_[new_size]);
   markers_.resize(new_size + 1);
+}
+
+template <std::ranges::random_access_range Container>
+template <typename I, std::sentinel_for<I> S>
+auto tape<Container>::insert(const_iterator pos, I f, S l) -> iterator
+  requires iterator_of_scalars<I>
+{
+  auto data_pos = data_.begin() + markers_[pos.get_index()];
+  size_type old_size = data_.size();
+  data_.insert(data_pos, f, l);
+
+  auto inserted_len = static_cast<difference_type>(data_.size() - old_size);
+
+  difference_type start = markers_[pos.get_index()];
+
+  auto markers_tail =
+      markers_.insert(markers_.begin() + pos.get_index(), start);
+  ++markers_tail;
+
+  std::transform(
+      markers_tail, markers_.end(), markers_tail, [&](difference_type m) {
+        return m + inserted_len;
+      });
+
+  // both tape* and index stayed the same
+  return pos;
 }
 
 template <std::ranges::random_access_range Container>
