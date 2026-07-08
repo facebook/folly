@@ -46,7 +46,7 @@
 
 // As an example, suppose we have some configuration data that gets
 // periodically updated. We need to protect ourselves on *every* read
-// path, even if updates are only vanishly rare, because we don't know
+// path, even if updates are only vanishingly rare, because we don't know
 // if some writer will come along and yank the data out from under us.
 //
 // Here's how that might look without deferral:
@@ -294,7 +294,7 @@
 //
 // Automatic reclamation        yes                   no             no
 //
-// Purpose of domains           N/A                   isolate slow configeration
+// Purpose of domains           N/A                   isolate slow configuration
 //                                                    readers
 
 namespace folly {
@@ -333,7 +333,7 @@ class rcu_domain {
   rcu_domain& operator=(const rcu_domain&) = delete;
   rcu_domain& operator=(rcu_domain&&) = delete;
 
-  // Reader locks: Prevent any calls from occuring, retired memory
+  // Reader locks: Prevent any calls from occurring, retired memory
   // from being freed, and synchronize() calls from completing until
   // all preceding lock() sections are finished.
 
@@ -514,7 +514,7 @@ inline rcu_domain& rcu_default_domain() {
 // rcu_synchronize that is acquired by any deleter (as in is passed to
 // rcu_retire, retire, or call) will result in deadlock.  Note that such
 // deadlock will normally only occur with user-written deleters, as in the
-// default of delele will normally be immune to such deadlocks.
+// default of delete will normally be immune to such deadlocks.
 inline void rcu_synchronize(
     rcu_domain& domain = rcu_default_domain()) noexcept {
   domain.synchronize();
