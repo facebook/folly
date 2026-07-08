@@ -3,13 +3,21 @@ load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsy
 oncall("fbcode_entropy_wardens_folly")
 
 fb_dirsync_cpp_library(
+    name = "float_control",
+    headers = ["FloatControl.h"],
+    use_raw_headers = True,
+)
+
+fb_dirsync_cpp_library(
     name = "kahan_summation",
     headers = ["KahanSummation.h"],
     use_raw_headers = True,
     exported_deps = [
         "//folly/lang:hint",
+        "//folly/math:float_control",
     ],
 )
+
 
 fb_dirsync_cpp_library(
     name = "accurate_summation",

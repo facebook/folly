@@ -33,6 +33,29 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
+fb_dirsync_cpp_unittest(
+    name = "kahan_optimization_test",
+    srcs = ["KahanOptimizationTest.cpp"],
+    deps = [
+        "//folly:c_portability",
+        "//folly/container:irange",
+        "//folly/math:kahan_summation",
+        "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "kahan_optimization_fastmath_test",
+    srcs = ["KahanOptimizationTest.cpp"],
+    compiler_flags = ["-ffast-math"],
+    deps = [
+        "//folly:c_portability",
+        "//folly/container:irange",
+        "//folly/math:kahan_summation",
+        "//folly/portability:gtest",
+    ],
+)
+
 fb_dirsync_cpp_benchmark(
     name = "summation_benchmark",
     srcs = ["SummationBenchmark.cpp"],

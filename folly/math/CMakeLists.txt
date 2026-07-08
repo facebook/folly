@@ -23,11 +23,18 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME float_control
+  HEADERS
+    FloatControl.h
+)
+
+folly_add_library(
   NAME kahan_summation
   HEADERS
     KahanSummation.h
   EXPORTED_DEPS
     folly_lang_hint
+    folly_math_float_control
 )
 
 folly_add_library(

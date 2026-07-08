@@ -24,6 +24,7 @@
 #include <ranges>
 
 #include <folly/lang/Hint.h>
+#include <folly/math/FloatControl.h>
 
 namespace folly {
 
@@ -65,7 +66,9 @@ class kahan_accumulator {
   ///
   /// @param x  The value to add.
   /// @return   Reference to this accumulator.
+  FOLLY_FLOAT_PRECISE_BEGIN
   kahan_accumulator& operator+=(T const x) {
+    FOLLY_FLOAT_PRECISE
     T t = sum_ + x;
     // Make t opaque to the optimizer. Without this, the compiler could
     // substitute t = sum_ + x into the branches below, simplifying the
@@ -79,6 +82,7 @@ class kahan_accumulator {
     sum_ = t;
     return *this;
   }
+  FOLLY_FLOAT_PRECISE_END
 
   /// Subtracts a single value using compensated summation.
   ///
@@ -101,6 +105,7 @@ class kahan_accumulator {
 /// @param first  Iterator to the first element.
 /// @param last   Sentinel past the last element.
 /// @return       The compensated sum of all elements in [first, last).
+FOLLY_FLOAT_PRECISE_BEGIN
 template <std::input_iterator I, std::sentinel_for<I> S>
   requires std::floating_point<std::iter_value_t<I>>
 [[gnu::flatten]] std::iter_value_t<I> kahan_sum(I first, S last) {
@@ -134,6 +139,7 @@ template <std::input_iterator I, std::sentinel_for<I> S>
   }
   return acc.value();
 }
+FOLLY_FLOAT_PRECISE_END
 
 /// Computes the Kahan compensated sum over a range.
 ///
