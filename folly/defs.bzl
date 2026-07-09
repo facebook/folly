@@ -41,15 +41,6 @@ def cpp_flags():
             "-DFOLLY_HAVE_PWRITEV=0",
             "-DFOLLY_HAVE_TFO=0",
         ],
-        "ovr_config//os:linux": select({
-            "DEFAULT": [],
-            "ovr_config//project/folly:mobile[enabled]": [
-                "-DFOLLY_HAVE_LIBJEMALLOC=0",
-                "-DFOLLY_HAVE_PREADV=0",
-                "-DFOLLY_HAVE_PWRITEV=0",
-                "-DFOLLY_HAVE_TFO=0",
-            ],
-        }),
         "ovr_config//project/folly:mobile[disabled]": [],
     })
 
@@ -63,10 +54,6 @@ def cpp_flags():
         flags += select({
             "DEFAULT": select({
                 "DEFAULT": ["-DFOLLY_MOBILE=1"],
-                "ovr_config//os:linux": select({
-                    "DEFAULT": [],
-                    "ovr_config//project/folly:mobile[enabled]": ["-DFOLLY_MOBILE=1"],
-                }),
                 "ovr_config//os:windows": [],
                 "ovr_config//project/folly:mobile[disabled]": [],
             }),
