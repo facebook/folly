@@ -371,9 +371,10 @@ int IoUringProvidedBufferRing::getUtilPct() const noexcept {
   if (ret != 0) {
     return ret;
   }
-  // Use ring mask to extract ring position from wrapped uint16_t counters
-  // Ring size is power of 2, mask handles wrap-around explicitly
-  uint32_t available = (ringPtr_->tail - head) & ringMask_;
+  // tail and head are free-running 16-bit counters (the kernel masks them only
+  // when indexing into bufs[]). Cast the difference to uint16_t so a completely
+  // full ring (tail - head == ringCount_) is preserved rather than masked to 0.
+  uint32_t available = static_cast<uint16_t>(ringPtr_->tail - head);
   available = std::min(available, totalBuffers);
 
   uint32_t inUse = totalBuffers - available;

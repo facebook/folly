@@ -2147,6 +2147,26 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
   readers.clear();
 }
 
+TEST(IoUringBackend, ProvidedBufferUtilizationFullRing) {
+  auto evbPtr = getEventBase();
+  SKIP_IF(!folly::IoUringBackend::isAvailable()) << "Backend not available";
+
+  folly::IoUringOptions options;
+  options.setInitialProvidedBuffers(100, 1024);
+  auto backend = std::make_unique<folly::IoUringBackend>(std::move(options));
+
+  auto* bufferProvider = backend->bufferProvider();
+  ASSERT_NE(bufferProvider, nullptr);
+  EXPECT_EQ(1024, bufferProvider->count());
+
+  auto* providedBufferRing =
+      dynamic_cast<folly::IoUringProvidedBufferRing*>(bufferProvider);
+  ASSERT_NE(providedBufferRing, nullptr);
+
+  EXPECT_EQ(0, providedBufferRing->getUtilPct())
+      << "Freshly created full ring, expected 0% utilization";
+}
+
 TEST(IoUringBackend, DeferTaskRun) {
   std::atomic<int> doneA{0};
   std::atomic<int> doneB{0};
