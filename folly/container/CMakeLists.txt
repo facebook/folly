@@ -157,6 +157,7 @@ folly_add_library(
     heap_vector_types.h
   EXPORTED_DEPS
     folly_container_iterator
+    folly_cpp_attributes
     folly_functional_invoke
     folly_lang_exception
     folly_memory_memory_resource

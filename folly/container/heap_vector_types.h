@@ -95,6 +95,7 @@
 #include <utility>
 #include <vector>
 
+#include <folly/CppAttributes.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
@@ -1543,7 +1544,7 @@ class heap_vector_map
   using heap_vector_container::key_comp;
   using heap_vector_container::lower_bound;
 
-  mapped_type& at(const key_type& key) {
+  mapped_type& at(const key_type& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     iterator it = find(key);
     if (it != end()) {
       return it->second;
@@ -1551,7 +1552,8 @@ class heap_vector_map
     throw_exception<std::out_of_range>("heap_vector_map::at");
   }
 
-  const mapped_type& at(const key_type& key) const {
+  const mapped_type& at(const key_type& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     const_iterator it = find(key);
     if (it != end()) {
       return it->second;
@@ -1559,7 +1561,8 @@ class heap_vector_map
     throw_exception<std::out_of_range>("heap_vector_map::at");
   }
 
-  mapped_type& operator[](const key_type& key) {
+  mapped_type& operator[](const key_type& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     iterator it = lower_bound(key);
     if (it == end() || key_comp()(key, it->first)) {
       auto offset = it.ptr_ - m_.cont_.begin();
