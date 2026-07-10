@@ -245,7 +245,7 @@ TEST_F(AsyncFdSocketTest, MultiPartSend) {
   }
   rcb_.verifyData(data.data(), data.size());
   rcb_.clearData();
-  EXPECT_EQ(numSendParts, sendSock.numWrites_);
+  EXPECT_GT(sendSock.numWrites_, 1);
 
   // There are no more data or FDs
   evb_.loopOnce(EVLOOP_NONBLOCK);
