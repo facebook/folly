@@ -1240,6 +1240,18 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_binary,
+    name = "io_uring_provided_buffer_ring_benchmark",
+    srcs = ["IoUringProvidedBufferRingBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly/init:init",
+        "//folly/io/async:io_uring_provided_buffer_ring",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_unittest,
     name = "io_uring_backend_setup_test",
     srcs = ["IoUringBackendSetupTest.cpp"],
