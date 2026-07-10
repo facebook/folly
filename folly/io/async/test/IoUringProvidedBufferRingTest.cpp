@@ -36,8 +36,8 @@ class IoUringProvidedBufferRingTestHelper {
   explicit IoUringProvidedBufferRingTestHelper(IoUringProvidedBufferRing& ring)
       : ring(ring) {}
 
-  uint32_t getRingCount() { return ring.ringCount_; }
-  uint32_t getReturnedBuffers() { return ring.returnedBuffers_; }
+  uint32_t ringCount() { return ring.ringCount_; }
+  uint32_t returnedBuffers() { return ring.returnedBuffers_; }
 
   IoUringProvidedBufferRing& ring;
 };
@@ -57,7 +57,7 @@ TEST_F(IoUringProvidedBufferRingTest, Create) {
   EXPECT_TRUE(bufRing->available());
   EXPECT_EQ(bufRing->sizePerBuffer(), 4096);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
-  EXPECT_EQ(helper.getRingCount(), 1024);
+  EXPECT_EQ(helper.ringCount(), 1024);
 }
 
 TEST_F(IoUringProvidedBufferRingTest, CreateNoHugepages) {
@@ -74,7 +74,7 @@ TEST_F(IoUringProvidedBufferRingTest, CreateNoHugepages) {
   EXPECT_TRUE(bufRing->available());
   EXPECT_EQ(bufRing->sizePerBuffer(), 4096);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
-  EXPECT_EQ(helper.getRingCount(), 2048);
+  EXPECT_EQ(helper.ringCount(), 2048);
 }
 
 TEST_F(IoUringProvidedBufferRingTest, BufferMinSize) {
@@ -92,7 +92,7 @@ TEST_F(IoUringProvidedBufferRingTest, BufferMinSize) {
   // constexpr size_t kMinBufferSize = 32;
   EXPECT_EQ(bufRing->sizePerBuffer(), 32);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
-  EXPECT_EQ(helper.getRingCount(), 16);
+  EXPECT_EQ(helper.ringCount(), 16);
 }
 
 TEST_F(IoUringProvidedBufferRingTest, DelayedDestruction) {
@@ -161,7 +161,7 @@ TEST_F(IoUringProvidedBufferRingTest, ConcurrentDecBufferState) {
   }
 
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
-  EXPECT_EQ(helper.getReturnedBuffers(), kBufferCount);
+  EXPECT_EQ(helper.returnedBuffers(), kBufferCount);
 }
 
 TEST_F(
