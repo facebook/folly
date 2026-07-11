@@ -18,6 +18,8 @@
 
 #include <memory>
 
+#include <folly/CppAttributes.h>
+
 namespace folly {
 
 /** C++11 closures don't support move-in capture. Nor does std::bind.
@@ -47,11 +49,15 @@ class MoveWrapper {
   /// move is also move
   MoveWrapper(MoveWrapper&& other) : value(std::move(other.value)) {}
 
-  const T& operator*() const { return value; }
-  T& operator*() { return value; }
+  const T& operator*() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return value;
+  }
+  T& operator*() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return value; }
 
-  const T* operator->() const { return &value; }
-  T* operator->() { return &value; }
+  const T* operator->() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return &value;
+  }
+  T* operator->() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return &value; }
 
   /// move the value out (sugar for std::move(*moveWrapper))
   T&& move() { return std::move(value); }

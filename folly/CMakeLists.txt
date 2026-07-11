@@ -897,6 +897,8 @@ folly_add_library(
   NAME move_wrapper
   HEADERS
     MoveWrapper.h
+  EXPORTED_DEPS
+    folly_cpp_attributes
 )
 
 folly_add_library(
