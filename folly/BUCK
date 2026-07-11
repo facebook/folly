@@ -2166,6 +2166,7 @@ fb_dirsync_cpp_library(
     headers = ["Lazy.h"],
     use_raw_headers = True,
     exported_deps = [
+        ":cpp_attributes",
         ":optional",
         "//folly/functional:invoke",
     ],

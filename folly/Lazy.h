@@ -19,6 +19,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/CppAttributes.h>
 #include <folly/Optional.h>
 #include <folly/functional/Invoke.h>
 
@@ -105,13 +106,13 @@ struct Lazy {
   Lazy& operator=(const Lazy&) = delete;
   Lazy& operator=(Lazy&&) = delete;
 
-  const result_type& operator()() const {
+  const result_type& operator()() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     ensure_initialized();
 
     return *value_;
   }
 
-  result_type& operator()() {
+  result_type& operator()() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     ensure_initialized();
 
     return *value_;
