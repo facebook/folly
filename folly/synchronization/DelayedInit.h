@@ -21,6 +21,7 @@
 #include <stdexcept>
 #include <type_traits>
 
+#include <folly/CppAttributes.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/synchronization/CallOnce.h>
 
@@ -103,29 +104,29 @@ struct DelayedInit {
   bool has_value() const { return test_once(storage_.init); }
   explicit operator bool() const { return has_value(); }
 
-  T& value() {
+  T& value() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     require_value();
     return storage_.value;
   }
 
-  const T& value() const {
+  const T& value() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     require_value();
     return storage_.value;
   }
 
-  T& operator*() {
+  T& operator*() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     FOLLY_SAFE_DCHECK(has_value(), "tried to access empty DelayedInit");
     return storage_.value;
   }
-  const T& operator*() const {
+  const T& operator*() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     FOLLY_SAFE_DCHECK(has_value(), "tried to access empty DelayedInit");
     return storage_.value;
   }
-  T* operator->() {
+  T* operator->() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     FOLLY_SAFE_DCHECK(has_value(), "tried to access empty DelayedInit");
     return std::addressof(storage_.value);
   }
-  const T* operator->() const {
+  const T* operator->() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     FOLLY_SAFE_DCHECK(has_value(), "tried to access empty DelayedInit");
     return std::addressof(storage_.value);
   }

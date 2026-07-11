@@ -366,6 +366,7 @@ fb_dirsync_cpp_library(
     headers = ["DelayedInit.h"],
     exported_deps = [
         ":call_once",
+        "//folly:cpp_attributes",
         "//folly/lang:safe_assert",
     ],
 )

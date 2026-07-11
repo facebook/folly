@@ -107,6 +107,7 @@ folly_add_library(
   HEADERS
     DelayedInit.h
   EXPORTED_DEPS
+    folly_cpp_attributes
     folly_lang_safe_assert
     folly_synchronization_call_once
 )
