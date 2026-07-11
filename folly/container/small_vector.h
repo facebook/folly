@@ -1041,41 +1041,42 @@ class small_vector
     insert(end(), n, t);
   }
 
-  reference front() {
+  reference front() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(!empty());
     return *begin();
   }
-  reference back() {
+  reference back() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(!empty());
     return *(end() - 1);
   }
-  const_reference front() const {
+  const_reference front() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(!empty());
     return *begin();
   }
-  const_reference back() const {
+  const_reference back() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(!empty());
     return *(end() - 1);
   }
 
-  reference operator[](size_type i) {
+  reference operator[](size_type i) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(i < size());
     return *(begin() + i);
   }
 
-  const_reference operator[](size_type i) const {
+  const_reference operator[](size_type i) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(i < size());
     return *(begin() + i);
   }
 
-  reference at(size_type i) {
+  reference at(size_type i) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     if (i >= size()) {
       throw_exception<std::out_of_range>("index out of range");
     }
     return (*this)[i];
   }
 
-  const_reference at(size_type i) const {
+  const_reference at(size_type i) const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     if (i >= size()) {
       throw_exception<std::out_of_range>("index out of range");
     }
