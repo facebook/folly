@@ -1208,14 +1208,16 @@ class basic_fbstring {
 
   // Added by C++11
   // C++11 21.4.5, element access:
-  const value_type& front() const { return *begin(); }
-  const value_type& back() const {
+  const value_type& front() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return *begin();
+  }
+  const value_type& back() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(!empty());
     // Should be begin()[size() - 1], but that branches twice
     return *(end() - 1);
   }
-  value_type& front() { return *begin(); }
-  value_type& back() {
+  value_type& front() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return *begin(); }
+  value_type& back() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(!empty());
     // Should be begin()[size() - 1], but that branches twice
     return *(end() - 1);
@@ -1265,16 +1267,21 @@ class basic_fbstring {
   bool empty() const { return size() == 0; }
 
   // C++11 21.4.5 element access:
-  const_reference operator[](size_type pos) const { return *(begin() + pos); }
+  const_reference operator[](size_type pos) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return *(begin() + pos);
+  }
 
-  reference operator[](size_type pos) { return *(begin() + pos); }
+  reference operator[](size_type pos) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return *(begin() + pos);
+  }
 
-  const_reference at(size_type n) const {
+  const_reference at(size_type n) const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     enforce<std::out_of_range>(n < size(), "");
     return (*this)[n];
   }
 
-  reference at(size_type n) {
+  reference at(size_type n) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     enforce<std::out_of_range>(n < size(), "");
     return (*this)[n];
   }
