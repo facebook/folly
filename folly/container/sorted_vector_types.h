@@ -73,6 +73,7 @@
 #include <utility>
 #include <vector>
 
+#include <folly/CppAttributes.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
@@ -1393,7 +1394,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     }
   }
 
-  mapped_type& at(const key_type& key) {
+  mapped_type& at(const key_type& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     iterator it = find(key);
     if (it != end()) {
       return it->second;
@@ -1401,7 +1402,8 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     throw_exception<std::out_of_range>("sorted_vector_map::at");
   }
 
-  const mapped_type& at(const key_type& key) const {
+  const mapped_type& at(const key_type& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     const_iterator it = find(key);
     if (it != end()) {
       return it->second;
@@ -1487,7 +1489,8 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     m_.cont_.swap(o.m_.cont_);
   }
 
-  mapped_type& operator[](const key_type& key) {
+  mapped_type& operator[](const key_type& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     iterator it = lower_bound(key);
     if (it == end() || key_comp()(key, it->first)) {
       return insert(it, value_type(key, mapped_type()))->second;
