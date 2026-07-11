@@ -85,17 +85,19 @@ class ThreadLocal {
     return *this;
   }
 
-  FOLLY_ERASE T* get() const {
+  FOLLY_ERASE T* get() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     auto const ptr = tlp_.get();
     return FOLLY_LIKELY(!!ptr) ? ptr : makeTlp();
   }
 
   // may return null
-  FOLLY_ERASE T* get_existing() const { return tlp_.get(); }
+  FOLLY_ERASE T* get_existing() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return tlp_.get();
+  }
 
-  T* operator->() const { return get(); }
+  T* operator->() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return get(); }
 
-  T& operator*() const { return *get(); }
+  T& operator*() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return *get(); }
 
   void reset(T* newPtr = nullptr) { tlp_.reset(newPtr); }
 
@@ -164,14 +166,14 @@ class ThreadLocalPtr {
 
   ~ThreadLocalPtr() { destroy(); }
 
-  T* get() const {
+  T* get() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
     return static_cast<T*>(w.ptr);
   }
 
-  T* operator->() const { return get(); }
+  T* operator->() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return get(); }
 
-  T& operator*() const { return *get(); }
+  T& operator*() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return *get(); }
 
   T* release() {
     auto rlocked = getForkGuard();
