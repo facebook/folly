@@ -235,11 +235,13 @@ class EvictingCacheMap {
    * @return the iterator of the object (a std::pair of const TKey, TValue) or
    *     end() if it does not exist
    */
-  iterator find(const TKey& key) { return findImpl(*this, key); }
+  iterator find(const TKey& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return findImpl(*this, key);
+  }
 
   template <typename K>
     requires kEligibleForHeterogeneousFind<K>
-  iterator find(const K& key) {
+  iterator find(const K& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return findImpl(*this, key);
   }
 
@@ -502,28 +504,44 @@ class EvictingCacheMap {
   }
 
   // Iterators and such
-  iterator begin() { return iterator(lru_.begin()); }
-  iterator end() { return iterator(lru_.end()); }
-  const_iterator begin() const { return const_iterator(lru_.begin()); }
-  const_iterator end() const { return const_iterator(lru_.end()); }
+  iterator begin() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return iterator(lru_.begin());
+  }
+  iterator end() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return iterator(lru_.end());
+  }
+  const_iterator begin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return const_iterator(lru_.begin());
+  }
+  const_iterator end() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return const_iterator(lru_.end());
+  }
 
-  const_iterator cbegin() const { return const_iterator(lru_.cbegin()); }
-  const_iterator cend() const { return const_iterator(lru_.cend()); }
+  const_iterator cbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return const_iterator(lru_.cbegin());
+  }
+  const_iterator cend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return const_iterator(lru_.cend());
+  }
 
-  reverse_iterator rbegin() { return reverse_iterator(lru_.rbegin()); }
-  reverse_iterator rend() { return reverse_iterator(lru_.rend()); }
+  reverse_iterator rbegin() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return reverse_iterator(lru_.rbegin());
+  }
+  reverse_iterator rend() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return reverse_iterator(lru_.rend());
+  }
 
-  const_reverse_iterator rbegin() const {
+  const_reverse_iterator rbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return const_reverse_iterator(lru_.rbegin());
   }
-  const_reverse_iterator rend() const {
+  const_reverse_iterator rend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return const_reverse_iterator(lru_.rend());
   }
 
-  const_reverse_iterator crbegin() const {
+  const_reverse_iterator crbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return const_reverse_iterator(lru_.crbegin());
   }
-  const_reverse_iterator crend() const {
+  const_reverse_iterator crend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return const_reverse_iterator(lru_.crend());
   }
 

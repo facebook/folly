@@ -228,21 +228,29 @@ class F14BasicMap {
 
   /// Get an iterator to the beginning
   /// @methodset Iterators
-  iterator begin() noexcept { return table_.makeIter(table_.begin()); }
-  const_iterator begin() const noexcept { return cbegin(); }
+  iterator begin() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return table_.makeIter(table_.begin());
+  }
+  const_iterator begin() const noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return cbegin();
+  }
   /// Get an iterator to the beginning
   /// @methodset Iterators
-  const_iterator cbegin() const noexcept {
+  const_iterator cbegin() const noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return table_.makeConstIter(table_.begin());
   }
 
   /// Get an iterator to the end
   /// @methodset Iterators
-  iterator end() noexcept { return table_.makeIter(table_.end()); }
-  const_iterator end() const noexcept { return cend(); }
+  iterator end() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return table_.makeIter(table_.end());
+  }
+  const_iterator end() const noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return cend();
+  }
   /// Get an iterator to the end
   /// @methodset Iterators
-  const_iterator cend() const noexcept {
+  const_iterator cend() const noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return table_.makeConstIter(table_.end());
   }
 
@@ -837,12 +845,14 @@ class F14BasicMap {
 
   /// @overloadbrief Get the iterator for a key.
   /// @methodset Lookup
-  FOLLY_ALWAYS_INLINE iterator find(key_type const& key) {
+  FOLLY_ALWAYS_INLINE iterator find(key_type const& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return table_.makeIter(table_.find(key));
   }
 
   /// Get the iterator for a key.
-  FOLLY_ALWAYS_INLINE const_iterator find(key_type const& key) const {
+  FOLLY_ALWAYS_INLINE const_iterator find(key_type const& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return table_.makeConstIter(table_.find(key));
   }
 
@@ -1449,20 +1459,30 @@ class F14VectorMapImpl
   }
 
   /// @methodset Iterators
-  iterator begin() { return this->table_.linearBegin(this->size()); }
+  iterator begin() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return this->table_.linearBegin(this->size());
+  }
   /// @methodset Iterators
-  const_iterator begin() const { return cbegin(); }
+  const_iterator begin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return cbegin();
+  }
   /// @methodset Iterators
-  const_iterator cbegin() const {
+  const_iterator cbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return this->table_.linearBegin(this->size());
   }
 
   /// @methodset Iterators
-  iterator end() { return this->table_.linearEnd(); }
+  iterator end() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return this->table_.linearEnd();
+  }
   /// @methodset Iterators
-  const_iterator end() const { return cend(); }
+  const_iterator end() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return cend();
+  }
   /// @methodset Iterators
-  const_iterator cend() const { return this->table_.linearEnd(); }
+  const_iterator cend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return this->table_.linearEnd();
+  }
 
  private:
   template <typename BeforeDestroy>
@@ -1673,18 +1693,28 @@ class F14VectorMap
   // if you really need it.
 
   /// @methodset Iterators
-  reverse_iterator rbegin() { return this->table_.values_; }
+  reverse_iterator rbegin() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return this->table_.values_;
+  }
   /// @methodset Iterators
-  const_reverse_iterator rbegin() const { return crbegin(); }
+  const_reverse_iterator rbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return crbegin();
+  }
   /// @methodset Iterators
-  const_reverse_iterator crbegin() const { return this->table_.values_; }
+  const_reverse_iterator crbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return this->table_.values_;
+  }
 
   /// @methodset Iterators
-  reverse_iterator rend() { return this->table_.values_ + this->table_.size(); }
+  reverse_iterator rend() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return this->table_.values_ + this->table_.size();
+  }
   /// @methodset Iterators
-  const_reverse_iterator rend() const { return crend(); }
+  const_reverse_iterator rend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return crend();
+  }
   /// @methodset Iterators
-  const_reverse_iterator crend() const {
+  const_reverse_iterator crend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return this->table_.values_ + this->table_.size();
   }
 

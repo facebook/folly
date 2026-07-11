@@ -35,6 +35,7 @@
 #include <boost/operators.hpp>
 
 #include <folly/ConstexprMath.h>
+#include <folly/CppAttributes.h>
 #include <folly/FormatTraits.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
@@ -682,26 +683,42 @@ class small_vector
   size_type size() const { return this->doSize(); }
   bool empty() const { return !size(); }
 
-  iterator begin() { return data(); }
-  iterator end() { return data() + size(); }
-  const_iterator begin() const { return data(); }
-  const_iterator end() const { return data() + size(); }
-  const_iterator cbegin() const { return begin(); }
-  const_iterator cend() const { return end(); }
+  iterator begin() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return data(); }
+  iterator end() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return data() + size(); }
+  const_iterator begin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return data();
+  }
+  const_iterator end() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return data() + size();
+  }
+  const_iterator cbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return begin();
+  }
+  const_iterator cend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return end();
+  }
 
-  reverse_iterator rbegin() { return reverse_iterator(end()); }
-  reverse_iterator rend() { return reverse_iterator(begin()); }
+  reverse_iterator rbegin() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return reverse_iterator(end());
+  }
+  reverse_iterator rend() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return reverse_iterator(begin());
+  }
 
-  const_reverse_iterator rbegin() const {
+  const_reverse_iterator rbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return const_reverse_iterator(end());
   }
 
-  const_reverse_iterator rend() const {
+  const_reverse_iterator rend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return const_reverse_iterator(begin());
   }
 
-  const_reverse_iterator crbegin() const { return rbegin(); }
-  const_reverse_iterator crend() const { return rend(); }
+  const_reverse_iterator crbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return rbegin();
+  }
+  const_reverse_iterator crend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return rend();
+  }
 
   /*
    * Usually one of the simplest functions in a Container-like class

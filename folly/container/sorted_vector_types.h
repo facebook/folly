@@ -467,16 +467,34 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   key_compare key_comp() const { return m_; }
   value_compare value_comp() const { return m_; }
 
-  iterator begin() { return m_.cont_.begin(); }
-  iterator end() { return m_.cont_.end(); }
-  const_iterator cbegin() const { return m_.cont_.cbegin(); }
-  const_iterator begin() const { return m_.cont_.begin(); }
-  const_iterator cend() const { return m_.cont_.cend(); }
-  const_iterator end() const { return m_.cont_.end(); }
-  reverse_iterator rbegin() { return m_.cont_.rbegin(); }
-  reverse_iterator rend() { return m_.cont_.rend(); }
-  const_reverse_iterator rbegin() const { return m_.cont_.rbegin(); }
-  const_reverse_iterator rend() const { return m_.cont_.rend(); }
+  iterator begin() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.begin();
+  }
+  iterator end() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return m_.cont_.end(); }
+  const_iterator cbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.cbegin();
+  }
+  const_iterator begin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.begin();
+  }
+  const_iterator cend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.cend();
+  }
+  const_iterator end() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.end();
+  }
+  reverse_iterator rbegin() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.rbegin();
+  }
+  reverse_iterator rend() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.rend();
+  }
+  const_reverse_iterator rbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.rbegin();
+  }
+  const_reverse_iterator rend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.rend();
+  }
 
   void clear() { return m_.cont_.clear(); }
   size_type size() const { return m_.cont_.size(); }
@@ -602,9 +620,14 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     return preEraseSize - c.size();
   }
 
-  iterator find(const key_type& key) { return find_(*this, key); }
+  iterator find(const key_type& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return find_(*this, key);
+  }
 
-  const_iterator find(const key_type& key) const { return find_(*this, key); }
+  const_iterator find(const key_type& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return find_(*this, key);
+  }
 
   template <typename K>
   if_is_transparent<K, iterator> find(const K& key)
@@ -682,11 +705,12 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     return find(key) != end();
   }
 
-  iterator lower_bound(const key_type& key) {
+  iterator lower_bound(const key_type& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return std::lower_bound(begin(), end(), key, key_comp());
   }
 
-  const_iterator lower_bound(const key_type& key) const {
+  const_iterator lower_bound(const key_type& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return std::lower_bound(begin(), end(), key, key_comp());
   }
 
@@ -702,11 +726,12 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     return std::lower_bound(begin(), end(), key, key_comp());
   }
 
-  iterator upper_bound(const key_type& key) {
+  iterator upper_bound(const key_type& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return std::upper_bound(begin(), end(), key, key_comp());
   }
 
-  const_iterator upper_bound(const key_type& key) const {
+  const_iterator upper_bound(const key_type& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return std::upper_bound(begin(), end(), key, key_comp());
   }
 
@@ -1163,18 +1188,40 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   key_compare key_comp() const { return m_; }
   value_compare value_comp() const { return m_; }
 
-  iterator begin() { return m_.cont_.begin(); }
-  iterator end() { return m_.cont_.end(); }
-  const_iterator cbegin() const { return m_.cont_.cbegin(); }
-  const_iterator begin() const { return m_.cont_.begin(); }
-  const_iterator cend() const { return m_.cont_.cend(); }
-  const_iterator end() const { return m_.cont_.end(); }
-  reverse_iterator rbegin() { return m_.cont_.rbegin(); }
-  reverse_iterator rend() { return m_.cont_.rend(); }
-  const_reverse_iterator crbegin() const { return m_.cont_.crbegin(); }
-  const_reverse_iterator rbegin() const { return m_.cont_.rbegin(); }
-  const_reverse_iterator crend() const { return m_.cont_.crend(); }
-  const_reverse_iterator rend() const { return m_.cont_.rend(); }
+  iterator begin() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.begin();
+  }
+  iterator end() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return m_.cont_.end(); }
+  const_iterator cbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.cbegin();
+  }
+  const_iterator begin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.begin();
+  }
+  const_iterator cend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.cend();
+  }
+  const_iterator end() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.end();
+  }
+  reverse_iterator rbegin() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.rbegin();
+  }
+  reverse_iterator rend() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.rend();
+  }
+  const_reverse_iterator crbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.crbegin();
+  }
+  const_reverse_iterator rbegin() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.rbegin();
+  }
+  const_reverse_iterator crend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.crend();
+  }
+  const_reverse_iterator rend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return m_.cont_.rend();
+  }
 
   void clear() { return m_.cont_.clear(); }
   size_type size() const { return m_.cont_.size(); }
@@ -1338,9 +1385,14 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     return preEraseSize - c.size();
   }
 
-  iterator find(const key_type& key) { return find_(*this, key); }
+  iterator find(const key_type& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return find_(*this, key);
+  }
 
-  const_iterator find(const key_type& key) const { return find_(*this, key); }
+  const_iterator find(const key_type& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return find_(*this, key);
+  }
 
   template <typename K>
   if_is_transparent<K, iterator> find(const K& key)
@@ -1435,9 +1487,12 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     return find(key) != end();
   }
 
-  iterator lower_bound(const key_type& key) { return lower_bound(*this, key); }
+  iterator lower_bound(const key_type& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return lower_bound(*this, key);
+  }
 
-  const_iterator lower_bound(const key_type& key) const {
+  const_iterator lower_bound(const key_type& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return lower_bound(*this, key);
   }
 
@@ -1453,9 +1508,12 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     return lower_bound(*this, key);
   }
 
-  iterator upper_bound(const key_type& key) { return upper_bound(*this, key); }
+  iterator upper_bound(const key_type& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return upper_bound(*this, key);
+  }
 
-  const_iterator upper_bound(const key_type& key) const {
+  const_iterator upper_bound(const key_type& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return upper_bound(*this, key);
   }
 
