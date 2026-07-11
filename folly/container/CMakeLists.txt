@@ -189,6 +189,17 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME hybrid_vector
+  HEADERS
+    hybrid_vector.h
+  EXPORTED_DEPS
+    folly_lang_checked_math
+    folly_lang_exception
+    folly_lang_safe_assert
+    folly_memory_hybrid_alloc
+)
+
+folly_add_library(
   NAME intrusive_heap
   HEADERS
     IntrusiveHeap.h
