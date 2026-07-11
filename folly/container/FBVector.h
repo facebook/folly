@@ -35,6 +35,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/CppAttributes.h>
 #include <folly/FormatTraits.h>
 #include <folly/Likely.h>
 #include <folly/ScopeGuard.h>
@@ -1047,38 +1048,39 @@ class fbvector {
   //---------------------------------------------------------------------------
   // element access
  public:
-  reference operator[](size_type n) {
+  reference operator[](size_type n) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(n < size());
     return impl_.b_[n];
   }
-  const_reference operator[](size_type n) const {
+  const_reference operator[](size_type n) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(n < size());
     return impl_.b_[n];
   }
-  const_reference at(size_type n) const {
+  const_reference at(size_type n) const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     if (FOLLY_UNLIKELY(n >= size())) {
       throw_exception<std::out_of_range>(
           "fbvector: index is greater than size.");
     }
     return (*this)[n];
   }
-  reference at(size_type n) {
+  reference at(size_type n) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     auto const& cThis = *this;
     return const_cast<reference>(cThis.at(n));
   }
-  reference front() {
+  reference front() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(!empty());
     return *impl_.b_;
   }
-  const_reference front() const {
+  const_reference front() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(!empty());
     return *impl_.b_;
   }
-  reference back() {
+  reference back() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(!empty());
     return impl_.e_[-1];
   }
-  const_reference back() const {
+  const_reference back() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(!empty());
     return impl_.e_[-1];
   }
