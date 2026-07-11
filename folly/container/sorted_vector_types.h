@@ -607,12 +607,14 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   const_iterator find(const key_type& key) const { return find_(*this, key); }
 
   template <typename K>
-  if_is_transparent<K, iterator> find(const K& key) {
+  if_is_transparent<K, iterator> find(const K& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return find_(*this, key);
   }
 
   template <typename K>
-  if_is_transparent<K, const_iterator> find(const K& key) const {
+  if_is_transparent<K, const_iterator> find(const K& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return find_(*this, key);
   }
 
@@ -689,12 +691,14 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   template <typename K>
-  if_is_transparent<K, iterator> lower_bound(const K& key) {
+  if_is_transparent<K, iterator> lower_bound(const K& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return std::lower_bound(begin(), end(), key, key_comp());
   }
 
   template <typename K>
-  if_is_transparent<K, const_iterator> lower_bound(const K& key) const {
+  if_is_transparent<K, const_iterator> lower_bound(const K& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return std::lower_bound(begin(), end(), key, key_comp());
   }
 
@@ -707,12 +711,14 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   template <typename K>
-  if_is_transparent<K, iterator> upper_bound(const K& key) {
+  if_is_transparent<K, iterator> upper_bound(const K& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return std::upper_bound(begin(), end(), key, key_comp());
   }
 
   template <typename K>
-  if_is_transparent<K, const_iterator> upper_bound(const K& key) const {
+  if_is_transparent<K, const_iterator> upper_bound(const K& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return std::upper_bound(begin(), end(), key, key_comp());
   }
 
@@ -1337,12 +1343,14 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   const_iterator find(const key_type& key) const { return find_(*this, key); }
 
   template <typename K>
-  if_is_transparent<K, iterator> find(const K& key) {
+  if_is_transparent<K, iterator> find(const K& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return find_(*this, key);
   }
 
   template <typename K>
-  if_is_transparent<K, const_iterator> find(const K& key) const {
+  if_is_transparent<K, const_iterator> find(const K& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return find_(*this, key);
   }
 
@@ -1434,12 +1442,14 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   template <typename K>
-  if_is_transparent<K, iterator> lower_bound(const K& key) {
+  if_is_transparent<K, iterator> lower_bound(const K& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return lower_bound(*this, key);
   }
 
   template <typename K>
-  if_is_transparent<K, const_iterator> lower_bound(const K& key) const {
+  if_is_transparent<K, const_iterator> lower_bound(const K& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return lower_bound(*this, key);
   }
 
@@ -1450,12 +1460,14 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   template <typename K>
-  if_is_transparent<K, iterator> upper_bound(const K& key) {
+  if_is_transparent<K, iterator> upper_bound(const K& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return upper_bound(*this, key);
   }
 
   template <typename K>
-  if_is_transparent<K, const_iterator> upper_bound(const K& key) const {
+  if_is_transparent<K, const_iterator> upper_bound(const K& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return upper_bound(*this, key);
   }
 

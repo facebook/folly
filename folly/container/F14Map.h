@@ -847,35 +847,40 @@ class F14BasicMap {
   }
 
   FOLLY_ALWAYS_INLINE iterator
-  find(F14HashToken const& token, key_type const& key) {
+  find(F14HashToken const& token, key_type const& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return table_.makeIter(table_.find(token, key));
   }
 
   FOLLY_ALWAYS_INLINE const_iterator
-  find(F14HashToken const& token, key_type const& key) const {
+  find(F14HashToken const& token, key_type const& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return table_.makeConstIter(table_.find(token, key));
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, iterator> find(K const& key) {
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, iterator> find(K const& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return table_.makeIter(table_.find(key));
   }
 
   template <typename K>
   FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, const_iterator> find(
-      K const& key) const {
+      K const& key) const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return table_.makeConstIter(table_.find(key));
   }
 
   template <typename K>
   FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, iterator> find(
-      F14HashToken const& token, K const& key) {
+      F14HashToken const& token, K const& key)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return table_.makeIter(table_.find(token, key));
   }
 
   template <typename K>
   FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, const_iterator> find(
-      F14HashToken const& token, K const& key) const {
+      F14HashToken const& token, K const& key) const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return table_.makeConstIter(table_.find(token, key));
   }
 

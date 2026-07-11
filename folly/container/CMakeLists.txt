@@ -316,6 +316,7 @@ folly_add_library(
   HEADERS
     sorted_vector_types.h
   EXPORTED_DEPS
+    folly_cpp_attributes
     folly_lang_access
     folly_lang_exception
     folly_memory_memory_resource
