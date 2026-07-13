@@ -203,17 +203,23 @@ void stableRadixSortImpl(T* data, T* buffer, size_t n, Projection proj) {
   T* src = data;
   T* dst = buffer;
 
-  for (size_t pass = 0; pass < kPasses; ++pass) {
-    // Phase 1: Count occurrences of each byte value
-    alignas(64) std::array<size_t, kRadixBuckets> counts{};
-    for (size_t i = 0; i < n; ++i) {
-      auto key = proj(src[i]);
-      ++counts[extractRadixDigit(key, pass)];
+  // Phase 1: Count occurrences of each byte value for every pass in a single
+  // sweep. The per-digit histogram is permutation-invariant, so counting once
+  // on the original input yields the same counts each pass needs.
+  alignas(64) std::array<std::array<size_t, kRadixBuckets>, kPasses> counts{};
+  for (size_t i = 0; i < n; ++i) {
+    auto key = proj(src[i]);
+    for (size_t pass = 0; pass < kPasses; ++pass) {
+      ++counts[pass][extractRadixDigit(key, pass)];
     }
+  }
+
+  for (size_t pass = 0; pass < kPasses; ++pass) {
+    const auto& passCounts = counts[pass];
 
     // Check if this pass can be skipped (all elements have the same byte value)
     size_t nonzeroCount = 0;
-    for (size_t c : counts) {
+    for (size_t c : passCounts) {
       if (c != 0 && ++nonzeroCount > 1) {
         break;
       }
@@ -227,7 +233,7 @@ void stableRadixSortImpl(T* data, T* buffer, size_t n, Projection proj) {
     size_t total = 0;
     for (size_t i = 0; i < kRadixBuckets; ++i) {
       offsets[i] = total;
-      total += counts[i];
+      total += passCounts[i];
     }
 
     // Phase 3: Scatter elements to output (preserves stability)
