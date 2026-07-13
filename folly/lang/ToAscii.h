@@ -228,7 +228,9 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_size_clzll(uint64_t v) {
 
 template <uint64_t Base>
 FOLLY_ALWAYS_INLINE size_t to_ascii_size_route(uint64_t v) {
-  return kIsArchAmd64 && !(Base & (Base - 1)) //
+  //  clzll sizing is constant-time; use it for power-of-two bases and base 10,
+  //  where the log change-of-base approximation is exact for every uint64_t.
+  return kIsArchAmd64 && (!(Base & (Base - 1)) || Base == 10) //
       ? to_ascii_size_clzll<Base>(v)
       : to_ascii_size_array<Base>(v);
 }
