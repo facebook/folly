@@ -109,6 +109,7 @@ folly_add_library(
   DEPS
     folly_string
   EXPORTED_DEPS
+    folly_cpp_attributes
     folly_expected
     folly_range
 )

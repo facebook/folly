@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include <folly/CppAttributes.h>
 #include <folly/Expected.h>
 #include <folly/Range.h>
 
@@ -63,7 +64,8 @@ class json_pointer {
    * Get access to the parsed tokens for applications that want to traverse
    * the pointer.
    */
-  std::vector<std::string> const& tokens() const;
+  std::vector<std::string> const& tokens() const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
 
   friend bool operator==(json_pointer const& lhs, json_pointer const& rhs) {
     return lhs.tokens_ == rhs.tokens_;
