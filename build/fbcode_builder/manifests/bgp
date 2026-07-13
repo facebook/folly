@@ -32,6 +32,11 @@ gcc12
 fbcode/neteng/fboss/bgp/public_tld = .
 fbcode/neteng/fboss/bgp = neteng/fboss/bgp
 fbcode/fboss/common = common
+# common.thrift defines the @AllowSkipThriftCow annotation whose C++ type is
+# derived from its package, so rib_policy.thrift must resolve the exact FBOSS
+# schema. A committed copy under public_tld would duplicate the configerator
+# Thrift URI, so sync the real file in the same way manifests/fboss does.
+fbcode/configerator/structs/neteng/fboss/thrift = configerator/structs/neteng/fboss/thrift
 
 [shipit.strip]
 ^fbcode/neteng/fboss/bgp/.*facebook.*
@@ -44,3 +49,9 @@ fbcode/fboss/common = common
 ^fbcode/neteng/fboss/bgp/cpp/tests/NetlinkWrapperTest\.cpp
 ^fbcode/neteng/fboss/bgp/cpp/tests/PlatformConstantBbTest\.cpp
 ^fbcode/neteng/fboss/bgp/cpp/tests/FibEbbTest\.cpp
+# Only common.thrift is needed from configerator/structs/neteng/fboss/thrift;
+# strip the unrelated schemas the pathmap above would otherwise ship.
+^fbcode/configerator/structs/neteng/fboss/thrift/BUCK
+^fbcode/configerator/structs/neteng/fboss/thrift/package_versions\.thrift
+^fbcode/configerator/structs/neteng/fboss/thrift/platform_npi_stage\.thrift
+^fbcode/configerator/structs/neteng/fboss/thrift/sdk\.thrift
