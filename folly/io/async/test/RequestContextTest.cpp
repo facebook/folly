@@ -437,6 +437,27 @@ TEST_F(RequestContextTest, ShallowCopyMulti) {
   EXPECT_EQ(2, getData("test2").data_);
 }
 
+TEST_F(RequestContextTest, ShallowCopyMultiOverwriteExpandsCallbackSlots) {
+  RequestContextScopeGuard g0;
+  setData(1, "test1");
+  setData(2, "test2");
+  setData(3, "test3");
+
+  {
+    ShallowCopyRequestContextScopeGuard g1(
+        RequestDataItem{"test1", std::make_unique<TestData>(4)},
+        RequestDataItem{"test2", std::make_unique<TestData>(5)});
+
+    EXPECT_EQ(4, getData("test1").data_);
+    EXPECT_EQ(5, getData("test2").data_);
+    EXPECT_EQ(3, getData("test3").data_);
+  }
+
+  EXPECT_EQ(1, getData("test1").data_);
+  EXPECT_EQ(2, getData("test2").data_);
+  EXPECT_EQ(3, getData("test3").data_);
+}
+
 TEST_F(RequestContextTest, RootIdOnCopy) {
   auto ctxBase = std::make_shared<RequestContext>(0xab);
   EXPECT_EQ(0xab, ctxBase->getRootId());

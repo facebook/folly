@@ -350,7 +350,11 @@ RequestContext::State::doSetContextDataHelper(
     // Replace combined if needed, call onSet if any, insert new data.
     Combined* newCombined = insertNewData(cur, token, data, found);
     if (newCombined) {
-      replaced = cur;
+      if (replaced) {
+        delete cur;
+      } else {
+        replaced = cur;
+      }
       cur = newCombined;
     }
   }
@@ -407,7 +411,9 @@ RequestContext::State::insertNewData(
     bool found) {
   Combined* newCombined = nullptr;
   // Update value to point to the new data.
-  if (!found && cur->needExpand()) {
+  const bool willInsertCallbackData =
+      data && data->hasCallback() && !cur->callbackData_.contains(data.get());
+  if ((!found || willInsertCallbackData) && cur->needExpand()) {
     // Replace the current Combined with an expanded one
     newCombined = expand(cur);
     cur = newCombined;
