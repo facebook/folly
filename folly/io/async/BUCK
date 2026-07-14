@@ -83,6 +83,7 @@ fb_dirsync_cpp_library(
         "//folly/portability:fcntl",
         "//folly/portability:iovec",
         "//folly/portability:sockets",
+        "//folly/portability:sys_resource",
         "//folly/portability:unistd",
         "//folly/synchronization:baton",
         "//folly/synchronization:call_once",

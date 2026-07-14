@@ -15,6 +15,9 @@
  */
 
 #include <signal.h>
+#include <folly/portability/SysResource.h>
+
+#include <cerrno>
 
 #include <folly/Demangle.h>
 #include <folly/FileUtil.h>
@@ -1126,11 +1129,27 @@ void IoUringBackend::delayedInit() {
   }
 
   if (options_.arenaIndex > 0) {
+    const size_t arenaBytes = options_.arenaRegion.iov_len;
+    struct rlimit memlock{};
+    if (::getrlimit(RLIMIT_MEMLOCK, &memlock) == 0 &&
+        memlock.rlim_cur != RLIM_INFINITY && arenaBytes > memlock.rlim_cur) {
+      LOG(WARNING)
+          << "io_uring fixed-buffer arena of " << (arenaBytes >> 20)
+          << " MiB exceeds RLIMIT_MEMLOCK of " << (memlock.rlim_cur >> 20)
+          << " MiB; io_uring_register_buffers will likely fail with ENOMEM. "
+          << "Raise RLIMIT_MEMLOCK or reduce the arena size.";
+    }
     int ret = ::io_uring_register_buffers(&ioRing_, &options_.arenaRegion, 1);
     if (ret < 0) {
+      const std::string memlockHint = (ret == -ENOMEM)
+          ? " (RLIMIT_MEMLOCK too low for the arena; raise it or reduce arena size)"
+          : "";
       throw NotAvailable(
           fmt::format(
-              "io_uring_register_buffers failed: {}", folly::errnoStr(-ret)));
+              "io_uring_register_buffers failed for a {} MiB fixed-buffer arena: {}{}",
+              arenaBytes >> 20,
+              folly::errnoStr(-ret),
+              memlockHint));
     }
   }
 

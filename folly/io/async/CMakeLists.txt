@@ -80,6 +80,7 @@ folly_add_library(
     folly_portability_fcntl
     folly_portability_iovec
     folly_portability_sockets
+    folly_portability_sys_resource
     folly_portability_unistd
     folly_scope_guard
     folly_spin_lock
