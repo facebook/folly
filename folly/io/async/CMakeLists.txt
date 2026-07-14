@@ -321,6 +321,7 @@ folly_add_library(
   NAME async_transport
   HEADERS
     AsyncTransport.h
+    WriteCallbackWithState.h
   EXPORTED_DEPS
     folly_io_async_async_base
     folly_io_async_async_socket_base

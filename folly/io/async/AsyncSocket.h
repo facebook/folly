@@ -40,6 +40,7 @@
 #include <folly/io/async/IoUringConnect.h>
 #include <folly/io/async/IoUringRecv.h>
 #include <folly/io/async/IoUringSend.h>
+#include <folly/io/async/WriteCallbackWithState.h>
 #include <folly/io/async/observer/AsyncSocketObserverContainer.h>
 #include <folly/net/NetOpsDispatcher.h>
 #include <folly/net/TcpInfo.h>
@@ -1261,28 +1262,6 @@ class AsyncSocket
 
     ssize_t readReturn;
     std::unique_ptr<const AsyncSocketException> exception;
-  };
-
-  /**
-   * Wrapper class for WriteCallback that includes a boolean variable to track
-   * whether the write has already started or not
-   */
-  class WriteCallbackWithState {
-   public:
-    explicit WriteCallbackWithState(WriteCallback* callback)
-        : callback_(callback) {}
-    WriteCallback* getCallback() const { return callback_; }
-
-    void notifyOnWrite() noexcept {
-      if (callback_ && !writeInProgress_) {
-        callback_->writeStarting();
-      }
-      writeInProgress_ = true;
-    }
-
-   private:
-    WriteCallback* callback_{nullptr};
-    bool writeInProgress_{false};
   };
 
   /**

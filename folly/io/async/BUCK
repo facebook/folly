@@ -295,7 +295,10 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "async_transport",
-    headers = ["AsyncTransport.h"],
+    headers = [
+        "AsyncTransport.h",
+        "WriteCallbackWithState.h",
+    ],
     use_raw_headers = True,
     exported_deps = [
         ":async_base",
