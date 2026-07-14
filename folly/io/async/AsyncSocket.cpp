@@ -2102,7 +2102,7 @@ void AsyncSocket::writeImpl(
       }
     }
     iouSendHandle_->write(
-        callback,
+        callbackWithState,
         vec + countWritten,
         count - countWritten,
         partialWritten,

@@ -1128,6 +1128,78 @@ TEST_P(AsyncSocketTest, MoveEventBaseWithInflightZeroCopyWrite) {
 }
 
 /**
+ * A partially-written buffer is handed to IoUringSendHandle and re-submitted to
+ * io_uring as the socket buffer drains. writeStarting() must reach the
+ * WriteCallback exactly once, not once per (re-)submission. Regression test for
+ * the double writeStarting() that aborted RocketServerConnection's DCHECK on
+ * the native AsyncSocket + io_uring send path.
+ */
+TEST_P(AsyncSocketTest, PartialWriteFiresWriteStartingOnce) {
+  if (GetParam() != BackendType::IO_URING) {
+    GTEST_SKIP() << "IoUringSendHandle send path is io_uring-only";
+  }
+
+  // Small socket buffers so a large write can't complete in one shot.
+  constexpr size_t kSockBufSize = 8 * 1024;
+  TestServer server(false, kSockBufSize);
+
+  SocketOptionMap options{
+      {{SOL_SOCKET, SO_SNDBUF}, int(kSockBufSize)},
+      {{SOL_SOCKET, SO_RCVBUF}, int(kSockBufSize)},
+      {{IPPROTO_TCP, TCP_NODELAY}, 1},
+  };
+
+  // The receiver drains on this thread; the sender gets its own EVB thread.
+  EventBase& senderEvb = getEventBase();
+  std::thread senderThread([&]() { senderEvb.loopForever(); });
+
+  ConnCallback ccb;
+  WriteCallback wcb;
+  std::shared_ptr<AsyncSocket> socket;
+
+  senderEvb.runInEventBaseThreadAndWait([&]() {
+    socket = AsyncSocket::newSocket(&senderEvb);
+    socket->connect(&ccb, server.getAddress(), 30, options);
+  });
+
+  std::shared_ptr<BlockingSocket> acceptedSocket = server.accept();
+
+  // Completion is signalled via an atomic set on the sender thread; wcb's
+  // non-atomic fields are only read after that thread is joined.
+  std::atomic<bool> writeDone{false};
+  wcb.successCallback = [&writeDone]() { writeDone = true; };
+
+  // Big enough to overflow the send+recv buffers, so the first write is partial
+  // and its remainder is re-submitted through IoUringSendHandle as we drain.
+  constexpr size_t kSendSize = 100 * 1024;
+  auto const sendBuf = std::vector<char>(kSendSize, 'a');
+
+  senderEvb.runInEventBaseThreadAndWait([&]() {
+    socket->write(&wcb, sendBuf.data(), kSendSize);
+  });
+
+  // Drain everything so the write ultimately succeeds.
+  std::vector<uint8_t> recvBuf(kSendSize);
+  auto bytesRead = acceptedSocket->readAll(recvBuf.data(), recvBuf.size());
+  ASSERT_EQ(kSendSize, bytesRead);
+  EXPECT_EQ(0, memcmp(recvBuf.data(), sendBuf.data(), bytesRead));
+
+  using clock = std::chrono::steady_clock;
+  auto const deadline = clock::now() + std::chrono::seconds(30);
+  while (!writeDone.load() && clock::now() < deadline) {
+    std::this_thread::yield();
+  }
+
+  senderEvb.terminateLoopSoon();
+  senderThread.join();
+  socket.reset();
+
+  EXPECT_EQ(STATE_SUCCEEDED, wcb.state);
+  // The core assertion: exactly one writeStarting despite multiple submits.
+  EXPECT_EQ(1, wcb.writeStartingInvocations);
+}
+
+/**
  * Test calling close() immediately after connect()
  */
 TEST_P(AsyncSocketTest, ConnectAndClose) {

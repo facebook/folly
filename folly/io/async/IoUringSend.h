@@ -23,6 +23,7 @@
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/IoUringBase.h>
+#include <folly/io/async/WriteCallbackWithState.h>
 #include <folly/net/NetworkSocket.h>
 
 namespace folly {
@@ -59,7 +60,7 @@ class IoUringSendHandle : public DelayedDestruction {
 
   bool update(uint16_t eventFlags);
   void write(
-      AsyncWriter::WriteCallback* callback,
+      WriteCallbackWithState callback,
       const struct iovec* iov,
       size_t iovCount,
       size_t partialWritten,

@@ -39,7 +39,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   }
 
   explicit SendRequest(
-      AsyncWriter::WriteCallback* callback,
+      WriteCallbackWithState callback,
       const struct iovec* iov,
       size_t iovCount,
       size_t partialWritten,
@@ -48,8 +48,11 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
       WriteFlags flags,
       NetworkSocket fd)
       : IoSqeBase(IoSqeBase::Type::Write),
-        callback_(callback),
-        releaseCb_(callback ? callback->getReleaseIOBufCallback() : nullptr),
+        callbackWithState_(callback),
+        releaseCb_(
+            callback.getCallback()
+                ? callback.getCallback()->getReleaseIOBufCallback()
+                : nullptr),
         iovRemaining_(iovCount),
         bytesWritten_(bytesWritten),
         data_(std::move(data)),
@@ -81,7 +84,10 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   }
   SendRequest* getNext() { return next_; }
   void append(SendRequest* request) { next_ = request; }
-  AsyncWriter::WriteCallback* getCallback() { return callback_; }
+  AsyncWriter::WriteCallback* getCallback() {
+    return callbackWithState_.getCallback();
+  }
+  void notifyOnWrite() { callbackWithState_.notifyOnWrite(); }
   size_t getTotalBytesWritten() { return bytesWritten_; }
   folly::IOBuf* getData() const { return data_.get(); }
   bool notifPending() const { return refs_ > 1; }
@@ -107,7 +113,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
     CHECK(handle_ == nullptr);
     void* buf = alloc(msg_.msg_iovlen);
     auto clone = new (buf) SendRequest(
-        callback_,
+        callbackWithState_,
         msg_.msg_iov,
         msg_.msg_iovlen,
         0,
@@ -222,7 +228,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
     msg_.msg_iovlen = std::min<size_t>(iovRemaining_, kIovMax);
   }
 
-  AsyncWriter::WriteCallback* callback_;
+  WriteCallbackWithState callbackWithState_;
   AsyncWriter::ReleaseIOBufCallback* releaseCb_;
   size_t iovRemaining_;
   size_t bytesWritten_;
@@ -338,7 +344,7 @@ bool IoUringSendHandle::update(uint16_t eventFlags) {
 }
 
 void IoUringSendHandle::write(
-    AsyncWriter::WriteCallback* callback,
+    WriteCallbackWithState callback,
     const struct iovec* iov,
     size_t iovCount,
     size_t partialWritten,
@@ -412,9 +418,7 @@ void IoUringSendHandle::trySubmit() {
 }
 
 void IoUringSendHandle::onSendStarted() {
-  if (auto* cb = requestHead_->getCallback()) {
-    cb->writeStarting();
-  }
+  requestHead_->notifyOnWrite();
 }
 
 void IoUringSendHandle::onSendPartial(size_t bytesWritten) {
@@ -516,7 +520,7 @@ bool IoUringSendHandle::update(uint16_t /*eventFlags*/) {
 }
 
 void IoUringSendHandle::write(
-    AsyncWriter::WriteCallback* /*callback*/,
+    WriteCallbackWithState /*callback*/,
     const struct iovec* /*iov*/,
     size_t /*iovCount*/,
     size_t /*partialWritten*/,
