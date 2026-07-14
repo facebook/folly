@@ -263,6 +263,7 @@ fb_dirsync_cpp_unittest(
         "//folly/io/async:async_socket",
         "//folly/io/async:scoped_event_base_thread",
         "//folly/io/async:server_socket",
+        "//folly/memory:io_uring_arena",
         "//folly/net:net_ops",
         "//folly/net:network_socket",
         "//folly/net/test:mock_net_ops_dispatcher",

@@ -38,6 +38,7 @@
 #include <folly/io/async/test/MockAsyncSocketObserver.h>
 #include <folly/io/async/test/TFOUtil.h>
 #include <folly/io/async/test/Util.h>
+#include <folly/memory/IoUringArena.h>
 #include <folly/net/test/MockNetOpsDispatcher.h>
 #include <folly/net/test/MockTcpInfoDispatcher.h>
 #include <folly/portability/GMock.h>
@@ -1084,6 +1085,107 @@ TEST_P(AsyncSocketTest, ConnectWriteZeroCopy) {
 
   socket->close();
   server.verifyConnection(buf, kLen);
+}
+
+namespace {
+std::unique_ptr<EventBase> makeArenaIoUringEventBase() {
+  return std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
+      []() -> std::unique_ptr<EventBaseBackendBase> {
+        IoUringBackend::Options options;
+        options.setInitialProvidedBuffers(2048, 2000);
+        options.setNativeAsyncSocketSupport(true);
+        options.setArenaRegion(
+            IoUringArena::base(),
+            IoUringArena::regionSize(),
+            IoUringArena::arenaIndex());
+        return std::make_unique<IoUringBackend>(std::move(options));
+      }));
+}
+} // namespace
+
+/**
+ * ZC write of an arena-allocated buffer over a backend with a registered arena:
+ * IoUringSend takes the IORING_RECVSEND_FIXED_BUF path. A wrong buf_index, or
+ * setting the flag on an unregistered buffer, makes the kernel reject the send,
+ * so a correct and intact delivery validates the fixed-buf branch.
+ */
+TEST(AsyncSocketIoUringArenaTest, ZeroCopyWriteFromArenaUsesFixedBuf) {
+  if (!IoUringBackend::isAvailable()) {
+    GTEST_SKIP() << "io_uring/arena registration not available";
+  }
+  constexpr size_t kArenaSize = 4 * 1024 * 1024;
+  if (!IoUringArena::init(kArenaSize)) {
+    GTEST_SKIP() << "IoUringArena not supported (needs jemalloc)";
+  }
+
+  std::unique_ptr<EventBase> evb = makeArenaIoUringEventBase();
+  TestServer server;
+  auto socket = AsyncSocket::newSocket(evb.get());
+  ASSERT_TRUE(socket->setZeroCopy(true));
+
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+  evb->loop();
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+
+  constexpr size_t kLen = 32 * 1024;
+  void* data = IoUringArena::allocate(kLen);
+  ASSERT_NE(data, nullptr);
+  ASSERT_TRUE(IoUringArena::addressInArena(data));
+  memset(data, 'z', kLen);
+  auto buf =
+      IOBuf::takeOwnership(data, kLen, [](void* p, void* /* userData */) {
+        IoUringArena::deallocate(p);
+      });
+
+  WriteCallback wcb(true /* enableReleaseIOBufCallback */);
+  socket->writeChain(&wcb, std::move(buf), WriteFlags::WRITE_MSG_ZEROCOPY);
+  evb->loop();
+  ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
+
+  socket->close();
+  const std::vector<char> expected(kLen, 'z');
+  server.verifyConnection(expected.data(), kLen);
+}
+
+/**
+ * ZC write of a heap buffer over a backend with a registered arena: the buffer
+ * is not arena-resident, so the per-send gate must fall back to a plain SEND_ZC
+ * rather than hand the kernel an unregistered fixed buffer.
+ */
+TEST(AsyncSocketIoUringArenaTest, ZeroCopyWriteFromHeapFallsBack) {
+  if (!IoUringBackend::isAvailable()) {
+    GTEST_SKIP() << "io_uring/arena registration not available";
+  }
+  constexpr size_t kArenaSize = 4 * 1024 * 1024;
+  if (!IoUringArena::init(kArenaSize)) {
+    GTEST_SKIP() << "IoUringArena not supported (needs jemalloc)";
+  }
+
+  std::unique_ptr<EventBase> evb = makeArenaIoUringEventBase();
+  TestServer server;
+  auto socket = AsyncSocket::newSocket(evb.get());
+  ASSERT_TRUE(socket->setZeroCopy(true));
+
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+  evb->loop();
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+
+  constexpr size_t kLen = 32 * 1024;
+  const std::vector<char> payload(kLen, 'h');
+  ASSERT_FALSE(IoUringArena::addressInArena(const_cast<char*>(payload.data())));
+
+  WriteCallback wcb(true /* enableReleaseIOBufCallback */);
+  socket->writeChain(
+      &wcb,
+      IOBuf::copyBuffer(payload.data(), kLen),
+      WriteFlags::WRITE_MSG_ZEROCOPY);
+  evb->loop();
+  ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
+
+  socket->close();
+  server.verifyConnection(payload.data(), kLen);
 }
 
 /**

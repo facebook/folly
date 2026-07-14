@@ -665,6 +665,7 @@ folly_add_library(
     IoUringSend.h
   DEPS
     folly_io_async_async_base
+    folly_memory_io_uring_arena
   EXPORTED_DEPS
     folly_futures_core
     folly_io_async_async_transport

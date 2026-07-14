@@ -18,6 +18,7 @@
 
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/IoUringBackend.h>
+#include <folly/memory/IoUringArena.h>
 
 namespace folly {
 
@@ -136,6 +137,10 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   void processSubmit(struct io_uring_sqe* sqe) noexcept override {
     if (folly::isSet(flags_, WriteFlags::WRITE_MSG_ZEROCOPY)) {
       ::io_uring_prep_sendmsg_zc(sqe, fd_.toFd(), &msg_, flags() | MSG_WAITALL);
+      if (handle_->backend_->getArenaIndex() > 0 && allIovInArena()) {
+        sqe->ioprio |= IORING_RECVSEND_FIXED_BUF;
+        sqe->buf_index = 0;
+      }
     } else {
       ::io_uring_prep_sendmsg(sqe, fd_.toFd(), &msg_, flags());
     }
@@ -201,6 +206,15 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
     }
 
     return msg_flags;
+  }
+
+  bool allIovInArena() const {
+    for (size_t i = 0; i < msg_.msg_iovlen; ++i) {
+      if (!IoUringArena::addressInArena(msg_.msg_iov[i].iov_base)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void consumeBytes(size_t bytes) {
