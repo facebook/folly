@@ -315,23 +315,24 @@ IoUringSendHandle::IoUringSendHandle(
     if (other->detachedFuture_.has_value()) {
       CHECK(oldReq->inFlight());
       CHECK(newReq->inFlight());
-      std::move(*other->detachedFuture_)
-          .via(evb)
-          .thenValue([oldReq, newReq, evb](const VecResFlags& results) {
-            // The result res is from detachSignal_ in the previous request
-            oldReq->destroy();
-            for (auto& [res, flags] : results) {
-              struct io_uring_cqe cqe{};
-              cqe.res = res;
-              cqe.flags = flags;
-              evb->bumpHandlingTime();
-              if (newReq->cancelled()) {
-                newReq->callbackCancelled(&cqe);
-              } else {
-                newReq->callback(&cqe);
-              }
-            }
-          });
+      folly::futures::detachOn(
+          evb,
+          std::move(*other->detachedFuture_)
+              .deferValue([oldReq, newReq, evb](const VecResFlags& results) {
+                // The result res is from detachSignal_ in the previous request
+                oldReq->destroy();
+                for (auto& [res, flags] : results) {
+                  struct io_uring_cqe cqe{};
+                  cqe.res = res;
+                  cqe.flags = flags;
+                  evb->bumpHandlingTime();
+                  if (newReq->cancelled()) {
+                    newReq->callbackCancelled(&cqe);
+                  } else {
+                    newReq->callback(&cqe);
+                  }
+                }
+              }));
     }
   }
 }
