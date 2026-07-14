@@ -31,6 +31,14 @@ fb_dirsync_cpp_library(
         "AsyncStack.h",
         "AsyncStack-inl.h",
     ],
+    force_static = select({
+        "DEFAULT": True,
+        "ovr_config//folly_async_stack:folly_async_stack_linkage[shared]": False,
+    }),
+    preferred_linkage = select({
+        "DEFAULT": None,
+        "ovr_config//folly_async_stack:folly_async_stack_linkage[shared]": "shared",
+    }),
     use_raw_headers = True,
     deps = [
         "fbsource//third-party/glog:glog",
