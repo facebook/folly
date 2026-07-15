@@ -78,7 +78,12 @@ IOBufQueue::IOBufQueue(const Options& options)
 }
 
 IOBufQueue::~IOBufQueue() {
-  clearWritableRangeCache();
+  // Detach an external WritableRangeCache so its destructor does not later
+  // flush through the now-dangling queue pointer. Skip flushing otherwise:
+  // the bookkeeping is about to be discarded with head_.
+  if (cachePtr_ != &localCache_) {
+    *cachePtr_ = WritableRangeCacheData{};
+  }
 }
 
 IOBufQueue::IOBufQueue(IOBufQueue&& other) noexcept
@@ -311,7 +316,8 @@ void IOBufQueue::maybeReuseTail(folly::IOBuf& oldTail) {
   head_->appendToChain(std::move(newTail));
 }
 
-unique_ptr<IOBuf> IOBufQueue::split(size_t n, bool throwOnUnderflow, bool pack) {
+unique_ptr<IOBuf> IOBufQueue::split(
+    size_t n, bool throwOnUnderflow, bool pack) {
   auto guard = updateGuard();
   unique_ptr<IOBuf> result;
   while (n != 0) {
