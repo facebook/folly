@@ -4,86 +4,86 @@
   "name": "buck2",
   "platforms": {
     "macos-aarch64": {
-      "size": 33728207,
+      "size": 33767304,
       "hash": "blake3",
-      "digest": "3bbd7cfe1b51d17124f5634812ae904254e01da429a61f62fe9c3d7c45e12dd9",
+      "digest": "273310835d3d76bb89c2a1a2caf3197ec61f409ee87f85929387672a94e0db64",
       "format": "zst",
       "path": "buck2-aarch64-apple-darwin",
       "providers": [
         {
-          "url": "https://github.com/facebook/buck2/releases/download/2026-07-01/buck2-aarch64-apple-darwin.zst"
+          "url": "https://github.com/facebook/buck2/releases/download/2026-07-15/buck2-aarch64-apple-darwin.zst"
         }
       ]
     },
     "windows-aarch64": {
-      "size": 29333382,
+      "size": 29431570,
       "hash": "blake3",
-      "digest": "34417c30bd88b2110e00044f619aae791ec4e2d7f982aeb0fa43f01c0c2b06ac",
+      "digest": "3ab7ee99dfc16c2b47722ea9b31dde8d385bdbe140b8c48acecc760a5e58c5f3",
       "format": "zst",
       "path": "buck2-aarch64-pc-windows-msvc.exe",
       "providers": [
         {
-          "url": "https://github.com/facebook/buck2/releases/download/2026-07-01/buck2-aarch64-pc-windows-msvc.exe.zst"
+          "url": "https://github.com/facebook/buck2/releases/download/2026-07-15/buck2-aarch64-pc-windows-msvc.exe.zst"
         }
       ]
     },
     "linux-aarch64": {
-      "size": 36896909,
+      "size": 36976879,
       "hash": "blake3",
-      "digest": "889091fae4410776de12ddc1ec676f019a0b9bd9bacf69298e5d0b16482f9ae6",
+      "digest": "5b160a0c1ecad8489201a370bbf9fab684720d8d73110e75e06e72ed339dff73",
       "format": "zst",
       "path": "buck2-aarch64-unknown-linux-musl",
       "providers": [
         {
-          "url": "https://github.com/facebook/buck2/releases/download/2026-07-01/buck2-aarch64-unknown-linux-musl.zst"
+          "url": "https://github.com/facebook/buck2/releases/download/2026-07-15/buck2-aarch64-unknown-linux-musl.zst"
         }
       ]
     },
     "linux-riscv64": {
-      "size": 39062685,
+      "size": 39118879,
       "hash": "blake3",
-      "digest": "4c6275d204a22fe5920bbf6fadf41a04580ec79b713c2447fcc264534f78e221",
+      "digest": "b2728337070e6da11d7bf1af29bccb51fc885d05bc2b1bb1d883a4bcf1980ea1",
       "format": "zst",
       "path": "buck2-riscv64gc-unknown-linux-gnu",
       "providers": [
         {
-          "url": "https://github.com/facebook/buck2/releases/download/2026-07-01/buck2-riscv64gc-unknown-linux-gnu.zst"
+          "url": "https://github.com/facebook/buck2/releases/download/2026-07-15/buck2-riscv64gc-unknown-linux-gnu.zst"
         }
       ]
     },
     "macos-x86_64": {
-      "size": 35999107,
+      "size": 36044403,
       "hash": "blake3",
-      "digest": "688c7d5da371fcb0dc8d337c37a55963e3001688e0942473c0f9897cb11170d9",
+      "digest": "0b8eb714f509a2886ce407477b2744f3e5cff0b448487959fe71a722af56faeb",
       "format": "zst",
       "path": "buck2-x86_64-apple-darwin",
       "providers": [
         {
-          "url": "https://github.com/facebook/buck2/releases/download/2026-07-01/buck2-x86_64-apple-darwin.zst"
+          "url": "https://github.com/facebook/buck2/releases/download/2026-07-15/buck2-x86_64-apple-darwin.zst"
         }
       ]
     },
     "windows-x86_64": {
-      "size": 31097651,
+      "size": 31139540,
       "hash": "blake3",
-      "digest": "fae94eafc83a7e780c66775760e3ca2e92f499047299968ae7847ee3300f2970",
+      "digest": "4943266f41e3de7848801befbd89c1ddbae61252a3042fc646e072cbe6abcea6",
       "format": "zst",
       "path": "buck2-x86_64-pc-windows-msvc.exe",
       "providers": [
         {
-          "url": "https://github.com/facebook/buck2/releases/download/2026-07-01/buck2-x86_64-pc-windows-msvc.exe.zst"
+          "url": "https://github.com/facebook/buck2/releases/download/2026-07-15/buck2-x86_64-pc-windows-msvc.exe.zst"
         }
       ]
     },
     "linux-x86_64": {
-      "size": 38600655,
+      "size": 38640905,
       "hash": "blake3",
-      "digest": "807fe2ba2c7aaf3a3a312de4220cee2abba9f37940c45b5a5f42ff1fd33dc089",
+      "digest": "0f55638c3245d041cfced0e0eda5396f057007521e58cf7ab6ec3efdd0df6f49",
       "format": "zst",
       "path": "buck2-x86_64-unknown-linux-musl",
       "providers": [
         {
-          "url": "https://github.com/facebook/buck2/releases/download/2026-07-01/buck2-x86_64-unknown-linux-musl.zst"
+          "url": "https://github.com/facebook/buck2/releases/download/2026-07-15/buck2-x86_64-unknown-linux-musl.zst"
         }
       ]
     }
