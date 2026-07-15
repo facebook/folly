@@ -207,12 +207,6 @@ FOLLY_ALWAYS_INLINE constexpr T nextPowTwo(T const v) {
 }
 
 template <class T>
-inline constexpr T prevPowTwo(T const v) {
-  static_assert(std::is_unsigned<T>::value, "signed type");
-  return v ? (T(1) << (findLastSet(v) - 1)) : T(0);
-}
-
-template <class T>
 inline constexpr bool isPowTwo(T const v) {
   static_assert(std::is_integral<T>::value, "non-integral type");
   static_assert(std::is_unsigned<T>::value, "signed type");
@@ -229,7 +223,7 @@ inline constexpr T strictNextPowTwo(T const v) {
 template <class T>
 inline constexpr T strictPrevPowTwo(T const v) {
   static_assert(std::is_unsigned<T>::value, "signed type");
-  return v > 1 ? prevPowTwo(T(v - 1)) : T(0);
+  return v > 1 ? std::bit_floor(T(v - 1)) : T(0);
 }
 
 /// n_least_significant_bits

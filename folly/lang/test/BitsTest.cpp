@@ -168,29 +168,6 @@ TEST(Bits, strictNextPowTwoClz) {
   EXPECT_EQ(1ull << 63, strictNextPowTwo((1ull << 62) + 1));
 }
 
-TEST(Bits, prevPowTwoClz) {
-  EXPECT_EQ(0, prevPowTwo(0u));
-  EXPECT_EQ(1, prevPowTwo(1u));
-  EXPECT_EQ(2, prevPowTwo(2u));
-  EXPECT_EQ(2, prevPowTwo(3u));
-  EXPECT_EQ(4, prevPowTwo(4u));
-  EXPECT_EQ(4, prevPowTwo(5u));
-  EXPECT_EQ(4, prevPowTwo(6u));
-  EXPECT_EQ(4, prevPowTwo(7u));
-  EXPECT_EQ(8, prevPowTwo(8u));
-  EXPECT_EQ(8, prevPowTwo(9u));
-  EXPECT_EQ(8, prevPowTwo(13u));
-  EXPECT_EQ(16, prevPowTwo(16u));
-  EXPECT_EQ(256, prevPowTwo(510u));
-  EXPECT_EQ(256, prevPowTwo(511u));
-  EXPECT_EQ(512, prevPowTwo(512u));
-  EXPECT_EQ(512, prevPowTwo(513u));
-  EXPECT_EQ(512, prevPowTwo(777u));
-  EXPECT_EQ(1ul << 30, prevPowTwo((1ul << 31) - 1));
-  EXPECT_EQ(1ull << 31, prevPowTwo((1ull << 32) - 1));
-  EXPECT_EQ(1ull << 62, prevPowTwo((1ull << 62) + 1));
-}
-
 TEST(Bits, strictPrevPowTwoClz) {
   EXPECT_EQ(0, strictPrevPowTwo(0u));
   EXPECT_EQ(0, strictPrevPowTwo(1u));
