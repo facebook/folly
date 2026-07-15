@@ -20,6 +20,7 @@
 #include <iosfwd>
 
 #include <folly/Conv.h>
+#include <folly/CppAttributes.h>
 #include <folly/Expected.h>
 #include <folly/Range.h>
 #include <folly/Unit.h>
@@ -125,7 +126,9 @@ class MacAddress {
    * object.  It is only valid as long as the MacAddress, and its contents may
    * change if the MacAddress is updated.
    */
-  const uint8_t* bytes() const { return bytes_ + 2; }
+  const uint8_t* bytes() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return bytes_ + 2;
+  }
 
   /*
    * Return the address as a uint64_t, in network byte order.
