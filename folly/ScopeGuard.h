@@ -174,6 +174,7 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
   }
 
   void* operator new(std::size_t) = delete;
+  void operator delete(void*) = delete;
 
   void execute() noexcept(InvokeNoexcept) {
     if constexpr (InvokeNoexcept) {
