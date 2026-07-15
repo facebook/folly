@@ -14,7 +14,7 @@ fb_dirsync_rust_library(
         "fbsource//third-party/rust:bytes",
         "fbsource//third-party/rust:cxx",
         "fbsource//third-party/rust:thiserror",
-        "fbsource//xplat/folly/rust/iobuf:iobuf",
+        "//folly/rust/iobuf:iobuf_actual",
     ],
 )
 

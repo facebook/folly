@@ -11,7 +11,7 @@ fb_dirsync_rust_library(
     cxx_bridge = "dynamic.rs",
     deps = [
         "fbsource//third-party/rust:cxx",
-        "fbsource//xplat/folly/rust/string:string",
+        "//folly/rust/string:string",
     ],
 )
 

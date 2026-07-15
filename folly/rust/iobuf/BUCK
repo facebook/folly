@@ -116,6 +116,11 @@ fb_native.alias(
     ],
 ) if is_xplat() else None
 
+fb_native.alias(
+    name = "iobuf_actual",
+    actual = ":_iobuf",
+)
+
 fb_xplat_rust_library(
     name = "_iobuf",
     srcs = glob(["src/*.rs"]),
