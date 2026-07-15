@@ -170,9 +170,17 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
   static Once once;
 
   std::vector<ExceptionInfo> exceptions;
-  auto currentException = __cxa_get_globals()->caughtExceptions;
+  // __cxa_get_globals() may return nullptr when called from a signal handler
+  // context (where TLS access is unsafe), during thread destruction, or when
+  // the C++ exception handling globals are not initialized (e.g. in Python
+  // native-main binaries that link folly but don't use C++ exceptions).
+  auto* globals = __cxa_get_globals();
+  if (!globals) {
+    return {};
+  }
+  auto currentException = globals->caughtExceptions;
   if (!currentException) {
-    return exceptions;
+    return {};
   }
 
   const StackTraceStack* traceStack = nullptr;
