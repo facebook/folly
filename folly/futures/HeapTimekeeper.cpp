@@ -259,7 +259,7 @@ void HeapTimekeeper::State::worker() {
           nextWakeUp_ - Clock::now() > wo.spin_max()
               ? std::chrono::nanoseconds{0}
               : wo.spin_max());
-      if (!wakeUp->try_wait_until(nextWakeUp_)) {
+      if (!wakeUp->try_wait_until(nextWakeUp_, wo)) {
         if (mutex_.lock_combine([&] {
               return std::exchange(wakeUp_, nullptr) == nullptr;
             })) {
