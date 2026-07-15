@@ -198,7 +198,7 @@ std::vector<std::string> OpenSSLCertUtils::getExtendedKeyUsage(
       // This can never happen with a legitimate OID.
       throw std::runtime_error("illegal oid");
     }
-    ekuOids.emplace_back(buf.data(), len);
+    ekuOids.push_back(std::string(buf.data(), len));
   }
   return ekuOids;
 }
@@ -262,7 +262,7 @@ OpenSSLCertUtils::getAllExtensions(const X509& x509) {
     X509_EXTENSION* extension = X509_get_ext(&x509, i);
     std::string oid = getExtOid(extension);
     std::string value = getExtData(extension);
-    extensions.emplace_back(oid, value);
+    extensions.push_back(std::make_pair(oid, value));
   }
   return extensions;
 }
