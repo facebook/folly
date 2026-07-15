@@ -555,7 +555,7 @@ class SSLContext {
    * zero causes ALPN to be disabled.
    *
    * @param items  List of NextProtocolsItems, Each item contains a list of
-   *               protocol names and weight. After the call of this fucntion
+   *               protocol names and weight. After the call of this function
    *               each non-empty list of protocols will be advertised with
    *               probability weight/sum_of_weights. This method makes a copy,
    *               so the caller needn't keep the list in scope after the call

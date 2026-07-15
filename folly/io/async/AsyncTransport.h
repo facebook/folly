@@ -325,7 +325,7 @@ class AsyncWriter {
     /**
      * writeError() will be invoked if an error occurs writing the data.
      *
-     * @param bytesWritten      The number of bytes that were successfull
+     * @param bytesWritten      The number of bytes that were successful
      * @param ex                An exception describing the error that occurred.
      */
     virtual void writeErr(

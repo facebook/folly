@@ -669,7 +669,7 @@ struct Synchronized
    * copy-construction of the destination data from the source data. No lock is
    * taken on the destination mutex.
    *
-   * May throw even when the data type is is nothrow-copy-constructible because
+   * May throw even when the data type is nothrow-copy-constructible because
    * acquiring a lock may throw.
    *
    * deprecated
@@ -1583,7 +1583,7 @@ class LockedPtr {
  *    // needed by the underlying deadlock avoiding algorithm
  *    synchronized([](auto, auto) { ... }, rlock(one), wlock(two, 1s));
  *
- * Note that the arguments passed to to *lock() calls will be passed by
+ * Note that the arguments passed to *lock() calls will be passed by
  * const-ref to the function invocation, as the implementation might use them
  * many times
  */

@@ -89,7 +89,7 @@ class AsyncSSLSocket : public AsyncSocket {
      * Note that OpenSSL performs only rudimentary internal
      * consistency verification checks by itself. Any other validation
      * like whether or not the certificate was issued by a trusted CA.
-     * The default implementation of this callback mimics what what
+     * The default implementation of this callback mimics what
      * OpenSSL does internally if SSL_VERIFY_PEER is set with no
      * verification callback.
      *

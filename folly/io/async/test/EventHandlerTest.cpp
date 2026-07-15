@@ -186,7 +186,7 @@ TEST_F(EventHandlerTest, many_concurrent_consumers) {
 
 #ifdef EV_PRI
 //
-// See rfc6093 for extensive discussion on TCP URG semantics. Specificaly,
+// See rfc6093 for extensive discussion on TCP URG semantics. Specifically,
 // it points out that URG mechanism was never intended to be used
 // for out-of-band information delivery. However, pretty much every
 // implementation interprets the LAST octect or urgent data as the

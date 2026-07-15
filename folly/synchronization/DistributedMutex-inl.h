@@ -980,7 +980,7 @@ bool doFutexWait(Waiter* waiter, Waiter*& next) {
     return true;
   }
 
-  // if we reach here then were were not given an early delivery, and any
+  // if we reach here then we were not given an early delivery, and any
   // thread that goes to wake us up will see a consistent view of the rest of
   // the contention chain (since the next_ variable is set before the
   // kSleeping exchange above)

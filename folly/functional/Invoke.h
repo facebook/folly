@@ -871,7 +871,7 @@ struct empty {};
 FOLLY_DEFINE_CPO(detail_tag_invoke_fn::tag_invoke_fn, tag_invoke)
 
 // Query if the 'folly::tag_invoke()' CPO can be invoked with a tag and
-// arguments of the the specified types.
+// arguments of the specified types.
 //
 // This checks whether an overload of the free-function tag_invoke() found
 // by ADL can be invoked with the specified types.

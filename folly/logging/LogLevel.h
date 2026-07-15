@@ -45,7 +45,7 @@ enum class LogLevel : uint32_t {
   // This level is intended to be primarily used in log category settings.
   // In your code it is usually better to use one of the finer-grained DBGn
   // levels.  In your log category settings you can then set the log category
-  // level to a specific DBGn level, or to to main DBG level to enable all DBGn
+  // level to a specific DBGn level, or to main DBG level to enable all DBGn
   // messages.
   //
   // This is named "DBG" rather than "DEBUG" since some open source projects

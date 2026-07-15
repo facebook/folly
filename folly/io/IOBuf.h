@@ -1114,7 +1114,7 @@ class IOBuf {
    * function checks if the chain is non-trivial, i.e. the chain has more than
    * just one IOBuf in it.
    *
-   * @returns  true iff the the IOBuf's chain has more than 1 IOBuf in it
+   * @returns  true iff the IOBuf's chain has more than 1 IOBuf in it
    *
    * @methodset Chaining
    */

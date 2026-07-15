@@ -372,7 +372,7 @@ class ExtendedCoroutineHandle {
 
     // A manual vtable with 1 function. Benefits over virtual inheritance:
     //   - `TaskWrapperPromise` can implement `getErrorHandle` without bloating
-    //     itself with with a vtable it does not need.
+    //     itself with a vtable it does not need.
     //   - A tiny binary size win.
     //   - Derived classes like `TaskPromise` don't have to be `final` in order
     //     for the compiler to treat them as non-polymorphic.
