@@ -1560,6 +1560,39 @@ void AsyncSocket::releaseZeroCopyBuf(uint32_t id) {
   idZeroCopyBufPtrMap_.erase(iter);
 }
 
+void AsyncSocket::moveZeroCopyStateFrom(AsyncSocket& other) {
+  if (&other == this) {
+    return;
+  }
+  // This transfers only the zero-copy bookkeeping, not the fd itself: the
+  // caller performs the fd handoff (e.g. toFDSocket() detaches the fd from the
+  // old socket and constructs this one around it) and then calls this to move
+  // the pending completion maps. Require that `other`'s fd is already detached
+  // so the fd and the zero-copy completion state it belongs to move together,
+  // never independently.
+  CHECK(other.fd_ == NetworkSocket())
+      << "moveZeroCopyStateFrom: source socket still owns its fd";
+  // `this` must not already own zero-copy state, or we would drop our own
+  // outstanding completions on the move-assign below.
+  DCHECK(idZeroCopyBufPtrMap_.empty());
+  DCHECK(idZeroCopyBufInfoMap_.empty());
+
+  // The retained IOBufs were counted in `other`'s buffered-bytes accounting at
+  // write time; move that accounting along with ownership so both sockets stay
+  // consistent (mirrors detachIOBuf, which runs when a completion is reaped).
+  for (const auto& [ptr, info] : other.idZeroCopyBufInfoMap_) {
+    if (info.buf_) {
+      const size_t bytes = info.buf_->computeChainCapacity();
+      DCHECK_GE(other.allocatedBytesBuffered_, bytes);
+      other.allocatedBytesBuffered_ -= bytes;
+      allocatedBytesBuffered_ += bytes;
+    }
+  }
+
+  idZeroCopyBufPtrMap_ = std::move(other.idZeroCopyBufPtrMap_);
+  idZeroCopyBufInfoMap_ = std::move(other.idZeroCopyBufInfoMap_);
+}
+
 void AsyncSocket::drainZeroCopyQueue() {
   // try to drain ZC writes if any - this is best effort
   size_t prevSize = 0;

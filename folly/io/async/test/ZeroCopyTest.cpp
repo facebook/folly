@@ -16,7 +16,19 @@
 
 #include <folly/io/async/test/ZeroCopy.h>
 
+#include <cstring>
+#include <memory>
+#include <vector>
+
+#include <folly/io/IOBuf.h>
+#include <folly/io/async/AsyncSocket.h>
+#include <folly/io/async/EventBase.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/Sockets.h>
+
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+#include <linux/errqueue.h>
+#endif
 
 using namespace folly;
 
@@ -159,3 +171,103 @@ TEST(ZeroCopyTest, zeroCopyEnableThresholdExplicitFlagNotOverridden) {
   EXPECT_TRUE(
       isSet(callback.getLastWriteFlags(), WriteFlags::WRITE_MSG_ZEROCOPY));
 }
+
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+namespace {
+// AsyncSocket's zero-copy completion plumbing is protected+virtual, so a
+// subclass exposes it for deterministic, kernel-independent testing of the
+// StopTLS fd-handoff state transfer (moveZeroCopyStateFrom).
+class ZeroCopyStateSocket : public folly::AsyncSocket {
+ public:
+  using folly::AsyncSocket::addZeroCopyBuf;
+  using folly::AsyncSocket::AsyncSocket;
+  using folly::AsyncSocket::moveZeroCopyStateFrom;
+  using folly::AsyncSocket::processZeroCopyMsg;
+  using UniquePtr = std::
+      unique_ptr<ZeroCopyStateSocket, folly::DelayedDestruction::Destructor>;
+};
+
+class CountingReleaseCb : public folly::AsyncWriter::ReleaseIOBufCallback {
+ public:
+  void releaseIOBuf(std::unique_ptr<folly::IOBuf> buf) noexcept override {
+    (void)buf;
+    ++count;
+  }
+  int count{0};
+};
+
+// Builds a synthetic MSG_ERRQUEUE zero-copy completion cmsg covering buffer ids
+// [lo, hi], matching what the kernel posts (SO_EE_ORIGIN_ZEROCOPY). Returns a
+// pointer into `storage`, which the caller must keep alive.
+const cmsghdr* makeZeroCopyCompletion(
+    std::vector<char>& storage, uint32_t lo, uint32_t hi) {
+  storage.assign(CMSG_SPACE(sizeof(sock_extended_err)), 0);
+  auto* cmsg = reinterpret_cast<cmsghdr*>(storage.data());
+  cmsg->cmsg_level = SOL_IPV6;
+  cmsg->cmsg_type = IPV6_RECVERR;
+  cmsg->cmsg_len = CMSG_LEN(sizeof(sock_extended_err));
+  sock_extended_err serr = {};
+  serr.ee_errno = 0;
+  serr.ee_origin = SO_EE_ORIGIN_ZEROCOPY;
+  serr.ee_info = lo;
+  serr.ee_data = hi;
+  memcpy(CMSG_DATA(cmsg), &serr, sizeof(serr));
+  return cmsg;
+}
+} // namespace
+
+// Repro of the D105586778 crash: a StopTLS fd handoff that does NOT transfer
+// the outstanding zero-copy completion maps leaves the new socket unable to
+// reconcile a kernel completion for an in-flight send, aborting in
+// AsyncSocket::releaseZeroCopyBuf().
+TEST(ZeroCopyStateTransferTest, UnknownCompletionAbortsWithoutTransfer) {
+  folly::EventBase evb;
+  ZeroCopyStateSocket::UniquePtr sock(new ZeroCopyStateSocket(&evb));
+  std::vector<char> storage;
+  const auto* cmsg = makeZeroCopyCompletion(storage, /*lo=*/0, /*hi=*/0);
+  // Match the specific CHECK in releaseZeroCopyBuf so the test asserts the
+  // documented failure, not any unrelated crash.
+  EXPECT_DEATH(sock->processZeroCopyMsg(*cmsg), "idZeroCopyBufPtrMap_");
+}
+
+// With the fix, moveZeroCopyStateFrom() hands the outstanding completion state
+// to the new socket, which then reaps the same completion cleanly.
+TEST(ZeroCopyStateTransferTest, TransferLetsNewSocketReapCompletion) {
+  folly::EventBase evb;
+  ZeroCopyStateSocket::UniquePtr src(new ZeroCopyStateSocket(&evb));
+  ZeroCopyStateSocket::UniquePtr dst(new ZeroCopyStateSocket(&evb));
+
+  // Register an outstanding zero-copy buffer (id 0) on the source, as if a send
+  // were in flight at handoff time. An empty IOBuf keeps buffered-bytes
+  // accounting at zero so the move is exercised without a real write.
+  CountingReleaseCb cb;
+  src->addZeroCopyBuf(std::make_unique<folly::IOBuf>(), &cb);
+
+  dst->moveZeroCopyStateFrom(*src);
+
+  std::vector<char> storage;
+  const auto* cmsg = makeZeroCopyCompletion(storage, /*lo=*/0, /*hi=*/0);
+  dst->processZeroCopyMsg(*cmsg); // must not abort
+  EXPECT_EQ(cb.count, 1);
+}
+
+// The CHECK enforces the atomicity invariant: zero-copy state may only be moved
+// from a socket whose fd has already been detached, so the fd and the state it
+// belongs to move together. Moving from a socket that still owns its fd is a
+// partial transfer and must abort.
+TEST(ZeroCopyStateTransferTest, MoveFromSocketThatStillOwnsFdAborts) {
+  folly::EventBase evb;
+  int fds[2];
+  ASSERT_EQ(0, ::socketpair(AF_UNIX, SOCK_STREAM, 0, fds));
+  ZeroCopyStateSocket::UniquePtr src(
+      new ZeroCopyStateSocket(&evb, folly::NetworkSocket::fromFd(fds[0])));
+  ZeroCopyStateSocket::UniquePtr dst(
+      new ZeroCopyStateSocket(&evb, folly::NetworkSocket::fromFd(fds[1])));
+
+  // The precondition CHECK fires on `src` still owning its fd, before any
+  // zero-copy state is touched — no outstanding buffer is needed to trip it.
+  // Setup stays outside EXPECT_DEATH so the death assertion is scoped to the
+  // one offending call and the parent closes the socketpair cleanly.
+  EXPECT_DEATH(dst->moveZeroCopyStateFrom(*src), "still owns its fd");
+}
+#endif // FOLLY_HAVE_MSG_ERRQUEUE

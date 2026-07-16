@@ -839,6 +839,10 @@ class AsyncSocket
 
   uint32_t getZeroCopyBufId() const { return zeroCopyBufId_; }
 
+  // Transfers outstanding zero-copy write completion state from `other` (whose
+  // fd must already be detached) to this socket during an fd handoff.
+  void moveZeroCopyStateFrom(AsyncSocket& other);
+
   size_t getZeroCopyReenableThreshold() const {
     return zeroCopyReenableThreshold_;
   }
