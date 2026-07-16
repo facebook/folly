@@ -58,12 +58,12 @@ IoUringProvidedBufferRing::UniquePtr IoUringProvidedBufferRing::create(
 }
 
 void IoUringProvidedBufferRing::mapMemory(bool useHugePages) {
-  ringMemSize_ = sizeof(struct io_uring_buf) * ringBufferCount_;
-  ringMemSize_ =
-      folly::to_narrow(folly::align_ceil(ringMemSize_, kBufferAlignBytes));
+  uint32_t ringMemSize = sizeof(struct io_uring_buf) * ringBufferCount_;
+  ringMemSize =
+      folly::to_narrow(folly::align_ceil(ringMemSize, kBufferAlignBytes));
 
-  bufferSize_ = sizePerBuffer_ * ringBufferCount_;
-  allSize_ = ringMemSize_ + bufferSize_;
+  auto bufferSize = sizePerBuffer_ * ringBufferCount_;
+  allSize_ = ringMemSize + bufferSize;
 
   int pages;
   if (useHugePages) {
@@ -96,7 +96,7 @@ void IoUringProvidedBufferRing::mapMemory(bool useHugePages) {
   }
 
   ringPtr_ = static_cast<struct io_uring_buf_ring*>(buffer_);
-  bufferBuffer_ = static_cast<char*>(buffer_) + ringMemSize_;
+  bufferBuffer_ = static_cast<char*>(buffer_) + ringMemSize;
 
   if (useHugePages) {
     int ret = ::madvise(buffer_, allSize_, MADV_HUGEPAGE);

@@ -169,8 +169,6 @@ class IoUringProvidedBufferRing {
   uint16_t const gid_{0};
   uint32_t allSize_{0};
   void* buffer_{nullptr};
-  uint32_t ringMemSize_{0};
-  uint32_t bufferSize_{0};
 };
 
 } // namespace folly
