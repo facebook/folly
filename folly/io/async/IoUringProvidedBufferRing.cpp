@@ -26,7 +26,6 @@
 namespace {
 constexpr uint32_t kMinBufferSize = 32;
 constexpr uint32_t kHugePageSizeBytes = 1024 * 1024 * 2;
-constexpr uint32_t kPageSizeBytes = 4096;
 constexpr uint32_t kBufferAlignBytes = 32;
 constexpr uint32_t kMaxRingRefillEntries = 32768;
 } // namespace
@@ -57,7 +56,7 @@ IoUringProvidedBufferRing::UniquePtr IoUringProvidedBufferRing::create(
       new IoUringProvidedBufferRing(ioRingPtr, options));
 }
 
-void IoUringProvidedBufferRing::mapMemory(bool useHugePages) {
+void IoUringProvidedBufferRing::mapMemory() {
   uint32_t ringMemSize = sizeof(struct io_uring_buf) * ringBufferCount_;
   ringMemSize =
       folly::to_narrow(folly::align_ceil(ringMemSize, kBufferAlignBytes));
@@ -66,14 +65,8 @@ void IoUringProvidedBufferRing::mapMemory(bool useHugePages) {
   allSize_ = ringMemSize + bufferSize;
 
   int pages;
-  if (useHugePages) {
-    allSize_ =
-        folly::to_narrow(folly::align_ceil(allSize_, kHugePageSizeBytes));
-    pages = allSize_ / kHugePageSizeBytes;
-  } else {
-    allSize_ = folly::to_narrow(folly::align_ceil(allSize_, kPageSizeBytes));
-    pages = allSize_ / kPageSizeBytes;
-  }
+  allSize_ = folly::to_narrow(folly::align_ceil(allSize_, kHugePageSizeBytes));
+  pages = allSize_ / kHugePageSizeBytes;
 
   buffer_ = ::mmap(
       nullptr,
@@ -98,12 +91,8 @@ void IoUringProvidedBufferRing::mapMemory(bool useHugePages) {
   ringPtr_ = static_cast<struct io_uring_buf_ring*>(buffer_);
   bufferBuffer_ = static_cast<char*>(buffer_) + ringMemSize;
 
-  if (useHugePages) {
-    int ret = ::madvise(buffer_, allSize_, MADV_HUGEPAGE);
-    PLOG_IF(ERROR, ret) << "cannot enable huge pages";
-  } else {
-    ::madvise(buffer_, allSize_, MADV_NOHUGEPAGE);
-  }
+  int ret = ::madvise(buffer_, allSize_, MADV_HUGEPAGE);
+  PLOG_IF(ERROR, ret) << "cannot enable huge pages";
 }
 
 IoUringProvidedBufferRing::IoUringProvidedBufferRing(
@@ -137,7 +126,7 @@ IoUringProvidedBufferRing::IoUringProvidedBufferRing(
     ringBufferCount_ = adjustedBufferCount;
   }
 
-  mapMemory(options.useHugePages);
+  mapMemory();
   initialRegister();
 
   bufferStates_ = std::make_unique<BufferState[]>(ringBufferCount_);

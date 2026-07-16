@@ -271,12 +271,6 @@ struct IoUringOptions {
     return *this;
   }
 
-  IoUringOptions& setUseHugePages(bool v) {
-    useHugePages = v;
-
-    return *this;
-  }
-
   IoUringOptions& setNativeAsyncSocketSupport(bool v) {
     nativeAsyncSocketSupport = v;
 
@@ -347,7 +341,6 @@ struct IoUringOptions {
 
   // Incremental Buffers
   bool enableIncrementalBuffers{false};
-  bool useHugePages{false};
 
   bool nativeAsyncSocketSupport{false};
 

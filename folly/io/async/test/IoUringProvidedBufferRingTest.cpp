@@ -50,7 +50,6 @@ TEST_F(IoUringProvidedBufferRingTest, Create) {
       .gid = 1,
       .bufferCount = 1024,
       .bufferSize = 4096,
-      .useHugePages = true,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
   EXPECT_EQ(bufRing->count(), 1024);
@@ -67,7 +66,6 @@ TEST_F(IoUringProvidedBufferRingTest, CreateNoHugepages) {
       .gid = 1,
       .bufferCount = 2048,
       .bufferSize = 4096,
-      .useHugePages = false,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
   EXPECT_EQ(bufRing->count(), 2048);
@@ -84,7 +82,6 @@ TEST_F(IoUringProvidedBufferRingTest, BufferMinSize) {
       .gid = 1,
       .bufferCount = 16,
       .bufferSize = 8,
-      .useHugePages = false,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
   EXPECT_EQ(bufRing->count(), 16);
@@ -105,7 +102,6 @@ TEST_F(IoUringProvidedBufferRingTest, BufferCountCheck) {
         .gid = bgid++,
         .bufferCount = bufferCount,
         .bufferSize = 32,
-        .useHugePages = false,
     };
   };
 
@@ -137,7 +133,6 @@ TEST_F(IoUringProvidedBufferRingTest, DelayedDestruction) {
       .gid = 1,
       .bufferCount = 1024,
       .bufferSize = 4096,
-      .useHugePages = false,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
   auto buf1 = bufRing->getIoBuf(0, 1024, false);
@@ -158,7 +153,6 @@ TEST_F(IoUringProvidedBufferRingTest, ConcurrentDecBufferState) {
       .gid = 1,
       .bufferCount = kBufferCount,
       .bufferSize = 64,
-      .useHugePages = false,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
 
@@ -207,7 +201,6 @@ TEST_F(
       .gid = 1,
       .bufferCount = 4,
       .bufferSize = 64,
-      .useHugePages = false,
       .useIncrementalBuffers = true,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);

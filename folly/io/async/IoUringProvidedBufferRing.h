@@ -54,7 +54,6 @@ class IoUringProvidedBufferRing {
     uint16_t gid{0};
     uint32_t bufferCount{0};
     uint32_t bufferSize{0};
-    bool useHugePages{false};
     bool useIncrementalBuffers{false};
   };
 
@@ -101,7 +100,7 @@ class IoUringProvidedBufferRing {
   IoUringProvidedBufferRing& operator=(IoUringProvidedBufferRing const&) =
       delete;
 
-  void mapMemory(bool useHugePages);
+  void mapMemory();
   void initialRegister();
 
   void returnBuffer(uint16_t i) noexcept;
