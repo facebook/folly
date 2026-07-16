@@ -22,6 +22,7 @@
 #include <folly/container/span.h>
 
 #include <concepts>
+#include <span>
 #include <type_traits>
 
 namespace folly::simd::detail {
@@ -68,19 +69,19 @@ using unsigned_simd_friendly_equivalent_scalar_t = std::enable_if_t<
     like_t<T, uint_bits_t<sizeof(T) * 8>>>;
 
 template <typename R>
-using span_for = decltype(folly::span(std::declval<const R&>()));
+using span_for = decltype(std::span(std::declval<const R&>()));
 
 struct AsSimdFriendlyFn {
   template <typename T, std::size_t extent>
-  FOLLY_ERASE auto operator()(folly::span<T, extent> s) const
-      -> folly::span<simd_friendly_equivalent_scalar_t<T>, extent> {
+  FOLLY_ERASE auto operator()(std::span<T, extent> s) const
+      -> std::span<simd_friendly_equivalent_scalar_t<T>, extent> {
     return reinterpret_span_cast<simd_friendly_equivalent_scalar_t<T>>(s);
   }
 
   template <typename R>
   FOLLY_ERASE auto operator()(R&& r) const
       -> decltype(operator()(span_for<R>(r))) {
-    return operator()(folly::span(r));
+    return operator()(std::span(r));
   }
 
   template <typename T>
@@ -98,8 +99,8 @@ inline constexpr AsSimdFriendlyFn asSimdFriendly;
 
 struct AsSimdFriendlyUintFn {
   template <typename T, std::size_t extent>
-  FOLLY_ERASE auto operator()(folly::span<T, extent> s) const
-      -> folly::span<unsigned_simd_friendly_equivalent_scalar_t<T>, extent> {
+  FOLLY_ERASE auto operator()(std::span<T, extent> s) const
+      -> std::span<unsigned_simd_friendly_equivalent_scalar_t<T>, extent> {
     return reinterpret_span_cast<unsigned_simd_friendly_equivalent_scalar_t<T>>(
         s);
   }
@@ -107,7 +108,7 @@ struct AsSimdFriendlyUintFn {
   template <typename R>
   FOLLY_ERASE auto operator()(R&& r) const
       -> decltype(operator()(span_for<R>(r))) {
-    return operator()(folly::span(r));
+    return operator()(std::span(r));
   }
 
   template <typename T>

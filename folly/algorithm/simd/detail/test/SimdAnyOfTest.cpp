@@ -22,6 +22,7 @@
 #include <folly/portability/GTest.h>
 
 #include <array>
+#include <span>
 
 #if FOLLY_DETAIL_HAS_SIMD_PLATFORM
 
@@ -30,7 +31,7 @@ namespace simd::detail {
 
 template <typename Platform, int unrolling>
 void anySpacesTestForPlatformUnrolling(
-    folly::span<const std::uint8_t> s, bool expected) {
+    std::span<const std::uint8_t> s, bool expected) {
   bool actual = simdAnyOf<Platform, unrolling>(
       s.data(), s.data() + s.size(), [](typename Platform::reg_t x) {
         return Platform::equal(x, ' ');
@@ -40,8 +41,7 @@ void anySpacesTestForPlatformUnrolling(
 }
 
 template <typename Platform>
-void anySpacesTestForPlatform(
-    folly::span<const std::uint8_t> s, bool expected) {
+void anySpacesTestForPlatform(std::span<const std::uint8_t> s, bool expected) {
   ASSERT_NO_FATAL_FAILURE(
       (anySpacesTestForPlatformUnrolling<Platform, 1>(s, expected)));
   ASSERT_NO_FATAL_FAILURE(
@@ -53,8 +53,7 @@ void anySpacesTestForPlatform(
 }
 
 void anySpacesTest(folly::StringPiece sChars, bool expected) {
-  auto s =
-      folly::reinterpret_span_cast<const std::uint8_t>(folly::span(sChars));
+  auto s = folly::reinterpret_span_cast<const std::uint8_t>(std::span(sChars));
 
   ASSERT_NO_FATAL_FAILURE(
       anySpacesTestForPlatform<SimdPlatform<std::uint8_t>>(s, expected));

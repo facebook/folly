@@ -22,6 +22,7 @@
 #include <folly/test/TestUtils.h>
 
 #include <list>
+#include <span>
 #include <vector>
 
 static_assert( //
@@ -114,7 +115,7 @@ using detail::hasHandwrittenContains;
 } // namespace folly::simd
 
 template <typename T>
-void testSimdContainsVerify(folly::span<T> haystack, T needle, bool expected) {
+void testSimdContainsVerify(std::span<T> haystack, T needle, bool expected) {
   bool actual1 = folly::simd::contains(haystack, needle);
   ASSERT_EQ(expected, actual1);
 
@@ -140,7 +141,7 @@ TYPED_TEST(ContainsTest, Basic) {
     std::vector<T> buf(size, T{0});
     auto const bound = std::min(std::size_t(32), size);
     for (std::size_t offset = 0; offset != bound; ++offset) {
-      folly::span<T> haystack(buf.data() + offset, buf.data() + buf.size());
+      std::span<T> haystack(buf.data() + offset, buf.data() + buf.size());
       T needle{1};
       testSimdContainsVerify(haystack, needle, /*expected*/ false);
 
@@ -165,7 +166,7 @@ TEST_F(ContainsTestSpeicalCases, AsanShouldDetectInvalidRange) {
 
   std::vector<int> v;
   v.resize(3);
-  folly::span<int> s(v.data() + 1, v.data() + 4);
+  std::span<int> s(v.data() + 1, v.data() + 4);
   EXPECT_DEATH(
       (folly::simd::contains(s, 0)), "AddressSanitizer: heap-buffer-overflow");
 }

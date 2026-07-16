@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <mutex>
 #include <queue>
+#include <span>
 
 #include <glog/logging.h>
 
@@ -262,7 +263,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   using ThreadPtr = std::shared_ptr<Thread>;
 
   // Prerequisite: threadListLock_ writelocked
-  void afterConstructThreads(folly::span<const ThreadPtr> newThreads) noexcept;
+  void afterConstructThreads(std::span<const ThreadPtr> newThreads) noexcept;
 
   struct Task {
     struct Expiration {

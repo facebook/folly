@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <initializer_list>
+#include <span>
 #include <stdexcept>
 #include <system_error>
 #include <unordered_map>
@@ -407,14 +408,14 @@ class ElfFile {
 
   /** Structure containing a note header and it's body */
   struct Note {
-    folly::span<const uint8_t> note;
-    explicit Note(folly::span<const uint8_t> note_) : note(note_) {}
+    std::span<const uint8_t> note;
+    explicit Note(std::span<const uint8_t> note_) : note(note_) {}
 
     const ElfNhdr* header() const {
       return reinterpret_cast<const ElfNhdr*>(note.data());
     }
 
-    folly::span<const uint8_t> body() const {
+    std::span<const uint8_t> body() const {
       return note.subspan(sizeof(*header()));
     }
 
@@ -435,7 +436,7 @@ class ElfFile {
           reinterpret_cast<const char*>(body().data()), header()->n_namesz - 1);
     }
 
-    folly::span<const uint8_t> getDesc() const {
+    std::span<const uint8_t> getDesc() const {
       if (!header()) {
         return span<const uint8_t>{};
       }
@@ -465,7 +466,7 @@ class ElfFile {
      * be returned.
      */
     static folly::Expected<Note, FindNoteError> parse(
-        folly::span<const uint8_t> noteBody) {
+        std::span<const uint8_t> noteBody) {
       if (noteBody.size() < sizeof(ElfNhdr)) {
         return Unexpected(FindNoteError(FindNoteFailureCode::NoteUndersized));
       }

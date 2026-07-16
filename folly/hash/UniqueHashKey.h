@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <span>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -291,7 +292,7 @@ struct hash<::folly::unique_hash_key<Size>> {
   using folly_is_avalanching = std::true_type;
 
   size_t operator()(::folly::unique_hash_key<Size> const& key) const noexcept {
-    return ::folly::span<size_t const>{key}[0];
+    return ::std::span<size_t const>{key}[0];
   }
 };
 

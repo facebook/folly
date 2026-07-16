@@ -17,6 +17,7 @@
 #include <folly/Subprocess.h>
 
 #include <chrono>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -58,7 +59,7 @@ void PrintTo(std::chrono::duration<Rep, Period> duration, std::ostream* out) {
 } // namespace std::chrono
 
 namespace {
-sigset_t makeSignalMask(folly::span<int const> signals) {
+sigset_t makeSignalMask(std::span<int const> signals) {
   sigset_t sigmask;
   sigemptyset(&sigmask);
   for (auto sig : signals) {
@@ -69,7 +70,7 @@ sigset_t makeSignalMask(folly::span<int const> signals) {
 
 struct ScopedSignalMaskOverride {
   sigset_t sigmask;
-  explicit ScopedSignalMaskOverride(folly::span<int const> signals) {
+  explicit ScopedSignalMaskOverride(std::span<int const> signals) {
     auto target = makeSignalMask(signals);
     PCHECK(0 == pthread_sigmask(SIG_SETMASK, &target, &sigmask));
   }
@@ -972,7 +973,7 @@ TEST(WritePidIntoBufTest, WritesPidIntoBufExampleEnvVar) {
   env.emplace_back("FOLLY_TEST_GREETING=hello world");
   auto& var = env.emplace_back(prefix);
   var.resize(prefix.size() + size); // must be stable! no more changes to env!
-  auto buf = folly::span{var}.subspan(prefix.size());
+  auto buf = std::span{var}.subspan(prefix.size());
   auto options = Subprocess::Options().pipeStdout().addPrintPidToBuffer(buf);
   Subprocess proc(std::vector<std::string>{"/bin/env"}, options, nullptr, &env);
   auto pid = proc.pid();

@@ -21,6 +21,7 @@
 #include <iterator>
 #include <limits>
 #include <random>
+#include <span>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -58,7 +59,7 @@ static_assert(folly::detail::range_is_byte_type_v_<unsigned char*>);
 
 static_assert(std::is_same_v<char, typename Range<char*>::value_type>);
 
-static_assert(std::is_convertible_v<folly::Range<int*>, folly::span<int>>);
+static_assert(std::is_convertible_v<folly::Range<int*>, std::span<int>>);
 #if defined(__cpp_lib_ranges)
 static_assert(std::ranges::borrowed_range<folly::Range<int*>>);
 static_assert(std::ranges::borrowed_range<folly::Range<const int*>>);

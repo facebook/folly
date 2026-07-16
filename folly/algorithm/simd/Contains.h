@@ -20,6 +20,7 @@
 #include <folly/algorithm/simd/detail/Traits.h>
 
 #include <iterator>
+#include <span>
 
 namespace folly::simd {
 namespace detail {
@@ -27,13 +28,13 @@ namespace detail {
 // no overloading for easier profiling.
 
 bool containsU8(
-    folly::span<const std::uint8_t> haystack, std::uint8_t needle) noexcept;
+    std::span<const std::uint8_t> haystack, std::uint8_t needle) noexcept;
 bool containsU16(
-    folly::span<const std::uint16_t> haystack, std::uint16_t needle) noexcept;
+    std::span<const std::uint16_t> haystack, std::uint16_t needle) noexcept;
 bool containsU32(
-    folly::span<const std::uint32_t> haystack, std::uint32_t needle) noexcept;
+    std::span<const std::uint32_t> haystack, std::uint32_t needle) noexcept;
 bool containsU64(
-    folly::span<const std::uint64_t> haystack, std::uint64_t needle) noexcept;
+    std::span<const std::uint64_t> haystack, std::uint64_t needle) noexcept;
 
 template <typename R>
 using std_range_value_t = typename std::iterator_traits<decltype(std::begin(
@@ -92,7 +93,7 @@ struct contains_fn {
       typename =
           std::enable_if_t<detail::contains_haystack_needle_test<R, T>()>>
   FOLLY_ERASE bool operator()(R&& r, T x) const {
-    auto castR = detail::asSimdFriendlyUint(folly::span(r));
+    auto castR = detail::asSimdFriendlyUint(std::span(r));
     using value_type = detail::std_range_value_t<decltype(castR)>;
 
     auto castX = static_cast<value_type>(detail::asSimdFriendlyUint(x));

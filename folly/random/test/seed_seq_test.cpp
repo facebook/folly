@@ -21,13 +21,14 @@
 #include <cstdint>
 #include <cstring>
 #include <random>
+#include <span>
 #include <utility>
 
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 
 extern "C" FOLLY_KEEP void check_folly_seed_seq_generate_match(
-    folly::span<uint32_t, 1> dst, std::seed_seq& seq) {
+    std::span<uint32_t, 1> dst, std::seed_seq& seq) {
   folly::seed_seq_generate(dst, seq);
 }
 
@@ -55,7 +56,7 @@ TEST_F(SeedSeqTest, SameSizeTypes) {
   std::seed_seq seq(seed_data.begin(), seed_data.end());
 
   std::array<uint32_t, 8> dst{};
-  folly::seed_seq_generate(folly::span(dst), seq);
+  folly::seed_seq_generate(std::span(dst), seq);
 
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<0>));
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<1>));
@@ -69,7 +70,7 @@ TEST_F(SeedSeqTest, LargerWordType) {
   std::seed_seq seq(seed_data.begin(), seed_data.end());
 
   std::array<uint64_t, 4> dst{};
-  folly::seed_seq_generate(folly::span(dst), seq);
+  folly::seed_seq_generate(std::span(dst), seq);
 
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<0>));
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<1>));
@@ -87,7 +88,7 @@ TEST_F(SeedSeqTest, SmallerWordType) {
   std::seed_seq seq(seed_data.begin(), seed_data.end());
 
   std::array<uint16_t, 16> dst{};
-  folly::seed_seq_generate(folly::span(dst), seq);
+  folly::seed_seq_generate(std::span(dst), seq);
 
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<0>));
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<1>));
@@ -101,7 +102,7 @@ TEST_F(SeedSeqTest, NonDivisibleSize) {
 
   // 3 uint64_t = 24 bytes, which is 6 uint32_t (evenly divisible)
   std::array<uint64_t, 3> dst{};
-  folly::seed_seq_generate(folly::span(dst), seq);
+  folly::seed_seq_generate(std::span(dst), seq);
 
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<0>));
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<1>));
@@ -123,7 +124,7 @@ TEST_F(SeedSeqTest, TrulyNonDivisibleSize) {
   std::seed_seq seq(seed_data.begin(), seed_data.end());
 
   std::array<ThreeByte, 5> dst{};
-  folly::seed_seq_generate(folly::span(dst), seq);
+  folly::seed_seq_generate(std::span(dst), seq);
 
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), [](const auto& v) {
     return std::any_of(std::begin(v.bytes), std::end(v.bytes), std::identity{});
@@ -136,7 +137,7 @@ TEST_F(SeedSeqTest, ByteWordType) {
   std::seed_seq seq(seed_data.begin(), seed_data.end());
 
   std::array<uint8_t, 32> dst{};
-  folly::seed_seq_generate(folly::span(dst), seq);
+  folly::seed_seq_generate(std::span(dst), seq);
 
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), std::identity{}));
 }
@@ -147,11 +148,11 @@ TEST_F(SeedSeqTest, Determinism) {
 
   std::array<uint64_t, 4> dst1{};
   std::seed_seq seq1(seed_data.begin(), seed_data.end());
-  folly::seed_seq_generate(folly::span(dst1), seq1);
+  folly::seed_seq_generate(std::span(dst1), seq1);
 
   std::array<uint64_t, 4> dst2{};
   std::seed_seq seq2(seed_data.begin(), seed_data.end());
-  folly::seed_seq_generate(folly::span(dst2), seq2);
+  folly::seed_seq_generate(std::span(dst2), seq2);
 
   EXPECT_EQ(dst1, dst2);
 }
@@ -163,11 +164,11 @@ TEST_F(SeedSeqTest, DifferentSeeds) {
 
   std::array<uint64_t, 4> dst1{};
   std::seed_seq seq1(seed_data1.begin(), seed_data1.end());
-  folly::seed_seq_generate(folly::span(dst1), seq1);
+  folly::seed_seq_generate(std::span(dst1), seq1);
 
   std::array<uint64_t, 4> dst2{};
   std::seed_seq seq2(seed_data2.begin(), seed_data2.end());
-  folly::seed_seq_generate(folly::span(dst2), seq2);
+  folly::seed_seq_generate(std::span(dst2), seq2);
 
   EXPECT_NE(dst1, dst2);
 }
@@ -179,7 +180,7 @@ TEST_F(SeedSeqTest, MakeStdSeedSeqUint32) {
   auto seq = folly::make_std_seed_seq(word_type(1));
 
   std::array<uint32_t, 4> dst{};
-  folly::seed_seq_generate(folly::span(dst), seq);
+  folly::seed_seq_generate(std::span(dst), seq);
 
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<0>));
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<1>));
@@ -194,7 +195,7 @@ TEST_F(SeedSeqTest, MakeStdSeedSeqUint64) {
   auto seq = folly::make_std_seed_seq(word_type(1));
 
   std::array<uint64_t, 4> dst{};
-  folly::seed_seq_generate(folly::span(dst), seq);
+  folly::seed_seq_generate(std::span(dst), seq);
 
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<0>));
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<1>));
@@ -213,7 +214,7 @@ TEST_F(SeedSeqTest, MakeStdSeedSeqUint16) {
   auto seq = folly::make_std_seed_seq(word_type(1));
 
   std::array<uint32_t, 4> dst{};
-  folly::seed_seq_generate(folly::span(dst), seq);
+  folly::seed_seq_generate(std::span(dst), seq);
 
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<0>));
   EXPECT_TRUE(std::any_of(dst.begin(), dst.end(), at_byte<1>));
@@ -226,11 +227,11 @@ TEST_F(SeedSeqTest, MakeStdSeedSeqDeterminism) {
 
   std::array<uint64_t, 4> dst1{};
   auto seq1 = folly::make_std_seed_seq(word);
-  folly::seed_seq_generate(folly::span(dst1), seq1);
+  folly::seed_seq_generate(std::span(dst1), seq1);
 
   std::array<uint64_t, 4> dst2{};
   auto seq2 = folly::make_std_seed_seq(word);
-  folly::seed_seq_generate(folly::span(dst2), seq2);
+  folly::seed_seq_generate(std::span(dst2), seq2);
 
   EXPECT_EQ(dst1, dst2);
 }

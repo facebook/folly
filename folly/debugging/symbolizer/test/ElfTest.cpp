@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <span>
 #include <folly/debugging/symbolizer/Elf.h>
 
 #include <gmock/gmock.h>
@@ -332,7 +333,7 @@ TEST(TestNoteParsing, SimpleElf) {
   header.n_descsz = 4;
   memcpy(&headerOnly, &header, sizeof(ElfNhdr));
   auto noteMaybe = ElfFile::Note::parse(
-      folly::span<const uint8_t>(
+      std::span<const uint8_t>(
           reinterpret_cast<const uint8_t*>(&headerOnly), sizeof(ElfNhdr)));
   EXPECT_TRUE(([&]() {
     return noteMaybe.hasError()
@@ -345,7 +346,7 @@ TEST(TestNoteParsing, SimpleElf) {
 
   uint8_t smallerThanHeader[6];
   noteMaybe = ElfFile::Note::parse(
-      folly::span<const uint8_t>(
+      std::span<const uint8_t>(
           reinterpret_cast<const uint8_t*>(&smallerThanHeader), 6));
   EXPECT_TRUE(([&]() {
     return noteMaybe.hasError()

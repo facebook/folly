@@ -17,6 +17,7 @@
 #include <folly/executors/ThreadPoolExecutor.h>
 
 #include <ctime>
+#include <span>
 
 #include <folly/ExceptionString.h>
 #include <folly/GLog.h>
@@ -323,7 +324,7 @@ bool ThreadPoolExecutor::tryAddOneThread() noexcept {
 
 // threadListLock_ is writelocked
 void ThreadPoolExecutor::afterConstructThreads(
-    folly::span<const ThreadPtr> newThreads) noexcept {
+    std::span<const ThreadPtr> newThreads) noexcept {
   for (auto& thread : newThreads) {
     threadList_.add(thread);
   }

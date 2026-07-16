@@ -19,6 +19,7 @@
 #include <chrono>
 #include <numeric>
 #include <random>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -98,17 +99,17 @@ struct unordered_vector_set : private unordered_vector_set_base<T> {
  private:
   using base = unordered_vector_set_base<T>;
 
-  static folly::span<T const> to_span(
+  static std::span<T const> to_span(
       folly::F14VectorSet<T> const& set) noexcept {
     auto const size = set.size();
     auto const data = size ? &*set.begin() + 1 - size : nullptr;
     return {data, size};
   }
-  static folly::span<T const> to_span(
+  static std::span<T const> to_span(
       folly::sorted_vector_set<T> const& set) noexcept {
     return {&*set.begin(), &*set.end()};
   }
-  folly::span<T const> to_span() const noexcept { return to_span(*this); }
+  std::span<T const> to_span() const noexcept { return to_span(*this); }
 
  public:
   using base::contains;
@@ -176,7 +177,7 @@ TEST_F(RegexMatchCacheDynamicBitsetTest, combinatorics) {
       if (what < 16) {
         if (!set.empty()) {
           auto dist = std::uniform_int_distribution<size_t>{0, set.size() - 1};
-          value = folly::span<size_t const>{set.begin(), set.end()}[dist(rng)];
+          value = std::span<size_t const>{set.begin(), set.end()}[dist(rng)];
           ASSERT_TRUE(dyn.get_value(value));
           set.erase(value);
           dyn.set_value(value, false);

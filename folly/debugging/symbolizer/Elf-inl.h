@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <span>
+
 namespace folly {
 namespace symbolizer {
 
@@ -177,7 +179,7 @@ ElfFile::iterateNotesInBodyHelper(folly::StringPiece body, Fn& fn) const
   }
 
   while (body.size() > 0) {
-    folly::span<const uint8_t> noteBody =
+    std::span<const uint8_t> noteBody =
         span(reinterpret_cast<const uint8_t*>(body.data()), body.size());
     auto noteMaybe = Note::parse(noteBody);
     if (!noteMaybe) {

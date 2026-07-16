@@ -21,6 +21,7 @@
 #include <folly/portability/GTest.h>
 
 #include <set>
+#include <span>
 #include <vector>
 
 namespace folly::simd::detail {
@@ -121,27 +122,27 @@ using AsSimdFriendlyResult = std::invoke_result_t<AsSimdFriendlyFn, T>;
 
 static_assert( //
     std::is_same_v<
-        folly::span<std::int32_t>,
-        AsSimdFriendlyResult<folly::span<std::int32_t>>>);
+        std::span<std::int32_t>,
+        AsSimdFriendlyResult<std::span<std::int32_t>>>);
 
 static_assert( //
     std::is_same_v<
-        folly::span<std::int32_t>,
-        AsSimdFriendlyResult<folly::span<int>>>);
+        std::span<std::int32_t>,
+        AsSimdFriendlyResult<std::span<int>>>);
 
 static_assert( //
     std::is_same_v<
-        folly::span<std::int32_t>,
+        std::span<std::int32_t>,
         AsSimdFriendlyResult<std::vector<int>&>>);
 
 static_assert( //
     std::is_same_v<
-        folly::span<const std::int32_t>,
+        std::span<const std::int32_t>,
         AsSimdFriendlyResult<const std::vector<int>&>>);
 
 static_assert( //
     std::is_same_v<
-        folly::span<const double>,
+        std::span<const double>,
         AsSimdFriendlyResult<const std::vector<double>&>>);
 
 static_assert(std::is_same_v<double, AsSimdFriendlyResult<double>>);
@@ -157,27 +158,27 @@ using AsSimdFriendlyUintResult = std::invoke_result_t<AsSimdFriendlyUintFn, T>;
 
 static_assert( //
     std::is_same_v<
-        folly::span<std::uint32_t>,
-        AsSimdFriendlyUintResult<folly::span<std::uint32_t>>>);
+        std::span<std::uint32_t>,
+        AsSimdFriendlyUintResult<std::span<std::uint32_t>>>);
 
 static_assert( //
     std::is_same_v<
-        folly::span<std::uint32_t>,
-        AsSimdFriendlyUintResult<folly::span<std::int32_t>>>);
+        std::span<std::uint32_t>,
+        AsSimdFriendlyUintResult<std::span<std::int32_t>>>);
 
 static_assert( //
     std::is_same_v<
-        folly::span<std::uint32_t>,
-        AsSimdFriendlyUintResult<folly::span<int>>>);
+        std::span<std::uint32_t>,
+        AsSimdFriendlyUintResult<std::span<int>>>);
 
 static_assert( //
     std::is_same_v<
-        folly::span<std::uint32_t>,
+        std::span<std::uint32_t>,
         AsSimdFriendlyUintResult<std::vector<int>&>>);
 
 static_assert( //
     std::is_same_v<
-        folly::span<const std::uint32_t>,
+        std::span<const std::uint32_t>,
         AsSimdFriendlyUintResult<const std::vector<std::uint32_t>&>>);
 
 static_assert(
@@ -199,7 +200,7 @@ TEST_F(SimdTraitsTest, AsSimdFriendly) {
   static_assert(asSimdFriendly(SomeEnum::Foo) == 1);
 
   std::array arr{SomeEnum::Foo, SomeEnum::Bar, SomeEnum::Baz};
-  folly::span<int, 3> castSpan = asSimdFriendly(folly::span(arr));
+  std::span<int, 3> castSpan = asSimdFriendly(std::span(arr));
   ASSERT_THAT(castSpan, testing::ElementsAre(1, 2, 3));
 
   // pointer
@@ -216,7 +217,7 @@ TEST_F(SimdTraitsTest, AsSimdFriendlyUint) {
   static_assert(asSimdFriendlyUint(SomeEnum::Foo) == 1U);
 
   std::array arr{SomeEnum::Foo, SomeEnum::Bar, SomeEnum::Baz};
-  folly::span<std::uint32_t, 3> castSpan = asSimdFriendlyUint(folly::span(arr));
+  std::span<std::uint32_t, 3> castSpan = asSimdFriendlyUint(std::span(arr));
   ASSERT_THAT(castSpan, testing::ElementsAre(1, 2, 3));
 
   // pointer
