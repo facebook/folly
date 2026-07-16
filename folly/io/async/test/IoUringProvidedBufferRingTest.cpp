@@ -36,7 +36,7 @@ class IoUringProvidedBufferRingTestHelper {
   explicit IoUringProvidedBufferRingTestHelper(IoUringProvidedBufferRing& ring)
       : ring(ring) {}
 
-  uint32_t ringCount() { return ring.ringCount_; }
+  uint32_t ringBufferCount() { return ring.ringBufferCount_; }
   uint32_t returnedBuffers() { return ring.returnedBuffers_; }
 
   IoUringProvidedBufferRing& ring;
@@ -48,16 +48,16 @@ TEST_F(IoUringProvidedBufferRingTest, Create) {
   io_uring_queue_init(512, &ring, 0);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
-      .bufferCount = 1000,
+      .bufferCount = 1024,
       .bufferSize = 4096,
       .useHugePages = true,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
-  EXPECT_EQ(bufRing->count(), 1000);
+  EXPECT_EQ(bufRing->count(), 1024);
   EXPECT_TRUE(bufRing->available());
   EXPECT_EQ(bufRing->sizePerBuffer(), 4096);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
-  EXPECT_EQ(helper.ringCount(), 1024);
+  EXPECT_EQ(helper.ringBufferCount(), 1024);
 }
 
 TEST_F(IoUringProvidedBufferRingTest, CreateNoHugepages) {
@@ -65,16 +65,16 @@ TEST_F(IoUringProvidedBufferRingTest, CreateNoHugepages) {
   io_uring_queue_init(512, &ring, 0);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
-      .bufferCount = 2000,
+      .bufferCount = 2048,
       .bufferSize = 4096,
       .useHugePages = false,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
-  EXPECT_EQ(bufRing->count(), 2000);
+  EXPECT_EQ(bufRing->count(), 2048);
   EXPECT_TRUE(bufRing->available());
   EXPECT_EQ(bufRing->sizePerBuffer(), 4096);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
-  EXPECT_EQ(helper.ringCount(), 2048);
+  EXPECT_EQ(helper.ringBufferCount(), 2048);
 }
 
 TEST_F(IoUringProvidedBufferRingTest, BufferMinSize) {
@@ -82,17 +82,52 @@ TEST_F(IoUringProvidedBufferRingTest, BufferMinSize) {
   io_uring_queue_init(512, &ring, 0);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
-      .bufferCount = 10,
+      .bufferCount = 16,
       .bufferSize = 8,
       .useHugePages = false,
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
-  EXPECT_EQ(bufRing->count(), 10);
+  EXPECT_EQ(bufRing->count(), 16);
   EXPECT_TRUE(bufRing->available());
   // constexpr size_t kMinBufferSize = 32;
   EXPECT_EQ(bufRing->sizePerBuffer(), 32);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
-  EXPECT_EQ(helper.ringCount(), 16);
+  EXPECT_EQ(helper.ringBufferCount(), 16);
+}
+
+TEST_F(IoUringProvidedBufferRingTest, BufferCountCheck) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  uint16_t bgid = 0;
+
+  auto makeOptions = [&bgid](uint32_t bufferCount) {
+    return IoUringProvidedBufferRing::Options{
+        .gid = bgid++,
+        .bufferCount = bufferCount,
+        .bufferSize = 32,
+        .useHugePages = false,
+    };
+  };
+
+  auto minRing = IoUringProvidedBufferRing::create(&ring, makeOptions(2));
+  EXPECT_EQ(minRing->count(), 2);
+
+  auto maxRing = IoUringProvidedBufferRing::create(&ring, makeOptions(32768));
+  EXPECT_EQ(maxRing->count(), 32768);
+
+  auto bufRing = IoUringProvidedBufferRing::create(&ring, makeOptions(1000));
+  EXPECT_EQ(bufRing->count(), 1024);
+
+  auto roundedRing = IoUringProvidedBufferRing::create(&ring, makeOptions(1));
+  EXPECT_EQ(roundedRing->count(), 2);
+
+  EXPECT_THROW(
+      IoUringProvidedBufferRing::create(&ring, makeOptions(0)),
+      std::runtime_error);
+
+  EXPECT_THROW(
+      IoUringProvidedBufferRing::create(&ring, makeOptions(32769)),
+      std::runtime_error);
 }
 
 TEST_F(IoUringProvidedBufferRingTest, DelayedDestruction) {
@@ -100,7 +135,7 @@ TEST_F(IoUringProvidedBufferRingTest, DelayedDestruction) {
   io_uring_queue_init(512, &ring, 0);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
-      .bufferCount = 1000,
+      .bufferCount = 1024,
       .bufferSize = 4096,
       .useHugePages = false,
   };

@@ -28,6 +28,7 @@ constexpr uint32_t kMinBufferSize = 32;
 constexpr uint32_t kHugePageSizeBytes = 1024 * 1024 * 2;
 constexpr uint32_t kPageSizeBytes = 4096;
 constexpr uint32_t kBufferAlignBytes = 32;
+constexpr uint32_t kMaxRingRefillEntries = 32768;
 } // namespace
 
 namespace folly {
@@ -57,19 +58,11 @@ IoUringProvidedBufferRing::UniquePtr IoUringProvidedBufferRing::create(
 }
 
 void IoUringProvidedBufferRing::mapMemory(bool useHugePages) {
-  // Find next power of 2 size larger than bufferCount for the provided buffer
-  // ring count.
-  int ringShift = folly::findLastSet(bufferCount_) - 1;
-  if (bufferCount_ != (1ULL << ringShift)) {
-    ringShift++;
-  }
-  ringCount_ = 1U << std::max<int>(ringShift, 1);
-  ringMask_ = ringCount_ - 1;
-  ringMemSize_ = sizeof(struct io_uring_buf) * ringCount_;
+  ringMemSize_ = sizeof(struct io_uring_buf) * ringBufferCount_;
   ringMemSize_ =
       folly::to_narrow(folly::align_ceil(ringMemSize_, kBufferAlignBytes));
 
-  bufferSize_ = sizePerBuffer_ * bufferCount_;
+  bufferSize_ = sizePerBuffer_ * ringBufferCount_;
   allSize_ = ringMemSize_ + bufferSize_;
 
   int pages;
@@ -117,28 +110,44 @@ IoUringProvidedBufferRing::IoUringProvidedBufferRing(
     io_uring* ioRingPtr, Options options)
     : bufferStates_(),
       sizePerBuffer_(std::max(options.bufferSize, kMinBufferSize)),
-      bufferCount_(options.bufferCount),
+      ringBufferCount_(options.bufferCount),
       useIncremental_(options.useIncrementalBuffers),
       ioRingPtr_(ioRingPtr),
       gid_(options.gid) {
-  if (bufferCount_ > std::numeric_limits<uint16_t>::max()) {
-    throw std::runtime_error("bufferCount cannot be larger than 65,535");
+  if (ringBufferCount_ > kMaxRingRefillEntries) {
+    throw std::runtime_error(
+        folly::to<std::string>(
+            "bufferCount cannot be larger than ", kMaxRingRefillEntries));
   }
-  if (bufferCount_ == 0) {
+  if (ringBufferCount_ == 0) {
     throw std::runtime_error("bufferCount cannot be 0");
+  }
+  if (ringBufferCount_ < 2) {
+    LOG(WARNING) << folly::to<std::string>(
+        "Buffer count is too small, adjusting to 2");
+    ringBufferCount_ = 2;
+  }
+  if (!folly::isPowTwo(ringBufferCount_)) {
+    auto adjustedBufferCount = folly::nextPowTwo(ringBufferCount_);
+    LOG(WARNING) << folly::to<std::string>(
+        "Buffer count isn't a power of 2: ",
+        ringBufferCount_,
+        ", adjusting to: ",
+        adjustedBufferCount);
+    ringBufferCount_ = adjustedBufferCount;
   }
 
   mapMemory(options.useHugePages);
   initialRegister();
 
-  bufferStates_ = std::make_unique<BufferState[]>(bufferCount_);
-  for (uint16_t i = 0; i < bufferCount_; i++) {
+  bufferStates_ = std::make_unique<BufferState[]>(ringBufferCount_);
+  for (uint16_t i = 0; i < ringBufferCount_; i++) {
     bufferStates_[i].bufId = i;
     bufferStates_[i].parent = this;
     bufferStates_[i].offset = 0;
   }
 
-  for (size_t i = 0; i < bufferCount_; i++) {
+  for (size_t i = 0; i < ringBufferCount_; i++) {
     returnBuffer(i);
   }
 }
@@ -203,8 +212,8 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBufSingle(
     uint16_t i, size_t length, bool hasMore) noexcept {
   std::unique_ptr<IOBuf> ret;
   DCHECK(!wantsShutdown_);
-  DCHECK_LT(i, bufferCount_)
-      << "Buffer index " << i << " exceeds buffer count " << bufferCount_;
+  DCHECK_LT(i, ringBufferCount_)
+      << "Buffer index " << i << " exceeds buffer count " << ringBufferCount_;
 
   if (useIncremental_) {
     auto* bufferStart = getData(i);
@@ -244,9 +253,9 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
   uint16_t currentBufId = startBufId;
 
   while (remainingLength > 0) {
-    DCHECK_LT(currentBufId, bufferCount_)
+    DCHECK_LT(currentBufId, ringBufferCount_)
         << "Buffer index " << currentBufId << " exceeds buffer count "
-        << bufferCount_;
+        << ringBufferCount_;
 
     BufferState* bufferState = &bufferStates_[currentBufId];
     char* bufferStart = getData(currentBufId);
@@ -279,7 +288,7 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
 
     incBufferState(currentBufId, hasMore && isLastChunk, currentChunkSize);
     remainingLength -= currentChunkSize;
-    currentBufId = (currentBufId + 1) & (bufferCount_ - 1);
+    currentBufId = ringIndex(currentBufId + 1);
   }
 
   return head;
@@ -297,7 +306,7 @@ void IoUringProvidedBufferRing::initialRegister() {
   struct io_uring_buf_reg reg{};
   memset(&reg, 0, sizeof(reg));
   reg.ring_addr = reinterpret_cast<__u64>(ringPtr_);
-  reg.ring_entries = ringCount_;
+  reg.ring_entries = ringBufferCount_;
   reg.bgid = gid_;
 
   int flags = useIncremental_ ? IOU_PBUF_RING_INC : 0;
@@ -311,9 +320,7 @@ void IoUringProvidedBufferRing::initialRegister() {
         folly::errnoStr(-ret));
     LOG(ERROR) << folly::to<std::string>(
         "buffer ring buffer count: ",
-        bufferCount_,
-        ", ring count: ",
-        ringCount_,
+        ringBufferCount_,
         ", size per buf: ",
         sizePerBuffer_,
         ", bgid: ",
@@ -365,7 +372,7 @@ void IoUringProvidedBufferRing::decBufferState(uint16_t bufId) noexcept {
 }
 
 int IoUringProvidedBufferRing::getUtilPct() const noexcept {
-  uint32_t totalBuffers = bufferCount_;
+  uint32_t totalBuffers = ringBufferCount_;
   uint16_t head = 0;
   int ret = ::io_uring_buf_ring_head(ioRingPtr_, gid(), &head);
   if (ret != 0) {
@@ -373,7 +380,8 @@ int IoUringProvidedBufferRing::getUtilPct() const noexcept {
   }
   // tail and head are free-running 16-bit counters (the kernel masks them only
   // when indexing into bufs[]). Cast the difference to uint16_t so a completely
-  // full ring (tail - head == ringCount_) is preserved rather than masked to 0.
+  // full ring (tail - head == ringBufferCount_) is preserved rather than masked
+  // to 0.
   uint32_t available = static_cast<uint16_t>(ringPtr_->tail - head);
   available = std::min(available, totalBuffers);
 

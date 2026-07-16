@@ -2056,7 +2056,7 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
   std::unique_ptr<folly::IoUringBackend> backend;
   try {
     folly::IoUringOptions options;
-    options.setInitialProvidedBuffers(100, 5);
+    options.setInitialProvidedBuffers(100, 8);
     backend = std::make_unique<folly::IoUringBackend>(std::move(options));
   } catch (folly::IoUringBackend::NotAvailable const&) {
   }
@@ -2065,7 +2065,7 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
   auto* bufferProvider = backend->bufferProvider();
   ASSERT_NE(bufferProvider, nullptr);
   EXPECT_EQ(bufferProvider, backend->bufferProvider());
-  EXPECT_EQ(5, bufferProvider->count());
+  EXPECT_EQ(8, bufferProvider->count());
 
   struct Reader : folly::IoSqeBase {
     Reader(int fd, uint16_t bgid, std::function<void(int, uint32_t)> oncqe)
@@ -2108,11 +2108,11 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
     }
   };
 
-  addReaders(5);
+  addReaders(8);
   ASSERT_EQ(
-      500, folly::fileops::write(fds[1], std::string(500, 'A').c_str(), 500));
+      800, folly::fileops::write(fds[1], std::string(800, 'A').c_str(), 800));
   backend->eb_event_base_loop(EVLOOP_ONCE);
-  ASSERT_EQ(5, cqes.size()) << "expect 5 completions";
+  ASSERT_EQ(8, cqes.size()) << "expect 8 completions";
 
   ASSERT_EQ(100, cqes[0].first);
   ASSERT_EQ(100, cqes[1].first);
@@ -2121,6 +2121,9 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
   auto iobuf2 = bufferProvider->getIoBuf(cqes[2].second >> 16, 100, false);
   auto iobuf3 = bufferProvider->getIoBuf(cqes[3].second >> 16, 100, false);
   auto iobuf4 = bufferProvider->getIoBuf(cqes[4].second >> 16, 100, false);
+  auto iobuf5 = bufferProvider->getIoBuf(cqes[5].second >> 16, 100, false);
+  auto iobuf6 = bufferProvider->getIoBuf(cqes[6].second >> 16, 100, false);
+  auto iobuf7 = bufferProvider->getIoBuf(cqes[7].second >> 16, 100, false);
 
   auto* providedBufferRing =
       dynamic_cast<folly::IoUringProvidedBufferRing*>(bufferProvider);
@@ -2128,18 +2131,21 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
 
   int utilization = providedBufferRing->getUtilPct();
   EXPECT_EQ(100, utilization)
-      << "All 5 buffers in use, expected 100% utilization";
+      << "All 8 buffers in use, expected 100% utilization";
 
-  iobuf3.reset();
   iobuf4.reset();
+  iobuf5.reset();
+  iobuf6.reset();
+  iobuf7.reset();
 
   utilization = providedBufferRing->getUtilPct();
-  EXPECT_EQ(60, utilization)
-      << "3 out of 5 buffers in use, expected 60% utilization";
+  EXPECT_EQ(50, utilization)
+      << "4 out of 8 buffers in use, expected 50% utilization";
 
   iobuf0.reset();
   iobuf1.reset();
   iobuf2.reset();
+  iobuf3.reset();
 
   utilization = providedBufferRing->getUtilPct();
   EXPECT_EQ(0, utilization) << "No buffers in use, expected 0% utilization";
