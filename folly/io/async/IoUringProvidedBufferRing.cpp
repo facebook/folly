@@ -112,7 +112,7 @@ IoUringProvidedBufferRing::IoUringProvidedBufferRing(
       sizePerBuffer_(std::max(options.bufferSize, kMinBufferSize)),
       ringBufferCount_(options.bufferCount),
       useIncremental_(options.useIncrementalBuffers),
-      ioRingPtr_(ioRingPtr),
+      ringIoPtr(ioRingPtr),
       gid_(options.gid) {
   if (ringBufferCount_ > kMaxRingRefillEntries) {
     throw std::runtime_error(
@@ -172,9 +172,9 @@ uint32_t IoUringProvidedBufferRing::getAndResetEnobufCount() noexcept {
 
 void IoUringProvidedBufferRing::destroy() noexcept {
   std::unique_lock lock{mutex_};
-  ::io_uring_unregister_buf_ring(ioRingPtr_, gid());
-  DCHECK(gottenBuffers_ >= returnedBuffers_);
-  auto remaining = gottenBuffers_ - returnedBuffers_;
+  ::io_uring_unregister_buf_ring(ringIoPtr, gid_);
+  DCHECK(bufferGetCount_ >= bufferReturnedCount);
+  auto remaining = bufferGetCount_ - bufferReturnedCount;
   shutdownReferences_ = remaining;
   wantsShutdown_ = true;
   lock.unlock();
@@ -310,7 +310,7 @@ void IoUringProvidedBufferRing::initialRegister() {
   reg.bgid = gid_;
 
   int flags = useIncremental_ ? IOU_PBUF_RING_INC : 0;
-  int ret = ::io_uring_register_buf_ring(ioRingPtr_, &reg, flags);
+  int ret = ::io_uring_register_buf_ring(ringIoPtr, &reg, flags);
 
   if (ret) {
     LOG(ERROR) << folly::to<std::string>(
@@ -338,7 +338,7 @@ void IoUringProvidedBufferRing::delayedDestroy(uint32_t refs) noexcept {
 
 void IoUringProvidedBufferRing::incBufferState(
     uint16_t bufId, bool hasMore, size_t bytesConsumed) noexcept {
-  gottenBuffers_++;
+  bufferGetCount_++;
 
   if (useIncremental_ && hasMore) {
     bufferStates_[bufId].refCount.fetch_add(1);
@@ -351,7 +351,7 @@ void IoUringProvidedBufferRing::incBufferState(
 
 void IoUringProvidedBufferRing::decBufferState(uint16_t bufId) noexcept {
   std::unique_lock lock{mutex_};
-  returnedBuffers_++;
+  bufferReturnedCount++;
 
   if (FOLLY_UNLIKELY(wantsShutdown_)) {
     auto refs = --shutdownReferences_;
@@ -374,7 +374,7 @@ void IoUringProvidedBufferRing::decBufferState(uint16_t bufId) noexcept {
 int IoUringProvidedBufferRing::getUtilPct() const noexcept {
   uint32_t totalBuffers = ringBufferCount_;
   uint16_t head = 0;
-  int ret = ::io_uring_buf_ring_head(ioRingPtr_, gid(), &head);
+  int ret = ::io_uring_buf_ring_head(ringIoPtr, gid_, &head);
   if (ret != 0) {
     return ret;
   }

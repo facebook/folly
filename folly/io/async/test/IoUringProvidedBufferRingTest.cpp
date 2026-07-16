@@ -37,7 +37,7 @@ class IoUringProvidedBufferRingTestHelper {
       : ring(ring) {}
 
   uint32_t ringBufferCount() { return ring.ringBufferCount_; }
-  uint32_t returnedBuffers() { return ring.returnedBuffers_; }
+  uint32_t returnedBuffers() { return ring.bufferReturnedCount; }
 
   IoUringProvidedBufferRing& ring;
 };

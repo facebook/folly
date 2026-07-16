@@ -154,9 +154,9 @@ class IoUringProvidedBufferRing {
   char* bufferBuffer_{nullptr};
   folly::DistributedMutex mutex_;
   uint32_t sizePerBuffer_{0};
-  uint32_t gottenBuffers_{0};
+  uint32_t bufferGetCount_{0};
   uint32_t ringReturnedBuffers_{0};
-  uint32_t returnedBuffers_{0};
+  uint32_t bufferReturnedCount{0};
   uint32_t ringBufferCount_{0};
   bool useIncremental_{false};
   std::atomic<bool> enobuf_{false};
@@ -164,7 +164,7 @@ class IoUringProvidedBufferRing {
   std::atomic<uint32_t> enobufCount_{0};
 
   // Cold fields
-  alignas(folly::hardware_constructive_interference_size) io_uring* ioRingPtr_;
+  alignas(folly::hardware_constructive_interference_size) io_uring* ringIoPtr;
   uint32_t shutdownReferences_{0};
   uint16_t const gid_{0};
   uint32_t allSize_{0};
