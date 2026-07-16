@@ -157,15 +157,13 @@ const ElfSym* ElfFile::iterateSymbolsWithType(
   });
 }
 
-template <class Fn>
-const ElfSym* ElfFile::iterateSymbolsWithTypes(
-    const ElfShdr& section, std::initializer_list<uint32_t> types, Fn fn) const
-    noexcept(is_nothrow_invocable_v<Fn&, ElfSym const&>) {
+template <uint32_t... Types, class Fn>
+const ElfSym* ElfFile::iterateSymbolsWithTypes(const ElfShdr& section, Fn fn)
+    const noexcept(is_nothrow_invocable_v<Fn&, ElfSym const&>) {
   // N.B. st_info has the same representation on 32- and 64-bit platforms
   return iterateSymbols(section, [&](const ElfSym& sym) -> bool {
     auto const elfType = ELF32_ST_TYPE(sym.st_info);
-    auto const it = std::find(types.begin(), types.end(), elfType);
-    return it != types.end() && fn(sym);
+    return ((elfType == Types) || ...) && fn(sym);
   });
 }
 

@@ -18,6 +18,7 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <algorithm>
 #include <cstring>
 
 #include <glog/logging.h>
@@ -431,8 +432,8 @@ ElfFile::Symbol ElfFile::getDefinitionByAddress(
       return false;
     };
 
-    return iterateSymbolsWithTypes(
-        section, {STT_OBJECT, STT_FUNC, STT_GNU_IFUNC}, findSymbols);
+    return iterateSymbolsWithTypes<STT_OBJECT, STT_FUNC, STT_GNU_IFUNC>(
+        section, findSymbols);
   };
 
   // Try the .dynsym section first if it exists, it's smaller.
@@ -474,7 +475,11 @@ ElfFile::Symbol ElfFile::getSymbolByName(
       return false;
     };
 
-    return iterateSymbolsWithTypes(section, types, findSymbols);
+    return iterateSymbols(section, [&](const ElfSym& sym) -> bool {
+      auto const elfType = ELF32_ST_TYPE(sym.st_info);
+      auto const it = std::find(types.begin(), types.end(), elfType);
+      return it != types.end() && findSymbols(sym);
+    });
   };
 
   // Try the .dynsym section first if it exists, it's smaller.

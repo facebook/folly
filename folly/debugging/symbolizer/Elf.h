@@ -20,6 +20,7 @@
 
 #include <fcntl.h>
 #include <sys/types.h>
+#include <algorithm>
 #include <cstdio>
 #include <initializer_list>
 #include <stdexcept>
@@ -227,11 +228,9 @@ class ElfFile {
   const ElfSym* iterateSymbolsWithType(
       const ElfShdr& section, uint32_t type, Fn fn) const
       noexcept(is_nothrow_invocable_v<Fn&, ElfSym const&>);
-  template <class Fn>
-  const ElfSym* iterateSymbolsWithTypes(
-      const ElfShdr& section,
-      std::initializer_list<uint32_t> types,
-      Fn fn) const noexcept(is_nothrow_invocable_v<Fn&, ElfSym const&>);
+  template <uint32_t... Types, class Fn>
+  const ElfSym* iterateSymbolsWithTypes(const ElfShdr& section, Fn fn) const
+      noexcept(is_nothrow_invocable_v<Fn&, ElfSym const&>);
 
   /**
    * Iterate over entries within a given section.
@@ -309,8 +308,10 @@ class ElfFile {
     };
 
     auto iterSection = [&](const folly::symbolizer::ElfShdr& section) -> bool {
-      iterateSymbolsWithTypes(section, types, [&](const auto& sym) -> bool {
-        return findSymbol(section, sym);
+      iterateSymbols(section, [&](const auto& sym) -> bool {
+        auto const elfType = ELF32_ST_TYPE(sym.st_info);
+        auto const it = std::find(types.begin(), types.end(), elfType);
+        return it != types.end() && findSymbol(section, sym);
       });
       return false;
     };
