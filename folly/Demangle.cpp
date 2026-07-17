@@ -256,6 +256,19 @@ size_t demangle(const char* name, char* out, size_t outSize) {
     }
   }
 
+  // fallback to cxxabi if available
+  if (cxxabi_demangle) {
+    int status;
+    size_t len = outSize;
+    // Use the provided buffer instead of allocating
+    char* demangled = cxxabi_demangle(name, out, &len, &status);
+    if (status == 0 && demangled == out) {
+      // Successfully demangled into the provided buffer
+      return strlen(out);
+    }
+    // If demangling failed or allocated (shouldn't happen), fall through
+  }
+
   // fallback - just return original
   return folly::strlcpy(out, name, outSize);
 }
