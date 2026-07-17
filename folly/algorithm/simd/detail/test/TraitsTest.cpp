@@ -20,6 +20,7 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
+#include <bit>
 #include <set>
 #include <span>
 #include <vector>
@@ -205,7 +206,7 @@ TEST_F(SimdTraitsTest, AsSimdFriendly) {
 
   // pointer
   {
-    auto expected = folly::bit_cast<std::intptr_t>(arr.data());
+    auto expected = std::bit_cast<std::intptr_t>(arr.data());
     auto actual = asSimdFriendly(arr.data());
     ASSERT_EQ(expected, actual);
   }
@@ -222,7 +223,7 @@ TEST_F(SimdTraitsTest, AsSimdFriendlyUint) {
 
   // pointer
   {
-    auto expected = folly::bit_cast<std::uintptr_t>(arr.data());
+    auto expected = std::bit_cast<std::uintptr_t>(arr.data());
     auto actual = asSimdFriendlyUint(arr.data());
     ASSERT_EQ(expected, actual);
   }

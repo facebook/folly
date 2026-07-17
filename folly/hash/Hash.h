@@ -28,6 +28,7 @@
 
 #pragma once
 
+#include <bit>
 #include <cstdint>
 #include <cstring>
 #include <limits>
@@ -480,7 +481,7 @@ struct hasher<T*> {
   using folly_is_avalanching = hasher<std::uintptr_t>::folly_is_avalanching;
 
   size_t operator()(T* key) const {
-    auto val = folly::bit_cast<std::uintptr_t>(key);
+    auto val = std::bit_cast<std::uintptr_t>(key);
     return hasher<decltype(val)>{}(val);
   }
 };

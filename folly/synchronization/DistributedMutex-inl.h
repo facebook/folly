@@ -16,6 +16,7 @@
 
 #include <array>
 #include <atomic>
+#include <bit>
 #include <cstdint>
 #include <limits>
 #include <new>
@@ -731,7 +732,7 @@ Type* extractPtr(std::uintptr_t from) {
   mask <<= 1;
   CHECK(!(mask & 0b1));
 
-  return folly::bit_cast<Type*>(from & mask);
+  return std::bit_cast<Type*>(from & mask);
 }
 
 /**
@@ -1183,7 +1184,7 @@ lockImplementation(
     Waiter<Atomic> state{};
     auto&& task = coalesce(request, state);
     auto&& storage = makeReturnValueStorageFor(task);
-    auto&& address = folly::bit_cast<std::uintptr_t>(&state);
+    auto&& address = std::bit_cast<std::uintptr_t>(&state);
     attach(task, storage);
     state.initialize(waitMode, std::move(task));
     DCHECK(!(address & 0b1));
@@ -1393,7 +1394,7 @@ FOLLY_ALWAYS_INLINE std::uintptr_t tryWake(
     // are unlocking the mutex, the thread we do the handoff to here should
     // see the modified data
     new (&waiter->metadata_)
-        Metadata{waker, folly::bit_cast<uintptr_t>(sleepers)};
+        Metadata{waker, std::bit_cast<uintptr_t>(sleepers)};
     waiter->futex_.store(kWake, std::memory_order_release);
     return 0;
   }
@@ -1449,7 +1450,7 @@ FOLLY_ALWAYS_INLINE std::uintptr_t tryWake(
   // be ignored when the thread wakes up anyway
   DCHECK(isSleeper(value));
   waiter->metadata_.waker_ = waker;
-  waiter->metadata_.waiters_ = folly::bit_cast<std::uintptr_t>(sleepers);
+  waiter->metadata_.waiters_ = std::bit_cast<std::uintptr_t>(sleepers);
   auto pre =
       waiter->metadata_.sleeper_.exchange(kSleeping, std::memory_order_acq_rel);
 
@@ -1464,7 +1465,7 @@ FOLLY_ALWAYS_INLINE std::uintptr_t tryWake(
   // we also need to collect this sleeper in the list of sleepers being built
   // up
   next = waiter->next_.load(std::memory_order_relaxed);
-  auto head = folly::bit_cast<std::uintptr_t>(sleepers);
+  auto head = std::bit_cast<std::uintptr_t>(sleepers);
   waiter->next_.store(head, std::memory_order_relaxed);
   sleepers = waiter;
   return next;

@@ -17,6 +17,7 @@
 #include <folly/lang/Bits.h>
 
 #include <algorithm>
+#include <bit>
 #include <random>
 #include <vector>
 
@@ -303,8 +304,8 @@ TEST(Bits, PartialLoadUnaligned) {
 
 TEST(Bits, BitCastBasic) {
   auto one = std::make_unique<int>();
-  auto two = folly::bit_cast<std::uintptr_t>(one.get());
-  EXPECT_EQ(folly::bit_cast<int*>(two), one.get());
+  auto two = std::bit_cast<std::uintptr_t>(one.get());
+  EXPECT_EQ(std::bit_cast<int*>(two), one.get());
 
   struct FancyInt {
     FancyInt() {
@@ -315,15 +316,15 @@ TEST(Bits, BitCastBasic) {
   };
 
   int x = 5;
-  auto bi = folly::bit_cast<FancyInt>(x);
+  auto bi = std::bit_cast<FancyInt>(x);
   EXPECT_EQ(x, bi.value);
 }
 
 TEST(Bits, BitCastCompatibilityTest) {
   static_assert(sizeof(double) == sizeof(std::uint64_t));
   auto one = folly::Random::rand64();
-  auto dbl = folly::bit_cast<double>(one);
-  auto two = folly::bit_cast<std::uint64_t>(dbl);
+  auto dbl = std::bit_cast<double>(one);
+  auto two = std::bit_cast<std::uint64_t>(dbl);
   EXPECT_EQ(one, two);
 }
 

@@ -25,6 +25,7 @@
 #include <folly/lang/SafeAssert.h>
 
 #include <array>
+#include <bit>
 
 #if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 #include <immintrin.h>
@@ -476,9 +477,9 @@ struct SimdAarch64PlatformSpecific {
   FOLLY_ALWAYS_INLINE
   static bool any(logical_t log) {
     // https://github.com/dotnet/runtime/pull/75864
-    auto u32 = bit_cast<uint32x4_t>(log);
+    auto u32 = std::bit_cast<uint32x4_t>(log);
     u32 = vpmaxq_u32(u32, u32);
-    auto u64 = bit_cast<uint64x2_t>(u32);
+    auto u64 = std::bit_cast<uint64x2_t>(u32);
     return vgetq_lane_u64(u64, 0);
   }
 
@@ -488,9 +489,9 @@ struct SimdAarch64PlatformSpecific {
     // Not quite what they did in .Net runtime, but
     // should be close.
     // https://github.com/dotnet/runtime/pull/75864
-    auto u32 = bit_cast<uint32x4_t>(log);
+    auto u32 = std::bit_cast<uint32x4_t>(log);
     u32 = vpminq_u32(u32, u32);
-    auto u64 = bit_cast<uint64x2_t>(u32);
+    auto u64 = std::bit_cast<uint64x2_t>(u32);
     return u64 == n_least_significant_bits<std::uint64_t>(64);
   }
 #endif
