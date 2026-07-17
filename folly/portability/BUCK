@@ -272,8 +272,8 @@ fb_dirsync_cpp_library(
         "//folly:portability",
     ],
     external_deps = [
-        ("boost", None, "boost_thread"),
         "boost",
+        ("boost", None, "boost_thread"),
     ],
     exported_external_deps = [
         ("glibc", None, "pthread"),

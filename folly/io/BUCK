@@ -149,8 +149,8 @@ fb_dirsync_cpp_library(
         "//folly/portability:unistd",
     ],
     external_deps = [
-        ("boost", None, "boost_regex"),
         "boost",
+        ("boost", None, "boost_regex"),
     ],
     exported_external_deps = [
         "boost",
