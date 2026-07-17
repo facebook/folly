@@ -483,6 +483,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "flat_combining_test",
     srcs = ["FlatCombiningTest.cpp"],
+    labels = ["not_a_folly_benchmark"],
     supports_static_listing = False,
     deps = [
         "fbsource//third-party/glog:glog",

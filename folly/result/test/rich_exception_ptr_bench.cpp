@@ -19,7 +19,7 @@
 #include <folly/result/immortal_rich_error.h>
 #include <folly/result/rich_error.h>
 #include <folly/result/rich_exception_ptr.h>
-#include <folly/result/test/common.h>
+#include <folly/result/test/benchmark_common.h>
 
 #if FOLLY_HAS_RESULT
 

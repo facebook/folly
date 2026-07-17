@@ -23,6 +23,8 @@
 #include <folly/portability/GTest.h>
 #include <folly/result/coded_rich_error.h>
 
+#include <glog/logging.h>
+
 #if FOLLY_HAS_RESULT
 
 namespace folly::test {

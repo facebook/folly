@@ -20,7 +20,7 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/lang/Keep.h>
-#include <folly/result/test/common.h>
+#include <folly/result/test/benchmark_common.h>
 
 #if FOLLY_HAS_RESULT
 

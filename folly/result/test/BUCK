@@ -20,7 +20,6 @@ fb_dirsync_cpp_library(
     name = "common",
     headers = ["common.h"],
     exported_deps = [
-        "//folly:benchmark",
         "//folly:unit",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
@@ -32,11 +31,13 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_unittest(
     name = "epitaph_bench",
     srcs = ["epitaph_bench.cpp"],
+    headers = ["benchmark_common.h"],
     deps = [
         ":common",
         "//folly:benchmark",
         "//folly/result:epitaph",
         "//folly/result:immortal_rich_error",
+        "//folly/result:result",
     ],
 )
 
@@ -44,6 +45,7 @@ fb_dirsync_cpp_unittest(
     name = "epitaph_test",
     srcs = ["epitaph_test.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":common",
         ":rich_error_codes",
         "//folly/portability:gmock",
@@ -122,6 +124,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "result_bench",
     srcs = ["result_bench.cpp"],
+    headers = ["benchmark_common.h"],
     deps = [
         ":common",
         "//folly:benchmark",
@@ -135,6 +138,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "result_coro_bench",
     srcs = ["result_coro_bench.cpp"],
+    headers = ["benchmark_common.h"],
     deps = [
         ":common",
         "//folly:benchmark",
@@ -142,6 +146,7 @@ fb_dirsync_cpp_unittest(
         "//folly:scope_guard",
         "//folly/lang:keep",
         "//folly/result:coro",
+        "//folly/result:result",
     ],
 )
 
@@ -161,11 +166,13 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "rich_error_code_bench",
     srcs = ["rich_error_code_bench.cpp"],
+    headers = ["benchmark_common.h"],
     deps = [
         ":common",
         ":rich_error_codes",
         "//folly:benchmark",
         "//folly/result:immortal_rich_error",
+        "//folly/result:result",
         "//folly/result:rich_error",
         "//folly/result:rich_error_code",
     ],
@@ -216,11 +223,13 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "rich_exception_ptr_bench",
     srcs = ["rich_exception_ptr_bench.cpp"],
+    headers = ["benchmark_common.h"],
     deps = [
         ":common",
         "//folly:benchmark",
         "//folly:exception_wrapper",
         "//folly/result:immortal_rich_error",
+        "//folly/result:result",
         "//folly/result:rich_error",
         "//folly/result:rich_error_base",
     ],
@@ -229,11 +238,13 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "rich_exception_ptr_fmt_bench",
     srcs = ["rich_exception_ptr_fmt_bench.cpp"],
+    headers = ["benchmark_common.h"],
     deps = [
         ":common",
         "//folly:benchmark",
         "//folly/result:epitaph",
         "//folly/result:immortal_rich_error",
+        "//folly/result:result",
         "//folly/result:rich_error",
         "//folly/result:rich_error_base",
     ],
@@ -332,6 +343,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "stack_epitaph_test",
     srcs = ["stack_epitaph_test.cpp"],
+    headers = ["benchmark_common.h"],
     deps = [
         ":common",
         "//folly:benchmark",
@@ -340,6 +352,7 @@ fb_dirsync_cpp_unittest(
         "//folly/result:coro",
         "//folly/result:epitaph",
         "//folly/result:gtest_helpers",
+        "//folly/result:result",
     ],
 )
 

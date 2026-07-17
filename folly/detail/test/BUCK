@@ -142,6 +142,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "benchmark_adaptive_test",
     srcs = ["BenchmarkAdaptiveTest.cpp"],
+    labels = ["not_a_folly_benchmark"],
     deps = [
         "//folly:benchmark",
         "//folly/portability:gtest",

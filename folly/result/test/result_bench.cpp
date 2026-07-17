@@ -22,7 +22,7 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Portability.h>
 #include <folly/result/result.h>
-#include <folly/result/test/common.h>
+#include <folly/result/test/benchmark_common.h>
 #include <folly/result/try.h>
 
 #if FOLLY_HAS_RESULT

@@ -21,7 +21,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/result/coro.h>
 #include <folly/result/gtest_helpers.h>
-#include <folly/result/test/common.h>
+#include <folly/result/test/benchmark_common.h>
 
 #if FOLLY_HAS_RESULT
 

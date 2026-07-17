@@ -18,7 +18,7 @@
 #include <folly/result/immortal_rich_error.h>
 #include <folly/result/rich_error.h>
 #include <folly/result/rich_error_code.h>
-#include <folly/result/test/common.h>
+#include <folly/result/test/benchmark_common.h>
 #include <folly/result/test/rich_error_codes.h>
 
 #if FOLLY_HAS_RESULT
