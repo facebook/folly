@@ -483,7 +483,7 @@ struct ThunkFn<
   constexpr /* implicit */ operator FnPtr<R, D&, As...>() const noexcept {
     struct _ {
       static R call(D& d, As... as) {
-        return folly::invoke(
+        return std::invoke(
             User, get<T>(d), convert<Args>(static_cast<As&&>(as))...);
       }
     };

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -631,7 +632,7 @@ class SettingCore : public TypedSettingCore<T> {
   }
 
   void invokeCallbacks(const Contents& contents) {
-    auto callbacksSnapshot = invoke([&] {
+    auto callbacksSnapshot = std::invoke([&] {
       std::shared_lock lg(this->globalLock_);
       // invoking arbitrary user code under the lock is dangerous
       return std::vector<std::shared_ptr<UpdateCallback>>(

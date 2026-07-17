@@ -40,6 +40,7 @@
 
 #include <glog/logging.h>
 
+#include <functional>
 #include <iterator>
 #include <type_traits>
 
@@ -531,12 +532,12 @@ class [[nodiscard]] AsyncGenerator {
           [](auto&&, auto&& gen) { return std::move(gen).cleanup(); },
           static_cast<F&&>(f),
           AsyncGenerator{});
-      r = invoke(static_cast<F&&>(fScoped), static_cast<A&&>(a)...);
+      r = std::invoke(static_cast<F&&>(fScoped), static_cast<A&&>(a)...);
       while (true) {
         co_yield co_result(co_await co_awaitTry(r.next()));
       }
     } else {
-      auto r = invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
+      auto r = std::invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
       while (true) {
         co_yield co_result(co_await co_awaitTry(r.next()));
       }

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <functional>
 #include <tuple>
 #include <utility>
 
@@ -43,7 +44,7 @@ class Partial {
           like_t<Self&&, F>,
           like_t<Self&&, StoredArg>...,
           Args&&...> {
-    return invoke(
+    return std::invoke(
         std::forward<Self>(self).f_,
         std::get<I>(std::forward<Self>(self).stored_args_)...,
         std::forward<Args>(args)...);

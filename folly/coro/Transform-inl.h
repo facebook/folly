@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <functional>
+
 #include <folly/Traits.h>
 #include <folly/coro/Transform.h>
 
@@ -31,12 +33,13 @@ template <
 AsyncGenerator<ReturnReference> transform(
     AsyncGenerator<Reference, Value> source, TransformFn transformFn) {
   while (auto item = co_await source.next()) {
-    using InvokeResult = decltype(invoke(transformFn, std::move(item).value()));
+    using InvokeResult =
+        decltype(std::invoke(transformFn, std::move(item).value()));
     if constexpr (std::is_constructible_v<ReturnReference&&, InvokeResult>) {
-      co_yield invoke(transformFn, std::move(item).value());
+      co_yield std::invoke(transformFn, std::move(item).value());
     } else {
       remove_cvref_t<ReturnReference> result =
-          invoke(transformFn, std::move(item).value());
+          std::invoke(transformFn, std::move(item).value());
       co_yield std::forward<ReturnReference>(result);
     }
   }

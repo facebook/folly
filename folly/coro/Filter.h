@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <functional>
+
 #include <folly/coro/AsyncGenerator.h>
 #include <folly/coro/Coroutine.h>
 

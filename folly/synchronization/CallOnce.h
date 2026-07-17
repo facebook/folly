@@ -22,6 +22,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <utility>
 
@@ -151,7 +152,7 @@ class basic_once_flag {
     if (called_.load(std::memory_order_relaxed)) {
       return;
     }
-    invoke(std::forward<F>(f), std::forward<Args>(args)...);
+    std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
     called_.store(true, std::memory_order_release);
   }
 
@@ -164,7 +165,8 @@ class basic_once_flag {
     if (called_.load(std::memory_order_relaxed)) {
       return true;
     }
-    auto const pass = invoke(std::forward<F>(f), std::forward<Args>(args)...);
+    auto const pass =
+        std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
     called_.store(pass, std::memory_order_release);
     return pass;
   }
@@ -233,7 +235,7 @@ class compact_once_flag {
   template <typename F, typename... Args>
   FOLLY_NOINLINE void call_once_slow(F&& f, Args&&... args) {
     call_once_impl([&]() -> bool {
-      invoke(std::forward<F>(f), std::forward<Args>(args)...);
+      std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
       return true;
     });
   }
@@ -245,7 +247,7 @@ class compact_once_flag {
   FOLLY_NOINLINE bool try_call_once_slow(F&& f, Args&&... args) noexcept {
     return call_once_impl([&]() noexcept -> bool {
       return static_cast<bool>(
-          invoke(std::forward<F>(f), std::forward<Args>(args)...));
+          std::invoke(std::forward<F>(f), std::forward<Args>(args)...));
     });
   }
 

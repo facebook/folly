@@ -23,7 +23,7 @@ template <typename FilterFn, typename Reference, typename Value>
 AsyncGenerator<Reference, Value> filter(
     AsyncGenerator<Reference, Value> source, FilterFn filterFn) {
   while (auto item = co_await source.next()) {
-    if (invoke(filterFn, item.value())) {
+    if (std::invoke(filterFn, item.value())) {
       co_yield std::move(item).value();
     }
   }

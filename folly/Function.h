@@ -1068,7 +1068,7 @@ class FunctionRef<ReturnType(Args...)> final {
       std::enable_if_t<!std::is_pointer<Fun>::value, int> = 0>
   static ReturnType call(CallArg<Args>... args, void* object) {
     using Pointer = std::add_pointer_t<Fun>;
-    return static_cast<ReturnType>(invoke(
+    return static_cast<ReturnType>(std::invoke(
         static_cast<Fun&&>(*static_cast<Pointer>(object)),
         static_cast<Args&&>(args)...));
   }
@@ -1076,8 +1076,8 @@ class FunctionRef<ReturnType(Args...)> final {
       typename Fun,
       std::enable_if_t<std::is_pointer<Fun>::value, int> = 0>
   static ReturnType call(CallArg<Args>... args, void* object) {
-    return static_cast<ReturnType>(
-        invoke(reinterpret_cast<Fun>(object), static_cast<Args&&>(args)...));
+    return static_cast<ReturnType>(std::invoke(
+        reinterpret_cast<Fun>(object), static_cast<Args&&>(args)...));
   }
 
   void* object_{nullptr};

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <functional>
 #include <new>
 
 #include <folly/Function.h>
@@ -204,7 +205,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
     static_assert(
         !std::is_pointer<Func>::value ||
         std::is_function<std::remove_pointer_t<Func>>::value);
-    return folly::invoke(
+    return std::invoke(
         *std::launder(reinterpret_cast<const Func*>(&object)),
         static_cast<Args&&>(args)...);
   }
@@ -215,7 +216,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
     // pointer points to a pointer, which pointers to the callable.  So we
     // cast to a pointer and then to the pointee.
     static_assert(std::is_pointer<Func>::value);
-    return folly::invoke(
+    return std::invoke(
         **std::launder(reinterpret_cast<const Func*>(&object)),
         static_cast<Args&&>(args)...);
   }
