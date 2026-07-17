@@ -52,43 +52,29 @@ use tokio::runtime;
 use tokio::runtime::TaskMeta;
 use tokio::task;
 
-/// Per-task context slot that allows interior mutability without locking.
-///
-/// # Safety
-///
-/// This type implements `Sync` because Tokio guarantees that at most one thread
-/// polls a given task at any time. The `Cell` is only accessed between paired
-/// `on_before_task_poll` / `on_after_task_poll` hooks on the same worker thread,
-/// so there are no concurrent mutations.
-struct TaskContextSlot(Cell<Option<RequestContext>>);
-
-// SAFETY: See struct-level documentation.
-unsafe impl Sync for TaskContextSlot {}
-
-impl TaskContextSlot {
-    fn new(ctx: Option<RequestContext>) -> Self {
-        Self(Cell::new(ctx))
-    }
-
-    fn take(&self) -> Option<RequestContext> {
-        self.0.take()
-    }
-
-    fn set(&self, ctx: Option<RequestContext>) {
-        self.0.set(ctx);
-    }
-}
-
 /// Per-task `RequestContext` storage, keyed by Tokio's globally-unique task ID.
 /// Uses `FxBuildHasher` for cheaper hashing — task IDs are integers, so the
 /// DoS-resistant default `RandomState` is unnecessary.
-static TASK_CONTEXTS: LazyLock<HashMap<task::Id, TaskContextSlot, FxBuildHasher>> =
+///
+/// The value is a plain `Option<RequestContext>` owned outright by the map. A
+/// `RequestContext` is a reference-counted `folly::RequestContext` `shared_ptr`
+/// (`Send + Sync`), so every mutation of the stored value goes through
+/// `papaya`'s atomic insert/remove, which clone/drop the `shared_ptr`
+/// atomically. Crucially there is NO cross-thread interior mutation: the value
+/// was previously a `Cell<Option<RequestContext>>` behind a hand-rolled
+/// `unsafe impl Sync`, which let `papaya`'s concurrent value access (e.g. table
+/// resize under high task churn) race the hooks' non-atomic `Cell` mutations,
+/// corrupting the `shared_ptr` refcount and freeing a still-referenced
+/// `RequestContext` — a use-after-free that crashed diff_service and other
+/// high-QPS services when a folly executor later restored the freed context.
+static TASK_CONTEXTS: LazyLock<HashMap<task::Id, Option<RequestContext>, FxBuildHasher>> =
     LazyLock::new(|| HashMap::with_hasher(FxBuildHasher));
 
 thread_local! {
    /// Saves the worker thread's ambient `RequestContext` while a task is being
-   /// polled, so it can be restored in `on_after_task_poll`.
-   static PREV_FRC: Cell<Option<Option<RequestContext>>> = const { Cell::new(None) };
+   /// polled, so it can be restored in `on_after_task_poll`. `None` means the
+   /// thread had no ambient context (or nothing is stashed).
+   static PREV_FRC: Cell<Option<RequestContext>> = const { Cell::new(None) };
 }
 
 /// Extension trait that adds `install_request_context_hooks` to
@@ -111,33 +97,34 @@ impl BuilderExt for runtime::Builder {
 /// Called when `tokio::spawn` is invoked. Captures the spawner's current
 /// `RequestContext` and stores it for the new task.
 fn on_task_spawn(meta: &TaskMeta<'_>) {
-    let rctx = RequestContext::try_get_current();
     TASK_CONTEXTS
         .pin()
-        .insert(meta.id(), TaskContextSlot::new(rctx));
+        .insert(meta.id(), RequestContext::try_get_current());
 }
 
-/// Called just before the runtime polls a task. Restores the task's saved
+/// Called just before the runtime polls a task. Installs the task's saved
 /// `RequestContext` onto the current thread and stashes the thread's previous
-/// context so it can be restored afterwards.
+/// context so it can be restored afterwards. The stored value is only borrowed
+/// (the `pin` guard keeps it alive); `swap_current` clones the `shared_ptr`
+/// atomically, so the map entry is never mutated here.
 fn on_before_task_poll(meta: &TaskMeta<'_>) {
-    let task_rctx = TASK_CONTEXTS
-        .pin()
-        .get(&meta.id())
-        .and_then(|entry| entry.take());
-    let prev = RequestContext::swap_current(task_rctx.as_ref());
-    PREV_FRC.set(Some(prev));
+    let guard = TASK_CONTEXTS.pin();
+    let task_rctx = guard.get(&meta.id()).and_then(|ctx| ctx.as_ref());
+    let prev = RequestContext::swap_current(task_rctx);
+    PREV_FRC.set(prev);
 }
 
-/// Called just after the runtime finishes polling a task. Saves the task's
-/// (possibly updated) context back and restores the thread's previous context.
+/// Called just after the runtime finishes polling a task. Restores the thread's
+/// previous context and persists the task's (possibly updated) context so the
+/// next poll restores it.
 fn on_after_task_poll(meta: &TaskMeta<'_>) {
-    let saved = PREV_FRC.take().unwrap_or(None);
-
+    let saved = PREV_FRC.take();
     let task_ctx = RequestContext::swap_current(saved.as_ref());
-    if let Some(entry) = TASK_CONTEXTS.pin().get(&meta.id()) {
-        entry.set(task_ctx);
-    }
+    // Write the task's context back atomically, only if the entry still exists.
+    // `update` is update-only-if-present, so a concurrent `on_task_terminate`
+    // that already removed the entry can't be raced into re-adding it (no
+    // get-then-insert TOCTOU that would leak the entry).
+    TASK_CONTEXTS.pin().update(meta.id(), |_| task_ctx.clone());
 }
 
 /// Called when a task is done (completed, cancelled, or dropped). Removes the
