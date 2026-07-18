@@ -19,6 +19,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/CppAttributes.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 
@@ -128,17 +129,22 @@ class Indestructible final {
   Indestructible(Indestructible const&) = delete;
   Indestructible& operator=(Indestructible const&) = delete;
 
-  T* get() noexcept { return reinterpret_cast<T*>(&storage_.bytes); }
-  T const* get() const noexcept {
+  T* get() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return reinterpret_cast<T*>(&storage_.bytes); }
+  T const* get() const noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return reinterpret_cast<T const*>(&storage_.bytes);
   }
-  T& operator*() noexcept { return *get(); }
-  T const& operator*() const noexcept { return *get(); }
-  T* operator->() noexcept { return get(); }
-  T const* operator->() const noexcept { return get(); }
+  T& operator*() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return *get(); }
+  T const& operator*() const noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return *get(); }
+  T* operator->() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return get(); }
+  T const* operator->() const noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return get(); }
 
-  /* implicit */ operator T&() noexcept { return *get(); }
-  /* implicit */ operator T const&() const noexcept { return *get(); }
+  /* implicit */ operator T&() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return *get();
+  }
+  /* implicit */ operator T const&() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return *get();
+  }
 
  private:
   struct Storage {
