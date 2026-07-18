@@ -27,6 +27,7 @@
 
 #include <fmt/format.h>
 
+#include <folly/CppAttributes.h>
 #include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/functional/Invoke.h>
@@ -145,7 +146,9 @@ OptionalValue get_optional(const Map& map, const Key& key) {
  */
 template <class Map, typename Key = typename Map::key_type>
 const typename Map::mapped_type& get_ref_default(
-    const Map& map, const Key& key, const typename Map::mapped_type& dflt) {
+    const Map& map [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]],
+    const Key& key,
+    const typename Map::mapped_type& dflt [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]) {
   auto pos = map.find(key);
   return (pos != map.end() ? pos->second : dflt);
 }
@@ -179,7 +182,9 @@ template <
     typename = typename std::enable_if<
         std::is_reference<invoke_result_t<Func>>::value>::type>
 const typename Map::mapped_type& get_ref_default(
-    const Map& map, const Key& key, Func&& dflt) {
+    const Map& map [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]],
+    const Key& key,
+    Func&& dflt) {
   auto pos = map.find(key);
   return (pos != map.end() ? pos->second : dflt());
 }
@@ -189,13 +194,15 @@ const typename Map::mapped_type& get_ref_default(
  * the key in the map, or nullptr if the key doesn't exist in the map.
  */
 template <class Map, typename Key = typename Map::key_type>
-auto get_ptr(const Map& map, const Key& key) {
+auto get_ptr(
+    const Map& map [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]], const Key& key) {
   auto pos = map.find(key);
   return (pos != map.end() ? &pos->second : nullptr);
 }
 template <class Map, typename Key = typename Map::key_type>
-const typename Map::mapped_type* FOLLY_NULLABLE
-get_ptr(const Map* FOLLY_NULLABLE map, const Key& key) {
+const typename Map::mapped_type* FOLLY_NULLABLE get_ptr(
+    const Map* FOLLY_NULLABLE map [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]],
+    const Key& key) {
   return map ? get_ptr(*map, key) : nullptr;
 }
 
@@ -203,14 +210,15 @@ get_ptr(const Map* FOLLY_NULLABLE map, const Key& key) {
  * Non-const overload of the above.
  */
 template <class Map, typename Key = typename Map::key_type>
-auto get_ptr(Map& map, const Key& key) {
+auto get_ptr(Map& map [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]], const Key& key) {
   auto pos = map.find(key);
   return (pos != map.end() ? &pos->second : nullptr);
 }
 
 template <class Map, typename Key = typename Map::key_type>
-typename Map::mapped_type* FOLLY_NULLABLE
-get_ptr(Map* FOLLY_NULLABLE map, const Key& key) {
+typename Map::mapped_type* FOLLY_NULLABLE get_ptr(
+    Map* FOLLY_NULLABLE map [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]],
+    const Key& key) {
   return map ? get_ptr(*map, key) : nullptr;
 }
 
@@ -310,7 +318,10 @@ auto get_optional(
  */
 template <class Map, class Key1, class Key2, class... Keys>
 auto get_ptr(
-    const Map& map, const Key1& key1, const Key2& key2, const Keys&... keys) ->
+    const Map& map [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]],
+    const Key1& key1,
+    const Key2& key2,
+    const Keys&... keys) ->
     typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::type
     const* FOLLY_NULLABLE {
   auto pos = map.find(key1);
@@ -319,7 +330,7 @@ auto get_ptr(
 
 template <class Map, class Key1, class Key2, class... Keys>
 auto get_ptr(
-    const Map* FOLLY_NULLABLE map,
+    const Map* FOLLY_NULLABLE map [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]],
     const Key1& key1,
     const Key2& key2,
     const Keys&... keys) ->
@@ -329,16 +340,19 @@ auto get_ptr(
 }
 
 template <class Map, class Key1, class Key2, class... Keys>
-auto get_ptr(Map& map, const Key1& key1, const Key2& key2, const Keys&... keys)
-    -> typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::
-        type* FOLLY_NULLABLE {
+auto get_ptr(
+    Map& map [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]],
+    const Key1& key1,
+    const Key2& key2,
+    const Keys&... keys) -> typename detail::
+    NestedMapType<Map, 2 + sizeof...(Keys)>::type* FOLLY_NULLABLE {
   auto pos = map.find(key1);
   return pos != map.end() ? get_ptr(pos->second, key2, keys...) : nullptr;
 }
 
 template <class Map, class Key1, class Key2, class... Keys>
 auto get_ptr(
-    Map* FOLLY_NULLABLE map,
+    Map* FOLLY_NULLABLE map [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]],
     const Key1& key1,
     const Key2& key2,
     const Keys&... keys) -> typename detail::
