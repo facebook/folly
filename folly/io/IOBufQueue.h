@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <string>
 
+#include <folly/CppAttributes.h>
 #include <folly/ScopeGuard.h>
 #include <folly/io/IOBuf.h>
 #include <folly/lang/Exception.h>
@@ -557,7 +558,7 @@ class IOBufQueue {
    *       IOBuf without checking if it's shared, but this is fine, since the
    *       cloned IOBufs won't reference that data.
    */
-  const folly::IOBuf* front() const {
+  const folly::IOBuf* front() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     flushCache();
     return head_.get();
   }
