@@ -281,7 +281,7 @@ class IPAddress {
    * @throws InvalidAddressFamilyException if the IP Address is not currently
    * a valid V4 instance.
    */
-  const IPAddressV4& asV4() const {
+  const IPAddressV4& asV4() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     if (FOLLY_UNLIKELY(!isV4())) {
       asV4Throw();
     }
@@ -294,7 +294,7 @@ class IPAddress {
    * @throws InvalidAddressFamilyException if the IP Address is not currently
    * a valid V6 instance.
    */
-  const IPAddressV6& asV6() const {
+  const IPAddressV6& asV6() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     if (FOLLY_UNLIKELY(!isV6())) {
       asV6Throw();
     }
@@ -569,7 +569,7 @@ class IPAddress {
   /**
    * Returns a pointer to the to IP address bytes, in network byte order.
    */
-  const unsigned char* bytes() const {
+  const unsigned char* bytes() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return pick([&](auto& _) { return _.bytes(); });
   }
 

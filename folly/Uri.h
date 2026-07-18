@@ -64,14 +64,22 @@ class Uri {
    */
   static Expected<Uri, UriFormatError> tryFromString(StringPiece str) noexcept;
 
-  const std::string& scheme() const { return scheme_; }
-  const std::string& username() const { return username_; }
-  const std::string& password() const { return password_; }
+  const std::string& scheme() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return scheme_;
+  }
+  const std::string& username() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return username_;
+  }
+  const std::string& password() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return password_;
+  }
   /**
    * Get host part of URI. If host is an IPv6 address, square brackets will be
    * returned, for example: "[::1]".
    */
-  const std::string& host() const { return host_; }
+  const std::string& host() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return host_;
+  }
   /**
    * Get host part of URI. If host is an IPv6 address, square brackets will not
    * be returned, for example "::1"; otherwise it returns the same thing as
@@ -83,9 +91,15 @@ class Uri {
    */
   std::string hostname() const;
   uint16_t port() const { return port_; }
-  const std::string& path() const { return path_; }
-  const std::string& query() const { return query_; }
-  const std::string& fragment() const { return fragment_; }
+  const std::string& path() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return path_;
+  }
+  const std::string& query() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return query_;
+  }
+  const std::string& fragment() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return fragment_;
+  }
 
   std::string authority() const;
 
@@ -120,7 +134,8 @@ class Uri {
    *          pair of which the first element is parameter name and the second
    *          one is parameter value
    */
-  const std::vector<std::pair<std::string, std::string>>& getQueryParams();
+  const std::vector<std::pair<std::string, std::string>>& getQueryParams()
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]];
 
  private:
   explicit Uri();
