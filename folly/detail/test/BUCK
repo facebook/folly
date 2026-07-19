@@ -39,7 +39,6 @@ fb_dirsync_cpp_unittest(
     srcs = [
         "FileUtilDetailTest.cpp",
     ],
-    modifiers = ["ovr_config//project/folly:mobile[disabled]"],
     deps = [
         "//folly/detail:file_util_detail",
         "//folly/portability:gtest",

@@ -9,7 +9,6 @@ fb_dirsync_rust_library(
     cpp_deps = [":compression-ffi"],
     crate_root = "compression.rs",
     cxx_bridge = "compression.rs",
-    modifiers = ["ovr_config//project/folly:mobile[disabled]"],
     deps = [
         "fbsource//third-party/rust:bytes",
         "fbsource//third-party/rust:cxx",
