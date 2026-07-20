@@ -69,15 +69,19 @@ struct CountingAllocator : std::allocator<T> {
     nAllocations += 1;
     return std::allocator<T>::allocate(n);
   }
-#ifdef __cpp_lib_allocate_at_least
-  // Since C++23, std::vector allocates via allocator_traits::allocate_at_least,
-  // which std::allocator provides; without this override that inherited method
-  // would bypass the counting allocate() above and leave nAllocations at 0.
+  // std::vector may allocate via allocator_traits::allocate_at_least, which
+  // std::allocator provides; without this override that inherited method would
+  // bypass the counting allocate() above and leave nAllocations at 0. libc++
+  // (e.g. Homebrew LLVM 22) routes vector growth through allocate_at_least even
+  // in C++20 mode, so detect the base member directly rather than gating on the
+  // C++23 __cpp_lib_allocate_at_least macro, which folly's default C++20 build
+  // does not define.
+  template <typename Base = std::allocator<T>>
+    requires requires(Base& b, std::size_t n) { b.allocate_at_least(n); }
   auto allocate_at_least(std::size_t n) {
     nAllocations += 1;
     return std::allocator<T>::allocate_at_least(n);
   }
-#endif
   int nAllocations{0};
 
   template <typename U>
