@@ -15,52 +15,38 @@
 
 # pyre-unsafe
 
-import asyncio
 import unittest
 
 # pyre-fixme[21]: Could not find module `folly.python.test.simplegenerator`.
 from folly.python.test.simplegenerator import SimpleGenerator
 
 
-class GeneratorTest(unittest.TestCase):
-    def test_iter_generator(self) -> None:
-        async def wrapper() -> None:
-            # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
-            gen = SimpleGenerator("normal")
-            expected = 1
+class GeneratorTest(unittest.IsolatedAsyncioTestCase):
+    async def test_iter_generator(self) -> None:
+        # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
+        gen = SimpleGenerator("normal")
+        expected = 1
+        async for v in gen:
+            self.assertEqual(v, expected)
+            expected += 1
+        self.assertEqual(expected, 6)
+
+    async def test_iter_generator_empty(self) -> None:
+        # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
+        gen = SimpleGenerator("empty")
+        async for _ in gen:  # noqa: F841
+            self.assertFalse(True, "this should never run")
+        else:
+            self.assertTrue(
+                True, "this will be run when generator is empty, as expected"
+            )
+
+    async def test_iter_generator_error(self) -> None:
+        # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
+        gen = SimpleGenerator("error")
+        async for v in gen:
+            self.assertEqual(v, 42)
+            break
+        with self.assertRaises(RuntimeError):
             async for v in gen:
-                self.assertEqual(v, expected)
-                expected += 1
-            self.assertEqual(expected, 6)
-
-        asyncio.run(wrapper())
-
-    def test_iter_generator_empty(self) -> None:
-        loop = asyncio.get_event_loop()
-
-        async def wrapper() -> None:
-            # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
-            gen = SimpleGenerator("empty")
-            async for _ in gen:  # noqa: F841
-                self.assertFalse(True, "this should never run")
-            else:
-                self.assertTrue(
-                    True, "this will be run when generator is empty, as expected"
-                )
-
-        loop.run_until_complete(wrapper())
-
-    def test_iter_generator_error(self) -> None:
-        loop = asyncio.get_event_loop()
-
-        async def wrapper() -> None:
-            # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
-            gen = SimpleGenerator("error")
-            async for v in gen:
-                self.assertEqual(v, 42)
-                break
-            with self.assertRaises(RuntimeError):
-                async for v in gen:
-                    pass
-
-        loop.run_until_complete(wrapper())
+                pass
