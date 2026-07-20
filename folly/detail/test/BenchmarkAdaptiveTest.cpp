@@ -106,6 +106,14 @@ TEST(SortedSamplesTest, PercentileCIRelWidthWithTooFewSamples) {
   EXPECT_DOUBLE_EQ(s.percentileCIRelWidth(50.0), 100.0);
 }
 
+TEST(PrecisionBudgetTest, UsesAbsoluteFloorNearZero) {
+  EXPECT_DOUBLE_EQ(precisionBudgetNs(0.0, 0.4), kBenchmarkPrecisionFloorNs);
+  EXPECT_DOUBLE_EQ(precisionBudgetNs(0.1, 0.4), kBenchmarkPrecisionFloorNs);
+  EXPECT_DOUBLE_EQ(precisionBudgetNs(2.5, 0.4), kBenchmarkPrecisionFloorNs);
+  EXPECT_DOUBLE_EQ(precisionBudgetNs(3.0, 0.4), 0.012);
+  EXPECT_DOUBLE_EQ(precisionBudgetNs(100.0, 0.4), 0.4);
+}
+
 TEST(SortedSamplesTest, PercentileCIRequiresTwoSamples) {
   SortedSamples s({42.0});
   EXPECT_DEATH(
@@ -259,6 +267,23 @@ TEST(AdaptiveTest, BaselineSubtractionClampsToZero) {
   ASSERT_EQ(result.results.size(), 1);
   // Should clamp to 0, not go negative
   EXPECT_EQ(result.results[0].timeInNs, 0.0);
+}
+
+TEST(AdaptiveTest, NearZeroConvergesWithAbsolutePrecisionFloor) {
+  auto opts = defaultTestOptions();
+  opts.sliceUsec = 50000; // 50ms per sample
+  opts.targetPrecisionPct = 0.4;
+  opts.minSamples = 5;
+  opts.maxSecs = 1;
+
+  std::vector<BenchmarkRegistration> benchmarks{
+      makeReg("matches_baseline", 50ms)};
+  auto result = runBenchmarksAdaptive(
+      toPtrs(benchmarks), simpleBench(50ms), noOpSuspenderBaseline(), opts);
+
+  ASSERT_EQ(result.results.size(), 1);
+  EXPECT_EQ(result.results[0].timeInNs, 0.0);
+  EXPECT_LT(result.totalRounds, 10u);
 }
 
 TEST(AdaptiveTest, EqualSamplingAcrossBenchmarks) {

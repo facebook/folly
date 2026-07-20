@@ -52,9 +52,11 @@ buck2 run @//mode/opt //your:benchmark -- --bm_mode=adaptive --bm_max_secs=30
 
 Pass `--bm_target_precision_pct` to control the convergence threshold — the
 measurement's 95% confidence interval must be narrower than this percentage of
-the estimate (the default `0.4` means precise to 0.4ns out of 100ns).  Tighten
-it (e.g., `0.1`) if you need finer discrimination between benchmarks, but note
-that binary layout effects (see below) often dominate at that level.
+the estimate (the default `0.4` means precise to 0.4ns out of 100ns), with a
+10ps absolute floor for near-zero-cost benchmarks where relative precision is not
+meaningful. Tighten it (e.g., `0.1`) if you need finer discrimination between
+benchmarks, but note that binary layout effects (see below) often dominate at
+that level.
 
 *Watch out*: a "converged" measurement can still be wrong — see the next
 section.
@@ -242,7 +244,7 @@ while not converged:
 
 For each benchmark:
 1. Check stability (split-half agreement)
-2. Check accuracy (CI width < target %)
+2. Check accuracy (CI width < max(relative target, 10ps floor))
 3. Done when both pass, or timeout
 
 **Phase 4: Report**

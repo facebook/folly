@@ -34,6 +34,10 @@ inline constexpr const char* kANSIBoldYellow = "\033[1;33m";
 inline constexpr const char* kANSIBoldRed = "\033[1;31m";
 inline constexpr const char* kANSIReset = "\033[0m";
 
+// Below 10ps, keep the row in the output instead of timing out on relative
+// precision that has no stable meaning near zero.
+inline constexpr double kBenchmarkPrecisionFloorNs = 0.01;
+
 // Confidence interval for a percentile estimate.
 struct PercentileCI {
   double lo;
@@ -47,7 +51,14 @@ struct PercentileCI {
     }
     return (hi - lo) / estimate * 100.0;
   }
+
+  double width() const { return hi - lo; }
 };
+
+inline double precisionBudgetNs(double estimate, double targetPrecisionPct) {
+  return std::max(
+      kBenchmarkPrecisionFloorNs, targetPrecisionPct / 100.0 * estimate);
+}
 
 // Sample container with statistical methods. Sorts on construction.
 class SortedSamples {

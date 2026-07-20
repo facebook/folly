@@ -109,6 +109,14 @@ fb_dirsync_cpp_benchmark(
     ],
 )
 
+fb_dirsync_cpp_benchmark(
+    name = "benchmark_adaptive_near_zero_benchmark",
+    srcs = ["BenchmarkAdaptiveNearZeroBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark",
+    ],
+)
+
 fb_dirsync_cpp_unittest(
     name = "traponavx512_test_negative",
     srcs = ["TrapOnAvx512TestNegative.cpp"],

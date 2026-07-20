@@ -88,6 +88,27 @@ namespace {
 // and the potential benefit is cleaner measurements. The most important uses
 // are on SamplingLoop::run() and checkAllDone() which bound the hot path.
 
+bool isPrecise(const PercentileCI& ci, double targetPrecisionPct) {
+  return ci.width() <= precisionBudgetNs(ci.estimate, targetPrecisionPct);
+}
+
+std::string formatPrecision(const PercentileCI& ci, double targetPrecisionPct) {
+  std::ostringstream oss;
+  auto budget = precisionBudgetNs(ci.estimate, targetPrecisionPct);
+  oss << readableTime(ci.width() / 1e9, 1)
+      << " <= " << readableTime(budget / 1e9, 1);
+  if (budget == kBenchmarkPrecisionFloorNs) {
+    oss << " (absolute floor";
+    if (ci.estimate > 0) {
+      oss << ", " << ci.relWidth() << "%";
+    }
+    oss << ")";
+  } else if (ci.estimate > 0) {
+    oss << " (" << ci.relWidth() << "%)";
+  }
+  return oss.str();
+}
+
 // Format sample statistics concisely.
 FOLLY_NOINLINE std::string formatSampleStats(
     const char* name,
@@ -106,8 +127,9 @@ FOLLY_NOINLINE std::string formatSampleStats(
   SortedSamples sorted(samples);
   auto ci = sorted.percentileCI(opts.targetPercentile);
   oss << "p" << opts.targetPercentile << "="
-      << readableTime(ci.estimate / 1e9, 1) << " to " << ci.relWidth() << "%"
-      << ", " << samples.size() << " samples"
+      << readableTime(ci.estimate / 1e9, 1) << ", CI "
+      << formatPrecision(ci, opts.targetPrecisionPct) << ", " << samples.size()
+      << " samples"
       << ", " << duration_cast<seconds>(elapsed).count() << "s";
 
   if (samples.size() >= 4) {
@@ -208,9 +230,9 @@ struct BenchState {
     if (!isStable()) {
       return false;
     }
-    done =
-        SortedSamples(timings()).percentileCIRelWidth(opts->targetPercentile) <=
-        opts->targetPrecisionPct;
+    done = isPrecise(
+        SortedSamples(timings()).percentileCI(opts->targetPercentile),
+        opts->targetPrecisionPct);
     return done;
   }
 
@@ -308,8 +330,8 @@ FOLLY_NOINLINE std::string formatIntermediateReport(
         {s.reg->file, s.name, pctile, s.countersForEstimate(pctile)});
 
     bool converged = s.samples.size() >= opts.minSamples && s.isStable() &&
-        sorted.percentileCIRelWidth(opts.targetPercentile) <=
-            opts.targetPrecisionPct;
+        isPrecise(sorted.percentileCI(opts.targetPercentile),
+                  opts.targetPrecisionPct);
     if (converged) {
       annotations.emplace_back();
     } else {
@@ -539,9 +561,9 @@ AdaptiveResult runBenchmarksAdaptive(
     std::string msg;
     for (const auto& s : states) {
       if (!s.isStable() ||
-          SortedSamples(s.timings())
-                  .percentileCIRelWidth(opts.targetPercentile) >
-              opts.targetPrecisionPct) {
+          !isPrecise(
+              SortedSamples(s.timings()).percentileCI(opts.targetPercentile),
+              opts.targetPrecisionPct)) {
         msg += "\n  " + s.formatStats();
       }
     }
