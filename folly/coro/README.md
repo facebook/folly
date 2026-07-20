@@ -255,7 +255,7 @@ folly::coro::Task<int> example() {
 
 ### folly::SemiFuture
 
-Any `folly::coro::Task` can be converted to a `folly::SemiFuture` by calling the `.semi()` method. This allows existing `folly::Future` primitives, such as `collectAll()` and `collectAny()`, to be used in coroutine code.
+Any `folly::coro::Task` can be converted to a `folly::SemiFuture` by calling `.semi()`. Use this for interoperability with APIs that require `folly::Future` or `folly::SemiFuture`; otherwise, prefer coroutine-native primitives.
 
 ```c++
 folly::coro::Task<int> task1();
@@ -344,11 +344,11 @@ Operations with side-effects:
 folly::coro::Task<void> doWork(int i);
 
 folly::coro::Task<void> example(int count) {
-  std::vector<folly::coro::SemiFuture<Unit>> tasks;
+  std::vector<folly::coro::Task<void>> tasks;
   for (int i = 0; i < count; ++i) {
-    tasks.push_back(doWork(i).semi());
+    tasks.push_back(doWork(i));
   }
-  co_await folly::collectAllSemiFuture(tasks.begin(), tasks.end());
+  co_await folly::coro::collectAllRange(std::move(tasks));
 }
 ```
 
@@ -358,14 +358,14 @@ Operations that return values:
 folly::coro::Task<std::string> getString(int i);
 
 folly::coro::Task<void> example(int count) {
-  std::vector<folly::coro::SemiFuture<Unit>> tasks;
+  std::vector<folly::coro::Task<std::string>> tasks;
   for (int i = 0; i < count; ++i) {
-    tasks.push_back(getString(i).semi());
+    tasks.push_back(getString(i));
   }
 
   // Concurrently wait for all of these tasks.
   std::vector<std::string> strings =
-      co_await folly::collectAllSemiFuture(tasks.begin(), tasks.end());
+      co_await folly::coro::collectAllRange(std::move(tasks));
 
   // ... use 'strings'
 }
