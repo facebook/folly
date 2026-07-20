@@ -213,6 +213,18 @@ size_t getRefillRingSize(size_t rqEntries) {
   return folly::align_ceil(size, pageSize);
 }
 
+template <typename QueryType>
+bool ioUringQuery(uint32_t queryOp, QueryType& out) {
+  struct io_uring_query_hdr hdr{};
+  hdr.query_op = queryOp;
+  hdr.query_data = reinterpret_cast<__u64>(&out);
+  hdr.size = sizeof(QueryType);
+
+  int ret = io_uring_register(
+      static_cast<unsigned int>(-1), IORING_REGISTER_QUERY, &hdr, 0);
+  return ret == 0 && hdr.result == 0;
+}
+
 constexpr uint64_t kBufferMask = (1ULL << IORING_ZCRX_AREA_SHIFT) - 1;
 constexpr uint32_t kMTU = 4096;
 
@@ -224,14 +236,7 @@ uint32_t IoUringZeroCopyBufferPoolImpl::getNotifStatSize() {
 
 void IoUringZeroCopyBufferPoolImpl::checkZcRxFeatures() {
   struct io_uring_query_zcrx zcrxQuery{};
-  struct io_uring_query_hdr hdr{};
-  hdr.query_op = IO_URING_QUERY_ZCRX;
-  hdr.query_data = reinterpret_cast<__u64>(&zcrxQuery);
-  hdr.size = sizeof(zcrxQuery);
-
-  int ret = io_uring_register(
-      static_cast<unsigned int>(-1), IORING_REGISTER_QUERY, &hdr, 0);
-  if (ret != 0 || hdr.result != 0) {
+  if (!ioUringQuery(IO_URING_QUERY_ZCRX, zcrxQuery)) {
     return;
   }
 
@@ -246,14 +251,7 @@ void IoUringZeroCopyBufferPoolImpl::checkZcRxFeatures() {
   }
 
   struct io_uring_query_zcrx_notif notifQuery{};
-  struct io_uring_query_hdr notifHdr{};
-  notifHdr.query_op = IO_URING_QUERY_ZCRX_NOTIF;
-  notifHdr.query_data = reinterpret_cast<__u64>(&notifQuery);
-  notifHdr.size = sizeof(notifQuery);
-
-  ret = io_uring_register(
-      static_cast<unsigned int>(-1), IORING_REGISTER_QUERY, &notifHdr, 0);
-  if (ret == 0 && notifHdr.result == 0) {
+  if (ioUringQuery(IO_URING_QUERY_ZCRX_NOTIF, notifQuery)) {
     supportedFeatures_.notifFlags = notifQuery.notif_flags;
     supportedFeatures_.notifStatsSize = notifQuery.notif_stats_size;
     supportedFeatures_.notifStatsOffAlignment =
