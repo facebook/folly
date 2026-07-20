@@ -1,10 +1,10 @@
-# @title Coro
+# Coro
 
-# Introduction
+## Introduction
 
-[folly::coro](https://github.com/facebook/folly/blob/master/folly/experimental/coro/) is a developer-friendly asynchronous C++ framework based on [Coroutines TS](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4775.pdf). It is available for any fbcode project that is built with Сlang and uses platform007.
+[folly::coro](https://github.com/facebook/folly/tree/main/folly/coro) is a developer-friendly asynchronous C++ framework built on [C++20 coroutines](https://en.cppreference.com/w/cpp/language/coroutines.html).
 
-## Basic example
+### Basic example
 
 ```c++
 folly::coro::Task<int> task42() {
@@ -19,11 +19,12 @@ folly::coro::Task<int> taskSlow43() {
 int main() {
   ...
   CHECK_EQ(43, folly::coro::blockingWait(co_withExecutor(
-      folly::getGlobalCPUExecutor(), taskSlow43(), taskSlow43())));
+      folly::getGlobalCPUExecutor(), taskSlow43())));
   ...
 }
 ```
-The same logic implemented with folly::SemiFuture:
+
+The same logic implemented with `folly::SemiFuture`:
 
 ```c++
 folly::SemiFuture<int> task42() {
@@ -47,19 +48,21 @@ int main() {
   ...
 }
 ```
-## Features
 
-* Better performance comparing to `folly::Future`
+### Features
+
+* Better performance than `folly::Future`
 * Full-compatibility with `folly::Future` and `folly::SemiFuture`
 * Asynchronous synchronization primitives (e.g. `coro::Baton`, `coro::Mutex`, `coro::SharedMutex`)
-* Compatible with any other library based on Coroutines TS
+* Compatible with other libraries based on C++20 coroutines
 
-# Overview
+## Overview
 
-## Writing a coroutine
+### Writing a coroutine
 
 Any function that returns a `folly::coro::Task` and has at least one use of `co_await` or `co_return` is a coroutine.
-NOTE: You have to always use `co_return` instead of `return` in coroutines.
+
+Use `co_return` instead of `return` in a coroutine.
 
 ```c++
 folly::coro::Task<int> task42() {
@@ -72,10 +75,12 @@ folly::coro::Task<int> task43() {
 }
 ```
 
-## Starting a coroutine
+### Starting a coroutine
+
 Calling a `folly::coro::Task`-coroutine function captures the arguments, but doesn't start executing the coroutine immediately. Instead the coroutine is lazily started when you `co_await` the task.
 
 Alternatively, you can start executing a coroutine from a normal function by attaching a `folly::Executor` via `co_withExecutor()` and either calling `start()` or using `folly::coro::blockingWait()`.
+
 ```c++
 folly::coro::Task<void> checkArg(int arg42) {
   CHECK_EQ(42, arg42);
@@ -84,7 +89,7 @@ folly::coro::Task<void> checkArg(int arg42) {
 
 void runCoroutine1() {
   int arg42 = 42;
-  // coroutine arguments are captured here, not when we start the coroutine
+  // Coroutine arguments are captured here, not when we start the coroutine.
   auto task = checkArg(arg42);
   arg42 = 43;
   folly::coro::blockingWait(co_withExecutor(
@@ -97,14 +102,15 @@ void runCoroutine2() {
 }
 ```
 
-## Executor-stickiness
+### Executor stickiness
 
 Every `folly::coro::Task` will always be running on the `Executor` on which it was launched, even if it `co_await`ed something that completed on a different `Executor`.
 
 You can extract the Executor which the `folly::coro::Task` is running on by using `folly::coro::co_current_executor`.
+
 ```c++
 folly::coro::Task<int> task42Slow() {
-  // This doesn't suspend the coroutine, just extracts the Executor*
+  // This doesn't suspend the coroutine, just extracts the Executor*.
   folly::Executor* startExecutor = co_await folly::coro::co_current_executor;
   co_await folly::futures::sleep(std::chrono::seconds{1});
   folly::Executor* resumeExecutor = co_await folly::coro::co_current_executor;
@@ -113,6 +119,7 @@ folly::coro::Task<int> task42Slow() {
 ```
 
 By default, when a `folly::coro::Task` is awaited within the context of another `Task` it inherits the executor from the awaiting coroutine. If you want to run a child coroutine on a different executor then you can call `co_withExecutor()` to explicitly specify an alternative executor.
+
 ```c++
 folly::coro::Task<void> foo() {
   co_await folly::futures::sleep(std::chrono::seconds{1});
@@ -129,11 +136,13 @@ folly::coro::Task<void> bar(folly::CPUThreadPoolExecutor* otherExecutor) {
 }
 ```
 
-## Awaitables
-You can `co_await` anything that implements the `Awaitable` concept (see Coroutines TS for more details).
+### Awaitables
+
+You can `co_await` anything that follows the C++ [awaitable protocol](https://en.cppreference.com/w/cpp/language/coroutines.html#co_await).
 It can be `folly::coro::Task`, `folly::Future`, `folly::SemiFuture` etc.
 
 Keep in mind that an `Awaitable` may result in an exception, so you'll have to use try-catch blocks to handle errors.
+
 ```c++
 folly::coro::Task<void> throwCoro() {
   throw std::logic_error("Expected");
@@ -154,7 +163,7 @@ folly::coro::Task<void> coro() {
 }
 ```
 
-## Concurrently awaiting multiple Tasks
+### Concurrently awaiting multiple Tasks
 
 When you invoke a coroutine that returns a `folly::coro::Task`, the coroutine
 doesn't begin execution immediately. It only starts when you apply `co_await`
@@ -165,6 +174,7 @@ This means that you cannot perform two operations concurrently by simply calling
 the two coroutines and later awaiting them both.
 
 **SLOWER: The following will execute the two operations sequentially**
+
 ```c++
 folly::coro::Task<int> task1();
 folly::coro::Task<int> task2();
@@ -182,6 +192,7 @@ If, instead, you want to perform these operations concurrently and wait until
 both of the operations complete you can use `folly::coro::collectAll()`.
 
 **FASTER: The following _may_ execute the two operations concurrently**
+
 ```c++
 folly::coro::Task<int> task1();
 folly::coro::Task<int> task2();
@@ -202,7 +213,7 @@ coroutine is resumed with a tuple of the individual results.
 Note that if both `task1()` and `task2()` complete synchronously then they
 will still be executed sequentially.
 
-## Handling partial failure
+### Handling partial failure
 
 When executing multiple sub-tasks concurrently it's possible that some of those
 tasks will fail with an exception and some will succeed.
@@ -242,9 +253,10 @@ folly::coro::Task<int> example() {
 }
 ```
 
-## folly::SemiFuture
-Any `folly::coro::Task` can be converted to a `folly::SemiFuture` by calling the `.semi()` method.
-NOTE: this allows using any existing `folly::Future` primitives (e.g. `collectAll()`, `collectAny()`) in coroutine code.
+### folly::SemiFuture
+
+Any `folly::coro::Task` can be converted to a `folly::SemiFuture` by calling the `.semi()` method. This allows existing `folly::Future` primitives, such as `collectAll()` and `collectAny()`, to be used in coroutine code.
+
 ```c++
 folly::coro::Task<int> task1();
 folly::coro::Task<int> task2();
@@ -258,17 +270,18 @@ folly::coro::Task<int> sumTask() {
 
   co_return *r1 + *r2;
 }
-
 ```
 
-## Lambdas
-You can implement a lambda coroutine however you need to explicitly specify a return type - the compiler is not yet able to deduce the return type of a coroutine from the body.
+### Lambdas
 
-IMPORTANT: You need to be very careful about the lifetimes of temporary lambda objects. Invoking a lambda coroutine returns a `folly::coro::Task` that captures a reference to the lambda and so if the returned Task is not immediately `co_await`ed then the task will be left with a dangling reference when the temporary lambda goes out of scope. \
-\
+A lambda can be a coroutine, but its return type must be specified explicitly because the compiler cannot deduce it from the body.
+
+IMPORTANT: You need to be very careful about the lifetimes of temporary lambda objects. Invoking a lambda coroutine returns a `folly::coro::Task` that captures a reference to the lambda and so if the returned Task is not immediately `co_await`ed then the task will be left with a dangling reference when the temporary lambda goes out of scope.
+
 Use the `folly::coro::co_invoke()` helper when immediately invoking a lambda coroutine to keep the lambda alive as long as the `Task`.
 
-**BAD:** The following code has undefined behaviour
+**BAD:** The following code has undefined behavior.
+
 ```c++
 folly::coro::Task<Reply> coro_send(const Request&);
 
@@ -279,13 +292,14 @@ folly::SemiFuture<Reply> semifuture_send(const Request& request) {
       LOG(reply.error().message());
     }
     co_return reply;
-  }(); // <-- Whoops, lambda is destroyed at semicolon
+  }(); // <-- Whoops, lambda is destroyed at semicolon.
 
   return std::move(task).semi();
 }
 ```
 
 **GOOD:** Use `co_invoke` to invoke the lambda to prevent the lambda from being destroyed.
+
 ```c++
 folly::SemiFuture<Reply> semifuture_send(const Request& request) {
   auto task = folly::coro::co_invoke([request]() -> folly::coro::Task<Reply> {
@@ -300,9 +314,9 @@ folly::SemiFuture<Reply> semifuture_send(const Request& request) {
 }
 ```
 
-## Writing loops with coroutines
+### Writing loops with coroutines
 
-### Sequential retry loop
+#### Sequential retry loop
 
 ```c++
 folly::coro::Task<void> pingServer();
@@ -322,9 +336,10 @@ folly::coro::Task<void> pingServerWithRetry(int retryCount) {
 }
 ```
 
-### Concurrently execute many operations
+#### Concurrently execute many operations
 
 Operations with side-effects:
+
 ```c++
 folly::coro::Task<void> doWork(int i);
 
@@ -338,6 +353,7 @@ folly::coro::Task<void> example(int count) {
 ```
 
 Operations that return values:
+
 ```c++
 folly::coro::Task<std::string> getString(int i);
 
