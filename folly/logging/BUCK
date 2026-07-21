@@ -133,6 +133,7 @@ fb_dirsync_cpp_library(
     preprocessor_flags = [
         "-DFOLLY_XLOG_SUPPORT_BUCK2",
     ],
+    use_export_header_unit = True,
     use_raw_headers = True,
     deps = [
         "//folly:constexpr_math",
