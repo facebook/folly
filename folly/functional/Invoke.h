@@ -52,6 +52,31 @@
 
 namespace folly {
 
+//  invoke_fn
+//  invoke
+//
+//  mimic: std::invoke, C++17
+struct invoke_fn {
+  template <typename F, typename... A>
+  FOLLY_ERASE constexpr auto operator()(F&& f, A&&... a) const
+      noexcept(noexcept(static_cast<F&&>(f)(static_cast<A&&>(a)...)))
+          -> decltype(static_cast<F&&>(f)(static_cast<A&&>(a)...)) {
+    return static_cast<F&&>(f)(static_cast<A&&>(a)...);
+  }
+  template <typename M, typename C, typename... A>
+  FOLLY_ERASE constexpr auto operator()(M C::* f, A&&... a) const
+      noexcept(noexcept(std::mem_fn(f)(static_cast<A&&>(a)...)))
+          -> decltype(std::mem_fn(f)(static_cast<A&&>(a)...)) {
+    return std::mem_fn(f)(static_cast<A&&>(a)...);
+  }
+};
+
+inline constexpr invoke_fn invoke;
+
+} // namespace folly
+
+namespace folly {
+
 namespace invoke_detail {
 
 //  ok_one_

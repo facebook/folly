@@ -106,6 +106,21 @@ FOLLY_CREATE_QUAL_INVOKER_SUITE(std_swap, ::std::swap);
 
 } // namespace
 
+TEST_F(InvokeTest, invoke) {
+  Fn fn;
+
+  EXPECT_TRUE(noexcept(folly::invoke(fn, 1, 2)));
+  EXPECT_FALSE(noexcept(folly::invoke(fn, 1, "2")));
+
+  EXPECT_EQ('a', folly::invoke(fn, 1, 2));
+  EXPECT_EQ(17, folly::invoke(fn, 1, "2"));
+
+  using FnA = char (Fn::*)(int, int);
+  using FnB = int volatile && (Fn::*)(int, char const*);
+  EXPECT_EQ('a', folly::invoke(static_cast<FnA>(&Fn::operator()), fn, 1, 2));
+  EXPECT_EQ(17, folly::invoke(static_cast<FnB>(&Fn::operator()), fn, 1, "2"));
+}
+
 TEST_F(InvokeTest, invoke_result) {
   EXPECT_TRUE(
       (std::is_same<char, folly::invoke_result_t<Fn, int, char>>::value));
