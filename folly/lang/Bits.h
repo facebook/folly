@@ -77,28 +77,6 @@
 
 namespace folly {
 
-#if defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L
-
-using std::bit_cast;
-
-#else
-
-//  mimic: std::bit_cast, C++20
-template <
-    typename To,
-    typename From,
-    std::enable_if_t<
-        sizeof(From) == sizeof(To) && std::is_trivially_copyable<To>::value &&
-            std::is_trivially_copyable<From>::value,
-        int> = 0>
-To bit_cast(const From& src) noexcept {
-  aligned_storage_for_t<To> storage;
-  std::memcpy(&storage, &src, sizeof(From));
-  return reinterpret_cast<To&>(storage);
-}
-
-#endif
-
 namespace detail {
 template <typename Dst, typename Src>
 constexpr std::make_signed_t<Dst> bits_to_signed(Src const s) {
