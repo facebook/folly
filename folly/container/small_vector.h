@@ -163,8 +163,8 @@ inline constexpr bool should_trivially_copy =
  * extra copies and moves for non-trivial types.
  */
 template <class T, class Create>
-typename std::enable_if<!should_trivially_copy<T>>::type
-moveObjectsRightAndCreate(
+  requires(!should_trivially_copy<T>)
+void moveObjectsRightAndCreate(
     T* const first,
     T* const lastConstructed,
     T* const realLast,
@@ -217,8 +217,8 @@ moveObjectsRightAndCreate(
 // memory may be uninitialized, and std::move_backward() won't work when it
 // can't memmove().
 template <class T, class Create>
-typename std::enable_if<should_trivially_copy<T>>::type
-moveObjectsRightAndCreate(
+  requires(should_trivially_copy<T>)
+void moveObjectsRightAndCreate(
     T* const first,
     T* const lastConstructed,
     T* const realLast,
@@ -341,9 +341,8 @@ struct IntegralSizePolicy<SizeType, true, AlwaysUseHeap>
    * ranges don't overlap.
    */
   template <class T>
-  typename std::enable_if<
-      !detail::small_vector_detail::should_trivially_copy<T>>::type
-  moveToUninitialized(T* first, T* last, T* out) {
+    requires(!detail::small_vector_detail::should_trivially_copy<T>)
+  void moveToUninitialized(T* first, T* last, T* out) {
     std::size_t idx = 0;
     {
       auto rollback = makeGuard([&] {
@@ -363,9 +362,8 @@ struct IntegralSizePolicy<SizeType, true, AlwaysUseHeap>
 
   // Specialization for trivially copyable types.
   template <class T>
-  typename std::enable_if<
-      detail::small_vector_detail::should_trivially_copy<T>>::type
-  moveToUninitialized(T* first, T* last, T* out) {
+    requires(detail::small_vector_detail::should_trivially_copy<T>)
+  void moveToUninitialized(T* first, T* last, T* out) {
     std::memmove(
         static_cast<void*>(out),
         static_cast<void const*>(first),
