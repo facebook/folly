@@ -158,6 +158,28 @@ TEST(MapUtil, getPtr) {
   EXPECT_EQ(nullptr, get_ptr(nullMap, 2));
 }
 
+namespace {
+template <typename Map, typename = void>
+struct GetPtrCompiles : std::false_type {};
+
+template <typename Map>
+struct GetPtrCompiles<
+    Map,
+    void_t<decltype(get_ptr(
+        std::declval<Map>(),
+        std::declval<typename std::remove_cvref_t<Map>::key_type>()))>>
+    : std::true_type {};
+} // namespace
+
+TEST(MapUtil, getPtrTemporary) {
+  // get_ptr returns a pointer into the map, so calling it on a temporary
+  // (rvalue) map is disallowed to prevent a dangling pointer. lvalue maps
+  // (const or mutable) remain valid.
+  EXPECT_TRUE((GetPtrCompiles<std::map<int, std::string>&>::value));
+  EXPECT_TRUE((GetPtrCompiles<const std::map<int, std::string>&>::value));
+  EXPECT_FALSE((GetPtrCompiles<std::map<int, std::string>&&>::value));
+}
+
 TEST(MapUtil, getPtr2) {
   folly::sorted_vector_map<int, int> m;
   m[1] = 7;
@@ -249,7 +271,7 @@ template <typename T>
 struct Compiles<
     T,
     void_t<decltype(get_ref_default(
-        std::declval<std::map<int, element_type_t<T>>>(),
+        std::declval<const std::map<int, element_type_t<T>>&>(),
         std::declval<int>(),
         std::declval<T>()))>> : std::true_type {};
 } // namespace
@@ -322,7 +344,7 @@ template <typename T>
 struct GetRefDefaultPathCompiles<
     T,
     void_t<decltype(get_ref_default(
-        std::declval<std::map<int, std::map<int, element_type_t<T>>>>(),
+        std::declval<const std::map<int, std::map<int, element_type_t<T>>>&>(),
         std::declval<int>(),
         std::declval<int>(),
         std::declval<T>()))>> : std::true_type {};
