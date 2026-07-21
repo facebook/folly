@@ -387,7 +387,7 @@ struct EndianInt {
     // we rely on compilers to optimize away the bit_cast calls
     constexpr auto s = sizeof(T);
     using B = typename uint_types_by_size<s>::type;
-    return bit_cast<T>(byteswap_gen(bit_cast<B>(x)));
+    return std::bit_cast<T>(byteswap_gen(std::bit_cast<B>(x)));
   }
   static T big(T x) { return kIsLittleEndian ? EndianInt::swap(x) : x; }
   static T little(T x) { return kIsBigEndian ? EndianInt::swap(x) : x; }
