@@ -774,12 +774,15 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Conversion to folly::Range
    * \return `Range<Char*>{begin(), end()}`
    */
-  constexpr Range<Char*> toRange() noexcept { return {begin(), end()}; }
+  constexpr Range<Char*> toRange() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return {begin(), end()};
+  }
 
   /**
    * \overload
    */
-  constexpr Range<const Char*> toRange() const noexcept {
+  constexpr Range<const Char*> toRange() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return {begin(), end()};
   }
 
@@ -936,85 +939,121 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Return a pointer to a range of `size()+1` characters, the last of which
    * is `Char(0)`.
    */
-  constexpr Char* data() noexcept { return data_; }
+  constexpr Char* data() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return data_;
+  }
 
   /**
    * \overload
    */
-  constexpr const Char* data() const noexcept { return data_; }
+  constexpr const Char* data() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return data_;
+  }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * \return `data()`.
    */
-  constexpr const Char* c_str() const noexcept { return data_; }
+  constexpr const Char* c_str() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return data_;
+  }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * \return `data()`.
    */
-  constexpr Char* begin() noexcept { return data_; }
+  constexpr Char* begin() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return data_;
+  }
 
   /**
    * \overload
    */
-  constexpr const Char* begin() const noexcept { return data_; }
+  constexpr const Char* begin() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return data_;
+  }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * \return `data()`.
    */
-  constexpr const Char* cbegin() const noexcept { return begin(); }
+  constexpr const Char* cbegin() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return begin();
+  }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * \return `data() + size()`.
    */
-  constexpr Char* end() noexcept { return data_ + size_; }
+  constexpr Char* end() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return data_ + size_;
+  }
 
   /**
    * \overload
    */
-  constexpr const Char* end() const noexcept { return data_ + size_; }
+  constexpr const Char* end() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return data_ + size_;
+  }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * \return `data() + size()`.
    */
-  constexpr const Char* cend() const noexcept { return end(); }
+  constexpr const Char* cend() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return end();
+  }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * Returns a reverse iterator to the first character of the reversed string.
    * It corresponds to the last + 1 character of the non-reversed string.
    */
-  constexpr reverse_iterator rbegin() noexcept {
+  constexpr reverse_iterator rbegin() noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return reverse_iterator{data_ + size_};
   }
 
   /**
    * \overload
    */
-  constexpr const_reverse_iterator rbegin() const noexcept {
+  constexpr const_reverse_iterator rbegin() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return const_reverse_iterator{data_ + size_};
   }
 
   /**
    * \note Equivalent to `rbegin()` on a const-qualified reference to `*this`.
    */
-  constexpr const_reverse_iterator crbegin() const noexcept { return rbegin(); }
+  constexpr const_reverse_iterator crbegin() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return rbegin();
+  }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * Returns a reverse iterator to the last + 1 character of the reversed
    * string. It corresponds to the first character of the non-reversed string.
    */
-  constexpr reverse_iterator rend() noexcept { return reverse_iterator{data_}; }
+  constexpr reverse_iterator rend() noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return reverse_iterator{data_};
+  }
 
   /**
    * \overload
    */
-  constexpr const_reverse_iterator rend() const noexcept {
+  constexpr const_reverse_iterator rend() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return const_reverse_iterator{data_};
   }
 
   /**
    * \note Equivalent to `rend()` on a const-qualified reference to `*this`.
    */
-  constexpr const_reverse_iterator crend() const noexcept { return rend(); }
+  constexpr const_reverse_iterator crend() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return rend();
+  }
 
   /**
    * \return The number of `Char` elements in the string.
@@ -1046,7 +1085,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \return `*(data() + i)`
    * \throw std::out_of_range when i > size()
    */
-  constexpr Char& at(std::size_t i) noexcept(false) {
+  constexpr Char& at(std::size_t i) noexcept(false)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return i <= size_
         ? data_[i]
         : (throw_exception<std::out_of_range>(
@@ -1057,7 +1097,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   /**
    * \overload
    */
-  constexpr const Char& at(std::size_t i) const noexcept(false) {
+  constexpr const Char& at(std::size_t i) const noexcept(false)
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return i <= size_
         ? data_[i]
         : (throw_exception<std::out_of_range>(
@@ -1070,39 +1111,47 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note `(*this)[size()]` is allowed will return `Char(0)`.
    * \return `*(data() + i)`
    */
-  constexpr Char& operator[](std::size_t i) noexcept {
+  constexpr Char& operator[](std::size_t i) noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return data_[detail::fixedstring::checkOverflowIfDebug(i, size_)];
   }
 
   /**
    * \overload
    */
-  constexpr const Char& operator[](std::size_t i) const noexcept {
+  constexpr const Char& operator[](std::size_t i) const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return data_[detail::fixedstring::checkOverflowIfDebug(i, size_)];
   }
 
   /**
    * \note Equivalent to `(*this)[0]`
    */
-  constexpr Char& front() noexcept { return (*this)[0u]; }
+  constexpr Char& front() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return (*this)[0u];
+  }
 
   /**
    * \overload
    */
-  constexpr const Char& front() const noexcept { return (*this)[0u]; }
+  constexpr const Char& front() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return (*this)[0u];
+  }
 
   /**
    * \note Equivalent to `at(size()-1)`
    * \pre `!empty()`
    */
-  constexpr Char& back() noexcept {
+  constexpr Char& back() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return data_[size_ - detail::fixedstring::checkOverflowIfDebug(1u, size_)];
   }
 
   /**
    * \overload
    */
-  constexpr const Char& back() const noexcept {
+  constexpr const Char& back() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return data_[size_ - detail::fixedstring::checkOverflowIfDebug(1u, size_)];
   }
 
