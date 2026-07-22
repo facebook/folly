@@ -20,6 +20,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/CppAttributes.h>
 #include <folly/Utility.h>
 #include <folly/lang/Align.h>
 
@@ -68,12 +69,12 @@ class aligned {
     return *this;
   }
 
-  T* get() noexcept { return &value_; }
-  T const* get() const noexcept { return &value_; }
-  T* operator->() noexcept { return &value_; }
-  T const* operator->() const noexcept { return &value_; }
-  T& operator*() noexcept { return value_; }
-  T const& operator*() const noexcept { return value_; }
+  T* get() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return &value_; }
+  T const* get() const noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return &value_; }
+  T* operator->() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return &value_; }
+  T const* operator->() const noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return &value_; }
+  T& operator*() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return value_; }
+  T const& operator*() const noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return value_; }
 
  private:
   alignas(Align) T value_;
