@@ -204,17 +204,16 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBufSingle(
   DCHECK_LT(i, ringBufferCount_)
       << "Buffer index " << i << " exceeds buffer count " << ringBufferCount_;
 
+  auto* bufferStart = getData(i);
+  BufferState* info = &bufferStates_[i];
   if (useIncremental_) {
-    auto* bufferStart = getData(i);
-    unsigned int currentOffset = bufferStates_[i].offset;
+    unsigned int currentOffset = info->offset;
     auto* dataPtr = bufferStart + currentOffset;
-    BufferState* info = &bufferStates_[i];
     ret = IOBuf::takeOwnership(
         static_cast<void*>(dataPtr), length, length, bufFreeFn, info);
   } else {
-    BufferState* info = &bufferStates_[i];
     ret = IOBuf::takeOwnership(
-        static_cast<void*>(getData(i)),
+        static_cast<void*>(bufferStart),
         sizePerBuffer_,
         length,
         bufFreeFn,
