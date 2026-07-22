@@ -1541,14 +1541,17 @@ class Appender : public Writable<Appender> {
     // If the length of this buffer is 0 try growing it.
     // Otherwise on the first iteration of the following loop memcpy is called
     // with a null source pointer.
-    if (FOLLY_UNLIKELY(length() == 0 && !tryGrowChain())) {
-      return 0;
+    size_t available = length();
+    if (FOLLY_UNLIKELY(available == 0)) {
+      if (!tryGrowChain()) {
+        return 0;
+      }
+      available = length();
     }
 
     size_t copied = 0;
     for (;;) {
       // Fast path: it all fits in one buffer.
-      size_t available = length();
       if (FOLLY_LIKELY(available >= len)) {
         memcpy(writableData(), buf, len);
         append(len);
@@ -1563,6 +1566,7 @@ class Appender : public Writable<Appender> {
       }
       buf += available;
       len -= available;
+      available = length();
     }
   }
 
