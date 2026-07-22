@@ -688,9 +688,24 @@ constexpr auto kCpplibVer = 0;
     (defined(__cpp_impl_coroutine) && __cpp_impl_coroutine >= 201902L)) && \
     (__has_include(<coroutine>) || __has_include(<experimental/coroutine>))
 #define FOLLY_HAS_COROUTINES 1
-// This is mainly to workaround bugs triggered by LTO, when stack allocated
-// variables in await_suspend end up on a coroutine frame.
+// FOLLY_NOINLINE here works around an LTO miscompile that promoted
+// await_suspend's stack locals onto the coroutine frame (D15143193).
+//
+// Clang >= 19 fixes the root cause: await_suspend is emitted into an isolated
+// wrapper (generateAwaitSuspendWrapper, via the llvm.coro.await.suspend.*
+// intrinsics) that the coroutine transform treats as opaque, so its locals
+// can't leak onto the frame. There the workaround is redundant for the
+// awaiters using this macro (final-suspend / scheduling paths that do not
+// capture a return address), so it expands to nothing.
+//
+// The forward awaiter (Task<T>::Awaiter::await_suspend) uses a separate,
+// unconditional FOLLY_NOINLINE for async-stack correctness
+// (__builtin_return_address); do not route it through this macro.
+#if defined(__clang__) && __clang_major__ >= 19
+#define FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES
+#else
 #define FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES FOLLY_NOINLINE
+#endif
 #else
 #define FOLLY_HAS_COROUTINES 0
 #endif
