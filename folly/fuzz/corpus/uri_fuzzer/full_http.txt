@@ -1,0 +1,1 @@
+http://user:pass@example.com:8080/path/to/res?key=val&flag=1#section

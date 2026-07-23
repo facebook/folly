@@ -1,0 +1,67 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# CIFuzz – runs OSS-Fuzz fuzz targets on every pull request.
+#
+# On each PR this action:
+#  1. Checks out the repository (with the PR changes).
+#  2. Builds the affected fuzz targets inside the OSS-Fuzz Docker image.
+#  3. Runs each fuzzer for a short duration (600 s by default).
+#  4. Uploads any crashes found as a workflow artifact.
+#
+# Reference: https://google.github.io/oss-fuzz/getting-started/continuous-integration/
+
+name: CIFuzz
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read  # to fetch code (actions/checkout)
+
+jobs:
+  fuzzing:
+    name: Run fuzz targets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build fuzz targets
+        uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
+        with:
+          oss-fuzz-project-name: folly
+          # Build the version of the code in this PR, not the OSS-Fuzz HEAD pin.
+          dry-run: false
+          language: c++
+          sanitizer: address
+
+      - name: Run fuzz targets
+        uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
+        with:
+          oss-fuzz-project-name: folly
+          fuzz-seconds: 600
+          dry-run: false
+          language: c++
+          sanitizer: address
+          output-sarif: true
+
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cifuzz-artifacts
+          path: ./out/artifacts
