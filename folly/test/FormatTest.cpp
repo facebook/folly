@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <folly/Format.h>
 
 #include <limits>
@@ -93,22 +94,23 @@ TEST(Format, uintToBinary) {
 }
 
 TEST(Format, Simple) {
-  EXPECT_EQ("hello", sformat("hello"));
-  EXPECT_EQ("42", sformat("{}", 42));
-  EXPECT_EQ("42 42", sformat("{0} {0}", 42));
-  EXPECT_EQ("00042  23   42", sformat("{0:05} {1:3} {0:4}", 42, 23));
+  EXPECT_EQ("hello", fmt::format("hello"));
+  EXPECT_EQ("42", fmt::format("{}", 42));
+  EXPECT_EQ("42 42", fmt::format("{0} {0}", 42));
+  EXPECT_EQ("00042  23   42", fmt::format("{0:05} {1:3} {0:4}", 42, 23));
   EXPECT_EQ(
-      "hello world hello 42", sformat("{0} {1} {0} {2}", "hello", "world", 42));
+      "hello world hello 42",
+      fmt::format("{0} {1} {0} {2}", "hello", "world", 42));
   EXPECT_EQ("XXhelloXX", sformat("{:X^9}", "hello"));
   EXPECT_EQ("XXX42XXXX", sformat("{:X^9}", 42));
   EXPECT_EQ("-0xYYYY2a", sformat("{:Y=#9x}", -42));
-  EXPECT_EQ("*", sformat("{}", '*'));
-  EXPECT_EQ("42", sformat("{}", 42));
-  EXPECT_EQ("0042", sformat("{:04}", 42));
+  EXPECT_EQ("*", fmt::format("{}", '*'));
+  EXPECT_EQ("42", fmt::format("{}", 42));
+  EXPECT_EQ("0042", fmt::format("{:04}", 42));
 
-  EXPECT_EQ("hello  ", sformat("{:7}", "hello"));
-  EXPECT_EQ("hello  ", sformat("{:<7}", "hello"));
-  EXPECT_EQ("  hello", sformat("{:>7}", "hello"));
+  EXPECT_EQ("hello  ", fmt::format("{:7}", "hello"));
+  EXPECT_EQ("hello  ", fmt::format("{:<7}", "hello"));
+  EXPECT_EQ("  hello", fmt::format("{:>7}", "hello"));
 
   EXPECT_EQ("  hi", sformat("{:>*}", 4, "hi"));
   EXPECT_EQ("   hi!", sformat("{:*}{}", 3, "", "hi!"));
@@ -156,10 +158,10 @@ TEST(Format, Simple) {
   EXPECT_EQ("61 62", sformat("{0[0]:x} {0[1]:x}", std::string("abcde")));
 
   // Test booleans
-  EXPECT_EQ("true", sformat("{}", true));
-  EXPECT_EQ("1", sformat("{:d}", true));
-  EXPECT_EQ("false", sformat("{}", false));
-  EXPECT_EQ("0", sformat("{:d}", false));
+  EXPECT_EQ("true", fmt::format("{}", true));
+  EXPECT_EQ("1", fmt::format("{:d}", true));
+  EXPECT_EQ("false", fmt::format("{}", false));
+  EXPECT_EQ("0", fmt::format("{:d}", false));
 
   // Test pairs
   {
@@ -186,33 +188,33 @@ TEST(Format, Simple) {
 }
 
 TEST(Format, Float) {
-  EXPECT_EQ("1", sformat("{}", 1.0));
-  EXPECT_EQ("0.1", sformat("{}", 0.1));
-  EXPECT_EQ("0.01", sformat("{}", 0.01));
-  EXPECT_EQ("0.001", sformat("{}", 0.001));
-  EXPECT_EQ("0.0001", sformat("{}", 0.0001));
-  EXPECT_EQ("1e-05", sformat("{}", 0.00001));
-  EXPECT_EQ("1e-06", sformat("{}", 0.000001));
+  EXPECT_EQ("1", fmt::format("{}", 1.0));
+  EXPECT_EQ("0.1", fmt::format("{}", 0.1));
+  EXPECT_EQ("0.01", fmt::format("{}", 0.01));
+  EXPECT_EQ("0.001", fmt::format("{}", 0.001));
+  EXPECT_EQ("0.0001", fmt::format("{}", 0.0001));
+  EXPECT_EQ("1e-05", fmt::format("{}", 0.00001));
+  EXPECT_EQ("1e-06", fmt::format("{}", 0.000001));
 
-  EXPECT_EQ("10", sformat("{}", 10.0));
-  EXPECT_EQ("100", sformat("{}", 100.0));
-  EXPECT_EQ("1000", sformat("{}", 1000.0));
-  EXPECT_EQ("10000", sformat("{}", 10000.0));
-  EXPECT_EQ("100000", sformat("{}", 100000.0));
-  EXPECT_EQ("1000000", sformat("{}", 1000000.0));
-  EXPECT_EQ("10000000", sformat("{}", 10000000.0));
+  EXPECT_EQ("10", fmt::format("{}", 10.0));
+  EXPECT_EQ("100", fmt::format("{}", 100.0));
+  EXPECT_EQ("1000", fmt::format("{}", 1000.0));
+  EXPECT_EQ("10000", fmt::format("{}", 10000.0));
+  EXPECT_EQ("100000", fmt::format("{}", 100000.0));
+  EXPECT_EQ("1000000", fmt::format("{}", 1000000.0));
+  EXPECT_EQ("10000000", fmt::format("{}", 10000000.0));
 
-  EXPECT_EQ("1.00", sformat("{:.2f}", 1.0));
-  EXPECT_EQ("0.10", sformat("{:.2f}", 0.1));
-  EXPECT_EQ("0.01", sformat("{:.2f}", 0.01));
-  EXPECT_EQ("0.00", sformat("{:.2f}", 0.001));
+  EXPECT_EQ("1.00", fmt::format("{:.2f}", 1.0));
+  EXPECT_EQ("0.10", fmt::format("{:.2f}", 0.1));
+  EXPECT_EQ("0.01", fmt::format("{:.2f}", 0.01));
+  EXPECT_EQ("0.00", fmt::format("{:.2f}", 0.001));
 
   EXPECT_EQ("100000. !== 100000", sformat("{:.} !== {:.}", 100000.0, 100000));
   EXPECT_EQ("100000.", sformat("{:.}", 100000.0));
   EXPECT_EQ("1000000.", sformat("{:.}", 1000000.0));
   EXPECT_EQ(" 100000.", sformat("{:8.}", 100000.0));
   EXPECT_EQ("100000.", sformat("{:4.}", 100000.0));
-  EXPECT_EQ("  100000", sformat("{:8.8}", 100000.0));
+  EXPECT_EQ("  100000", fmt::format("{:8.8}", 100000.0));
   EXPECT_EQ(" 100000.", sformat("{:8.8.}", 100000.0));
 
   // '%' multiplies by 100 and appends a '%' suffix (Python-compatible).
@@ -222,11 +224,11 @@ TEST(Format, Float) {
   // '{}' uses fmt's shortest round-trip representation (equivalent to the old
   // double-conversion ToShortest), preserving all significant digits needed
   // to uniquely identify the double.  Explicit '{:g}' still uses 6 sig digits.
-  EXPECT_EQ("1234567.89", sformat("{}", 1234567.89));
-  EXPECT_EQ("98765432.1", sformat("{}", 98765432.1));
-  EXPECT_EQ("0.04296875", sformat("{}", 0.04296875));
-  EXPECT_EQ("1.23457e+06", sformat("{:g}", 1234567.89));
-  EXPECT_EQ("1.23457E+06", sformat("{:G}", 1234567.89));
+  EXPECT_EQ("1234567.89", fmt::format("{}", 1234567.89));
+  EXPECT_EQ("98765432.1", fmt::format("{}", 98765432.1));
+  EXPECT_EQ("0.04296875", fmt::format("{}", 0.04296875));
+  EXPECT_EQ("1.23457e+06", fmt::format("{:g}", 1234567.89));
+  EXPECT_EQ("1.23457E+06", fmt::format("{:G}", 1234567.89));
 }
 
 TEST(Format, FloatSignWithSpecialValues) {
@@ -234,14 +236,14 @@ TEST(Format, FloatSignWithSpecialValues) {
   const double nan = std::numeric_limits<double>::quiet_NaN();
 
   // Positive infinity with '+' and ' ' sign specifiers.
-  EXPECT_EQ("+inf", sformat("{:+}", inf));
-  EXPECT_EQ(" inf", sformat("{: }", inf));
+  EXPECT_EQ("+inf", fmt::format("{:+}", inf));
+  EXPECT_EQ(" inf", fmt::format("{: }", inf));
 
   // Negative infinity: sign already present in fmt output, no extra prepend.
-  EXPECT_EQ("-inf", sformat("{:+}", -inf));
-  EXPECT_EQ("-inf", sformat("{: }", -inf));
+  EXPECT_EQ("-inf", fmt::format("{:+}", -inf));
+  EXPECT_EQ("-inf", fmt::format("{: }", -inf));
 
-  // NaN: sign is not prepended (fmt outputs "nan"; 'n' prefix suppresses it).
+  // NaN: folly's sformat does not prepend a sign character to NaN.
   EXPECT_EQ("nan", sformat("{:+}", nan));
   EXPECT_EQ("nan", sformat("{: }", nan));
 }
@@ -257,35 +259,43 @@ TEST(Format, MultiLevel) {
 }
 
 TEST(Format, separatorDecimalInteger) {
-  EXPECT_EQ("0", sformat("{:,d}", 0));
-  EXPECT_EQ("1", sformat("{:d}", 1));
-  EXPECT_EQ("1", sformat("{:,d}", 1));
-  EXPECT_EQ("1", sformat("{:,}", 1));
-  EXPECT_EQ("123", sformat("{:d}", 123));
-  EXPECT_EQ("123", sformat("{:,d}", 123));
-  EXPECT_EQ("123", sformat("{:,}", 123));
-  EXPECT_EQ("1234", sformat("{:d}", 1234));
-  EXPECT_EQ("1,234", sformat("{:,d}", 1234));
-  EXPECT_EQ("1,234", sformat("{:,}", 1234));
-  EXPECT_EQ("12345678", sformat("{:d}", 12345678));
-  EXPECT_EQ("12,345,678", sformat("{:,d}", 12345678));
-  EXPECT_EQ("12,345,678", sformat("{:,}", 12345678));
-  EXPECT_EQ("-1234", sformat("{:d}", -1234));
+  EXPECT_EQ("0", fmt::format("{:}", fmt::group_digits(0)));
+  EXPECT_EQ("1", fmt::format("{:d}", 1));
+  EXPECT_EQ("1", fmt::format("{:}", fmt::group_digits(1)));
+  EXPECT_EQ("1", fmt::format("{:}", fmt::group_digits(1)));
+  EXPECT_EQ("123", fmt::format("{:d}", 123));
+  EXPECT_EQ("123", fmt::format("{:}", fmt::group_digits(123)));
+  EXPECT_EQ("123", fmt::format("{:}", fmt::group_digits(123)));
+  EXPECT_EQ("1234", fmt::format("{:d}", 1234));
+  EXPECT_EQ("1,234", fmt::format("{:}", fmt::group_digits(1234)));
+  EXPECT_EQ("1,234", fmt::format("{:}", fmt::group_digits(1234)));
+  EXPECT_EQ("12345678", fmt::format("{:d}", 12345678));
+  EXPECT_EQ("12,345,678", fmt::format("{:}", fmt::group_digits(12345678)));
+  EXPECT_EQ("12,345,678", fmt::format("{:}", fmt::group_digits(12345678)));
+  EXPECT_EQ("-1234", fmt::format("{:d}", -1234));
   EXPECT_EQ("-1,234", sformat("{:,d}", -1234));
   EXPECT_EQ("-1,234", sformat("{:,}", -1234));
 
   int64_t max_int64_t = std::numeric_limits<int64_t>::max();
   int64_t min_int64_t = std::numeric_limits<int64_t>::min();
   uint64_t max_uint64_t = std::numeric_limits<uint64_t>::max();
-  EXPECT_EQ("9223372036854775807", sformat("{:d}", max_int64_t));
-  EXPECT_EQ("9,223,372,036,854,775,807", sformat("{:,d}", max_int64_t));
-  EXPECT_EQ("9,223,372,036,854,775,807", sformat("{:,}", max_int64_t));
-  EXPECT_EQ("-9223372036854775808", sformat("{:d}", min_int64_t));
+  EXPECT_EQ("9223372036854775807", fmt::format("{:d}", max_int64_t));
+  EXPECT_EQ(
+      "9,223,372,036,854,775,807",
+      fmt::format("{:}", fmt::group_digits(max_int64_t)));
+  EXPECT_EQ(
+      "9,223,372,036,854,775,807",
+      fmt::format("{:}", fmt::group_digits(max_int64_t)));
+  EXPECT_EQ("-9223372036854775808", fmt::format("{:d}", min_int64_t));
   EXPECT_EQ("-9,223,372,036,854,775,808", sformat("{:,d}", min_int64_t));
   EXPECT_EQ("-9,223,372,036,854,775,808", sformat("{:,}", min_int64_t));
-  EXPECT_EQ("18446744073709551615", sformat("{:d}", max_uint64_t));
-  EXPECT_EQ("18,446,744,073,709,551,615", sformat("{:,d}", max_uint64_t));
-  EXPECT_EQ("18,446,744,073,709,551,615", sformat("{:,}", max_uint64_t));
+  EXPECT_EQ("18446744073709551615", fmt::format("{:d}", max_uint64_t));
+  EXPECT_EQ(
+      "18,446,744,073,709,551,615",
+      fmt::format("{:}", fmt::group_digits(max_uint64_t)));
+  EXPECT_EQ(
+      "18,446,744,073,709,551,615",
+      fmt::format("{:}", fmt::group_digits(max_uint64_t)));
 
   EXPECT_EQ("  -1,234", sformat("{: 8,}", -1234));
   EXPECT_EQ("-001,234", sformat("{:08,d}", -1234));
@@ -490,7 +500,7 @@ class TestExtendingFormatter
     };
     auto& self = static_cast<const TestExtendingFormatter&>(obj);
     self.template getFormatValue<K>().format(arg, appender);
-    result = sformat("{{{}}}", result);
+    result = fmt::format("{{{}}}", result);
     cb(StringPiece(result));
   }
 
@@ -513,10 +523,11 @@ std::string texsformat(StringPiece fmt, Args&&... args) {
 TEST(Format, Extending) {
   EXPECT_EQ(texsformat("I {} brackets", "love"), "I {love} brackets");
   EXPECT_EQ(
-      texsformat("I {} nesting", sformat("really {}", "love")),
+      texsformat("I {} nesting", fmt::format("really {}", "love")),
       "I {really love} nesting");
   EXPECT_EQ(
-      sformat("I also {} nesting", texsformat("have an {} for", "affinity")),
+      fmt::format(
+          "I also {} nesting", texsformat("have an {} for", "affinity")),
       "I also have an {affinity} for nesting");
   EXPECT_EQ(
       texsformat(

@@ -746,6 +746,7 @@ fb_dirsync_cpp_unittest(
     name = "format_test",
     srcs = ["FormatTest.cpp"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:format",
         "//folly:utility",
         "//folly/portability:gtest",

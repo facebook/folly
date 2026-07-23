@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <folly/Format.h>
 #include <folly/portability/GTest.h>
 
@@ -21,8 +22,8 @@ TEST(Format, demo) {
   std::string s1 = fmt::format("The answer to {} is {}", "life", 42);
   EXPECT_EQ(s1, "The answer to life is 42");
 
-  std::string s2 = folly::sformat("{0}{0}{0}{0} Batman!", "na");
+  std::string s2 = fmt::format("{0}{0}{0}{0} Batman!", "na");
   EXPECT_EQ(s2, "nananana Batman!");
 
-  EXPECT_EQ(folly::sformat("{:.2f}", 3.1415926535), "3.14");
+  EXPECT_EQ(fmt::format("{:.2f}", 3.1415926535), "3.14");
 }

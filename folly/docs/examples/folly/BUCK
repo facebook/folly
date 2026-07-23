@@ -61,6 +61,7 @@ fb_dirsync_cpp_unittest(
     srcs = ["Format.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:format",
         "//folly/portability:gtest",
     ],
