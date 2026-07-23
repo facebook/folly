@@ -27,6 +27,9 @@
 #define FOLLY_ALLOW_TFO 1
 #endif
 #endif
+#if !defined(FOLLY_ALLOW_TFO)
+#define FOLLY_ALLOW_TFO 0
+#endif
 
 namespace folly {
 namespace detail {

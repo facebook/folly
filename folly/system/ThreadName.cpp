@@ -102,6 +102,7 @@ bool canSetOtherThreadName() {
 
 static constexpr size_t kMaxThreadNameLength = 16;
 
+#if FOLLY_HAVE_PTHREAD
 static Optional<std::string> getPThreadName(pthread_t pid) {
 #if (                                           \
     FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME || \
@@ -116,6 +117,7 @@ static Optional<std::string> getPThreadName(pthread_t pid) {
   (void)pid;
   return none;
 }
+#endif
 
 Optional<std::string> getThreadName(std::thread::id id) {
 #if (                                           \
@@ -233,7 +235,7 @@ bool setThreadNameWindowsViaDebugger(DWORD id, StringPiece name) noexcept {
   // Intentionally ignore STRSAFE_E_INSUFFICIENT_BUFFER: the buffer now contains
   // a truncated, zero-terminated string, and that's desirable here.
 
-  TNIUnion tniUnion = {0x1000, trimmed, id, 0};
+  TNIUnion tniUnion = {{0x1000, trimmed, id, 0}};
 
   // SEH requires no use of C++ object destruction semantics in this stack
   // frame.
