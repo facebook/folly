@@ -291,12 +291,12 @@ FOLLY_POP_WARNING
 template <typename Variant, typename... Cases>
 decltype(auto) variant_match(Variant&& variant, Cases&&... cases) {
   using invoker = std::conditional_t<
-      folly::Conjunction<
+      std::conjunction_v<
           is_invocable<overload_detail::valueless_by_exception, Variant>,
           is_invocable<
               overload_detail::visit,
               decltype(overload(std::forward<Cases>(cases)...)),
-              Variant>>::value,
+              Variant>>,
       overload_detail::visit,
       overload_detail::apply_visitor>;
   return invoker{}(
@@ -314,7 +314,7 @@ R variant_match(Variant&& variant, Cases&&... cases) {
     }
   };
   using invoker = std::conditional_t<
-      folly::Conjunction<
+      std::conjunction<
           is_invocable<overload_detail::valueless_by_exception, Variant>,
           is_invocable<overload_detail::visit, decltype(f), Variant>>::value,
       overload_detail::visit,

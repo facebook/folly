@@ -147,11 +147,11 @@ struct get_awaiter_fn {
   template <
       typename Awaitable,
       std::enable_if_t<
-          folly::Conjunction<
+          std::conjunction_v<
               is_awaiter<Awaitable>,
               folly::Negation<detail::_has_free_operator_co_await<Awaitable>>,
               folly::Negation<
-                  detail::_has_member_operator_co_await<Awaitable>>>::value,
+                  detail::_has_member_operator_co_await<Awaitable>>>,
           int> = 0>
   Awaitable& operator()(Awaitable&& awaitable) const {
     return static_cast<Awaitable&>(awaitable);
@@ -169,7 +169,7 @@ struct get_awaiter_fn {
   template <
       typename Awaitable,
       std::enable_if_t<
-          folly::Conjunction<
+          std::conjunction<
               detail::_has_free_operator_co_await<Awaitable>,
               folly::Negation<
                   detail::_has_member_operator_co_await<Awaitable>>>::value,

@@ -47,7 +47,7 @@ struct return_type_helper {
 template <typename... TList>
 struct return_type_helper<void, TList...> {
   static_assert(
-      folly::Conjunction<not_ref_wrapper<TList>...>::value,
+      std::conjunction_v<not_ref_wrapper<TList>...>,
       "TList cannot contain reference_wrappers when D is void");
   using type = typename std::common_type<TList...>::type;
 };
