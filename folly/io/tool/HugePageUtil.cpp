@@ -18,7 +18,7 @@
 
 #include <glog/logging.h>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <folly/Range.h>
 #include <folly/io/HugePages.h>
 #include <folly/portability/GFlags.h>

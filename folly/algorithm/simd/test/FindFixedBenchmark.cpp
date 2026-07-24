@@ -19,7 +19,7 @@
 #include <folly/Benchmark.h>
 #include <folly/init/Init.h>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <algorithm>
 #include <cstdint>

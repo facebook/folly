@@ -21,7 +21,7 @@
 #include <optional>
 #include <string>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <fmt/format.h>
 #include <folly/ExceptionString.h>
 #include <folly/Function.h>

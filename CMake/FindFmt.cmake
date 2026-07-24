@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_path(LIBFMT_INCLUDE_DIR fmt/core.h)
+find_path(LIBFMT_INCLUDE_DIR fmt/format.h)
 mark_as_advanced(LIBFMT_INCLUDE_DIR)
 
 find_library(LIBFMT_LIBRARY NAMES fmt fmtd)

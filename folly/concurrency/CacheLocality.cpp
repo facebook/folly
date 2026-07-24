@@ -29,7 +29,7 @@
 #include <optional>
 #include <unordered_map>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <glog/logging.h>
 #include <folly/Indestructible.h>
 #include <folly/Memory.h>

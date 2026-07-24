@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <folly/logging/CustomLogFormatter.h>
 
 #include <algorithm>

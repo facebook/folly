@@ -27,7 +27,7 @@
 
 #include <iosfwd>
 #include <iterator>
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 // Old `fmt` isn't actually supported, but ... it needs to build :(
 #if FMT_VERSION < 80000

@@ -23,7 +23,7 @@
 #include <cerrno>
 #include <utility>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
