@@ -1,5 +1,8 @@
 name: Buck build and test
 on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+
 jobs:
   get-toolchains-to-install:
     runs-on: ubuntu-latest
