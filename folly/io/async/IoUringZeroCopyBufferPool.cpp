@@ -259,6 +259,11 @@ void IoUringZeroCopyBufferPoolImpl::checkZcRxFeatures() {
   }
 }
 
+bool IoUringZeroCopyBufferPool::kernelZeroCopyRxSupported() {
+  struct io_uring_query_zcrx zcrxQuery{};
+  return ioUringQuery(IO_URING_QUERY_ZCRX, zcrxQuery);
+}
+
 IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
     IoUringZeroCopyBufferPool::Params params, bool test)
     : ring_(params.ring),

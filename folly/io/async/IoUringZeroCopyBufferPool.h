@@ -68,6 +68,8 @@ class IoUringZeroCopyBufferPool {
   static UniquePtr create(Params params);
   static UniquePtr importHandle(ExportHandle handle, struct io_uring* ring);
 
+  static bool kernelZeroCopyRxSupported();
+
   ExportHandle exportHandle() const;
 
   ~IoUringZeroCopyBufferPool();

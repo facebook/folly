@@ -221,6 +221,10 @@ class IoUringBackend : public EventBaseBackendBase {
   bool importZcBufferPool(IoUringZeroCopyBufferPool::ExportHandle handle);
   IoUringZeroCopyBufferPool::ExportHandle exportZcBufferPool();
 
+  static bool kernelZeroCopyRxSupported() {
+    return IoUringZeroCopyBufferPool::kernelZeroCopyRxSupported();
+  }
+
   struct IoUringStats {
     IoUringZeroCopyBufferPool::Stats zcrx;
     IoUringProvidedBufferRing::Stats providedBuffer;
