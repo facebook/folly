@@ -20,6 +20,7 @@
 #include <dlfcn.h>
 #endif
 
+#include <atomic>
 #include <csignal>
 #include <iostream>
 #include <mutex>
@@ -29,8 +30,10 @@
 #include <folly/Singleton.h>
 #include <folly/SpinLock.h>
 #include <folly/Synchronized.h>
+#include <folly/debugging/symbolizer/Symbolizer.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
+#include <folly/synchronization/CallOnce.h>
 
 namespace folly {
 namespace fibers {
@@ -203,9 +206,80 @@ namespace {
 
 struct sigaction oldSigsegvAction;
 
+// Pre-allocated in installGuardPageSignalHandler() so the overflow handler can
+// dump the offending fiber's stack without allocating in signal context (the
+// constructors allocate, which is not async-signal-safe).
+//
+// Two printers are kept because the right one depends on the *faulting*
+// thread's alternate-stack size, which is not known when the process-wide
+// handler is installed: fibers configure the SA_ONSTACK alternate stack
+// per-thread (SingletonThreadLocal), defaulting to 32KB. SafeStackTracePrinter
+// symbolization can overflow an alternate stack that small -- folly's fatal
+// signal handler treats <=64KB as too small for the same reason -- so on a
+// small alternate stack the handler instead uses the self-allocating printer,
+// which symbolizes on a large mmap'd stack via swapcontext.
+// NOLINTNEXTLINE(facebook-avoid-non-const-global-variables)
+folly::symbolizer::SafeStackTracePrinter* gFiberOverflowStackPrinter = nullptr;
+#if FOLLY_HAVE_SWAPCONTEXT
+folly::symbolizer::UnsafeSelfAllocateStackTracePrinter*
+    // NOLINTNEXTLINE(facebook-avoid-non-const-global-variables)
+    gFiberOverflowUnsafeStackPrinter = nullptr;
+
+// Mirrors folly::symbolizer's small-sigaltstack threshold:
+// SafeStackTracePrinter symbolization can overflow an alternate signal stack at
+// or below this size.
+constexpr size_t kSmallSigAltStackSize = 64 * 1024;
+
+// Whether the current thread's SA_ONSTACK alternate stack is small enough that
+// SafeStackTracePrinter symbolization risks overflowing it. Safe to call from
+// signal context: it only reads per-thread kernel state, with no allocation or
+// locking.
+bool onSmallSigAltStack() {
+  stack_t ss;
+  if (sigaltstack(nullptr, &ss) != 0) {
+    return false;
+  }
+  if ((ss.ss_flags & SS_DISABLE) != 0) {
+    return false;
+  }
+  return ss.ss_size <= kSmallSigAltStackSize;
+}
+#endif // FOLLY_HAVE_SWAPCONTEXT
+
 FOLLY_NOINLINE void FOLLY_FIBERS_STACK_OVERFLOW_DETECTED(
     int signum, siginfo_t* info, void* ucontext) {
   std::cerr << "folly::fibers Fiber stack overflow detected." << std::endl;
+  // Dump the offending fiber's stack before delegating. The default SIGSEGV
+  // action below typically aborts, and the resulting coredump only captures
+  // this abort path -- not the recursion that overflowed the fiber stack, so
+  // the actual culprit is otherwise unrecoverable. libunwind walks through the
+  // signal frame into the interrupted fiber context; we run on the SA_ONSTACK
+  // alternate stack, so unwinding is safe even though the fiber stack is
+  // exhausted.
+  if (gFiberOverflowStackPrinter) {
+    // SafeStackTracePrinter::printStackTrace() is signal-safe but not
+    // thread-safe, and this handler can run concurrently on multiple threads
+    // (several fibers overflowing at once) sharing the printers. Gate it so
+    // only the first prints; the rest skip straight to delegating rather than
+    // racing the printer's shared buffers. No release: we abort right after.
+    static std::atomic<bool> printing{false};
+    if (!printing.exchange(true)) {
+      folly::symbolizer::SafeStackTracePrinter* printer =
+          gFiberOverflowStackPrinter;
+#if FOLLY_HAVE_SWAPCONTEXT
+      // The alternate stack itself may be too small to symbolize on: fibers
+      // default it to 32KB, and SafeStackTracePrinter symbolization can
+      // overflow an alternate stack that small, raising a nested SIGSEGV before
+      // we delegate and losing the original crash. When the faulting thread's
+      // alternate stack is small, symbolize with the self-allocating printer
+      // instead, which runs on a large mmap'd stack via swapcontext.
+      if (gFiberOverflowUnsafeStackPrinter && onSmallSigAltStack()) {
+        printer = gFiberOverflowUnsafeStackPrinter;
+      }
+#endif
+      printer->printStackTrace(/* symbolize */ true);
+    }
+  }
   // Let the old signal handler handle the signal, but make this function name
   // present in the stack trace.
   if (oldSigsegvAction.sa_flags & SA_SIGINFO) {
@@ -249,8 +323,8 @@ bool isInJVM() {
 }
 
 void maybeInstallGuardPageSignalHandler() {
-  static std::once_flag onceFlag;
-  std::call_once(onceFlag, installGuardPageSignalHandler);
+  static folly::once_flag onceFlag;
+  folly::call_once(onceFlag, installGuardPageSignalHandler);
 }
 } // namespace
 
@@ -261,9 +335,36 @@ void installGuardPageSignalHandler() {
     return;
   }
 
+  // Allocate the stack-trace printer(s) up front and exactly once. Their
+  // constructors allocate, which is not async-signal-safe, so it must not
+  // happen inside the handler. This is a public API that may be called again to
+  // re-install the handler after other code overrides SIGSEGV; the handler
+  // reads these pointers without synchronization from other threads, so publish
+  // them a single time via call_once rather than overwriting them (which would
+  // race with a concurrent handler and leak the previously allocated printers)
+  // on each call.
+  static folly::once_flag printerOnceFlag;
+  folly::call_once(printerOnceFlag, [] {
+    gFiberOverflowStackPrinter = new folly::symbolizer::SafeStackTracePrinter();
+#if FOLLY_HAVE_SWAPCONTEXT
+    gFiberOverflowUnsafeStackPrinter =
+        new folly::symbolizer::UnsafeSelfAllocateStackTracePrinter();
+#endif
+  });
+
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
+#if FOLLY_HAVE_SWAPCONTEXT
+  // On a thread with a small alternate stack the overflow handler symbolizes
+  // with UnsafeSelfAllocateStackTracePrinter, which is not async-signal-safe.
+  // Block all signals while the handler runs so a nested signal can't re-enter
+  // it and lose the original overflow diagnostic. Mirrors folly's fatal signal
+  // handler (folly/debugging/symbolizer/SignalHandler.cpp), which fills sa_mask
+  // when it installs the unsafe printer.
+  sigfillset(&sa.sa_mask);
+#else
   sigemptyset(&sa.sa_mask);
+#endif
   // By default signal handlers are run on the signaled thread's stack.
   // In case of stack overflow running the SIGSEGV signal handler on
   // the same stack leads to another SIGSEGV and crashes the program.

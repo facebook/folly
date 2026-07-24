@@ -236,10 +236,12 @@ folly_add_library(
     GuardPageAllocator.h
   DEPS
     ${GLOG_LIBRARIES}
+    folly_debugging_symbolizer_symbolizer
     folly_portability_sys_mman
     folly_portability_unistd
     folly_singleton
     folly_spin_lock
+    folly_synchronization_call_once
     folly_synchronized
 )
 
