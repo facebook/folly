@@ -173,7 +173,7 @@ class RWSpinLock {
   }
 
   void unlock_upgrade() {
-    bits_.fetch_add(-UPGRADE, std::memory_order_acq_rel);
+    bits_.fetch_add(-UPGRADE, std::memory_order_release);
   }
 
   // unlock upgrade and try to acquire write lock
@@ -203,7 +203,7 @@ class RWSpinLock {
   bool try_lock() {
     int32_t expect = 0;
     return bits_.compare_exchange_strong(
-        expect, EXCLUSIVE, std::memory_order_acq_rel);
+        expect, EXCLUSIVE, std::memory_order_acquire);
   }
 
   // Try to get reader permission on the lock. This can fail if we
