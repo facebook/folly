@@ -18,6 +18,7 @@ load(
 load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
+load("@fbsource//tools/build_defs:selects.bzl", "selects")
 load("@fbsource//tools/build_defs/dirsync:dirsync_redirect.bzl", "dirsync_redirect")
 
 def should_enable_gflags():
@@ -180,10 +181,9 @@ def folly_xplat_library(
     # statically link folly, producing duplicate gflag registrations that crash
     # on macOS (macOS lacks Linux's flat namespace symbol deduplication).
     force_static = select({
-        "DEFAULT": select({
+        "DEFAULT": selects.with_or({
+            ("ovr_config//os/constraints:macos", "ovr_config//runtime/constraints:android-host-test", "ovr_config//runtime:fbcode"): False,
             "DEFAULT": force_static,
-            "ovr_config//runtime/constraints:android-host-test": False,
-            "ovr_config//runtime:fbcode": False,
         }),
         "ovr_config//build_mode:arvr_mode[enabled]": force_static,
     })
