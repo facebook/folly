@@ -235,6 +235,10 @@ constexpr size_t kSmallSigAltStackSize = 64 * 1024;
 // signal context: it only reads per-thread kernel state, with no allocation or
 // locking.
 bool onSmallSigAltStack() {
+#if FOLLY_APPLE_TVOS || FOLLY_APPLE_WATCHOS
+  // sigaltstack is banned on tvOS and watchOS
+  return false;
+#else
   stack_t ss;
   if (sigaltstack(nullptr, &ss) != 0) {
     return false;
@@ -243,6 +247,7 @@ bool onSmallSigAltStack() {
     return false;
   }
   return ss.ss_size <= kSmallSigAltStackSize;
+#endif
 }
 #endif // FOLLY_HAVE_SWAPCONTEXT
 
