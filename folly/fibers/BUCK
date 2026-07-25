@@ -260,10 +260,8 @@ fb_dirsync_cpp_library(
         "//folly:singleton",
         "//folly:spin_lock",
         "//folly:synchronized",
-        "//folly/debugging/symbolizer:symbolizer",
         "//folly/portability:sys_mman",
         "//folly/portability:unistd",
-        "//folly/synchronization:call_once",
     ],
     external_deps = [
         ("glibc", None, "dl"),
