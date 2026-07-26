@@ -250,10 +250,22 @@ fb_dirsync_cpp_library(
     ],
 )
 
+# See GuardPageAllocator.cpp: on server builds symbolize the offending fiber's
+# stack inline; on mobile use the capture-only path and keep the full symbolizer
+# out of this ubiquitous library. Pulling it in perturbs Android native-lib
+# merging and duplicates the folly Timekeeper singleton across merged .so's,
+# aborting at app startup (revert of D113295814). FOLLY_FIBERS_SYMBOLIZE_OVERFLOW
+# and the symbolizer dep are gated on the SAME select() so they can never drift.
 fb_dirsync_cpp_library(
     name = "guard_page_allocator",
     srcs = ["GuardPageAllocator.cpp"],
     headers = ["GuardPageAllocator.h"],
+    preprocessor_flags = select({
+        "DEFAULT": ["-DFOLLY_FIBERS_SYMBOLIZE_OVERFLOW=1"],
+        "ovr_config//os:android": [],
+        "ovr_config//os:iphoneos": [],
+        "ovr_config//os:watchos": [],
+    }),
     use_raw_headers = True,
     deps = [
         "fbsource//third-party/glog:glog",
@@ -262,7 +274,15 @@ fb_dirsync_cpp_library(
         "//folly:synchronized",
         "//folly/portability:sys_mman",
         "//folly/portability:unistd",
-    ],
+    ] + select({
+        "DEFAULT": [
+            "//folly/debugging/symbolizer:symbolizer",
+            "//folly/synchronization:call_once",
+        ],
+        "ovr_config//os:android": ["//folly/debugging/symbolizer:stack_trace"],
+        "ovr_config//os:iphoneos": ["//folly/debugging/symbolizer:stack_trace"],
+        "ovr_config//os:watchos": ["//folly/debugging/symbolizer:stack_trace"],
+    }),
     external_deps = [
         ("glibc", None, "dl"),
     ],
