@@ -37,6 +37,24 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
+    name = "await_suspend_return_address_test",
+    srcs = [
+        "AwaitSuspendReturnAddressTest.cpp",
+    ],
+    deps = [
+        "//folly:demangle",
+        "//folly:portability",
+        "//folly/coro:blocking_wait",
+        "//folly/coro:task",
+        "//folly/debugging/symbolizer:symbolized_frame",
+        "//folly/debugging/symbolizer:symbolizer",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+        "//folly/tracing:async_stack",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
     name = "value_or_error_test",
     srcs = ["ValueOrErrorTest.cpp"],
     deps = [
