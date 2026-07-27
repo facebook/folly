@@ -1063,7 +1063,10 @@ bool less_than_impl(LHS const lhs) {
       (!std::is_signed<LHS>::value && is_negative(rhs)) ? false :
       rhs > std::numeric_limits<LHS>::max() ? true :
       rhs <= std::numeric_limits<LHS>::lowest() ? false :
-      lhs < rhs;
+      // rhs is within [lowest(LHS), max(LHS)] here, so casting it to LHS is
+      // lossless and avoids a signed/unsigned comparison that libc++ header
+      // units do not honor the surrounding diagnostic-pragma suppression for.
+      lhs < static_cast<LHS>(rhs);
   // clang-format on
 }
 
