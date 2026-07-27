@@ -127,7 +127,7 @@ class DenseMaskIter {
     if (count_ > 0) {
       do {
         ++index_;
-      } while ((tags_[index_] & 0x80) == 0);
+      } while (tags_[index_] == 0);
     }
     FOLLY_SAFE_DCHECK(index_ < 16, "");
     return rv;

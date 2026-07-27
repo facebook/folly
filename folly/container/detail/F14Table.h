@@ -277,7 +277,7 @@ struct ShouldAssume32BitHash<
 
 // Hash values are used to compute the desired position, which is the
 // chunk index at which we would like to place a value (if there is no
-// overflow), and the tag, which is an additional 7 bits of entropy.
+// overflow), and the tag, which is an additional 8 bits of entropy.
 //
 // The standard's definition of hash function quality only refers to
 // the probability of collisions of the entire hash value, not to the
@@ -288,7 +288,7 @@ struct ShouldAssume32BitHash<
 //
 // If the user-supplied hasher is an avalanching one (each bit of the
 // hash value has a 50% chance of being the same for differing hash
-// inputs), then we can just take 7 bits of the hash value for the tag
+// inputs), then we can just take 8 bits of the hash value for the tag
 // and the rest for the desired position.  Avalanching hashers also
 // let us map hash value to array index position with just a bitmask
 // without risking clumping.  (Many hash tables just accept the risk
@@ -319,12 +319,12 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
 #if FOLLY_SSE_PREREQ(4, 2)
     // SSE4.2 CRC
     std::size_t c = _mm_crc32_u64(0, hash);
-    tag = (c >> 24) | 0x80;
+    tag = (c >> 24);
     hash += c;
 #else
     // CRC is optional on armv8 (-march=armv8-a+crc), standard on armv8.1
     std::size_t c = __crc32cd(0, hash);
-    tag = (c >> 24) | 0x80;
+    tag = (c >> 24);
     hash += c;
 #endif
 #else
@@ -351,7 +351,7 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
 #endif
     hash = hi ^ lo;
     hash *= kMul;
-    tag = ((hash >> 15) & 0x7f) | 0x80;
+    tag = ((hash >> 14) & 0xff);
     hash >>= 22;
 #endif
   } else {
@@ -360,21 +360,18 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
     // and use the bottom 24 bits for the index and leave the top 8 for the
     // tag.
     //
-    // | 0x80 sets the top bit in the tag.
     // We need to avoid 0 tag for a non-empty value.
-    // In some places we also rely on the top bit
-    // being 1 for all non-empty values.
     if (ShouldAssume32BitHash<Hasher>::value) {
-      tag = ((hash >> 24) | 0x80) & 0xFF;
+      tag = (hash >> 24) & 0xFF;
       // Explicitly mask off the top 32-bits so that the compiler can
       // optimize away whatever is populating the top 32-bits, which is likely
       // just the lower 32-bits duplicated.
       hash = hash & 0xFFFF'FFFF;
     } else {
-      tag = (hash >> 56) | 0x80;
+      tag = (hash >> 56);
     }
   }
-  return std::make_pair(hash, tag);
+  return std::make_pair(hash, std::max(std::size_t{1}, tag));
 }
 #else
 // 32-bit
@@ -387,11 +384,11 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
 #if FOLLY_SSE_PREREQ(4, 2)
     // SSE4.2 CRC
     auto c = _mm_crc32_u32(0, hash);
-    tag = static_cast<uint8_t>(~(c >> 25));
+    tag = static_cast<uint8_t>(c >> 24);
     hash += c;
 #else
     auto c = __crc32cw(0, hash);
-    tag = static_cast<uint8_t>(~(c >> 25));
+    tag = static_cast<uint8_t>(c >> 24);
     hash += c;
 #endif
 #else
@@ -399,16 +396,13 @@ std::pair<std::size_t, std::size_t> splitHashImpl(std::size_t hash) {
     hash ^= hash >> 13;
     hash *= 0x5bd1e995;
     hash ^= hash >> 15;
-    tag = static_cast<uint8_t>(~(hash >> 25));
+    tag = static_cast<uint8_t>(hash >> 24);
 #endif
   } else {
-    // | 0x80 sets the top bit in the tag.
     // We need to avoid 0 tag for a non-empty value.
-    // In some places we also rely on the top bit
-    // being 1 for all non-empty values.
-    tag = (hash >> 24) | 0x80;
+    tag = (hash >> 24);
   }
-  return std::make_pair(hash, tag);
+  return std::make_pair(hash, std::max<std::size_t>(1, tag));
 }
 #endif
 #endif
@@ -621,7 +615,7 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
   static constexpr std::uint8_t kOutboundOverflowMax = 254;
   static constexpr std::uint8_t kOutboundOverflowEmpty = 255;
 
-  // Non-empty tags have their top bit set.  tags_ array might be bigger
+  // Zero means an empty tag. tags_ array might be bigger
   // than kCapacity to keep alignment of first item.
   std::array<uint8_t, 14> tags_;
 
@@ -781,13 +775,13 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
   std::size_t tag(std::size_t index) const { return tags_[index]; }
 
   void setTag(std::size_t index, std::size_t tag) {
-    FOLLY_SAFE_DCHECK(!isEmptyInstance(this) && tag >= 0x80 && tag <= 0xff, "");
+    FOLLY_SAFE_DCHECK(!isEmptyInstance(this) && tag >= 1 && tag <= 0xff, "");
     FOLLY_SAFE_CHECK(tags_[index] == 0, "");
     tags_[index] = static_cast<uint8_t>(tag);
   }
 
   void clearTag(std::size_t index) {
-    FOLLY_SAFE_CHECK((tags_[index] & 0x80) != 0, "");
+    FOLLY_SAFE_CHECK(tags_[index] != 0, "");
     tags_[index] = 0;
   }
 
@@ -827,9 +821,8 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
 
   MaskType occupiedMask() const {
     uint8x16_t tagV = vld1q_u8(&tags_[0]);
-    // signed shift extends top bit to all bits
-    auto occupiedV =
-        vreinterpretq_u8_s8(vshrq_n_s8(vreinterpretq_s8_u8(tagV), 7));
+    // Shortcut for tagV != 0.
+    auto occupiedV = vtstq_u8(tagV, tagV);
     uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(occupiedV), 4);
     return vget_lane_u64(vreinterpret_u64_u8(maskV), 0) & kFullMask;
   }
@@ -855,14 +848,16 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
 
   MaskType occupiedMask() const {
     auto tagV = _mm_load_si128(tagVector());
-    return _mm_movemask_epi8(tagV) & kFullMask;
+    auto zeroV = _mm_setzero_si128();
+    auto emptyV = _mm_cmpeq_epi8(tagV, zeroV);
+    return (~_mm_movemask_epi8(emptyV)) & kFullMask;
   }
 #elif FOLLY_HAVE_INT128_T
   ////////
   // Tag filtering using plain C/C++
 
   SparseMaskIter tagMatchIter(std::size_t needle) const {
-    FOLLY_SAFE_DCHECK(needle >= 0x80 && needle < 0x100, "");
+    FOLLY_SAFE_DCHECK(needle >= 1 && needle < 0x100, "");
     auto tagV = static_cast<uint8_t const*>(&tags_[0]);
     MaskType mask = 0;
     FOLLY_PRAGMA_UNROLL_N(16)
@@ -877,7 +872,7 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     MaskType mask = 0;
     FOLLY_PRAGMA_UNROLL_N(16)
     for (auto i = 0u; i < kCapacity; i++) {
-      mask |= ((tagV[i] & 0x80) ? 1 : 0) << i;
+      mask |= (tagV[i] ? 1 : 0) << i;
     }
     return mask & kFullMask;
   }
@@ -902,10 +897,7 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     return FirstEmptyInMask{this->occupiedMask() ^ kFullMask};
   }
 
-  bool occupied(std::size_t index) const {
-    FOLLY_SAFE_DCHECK(tags_[index] == 0 || (tags_[index] & 0x80) != 0, "");
-    return tags_[index] != 0;
-  }
+  bool occupied(std::size_t index) const { return tags_[index] != 0; }
 
   /// Permitted to return a wild pointer, which is allowed for prefetching on
   /// every architecture. This behavior is technically undefined (forbidden) in
@@ -1777,7 +1769,7 @@ class F14Table : public Policy {
   template <typename K>
   FOLLY_ALWAYS_INLINE ItemIter
   findImpl(HashPair hp, K const& key, Prefetch prefetch) const {
-    FOLLY_SAFE_DCHECK(hp.second >= 0x80 && hp.second < 0x100, "");
+    FOLLY_SAFE_DCHECK(hp.second >= 1 && hp.second < 0x100, "");
 #if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
     svbool_t pred = svwhilelt_b8_u32(0, Chunk::kCapacity);
 #endif
@@ -1803,7 +1795,7 @@ class F14Table : public Policy {
           auto i = hits.next();
           if (FOLLY_LIKELY(this->keyMatchesItem(key, chunk->item(i)))) {
             // Tag match and key match were both successful.  The chance
-            // of a false tag match is 1/128 for each key in the chunk
+            // of a false tag match is ~1/255 for each key in the chunk
             // (with a proper hash function).
             return ItemIter{chunk, i};
           }
@@ -2913,8 +2905,8 @@ class F14Table : public Policy {
 
         // misses could have any tag, so we do the dumb but accurate
         // thing and just try them all
-        for (std::size_t ti = 0; ti < 256; ++ti) {
-          uint8_t tag = static_cast<uint8_t>(ti == 0 ? 1 : 0);
+        for (std::size_t ti = 1; ti < 256; ++ti) {
+          uint8_t tag = static_cast<uint8_t>(ti);
           HashPair hp{ci, tag};
 
           std::size_t dist = 1;
