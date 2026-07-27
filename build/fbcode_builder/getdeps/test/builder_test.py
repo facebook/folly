@@ -119,6 +119,7 @@ class CMakeBuilderCompilerCacheTest(unittest.TestCase):
         # On Windows, force MSVC embedded debug info (/Z7) so sccache can wrap
         # cl.exe without the shared-PDB C1041 race.
         builder = make_cmake_builder()
+        # pyrefly: ignore [missing-attribute]
         builder.build_opts.is_windows.return_value = True
         env = Env()
 
@@ -132,6 +133,7 @@ class CMakeBuilderCompilerCacheTest(unittest.TestCase):
         # On macOS, point OPENSSL_ROOT_DIR at the getdeps OpenSSL so CMake's
         # FindOpenSSL does not fall back to a wrong-arch Homebrew keg.
         builder = make_cmake_builder()
+        # pyrefly: ignore [missing-attribute]
         builder.build_opts.is_darwin.return_value = True
         openssl = MagicMock()
         openssl.name = "openssl"
