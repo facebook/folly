@@ -171,9 +171,6 @@ TEST(Trait, logicOperators) {
   static_assert(is_same<Disjunction<false_type>::type, false_type>::value);
   static_assert(Disjunction<true_type, true_type>::value);
   static_assert(Disjunction<true_type, false_type>::value);
-
-  static_assert(!Negation<true_type>::value);
-  static_assert(Negation<false_type>::value);
 }
 
 TEST(Traits, isNegative) {

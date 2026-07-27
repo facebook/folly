@@ -435,7 +435,7 @@ decltype(auto) convert(U&& u) {
   return detail::if_constexpr(
       StrictConjunction<
           IsPolyRef<remove_cvref_t<U>>,
-          Negation<std::is_convertible<U, Arg>>>(),
+          std::negation<std::is_convertible<U, Arg>>>(),
       [&](auto id) -> decltype(auto) {
         return poly_cast<remove_cvref_t<Arg>>(id(u).get());
       },
@@ -559,7 +559,7 @@ void* execOnHeap(Op op, Data* from, void* to) {
 template <
     class I,
     class T,
-    std::enable_if_t<Negation<std::is_reference<T>>::value, int> = 0>
+    std::enable_if_t<std::negation<std::is_reference<T>>::value, int> = 0>
 void* execOnHeap(Op op, Data* from, void* to) {
   switch (op) {
     case Op::eNuke:
@@ -896,7 +896,7 @@ struct ModelsInterface_<
     T,
     I,
     std::enable_if_t<
-        Negation<std::is_base_of<PolyBase, std::decay_t<T>>>::value>>
+        std::negation_v<std::is_base_of<PolyBase, std::decay_t<T>>>>>
     : ModelsInterface2_<T, I> {};
 
 template <class T, class I>

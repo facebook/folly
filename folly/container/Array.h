@@ -38,7 +38,7 @@ using is_ref_wrapper = is_instantiation_of<std::reference_wrapper, T>;
 
 template <typename T>
 using not_ref_wrapper =
-    folly::Negation<is_ref_wrapper<typename std::decay<T>::type>>;
+    std::negation<is_ref_wrapper<typename std::decay<T>::type>>;
 
 template <typename D, typename...>
 struct return_type_helper {

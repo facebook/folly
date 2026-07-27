@@ -112,8 +112,8 @@ class exception_wrapper final {
   struct IsRegularExceptionType
       : StrictConjunction<
             std::is_copy_constructible<T>,
-            Negation<std::is_base_of<exception_wrapper, T>>,
-            Negation<std::is_abstract<T>>> {};
+            std::negation<std::is_base_of<exception_wrapper, T>>,
+            std::negation<std::is_abstract<T>>> {};
 
   template <class This, class Fn>
   static bool with_exception_(This& this_, Fn fn_, tag_t<void>);

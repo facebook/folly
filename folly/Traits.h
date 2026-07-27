@@ -864,9 +864,6 @@ template <typename T, typename... TList>
 struct Disjunction<T, TList...>
     : std::conditional<T::value, T, Disjunction<TList...>>::type {};
 
-template <typename T>
-struct Negation : std::bool_constant<!T::value> {};
-
 template <bool... Bs>
 struct Bools {
   using valid_type = bool;
@@ -880,7 +877,7 @@ struct StrictConjunction
 
 template <class... Ts>
 struct StrictDisjunction
-    : Negation<
+    : std::negation<
           std::is_same<Bools<Ts::value...>, Bools<(Ts::value && false)...>>> {};
 
 namespace detail {

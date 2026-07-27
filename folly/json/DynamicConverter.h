@@ -118,7 +118,7 @@ using is_associative =
 template <typename T>
 using is_like_pointer = Conjunction<
     // Exclude string literals.
-    Negation<std::is_convertible<T, StringPiece>>,
+    std::negation<std::is_convertible<T, StringPiece>>,
     is_detected<detect_like_pointer, T>>;
 
 template <typename T>

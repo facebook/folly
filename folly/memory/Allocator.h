@@ -282,7 +282,8 @@ template <typename Alloc, typename... Args>
 struct AllocatorCustomizesConstruct_<
     void_t<typename Alloc::folly_has_default_object_construct>,
     Alloc,
-    Args...> : Negation<typename Alloc::folly_has_default_object_construct> {};
+    Args...>
+    : std::negation<typename Alloc::folly_has_default_object_construct> {};
 
 template <typename Void, typename Alloc, typename... Args>
 struct AllocatorCustomizesDestroy_
@@ -292,7 +293,8 @@ template <typename Alloc, typename... Args>
 struct AllocatorCustomizesDestroy_<
     void_t<typename Alloc::folly_has_default_object_destroy>,
     Alloc,
-    Args...> : Negation<typename Alloc::folly_has_default_object_destroy> {};
+    Args...> : std::negation<typename Alloc::folly_has_default_object_destroy> {
+};
 } // namespace detail
 
 /**
@@ -313,7 +315,7 @@ struct AllocatorCustomizesDestroy_<
  */
 template <typename Alloc, typename T, typename... Args>
 struct AllocatorHasDefaultObjectConstruct
-    : Negation<
+    : std::negation<
           detail::AllocatorCustomizesConstruct_<void, Alloc, T*, Args...>> {};
 
 template <typename Value, typename T, typename... Args>
@@ -337,7 +339,7 @@ struct AllocatorHasDefaultObjectConstruct<std::allocator<Value>, T, Args...>
  */
 template <typename Alloc, typename T>
 struct AllocatorHasDefaultObjectDestroy
-    : Negation<detail::AllocatorCustomizesDestroy_<void, Alloc, T*>> {};
+    : std::negation<detail::AllocatorCustomizesDestroy_<void, Alloc, T*>> {};
 
 template <typename Value, typename T>
 struct AllocatorHasDefaultObjectDestroy<std::allocator<Value>, T>

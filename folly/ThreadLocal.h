@@ -150,7 +150,7 @@ class ThreadLocalPtr {
  private:
   using StaticMeta = threadlocal_detail::StaticMeta<Tag, AccessMode>;
 
-  using AccessAllThreadsEnabled = Negation<std::is_same<Tag, void>>;
+  using AccessAllThreadsEnabled = std::negation<std::is_same<Tag, void>>;
 
  public:
   constexpr ThreadLocalPtr() noexcept : id_() {}

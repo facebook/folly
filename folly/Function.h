@@ -1107,7 +1107,7 @@ class FunctionRef<ReturnType(Args...)> final {
       typename Fun,
       std::enable_if_t<
           Conjunction<
-              Negation<std::is_same<FunctionRef, std::decay_t<Fun>>>,
+              std::negation<std::is_same<FunctionRef, std::decay_t<Fun>>>,
               is_invocable_r<ReturnType, Fun&&, Args&&...>>::value,
           int> = 0>
   constexpr /* implicit */ FunctionRef(Fun&& fun) noexcept {
