@@ -101,7 +101,7 @@ class SingleWriterFixedHashMap {
     for (size_t i = 0; i < o.capacity_; ++i) {
       Elem& e = o.elem_[i];
       if (e.valid()) {
-        insert(e.key(), e.value());
+        this->template insert<true>(e.key(), e.value());
       }
     }
   }
@@ -129,13 +129,20 @@ class SingleWriterFixedHashMap {
 
   FOLLY_ALWAYS_INLINE bool empty() const { return size() == 0; }
 
+  // With KnownAbsent, the caller guarantees the key is absent, so the
+  // duplicate-key check is skipped (verified by DCHECK in debug builds).
+  template <bool KnownAbsent = false>
   bool insert(Key key, Value value) {
     if (!elem_) {
       elem_ = std::make_unique<Elem[]>(capacity_);
     }
     DCHECK_LT(used_, capacity_);
-    if (writer_find(key) < capacity_) {
-      return false;
+    if constexpr (KnownAbsent) {
+      DCHECK_EQ(writer_find(key), capacity_);
+    } else {
+      if (writer_find(key) < capacity_) {
+        return false;
+      }
     }
     size_t index = hash(key);
     auto attempts = capacity_;
