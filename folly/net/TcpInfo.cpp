@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <tuple>
+
 #include <glog/logging.h>
 #include <folly/net/TcpInfo.h>
 #include <folly/portability/Sockets.h>
@@ -74,6 +76,10 @@ Expected<TcpInfo, std::errc> TcpInfo::initFromFd(
     netops::Dispatcher& netopsDispatcher,
     IoctlDispatcher& ioctlDispatcher) {
 #ifndef FOLLY_HAVE_TCP_INFO
+  std::ignore = fd;
+  std::ignore = options;
+  std::ignore = netopsDispatcher;
+  std::ignore = ioctlDispatcher;
   return folly::makeUnexpected(std::errc::invalid_argument);
 #else
   if (NetworkSocket() == fd) {
