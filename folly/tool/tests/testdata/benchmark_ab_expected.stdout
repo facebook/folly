@@ -1,0 +1,63 @@
+Outputs:
+  <OUT>/comparison.md
+  <OUT>/comparison.tsv
+  <OUT>/round_*
+
+Target patterns: //folly/test/... (1 target)
+Before: 1111111111111111111111111111111111111111
+After: 2222222222222222222222222222222222222222
+Options: @mode/dev; adaptive p33.3 (17s max/row); thresholds for the median difference:
+  hi-pri >=1.0ns and >=10.0%
+  lo-pri >=0.5ns and >=5.0%
+
+Runs did not converge or become stable after 1 try:
+  round 1, fbcode//folly/test:bench (before); see logs.
+
+Benchmark rows only in the "after" revision:
+  fbcode//folly/test:bench (rounds 2-4):
+    only_after
+
+Benchmark rows only in the "before" revision:
+  fbcode//folly/test:bench (rounds 2-4):
+    only_before
+
+Legend:
+
+Each result line starts with the median "before" timing, with Δ ns to the
+median "after" timing.  It also shows (Δ%) when "before" exceeds 2ns.
+
+We aggregate rounds by taking the medians of the "before" and "after" timings.
+Each round reports adaptive p33.3 timings, so these are medians-of-p33.3.
+
+A benchmark appears in the lo-pri or hi-pri section, when the Δ between those
+medians meets both that section's nanosecond and percentage thresholds.
+
+The comma-separated `before±Δ` pairs show whether the change is consistent
+across rounds.  They are sorted by `before` timing, not by run order.
+Parentheses mark a pair whose Δ missed a section threshold.
+
+Within each section, rows are sorted by Δ between medians, smallest first.
+
+High-priority wins:
+
+15.0-2.0ns (-13.3%): same_name (win.cpp)
+  fbcode//folly/test:bench
+  10.0-2.0, 15.0-2.0, (20.0-0.5)
+
+Low-priority wins:
+
+15.0-0.8ns (-5.3%): low_win
+  fbcode//folly/test:bench
+  10.0-0.6, 15.0-0.8, (20.0-0.2)
+
+Low-priority regressions:
+
+15.0+0.8ns (+5.3%): low_loss
+  fbcode//folly/test:bench
+  10.0+0.6, 15.0+0.8, (20.0+0.2)
+
+High-priority regressions:
+
+1.5+1.5ns: same_name (loss.cpp)
+  fbcode//folly/test:bench
+  1.0+2.0, 1.5+1.5, (2.0+0.2)

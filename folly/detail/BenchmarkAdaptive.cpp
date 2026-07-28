@@ -568,6 +568,8 @@ AdaptiveResult runBenchmarksAdaptive(
       }
     }
     if (!msg.empty()) {
+      // If this text changes, update `log_has_convergence_failure()` in
+      // `folly/tool/benchmark_ab.py`.
       LOG(ERROR) << kANSIBoldRed << "Did not converge:" << kANSIReset << msg;
     }
   }

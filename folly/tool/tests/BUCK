@@ -1,0 +1,12 @@
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+
+oncall("fbcode_entropy_wardens_folly")
+
+python_unittest(
+    name = "benchmark_ab_test",
+    srcs = ["test_benchmark_ab.py"],
+    network_access = network_access_utils.none(),
+    resources = glob(["testdata/*"]),
+    deps = ["//folly/tool:benchmark_ab_lib"],
+)

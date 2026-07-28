@@ -680,6 +680,8 @@ static void printBenchmarkResultsAsJson(
   printf("%s\n", toPrettyJson(d).c_str());
 }
 
+// `benchmark_ab.py` consumes the first three fields of this positional
+// `--bm_json_verbose` schema; update its `load_results()` if they change.
 void benchmarkResultsToDynamic(
     const vector<detail::BenchmarkResult>& data, dynamic& out) {
   out = dynamic::array;
@@ -1049,6 +1051,11 @@ runBenchmarksWithPrinterImpl(
 
   validateFlagCombinations();
 
+  if (!FLAGS_bm_quiet) {
+    std::cerr << "For before/after comparisons, try "
+                 "`folly/tool/benchmark_ab.py --help`.\n";
+  }
+
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
 
   // Adaptive mode: interleaved sampling with paired correction for both
@@ -1070,7 +1077,6 @@ runBenchmarksWithPrinterImpl(
         << "benchmark up to\n"
         << "`bm_max_trials` or `bm_max_secs`.\n";
   }
-
   // Best-of mode: measure suspender overhead upfront and set static for
   // immediate correction in tally().
   if (FLAGS_bm_verbose) {
