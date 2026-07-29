@@ -792,29 +792,33 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
 
 #if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
 
-  SparseMaskIter tagMatchIter(
-      uint8x16_t needleV, svbool_t inPred, svbool_t& outPred) const {
-    svuint8_t tagV = svld1_u8(inPred, &tags_[0]);
-    // test if any match is found
-    outPred = svmatch_u8(inPred, tagV, svset_neonq_u8(svundef_u8(), needleV));
+  // Returns the matching-tag iterator together with a fast "any match" flag
+  // taken straight from the SVE predicate register, which lets the caller
+  // resolve the common no-match branch without waiting on the mask extraction.
+  std::pair<SparseMaskIter, bool> tagMatchIter(uint8x16_t needleV) const {
+    svbool_t pred = svwhilelt_b8_u32(0, kCapacity);
+    svuint8_t tagV = svld1_u8(pred, &tags_[0]);
+    svbool_t matchPred =
+        svmatch_u8(pred, tagV, svset_neonq_u8(svundef_u8(), needleV));
     // get info from every byte into the bottom half of every uint16_t
     // by shifting right 4, then round to get it into a 64-bit vector
     uint8x8_t maskV = vshrn_n_u16(
-        vreinterpretq_u16_u8(svget_neonq(svdup_n_u8_z(outPred, 17))), 4);
+        vreinterpretq_u16_u8(svget_neonq(svdup_n_u8_z(matchPred, 17))), 4);
     uint64_t mask = vreinterpret_u64_u8(maskV)[0];
-    return SparseMaskIter(mask);
+    return {SparseMaskIter(mask), svptest_any(pred, matchPred)};
   }
 
 #else
 
-  SparseMaskIter tagMatchIter(uint8x16_t needleV) const {
+  std::pair<SparseMaskIter, bool> tagMatchIter(uint8x16_t needleV) const {
     uint8x16_t tagV = vld1q_u8(&tags_[0]);
     auto eqV = vceqq_u8(tagV, needleV);
     // get info from every byte into the bottom half of every uint16_t
     // by shifting right 4, then round to get it into a 64-bit vector
     uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(eqV), 4);
     uint64_t mask = vget_lane_u64(vreinterpret_u64_u8(maskV), 0) & kFullMask;
-    return SparseMaskIter(mask);
+    SparseMaskIter iter(mask);
+    return {iter, iter.hasNext()};
   }
 
 #endif
@@ -840,9 +844,11 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     auto eqV = _mm_cmpeq_epi8(tagV, needleV);
     uint32_t mask = _mm_movemask_epi8(eqV);
     if constexpr (kIsArchAmd64) {
-      return BoundedMaskIter<kCapacity>{mask};
+      BoundedMaskIter<kCapacity> iter{mask};
+      return std::pair{iter, iter.hasNext()};
     } else {
-      return SparseMaskIter{mask & kFullMask};
+      SparseMaskIter iter{mask & kFullMask};
+      return std::pair{iter, iter.hasNext()};
     }
   }
 
@@ -856,7 +862,7 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
   ////////
   // Tag filtering using plain C/C++
 
-  SparseMaskIter tagMatchIter(std::size_t needle) const {
+  std::pair<SparseMaskIter, bool> tagMatchIter(std::size_t needle) const {
     FOLLY_SAFE_DCHECK(needle >= 1 && needle < 0x100, "");
     auto tagV = static_cast<uint8_t const*>(&tags_[0]);
     MaskType mask = 0;
@@ -864,7 +870,8 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     for (auto i = 0u; i < kCapacity; i++) {
       mask |= ((tagV[i] == static_cast<uint8_t>(needle)) ? 1 : 0) << i;
     }
-    return SparseMaskIter{mask & kFullMask};
+    SparseMaskIter iter{mask & kFullMask};
+    return {iter, iter.hasNext()};
   }
 
   MaskType occupiedMask() const {
@@ -1770,9 +1777,6 @@ class F14Table : public Policy {
   FOLLY_ALWAYS_INLINE ItemIter
   findImpl(HashPair hp, K const& key, Prefetch prefetch) const {
     FOLLY_SAFE_DCHECK(hp.second >= 1 && hp.second < 0x100, "");
-#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
-    svbool_t pred = svwhilelt_b8_u32(0, Chunk::kCapacity);
-#endif
     std::size_t index = hp.first;
     std::size_t step = probeDelta(hp);
     auto needleV = loadNeedleV(hp.second);
@@ -1781,15 +1785,7 @@ class F14Table : public Policy {
       if (prefetch == Prefetch::ENABLED && Chunk::kChunkStride > 64) {
         prefetchAddr(chunk->itemAddr(8));
       }
-#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
-      svbool_t outPred;
-      auto hits = chunk->tagMatchIter(needleV, pred, outPred);
-      bool nonzero = svptest_any(pred, outPred);
-      FOLLY_SAFE_DCHECK(nonzero == hits.hasNext());
-#else
-      auto hits = chunk->tagMatchIter(needleV);
-      bool nonzero = hits.hasNext();
-#endif
+      auto [hits, nonzero] = chunk->tagMatchIter(needleV);
       if (nonzero) {
         do {
           auto i = hits.next();
@@ -1886,9 +1882,6 @@ class F14Table : public Policy {
   template <typename K, typename F>
   FOLLY_ALWAYS_INLINE ItemIter findMatching(K const& key, F&& func) const {
     auto hp = computeHash(key);
-#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
-    svbool_t pred = svwhilelt_b8_u32(0, Chunk::kCapacity);
-#endif
     std::size_t index = hp.first;
     auto needleV = loadNeedleV(hp.second);
     std::size_t step = probeDelta(hp);
@@ -1897,15 +1890,7 @@ class F14Table : public Policy {
       if (Chunk::kChunkStride > 64) {
         prefetchAddr(chunk->itemAddr(8));
       }
-#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
-      svbool_t outPred;
-      auto hits = chunk->tagMatchIter(needleV, pred, outPred);
-      bool nonzero = svptest_any(pred, outPred);
-      FOLLY_SAFE_DCHECK(nonzero == hits.hasNext());
-#else
-      auto hits = chunk->tagMatchIter(needleV);
-      bool nonzero = hits.hasNext();
-#endif
+      auto [hits, nonzero] = chunk->tagMatchIter(needleV);
       if (nonzero) {
         do {
           auto i = hits.next();

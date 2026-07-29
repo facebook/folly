@@ -1022,7 +1022,7 @@ class alignas(64) SIMDTable {
     ////////
     // Tag filtering using SVE intrinsics
 
-    SparseMaskIter tagMatchIter(std::size_t needle, svbool_t& outPred) const {
+    std::pair<SparseMaskIter, bool> tagMatchIter(std::size_t needle) const {
       FOLLY_SAFE_DCHECK(needle >= 0x80 && needle < 0x100, "");
       uint64_t low = tags_low_.load(std::memory_order_acquire);
       uint64_t hi = tags_hi_.load(std::memory_order_acquire);
@@ -1031,14 +1031,14 @@ class alignas(64) SIMDTable {
       uint64x2_t vec;
       vec[0] = low;
       vec[1] = hi;
-      // test if any match is found
-      outPred = svmatch_u8(pred, svset_neonq_u8(svundef_u8(), vec), needleV);
+      svbool_t matchPred =
+          svmatch_u8(pred, svset_neonq_u8(svundef_u8(), vec), needleV);
       // get info from every byte into the bottom half of every uint16_t
       // by shifting right 4, then round to get it into a 64-bit vector
       uint8x8_t maskV = vshrn_n_u16(
-          vreinterpretq_u16_u8(svget_neonq(svdup_n_u8_z(outPred, 17))), 4);
+          vreinterpretq_u16_u8(svget_neonq(svdup_n_u8_z(matchPred, 17))), 4);
       uint64_t mask = vreinterpret_u64_u8(maskV)[0];
-      return SparseMaskIter{mask};
+      return {SparseMaskIter{mask}, svptest_any(matchPred, matchPred)};
     }
 
 #else
@@ -1046,7 +1046,7 @@ class alignas(64) SIMDTable {
     ////////
     // Tag filtering using NEON intrinsics
 
-    SparseMaskIter tagMatchIter(std::size_t needle) const {
+    std::pair<SparseMaskIter, bool> tagMatchIter(std::size_t needle) const {
       FOLLY_SAFE_DCHECK(needle >= 0x80 && needle < 0x100, "");
       uint64_t low = tags_low_.load(std::memory_order_acquire);
       uint64_t hi = tags_hi_.load(std::memory_order_acquire);
@@ -1057,7 +1057,8 @@ class alignas(64) SIMDTable {
       auto eqV = vceqq_u8(vreinterpretq_u8_u64(vec), needleV);
       uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(eqV), 4);
       uint64_t mask = vget_lane_u64(vreinterpret_u64_u8(maskV), 0) & kFullMask;
-      return SparseMaskIter{mask};
+      SparseMaskIter iter{mask};
+      return {iter, iter.hasNext()};
     }
 
 #endif
@@ -1080,7 +1081,7 @@ class alignas(64) SIMDTable {
     ////////
     // Tag filtering using SSE2 intrinsics
 
-    SparseMaskIter tagMatchIter(std::size_t needle) const {
+    std::pair<SparseMaskIter, bool> tagMatchIter(std::size_t needle) const {
       FOLLY_SAFE_DCHECK(needle >= 0x80 && needle < 0x100, "");
       uint64_t low = tags_low_.load(std::memory_order_acquire);
       uint64_t hi = tags_hi_.load(std::memory_order_acquire);
@@ -1088,7 +1089,8 @@ class alignas(64) SIMDTable {
       auto needleV = _mm_set1_epi8(static_cast<uint8_t>(needle));
       auto eqV = _mm_cmpeq_epi8(tagV, needleV);
       auto mask = _mm_movemask_epi8(eqV) & kFullMask;
-      return SparseMaskIter{mask};
+      SparseMaskIter iter{mask};
+      return {iter, iter.hasNext()};
     }
 
     MaskType occupiedMask() const {
@@ -1494,15 +1496,7 @@ class alignas(64) SIMDTable {
     auto& chunk_idx = hp.first;
     for (size_t tries = 0; tries < ccount; ++tries) {
       Chunk* chunk = chunks->getChunk(chunk_idx, ccount);
-#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
-      svbool_t outPred;
-      auto hits = chunk->tagMatchIter(hp.second, outPred);
-      bool hasHits = svptest_any(outPred, outPred);
-      FOLLY_SAFE_DCHECK(hasHits == hits.hasNext());
-#else
-      auto hits = chunk->tagMatchIter(hp.second);
-      bool hasHits = hits.hasNext();
-#endif
+      auto [hits, hasHits] = chunk->tagMatchIter(hp.second);
       if (hasHits) {
         do {
           size_t tag_idx = hits.next();
@@ -1648,15 +1642,7 @@ class alignas(64) SIMDTable {
 
     for (size_t tries = 0; tries < ccount; ++tries) {
       Chunk* chunk = chunks->getChunk(chunk_idx, ccount);
-#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
-      svbool_t outPred;
-      auto hits = chunk->tagMatchIter(hp.second, outPred);
-      bool hasHits = svptest_any(outPred, outPred);
-      FOLLY_SAFE_DCHECK(hasHits == hits.hasNext());
-#else
-      auto hits = chunk->tagMatchIter(hp.second);
-      bool hasHits = hits.hasNext();
-#endif
+      auto [hits, hasHits] = chunk->tagMatchIter(hp.second);
       if (hasHits) {
         do {
           tag_idx = hits.next();
