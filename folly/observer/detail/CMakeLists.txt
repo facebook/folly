@@ -41,6 +41,7 @@ folly_add_library(
     folly_system_thread_name
   EXPORTED_DEPS
     ${GLOG_LIBRARIES}
+    folly_cancellation_token
     folly_fibers_core_manager
     folly_function
     folly_functional_invoke

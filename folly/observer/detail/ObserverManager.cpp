@@ -193,10 +193,47 @@ class ObserverManager::UpdatesManager::NextQueueProcessor {
   folly::Synchronized<std::vector<std::promise<void>>> emptyWaiters_;
 };
 
-ObserverManager::UpdatesManager::UpdatesManager() {
-  currentQueueProcessor_ = std::make_unique<CurrentQueueProcessor>();
-  nextQueueProcessor_ = std::make_unique<NextQueueProcessor>();
+void ObserverManager::UpdatesManager::stopProcessorsForShutdown() {
+  std::unique_ptr<NextQueueProcessor> nextProcessor;
+  std::unique_ptr<CurrentQueueProcessor> currentProcessor;
+  {
+    // Swap the pointers to null under the lock so a concurrent
+    // tryWaitForAllUpdatesImpl (holding the same lock, see below) never
+    // observes a half-torn-down state; the actual thread joins happen below,
+    // outside the lock, so we only hold it as long as the pointer swap.
+    std::lock_guard<std::mutex> lg(processorsMutex_);
+    nextProcessor = std::move(nextQueueProcessor_);
+    currentProcessor = std::move(currentQueueProcessor_);
+  }
+  // Order matters and mirrors the reverse-declaration-order the implicit
+  // destructor already uses: stop the producer (NextQueueProcessor, which
+  // schedules refreshes onto currentQueue()) before the consumer
+  // (CurrentQueueProcessor), so nothing enqueues into a queue whose
+  // processor has already stopped draining it.
+  nextProcessor.reset();
+  currentProcessor.reset();
 }
+
+ObserverManager::UpdatesManager::UpdatesManager()
+    : currentQueueProcessor_(std::make_unique<CurrentQueueProcessor>()),
+      nextQueueProcessor_(std::make_unique<NextQueueProcessor>()),
+      // Fixes a shutdown-order UAF: SingletonVault destroys singletons in
+      // reverse-creation order, so any config/observer-backed singleton
+      // created *after* this one is destroyed *before* it -- but until now
+      // this UpdatesManager's own refresh threads kept running (still
+      // reading/writing whatever they were mid-refresh on) until its own
+      // destructor was reached, arbitrarily later in that teardown sequence.
+      // SingletonVault::destroyInstances() fires this cancellation token as
+      // its very first action, strictly before it destroys ANY singleton
+      // (see Singleton.cpp), so registering here stops both processor
+      // threads before any config singleton's data can be freed out from
+      // under an in-flight refresh -- without needing to know which
+      // singleton is involved, and without depending on creation order.
+      // Same idiom already used by e.g. ConfigeratorStaticData and
+      // FalconModules for their own shutdown ordering.
+      shutdownCallback_(
+          folly::SingletonVault::singleton()->getDestructionCancellationToken(),
+          [this] { stopProcessorsForShutdown(); }) {}
 
 void ObserverManager::scheduleCurrent(Function<void()> task) {
   currentQueue().enqueue(std::move(task));
@@ -218,7 +255,31 @@ bool ObserverManager::tryWaitForAllUpdatesImpl(TryWaitForAllUpdatesImplOp op) {
 bool ObserverManager::UpdatesManager::tryWaitForAllUpdatesImpl(
     TryWaitForAllUpdatesImplOp op) {
   auto& instance = ObserverManager::getInstance();
-  nextQueueProcessor_->waitForEmpty();
+  {
+    // Held for the duration of waitForEmpty(). This deliberately keeps the
+    // lock across the whole waitForEmpty() call rather than dropping it after
+    // reading the pointer, which is both required for safety and bounded in
+    // cost:
+    //   - Required: nextQueueProcessor_ is a unique_ptr, and a concurrent
+    //     stopProcessorsForShutdown() resets it *and joins its thread*.
+    //     Dropping the lock and calling waitForEmpty() on a bare pointer would
+    //     let that reset run concurrently and free the processor (and its
+    //     emptyWaiters_) out from under this call -- a UAF. Holding the lock
+    //     forces shutdown to wait here instead.
+    //   - Bounded: this cannot deadlock or stall shutdown unboundedly.
+    //     stopProcessorsForShutdown() is parked on this lock *before* it stops
+    //     anything, so the processor thread is still running and keeps
+    //     draining; waitForEmpty() therefore returns as soon as the
+    //     already-scheduled work is flushed, and only then does shutdown
+    //     proceed. The wait is bounded by in-flight refresh work, not by the
+    //     shutdown callback.
+    // If nextQueueProcessor_ is already null, shutdown already stopped the
+    // processors and there is nothing left to drain.
+    std::lock_guard<std::mutex> lg(processorsMutex_);
+    if (nextQueueProcessor_) {
+      nextQueueProcessor_->waitForEmpty();
+    }
+  }
   // Wait for all readers to release the lock.
   return op(instance.versionMutex_).owns_lock();
 }
