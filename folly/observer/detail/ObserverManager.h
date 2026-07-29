@@ -18,9 +18,6 @@
 
 #include <glog/logging.h>
 
-#include <mutex>
-
-#include <folly/CancellationToken.h>
 #include <folly/Portability.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/functional/Invoke.h>
@@ -233,36 +230,8 @@ class ObserverManager {
     class CurrentQueueProcessor;
     class NextQueueProcessor;
 
-    // Stops both processor threads early, called from shutdownCallback_ (see
-    // below). Declared separately from the destructor so it can run *before*
-    // SingletonVault destroys any other singleton, not just at this object's
-    // own (LIFO-ordered) destruction turn -- see ObserverManager.cpp for why.
-    void stopProcessorsForShutdown();
-
-    // Guards currentQueueProcessor_/nextQueueProcessor_ against a real race:
-    // getUpdatesManager() hands out a shared_ptr<UpdatesManager>, so a caller
-    // already inside tryWaitForAllUpdatesImpl() can be dereferencing
-    // nextQueueProcessor_ while this SAME (still-alive, refcounted) object
-    // is concurrently torn down early by stopProcessorsForShutdown() on
-    // another thread -- the shared_ptr keeps the UpdatesManager itself
-    // alive, but does nothing to protect its internal members from a
-    // same-instance concurrent mutation. Without this lock that's a
-    // null-deref/UAF race that does not exist today (today these members
-    // are only ever mutated from ~UpdatesManager(), which the Singleton
-    // machinery only runs once all shared_ptr holders have released).
-    std::mutex processorsMutex_;
-
-    // Declaration order matters here and must NOT change: members are
-    // constructed in declaration order, so both processors are guaranteed to
-    // exist before shutdownCallback_ registers (and can safely be reset from
-    // it, even if the callback fires synchronously during construction
-    // because the SingletonVault destruction token is already cancelled).
-    // On (normal) destruction, members are torn down in reverse:
-    // shutdownCallback_ first (safe/idempotent to destroy whether or not it
-    // already fired), then the two processors (safe no-op if already reset).
     std::unique_ptr<CurrentQueueProcessor> currentQueueProcessor_;
     std::unique_ptr<NextQueueProcessor> nextQueueProcessor_;
-    folly::CancellationCallback shutdownCallback_;
   };
   struct Singleton;
 

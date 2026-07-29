@@ -26,7 +26,6 @@ fb_dirsync_cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/glog:glog",
-        "//folly:cancellation_token",
         "//folly:function",
         "//folly:portability",
         "//folly:synchronized",
