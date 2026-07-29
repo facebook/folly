@@ -1456,6 +1456,13 @@ inline void swap(
   return a.swap(b);
 }
 
+template <typename T>
+inline constexpr bool is_heap_vector_set_v =
+    is_instantiation_of_v<heap_vector_set, T>;
+
+template <typename T>
+struct is_heap_vector_set : std::bool_constant<is_heap_vector_set_v<T>> {};
+
 #if FOLLY_HAS_MEMORY_RESOURCE
 
 namespace pmr {
@@ -1586,6 +1593,13 @@ inline void swap(
     heap_vector_map<K, V, C, A, G>& b) noexcept {
   return a.swap(b);
 }
+
+template <typename T>
+inline constexpr bool is_heap_vector_map_v =
+    is_instantiation_of_v<heap_vector_map, T>;
+
+template <typename T>
+struct is_heap_vector_map : std::bool_constant<is_heap_vector_map_v<T>> {};
 
 #if FOLLY_HAS_MEMORY_RESOURCE
 
