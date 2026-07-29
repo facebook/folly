@@ -429,6 +429,24 @@ TEST(HeapVectorTypes, FromVector) {
   }
 }
 
+TEST(HeapVectorTypes, FromEmptyVector) {
+  {
+    folly::heap_vector_map<int, float>::container_type vec;
+    heap_vector_map<int, float> m(std::move(vec));
+    EXPECT_TRUE(m.empty());
+  }
+  {
+    folly::heap_vector_map<int, float>::container_type vec;
+    heap_vector_map<int, float> m(folly::sorted_unique, std::move(vec));
+    EXPECT_TRUE(m.empty());
+  }
+  {
+    folly::heap_vector_set<int>::container_type vec;
+    heap_vector_set<int> s(folly::sorted_unique, std::move(vec));
+    EXPECT_TRUE(s.empty());
+  }
+}
+
 TEST(HeapVectorTypes, IterateOverVectorWithinMap) {
   const int size = 10;
   {

@@ -326,6 +326,9 @@ template <class Container>
 void heapify(Container& cont) {
   using size_type = typename Container::size_type;
   size_type size = cont.size();
+  if (FOLLY_UNLIKELY(size == 0)) {
+    return;
+  }
   std::vector<size_type> offsets;
   offsets.resize(size);
   getOffsets(size, offsets);
