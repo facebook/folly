@@ -59,6 +59,12 @@ struct F3 : T3 {
 };
 struct F4 : T1 {};
 
+struct T6 {
+  T6(const T6&) {}
+  T6& operator=(const T6&) { return *this; }
+};
+static_assert(!std::is_trivially_copyable_v<T6>);
+
 template <class>
 struct A {};
 struct B {};
@@ -76,6 +82,8 @@ template <>
 struct IsRelocatable<T1> : std::true_type {};
 template <>
 FOLLY_ASSUME_RELOCATABLE(T2);
+template <>
+FOLLY_ASSUME_RELOCATABLE(T6);
 } // namespace folly
 
 TEST(Traits, scalars) {
@@ -89,6 +97,18 @@ TEST(Traits, containers) {
   EXPECT_FALSE(IsRelocatable<vector<F1>>::value);
   EXPECT_TRUE((IsRelocatable<pair<F1, F1>>::value));
   EXPECT_TRUE((IsRelocatable<pair<T1, T2>>::value));
+  EXPECT_TRUE((IsRelocatable<pair<const T1, T2>>::value));
+  EXPECT_TRUE((IsRelocatable<pair<const T6, T2>>::value));
+  EXPECT_FALSE((IsRelocatable<pair<const vector<F1>, T2>>::value));
+}
+
+TEST(Traits, constQualified) {
+  EXPECT_TRUE(IsRelocatable<const int>::value);
+  EXPECT_TRUE(IsRelocatable<const T1>::value);
+  EXPECT_TRUE(IsRelocatable<const T3>::value);
+  EXPECT_TRUE(IsRelocatable<const T6>::value);
+  EXPECT_FALSE(IsRelocatable<const F3>::value);
+  EXPECT_FALSE(IsRelocatable<const vector<F1>>::value);
 }
 
 TEST(Traits, original) {
@@ -318,7 +338,7 @@ struct some_tag {};
 template <typename T>
 struct container {
   template <class... Args>
-  container(
+  explicit container(
       folly::type_t<some_tag, decltype(T(std::declval<Args>()...))>,
       Args&&...) {}
 };

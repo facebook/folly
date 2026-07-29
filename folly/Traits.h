@@ -812,6 +812,9 @@ struct IsRelocatable
 };
 
 template <class T>
+struct IsRelocatable<const T> : IsRelocatable<T> {};
+
+template <class T>
 struct IsZeroInitializable
     : std::conditional<
           !require_sizeof<T> ||
