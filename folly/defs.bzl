@@ -35,14 +35,14 @@ def cpp_flags():
     # headers -- e.g. disabling F14 vector intrinsics and changing jemalloc/type
     # layouts -- which breaks fbcode targets built against xplat/folly. So drop
     # these overrides when mobile is disabled and let autoconf match fbcode.
-    flags = select({
+    flags = selects.with_or({
         "DEFAULT": [
             "-DFOLLY_HAVE_LIBJEMALLOC=0",
             "-DFOLLY_HAVE_PREADV=0",
             "-DFOLLY_HAVE_PWRITEV=0",
             "-DFOLLY_HAVE_TFO=0",
         ],
-        "ovr_config//os:linux": select({
+        ("ovr_config//os:linux", "ovr_config//os:macos"): select({
             "DEFAULT": [],
             "ovr_config//project/folly:mobile[enabled]": [
                 "-DFOLLY_HAVE_LIBJEMALLOC=0",
@@ -61,9 +61,9 @@ def cpp_flags():
 
     else:
         flags += select({
-            "DEFAULT": select({
+            "DEFAULT": selects.with_or({
                 "DEFAULT": ["-DFOLLY_MOBILE=1"],
-                "ovr_config//os:linux": select({
+                ("ovr_config//os:linux", "ovr_config//os:macos"): select({
                     "DEFAULT": [],
                     "ovr_config//project/folly:mobile[enabled]": ["-DFOLLY_MOBILE=1"],
                 }),
