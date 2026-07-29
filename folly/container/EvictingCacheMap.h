@@ -126,7 +126,7 @@ class EvictingCacheMap {
 
  private:
   template <typename K>
-  using IsIter = Disjunction<
+  using IsIter = std::disjunction<
       std::is_same<iterator, remove_cvref_t<K>>,
       std::is_same<const_iterator, remove_cvref_t<K>>>;
 

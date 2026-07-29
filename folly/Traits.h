@@ -856,14 +856,6 @@ template <typename T, typename... TList>
 struct Conjunction<T, TList...>
     : std::conditional<T::value, Conjunction<TList...>, T>::type {};
 
-template <typename...>
-struct Disjunction : std::false_type {};
-template <typename T>
-struct Disjunction<T> : T {};
-template <typename T, typename... TList>
-struct Disjunction<T, TList...>
-    : std::conditional<T::value, T, Disjunction<TList...>>::type {};
-
 template <bool... Bs>
 struct Bools {
   using valid_type = bool;

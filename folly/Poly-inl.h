@@ -173,7 +173,7 @@ inline PolyRef<I>::PolyRef(Poly<I2>&& that) noexcept(
     std::is_reference<I2>::value)
     : PolyRef{that, Type<I2>{}} {
   static_assert(
-      Disjunction<std::is_reference<I2>, std::is_rvalue_reference<I>>::value,
+      std::disjunction_v<std::is_reference<I2>, std::is_rvalue_reference<I>>,
       "Attempting to construct a Poly that is a reference to a temporary. "
       "This is probably a mistake.");
 }

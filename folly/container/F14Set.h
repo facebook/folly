@@ -1085,7 +1085,7 @@ class F14VectorSetImpl
   using Super = F14BasicSet<Policy>;
 
   template <typename K>
-  using IsIter = Disjunction<
+  using IsIter = std::disjunction<
       std::is_same<typename Policy::Iter, remove_cvref_t<K>>,
       std::is_same<typename Policy::ReverseIter, remove_cvref_t<K>>>;
 

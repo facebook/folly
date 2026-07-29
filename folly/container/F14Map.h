@@ -77,7 +77,7 @@ class F14BasicMap {
       T>;
 
   template <typename K>
-  using IsIter = Disjunction<
+  using IsIter = std::disjunction<
       std::is_same<typename Policy::Iter, remove_cvref_t<K>>,
       std::is_same<typename Policy::ConstIter, remove_cvref_t<K>>>;
 
@@ -1425,7 +1425,7 @@ class F14VectorMapImpl
   using Super = F14BasicMap<Policy>;
 
   template <typename K>
-  using IsIter = Disjunction<
+  using IsIter = std::disjunction<
       std::is_same<typename Policy::Iter, remove_cvref_t<K>>,
       std::is_same<typename Policy::ConstIter, remove_cvref_t<K>>,
       std::is_same<typename Policy::ReverseIter, remove_cvref_t<K>>,

@@ -199,7 +199,7 @@ struct HeterogeneousPreHashCompatible<
     std::enable_if_t<
         detail::HasCompatibleTest<Hash1, Hash2>::value &&
         detail::HasCompatibleTest<Hash2, Hash1>::value>>
-    : Disjunction<
+    : std::disjunction<
           typename Hash1::template is_compatible<Hash2>,
           typename Hash2::template is_compatible<Hash1>> {};
 

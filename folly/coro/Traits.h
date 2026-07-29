@@ -128,7 +128,7 @@ struct _has_free_operator_co_await<
 /// returns an Awaiter.
 template <typename T>
 struct is_awaitable
-    : folly::Disjunction<
+    : std::disjunction<
           detail::_has_member_operator_co_await<T>,
           detail::_has_free_operator_co_await<T>,
           is_awaiter<T>> {};

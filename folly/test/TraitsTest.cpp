@@ -164,13 +164,6 @@ TEST(Trait, logicOperators) {
   static_assert(is_same<Conjunction<false_type>::type, false_type>::value);
   static_assert(Conjunction<true_type, true_type>::value);
   static_assert(!Conjunction<true_type, false_type>::value);
-
-  static_assert(Disjunction<true_type>::value);
-  static_assert(!Disjunction<false_type>::value);
-  static_assert(is_same<Disjunction<true_type>::type, true_type>::value);
-  static_assert(is_same<Disjunction<false_type>::type, false_type>::value);
-  static_assert(Disjunction<true_type, true_type>::value);
-  static_assert(Disjunction<true_type, false_type>::value);
 }
 
 TEST(Traits, isNegative) {
