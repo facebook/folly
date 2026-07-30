@@ -21,16 +21,14 @@ import unittest
 from folly.python.test import simplebridgecoro
 
 
-class FuturesTest(unittest.TestCase):
-    def test_bridge_coro(self) -> None:
+class FuturesTest(unittest.IsolatedAsyncioTestCase):
+    async def test_bridge_coro(self) -> None:
         val = 1337
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(simplebridgecoro.get_value_x5_coro(val))
+        res = await simplebridgecoro.get_value_x5_coro(val)
         self.assertEqual(val * 5, res)
 
-    def test_cancellation(self) -> None:
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(self._return_five_after_cancelled())
+    async def test_cancellation(self) -> None:
+        res = await self._return_five_after_cancelled()
         self.assertEqual(5, res)
 
     async def _return_five_after_cancelled(self) -> int:
@@ -62,36 +60,27 @@ class FuturesTest(unittest.TestCase):
         assert final_stats is not None
         self.assertEqual(final_stats.drive_count, initial_count + drive_count)
 
-    def test_executor_stats(self) -> None:
-        loop = asyncio.get_event_loop()
+    async def test_executor_stats(self) -> None:
         task_count = 4
         # 4 * 1, less than 5ms default
         block_ms = 1
         # Drive called once
         drive_count = 1
-        loop.run_until_complete(
-            self._test_executor_stats(task_count, block_ms, drive_count)
-        )
+        await self._test_executor_stats(task_count, block_ms, drive_count)
 
-    def test_executor_stats_timeslice_0(self) -> None:
+    async def test_executor_stats_timeslice_0(self) -> None:
         simplebridgecoro.set_drive_time_slice_ms(0)
-        loop = asyncio.get_event_loop()
         task_count = 4
         # Irrelevant, no time slice
         block_ms = 1
         # Drive called twice per task (schedule, process result)
         drive_count = 8
-        loop.run_until_complete(
-            self._test_executor_stats(task_count, block_ms, drive_count)
-        )
+        await self._test_executor_stats(task_count, block_ms, drive_count)
 
-    def test_executor_stats_blocking(self) -> None:
-        loop = asyncio.get_event_loop()
+    async def test_executor_stats_blocking(self) -> None:
         task_count = 3
         # More than 5ms default
         block_ms = 6
         # Drive called many times because we time slice
         drive_count = task_count
-        loop.run_until_complete(
-            self._test_executor_stats(task_count, block_ms, drive_count)
-        )
+        await self._test_executor_stats(task_count, block_ms, drive_count)
