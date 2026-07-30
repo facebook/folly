@@ -53,12 +53,12 @@ struct IStrictlyOrderable : PolyExtends<> {
 /// \cond
 namespace detail {
 template <class I1, class I2>
-using Comparable = Conjunction<
+using Comparable = std::conjunction<
     std::is_same<std::decay_t<I1>, std::decay_t<I2>>,
     std::is_base_of<poly::IEqualityComparable, std::decay_t<I1>>>;
 
 template <class I1, class I2>
-using Orderable = Conjunction<
+using Orderable = std::conjunction<
     std::is_same<std::decay_t<I1>, std::decay_t<I2>>,
     std::is_base_of<poly::IStrictlyOrderable, std::decay_t<I1>>>;
 } // namespace detail

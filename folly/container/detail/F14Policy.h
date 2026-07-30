@@ -53,7 +53,7 @@ using SetOrMapValueType = std::conditional_t<
     MapValueType<KeyType, MappedTypeOrVoid>>;
 
 template <typename T>
-using IsNothrowMoveAndDestroy = Conjunction<
+using IsNothrowMoveAndDestroy = std::conjunction<
     std::is_nothrow_move_constructible<T>,
     std::is_nothrow_destructible<T>>;
 

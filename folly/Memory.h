@@ -67,9 +67,10 @@ struct to_address_fn {
       decltype(std::pointer_traits<T>::to_address(FOLLY_DECLVAL(T const&)));
 
   template <typename T>
-  static inline constexpr bool use_pointer_traits_to_address = Conjunction<
-      is_detected<element_type_of, T>,
-      is_detected<detect_to_address, T>>::value;
+  static inline constexpr bool use_pointer_traits_to_address =
+      std::conjunction_v<
+          is_detected<element_type_of, T>,
+          is_detected<detect_to_address, T>>;
 
  public:
   template <typename T>

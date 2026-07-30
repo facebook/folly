@@ -177,15 +177,6 @@ TEST(Traits, conditional) {
   EXPECT_FALSE(Cond<true>::fun_folly("hello"));
 }
 
-TEST(Trait, logicOperators) {
-  static_assert(Conjunction<true_type>::value);
-  static_assert(!Conjunction<false_type>::value);
-  static_assert(is_same<Conjunction<true_type>::type, true_type>::value);
-  static_assert(is_same<Conjunction<false_type>::type, false_type>::value);
-  static_assert(Conjunction<true_type, true_type>::value);
-  static_assert(!Conjunction<true_type, false_type>::value);
-}
-
 TEST(Traits, isNegative) {
   EXPECT_TRUE(folly::is_negative(-1));
   EXPECT_FALSE(folly::is_negative(0));

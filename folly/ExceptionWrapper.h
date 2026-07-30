@@ -166,7 +166,7 @@ class exception_wrapper final {
       class Ex,
       class Ex_ = std::decay_t<Ex>,
       FOLLY_REQUIRES(
-          Conjunction<IsStdException<Ex_>, IsRegularExceptionType<Ex_>>::value)>
+          std::conjunction_v<IsStdException<Ex_>, IsRegularExceptionType<Ex_>>)>
   /* implicit */ exception_wrapper(Ex&& ex);
 
   //! \pre `typeid(ex) == typeid(typename decay<Ex>::type)`

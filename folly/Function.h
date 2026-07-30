@@ -1106,9 +1106,9 @@ class FunctionRef<ReturnType(Args...)> final {
   template <
       typename Fun,
       std::enable_if_t<
-          Conjunction<
+          std::conjunction_v<
               std::negation<std::is_same<FunctionRef, std::decay_t<Fun>>>,
-              is_invocable_r<ReturnType, Fun&&, Args&&...>>::value,
+              is_invocable_r<ReturnType, Fun&&, Args&&...>>,
           int> = 0>
   constexpr /* implicit */ FunctionRef(Fun&& fun) noexcept {
     // `Fun` may be a const type, in which case we have to do a const_cast

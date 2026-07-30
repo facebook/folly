@@ -671,7 +671,7 @@ class Range {
 
   template <typename Target>
   struct IsConstructibleViaStringView
-      : Conjunction<
+      : std::conjunction<
             std::is_constructible<
                 _t<StringViewType<value_type>>,
                 Iter const&,

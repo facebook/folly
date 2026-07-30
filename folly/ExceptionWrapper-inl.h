@@ -74,9 +74,9 @@ template <
     class Ex,
     class Ex_,
     FOLLY_REQUIRES_DEF(
-        Conjunction<
+        std::conjunction_v<
             exception_wrapper::IsStdException<Ex_>,
-            exception_wrapper::IsRegularExceptionType<Ex_>>::value)>
+            exception_wrapper::IsRegularExceptionType<Ex_>>)>
 inline exception_wrapper::exception_wrapper(Ex&& ex)
     : ptr_{make_exception_ptr_with(std::in_place, std::forward<Ex>(ex))} {}
 

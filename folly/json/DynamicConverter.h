@@ -94,7 +94,7 @@ struct iterator_class_is_container {
 };
 
 template <typename T>
-using class_is_container = Conjunction<
+using class_is_container = std::conjunction<
     is_detected<detect_member_type_iterator, T>,
     iterator_class_is_container<T>>;
 
@@ -116,13 +116,13 @@ using is_associative =
     StrictConjunction<is_range<T>, is_detected<detect_member_type_key_type, T>>;
 
 template <typename T>
-using is_like_pointer = Conjunction<
+using is_like_pointer = std::conjunction<
     // Exclude string literals.
     std::negation<std::is_convertible<T, StringPiece>>,
     is_detected<detect_like_pointer, T>>;
 
 template <typename T>
-using is_optional = Conjunction<
+using is_optional = std::conjunction<
     is_detected<detect_like_pointer, T>,
     is_detected<detect_like_optional, T>>;
 
