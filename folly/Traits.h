@@ -851,22 +851,13 @@ struct conditional_<true> {
 template <bool V, typename T, typename F>
 using conditional_t = typename detail::conditional_<V>::template apply<T, F>;
 
-template <bool... Bs>
-struct Bools {
-  using valid_type = bool;
-  static constexpr std::size_t size() { return sizeof...(Bs); }
-};
-
 //  Lighter-weight than std::conjunction, but evaluates all sub-conditions
 //  eagerly.
 template <class... Ts>
-struct StrictConjunction
-    : std::is_same<Bools<Ts::value...>, Bools<(Ts::value || true)...>> {};
+struct StrictConjunction : std::bool_constant<(Ts::value && ...)> {};
 
 template <class... Ts>
-struct StrictDisjunction
-    : std::negation<
-          std::is_same<Bools<Ts::value...>, Bools<(Ts::value && false)...>>> {};
+struct StrictDisjunction : std::bool_constant<(Ts::value || ...)> {};
 
 namespace detail {
 template <typename T>
