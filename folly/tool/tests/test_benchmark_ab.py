@@ -55,6 +55,22 @@ class CheckoutTrackingWorkspace:
         self.current_revision = revision
 
 
+class RelativeRevisionWorkspace(CheckoutTrackingWorkspace):
+    def __init__(self, build_target: str) -> None:
+        super().__init__()
+        self.build_target = build_target
+        self.resolve_calls: list[tuple[str, str]] = []
+        self.query_revisions: list[str] = []
+
+    def resolve_revision(self, revision: str) -> str:
+        self.resolve_calls.append((revision, self.current_revision))
+        return super().resolve_revision(revision)
+
+    def query_buck(self, query: str) -> list[str]:
+        self.query_revisions.append(self.current_revision)
+        return [self.build_target]
+
+
 @dataclass
 class FakeBuckRunner:
     expected_target: str
@@ -263,7 +279,7 @@ class BenchmarkAbTest(unittest.TestCase):
                 (out / "comparison.tsv").read_text(encoding="utf-8"),
             )
 
-            # Measurement artifacts retain rows before report thresholds, so
+            # Measurement artifacts retain results below report thresholds, so
             # reanalysis can reveal smaller changes without rerunning benchmarks.
             stdout = io.StringIO()
             with contextlib.redirect_stdout(stdout):
@@ -303,6 +319,29 @@ class BenchmarkAbTest(unittest.TestCase):
                     workspace,
                 )
 
+            self.assertEqual("start", workspace.current_revision)
+
+    def test_measurement_resolves_relative_revisions_before_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            args = benchmark_ab.parse_args(
+                [
+                    "measure",
+                    "--before=.^",
+                    "--after=.",
+                    "--rounds=0",
+                    "--out",
+                    str(Path(temp) / "out"),
+                    "//folly/test/...",
+                ]
+            )
+            workspace = RelativeRevisionWorkspace(self.target.build_target)
+
+            self.assertEqual(0, benchmark_ab.run_measurement(args, workspace))
+            # `--after=.` must name the starting revision, not the "before"
+            # revision checked out for discovery. Resolve both args first.
+            self.assertEqual(2, workspace.resolve_calls.count((".", "start")))
+            # Target discovery itself runs at the resolved "before" revision.
+            self.assertEqual([".^_node"], workspace.query_revisions)
             self.assertEqual("start", workspace.current_revision)
 
     def test_measurement_rejects_nonempty_output_before_running(self) -> None:
@@ -357,6 +396,18 @@ class BenchmarkAbTest(unittest.TestCase):
                     benchmark_ab.validate_args(args)
                 self.assertEqual(error, str(raised.exception))
 
+    def test_report_thresholds_must_be_nonnegative_and_finite(self) -> None:
+        for option in ("--hi-ns", "--hi-pct", "--lo-ns", "--lo-pct"):
+            for value in ("-1", "nan"):
+                with (
+                    self.subTest(option=option, value=value),
+                    contextlib.redirect_stderr(io.StringIO()),
+                    self.assertRaises(SystemExit),
+                ):
+                    benchmark_ab.parse_args(
+                        ["reanalyze", "--out=out", f"{option}={value}"]
+                    )
+
     def test_zero_thresholds_still_separate_wins_and_regressions(self) -> None:
         rows = {
             (self.target.build_target, self._benchmark("faster")): [
@@ -365,11 +416,14 @@ class BenchmarkAbTest(unittest.TestCase):
             (self.target.build_target, self._benchmark("slower")): [
                 benchmark_ab.Observation(1, 10.0, 11.0)
             ],
+            (self.target.build_target, self._benchmark("displayed_zero")): [
+                benchmark_ab.Observation(1, 10.0, 10.04)
+            ],
         }
         threshold = benchmark_ab.Threshold(ns=0.0, pct=0.0)
 
-        # With zero thresholds, direction is the only guard against
-        # reporting slowdowns as wins and speedups as regressions.
+        # With zero thresholds, direction at report precision is the only guard
+        # against reporting slowdowns as wins and speedups as regressions.
         wins = benchmark_ab.bucket_rows(rows, direction=-1, threshold=threshold)
         regressions = benchmark_ab.bucket_rows(rows, direction=1, threshold=threshold)
 
@@ -404,8 +458,7 @@ class BenchmarkAbTest(unittest.TestCase):
         ):
             self.assertIn(">=1.0ns", rendered)
             self.assertIn(
-                "Threshold inputs were rounded to one decimal place for "
-                "classification.",
+                "Thresholds were rounded to one decimal place for classification.",
                 rendered,
             )
 
@@ -703,7 +756,6 @@ else:
     def test_missing_attempts_need_attention(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp)
-            args = benchmark_ab.parse_args(["reanalyze", "--out", str(out)])
             artifact = benchmark_ab.load_run_artifact(
                 round_number=1,
                 side=benchmark_ab.BEFORE_SIDE,
@@ -711,9 +763,15 @@ else:
                 base_dir=out / "missing",
             )
 
-            attention = benchmark_ab.needs_attention_for_run(artifact, args=args)
+            attention = benchmark_ab.needs_attention_for_run(
+                artifact,
+                out_dir=out,
+            )
             self.assertIsNotNone(attention)
-            self.assertEqual("No benchmark attempts found", attention.reason)
+            self.assertEqual(
+                "No attempts found for this benchmark run",
+                attention.reason,
+            )
 
     def test_empty_results_need_attention(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -732,10 +790,10 @@ else:
                     target=self.target,
                     base_dir=out / "round_1" / "before_bench",
                 ),
-                args=benchmark_ab.parse_args(["reanalyze", "--out", str(out)]),
+                out_dir=out,
             )
             self.assertIsNotNone(attention)
-            self.assertEqual("Runs produced no benchmark rows", attention.reason)
+            self.assertEqual("Benchmark run produced no results", attention.reason)
 
     def test_summary_compares_the_two_side_medians(self) -> None:
         summary = benchmark_ab.comparison_summary(

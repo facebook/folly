@@ -38,13 +38,12 @@ transitively depend on `//folly:benchmark`, excluding targets with the Buck
 label `not_a_folly_benchmark`.  It runs that fixed target set at both revisions.
 Benchmark targets absent from "before" are not measured.  Each round checks out
 both requested `sl` revisions.  At the end, we restore the starting revision.
-A failed target invocation, or one containing any non-convergent row, is
-retried. None of that invocation's rows contributes data unless a retry
-succeeds.
+A failed target invocation, or one where any benchmark fails to converge, is
+retried. Results contribute only after a successful, fully converged attempt.
 
 The output directory stores the raw benchmark output plus human-readable
 Markdown and sortable TSV reports. A concise comparison goes to stdout;
-progress goes to stderr. Unusable runs and benchmark rows present in only one
+progress goes to stderr. Unusable runs and benchmarks present at only one
 revision are reported separately rather than silently discarded.
 
 Use `reanalyze` to rewrite reports from existing measurements without rerunning
@@ -81,6 +80,7 @@ import argparse
 import csv
 import io
 import json
+import math
 import re
 import shutil
 import statistics
@@ -337,31 +337,37 @@ class HelpFormatter(argparse.RawDescriptionHelpFormatter):
 
 
 def add_report_arguments(parser: argparse.ArgumentParser) -> None:
+    def nonnegative_float(text: str) -> float:
+        value = float(text)
+        if not math.isfinite(value) or value < 0:
+            raise argparse.ArgumentTypeError("must be finite and nonnegative")
+        return value
+
     parser.add_argument(
         "--hi-ns",
         metavar="NS",
-        type=float,
+        type=nonnegative_float,
         default=1.0,
         help="absolute nanosecond threshold for high-priority sections",
     )
     parser.add_argument(
         "--hi-pct",
         metavar="PCT",
-        type=float,
+        type=nonnegative_float,
         default=10.0,
         help="percentage threshold for high-priority sections",
     )
     parser.add_argument(
         "--lo-ns",
         metavar="NS",
-        type=float,
+        type=nonnegative_float,
         default=0.5,
         help="absolute nanosecond threshold for low-priority sections",
     )
     parser.add_argument(
         "--lo-pct",
         metavar="PCT",
-        type=float,
+        type=nonnegative_float,
         default=5.0,
         help="percentage threshold for low-priority sections",
     )
@@ -404,7 +410,7 @@ def add_measure_parser(
         metavar="SECONDS",
         type=int,
         default=30,
-        help="adaptive benchmark timeout per row",
+        help="adaptive measurement time limit per benchmark",
     )
     measure.add_argument(
         "--max-run-attempts",
@@ -533,8 +539,9 @@ def benchmark_targets(
     for pattern in args.target_patterns:
         build_targets.update(buck.query_buck(benchmark_query(pattern)))
     if not build_targets:
-        patterns = ", ".join(args.target_patterns)
-        raise SystemExit(f"no benchmark targets found under: {patterns}")
+        raise SystemExit(
+            f"no benchmark targets found under: {', '.join(args.target_patterns)}"
+        )
 
     targets = make_benchmark_targets(build_targets)
     displayed_build_targets = [target.build_target for target in targets]
@@ -757,12 +764,12 @@ def remaining_text(
 
 
 def run_dir(
-    args: argparse.Namespace,
+    out_dir: Path,
     round_number: int,
     side: str,
     target: BenchmarkTarget,
 ) -> Path:
-    return args.out / f"round_{round_number}" / f"{side}_{target.artifact_name}"
+    return out_dir / f"round_{round_number}" / f"{side}_{target.artifact_name}"
 
 
 def attempt_paths(
@@ -871,7 +878,7 @@ def attempt_problem_summary(attempt: AttemptArtifact) -> str:
     if not attempt.json_path.exists():
         return "did not write JSON"
     if attempt.convergence_failed:
-        return "did not converge or become stable"
+        return "did not converge"
     return "was not usable"
 
 
@@ -884,7 +891,7 @@ def run_one_benchmark(
     target: BenchmarkTarget,
     buck: BuckRunner,
 ) -> RunArtifact:
-    base_dir = run_dir(args, round_number, side, target)
+    base_dir = run_dir(args.out, round_number, side, target)
     attempts: list[AttemptArtifact] = []
     max_attempts = args.max_run_attempts
     print(
@@ -1055,7 +1062,7 @@ def load_run_artifact(
 
 
 def load_artifacts(
-    args: argparse.Namespace,
+    out_dir: Path,
     targets: tuple[BenchmarkTarget, ...],
     round_numbers: Iterable[int],
 ) -> dict[tuple[int, str, str], RunArtifact]:
@@ -1068,7 +1075,7 @@ def load_artifacts(
                         round_number=round_number,
                         side=side,
                         target=target,
-                        base_dir=run_dir(args, round_number, side, target),
+                        base_dir=run_dir(out_dir, round_number, side, target),
                     )
                 )
     return artifacts
@@ -1082,39 +1089,42 @@ def try_count_text(count: int) -> str:
 
 
 def needs_attention_for_run(
-    artifact: RunArtifact, *, args: argparse.Namespace
+    artifact: RunArtifact, *, out_dir: Path
 ) -> NeedsAttention | None:
     if artifact.selected_attempt is not None:
         if artifact.results:
             return None
-        reason = "Runs produced no benchmark rows"
+        reason = "Benchmark run produced no results"
     else:
         attempts = artifact.attempts
         count = len(attempts)
         if not attempts:
-            reason = "No benchmark attempts found"
+            reason = "No attempts found for this benchmark run"
         elif any(not attempt.completed for attempt in attempts):
-            reason = f"Benchmark attempts were incomplete after {try_count_text(count)}"
+            reason = f"Benchmark run did not finish after {try_count_text(count)}"
         elif any(attempt.returncode != 0 for attempt in attempts):
-            reason = f"Benchmark commands failed after {try_count_text(count)}"
+            reason = f"Benchmark command failed after {try_count_text(count)}"
         elif any(not attempt.json_path.exists() for attempt in attempts):
-            reason = f"Runs had no JSON after {try_count_text(count)}"
+            reason = f"Benchmark run wrote no JSON after {try_count_text(count)}"
         else:
-            reason = (
-                f"Runs did not converge or become stable after {try_count_text(count)}"
-            )
+            reason = f"Benchmark run did not converge after {try_count_text(count)}"
     return NeedsAttention(
         round_number=artifact.round_number,
         side=artifact.side,
         target=artifact.target,
         reason=reason,
-        log_dir=run_dir(args, artifact.round_number, artifact.side, artifact.target),
+        log_dir=run_dir(
+            out_dir,
+            artifact.round_number,
+            artifact.side,
+            artifact.target,
+        ),
     )
 
 
 def paired_observations(
     artifacts: dict[tuple[int, str, str], RunArtifact],
-    args: argparse.Namespace,
+    out_dir: Path,
     targets: tuple[BenchmarkTarget, ...],
 ) -> tuple[
     dict[tuple[str, BenchmarkId], list[Observation]],
@@ -1128,8 +1138,8 @@ def paired_observations(
         for target in targets:
             before = artifacts[(round_number, BEFORE_SIDE, target.build_target)]
             after = artifacts[(round_number, AFTER_SIDE, target.build_target)]
-            before_attention = needs_attention_for_run(before, args=args)
-            after_attention = needs_attention_for_run(after, args=args)
+            before_attention = needs_attention_for_run(before, out_dir=out_dir)
+            after_attention = needs_attention_for_run(after, out_dir=out_dir)
             if before_attention is not None:
                 needs_attention_runs.append(before_attention)
             if after_attention is not None:
@@ -1178,7 +1188,7 @@ def bucket_rows(
     selected: list[ComparisonRow] = []
     for (build_target, benchmark), observations in rows.items():
         summary = comparison_summary(tuple(observations))
-        if direction * summary.delta <= 0:
+        if display_round(direction * summary.delta) <= 0:
             continue
         if exclude_threshold is not None and exclude_threshold.met_by(
             summary, direction=direction
@@ -1234,7 +1244,7 @@ def analyze_report(
     targets: tuple[BenchmarkTarget, ...],
 ) -> ComparisonReport:
     rows, needs_attention_runs, unpaired_rows = paired_observations(
-        artifacts, args, targets
+        artifacts, args.out, targets
     )
     target_and_name_to_files: dict[tuple[str, str], set[str]] = {}
     for artifact in artifacts.values():
@@ -1317,7 +1327,7 @@ def threshold_rounding_warning(
         return []
     return [
         ("**Note:** " if markdown else "Note: ")
-        + "Threshold inputs were rounded to one decimal place for classification.",
+        + "Thresholds were rounded to one decimal place for classification.",
         "",
     ]
 
@@ -1365,10 +1375,9 @@ def section_table(report: ComparisonReport, section: ReportSection) -> list[str]
     def markdown_row(cells: Iterable[str]) -> str:
         return "| " + " | ".join(cells) + " |"
 
-    lines = [f"## {section.title}", ""]
     if not section.rows:
-        lines.extend(["(none)", ""])
-        return lines
+        return []
+    lines = [f"## {section.title}", ""]
     lines.extend(
         [
             markdown_row(("median", "benchmark", "target", "before ± Δ")),
@@ -1431,7 +1440,7 @@ def grouped_needs_attention(
 def needs_attention_markdown(report: ComparisonReport, *, out_dir: Path) -> list[str]:
     lines: list[str] = []
     for reason, items in grouped_needs_attention(report):
-        lines.extend([f"## {reason}", ""])
+        lines.extend([f"## Needs attention: {reason}", ""])
         for item in items:
             log_dir = item.log_dir.relative_to(out_dir)
             lines.append(
@@ -1448,7 +1457,7 @@ def unpaired_markdown(report: ComparisonReport) -> list[str]:
         groups = grouped_unpaired_rows(report.unpaired_rows, side)
         if not groups:
             continue
-        lines.extend([f'## Benchmark rows only in the "{side}" revision', ""])
+        lines.extend([f'## Benchmarks present only in "{side}" runs', ""])
         for target, round_numbers, benchmarks in groups:
             names = ", ".join(
                 f"`{benchmark_text(report, target, benchmark)}`"
@@ -1482,7 +1491,7 @@ def render_markdown(
         (
             f"**Options:** `{manifest.mode}`; adaptive "
             f"p{fmt_value(manifest.bm_target_percentile)} "
-            f"({manifest.bm_max_secs}s max/row); "
+            f"({manifest.bm_max_secs}s max/benchmark); "
             "thresholds for the median difference:"
         ),
         "",
@@ -1511,7 +1520,7 @@ def render_markdown(
 def needs_attention_terminal(report: ComparisonReport) -> list[str]:
     lines: list[str] = []
     for reason, items in grouped_needs_attention(report):
-        lines.append(f"{reason}:")
+        lines.append(f"Needs attention: {reason}")
         lines.extend(
             f"  round {item.round_number}, {item.target.build_target} ({item.side}); see logs."
             for item in items
@@ -1526,7 +1535,7 @@ def unpaired_terminal(report: ComparisonReport) -> list[str]:
         groups = grouped_unpaired_rows(report.unpaired_rows, side)
         if not groups:
             continue
-        lines.append(f'Benchmark rows only in the "{side}" revision:')
+        lines.append(f'Benchmarks present only in "{side}" runs:')
         for target, round_numbers, benchmarks in groups:
             lines.append(f"  {target} (rounds {rounds_text(round_numbers)}):")
             lines.extend(
@@ -1542,7 +1551,7 @@ def section_terminal(
     section: ReportSection,
 ) -> list[str]:
     if not section.rows:
-        return [f"{section.title}:", "  (none)", ""]
+        return []
     lines = [f"{section.title}:", ""]
     for row in section.rows:
         lines.extend(
@@ -1578,8 +1587,9 @@ def render_terminal(
         (
             f"Options: {manifest.mode}; adaptive "
             f"p{fmt_value(manifest.bm_target_percentile)} "
-            f"({manifest.bm_max_secs}s max/row); thresholds for the median difference:"
+            f"({manifest.bm_max_secs}s max/benchmark)"
         ),
+        "Thresholds for the median difference:",
         f"  hi-pri >={fmt_value(args.hi_ns)}ns and >={fmt_value(args.hi_pct)}%",
         f"  lo-pri >={fmt_value(args.lo_ns)}ns and >={fmt_value(args.lo_pct)}%",
         "",
@@ -1683,7 +1693,7 @@ def run_comparison(
     manifest: MeasurementManifest,
     round_numbers: Iterable[int],
 ) -> int:
-    artifacts = load_artifacts(args, manifest.targets, round_numbers)
+    artifacts = load_artifacts(args.out, manifest.targets, round_numbers)
     if not artifacts:
         raise SystemExit(f"no round_* directories found under: {args.out}")
     report = analyze_report(artifacts, args, manifest.targets)

@@ -8,20 +8,20 @@
 
 **Targets:** `fbcode//folly/test:bench`
 
-**Options:** `@mode/dev`; adaptive p33.3 (17s max/row); thresholds for the median difference:
+**Options:** `@mode/dev`; adaptive p33.3 (17s max/benchmark); thresholds for the median difference:
 
 - hi-pri `>=1.0ns` and `>=10.0%`
 - lo-pri `>=0.5ns` and `>=5.0%`
 
-## Runs did not converge or become stable after 1 try
+## Needs attention: Benchmark run did not converge after 1 try
 
 - Round 1, `fbcode//folly/test:bench` (before); [see logs](round_1/before_bench).
 
-## Benchmark rows only in the "after" revision
+## Benchmarks present only in "after" runs
 
 - `fbcode//folly/test:bench` (rounds 2-4): `only_after`
 
-## Benchmark rows only in the "before" revision
+## Benchmarks present only in "before" runs
 
 - `fbcode//folly/test:bench` (rounds 2-4): `only_before`
 
