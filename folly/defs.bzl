@@ -3,7 +3,6 @@
     have_libgflags_override = {True|[False]}
 """
 
-load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool")
 load(
     "@fbsource//tools/build_defs:default_platform_defs.bzl",
     "ANDROID",
@@ -20,6 +19,7 @@ load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_libra
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
 load("@fbsource//tools/build_defs:selects.bzl", "selects")
 load("@fbsource//tools/build_defs/dirsync:dirsync_redirect.bzl", "dirsync_redirect")
+load("@prelude//utils:buckconfig.bzl", "read_bool")
 
 def should_enable_gflags():
     return read_bool("folly", "have_libgflags_override", False)
