@@ -187,13 +187,13 @@ class BenchmarkAbTest(unittest.TestCase):
                 (15.0, 13.0),
             ),
             self._benchmark("low_loss"): (
-                (20.0, 20.2),
-                (10.0, 10.6),
+                (20.0, 20.8),
+                (10.0, 10.8),
                 (15.0, 15.8),
             ),
             self._benchmark("low_win"): (
-                (20.0, 19.8),
-                (10.0, 9.4),
+                (20.0, 19.2),
+                (10.0, 9.2),
                 (15.0, 14.2),
             ),
         }
@@ -437,7 +437,11 @@ class BenchmarkAbTest(unittest.TestCase):
         )
 
     def test_classification_matches_report_precision(self) -> None:
-        summary = benchmark_ab.ComparisonSummary(before=9.0, after=9.96)
+        summary = benchmark_ab.ComparisonSummary(
+            before=9.0,
+            after=9.96,
+            delta=0.96,
+        )
 
         self.assertEqual(
             "9.0+1.0ns (+10.7%)",
@@ -795,7 +799,7 @@ else:
             self.assertIsNotNone(attention)
             self.assertEqual("Benchmark run produced no results", attention.reason)
 
-    def test_summary_compares_the_two_side_medians(self) -> None:
+    def test_summary_uses_all_cross_side_differences(self) -> None:
         summary = benchmark_ab.comparison_summary(
             (
                 benchmark_ab.Observation(1, 10.0, 1010.0),
@@ -806,17 +810,25 @@ else:
 
         self.assertEqual(100.0, summary.before)
         self.assertEqual(1010.0, summary.after)
-        self.assertEqual(910.0, summary.delta)
-        self.assertEqual(910.0, summary.pct)
+        # The marginal medians differ by 910ns, while the Hodges-Lehmann
+        # estimate reflects the typical difference across all combinations.
+        self.assertEqual(200.0, summary.delta)
+        self.assertEqual(200.0, summary.pct)
 
-    def test_percentage_change_floors_sub_picosecond_timings(self) -> None:
+    def test_percentage_floors_sub_picosecond_timings(self) -> None:
         # Adaptive baseline subtraction can produce zero; sub-picosecond
         # differences should remain noise rather than create an infinite ratio.
         self.assertEqual(0.0, benchmark_ab.Observation(1, 0.0, 0.0).pct)
         self.assertEqual(0.0, benchmark_ab.Observation(1, 0.0, 0.0005).pct)
         self.assertEqual(99_900.0, benchmark_ab.Observation(1, 0.0, 1.0).pct)
+        self.assertEqual(
+            0.0,
+            benchmark_ab.comparison_summary(
+                (benchmark_ab.Observation(1, 0.0, 0.0005),)
+            ).pct,
+        )
 
-    def test_bucket_omits_mixed_directions_with_zero_median_change(self) -> None:
+    def test_bucket_omits_mixed_directions_with_zero_estimated_delta(self) -> None:
         rows = {
             (self.target.build_target, self._benchmark("mixed_directions")): [
                 benchmark_ab.Observation(round_number, 10.0, after)
@@ -837,17 +849,17 @@ else:
             benchmark_ab.bucket_rows(rows, direction=1, threshold=threshold),
         )
 
-    def test_bucket_classifies_by_side_medians_not_round_votes(self) -> None:
+    def test_bucket_classifies_by_cross_side_estimate_not_round_votes(self) -> None:
         rows = {
             (self.target.build_target, self._benchmark("regression")): [
                 benchmark_ab.Observation(round_number, before, after)
                 for round_number, (before, after) in enumerate(
                     (
-                        (1.0, 200.0),
-                        (2.0, 0.0),
-                        (3.0, 1.0),
-                        (100.0, 98.0),
-                        (101.0, 99.0),
+                        (1.0, 101.0),
+                        (2.0, 1.5),
+                        (3.0, 2.5),
+                        (4.0, 3.5),
+                        (100.0, 5.0),
                     ),
                     start=1,
                 )
@@ -855,7 +867,7 @@ else:
         }
 
         # Four paired deltas are negative; inclusion proves that classification
-        # uses the two side medians rather than a per-round vote.
+        # uses the cross-side estimate rather than a per-round vote.
         self.assertEqual(
             ["regression"],
             [
@@ -863,12 +875,12 @@ else:
                 for row in benchmark_ab.bucket_rows(
                     rows,
                     direction=1,
-                    threshold=benchmark_ab.Threshold(ns=10.0, pct=10.0),
+                    threshold=benchmark_ab.Threshold(ns=0.1, pct=10.0),
                 )
             ],
         )
 
-    def test_bucket_sorts_by_change_between_side_medians(self) -> None:
+    def test_bucket_sorts_by_estimated_delta(self) -> None:
         rows = {
             (self.target.build_target, self._benchmark(benchmark)): [
                 benchmark_ab.Observation(round_number, before, after)

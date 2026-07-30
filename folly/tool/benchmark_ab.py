@@ -59,20 +59,20 @@ Results:
 """
 
 RESULT_DOC = """\
-Each result line starts with the median "before" timing, with Δ ns to the
-median "after" timing.  It also shows (Δ%) when "before" exceeds 2ns.
+Each result line starts with the median "before" timing and a Hodges-Lehmann
+estimate of Δ ns.  We get one adaptive p{pct} timing per contributing run; the
+estimate is the median of every "after" minus "before" combination (e.g., 25
+differences from 5+5 round timings).  It also shows (Δ%) when median "before"
+exceeds 2ns.
 
-We aggregate rounds by taking the medians of the "before" and "after" timings.
-Each round reports adaptive p{pct} timings, so these are medians-of-p{pct}.
-
-A benchmark appears in the lo-pri or hi-pri section, when the Δ between those
-medians meets both that section's nanosecond and percentage thresholds.
+A benchmark appears in the lo-pri or hi-pri section when estimated Δ meets
+both that section's nanosecond and percentage thresholds.
 
 The comma-separated `before±Δ` pairs show whether the change is consistent
 across rounds.  They are sorted by `before` timing, not by run order.
 Parentheses mark a pair whose Δ missed a section threshold.
 
-Within each section, rows are sorted by Δ between medians, smallest first.
+Within each priority section, rows are sorted by estimated Δ, smallest first.
 """
 
 
@@ -216,14 +216,17 @@ class Observation:
 
     @property
     def pct(self) -> float:
-        return percentage_change(self.before, self.after)
+        return relative_delta_pct(self.delta, self.before)
 
 
-def percentage_change(before: float, after: float) -> float:
-    time_floor_ns = 0.001  # Absolute floor in BenchmarkAdaptive.cpp::epsilonNs
-    before = max(before, time_floor_ns)
-    after = max(after, time_floor_ns)
-    return 100.0 * (after - before) / before
+def floor_time_ns(value: float) -> float:
+    # Match the absolute floor in BenchmarkAdaptive.cpp::epsilonNs.
+    return max(value, 0.001)
+
+
+def relative_delta_pct(delta_ns: float, baseline_ns: float) -> float:
+    baseline = floor_time_ns(baseline_ns)
+    return 100.0 * (floor_time_ns(baseline_ns + delta_ns) - baseline) / baseline
 
 
 def display_round(value: float) -> float:
@@ -236,14 +239,12 @@ def display_round(value: float) -> float:
 class ComparisonSummary:
     before: float
     after: float
-
-    @property
-    def delta(self) -> float:
-        return self.after - self.before
+    # Two-sample Hodges-Lehmann estimate; not generally after - before.
+    delta: float
 
     @property
     def pct(self) -> float:
-        return percentage_change(self.before, self.after)
+        return relative_delta_pct(self.delta, self.before)
 
 
 @dataclass(frozen=True)
@@ -1167,14 +1168,19 @@ def paired_observations(
     return rows, needs_attention_runs, unpaired_rows
 
 
-# Classification compares median(after) with median(before). Per-round deltas
-# are only a quick visual check of run-to-run consistency.
+# Estimate Δ from all before/after timing combinations. The per-round deltas
+# also give a quick visual check of run-to-run consistency.
 def comparison_summary(
     observations: tuple[Observation, ...],
 ) -> ComparisonSummary:
+    before = tuple(obs.before for obs in observations)
+    after = tuple(obs.after for obs in observations)
     return ComparisonSummary(
-        before=statistics.median(obs.before for obs in observations),
-        after=statistics.median(obs.after for obs in observations),
+        before=statistics.median(before),
+        after=statistics.median(after),
+        delta=statistics.median(
+            after_time - before_time for before_time in before for after_time in after
+        ),
     )
 
 
@@ -1380,7 +1386,7 @@ def section_table(report: ComparisonReport, section: ReportSection) -> list[str]
     lines = [f"## {section.title}", ""]
     lines.extend(
         [
-            markdown_row(("median", "benchmark", "target", "before ± Δ")),
+            markdown_row(("estimate", "benchmark", "target", "before ± Δ")),
             markdown_row(("---:", "---", "---", "---:")),
         ]
     )
@@ -1492,7 +1498,7 @@ def render_markdown(
             f"**Options:** `{manifest.mode}`; adaptive "
             f"p{fmt_value(manifest.bm_target_percentile)} "
             f"({manifest.bm_max_secs}s max/benchmark); "
-            "thresholds for the median difference:"
+            "thresholds for estimated Δ:"
         ),
         "",
         f"- hi-pri `>={fmt_value(args.hi_ns)}ns` and `>={fmt_value(args.hi_pct)}%`",
@@ -1589,7 +1595,7 @@ def render_terminal(
             f"p{fmt_value(manifest.bm_target_percentile)} "
             f"({manifest.bm_max_secs}s max/benchmark)"
         ),
-        "Thresholds for the median difference:",
+        "Thresholds for estimated Δ:",
         f"  hi-pri >={fmt_value(args.hi_ns)}ns and >={fmt_value(args.hi_pct)}%",
         f"  lo-pri >={fmt_value(args.lo_ns)}ns and >={fmt_value(args.lo_pct)}%",
         "",
@@ -1646,8 +1652,8 @@ def tsv_rows(
             rows.append(
                 {
                     "class": section.classification,
-                    "change_between_medians_ns": fmt_value(summary.delta),
-                    "change_between_medians_pct": fmt_value(summary.pct),
+                    "estimated_delta_ns": fmt_value(summary.delta),
+                    "estimated_delta_pct": fmt_value(summary.pct),
                     "median_before_ns": fmt_value(summary.before),
                     "median_after_ns": fmt_value(summary.after),
                     "benchmark": row.benchmark.name,
@@ -1669,8 +1675,8 @@ def render_tsv(report: ComparisonReport, *, out_dir: Path) -> str:
         lineterminator="\n",
         fieldnames=[
             "class",
-            "change_between_medians_ns",
-            "change_between_medians_pct",
+            "estimated_delta_ns",
+            "estimated_delta_pct",
             "median_before_ns",
             "median_after_ns",
             "benchmark",
