@@ -41,10 +41,10 @@ both requested `sl` revisions.  At the end, we restore the starting revision.
 A failed target invocation, or one where any benchmark fails to converge, is
 retried. Results contribute only after a successful, fully converged attempt.
 
-The output directory stores the raw benchmark output plus human-readable
-Markdown and sortable TSV reports. A concise comparison goes to stdout;
-progress goes to stderr. Unusable runs and benchmarks present at only one
-revision are reported separately rather than silently discarded.
+The output directory stores the raw benchmark output plus text, Markdown, and
+sortable TSV reports. A concise comparison goes to stdout; progress goes to
+stderr. Unusable runs and benchmarks present at only one revision are reported
+separately rather than silently discarded.
 
 Use `reanalyze` to rewrite reports from existing measurements without rerunning
 benchmarks:
@@ -1572,18 +1572,13 @@ def section_terminal(
     return lines
 
 
-def render_terminal(
+def render_comparison_text(
     report: ComparisonReport,
     args: argparse.Namespace,
     manifest: MeasurementManifest,
 ) -> str:
     targets = manifest.targets
     lines = [
-        "Outputs:",
-        f"  {args.out / 'comparison.md'}",
-        f"  {args.out / 'comparison.tsv'}",
-        f"  {args.out / 'round_*'}",
-        "",
         (
             f"Target patterns: {', '.join(manifest.target_patterns)} "
             f"({len(targets)} target{'s' if len(targets) != 1 else ''})"
@@ -1616,6 +1611,24 @@ def render_terminal(
     for section in report.sections:
         lines.extend(section_terminal(report, section))
     return "\n".join(lines).rstrip()
+
+
+def render_terminal(
+    report: ComparisonReport,
+    args: argparse.Namespace,
+    manifest: MeasurementManifest,
+) -> str:
+    return "\n".join(
+        (
+            "Outputs:",
+            f"  {args.out / 'comparison.txt'}",
+            f"  {args.out / 'comparison.md'}",
+            f"  {args.out / 'comparison.tsv'}",
+            f"  {args.out / 'round_*'}",
+            "",
+            render_comparison_text(report, args, manifest),
+        )
+    )
 
 
 def tsv_rows(
@@ -1704,6 +1717,10 @@ def run_comparison(
         raise SystemExit(f"no round_* directories found under: {args.out}")
     report = analyze_report(artifacts, args, manifest.targets)
     args.out.mkdir(parents=True, exist_ok=True)
+    (args.out / "comparison.txt").write_text(
+        render_comparison_text(report, args, manifest) + "\n",
+        encoding="utf-8",
+    )
     (args.out / "comparison.md").write_text(
         render_markdown(report, args, manifest).rstrip() + "\n",
         encoding="utf-8",

@@ -278,6 +278,12 @@ class BenchmarkAbTest(unittest.TestCase):
                 self._golden_text("benchmark_ab_expected.tsv"),
                 (out / "comparison.tsv").read_text(encoding="utf-8"),
             )
+            _, separator, comparison = stdout.getvalue().partition("\n\n")
+            self.assertEqual("\n\n", separator)
+            self.assertEqual(
+                (out / "comparison.txt").read_text(encoding="utf-8"),
+                comparison,
+            )
 
             # Measurement artifacts retain results below report thresholds, so
             # reanalysis can reveal smaller changes without rerunning benchmarks.

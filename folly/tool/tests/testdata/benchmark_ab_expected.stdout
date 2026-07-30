@@ -1,4 +1,5 @@
 Outputs:
+  <OUT>/comparison.txt
   <OUT>/comparison.md
   <OUT>/comparison.tsv
   <OUT>/round_*
