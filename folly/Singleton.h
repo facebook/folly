@@ -319,8 +319,8 @@ class SingletonHolderBase {
 template <typename T>
 struct SingletonHolder : public SingletonHolderBase {
  public:
-  typedef std::function<void(T*)> TeardownFunc;
-  typedef std::function<T*(void)> CreateFunc;
+  using TeardownFunc = std::function<void(T*)>;
+  using CreateFunc = std::function<T*(void)>;
 
   template <typename Tag, typename VaultTag>
   inline static SingletonHolder<T>& singleton();
@@ -437,8 +437,8 @@ class SingletonVault {
   // Destructor is only called by unit tests to check destroyInstances.
   ~SingletonVault();
 
-  typedef std::function<void(void*)> TeardownFunc;
-  typedef std::function<void*(void)> CreateFunc;
+  using TeardownFunc = std::function<void(void*)>;
+  using CreateFunc = std::function<void*(void)>;
 
   // Ensure that Singleton has not been registered previously and that
   // registration is not complete. If validations succeeds,
@@ -584,11 +584,10 @@ class SingletonVault {
 
   void startShutdownTimer();
 
-  typedef std::unordered_map<
+  using SingletonMap = std::unordered_map<
       detail::TypeDescriptor,
       detail::SingletonHolderBase*,
-      detail::TypeDescriptorHasher>
-      SingletonMap;
+      detail::TypeDescriptorHasher>;
 
   // Use SharedMutexSuppressTSAN to suppress noisy lock inversions when building
   // with TSAN. If TSAN is not enabled, SharedMutexSuppressTSAN is equivalent
@@ -643,8 +642,8 @@ template <
     typename VaultTag = detail::DefaultTag /* for testing */>
 class Singleton {
  public:
-  typedef std::function<T*(void)> CreateFunc;
-  typedef std::function<void(T*)> TeardownFunc;
+  using CreateFunc = std::function<T*(void)>;
+  using TeardownFunc = std::function<void(T*)>;
 
   /**
    * Get a pointer to the singleton.

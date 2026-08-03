@@ -398,7 +398,7 @@ class fbstring_core {
     if constexpr (kIsLittleEndian) {
       // We can save a couple instructions, because the category is
       // small iff the last char, as unsigned, is <= maxSmallSize.
-      typedef typename std::make_unsigned<Char>::type UChar;
+      using UChar = typename std::make_unsigned<Char>::type;
       auto maybeSmallSize = size_t(maxSmallSize) -
           size_t(static_cast<UChar>(small_[maxSmallSize]));
       // With this syntax, GCC and Clang generate a CMOV instead of a branch.
@@ -554,7 +554,7 @@ class fbstring_core {
     }
   };
 
-  typedef uint8_t category_type;
+  using category_type = uint8_t;
 
   enum class Category : category_type {
     isSmall = 0,
@@ -990,24 +990,24 @@ class basic_fbstring {
 
  public:
   // types
-  typedef T traits_type;
-  typedef typename traits_type::char_type value_type;
-  typedef A allocator_type;
-  typedef typename std::allocator_traits<A>::size_type size_type;
-  typedef typename std::allocator_traits<A>::difference_type difference_type;
+  using traits_type = T;
+  using value_type = typename traits_type::char_type;
+  using allocator_type = A;
+  using size_type = typename std::allocator_traits<A>::size_type;
+  using difference_type = typename std::allocator_traits<A>::difference_type;
 
-  typedef typename std::allocator_traits<A>::value_type& reference;
-  typedef typename std::allocator_traits<A>::value_type const& const_reference;
-  typedef typename std::allocator_traits<A>::pointer pointer;
-  typedef typename std::allocator_traits<A>::const_pointer const_pointer;
+  using reference = typename std::allocator_traits<A>::value_type&;
+  using const_reference = typename std::allocator_traits<A>::value_type const&;
+  using pointer = typename std::allocator_traits<A>::pointer;
+  using const_pointer = typename std::allocator_traits<A>::const_pointer;
 
-  typedef E* iterator;
-  typedef const E* const_iterator;
-  typedef std::reverse_iterator<iterator> reverse_iterator;
-  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+  using iterator = E*;
+  using const_iterator = const E*;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   static constexpr size_type npos = size_type(-1);
-  typedef std::true_type IsRelocatable;
+  using IsRelocatable = std::true_type;
 
  private:
   using string_view_type = std::basic_string_view<value_type, traits_type>;
@@ -1407,7 +1407,7 @@ class basic_fbstring {
   }
 
  private:
-  typedef std::basic_istream<value_type, traits_type> istream_type;
+  using istream_type = std::basic_istream<value_type, traits_type>;
   istream_type& getlineImpl(istream_type& is, value_type delim);
 
  public:
@@ -2424,8 +2424,8 @@ inline basic_fbstring<E, T, A, S> operator+(
 template <typename E, class T, class A, class S>
 inline basic_fbstring<E, T, A, S> operator+(
     const basic_fbstring<E, T, A, S>& lhs, const E* rhs) {
-  typedef typename basic_fbstring<E, T, A, S>::size_type size_type;
-  typedef typename basic_fbstring<E, T, A, S>::traits_type traits_type;
+  using size_type = typename basic_fbstring<E, T, A, S>::size_type;
+  using traits_type = typename basic_fbstring<E, T, A, S>::traits_type;
 
   basic_fbstring<E, T, A, S> result;
   const size_type len = traits_type::length(rhs);
@@ -2543,10 +2543,9 @@ operator>>(
         typename basic_fbstring<E, T, A, S>::value_type,
         typename basic_fbstring<E, T, A, S>::traits_type>& is,
     basic_fbstring<E, T, A, S>& str) {
-  typedef std::basic_istream<
+  using _istream_type = std::basic_istream<
       typename basic_fbstring<E, T, A, S>::value_type,
-      typename basic_fbstring<E, T, A, S>::traits_type>
-      _istream_type;
+      typename basic_fbstring<E, T, A, S>::traits_type>;
   typename _istream_type::sentry sentry(is);
   size_t extracted = 0;
   typename _istream_type::iostate err = _istream_type::goodbit;
@@ -2708,7 +2707,7 @@ inline bool operator>=(
   return !(lhs < rhs);
 }
 
-typedef basic_fbstring<char> fbstring;
+using fbstring = basic_fbstring<char>;
 
 // fbstring is relocatable
 template <class T, class R, class A, class S>

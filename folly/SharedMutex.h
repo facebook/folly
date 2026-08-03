@@ -348,17 +348,16 @@ class SharedMutexImpl
   static constexpr bool AnnotateForThreadSanitizer =
       kIsSanitizeThread && !ReaderPriority && !Policy::skip_annotate_rwlock;
 
-  typedef std::conditional_t<
+  using OwnershipTrackerBase = std::conditional_t<
       Policy::track_thread_id,
       shared_mutex_detail::ThreadIdOwnershipTracker,
-      shared_mutex_detail::NopOwnershipTracker>
-      OwnershipTrackerBase;
+      shared_mutex_detail::NopOwnershipTracker>;
 
  public:
   static constexpr bool kReaderPriority = ReaderPriority;
-  typedef Tag_ Tag;
+  using Tag = Tag_;
 
-  typedef SharedMutexToken Token;
+  using Token = SharedMutexToken;
 
   constexpr SharedMutexImpl() noexcept : state_(0) {}
 
@@ -724,7 +723,7 @@ class SharedMutexImpl
   }
 
  private:
-  typedef typename folly::detail::Futex<Atom> Futex;
+  using Futex = typename folly::detail::Futex<Atom>;
 
   // Internally we use four kinds of wait contexts.  These are structs
   // that provide a doWait method that returns true if a futex wake
@@ -1020,7 +1019,7 @@ class SharedMutexImpl
   // should be considered that there is a shared lock on that instance.
   // See kTokenless.
  public:
-  typedef Atom<uintptr_t> DeferredReaderSlot;
+  using DeferredReaderSlot = Atom<uintptr_t>;
 
  private:
   alignas(hardware_destructive_interference_size) static DeferredReaderSlot

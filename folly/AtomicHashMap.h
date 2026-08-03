@@ -156,40 +156,38 @@ template <
     class ProbeFcn,
     class KeyConvertFcn>
 class AtomicHashMap {
-  typedef AtomicHashArray<
+  using SubMap = AtomicHashArray<
       KeyT,
       ValueT,
       HashFcn,
       EqualFcn,
       Allocator,
       ProbeFcn,
-      KeyConvertFcn>
-      SubMap;
+      KeyConvertFcn>;
 
  public:
-  typedef KeyT key_type;
-  typedef ValueT mapped_type;
-  typedef std::pair<const KeyT, ValueT> value_type;
-  typedef HashFcn hasher;
-  typedef EqualFcn key_equal;
-  typedef KeyConvertFcn key_convert;
-  typedef value_type* pointer;
-  typedef value_type& reference;
-  typedef const value_type& const_reference;
-  typedef std::ptrdiff_t difference_type;
-  typedef std::size_t size_type;
-  typedef typename SubMap::Config Config;
+  using key_type = KeyT;
+  using mapped_type = ValueT;
+  using value_type = std::pair<const KeyT, ValueT>;
+  using hasher = HashFcn;
+  using key_equal = EqualFcn;
+  using key_convert = KeyConvertFcn;
+  using pointer = value_type*;
+  using reference = value_type&;
+  using const_reference = const value_type&;
+  using difference_type = std::ptrdiff_t;
+  using size_type = std::size_t;
+  using Config = typename SubMap::Config;
 
   template <class ContT, class IterVal, class SubIt>
   struct ahm_iterator;
 
-  typedef ahm_iterator<
+  using const_iterator = ahm_iterator<
       const AtomicHashMap,
       const value_type,
-      typename SubMap::const_iterator>
-      const_iterator;
-  typedef ahm_iterator<AtomicHashMap, value_type, typename SubMap::iterator>
-      iterator;
+      typename SubMap::const_iterator>;
+  using iterator =
+      ahm_iterator<AtomicHashMap, value_type, typename SubMap::iterator>;
 
  public:
   const float kGrowthFrac_; // How much to grow when we run out of capacity.

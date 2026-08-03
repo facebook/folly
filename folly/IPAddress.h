@@ -49,7 +49,7 @@ class IPAddress;
 /**
  * Pair of IPAddress, netmask
  */
-typedef std::pair<IPAddress, uint8_t> CIDRNetwork;
+using CIDRNetwork = std::pair<IPAddress, uint8_t>;
 
 class IPAddress {
  private:
@@ -577,14 +577,14 @@ class IPAddress {
   [[noreturn]] void asV4Throw() const;
   [[noreturn]] void asV6Throw() const;
 
-  typedef union IPAddressV46 {
+  union IPAddressV46 {
     IPAddressNone ipNoneAddr;
     IPAddressV4 ipV4Addr;
     IPAddressV6 ipV6Addr;
     IPAddressV46() noexcept : ipNoneAddr() {}
     explicit IPAddressV46(const IPAddressV4& addr) noexcept : ipV4Addr(addr) {}
     explicit IPAddressV46(const IPAddressV6& addr) noexcept : ipV6Addr(addr) {}
-  } IPAddressV46;
+  };
   IPAddressV46 addr_;
   sa_family_t family_;
 };
