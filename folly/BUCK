@@ -16,6 +16,7 @@ load(
     "WINDOWS",
 )
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@prelude//configurations:constraint_alias.bzl", "constraint_with_aliases")
 load(
     ":defs.bzl",
     "CXXFLAGS",
@@ -871,13 +872,16 @@ fb_dirsync_cpp_library(
     ],
 )
 
-fb_native.constraint_setting(
+constraint_with_aliases(
     name = "folly_demangle_macos_use_iberty_constraint",
-)
-
-fb_native.constraint_value(
-    name = "folly_demangle_macos_disable_iberty",
-    constraint_setting = ":folly_demangle_macos_use_iberty_constraint",
+    aliases = {
+        "folly_demangle_macos_disable_iberty": "disable",
+    },
+    default = "unspecified",
+    values = [
+        "disable",
+        "unspecified",
+    ],
     visibility = ["PUBLIC"],
 )
 
