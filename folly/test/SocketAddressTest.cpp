@@ -19,6 +19,7 @@
 #include <iostream>
 #include <sstream>
 #include <system_error>
+#include <type_traits>
 
 #include <folly/String.h>
 #include <folly/container/Array.h>
@@ -651,6 +652,46 @@ TEST(SocketAddress, Unix) {
     SocketAddress other(std::move(copy));
     EXPECT_EQ(other, addr);
     EXPECT_EQ(other.getPath(), addr.getPath());
+  }
+}
+
+TEST(SocketAddress, SetFromSockaddrRejectsTooShortUnixLengths) {
+  sockaddr_un address{};
+  address.sun_family = AF_UNIX;
+
+  SocketAddress addr;
+  addr.setFromPath("existing");
+  EXPECT_THROW(
+      addr.setFromSockaddr(
+          &address,
+          static_cast<socklen_t>(offsetof(struct sockaddr_un, sun_path) - 1)),
+      std::invalid_argument);
+  EXPECT_EQ(addr.describe(), "existing");
+
+  if constexpr (std::is_signed_v<socklen_t>) {
+    EXPECT_THROW(
+        addr.setFromSockaddr(&address, static_cast<socklen_t>(-1)),
+        std::invalid_argument);
+    EXPECT_EQ(addr.describe(), "existing");
+  }
+}
+
+TEST(SocketAddress, SetFromSockaddrRejectsNegativeGenericLength) {
+  if constexpr (std::is_signed_v<socklen_t>) {
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+
+    SocketAddress addr("127.0.0.1", 80);
+    EXPECT_THROW(
+        addr.setFromSockaddr(
+            reinterpret_cast<const sockaddr*>(&address),
+            static_cast<socklen_t>(-1)),
+        std::invalid_argument);
+    EXPECT_EQ(addr.getAddressStr(), "127.0.0.1");
+    EXPECT_EQ(addr.getPort(), 80);
+  } else {
+    SUCCEED()
+        << "socklen_t is unsigned; negative lengths are not representable";
   }
 }
 

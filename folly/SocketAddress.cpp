@@ -28,6 +28,7 @@
 #include <string>
 #include <system_error>
 #include <type_traits>
+#include <utility>
 
 #include <boost/functional/hash.hpp>
 
@@ -309,22 +310,23 @@ void SocketAddress::setFromSockaddr(const struct sockaddr* address) {
 void SocketAddress::setFromSockaddr(
     const struct sockaddr* address, socklen_t addrlen) {
   // Check the length to make sure we can access address->sa_family
-  if (addrlen <
-      (offsetof(struct sockaddr, sa_family) + sizeof(address->sa_family))) {
+  if (std::cmp_less(
+          addrlen,
+          offsetof(struct sockaddr, sa_family) + sizeof(address->sa_family))) {
     throw std::invalid_argument(
         "SocketAddress::setFromSockaddr() called "
         "with length too short for a sockaddr");
   }
 
   if (address->sa_family == AF_INET) {
-    if (addrlen < sizeof(struct sockaddr_in)) {
+    if (std::cmp_less(addrlen, sizeof(struct sockaddr_in))) {
       throw std::invalid_argument(
           "SocketAddress::setFromSockaddr() called "
           "with length too short for a sockaddr_in");
     }
     setFromSockaddr(reinterpret_cast<const struct sockaddr_in*>(address));
   } else if (address->sa_family == AF_INET6) {
-    if (addrlen < sizeof(struct sockaddr_in6)) {
+    if (std::cmp_less(addrlen, sizeof(struct sockaddr_in6))) {
       throw std::invalid_argument(
           "SocketAddress::setFromSockaddr() called "
           "with length too short for a sockaddr_in6");
@@ -357,7 +359,12 @@ void SocketAddress::setFromSockaddr(const struct sockaddr_in6* address) {
 void SocketAddress::setFromSockaddr(
     const struct sockaddr_un* address, socklen_t addrlen) {
   assert(address->sun_family == AF_UNIX);
-  if (addrlen > sizeof(struct sockaddr_un)) {
+  if (std::cmp_less(addrlen, offsetof(struct sockaddr_un, sun_path))) {
+    throw std::invalid_argument(
+        "SocketAddress: attempted to set a Unix socket "
+        "with a length too short for a sockaddr_un");
+  }
+  if (std::cmp_greater(addrlen, sizeof(struct sockaddr_un))) {
     throw std::invalid_argument(
         "SocketAddress::setFromSockaddr() called "
         "with length too long for a sockaddr_un");
@@ -373,7 +380,7 @@ void SocketAddress::setFromSockaddr(
   updateUnixAddressLength(addrlen);
 
   // Fill the rest with 0s, just for safety
-  if (addrlen < sizeof(struct sockaddr_un)) {
+  if (std::cmp_less(addrlen, sizeof(struct sockaddr_un))) {
     auto p = reinterpret_cast<char*>(unixAddr.addr);
     memset(p + addrlen, 0, sizeof(struct sockaddr_un) - addrlen);
   }
@@ -812,7 +819,7 @@ void SocketAddress::getIpString(char* buf, size_t buflen, int flags) const {
 }
 
 void SocketAddress::updateUnixAddressLength(socklen_t addrlen) {
-  if (addrlen < offsetof(struct sockaddr_un, sun_path)) {
+  if (std::cmp_less(addrlen, offsetof(struct sockaddr_un, sun_path))) {
     throw std::invalid_argument(
         "SocketAddress: attempted to set a Unix socket "
         "with a length too short for a sockaddr_un");
