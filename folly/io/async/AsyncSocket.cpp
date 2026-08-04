@@ -4752,6 +4752,7 @@ std::string AsyncSocket::withAddr(folly::StringPiece s) {
 
 void AsyncSocket::setTosOrTrafficClass(int tosOrTrafficClass) {
 #if defined(_WIN32)
+  (void)tosOrTrafficClass;
   throw AsyncSocketException(
       AsyncSocketException::INTERNAL_ERROR,
       withAddr("setting tos or traffic class not supported on windows"));

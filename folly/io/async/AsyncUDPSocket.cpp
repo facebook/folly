@@ -1476,7 +1476,6 @@ void AsyncUDPSocket::handleRead() noexcept {
 
     bytesRead = netops::wsaRecvMesg(fd_, &wMsg);
     if (recvTos_ && bytesRead > 0) {
-      int tosVal;
       PCMSGHDR cmsg = WSA_CMSG_FIRSTHDR(&wMsg);
       while (cmsg != NULL) {
         if ((cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_TOS) ||

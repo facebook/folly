@@ -239,7 +239,7 @@ void HHWheelTimerBase<Duration>::timeoutExpired() noexcept {
   // to treat these calls slightly differently.
   CHECK(!processingCallbacksGuard_);
   FOLLY_PUSH_WARNING
-#if __GNUC__ >= 12
+#if defined(__GNUC__) && __GNUC__ >= 12
   FOLLY_GCC_DISABLE_WARNING("-Wdangling-pointer")
 #endif
   processingCallbacksGuard_ = &isDestroyed;

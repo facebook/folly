@@ -387,6 +387,7 @@ SocketFds AsyncFdSocket::popNextReceivedFds() {
 SocketFds::SeqNum AsyncFdSocket::injectSocketSeqNumIntoFdsToSend(
     SocketFds* fds) {
 #if defined(_WIN32)
+  (void)fds;
   return SocketFds::kNoSeqNum;
 #else
   if (FOLLY_UNLIKELY(fds->empty())) {
