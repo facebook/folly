@@ -73,8 +73,13 @@ struct ProducerConsumerQueue {
     std::free(records_);
   }
 
+  // The write() function may throw an exception depending on whether the
+  // constructor T(Args...) being executed throws an exception. If an exception
+  // is thrown, the write operation to the queue will fail, and no invalid
+  // elements will be written to the queue.
   template <class... Args>
-  bool write(Args&&... recordArgs) {
+  bool write(Args&&... recordArgs) noexcept(
+      std::is_nothrow_constructible_v<T, Args...>) {
     auto const currentWrite = writeIndex_.load(std::memory_order_relaxed);
     auto nextRecord = currentWrite + 1;
     if (nextRecord == size_) {
