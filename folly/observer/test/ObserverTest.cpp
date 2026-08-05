@@ -809,7 +809,7 @@ TEST(Observer, HazptrObserverRecursiveReclamation) {
   // in this scenario:
   // * in scope is a domain instance with no executor
   // * the hazptr-observer is itself owned by a hazptr-obj
-  // * tha hazptr-obj is retired with deferred reclamation enforced
+  // * the hazptr-obj is retired with deferred reclamation enforced
   // * the hazptr-obj and the hazptr-observer states are owned by the domain
   // * many objects are retired, bringing the domain close to the threshold
   // * one observable update cycle states within the callback
