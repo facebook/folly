@@ -19,24 +19,11 @@
 #include <folly/lang/Hint.h>
 #include <folly/lang/New.h>
 
-namespace {
-// Clang may emit 256-bit aligned stores when initializing coroutine frames, so
-// over-align frame allocations to match. Compilers that lack the coroutine
-// alignment builtin don't perform such over-aligned stores and can use the
-// default new alignment.
-#if FOLLY_HAS_BUILTIN(__builtin_coro_align)
-constexpr auto kCoroutineFrameAlignment = std::align_val_t{32};
-#else
-constexpr auto kCoroutineFrameAlignment =
-    std::align_val_t{__STDCPP_DEFAULT_NEW_ALIGNMENT__};
-#endif
-} // namespace
-
 extern "C" {
 
 FOLLY_NOINLINE
 void* folly_coro_async_malloc(std::size_t size) {
-  auto p = folly::operator_new(size, kCoroutineFrameAlignment);
+  auto p = folly::operator_new(size);
 
   // Add this after the call to prevent the compiler from
   // turning the call to operator new() into a tailcall.
@@ -47,7 +34,7 @@ void* folly_coro_async_malloc(std::size_t size) {
 
 FOLLY_NOINLINE
 void folly_coro_async_free(void* ptr, std::size_t size) {
-  folly::operator_delete(ptr, size, kCoroutineFrameAlignment);
+  folly::operator_delete(ptr, size);
 
   // Add this after the call to prevent the compiler from
   // turning the call to operator delete() into a tailcall.
