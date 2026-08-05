@@ -65,6 +65,10 @@ struct OneAtATimePolicy {
 
 template <typename T>
 struct CountingAllocator : std::allocator<T> {
+  CountingAllocator() noexcept = default;
+  template <typename U>
+  CountingAllocator(const CountingAllocator<U>&) noexcept {}
+
   T* allocate(std::size_t n) {
     nAllocations += 1;
     return std::allocator<T>::allocate(n);
