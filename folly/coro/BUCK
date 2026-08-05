@@ -877,7 +877,6 @@ fb_dirsync_cpp_library(
         "//folly:traits",
         "//folly/coro:coroutine",
     ],
-    exported_external_deps = [],
 )
 
 ### this line is a hint for source control merge
