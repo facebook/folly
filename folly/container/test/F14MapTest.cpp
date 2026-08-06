@@ -2728,3 +2728,24 @@ TEST(F14Map, InsertOrAssignShouldNotMoveTheData) {
   map.insert_or_assign(0, data);
   EXPECT_EQ(data.size(), 3);
 }
+
+template <template <typename, typename> class TMap>
+void testInsertRange() {
+  using Map = TMap<int, int>;
+  Map dest{{0, 0}, {1, 1}};
+  const Map source{{1, -1}, {2, 2}};
+  const Map expected{{0, 0}, {1, 1}, {2, 2}};
+
+  dest.insert_range(source);
+  EXPECT_EQ(expected, dest);
+
+  dest.insert_range(source);
+  EXPECT_EQ(expected, dest);
+}
+
+TEST(F14Map, insertRange) {
+  testInsertRange<F14ValueMap>();
+  testInsertRange<F14NodeMap>();
+  testInsertRange<F14VectorMap>();
+  testInsertRange<F14FastMap>();
+}

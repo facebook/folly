@@ -148,6 +148,15 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
     }
   }
 
+#if !defined(__cpp_lib_containers_ranges) || \
+    __cpp_lib_containers_ranges < 202202L
+  template <std::ranges::input_range R>
+    requires std::convertible_to<std::ranges::range_reference_t<R>, value_type>
+  void insert_range(R&& range) {
+    insert(std::ranges::begin(range), std::ranges::end(range));
+  }
+#endif
+
   void insert(std::initializer_list<value_type> ilist) {
     insert(ilist.begin(), ilist.end());
   }

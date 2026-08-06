@@ -28,8 +28,10 @@
  * See F14.md
  */
 
+#include <concepts>
 #include <cstddef>
 #include <initializer_list>
+#include <ranges>
 #include <tuple>
 
 #include <folly/CppAttributes.h>
@@ -349,6 +351,13 @@ class F14BasicSet {
             typename std::iterator_traits<InputIt>::iterator_category>::value &&
         bucket_count() == 0;
     bulkInsert(first, last, autoReserve);
+  }
+
+  /// Add elements from a range.
+  template <std::ranges::input_range R>
+    requires std::convertible_to<std::ranges::range_reference_t<R>, value_type>
+  void insert_range(R&& range) {
+    insert(std::ranges::begin(range), std::ranges::end(range));
   }
 
   /// Add elements from an initializer list.

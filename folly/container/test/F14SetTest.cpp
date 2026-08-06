@@ -1776,3 +1776,24 @@ TEST(F14Set, initializerListDeductionGuide) {
   testInitializerListDeductionGuide<F14VectorSet>();
   testInitializerListDeductionGuide<F14FastSet>();
 }
+
+template <template <typename> class TSet>
+void testInsertRange() {
+  using Set = TSet<int>;
+  Set dest{0, 1};
+  const Set source{1, 2};
+  const Set expected{0, 1, 2};
+
+  dest.insert_range(source);
+  EXPECT_EQ(expected, dest);
+
+  dest.insert_range(source);
+  EXPECT_EQ(expected, dest);
+}
+
+TEST(F14Set, insertRange) {
+  testInsertRange<F14ValueSet>();
+  testInsertRange<F14NodeSet>();
+  testInsertRange<F14VectorSet>();
+  testInsertRange<F14FastSet>();
+}
