@@ -1080,12 +1080,14 @@ bool IoUringBackend::importZcBufferPool(
     return false;
   }
   auto napiId = handle.napiId_;
+  auto queueId = handle.queueId_;
   zcBufferPool_ = IoUringZeroCopyBufferPool::importHandle(
       std::move(handle), this->ioRingPtr());
   if (!zcBufferPool_) {
     return false;
   }
   napiId_ = napiId;
+  options_.zcRxQueueId = queueId;
   return true;
 }
 
@@ -1093,6 +1095,7 @@ IoUringZeroCopyBufferPool::ExportHandle IoUringBackend::exportZcBufferPool() {
   CHECK(zcBufferPool_) << "No buffer pool to export";
   auto handle = zcBufferPool_->exportHandle();
   handle.napiId_ = napiId_;
+  handle.queueId_ = options_.zcRxQueueId;
   return handle;
 }
 
