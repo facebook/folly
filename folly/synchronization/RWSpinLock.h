@@ -121,6 +121,7 @@ namespace folly {
  */
 class RWSpinLock {
   enum : int32_t { SHARED = 4, UPGRADE = 2, EXCLUSIVE = 1 };
+  static_assert(SHARED > EXCLUSIVE + UPGRADE);
 
  public:
   constexpr RWSpinLock() : bits_(0) {}
@@ -138,11 +139,7 @@ class RWSpinLock {
     }
   }
 
-  // Writer is responsible for clearing up both the UPGRADE and EXCLUSIVE bits.
-  void unlock() {
-    static_assert(SHARED > EXCLUSIVE + UPGRADE, "wrong bits!");
-    bits_.fetch_and(~(EXCLUSIVE | UPGRADE), std::memory_order_release);
-  }
+  void unlock() { bits_.fetch_and(~EXCLUSIVE, std::memory_order_release); }
 
   // SharedLockable Concept
   void lock_shared() {
@@ -158,8 +155,7 @@ class RWSpinLock {
 
   // Downgrade the lock from writer status to reader status.
   void unlock_and_lock_shared() {
-    bits_.fetch_add(SHARED, std::memory_order_acquire);
-    unlock();
+    bits_.fetch_add(SHARED - EXCLUSIVE, std::memory_order_acq_rel);
   }
 
   // UpgradeLockable Concept
@@ -193,10 +189,10 @@ class RWSpinLock {
 
   // write unlock and upgrade lock atomically
   void unlock_and_lock_upgrade() {
-    // need to do it in two steps here -- as the UPGRADE bit might be OR-ed at
-    // the same time when other threads are trying do try_lock_upgrade().
-    bits_.fetch_or(UPGRADE, std::memory_order_acquire);
-    bits_.fetch_add(-EXCLUSIVE, std::memory_order_release);
+    // UPGRADE cannot be set while EXCLUSIVE is set. SHARED itself may be
+    // non-zero though, since try_lock_shared() does fetch_add(SHARED)
+    // speculatively.
+    bits_.fetch_add(UPGRADE - EXCLUSIVE, std::memory_order_acq_rel);
   }
 
   // Attempt to acquire writer permission. Return false if we didn't get it.
@@ -232,13 +228,17 @@ class RWSpinLock {
 
   // try to acquire an upgradable lock.
   bool try_lock_upgrade() {
-    int32_t value = bits_.fetch_or(UPGRADE, std::memory_order_acquire);
-
-    // Note: when failed, we cannot flip the UPGRADE bit back,
-    // as in this case there is either another upgrade lock or a write lock.
-    // If it's a write lock, the bit will get cleared up when that lock's done
-    // with unlock().
-    return ((value & (UPGRADE | EXCLUSIVE)) == 0);
+    int32_t value = bits_.load(std::memory_order_relaxed);
+    while ((value & (EXCLUSIVE | UPGRADE)) == 0) {
+      if (bits_.compare_exchange_weak(
+              value,
+              value | UPGRADE,
+              std::memory_order_acquire,
+              std::memory_order_relaxed)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // mainly for debugging purposes.
