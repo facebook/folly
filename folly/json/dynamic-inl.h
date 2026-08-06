@@ -903,10 +903,9 @@ inline void dynamic::update_missing(const dynamic& mergeObj1) {
   }
 
   // Only add if not already there
+  auto& obj = get<ObjectImpl>();
   for (const auto& pair : mergeObj1.items()) {
-    if ((*this).find(pair.first) == (*this).items().end()) {
-      (*this)[pair.first] = pair.second;
-    }
+    obj.try_emplace(pair.first, pair.second);
   }
 }
 
