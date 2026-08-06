@@ -117,10 +117,6 @@ struct sockaddr_un {
 #endif
 #endif
 
-#ifndef FOLLY_HAVE_SO_TIMESTAMPING
-#define FOLLY_HAVE_SO_TIMESTAMPING 0
-#endif
-
 #ifndef SO_EE_ORIGIN_ZEROCOPY
 #define SO_EE_ORIGIN_ZEROCOPY 5
 #endif
@@ -301,6 +297,13 @@ struct mmsghdr {
 #define XDP_UMEM_TX_METADATA_LEN (1 << 2)
 #endif
 
+#endif
+
+// Set to 1 in the POSIX branch above where the platform supports it. Windows
+// never reaches that branch, so give it a value here rather than leaving it
+// undefined for the `#if FOLLY_HAVE_SO_TIMESTAMPING` use sites.
+#ifndef FOLLY_HAVE_SO_TIMESTAMPING
+#define FOLLY_HAVE_SO_TIMESTAMPING 0
 #endif
 
 // Various sendmsg structs and ops.
