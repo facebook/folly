@@ -855,6 +855,11 @@ class AsyncSocket
 
   struct ZeroCopyDrainConfig {
     std::chrono::milliseconds drainDelay{1000};
+    // Upper bound on how long the socket will stay alive polling MSG_ERRQUEUE
+    // for outstanding zero-copy completions. If the kernel has not returned
+    // them by then the buffers are released anyway, so a socket whose
+    // completions never arrive cannot pin an fd and its IOBufs forever.
+    std::chrono::milliseconds maxDrainDuration{std::chrono::minutes(5)};
     std::optional<unsigned short> linger;
   };
 
@@ -1881,6 +1886,9 @@ class AsyncSocket
   void releaseZeroCopyBuf(uint32_t id);
 
   void drainZeroCopyQueue();
+  void scheduleZeroCopyDrain();
+  void forceReleaseZeroCopyBufs();
+  void closeNetworkSocket();
 
   void releaseIOBuf(
       std::unique_ptr<folly::IOBuf> buf,
@@ -1943,6 +1951,10 @@ class AsyncSocket
   uint32_t zeroCopyBufId_{0};
 
   ZeroCopyDrainConfig zeroCopyDrainConfig_;
+
+  // Set when the post-close zero-copy drain starts; bounds how long
+  // scheduleZeroCopyDrain() may keep rescheduling itself.
+  std::chrono::steady_clock::time_point zeroCopyDrainDeadline_{};
 
   struct IOBufInfo {
     uint32_t count_{0};

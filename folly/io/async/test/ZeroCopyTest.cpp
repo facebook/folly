@@ -196,6 +196,28 @@ class CountingReleaseCb : public folly::AsyncWriter::ReleaseIOBufCallback {
   int count{0};
 };
 
+class CountingWriteCb : public folly::AsyncWriter::WriteCallback {
+ public:
+  explicit CountingWriteCb(CountingReleaseCb* release) : release_(release) {}
+
+  void writeSuccess() noexcept override { ++successes; }
+
+  void writeErr(size_t, const AsyncSocketException&) noexcept override {
+    ++errors;
+  }
+
+  folly::AsyncWriter::ReleaseIOBufCallback*
+  getReleaseIOBufCallback() noexcept override {
+    return release_;
+  }
+
+  int successes{0};
+  int errors{0};
+
+ private:
+  CountingReleaseCb* release_;
+};
+
 // Builds a synthetic MSG_ERRQUEUE zero-copy completion cmsg covering buffer ids
 // [lo, hi], matching what the kernel posts (SO_EE_ORIGIN_ZEROCOPY). Returns a
 // pointer into `storage`, which the caller must keep alive.
@@ -214,7 +236,150 @@ const cmsghdr* makeZeroCopyCompletion(
   memcpy(CMSG_DATA(cmsg), &serr, sizeof(serr));
   return cmsg;
 }
+
+class DelayedZeroCopySocket : public folly::AsyncSocket {
+ public:
+  DelayedZeroCopySocket(
+      EventBase* evb, NetworkSocket fd, bool* destroyed = nullptr)
+      : AsyncSocket(evb, fd), destroyed_(destroyed) {}
+
+  using UniquePtr =
+      std::unique_ptr<DelayedZeroCopySocket, DelayedDestruction::Destructor>;
+
+  void enableZeroCopyForTest() { zeroCopyEnabled_ = true; }
+
+  void setWriteResults(std::vector<ssize_t> results) {
+    writeResults_ = std::move(results);
+  }
+
+  void completeOnNextPoll(uint32_t hi = 0) {
+    completionHi_ = hi;
+    completeOnNextPoll_ = true;
+  }
+
+ protected:
+  ~DelayedZeroCopySocket() override {
+    if (destroyed_) {
+      *destroyed_ = true;
+    }
+  }
+
+  WriteResult sendSocketMessage(NetworkSocket, msghdr* msg, int) override {
+    if (nextWriteResult_ < writeResults_.size()) {
+      const auto result = writeResults_[nextWriteResult_++];
+      if (result < 0) {
+        errno = EAGAIN;
+      }
+      return WriteResult(result);
+    }
+
+    auto* FOLLY_NONNULL nonnullMsg = CHECK_NOTNULL(msg);
+    ssize_t result = 0;
+    for (size_t i = 0; i < nonnullMsg->msg_iovlen; ++i) {
+      result += nonnullMsg->msg_iov[i].iov_len;
+    }
+    return WriteResult(result);
+  }
+
+  size_t handleErrMessages() noexcept override {
+    if (!completeOnNextPoll_) {
+      return 0;
+    }
+    completeOnNextPoll_ = false;
+    std::vector<char> storage;
+    processZeroCopyMsg(
+        *makeZeroCopyCompletion(storage, /*lo=*/0, completionHi_));
+    return 1;
+  }
+
+ private:
+  bool* destroyed_;
+  std::vector<ssize_t> writeResults_;
+  size_t nextWriteResult_{0};
+  bool completeOnNextPoll_{false};
+  uint32_t completionHi_{0};
+};
 } // namespace
+
+TEST(ZeroCopyLifetimeTest, CloseReleasesOnlyNeverSubmittedBuffer) {
+  EventBase evb;
+  int fds[2];
+  ASSERT_EQ(0, ::socketpair(AF_UNIX, SOCK_STREAM, 0, fds));
+  DelayedZeroCopySocket::UniquePtr socket(
+      new DelayedZeroCopySocket(&evb, NetworkSocket::fromFd(fds[0])));
+  socket->enableZeroCopyForTest();
+  socket->setZeroCopyDrainConfig(
+      AsyncSocket::ZeroCopyDrainConfig{
+          .drainDelay = std::chrono::milliseconds(1), .linger = std::nullopt});
+  socket->setWriteResults({1});
+
+  CountingReleaseCb submittedRelease;
+  CountingReleaseCb queuedRelease;
+  CountingWriteCb submittedWrite(&submittedRelease);
+  CountingWriteCb queuedWrite(&queuedRelease);
+
+  socket->writeChain(
+      &submittedWrite,
+      IOBuf::copyBuffer("submitted"),
+      WriteFlags::WRITE_MSG_ZEROCOPY);
+  socket->writeChain(
+      &queuedWrite,
+      IOBuf::copyBuffer("queued"),
+      WriteFlags::WRITE_MSG_ZEROCOPY);
+  const auto submittedFd = socket->getNetworkSocket();
+  socket->closeNow();
+
+  EXPECT_EQ(socket->getNetworkSocket(), submittedFd);
+  EXPECT_EQ(submittedRelease.count, 0);
+  EXPECT_EQ(queuedRelease.count, 1);
+  EXPECT_EQ(submittedWrite.errors, 1);
+  EXPECT_EQ(queuedWrite.errors, 1);
+
+  socket->completeOnNextPoll();
+  evb.loop();
+  EXPECT_EQ(socket->getNetworkSocket(), NetworkSocket());
+  EXPECT_EQ(submittedRelease.count, 1);
+  socket.reset();
+  ::close(fds[1]);
+}
+
+// The drain is best effort but bounded: if the kernel never returns the
+// completion, maxDrainDuration must still release the buffer and close the fd
+// rather than pinning both for the lifetime of the process.
+TEST(ZeroCopyLifetimeTest, DrainGivesUpAfterMaxDuration) {
+  EventBase evb;
+  int fds[2];
+  ASSERT_EQ(0, ::socketpair(AF_UNIX, SOCK_STREAM, 0, fds));
+  DelayedZeroCopySocket::UniquePtr socket(
+      new DelayedZeroCopySocket(&evb, NetworkSocket::fromFd(fds[0])));
+  socket->enableZeroCopyForTest();
+  socket->setZeroCopyDrainConfig(
+      AsyncSocket::ZeroCopyDrainConfig{
+          .drainDelay = std::chrono::milliseconds(1),
+          .maxDrainDuration = std::chrono::milliseconds(20),
+          .linger = std::nullopt});
+  socket->setWriteResults({1});
+
+  CountingReleaseCb release;
+  CountingWriteCb write(&release);
+  socket->writeChain(
+      &write, IOBuf::copyBuffer("submitted"), WriteFlags::WRITE_MSG_ZEROCOPY);
+  socket->closeNow();
+
+  // Still held: the completion has not arrived.
+  EXPECT_TRUE(socket->isZeroCopyWriteInProgress());
+  EXPECT_NE(socket->getNetworkSocket(), NetworkSocket());
+  EXPECT_EQ(release.count, 0);
+
+  // Never call completeOnNextPoll(): the drain must time out on its own.
+  evb.loop();
+
+  EXPECT_FALSE(socket->isZeroCopyWriteInProgress());
+  EXPECT_EQ(socket->getNetworkSocket(), NetworkSocket());
+  EXPECT_EQ(release.count, 1);
+  socket.reset();
+  ::close(fds[1]);
+}
 
 // Repro of the D105586778 crash: a StopTLS fd handoff that does NOT transfer
 // the outstanding zero-copy completion maps leaves the new socket unable to
