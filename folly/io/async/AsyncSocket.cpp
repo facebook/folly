@@ -778,6 +778,9 @@ AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
   }
   oldAsyncSocket->iouSendHandle_.reset();
   oldAsyncSocket->detachNetworkSocket();
+  if (oldAsyncSocket->isZeroCopyWriteInProgress()) {
+    moveZeroCopyStateFrom(*oldAsyncSocket);
+  }
 
   VLOG(5) << "move AsyncSocket(" << oldAsyncSocket << "->" << this
           << ", evb=" << eventBase_ << ", fd=" << fd_
