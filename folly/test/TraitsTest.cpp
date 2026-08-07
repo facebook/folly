@@ -31,12 +31,12 @@ using namespace std;
 
 struct type_identity_test {
   template <typename A>
-  static A deduce(A, type_identity_t<A>);
+  static A deduce(A, std::type_identity_t<A>);
 };
 
+//  Guards the non-deduced-context property that makeFuture/makeSemiFuture rely
+//  on to pin the error type to the explicit template argument.
 TEST(Traits, type_identity) {
-  EXPECT_TRUE((std::is_same_v<int, folly::type_identity_t<int>>));
-  EXPECT_TRUE((std::is_same_v<int, folly::type_identity<int>::type>));
   EXPECT_TRUE(( //
       std::is_same_v<int, decltype(type_identity_test::deduce(0, '\0'))>));
 }

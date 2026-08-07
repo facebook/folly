@@ -2226,7 +2226,7 @@ SemiFuture<T> makeSemiFuture(E&& e);
 template <class T, class E>
   requires std::is_base_of_v<std::exception, E>
 [[deprecated("do not specify exception type template parameter explicitly")]]
-SemiFuture<T> makeSemiFuture(const folly::type_identity_t<E>& e);
+SemiFuture<T> makeSemiFuture(const std::type_identity_t<E>& e);
 
 /** Make a Future out of a Try */
 template <class T>
@@ -2328,7 +2328,7 @@ Future<T> makeFuture(E&& e);
 template <class T, class E>
   requires std::is_base_of_v<std::exception, E>
 [[deprecated("do not specify exception type template parameter explicitly")]]
-Future<T> makeFuture(const folly::type_identity_t<E>& e);
+Future<T> makeFuture(const std::type_identity_t<E>& e);
 
 /**
   Make a Future out of a Try

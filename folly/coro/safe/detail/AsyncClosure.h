@@ -536,7 +536,8 @@ auto async_closure_inner_coro_and_storage(auto&& make_inner_coro, BTup& b_tup) {
   //
   // `true`: Only used inside a `decltype()`, which drives the logic from
   // `async_closure_safeties_and_bindings` labeled `task_forces_shared_cleanup`.
-  // The return type is `tuple<type_identity<InnerCoro>, unused storage_ptr>`.
+  // The return type is `tuple<std::type_identity<InnerCoro>, unused
+  // storage_ptr>`.
   //
   // `false`: This is the evaluated path that makes the actual inner coro.
   //
@@ -560,7 +561,7 @@ auto async_closure_inner_coro_and_storage(auto&& make_inner_coro, BTup& b_tup) {
             return [&]<size_t... ArgIs, size_t... StorageIs>(
                        std::index_sequence<ArgIs...>, vtag_t<StorageIs...>) {
               if constexpr (OnlyGetInnerCoroType) { // Non-evaluated, see (1)
-                return type_identity<detected_or_t<
+                return std::type_identity<detected_or_t<
                     void*,
                     invoke_result_t,
                     decltype(make_inner_coro),

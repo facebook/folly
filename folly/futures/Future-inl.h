@@ -624,7 +624,7 @@ SemiFuture<T> makeSemiFuture(E&& e) {
 // parameters
 template <class T, class E>
   requires std::is_base_of_v<std::exception, E>
-SemiFuture<T> makeSemiFuture(const folly::type_identity_t<E>& e) {
+SemiFuture<T> makeSemiFuture(const std::type_identity_t<E>& e) {
   return makeSemiFuture(Try<T>(make_exception_wrapper<E>(e)));
 }
 
@@ -1390,7 +1390,7 @@ Future<T> makeFuture(E&& e) {
 // parameters
 template <class T, class E>
   requires std::is_base_of_v<std::exception, E>
-Future<T> makeFuture(const folly::type_identity_t<E>& e) {
+Future<T> makeFuture(const std::type_identity_t<E>& e) {
   return makeFuture(Try<T>(make_exception_wrapper<E>(e)));
 }
 

@@ -28,26 +28,6 @@
 
 namespace folly {
 
-#if defined(__cpp_lib_type_identity) && __cpp_lib_type_identity >= 201806L
-
-using std::type_identity;
-using std::type_identity_t;
-
-#else
-
-/// type_identity_t
-/// type_identity
-///
-/// mimic: std::type_identity_t, std::type_identity, c++20
-template <typename T>
-struct type_identity {
-  using type = T;
-};
-template <typename T>
-using type_identity_t = typename type_identity<T>::type;
-
-#endif
-
 /// tag_t
 /// tag
 ///
@@ -1294,7 +1274,7 @@ using type_pack_size_t = index_constant<sizeof...(Ts)>;
 namespace traits_detail {
 
 template <std::size_t I, template <typename...> class List, typename... T>
-type_identity<type_pack_element_t<I, T...>> type_list_element_(
+std::type_identity<type_pack_element_t<I, T...>> type_list_element_(
     List<T...> const*);
 
 template <template <typename...> class List, typename... T>
@@ -1342,14 +1322,14 @@ inline constexpr auto type_list_concat_ =
     error_list_concat_params_should_be_non_cvref<T...>{};
 
 template <template <typename...> class Out>
-inline constexpr type_identity<Out<>> type_list_concat_<Out>;
+inline constexpr std::type_identity<Out<>> type_list_concat_<Out>;
 
 template <
     template <typename...> class Out,
     template <typename...> class In,
     typename... T>
 inline constexpr auto type_list_concat_<Out, In<T...>> =
-    type_identity<Out<T...>>{};
+    std::type_identity<Out<T...>>{};
 
 template <
     template <typename...> class Out,
@@ -1470,11 +1450,11 @@ inline constexpr auto value_list_concat_ =
     error_list_concat_params_should_be_non_cvref<T...>{};
 
 template <template <auto...> class Out>
-inline constexpr type_identity<Out<>> value_list_concat_<Out>;
+inline constexpr std::type_identity<Out<>> value_list_concat_<Out>;
 
 template <template <auto...> class Out, template <auto...> class In, auto... V>
 inline constexpr auto value_list_concat_<Out, In<V...>> =
-    type_identity<Out<V...>>{};
+    std::type_identity<Out<V...>>{};
 
 template <
     template <auto...> class Out,
