@@ -40,15 +40,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME partial
-  HEADERS
-    Partial.h
-  EXPORTED_DEPS
-    folly_functional_invoke
-    folly_utility
-)
-
-folly_add_library(
   NAME protocol
   HEADERS
     protocol.h

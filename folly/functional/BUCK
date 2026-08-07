@@ -31,16 +31,6 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
-    name = "partial",
-    headers = ["Partial.h"],
-    use_raw_headers = True,
-    exported_deps = [
-        ":invoke",
-        "//folly:utility",
-    ],
-)
-
-fb_dirsync_cpp_library(
     name = "protocol",
     headers = ["protocol.h"],
     use_raw_headers = True,

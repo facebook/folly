@@ -24,16 +24,6 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
-    name = "partial_test",
-    srcs = ["PartialTest.cpp"],
-    deps = [
-        "//folly:function",
-        "//folly/functional:partial",
-        "//folly/portability:gtest",
-    ],
-)
-
-fb_dirsync_cpp_unittest(
     name = "protocol_test",
     srcs = ["protocol_test.cpp"],
     deps = [
