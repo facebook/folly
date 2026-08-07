@@ -280,7 +280,7 @@ struct AllocatorCustomizesConstruct_
 
 template <typename Alloc, typename... Args>
 struct AllocatorCustomizesConstruct_<
-    void_t<typename Alloc::folly_has_default_object_construct>,
+    std::void_t<typename Alloc::folly_has_default_object_construct>,
     Alloc,
     Args...>
     : std::negation<typename Alloc::folly_has_default_object_construct> {};
@@ -291,7 +291,7 @@ struct AllocatorCustomizesDestroy_
 
 template <typename Alloc, typename... Args>
 struct AllocatorCustomizesDestroy_<
-    void_t<typename Alloc::folly_has_default_object_destroy>,
+    std::void_t<typename Alloc::folly_has_default_object_destroy>,
     Alloc,
     Args...> : std::negation<typename Alloc::folly_has_default_object_destroy> {
 };

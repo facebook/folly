@@ -328,7 +328,7 @@ struct IsAvalanchingHasherFromMemberType
 template <typename Hasher>
 struct IsAvalanchingHasherFromMemberType<
     Hasher,
-    void_t<typename Hasher::folly_is_avalanching>>
+    std::void_t<typename Hasher::folly_is_avalanching>>
     : std::bool_constant<Hasher::folly_is_avalanching::value> {};
 } // namespace detail
 

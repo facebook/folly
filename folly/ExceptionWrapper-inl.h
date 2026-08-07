@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <type_traits>
+
 #include <folly/Portability.h>
 
 namespace folly {
@@ -47,7 +49,7 @@ struct exception_wrapper::with_exception_from_fn_ {
   struct arg_type_<std::enable_if_t<std::is_pointer<Ptr>::value>, Ptr>
       : arg_type_<void, std::remove_pointer_t<Ptr>> {};
   template <class Obj>
-  struct arg_type_<void_t<decltype(&Obj::operator())>, Obj>
+  struct arg_type_<std::void_t<decltype(&Obj::operator())>, Obj>
       : arg_type_<void, member_<decltype(&Obj::operator())>> {};
 
   // void if Fn is a variadic callable; otherwise the first arg type

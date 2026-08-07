@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <type_traits>
+
 #include <folly/detail/TypeList.h>
 
 #include <folly/portability/GTest.h>
@@ -25,7 +27,7 @@ namespace {
 template <class T, class Ts, class = void>
 struct IsApplicable_ : std::false_type {};
 template <class T, class... Ts>
-struct IsApplicable_<T, TypeList<Ts...>, void_t<MetaApply<T, Ts...>>>
+struct IsApplicable_<T, TypeList<Ts...>, std::void_t<MetaApply<T, Ts...>>>
     : std::true_type {};
 template <class T, class... Ts>
 using IsApplicable = IsApplicable_<T, TypeList<Ts...>>;

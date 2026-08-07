@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <map>
 #include <optional>
+#include <type_traits>
 #include <unordered_map>
 
 #include <folly/Traits.h>
@@ -165,7 +166,7 @@ struct GetPtrCompiles : std::false_type {};
 template <typename Map>
 struct GetPtrCompiles<
     Map,
-    void_t<decltype(get_ptr(
+    std::void_t<decltype(get_ptr(
         std::declval<Map>(),
         std::declval<typename std::remove_cvref_t<Map>::key_type>()))>>
     : std::true_type {};
@@ -270,7 +271,7 @@ struct Compiles : std::false_type {};
 template <typename T>
 struct Compiles<
     T,
-    void_t<decltype(get_ref_default(
+    std::void_t<decltype(get_ref_default(
         std::declval<const std::map<int, element_type_t<T>>&>(),
         std::declval<int>(),
         std::declval<T>()))>> : std::true_type {};
@@ -343,7 +344,7 @@ struct GetRefDefaultPathCompiles : std::false_type {};
 template <typename T>
 struct GetRefDefaultPathCompiles<
     T,
-    void_t<decltype(get_ref_default(
+    std::void_t<decltype(get_ref_default(
         std::declval<const std::map<int, std::map<int, element_type_t<T>>>&>(),
         std::declval<int>(),
         std::declval<int>(),

@@ -91,7 +91,7 @@ template <typename Iter, typename Category>
 inline constexpr bool iterator_category_matches_v_<
     Iter,
     Category,
-    void_t<iterator_category_t<Iter>>> =
+    std::void_t<iterator_category_t<Iter>>> =
     std::is_convertible<iterator_category_t<Iter>, Category>::value;
 
 } // namespace detail

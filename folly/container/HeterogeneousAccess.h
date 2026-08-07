@@ -19,6 +19,7 @@
 #include <functional>
 #include <string>
 #include <string_view>
+#include <type_traits>
 
 #include <folly/Range.h>
 #include <folly/Traits.h>
@@ -77,7 +78,7 @@ struct ValueTypeForTransparentConversionToRange {
 template <typename T>
 struct ValueTypeForTransparentConversionToRange<
     T,
-    void_t<
+    std::void_t<
         decltype(std::declval<hasher<Range<typename T::value_type const*>>>()(
             std::declval<Range<typename T::value_type const*>>()))>> {
   using type = std::remove_const_t<typename T::value_type>;
@@ -169,7 +170,8 @@ template <typename T, typename OtherT>
 struct HasCompatibleTest<
     T,
     OtherT,
-    void_t<typename T::template is_compatible<OtherT>>> : std::true_type {};
+    std::void_t<typename T::template is_compatible<OtherT>>> : std::true_type {
+};
 
 } // namespace detail
 

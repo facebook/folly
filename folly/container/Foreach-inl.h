@@ -55,7 +55,7 @@ auto adl_get(Type&& instance) -> decltype(get<Index>(std::declval<Type>())) {
  */
 template <typename T>
 using EnableIfMemberGetFound =
-    void_t<decltype(std::declval<T>().template get<0>())>;
+    std::void_t<decltype(std::declval<T>().template get<0>())>;
 template <typename, typename T>
 struct IsMemberGetFound : std::bool_constant<!require_sizeof<T>> {};
 template <typename T>
@@ -87,7 +87,7 @@ auto get_impl(Type&& instance)
  * Check if the sequence is a tuple
  */
 template <typename Type, typename T = typename std::decay<Type>::type>
-using EnableIfTuple = void_t<
+using EnableIfTuple = std::void_t<
     decltype(get_impl<0>(std::declval<T>())),
     decltype(std::tuple_size<T>::value)>;
 template <typename, typename T>
@@ -99,7 +99,7 @@ struct IsTuple<EnableIfTuple<T>, T> : std::true_type {};
  * Check if the sequence is a range
  */
 template <typename Type, typename T = typename std::decay<Type>::type>
-using EnableIfRange = void_t<
+using EnableIfRange = std::void_t<
     decltype(access::begin(std::declval<T&>())),
     decltype(access::end(std::declval<T&>()))>;
 template <typename, typename T>

@@ -1016,7 +1016,7 @@ struct function_ctor_deduce_<
 };
 
 template <typename F>
-struct function_ctor_deduce_<void_t<decltype(&F::operator())>, F> {
+struct function_ctor_deduce_<std::void_t<decltype(&F::operator())>, F> {
   using type =
       typename member_pointer_traits<decltype(&F::operator())>::member_type;
 };

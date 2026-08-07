@@ -173,7 +173,7 @@ struct must_use_immediately_<void, void> {
 };
 
 template <typename T>
-struct must_use_immediately_<void_t<must_use_immediately_of_<T>>, T> {
+struct must_use_immediately_<std::void_t<must_use_immediately_of_<T>>, T> {
   // This could do an "is `T` immovable" check, but the cost/benefit seems low.
   // Types that compose use-immediately types will automatically be immovable.
   //

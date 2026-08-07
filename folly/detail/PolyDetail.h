@@ -237,7 +237,7 @@ template <class I>
 using InclusiveSubsumptionsOf = TypePushFront<_t<SubsumptionsOf_<I>>, I>;
 
 template <class I>
-struct SubsumptionsOf_<I, void_t<typename I::Subsumptions>> {
+struct SubsumptionsOf_<I, std::void_t<typename I::Subsumptions>> {
   using type = TypeJoin<TypeTransform<
       typename I::Subsumptions,
       MetaQuote<InclusiveSubsumptionsOf>>>;
@@ -883,7 +883,7 @@ template <class T, class I>
 struct ModelsInterface2_<
     T,
     I,
-    void_t<
+    std::void_t<
         std::enable_if_t<
             std::is_constructible<AddCvrefOf<std::decay_t<T>, I>, T>::value>,
         MembersOf<std::decay_t<I>, std::decay_t<T>>>> : std::true_type {};

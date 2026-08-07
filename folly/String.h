@@ -30,6 +30,7 @@
 #include <cstdarg>
 #include <exception>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -610,7 +611,7 @@ struct IsConvertible<void, decltype(std::ignore)> : std::true_type {};
 
 template <typename OutputType>
 struct IsConvertible<
-    void_t<decltype(parseTo(StringPiece{}, std::declval<OutputType&>()))>,
+    std::void_t<decltype(parseTo(StringPiece{}, std::declval<OutputType&>()))>,
     OutputType> : std::true_type {};
 } // namespace detail
 template <typename OutputType>

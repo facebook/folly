@@ -93,7 +93,7 @@ struct sorted_vector_enable_if_is_transparent {};
 
 template <typename Compare, typename Key, typename T>
 struct sorted_vector_enable_if_is_transparent<
-    void_t<typename Compare::is_transparent>,
+    std::void_t<typename Compare::is_transparent>,
     Compare,
     Key,
     T> {

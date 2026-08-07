@@ -19,6 +19,7 @@
 #include <memory>
 #include <scoped_allocator>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include <boost/interprocess/allocators/adaptive_pool.hpp>
@@ -243,7 +244,7 @@ template <typename T>
 auto checkLocation(
     std::string name,
     std::shared_ptr<managed_shared_memory> const& segment,
-    T const& val) -> folly::void_t<decltype(val.begin())>;
+    T const& val) -> std::void_t<decltype(val.begin())>;
 
 void checkLocation(
     std::string name,
@@ -266,7 +267,7 @@ template <typename T>
 auto checkLocation(
     std::string name,
     std::shared_ptr<managed_shared_memory> const& segment,
-    T const& val) -> folly::void_t<decltype(val.begin())> {
+    T const& val) -> std::void_t<decltype(val.begin())> {
   typename T::allocator_type alloc{segment->get_segment_manager()};
   EXPECT_TRUE(alloc == val.get_allocator());
   checkSingleLocation(name, segment, val);

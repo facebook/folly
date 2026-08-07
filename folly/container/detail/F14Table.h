@@ -270,7 +270,7 @@ struct ShouldAssume32BitHash : std::bool_constant<!require_sizeof<Hasher>> {};
 template <typename Hasher>
 struct ShouldAssume32BitHash<
     Hasher,
-    void_t<typename Hasher::folly_assume_32bit_hash>>
+    std::void_t<typename Hasher::folly_assume_32bit_hash>>
     : std::bool_constant<Hasher::folly_assume_32bit_hash::value> {};
 
 //////// hash helpers

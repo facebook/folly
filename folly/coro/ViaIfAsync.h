@@ -17,6 +17,7 @@
 #pragma once
 
 #include <memory>
+#include <type_traits>
 
 #include <folly/Executor.h>
 #include <folly/Traits.h>
@@ -494,7 +495,7 @@ struct HasViaIfAsyncMethod<SemiAwaitable, void> : std::false_type {};
 template <typename SemiAwaitable>
 struct HasViaIfAsyncMethod<
     SemiAwaitable,
-    void_t<decltype(std::declval<SemiAwaitable>().viaIfAsync(
+    std::void_t<decltype(std::declval<SemiAwaitable>().viaIfAsync(
         std::declval<folly::Executor::KeepAlive<>>()))>> : std::true_type {};
 
 namespace adl {
@@ -582,7 +583,7 @@ template <typename T>
 struct is_semi_awaitable<T, void> : std::false_type {};
 
 template <typename T>
-struct is_semi_awaitable<T, void_t<semi_await_awaitable_t<T>>>
+struct is_semi_awaitable<T, std::void_t<semi_await_awaitable_t<T>>>
     : std::true_type {};
 
 template <typename T>
@@ -648,7 +649,7 @@ struct value_only_awaitable_<void, void> {
 };
 
 template <typename T>
-struct value_only_awaitable_<void_t<value_only_awaitable_of_<T>>, T> {
+struct value_only_awaitable_<std::void_t<value_only_awaitable_of_<T>>, T> {
   using type = value_only_awaitable_of_<T>;
 };
 

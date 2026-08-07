@@ -192,7 +192,7 @@ template <typename Void, typename F, typename... A>
 struct invoke_result {};
 
 template <typename F, typename... A>
-struct invoke_result<void_t<invoke_result_t<F, A...>>, F, A...> {
+struct invoke_result<std::void_t<invoke_result_t<F, A...>>, F, A...> {
   using type = invoke_result_t<F, A...>;
 };
 
@@ -201,7 +201,7 @@ inline constexpr bool is_invocable_v = ok_<bool, F, A...>{false};
 
 template <typename F, typename... A>
 inline constexpr bool
-    is_invocable_v<void_t<invoke_result_t<F, A...>>, F, A...> = true;
+    is_invocable_v<std::void_t<invoke_result_t<F, A...>>, F, A...> = true;
 
 template <typename Void, typename R, typename F, typename... A>
 inline constexpr bool is_invocable_r_v = ok_<bool, R, F, A...>{false};
@@ -209,7 +209,7 @@ inline constexpr bool is_invocable_r_v = ok_<bool, R, F, A...>{false};
 // clang-format off
 template <typename R, typename F, typename... A>
 inline constexpr bool
-    is_invocable_r_v<void_t<invoke_result_t<F, A...>>, R, F, A...> =
+    is_invocable_r_v<std::void_t<invoke_result_t<F, A...>>, R, F, A...> =
         conv_r_v_<false, R, invoke_result_t<F, A...>>;
 // clang-format on
 
@@ -218,7 +218,7 @@ inline constexpr bool is_nothrow_invocable_v = ok_<bool, F, A...>{false};
 
 template <typename F, typename... A>
 inline constexpr bool
-    is_nothrow_invocable_v<void_t<invoke_result_t<F, A...>>, F, A...> =
+    is_nothrow_invocable_v<std::void_t<invoke_result_t<F, A...>>, F, A...> =
         is_nothrow<F, A...>::value;
 
 template <typename Void, typename R, typename F, typename... A>
@@ -227,7 +227,7 @@ inline constexpr bool is_nothrow_invocable_r_v = ok_<bool, R, F, A...>{false};
 // clang-format off
 template <typename R, typename F, typename... A>
 inline constexpr bool
-    is_nothrow_invocable_r_v<void_t<invoke_result_t<F, A...>>, R, F, A...> =
+    is_nothrow_invocable_r_v<std::void_t<invoke_result_t<F, A...>>, R, F, A...> =
         is_nothrow<F, A...>::value &&
             conv_r_v_<true, R, invoke_result_t<F, A...>>;
 // clang-format on

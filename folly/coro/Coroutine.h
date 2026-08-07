@@ -351,7 +351,7 @@ class ExtendedCoroutineHandle {
   };
 
   template <typename T>
-  struct use_extended_handle<T, void_t<use_extended_handle_of_<T>>> {
+  struct use_extended_handle<T, std::void_t<use_extended_handle_of_<T>>> {
     static constexpr bool value =
         std::is_same_v<use_extended_handle_of_<T>, PrivateTag>;
   };

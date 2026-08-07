@@ -76,7 +76,7 @@ struct is_awaiter<T, std::enable_if_t<std::is_void_v<T>>> : std::false_type {};
 template <typename T>
 struct is_awaiter<
     T,
-    folly::void_t<
+    std::void_t<
         decltype(std::declval<T&>().await_ready()),
         decltype(std::declval<T&>().await_resume())>>
     : std::is_same<bool, decltype(std::declval<T&>().await_ready())> {};
@@ -97,7 +97,7 @@ struct _has_member_operator_co_await<T, std::enable_if_t<std::is_void_v<T>>>
 template <typename Awaitable>
 struct _has_member_operator_co_await<
     Awaitable,
-    folly::void_t<decltype(std::declval<Awaitable>().operator co_await())>>
+    std::void_t<decltype(std::declval<Awaitable>().operator co_await())>>
     : is_awaiter<decltype(std::declval<Awaitable>().operator co_await())> {};
 
 template <typename Awaitable, typename = void>
@@ -111,7 +111,7 @@ struct _has_free_operator_co_await<T, std::enable_if_t<std::is_void_v<T>>>
 template <typename Awaitable>
 struct _has_free_operator_co_await<
     Awaitable,
-    folly::void_t<decltype(operator co_await(std::declval<Awaitable>()))>>
+    std::void_t<decltype(operator co_await(std::declval<Awaitable>()))>>
     : is_awaiter<decltype(operator co_await(std::declval<Awaitable>()))> {};
 
 } // namespace detail
@@ -220,7 +220,7 @@ constexpr bool promiseHasAsyncFrame_v = !require_sizeof<Promise>;
 template <typename Promise>
 constexpr bool promiseHasAsyncFrame_v<
     Promise,
-    void_t<decltype(std::declval<Promise&>().getAsyncFrame())>> = true;
+    std::void_t<decltype(std::declval<Promise&>().getAsyncFrame())>> = true;
 
 } // namespace detail
 
