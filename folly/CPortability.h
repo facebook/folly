@@ -235,6 +235,16 @@
 #define FOLLY_ALWAYS_INLINE inline
 #endif
 
+// Prefer __restrict over __restrict__ for MSVC compatibility.
+// All major compilers (GCC, Clang, MSVC, Intel) support __restrict
+// directly or via their respective compatibility modes.
+#if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER) || \
+    defined(__INTEL_COMPILER)
+#define FOLLY_RESTRICT __restrict
+#else
+#define FOLLY_RESTRICT
+#endif
+
 // attribute hidden
 #if defined(_MSC_VER)
 #define FOLLY_ATTR_VISIBILITY_HIDDEN
