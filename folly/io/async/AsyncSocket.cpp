@@ -1643,7 +1643,9 @@ void AsyncSocket::drainZeroCopyQueue() {
 void AsyncSocket::setZeroCopyBuf(
     std::unique_ptr<folly::IOBuf>&& buf, ReleaseIOBufCallback* cb) {
   folly::IOBuf* ptr = buf.get();
-  auto& p = idZeroCopyBufInfoMap_[ptr];
+  auto iter = idZeroCopyBufInfoMap_.find(ptr);
+  CHECK(iter != idZeroCopyBufInfoMap_.end());
+  auto& p = iter->second;
   CHECK(p.buf_.get() == nullptr);
 
   p.buf_ = std::move(buf);
