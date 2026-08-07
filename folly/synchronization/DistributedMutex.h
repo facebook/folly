@@ -19,6 +19,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <type_traits>
 
 #include <folly/Optional.h>
 #include <folly/functional/Invoke.h>
@@ -296,7 +297,7 @@ class DistributedMutex {
    *    at compile time or runtime, so we have no checks against this
    */
   template <typename Task>
-  auto lock_combine(Task task) -> folly::invoke_result_t<const Task&>;
+  auto lock_combine(Task task) -> std::invoke_result_t<const Task&>;
 
   /**
    * Try to combine a task as a combined critical section until the given time

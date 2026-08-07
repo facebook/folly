@@ -21,6 +21,7 @@
 #include <iostream>
 #include <numeric>
 #include <thread>
+#include <type_traits>
 #include <vector>
 
 #include <fmt/core.h>
@@ -103,7 +104,7 @@ class FlatCombiningMutexNoCaching
   template <typename CriticalSection>
   auto lock_combine(CriticalSection func, std::size_t) {
     auto record = this->allocRec();
-    auto value = folly::invoke_result_t<CriticalSection&>{};
+    auto value = std::invoke_result_t<CriticalSection&>{};
     this->requestFC([&]() { value = func(); }, record);
     this->freeRec(record);
     return value;
@@ -123,7 +124,7 @@ class FlatCombiningMutexCaching
 
   template <typename CriticalSection>
   auto lock_combine(CriticalSection func, std::size_t index) {
-    auto value = folly::invoke_result_t<CriticalSection&>{};
+    auto value = std::invoke_result_t<CriticalSection&>{};
     this->requestFC([&]() { value = func(); }, records_.at(index));
     return value;
   }

@@ -21,6 +21,7 @@
 
 #include <stdexcept>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 
 namespace folly {
@@ -306,7 +307,7 @@ void tryEmplace(Try<void>& t) noexcept {
 template <typename T, typename Func>
 T* tryEmplaceWith(Try<T>& t, Func&& func) noexcept {
   static_assert(
-      std::is_constructible<T, folly::invoke_result_t<Func>>::value,
+      std::is_constructible<T, std::invoke_result_t<Func>>::value,
       "Unable to initialise a value of type T with the result of 'func'");
   try {
     return std::addressof(t.emplace(static_cast<Func&&>(func)()));
@@ -319,7 +320,7 @@ T* tryEmplaceWith(Try<T>& t, Func&& func) noexcept {
 template <typename Func>
 bool tryEmplaceWith(Try<void>& t, Func&& func) noexcept {
   static_assert(
-      std::is_void<folly::invoke_result_t<Func>>::value,
+      std::is_void<std::invoke_result_t<Func>>::value,
       "Func returns non-void. Cannot be used to emplace Try<void>");
   try {
     static_cast<Func&&>(func)();

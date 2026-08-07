@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include <folly/channels/Channel.h>
 #include <folly/channels/OnClosedException.h>
 #include <folly/channels/RateLimiter.h>
@@ -77,7 +79,7 @@ template <
     typename ReceiverType,
     typename TransformValueFunc,
     typename InputValueType = typename ReceiverType::ValueType,
-    typename OutputValueType = typename folly::invoke_result_t< //
+    typename OutputValueType = typename std::invoke_result_t< //
         TransformValueFunc,
         Try<InputValueType>>::value_type>
 Receiver<OutputValueType> transform(
@@ -175,11 +177,11 @@ template <
     typename InitializeArg,
     typename InitializeTransformFunc,
     typename TransformValueFunc,
-    typename ReceiverType = typename folly::invoke_result_t<
+    typename ReceiverType = typename std::invoke_result_t<
         InitializeTransformFunc,
         InitializeArg>::StorageType::second_type,
     typename InputValueType = typename ReceiverType::ValueType,
-    typename OutputValueType = typename folly::invoke_result_t< //
+    typename OutputValueType = typename std::invoke_result_t< //
         TransformValueFunc,
         Try<InputValueType>>::value_type>
 Receiver<OutputValueType> resumableTransform(

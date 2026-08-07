@@ -22,6 +22,7 @@
 #include <new>
 #include <stdexcept>
 #include <thread>
+#include <type_traits>
 #include <utility>
 
 #include <glog/logging.h>
@@ -372,7 +373,7 @@ template <typename Func>
 class RequestWithReturn {
  public:
   using F = Func;
-  using ReturnType = folly::invoke_result_t<const Func&>;
+  using ReturnType = std::invoke_result_t<const Func&>;
   explicit RequestWithReturn(Func func) : func_{std::move(func)} {}
 
   /**
@@ -445,7 +446,7 @@ class RequestWithoutReturn {
 // implicit conversion
 template <typename Func>
 using Request = std::conditional_t<
-    std::is_void<folly::invoke_result_t<const Func&>>::value,
+    std::is_void<std::invoke_result_t<const Func&>>::value,
     RequestWithoutReturn<Func>,
     RequestWithReturn<Func>>;
 
@@ -479,7 +480,7 @@ using Request = std::conditional_t<
 template <typename Func, typename Waiter>
 class TaskWithCoalesce {
  public:
-  using ReturnType = folly::invoke_result_t<const Func&>;
+  using ReturnType = std::invoke_result_t<const Func&>;
   using StorageType = folly::Unit;
   explicit TaskWithCoalesce(Func func, Waiter& waiter)
       : func_{std::move(func)}, waiter_{waiter} {}
@@ -522,7 +523,7 @@ class TaskWithBigReturnValue {
   // We also isolate the storage by appending some padding to the end to
   // ensure we avoid false-sharing with the metadata used while the waiter
   // waits
-  using ReturnType = folly::invoke_result_t<const Func&>;
+  using ReturnType = std::invoke_result_t<const Func&>;
   static const auto kReturnValueAlignment = folly::constexpr_max(
       alignof(ReturnType), folly::hardware_destructive_interference_size);
   using StorageType =
@@ -564,10 +565,10 @@ struct Sizeof : Sizeof_<T, std::is_void<T>::value> {};
 // implicit conversion
 template <typename Func, typename Waiter>
 using CoalescedTask = std::conditional_t<
-    std::is_void<folly::invoke_result_t<const Func&>>::value,
+    std::is_void<std::invoke_result_t<const Func&>>::value,
     TaskWithoutCoalesce<Func, Waiter>,
     std::conditional_t<
-        Sizeof<folly::invoke_result_t<const Func&>>::value <=
+        Sizeof<std::invoke_result_t<const Func&>>::value <=
             sizeof(Waiter::storage_),
         TaskWithCoalesce<Func, Waiter>,
         TaskWithBigReturnValue<Func, Waiter>>>;
@@ -1042,7 +1043,7 @@ void wakeTimedWaiters(Atomic* state, bool timedWaiters) {
 template <template <typename> class Atomic, bool TimePublishing>
 template <typename Func>
 auto DistributedMutex<Atomic, TimePublishing>::lock_combine(Func func)
-    -> folly::invoke_result_t<const Func&> {
+    -> std::invoke_result_t<const Func&> {
   // invoke the lock implementation function and check whether we came out of
   // it with our task executed as a combined critical section.  This usually
   // happens when the mutex is contended.
