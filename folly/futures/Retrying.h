@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include <folly/Random.h>
 #include <folly/functional/Invoke.h>
 #include <folly/futures/Future.h>
@@ -73,11 +74,11 @@ namespace futures {
  *  overflow due to the recursive nature of the retry implementation
  */
 template <class Policy, class FF>
-Future<typename isFutureOrSemiFuture<invoke_result_t<FF, size_t>>::Inner>
+Future<typename isFutureOrSemiFuture<std::invoke_result_t<FF, size_t>>::Inner>
 retryingUnsafe(Policy&& p, FF&& ff);
 template <class Policy, class FF>
 [[nodiscard]] SemiFuture<
-    typename isFutureOrSemiFuture<invoke_result_t<FF, size_t>>::Inner>
+    typename isFutureOrSemiFuture<std::invoke_result_t<FF, size_t>>::Inner>
 retrying(Policy&& p, FF&& ff);
 
 namespace detail {
@@ -87,7 +88,7 @@ struct retrying_policy_fut_tag {};
 
 template <class Policy>
 struct retrying_policy_traits {
-  using result = invoke_result_t<Policy, size_t, const exception_wrapper&>;
+  using result = std::invoke_result_t<Policy, size_t, const exception_wrapper&>;
   using is_raw = std::is_same<result, bool>;
   using is_fut = std::is_same<result, Future<bool>>;
   using is_semi_fut = std::is_same<result, SemiFuture<bool>>;
@@ -102,7 +103,7 @@ struct retrying_policy_traits {
 
 template <class Policy, class FF, class Prom>
 void retryingImpl(size_t k, Policy&& p, FF&& ff, Prom prom) {
-  using F = invoke_result_t<FF, size_t>;
+  using F = std::invoke_result_t<FF, size_t>;
   using T = typename F::value_type;
   auto f = makeFutureWith([&] { return ff(k++); });
   std::move(f).thenTry(
@@ -134,9 +135,9 @@ void retryingImpl(size_t k, Policy&& p, FF&& ff, Prom prom) {
 }
 
 template <class Policy, class FF>
-Future<typename invoke_result_t<FF, size_t>::value_type> retryingFuture(
+Future<typename std::invoke_result_t<FF, size_t>::value_type> retryingFuture(
     size_t k, Policy&& p, FF&& ff) {
-  using F = invoke_result_t<FF, size_t>;
+  using F = std::invoke_result_t<FF, size_t>;
   using T = typename F::value_type;
   auto prom = Promise<T>();
   auto f = prom.getFuture();
@@ -146,8 +147,8 @@ Future<typename invoke_result_t<FF, size_t>::value_type> retryingFuture(
 }
 
 template <class Policy, class FF>
-SemiFuture<typename invoke_result_t<FF, size_t>::value_type> retryingSemiFuture(
-    size_t k, Policy&& p, FF&& ff) {
+SemiFuture<typename std::invoke_result_t<FF, size_t>::value_type>
+retryingSemiFuture(size_t k, Policy&& p, FF&& ff) {
   auto sf = folly::makeSemiFuture().deferExValue(
       [k, p = static_cast<Policy&&>(p), ff = static_cast<FF&&>(ff)](
           Executor::KeepAlive<> ka, auto&&) mutable {
@@ -165,7 +166,7 @@ SemiFuture<typename invoke_result_t<FF, size_t>::value_type> retryingSemiFuture(
 }
 
 template <class Policy, class FF>
-Future<typename isFutureOrSemiFuture<invoke_result_t<FF, size_t>>::Inner>
+Future<typename isFutureOrSemiFuture<std::invoke_result_t<FF, size_t>>::Inner>
 retryingFuture(Policy&& p, FF&& ff, retrying_policy_raw_tag) {
   auto q = [pm = static_cast<Policy&&>(p)](size_t k, exception_wrapper x) {
     return makeFuture<bool>(pm(k, x));
@@ -174,7 +175,8 @@ retryingFuture(Policy&& p, FF&& ff, retrying_policy_raw_tag) {
 }
 
 template <class Policy, class FF>
-SemiFuture<typename isFutureOrSemiFuture<invoke_result_t<FF, size_t>>::Inner>
+SemiFuture<
+    typename isFutureOrSemiFuture<std::invoke_result_t<FF, size_t>>::Inner>
 retryingSemiFuture(Policy&& p, FF&& ff, retrying_policy_raw_tag) {
   auto q = [pm = static_cast<Policy&&>(p)](size_t k, exception_wrapper x) {
     return makeSemiFuture<bool>(pm(k, x));
@@ -183,14 +185,14 @@ retryingSemiFuture(Policy&& p, FF&& ff, retrying_policy_raw_tag) {
 }
 
 template <class Policy, class FF>
-Future<typename invoke_result_t<FF, size_t>::value_type> retryingFuture(
+Future<typename std::invoke_result_t<FF, size_t>::value_type> retryingFuture(
     Policy&& p, FF&& ff, retrying_policy_fut_tag) {
   return retryingFuture(0, static_cast<Policy&&>(p), static_cast<FF&&>(ff));
 }
 
 template <class Policy, class FF>
-SemiFuture<typename invoke_result_t<FF, size_t>::value_type> retryingSemiFuture(
-    Policy&& p, FF&& ff, retrying_policy_fut_tag) {
+SemiFuture<typename std::invoke_result_t<FF, size_t>::value_type>
+retryingSemiFuture(Policy&& p, FF&& ff, retrying_policy_fut_tag) {
   return retryingSemiFuture(0, static_cast<Policy&&>(p), static_cast<FF&&>(ff));
 }
 
@@ -297,7 +299,7 @@ retryingPolicyCappedJitteredExponentialBackoff(
 } // namespace detail
 
 template <class Policy, class FF>
-Future<typename isFutureOrSemiFuture<invoke_result_t<FF, size_t>>::Inner>
+Future<typename isFutureOrSemiFuture<std::invoke_result_t<FF, size_t>>::Inner>
 retryingUnsafe(Policy&& p, FF&& ff) {
   using tag = typename detail::retrying_policy_traits<Policy>::tag;
   return detail::retryingFuture(
@@ -305,7 +307,8 @@ retryingUnsafe(Policy&& p, FF&& ff) {
 }
 
 template <class Policy, class FF>
-SemiFuture<typename isFutureOrSemiFuture<invoke_result_t<FF, size_t>>::Inner>
+SemiFuture<
+    typename isFutureOrSemiFuture<std::invoke_result_t<FF, size_t>>::Inner>
 retrying(Policy&& p, FF&& ff) {
   using tag = typename detail::retrying_policy_traits<Policy>::tag;
   return detail::retryingSemiFuture(

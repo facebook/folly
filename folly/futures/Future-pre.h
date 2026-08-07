@@ -124,7 +124,7 @@ struct ArgType<> {
 template <bool isTry_, typename F, typename... Args>
 struct argResult {
   using ArgList = ArgType<Args...>;
-  using Result = invoke_result_t<F, Args...>;
+  using Result = std::invoke_result_t<F, Args...>;
   using ArgsSize = index_constant<sizeof...(Args)>;
   static constexpr bool isTry() { return isTry_; }
 };
