@@ -1439,11 +1439,11 @@ class F14Table : public Policy {
 
   ChunkPtr chunkAt(std::size_t i) const {
     return std::pointer_traits<ChunkPtr>::pointer_to(
-        *Chunk::chunkRawAt(access::to_address(chunks_), i));
+        *Chunk::chunkRawAt(std::to_address(chunks_), i));
   }
 
   std::size_t chunkIndex(Chunk const* chunk) const {
-    return Chunk::chunkRawIndex(access::to_address(chunks_), chunk);
+    return Chunk::chunkRawIndex(std::to_address(chunks_), chunk);
   }
 
   void swapContents(F14Table& rhs) noexcept {
@@ -1647,8 +1647,7 @@ class F14Table : public Policy {
 
   std::size_t itemCount() const noexcept {
     if (chunkShift() == 0) {
-      return computeCapacity(
-          1, Chunk::capacityScale(access::to_address(chunks_)));
+      return computeCapacity(1, Chunk::capacityScale(std::to_address(chunks_)));
     } else {
       return chunkCount() * Chunk::kCapacity;
     }
@@ -1678,7 +1677,7 @@ class F14Table : public Policy {
 
   std::size_t bucket_count() const noexcept {
     return computeCapacity(
-        chunkCount(), Chunk::capacityScale(access::to_address(chunks_)));
+        chunkCount(), Chunk::capacityScale(std::to_address(chunks_)));
   }
 
   std::size_t max_bucket_count() const noexcept { return max_size(); }
@@ -2039,17 +2038,16 @@ class F14Table : public Policy {
         !this->destroyItemOnClear() && itemCount() == src.itemCount()) {
       FOLLY_SAFE_DCHECK(chunkShift() == src.chunkShift(), "");
 
-      auto scale = Chunk::capacityScale(access::to_address(chunks_));
+      auto scale = Chunk::capacityScale(std::to_address(chunks_));
 
       // most happy path
       auto n = chunkAllocSize(chunkCount(), scale);
-      std::memcpy(
-          access::to_address(chunks_), access::to_address(src.chunks_), n);
+      std::memcpy(std::to_address(chunks_), std::to_address(src.chunks_), n);
       sizeAndChunkShiftAndPackedBegin_.setSize(src.size());
       if constexpr (kEnableItemIteration) {
         auto srcBegin = src.begin();
         auto srcChunkIdx = Chunk::chunkRawIndex(
-            access::to_address(src.chunks_), &*srcBegin.chunk());
+            std::to_address(src.chunks_), &*srcBegin.chunk());
         sizeAndChunkShiftAndPackedBegin_.packedBegin() =
             ItemIter{chunkAt(srcChunkIdx), srcBegin.index()}.pack();
       }
@@ -2063,9 +2061,9 @@ class F14Table : public Policy {
       // lastOccupiedChunk() because there may be higher unoccupied chunks
       // with the overflow bit set.
       auto* srcChunk =
-          Chunk::chunkRawAt(access::to_address(src.chunks_), chunkCount() - 1);
+          Chunk::chunkRawAt(std::to_address(src.chunks_), chunkCount() - 1);
       Chunk* dstChunk =
-          Chunk::chunkRawAt(access::to_address(chunks_), chunkCount() - 1);
+          Chunk::chunkRawAt(std::to_address(chunks_), chunkCount() - 1);
       do {
         dstChunk->copyOverflowInfoFrom(*srcChunk);
 
@@ -2095,7 +2093,7 @@ class F14Table : public Policy {
       // reset doesn't care about packedBegin, so we don't fix it until the end
       if constexpr (kEnableItemIteration) {
         std::size_t maxChunkIndex = Chunk::chunkRawIndex(
-            access::to_address(src.chunks_), &*src.lastOccupiedChunk());
+            std::to_address(src.chunks_), &*src.lastOccupiedChunk());
         sizeAndChunkShiftAndPackedBegin_.packedBegin() =
             ItemIter{
                 chunkAt(maxChunkIndex),
@@ -2156,10 +2154,10 @@ class F14Table : public Policy {
     // we don't have to worry about partial failure.
 
     std::size_t srcChunkIndex = Chunk::chunkRawIndex(
-        access::to_address(src.chunks_), &*src.lastOccupiedChunk());
+        std::to_address(src.chunks_), &*src.lastOccupiedChunk());
     while (true) {
       auto* srcChunk =
-          Chunk::chunkRawAt(access::to_address(src.chunks_), srcChunkIndex);
+          Chunk::chunkRawAt(std::to_address(src.chunks_), srcChunkIndex);
       auto iter = srcChunk->occupiedIter();
       if (prefetchBeforeRehash()) {
         for (auto piter = iter; piter.hasNext();) {
@@ -2220,8 +2218,7 @@ class F14Table : public Policy {
     // Use the source's capacity, unless it is oversized.
     auto upperLimit = computeChunkCountAndScale(src.size(), false, false);
     auto ccas = std::make_pair(
-        src.chunkCount(),
-        Chunk::capacityScale(access::to_address(src.chunks_)));
+        src.chunkCount(), Chunk::capacityScale(std::to_address(src.chunks_)));
     FOLLY_SAFE_DCHECK(
         ccas.first >= upperLimit.first,
         "rounded chunk count can't be bigger than actual");
@@ -2244,7 +2241,7 @@ class F14Table : public Policy {
 
   void maybeRehash(std::size_t desiredCapacity, bool attemptExact) {
     auto origChunkCount = chunkCount();
-    auto origCapacityScale = Chunk::capacityScale(access::to_address(chunks_));
+    auto origCapacityScale = Chunk::capacityScale(std::to_address(chunks_));
     auto origCapacity = computeCapacity(origChunkCount, origCapacityScale);
 
     std::size_t newChunkCount;
@@ -2326,7 +2323,7 @@ class F14Table : public Policy {
     FOLLY_SAFE_DCHECK(size() == 0, "");
     FOLLY_SAFE_DCHECK(chunkShift() == 0, "");
     FOLLY_SAFE_DCHECK(!!chunks_);
-    FOLLY_SAFE_DCHECK(Chunk::isEmptyInstance(access::to_address(chunks_)), "");
+    FOLLY_SAFE_DCHECK(Chunk::isEmptyInstance(std::to_address(chunks_)), "");
     if (desiredCapacity == 0) {
       return;
     }
@@ -2446,7 +2443,7 @@ class F14Table : public Policy {
       };
 
       auto* srcChunk =
-          Chunk::chunkRawAt(access::to_address(origChunks), origChunkCount - 1);
+          Chunk::chunkRawAt(std::to_address(origChunks), origChunkCount - 1);
       std::size_t remaining = origSize;
       while (remaining > 0) {
         auto iter = srcChunk->occupiedIter();
@@ -2496,7 +2493,7 @@ class F14Table : public Policy {
 
   void debugModeSpuriousRehash() {
     auto cc = chunkCount();
-    auto ss = Chunk::capacityScale(access::to_address(chunks_));
+    auto ss = Chunk::capacityScale(std::to_address(chunks_));
     rehashImpl(size(), cc, ss, cc, ss);
   }
 
@@ -2548,7 +2545,7 @@ class F14Table : public Policy {
     //   map.reserve(map.size() + 2); auto& r1 = map[k1]; auto& r2 = map[k2];
     debugModeOnReserve(capacity);
     FOLLY_SAFE_DCHECK(!!chunks_);
-    if (Chunk::isEmptyInstance(access::to_address(chunks_))) {
+    if (Chunk::isEmptyInstance(std::to_address(chunks_))) {
       initialReserve(capacity);
     } else {
       reserveImpl(capacity);
@@ -2560,7 +2557,7 @@ class F14Table : public Policy {
 
     auto needed = size() + incoming;
     auto chunkCount_ = chunkCount();
-    auto scale = Chunk::capacityScale(access::to_address(chunks_));
+    auto scale = Chunk::capacityScale(std::to_address(chunks_));
     auto existing = computeCapacity(chunkCount_, scale);
     if (needed - 1 >= existing) {
       reserveForInsertImpl(needed - 1, chunkCount_, scale, existing);
@@ -2631,7 +2628,7 @@ class F14Table : public Policy {
   template <bool Reset>
   void clearImpl() noexcept {
     FOLLY_SAFE_DCHECK(!!chunks_);
-    if (Chunk::isEmptyInstance(access::to_address(chunks_))) {
+    if (Chunk::isEmptyInstance(std::to_address(chunks_))) {
       FOLLY_SAFE_DCHECK(empty() && bucket_count() == 0, "");
       return;
     }
@@ -2667,7 +2664,7 @@ class F14Table : public Policy {
         // It's okay to do this in a separate loop because we only do it
         // when the chunk count is small.  That avoids a branch when we
         // are promoting a clear to a reset for a large table.
-        auto scale = Chunk::capacityScale(access::to_address(chunks_));
+        auto scale = Chunk::capacityScale(std::to_address(chunks_));
         for (std::size_t ci = 0; ci < chunkCount(); ++ci) {
           chunkAt(ci)->clear();
         }
@@ -2683,7 +2680,7 @@ class F14Table : public Policy {
       BytePtr rawAllocation = std::pointer_traits<BytePtr>::pointer_to(
           *static_cast<uint8_t*>(static_cast<void*>(&*chunks_)));
       std::size_t rawSize = chunkAllocSize(
-          chunkCount(), Chunk::capacityScale(access::to_address(chunks_)));
+          chunkCount(), Chunk::capacityScale(std::to_address(chunks_)));
 
       chunks_ = Chunk::getSomeEmptyInstance();
       sizeAndChunkShiftAndPackedBegin_.setChunkCount(1);
@@ -2767,7 +2764,7 @@ class F14Table : public Policy {
   // be called with a zero allocationCount.
   template <typename V>
   void visitAllocationClasses(V&& visitor) const {
-    auto scale = Chunk::capacityScale(access::to_address(chunks_));
+    auto scale = Chunk::capacityScale(std::to_address(chunks_));
     this->visitPolicyAllocationClasses(
         scale == 0 ? 0 : chunkAllocSize(chunkCount(), scale),
         size(),
@@ -2782,7 +2779,7 @@ class F14Table : public Policy {
       return;
     }
     std::size_t maxChunkIndex = chunkIndex(&*lastOccupiedChunk());
-    auto* chunk = access::to_address(chunks_);
+    auto* chunk = std::to_address(chunks_);
     for (std::size_t i = 0; i <= maxChunkIndex;
          ++i, chunk = Chunk::nextChunkRaw(chunk)) {
       auto iter = chunk->occupiedIter();
@@ -2804,7 +2801,7 @@ class F14Table : public Policy {
       return;
     }
     std::size_t maxChunkIndex = chunkIndex(&*lastOccupiedChunk());
-    auto* chunk = access::to_address(chunks_);
+    auto* chunk = std::to_address(chunks_);
     for (std::size_t i = 0; i <= maxChunkIndex;
          ++i, chunk = Chunk::nextChunkRaw(chunk)) {
       for (auto iter = chunk->occupiedRangeIter(); iter.hasNext();) {
@@ -2844,7 +2841,7 @@ class F14Table : public Policy {
     }
 
     FOLLY_SAFE_DCHECK(
-        (Chunk::isEmptyInstance(access::to_address(chunks_))) ==
+        (Chunk::isEmptyInstance(std::to_address(chunks_))) ==
             (bucket_count() == 0),
         "");
 
