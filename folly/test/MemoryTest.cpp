@@ -39,6 +39,28 @@ static constexpr std::size_t kTooBig = folly::constexpr_max(
 
 struct MemoryTest : testing::Test {};
 
+TEST_F(MemoryTest, to_address_pointer) {
+  int a;
+  EXPECT_EQ(&a, folly::access::to_address(&a));
+}
+
+TEST_F(MemoryTest, to_address_std_unique_ptr) {
+  auto b = std::make_unique<int>();
+  EXPECT_EQ(b.get(), folly::access::to_address(b));
+}
+
+TEST_F(MemoryTest, to_address_custom_ptr) {
+  struct custom_ptr {
+    // not a template
+    // no element_type
+    int* ptr;
+    int* operator->() const noexcept { return ptr; }
+  };
+  int a;
+  custom_ptr p{&a};
+  EXPECT_EQ(&a, folly::access::to_address(p));
+}
+
 TEST(operatorNewDelete, zero) {
   auto p = ::operator new(0);
   EXPECT_TRUE(p != nullptr);
