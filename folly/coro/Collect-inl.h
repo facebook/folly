@@ -15,6 +15,7 @@
  */
 
 #include <atomic>
+#include <type_traits>
 #include <utility>
 
 #include <folly/CancellationToken.h>
@@ -56,7 +57,7 @@ std::vector<RTask> collectMakeInnerTaskVec(InputRange& awaitables, Make& make) {
   auto abegin = access::begin(awaitables);
   auto aend = access::end(awaitables);
 
-  if constexpr (is_invocable_v<folly::access::size_fn, InputRange&>) {
+  if constexpr (std::is_invocable_v<folly::access::size_fn, InputRange&>) {
     tasks.reserve(static_cast<std::size_t>(folly::access::size(awaitables)));
   } else if constexpr (range_has_known_distance_v<InputRange&>) {
     tasks.reserve(static_cast<std::size_t>(std::distance(abegin, aend)));
@@ -790,7 +791,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
       detail::range_reference_t<InputRange>>>
       tryResults;
 
-  if constexpr (is_invocable_v<folly::access::size_fn, InputRange&>) {
+  if constexpr (std::is_invocable_v<folly::access::size_fn, InputRange&>) {
     tryResults.reserve(
         static_cast<std::size_t>(folly::access::size(awaitables)));
   } else if constexpr (range_has_known_distance_v<InputRange&>) {

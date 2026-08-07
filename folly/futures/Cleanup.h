@@ -19,6 +19,7 @@
 #include <concepts>
 #include <memory>
 #include <mutex>
+#include <type_traits>
 
 #include <glog/logging.h>
 
@@ -43,7 +44,7 @@ struct cleanup_fn {
 } // namespace detail
 
 template <class T>
-constexpr bool is_cleanup_v = folly::is_invocable_v<detail::cleanup_fn, T>;
+constexpr bool is_cleanup_v = std::is_invocable_v<detail::cleanup_fn, T>;
 
 template <typename T>
 using is_cleanup = std::bool_constant<is_cleanup_v<T>>;

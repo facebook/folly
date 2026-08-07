@@ -21,6 +21,7 @@
 #include <limits>
 #include <ostream>
 #include <random>
+#include <type_traits>
 #include <utility>
 
 #include <folly/Likely.h>
@@ -58,7 +59,7 @@ class xoshiro256pp {
 
   template <typename SeedSeq>
   static constexpr bool is_seed_seq =
-      is_invocable_v<seed_seq_generate_fn, state_span, SeedSeq&>;
+      std::is_invocable_v<seed_seq_generate_fn, state_span, SeedSeq&>;
 
  public:
   using result_type = ResType;

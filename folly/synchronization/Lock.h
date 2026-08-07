@@ -311,7 +311,7 @@ struct lock_policy_upgrade {
 
 template <typename Mutex>
 using lock_policy_hybrid = conditional_t<
-    is_invocable_v<access::lock_shared_fn, Mutex&>,
+    std::is_invocable_v<access::lock_shared_fn, Mutex&>,
     lock_policy_shared,
     lock_policy_unique>;
 

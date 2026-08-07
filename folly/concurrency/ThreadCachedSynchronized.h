@@ -148,7 +148,7 @@ class thread_cached_synchronized {
     mutate([&](auto& value) { access::swap(value, that); });
   }
 
-  template <typename A, if_<is_invocable_v<swap_fn, value_type&, A&>> = 0>
+  template <typename A, if_<std::is_invocable_v<swap_fn, value_type&, A&>> = 0>
   friend void swap(thread_cached_synchronized& self, A& that) noexcept(false) {
     self.swap(that);
   }

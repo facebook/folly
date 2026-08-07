@@ -24,6 +24,7 @@
 #pragma once
 
 #include <tuple>
+#include <type_traits>
 
 #include <fmt/format.h>
 
@@ -47,7 +48,7 @@ template <
     class Map,
     typename Key = typename Map::key_type,
     typename Value = typename Map::mapped_type,
-    typename std::enable_if<!is_invocable_v<Value>>::type* = nullptr>
+    typename std::enable_if<!std::is_invocable_v<Value>>::type* = nullptr>
 typename Map::mapped_type get_default(
     const Map& map, const Key& key, Value&& dflt) {
   using M = typename Map::mapped_type;

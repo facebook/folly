@@ -39,7 +39,7 @@ template <typename Hash, typename State>
 class hash_counter_engine : private Hash {
  private:
   static auto call(Hash& hash, State state) {
-    if constexpr (is_invocable_v<Hash&, State>) {
+    if constexpr (std::is_invocable_v<Hash&, State>) {
       return hash(state);
     } else if constexpr (std::is_invocable_v<Hash&, uint8_t const*, size_t>) {
       auto const ptr = reinterpret_cast<uint8_t const*>(std::addressof(state));

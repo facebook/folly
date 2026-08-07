@@ -252,7 +252,7 @@ template <typename Clock>
 class BenchmarkingState : public BenchmarkingStateBase {
  public:
   template <typename Lambda>
-  typename std::enable_if<folly::is_invocable_v<Lambda, unsigned>>::type
+  typename std::enable_if<std::is_invocable_v<Lambda, unsigned>>::type
   addBenchmark(std::string file, std::string name, Lambda&& lambda) {
     auto execute = [=](unsigned int times) {
       BenchmarkSuspender<Clock>::timeSpent = {};
@@ -276,7 +276,7 @@ class BenchmarkingState : public BenchmarkingStateBase {
   }
 
   template <typename Lambda>
-  typename std::enable_if<folly::is_invocable_v<Lambda>>::type addBenchmark(
+  typename std::enable_if<std::is_invocable_v<Lambda>>::type addBenchmark(
       std::string file, std::string name, Lambda&& lambda) {
     addBenchmark(std::move(file), std::move(name), [=](unsigned int times) {
       unsigned int niter = 0;
@@ -289,7 +289,7 @@ class BenchmarkingState : public BenchmarkingStateBase {
 
   template <typename Lambda>
   typename std::enable_if<
-      folly::is_invocable_v<Lambda, UserCounters&, unsigned>>::type
+      std::is_invocable_v<Lambda, UserCounters&, unsigned>>::type
   addBenchmark(std::string file, std::string name, Lambda&& lambda) {
     auto execute = [=](unsigned int times) {
       BenchmarkSuspender<Clock>::timeSpent = {};
@@ -317,7 +317,7 @@ class BenchmarkingState : public BenchmarkingStateBase {
   }
 
   template <typename Lambda>
-  typename std::enable_if<folly::is_invocable_v<Lambda, UserCounters&>>::type
+  typename std::enable_if<std::is_invocable_v<Lambda, UserCounters&>>::type
   addBenchmark(std::string file, std::string name, Lambda&& lambda) {
     addBenchmark(
         std::move(file),

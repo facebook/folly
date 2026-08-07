@@ -19,6 +19,7 @@
 #include <memory>
 #include <thread>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
 #include <folly/Utility.h>
@@ -131,9 +132,9 @@ TEST_F(ReentrantAllocatorTest, invocability) {
   using av = folly::reentrant_allocator<void>;
   using ac = folly::reentrant_allocator<char>;
 
-  EXPECT_FALSE((folly::is_invocable_v<m::allocate, av, size_t>));
-  EXPECT_FALSE((folly::is_invocable_v<m::deallocate, av, void*, size_t>));
-  EXPECT_FALSE((folly::is_invocable_v<m::max_size, av>));
+  EXPECT_FALSE((std::is_invocable_v<m::allocate, av, size_t>));
+  EXPECT_FALSE((std::is_invocable_v<m::deallocate, av, void*, size_t>));
+  EXPECT_FALSE((std::is_invocable_v<m::max_size, av>));
 
   EXPECT_TRUE((folly::is_invocable_r_v<char*, m::allocate, ac, size_t>));
   EXPECT_TRUE(

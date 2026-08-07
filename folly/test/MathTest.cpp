@@ -313,9 +313,9 @@ TEST(MidpointTest, MidpointTest) {
 
   EXPECT_TRUE(noexcept(midpoint(1, 2)));
 
-  EXPECT_FALSE((is_invocable_v<midpoint_invoke, bool>));
-  EXPECT_FALSE((is_invocable_v<midpoint_invoke, const bool>));
-  EXPECT_FALSE((is_invocable_v<midpoint_invoke, volatile int>));
+  EXPECT_FALSE((std::is_invocable_v<midpoint_invoke, bool>));
+  EXPECT_FALSE((std::is_invocable_v<midpoint_invoke, const bool>));
+  EXPECT_FALSE((std::is_invocable_v<midpoint_invoke, volatile int>));
 
   constexpr auto MY_INT_MAX = std::numeric_limits<int>::max();
   constexpr auto MY_INT_MIN = std::numeric_limits<int>::min();
@@ -433,9 +433,9 @@ TEST(MidpointTest, MidpointTest) {
     for (int b = MY_SCHAR_MIN; b <= MY_SCHAR_MAX; ++b)
       EXPECT_EQ(midpoint(a, b), midpoint<int>(a, b));
 
-  EXPECT_FALSE((is_invocable_v<midpoint_invoke, void>));
-  EXPECT_FALSE((is_invocable_v<midpoint_invoke, int()>));
-  EXPECT_FALSE((is_invocable_v<midpoint_invoke, int&>));
+  EXPECT_FALSE((std::is_invocable_v<midpoint_invoke, void>));
+  EXPECT_FALSE((std::is_invocable_v<midpoint_invoke, int()>));
+  EXPECT_FALSE((std::is_invocable_v<midpoint_invoke, int&>));
 
   constexpr std::array<int, 3> ca = {0, 1, 2};
   EXPECT_EQ(midpoint(ca.data(), ca.data() + 3), ca.data() + 1);

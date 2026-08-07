@@ -2620,7 +2620,7 @@ auto times(const int n, F&& thunk) {
 
 namespace futures {
 template <class It, class F, class ItT, class Result>
-  requires is_invocable_v<F, typename ItT::value_type&&>
+  requires std::is_invocable_v<F, typename ItT::value_type&&>
 std::vector<Future<Result>> mapValue(It first, It last, F func) {
   std::vector<Future<Result>> results;
   results.reserve(std::distance(first, last));
@@ -2631,7 +2631,7 @@ std::vector<Future<Result>> mapValue(It first, It last, F func) {
 }
 
 template <class It, class F, class ItT, class Result>
-  requires(!is_invocable_v<F, typename ItT::value_type &&>)
+  requires(!std::is_invocable_v<F, typename ItT::value_type &&>)
 std::vector<Future<Result>> mapTry(It first, It last, F func, int) {
   std::vector<Future<Result>> results;
   results.reserve(std::distance(first, last));
@@ -2642,7 +2642,7 @@ std::vector<Future<Result>> mapTry(It first, It last, F func, int) {
 }
 
 template <class It, class F, class ItT, class Result>
-  requires is_invocable_v<F, typename ItT::value_type&&>
+  requires std::is_invocable_v<F, typename ItT::value_type&&>
 std::vector<Future<Result>> mapValue(
     Executor& exec, It first, It last, F func) {
   std::vector<Future<Result>> results;
@@ -2654,7 +2654,7 @@ std::vector<Future<Result>> mapValue(
 }
 
 template <class It, class F, class ItT, class Result>
-  requires(!is_invocable_v<F, typename ItT::value_type &&>)
+  requires(!std::is_invocable_v<F, typename ItT::value_type &&>)
 std::vector<Future<Result>> mapTry(
     Executor& exec, It first, It last, F func, int) {
   std::vector<Future<Result>> results;

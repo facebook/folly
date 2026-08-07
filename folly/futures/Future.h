@@ -2057,7 +2057,7 @@ template <
     class ItT = typename std::iterator_traits<It>::value_type,
     class Result = typename decltype(std::declval<ItT>().thenValue(
         std::declval<F>()))::value_type>
-  requires is_invocable_v<F, typename ItT::value_type&&>
+  requires std::is_invocable_v<F, typename ItT::value_type&&>
 std::vector<Future<Result>> mapValue(It first, It last, F func);
 
 /**
@@ -2070,7 +2070,7 @@ template <
     class ItT = typename std::iterator_traits<It>::value_type,
     class Result = typename decltype(std::declval<ItT>().thenTry(
         std::declval<F>()))::value_type>
-  requires(!is_invocable_v<F, typename ItT::value_type &&>)
+  requires(!std::is_invocable_v<F, typename ItT::value_type &&>)
 std::vector<Future<Result>> mapTry(It first, It last, F func, int = 0);
 
 /**
@@ -2086,7 +2086,7 @@ template <
         typename decltype(std::move(std::declval<ItT>())
                               .via(std::declval<Executor*>())
                               .thenValue(std::declval<F>()))::value_type>
-  requires is_invocable_v<F, typename ItT::value_type&&>
+  requires std::is_invocable_v<F, typename ItT::value_type&&>
 std::vector<Future<Result>> mapValue(Executor& exec, It first, It last, F func);
 
 /**
@@ -2102,7 +2102,7 @@ template <
         typename decltype(std::move(std::declval<ItT>())
                               .via(std::declval<Executor*>())
                               .thenTry(std::declval<F>()))::value_type>
-  requires(!is_invocable_v<F, typename ItT::value_type &&>)
+  requires(!std::is_invocable_v<F, typename ItT::value_type &&>)
 std::vector<Future<Result>> mapTry(
     Executor& exec, It first, It last, F func, int = 0);
 
@@ -2535,7 +2535,7 @@ std::vector<Future<Result>> window(
 
 template <typename F, typename T, typename ItT>
 using MaybeTryArg = typename std::
-    conditional<is_invocable_v<F, T&&, Try<ItT>&&>, Try<ItT>, ItT>::type;
+    conditional<std::is_invocable_v<F, T&&, Try<ItT>&&>, Try<ItT>, ItT>::type;
 
 /** repeatedly calls func on every result, e.g.
     reduce(reduce(reduce(T initial, result of first), result of second), ...)

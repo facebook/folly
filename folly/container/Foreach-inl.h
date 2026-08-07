@@ -122,13 +122,13 @@ struct IndexingTag {};
 
 template <typename Func, typename Item, typename Iter>
 using ForEachImplTag = std::conditional_t<
-    is_invocable_v<Func, Item, index_constant<0>, Iter>,
+    std::is_invocable_v<Func, Item, index_constant<0>, Iter>,
     index_constant<3>,
     std::conditional_t<
-        is_invocable_v<Func, Item, index_constant<0>>,
+        std::is_invocable_v<Func, Item, index_constant<0>>,
         index_constant<2>,
         std::conditional_t<
-            is_invocable_v<Func, Item>,
+            std::is_invocable_v<Func, Item>,
             index_constant<1>,
             void>>>;
 

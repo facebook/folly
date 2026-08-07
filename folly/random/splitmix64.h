@@ -21,6 +21,7 @@
 #include <istream>
 #include <limits>
 #include <ostream>
+#include <type_traits>
 
 #include <folly/container/span.h>
 #include <folly/functional/Invoke.h>
@@ -50,7 +51,7 @@ constexpr uint64_t splitmix64(uint64_t& state) noexcept {
 class splitmix64_engine {
  private:
   template <typename SeedSeq>
-  static constexpr bool is_seed_seq =
+  static constexpr bool is_seed_seq = std::
       is_invocable_v<seed_seq_generate_fn, std::span<uint64_t, 1>, SeedSeq&>;
 
  public:

@@ -431,7 +431,7 @@ class Adaptor {
  private:
   value_type* allocate_back() {
     if (lastCount_ == Node::kElementCount) {
-      if constexpr (is_invocable_v<detail::emplace_back, Container&>) {
+      if constexpr (std::is_invocable_v<detail::emplace_back, Container&>) {
         c_.emplace_back();
       } else {
         c_.push_back(typename Container::value_type());

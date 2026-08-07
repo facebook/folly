@@ -18,6 +18,7 @@
 
 #include <functional>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 
 #include <folly/Traits.h>
@@ -133,7 +134,8 @@ using apply_result = invoke_result<ApplyInvoke, F, Tuple>;
 template <typename F, typename Tuple>
 using apply_result_t = invoke_result_t<ApplyInvoke, F, Tuple>;
 template <typename F, typename Tuple>
-inline constexpr bool is_applicable_v = is_invocable_v<ApplyInvoke, F, Tuple>;
+inline constexpr bool is_applicable_v =
+    std::is_invocable_v<ApplyInvoke, F, Tuple>;
 template <typename F, typename Tuple>
 using is_applicable = is_invocable<ApplyInvoke, F, Tuple>;
 template <typename R, typename F, typename Tuple>

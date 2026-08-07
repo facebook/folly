@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <mutex>
+#include <type_traits>
 
 #include <folly/Function.h>
 #include <folly/futures/Cleanup.h>
@@ -44,7 +45,7 @@ struct publicallyDerivedFromEnablePrimaryFromThis_fn {
 } // namespace detail
 
 template <class T>
-constexpr bool is_enable_master_from_this_v = folly::
+constexpr bool is_enable_master_from_this_v = std::
     is_invocable_v<detail::publicallyDerivedFromEnablePrimaryFromThis_fn, T>;
 
 template <typename T>
