@@ -288,7 +288,12 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
   }
 
   void destroy() override {
-    socket_->releaseIOBuf(std::move(ioBuf_), releaseIOBufCallback_);
+    auto* FOLLY_NONNULL socket = CHECK_NOTNULL(socket_);
+    if (ioBuf_ && socket->containsZeroCopyBuf(ioBuf_.get())) {
+      socket->setZeroCopyBuf(std::move(ioBuf_), releaseIOBufCallback_);
+    } else {
+      socket->releaseIOBuf(std::move(ioBuf_), releaseIOBufCallback_);
+    }
     this->~BytesWriteRequest();
     free(this);
   }
