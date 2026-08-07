@@ -50,7 +50,7 @@ struct seed_seq_generate_fn {
         std::is_trivially_copyable_v<Word> && //
         (Size != dynamic_extent) && //
         seq_inv_v<SeedSeq>)
-  void operator()(span<Word, Size> dst, SeedSeq& seq) const //
+  void operator()(std::span<Word, Size> dst, SeedSeq& seq) const //
       noexcept(seq_nx_inv_v<SeedSeq>) {
     using out_t = typename SeedSeq::result_type;
     constexpr auto dst_bytes = Size * sizeof(Word);

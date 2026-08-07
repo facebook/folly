@@ -479,7 +479,7 @@ struct StaticMetaBase {
   static ElementWrapper* reallocate(
       ThreadEntry* threadEntry, uint32_t idval, size_t& newCapacity);
 
-  span<SynchronizedThreadEntrySet* const> getThreadEntrySetsPtrSpan() {
+  std::span<SynchronizedThreadEntrySet* const> getThreadEntrySetsPtrSpan() {
     return allId2ThreadEntrySets_.as_view().as_ptr_span(nextId_.load());
   }
 

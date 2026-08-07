@@ -84,7 +84,7 @@ using detail::linux_syscall;
 namespace detail {
 
 SubprocessFdActionsList::SubprocessFdActionsList(
-    span<value_type const> rep) noexcept
+    std::span<value_type const> rep) noexcept
     : begin_{rep.data()}, end_{rep.data() + rep.size()} {
   [[maybe_unused]] auto lt = [](auto a, auto b) { return a.first < b.first; };
   assert(std::is_sorted(begin_, end_, lt));
@@ -446,7 +446,8 @@ Subprocess::Options& Subprocess::Options::setLinuxCGroupPath(
 
 #endif
 
-Subprocess::Options& Subprocess::Options::addPrintPidToBuffer(span<char> buf) {
+Subprocess::Options& Subprocess::Options::addPrintPidToBuffer(
+    std::span<char> buf) {
   if (buf.size() < kPidBufferMinSize) {
     throw std::invalid_argument("buf size too small");
   }

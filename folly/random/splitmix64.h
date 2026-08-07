@@ -51,7 +51,7 @@ class splitmix64_engine {
  private:
   template <typename SeedSeq>
   static constexpr bool is_seed_seq =
-      is_invocable_v<seed_seq_generate_fn, span<uint64_t, 1>, SeedSeq&>;
+      is_invocable_v<seed_seq_generate_fn, std::span<uint64_t, 1>, SeedSeq&>;
 
  public:
   using result_type = uint64_t;
@@ -89,7 +89,7 @@ class splitmix64_engine {
     requires is_seed_seq<SeedSeq>
   void seed(SeedSeq& seq) {
     std::array<result_type, 1> arr;
-    seed_seq_generate(span(arr), seq);
+    seed_seq_generate(std::span(arr), seq);
     state_ = arr[0];
   }
 

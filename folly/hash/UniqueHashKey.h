@@ -47,8 +47,8 @@ struct unique_hash_key_item {
 
 /// unique_hash_key_algo_strong_sha256_fn
 ///
-/// Hashes span<detail::unique_hash_key_item const> using SHA256 with a key that
-/// may vary between processes.
+/// Hashes std::span<detail::unique_hash_key_item const> using SHA256 with a key
+/// that may vary between processes.
 ///
 /// The size must be in {8, 16, 24, 32}.
 ///
@@ -58,7 +58,7 @@ struct unique_hash_key_algo_strong_sha256_fn {
   static_assert(Size <= 32);
   static_assert(Size % 8 == 0);
   std::array<uint8_t, Size> operator()(
-      span<detail::unique_hash_key_item const> in) const noexcept;
+      std::span<detail::unique_hash_key_item const> in) const noexcept;
 };
 template <size_t Size>
 inline constexpr unique_hash_key_algo_strong_sha256_fn<Size>
@@ -68,8 +68,8 @@ inline constexpr unique_hash_key_algo_strong_sha256_fn<Size>
 
 /// unique_hash_key_algo_strong_blake3_fn
 ///
-/// Hashes span<detail::unique_hash_key_item const> using BLAKE3 with a key that
-/// may vary between processes.
+/// Hashes std::span<detail::unique_hash_key_item const> using BLAKE3 with a key
+/// that may vary between processes.
 ///
 /// The size must be in {8, 16, 24, 32}.
 ///
@@ -79,7 +79,7 @@ struct unique_hash_key_algo_strong_blake3_fn {
   static_assert(Size <= 32);
   static_assert(Size % 8 == 0);
   std::array<uint8_t, Size> operator()(
-      span<detail::unique_hash_key_item const> in) const noexcept;
+      std::span<detail::unique_hash_key_item const> in) const noexcept;
 };
 template <size_t Size>
 inline constexpr unique_hash_key_algo_strong_blake3_fn<Size>
@@ -89,8 +89,8 @@ inline constexpr unique_hash_key_algo_strong_blake3_fn<Size>
 
 /// unique_hash_key_algo_fast_xxh3_fn
 ///
-/// Hashes span<detail::unique_hash_key_item const> using XXH3 with a key that
-/// may vary between processes.
+/// Hashes std::span<detail::unique_hash_key_item const> using XXH3 with a key
+/// that may vary between processes.
 ///
 /// The size must be in {8, 16}, corresponding to XXH3_64bits and XXH3_128bits.
 ///
@@ -100,7 +100,7 @@ struct unique_hash_key_algo_fast_xxh3_fn {
   static_assert(Size <= 16);
   static_assert(Size % 8 == 0);
   std::array<uint8_t, Size> operator()(
-      span<detail::unique_hash_key_item const> in) const noexcept;
+      std::span<detail::unique_hash_key_item const> in) const noexcept;
 };
 template <size_t Size>
 inline constexpr unique_hash_key_algo_fast_xxh3_fn<Size>
@@ -112,7 +112,7 @@ inline constexpr unique_hash_key_algo_fast_xxh3_fn<Size>
 
 template <auto Algo>
 constexpr size_t unique_hash_key_algo_size_v =
-    decltype(Algo(span<detail::unique_hash_key_item const>{})){}.size();
+    decltype(Algo(std::span<detail::unique_hash_key_item const>{})){}.size();
 
 /// unique_hash_key
 ///
@@ -143,7 +143,7 @@ class unique_hash_key {
 
   template <typename Algo>
   static inline constexpr bool is_algo_v =
-      std::is_invocable_v<Algo const&, span<item_type const>>;
+      std::is_invocable_v<Algo const&, std::span<item_type const>>;
 
   alignas(data_align) data_type const data_;
 
@@ -199,9 +199,10 @@ class unique_hash_key {
       typename T,
       std::size_t E,
       std::enable_if_t<is_span_compatible_v<T, E>, int> = 0>
-  explicit operator span<T const, E>() const noexcept {
+  explicit operator std::span<T const, E>() const noexcept {
     constexpr auto count = E == dynamic_extent ? data_size / sizeof(T) : E;
-    return span<T const, E>{reinterpret_cast<T const*>(data_.data()), count};
+    return std::span<T const, E>{
+        reinterpret_cast<T const*>(data_.data()), count};
   }
 
   friend auto operator==(self const& a, self const& b) noexcept {

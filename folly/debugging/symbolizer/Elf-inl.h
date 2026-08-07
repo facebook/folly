@@ -180,7 +180,7 @@ ElfFile::iterateNotesInBodyHelper(folly::StringPiece body, Fn& fn) const
 
   while (body.size() > 0) {
     std::span<const uint8_t> noteBody =
-        span(reinterpret_cast<const uint8_t*>(body.data()), body.size());
+        std::span(reinterpret_cast<const uint8_t*>(body.data()), body.size());
     auto noteMaybe = Note::parse(noteBody);
     if (!noteMaybe) {
       return noteMaybe;

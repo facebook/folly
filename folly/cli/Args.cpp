@@ -31,7 +31,7 @@
 namespace folly {
 
 std::vector<char const*> cli_args_strings_to_c_strings(
-    span<std::string const> args) {
+    std::span<std::string const> args) {
   std::vector<char const*> argv;
   argv.reserve(args.size());
   for (auto const& arg : args) {
@@ -610,7 +610,7 @@ void cli_process_file_args(
 void cli_apply_args_files(
     cli_apply_args_files_receiver& receiver,
     std::filesystem::path const& current_dir,
-    span<std::string const> args,
+    std::span<std::string const> args,
     cli_apply_args_files_options const& options) {
   cli_active_files_set active_files;
   for (size_t i = 0; i < args.size(); ++i) {
@@ -711,7 +711,8 @@ class cli_throwing_receiver : public cli_apply_args_files_receiver {
 } // namespace
 
 std::vector<std::string> cli_apply_args_files(
-    std::filesystem::path const& current_dir, span<std::string const> args) {
+    std::filesystem::path const& current_dir,
+    std::span<std::string const> args) {
   std::vector<std::string> result;
   cli_throwing_receiver receiver(result);
   cli_apply_args_files(receiver, current_dir, args);

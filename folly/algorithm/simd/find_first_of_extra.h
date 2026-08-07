@@ -49,7 +49,7 @@ template <typename CharT>
 class stdfind_vector_finder_first_of {
  private:
   using value_type = CharT;
-  using view = span<CharT const>;
+  using view = std::span<CharT const>;
 
   alignas(sizeof(view)) view const alphabet_;
 
@@ -88,7 +88,7 @@ template <typename CharT>
 class rngfind_vector_finder_first_of {
  private:
   using value_type = CharT;
-  using view = span<CharT const>;
+  using view = std::span<CharT const>;
 
   alignas(sizeof(view)) view const alphabet_;
 

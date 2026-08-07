@@ -111,8 +111,8 @@ class atomic_grow_array : private Policy {
   using size_type = std::size_t;
   using value_type = Item;
 
-  using pointer_span = span<value_type* const>;
-  using const_pointer_span = span<value_type const* const>;
+  using pointer_span = std::span<value_type* const>;
+  using const_pointer_span = std::span<value_type const* const>;
 
   class iterator;
   class const_iterator;
@@ -264,20 +264,21 @@ class atomic_grow_array : private Policy {
       return *array_->list[index];
     }
 
-    span<pointer const> as_ptr_span() noexcept {
-      using type = span<pointer const>;
+    std::span<pointer const> as_ptr_span() noexcept {
+      using type = std::span<pointer const>;
       return array_ ? type{array_->list, array_->size} : type{};
     }
-    span<const_pointer const> as_ptr_span() const noexcept {
-      using type = span<const_pointer const>;
+    std::span<const_pointer const> as_ptr_span() const noexcept {
+      using type = std::span<const_pointer const>;
       return array_ ? type{array_->list, array_->size} : type{};
     }
 
-    span<pointer const> as_ptr_span(size_type const sz) noexcept {
+    std::span<pointer const> as_ptr_span(size_type const sz) noexcept {
       auto ptrs = as_ptr_span();
       return ptrs.subspan(0, std::min(ptrs.size(), sz));
     }
-    span<const_pointer const> as_ptr_span(size_type const sz) const noexcept {
+    std::span<const_pointer const> as_ptr_span(
+        size_type const sz) const noexcept {
       auto ptrs = as_ptr_span();
       return ptrs.subspan(0, std::min(ptrs.size(), sz));
     }

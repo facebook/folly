@@ -407,10 +407,6 @@ REGISTER_TYPED_TEST_SUITE_P(
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
     folly_fallback_span, SpanTest, quote<folly::detail::fallback_span::span>);
-INSTANTIATE_TYPED_TEST_SUITE_P(folly_span, SpanTest, quote<folly::span>);
-#if __cpp_lib_span >= 202002L
-INSTANTIATE_TYPED_TEST_SUITE_P(std_span, SpanTest, quote<std::span>);
-#endif
 
 #if __cpp_lib_span
 

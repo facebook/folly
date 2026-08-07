@@ -683,7 +683,7 @@ class CursorBase {
    *
    * @methodset Accessors
    */
-  span<uint8_t const> peek() {
+  std::span<uint8_t const> peek() {
     auto bytes = peekBytes();
     return {bytes.data(), bytes.size()};
   }

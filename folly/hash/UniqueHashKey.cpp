@@ -46,15 +46,16 @@ namespace detail {
 /// the Secret Suffix MAC construction, which depends on the underlying hash
 /// function's collision resistance for its own collision resistance.
 void unique_hash_key_init_process_key_sha256(
-    char const* const context, span<uint8_t, SHA256_DIGEST_LENGTH> const out) {
+    char const* const context,
+    std::span<uint8_t, SHA256_DIGEST_LENGTH> const out) {
   auto const pid = getpid();
-  auto const pidkey = reinterpret_span_cast<uint8_t const>(span{&pid, 1});
+  auto const pidkey = reinterpret_span_cast<uint8_t const>(std::span{&pid, 1});
 #if defined(__linux__)
   constexpr size_t auxlen = 16;
   auto const auxval = getauxval(AT_RANDOM);
   // NOLINTNEXTLINE(performance-no-int-to-ptr)
   auto const auxptr = reinterpret_cast<uint8_t const*>(auxval);
-  auto const auxkey = span<uint8_t const>{auxptr, auxlen};
+  auto const auxkey = std::span<uint8_t const>{auxptr, auxlen};
 #endif
   SHA256_CTX h{};
   SHA256_Init(&h);
@@ -93,16 +94,16 @@ unique_hash_key_algo_strong_sha256_init() {
 ///
 /// Accepts arbitrarily-sized output, which is required by the xxh3 algo.
 void unique_hash_key_init_process_key_blake3(
-    char const* const context, span<uint8_t> const out) {
+    char const* const context, std::span<uint8_t> const out) {
 #if defined(__linux__)
   constexpr size_t auxlen = 16;
   auto const auxval = getauxval(AT_RANDOM);
   // NOLINTNEXTLINE(performance-no-int-to-ptr)
   auto const auxptr = reinterpret_cast<uint8_t const*>(auxval);
-  auto const key = span<uint8_t const>{auxptr, auxlen};
+  auto const key = std::span<uint8_t const>{auxptr, auxlen};
 #else
   auto const pid = getpid();
-  auto const key = reinterpret_span_cast<uint8_t const>(span{&pid, 1});
+  auto const key = reinterpret_span_cast<uint8_t const>(std::span{&pid, 1});
 #endif
   blake3_hasher h{};
   blake3_hasher_init_derive_key(&h, context);
@@ -173,7 +174,7 @@ template <typename Hash, typename Update>
 FOLLY_ALWAYS_INLINE static void unique_hash_key_hash_items(
     Update const update,
     Hash* const h,
-    span<detail::unique_hash_key_item const> const in) noexcept {
+    std::span<detail::unique_hash_key_item const> const in) noexcept {
   for (auto const item : in) {
     auto const [len, include_len] = item.unpack_len();
     if (include_len) {
@@ -192,7 +193,7 @@ FOLLY_ALWAYS_INLINE static void unique_hash_key_hash_items(
 template <size_t Size>
 std::array<uint8_t, Size>
 unique_hash_key_algo_strong_sha256_fn<Size>::operator()(
-    span<detail::unique_hash_key_item const> const in) const noexcept {
+    std::span<detail::unique_hash_key_item const> const in) const noexcept {
   auto const& init = detail::unique_hash_key_algo_strong_sha256_init();
   SHA256_CTX h;
   SHA256_Init(&h);
@@ -207,23 +208,23 @@ unique_hash_key_algo_strong_sha256_fn<Size>::operator()(
 
 template std::array<uint8_t, 8> //
 unique_hash_key_algo_strong_sha256_fn<8>::operator()(
-    span<detail::unique_hash_key_item const> in) const noexcept;
+    std::span<detail::unique_hash_key_item const> in) const noexcept;
 template std::array<uint8_t, 16> //
 unique_hash_key_algo_strong_sha256_fn<16>::operator()(
-    span<detail::unique_hash_key_item const> in) const noexcept;
+    std::span<detail::unique_hash_key_item const> in) const noexcept;
 template std::array<uint8_t, 24> //
 unique_hash_key_algo_strong_sha256_fn<24>::operator()(
-    span<detail::unique_hash_key_item const> in) const noexcept;
+    std::span<detail::unique_hash_key_item const> in) const noexcept;
 template std::array<uint8_t, 32> //
 unique_hash_key_algo_strong_sha256_fn<32>::operator()(
-    span<detail::unique_hash_key_item const> in) const noexcept;
+    std::span<detail::unique_hash_key_item const> in) const noexcept;
 
 #if __has_include(<blake3.h>)
 
 template <size_t Size>
 std::array<uint8_t, Size>
 unique_hash_key_algo_strong_blake3_fn<Size>::operator()(
-    span<detail::unique_hash_key_item const> const in) const noexcept {
+    std::span<detail::unique_hash_key_item const> const in) const noexcept {
   auto const& init = detail::unique_hash_key_algo_strong_blake3_init();
   blake3_hasher h;
   blake3_hasher_init_keyed(&h, init.key);
@@ -235,22 +236,22 @@ unique_hash_key_algo_strong_blake3_fn<Size>::operator()(
 
 template std::array<uint8_t, 8> //
 unique_hash_key_algo_strong_blake3_fn<8>::operator()(
-    span<detail::unique_hash_key_item const> in) const noexcept;
+    std::span<detail::unique_hash_key_item const> in) const noexcept;
 template std::array<uint8_t, 16> //
 unique_hash_key_algo_strong_blake3_fn<16>::operator()(
-    span<detail::unique_hash_key_item const> in) const noexcept;
+    std::span<detail::unique_hash_key_item const> in) const noexcept;
 template std::array<uint8_t, 24> //
 unique_hash_key_algo_strong_blake3_fn<24>::operator()(
-    span<detail::unique_hash_key_item const> in) const noexcept;
+    std::span<detail::unique_hash_key_item const> in) const noexcept;
 template std::array<uint8_t, 32> //
 unique_hash_key_algo_strong_blake3_fn<32>::operator()(
-    span<detail::unique_hash_key_item const> in) const noexcept;
+    std::span<detail::unique_hash_key_item const> in) const noexcept;
 
 #if __has_include(<xxh3.h>)
 
 template <size_t Size>
 std::array<uint8_t, Size> unique_hash_key_algo_fast_xxh3_fn<Size>::operator()(
-    span<detail::unique_hash_key_item const> const in) const noexcept {
+    std::span<detail::unique_hash_key_item const> const in) const noexcept {
   using ops = detail::unique_hash_key_algo_fast_xxh3_ops<Size>;
   auto const& init = detail::unique_hash_key_algo_fast_xxh3_init();
   XXH3_state_t h;
@@ -270,10 +271,10 @@ std::array<uint8_t, Size> unique_hash_key_algo_fast_xxh3_fn<Size>::operator()(
 
 template std::array<uint8_t, 8> //
 unique_hash_key_algo_fast_xxh3_fn<8>::operator()(
-    span<detail::unique_hash_key_item const> in) const noexcept;
+    std::span<detail::unique_hash_key_item const> in) const noexcept;
 template std::array<uint8_t, 16> //
 unique_hash_key_algo_fast_xxh3_fn<16>::operator()(
-    span<detail::unique_hash_key_item const> in) const noexcept;
+    std::span<detail::unique_hash_key_item const> in) const noexcept;
 
 #endif // __has_include(<xxh3.h>)
 

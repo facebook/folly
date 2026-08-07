@@ -260,12 +260,10 @@ span(R&&) -> span<std::remove_reference_t<
 #if __cpp_lib_span >= 202002L
 
 using std::dynamic_extent;
-using std::span;
 
 #else
 
 using detail::fallback_span::dynamic_extent;
-using detail::fallback_span::span;
 
 #endif
 

@@ -438,7 +438,7 @@ class ElfFile {
 
     std::span<const uint8_t> getDesc() const {
       if (!header()) {
-        return span<const uint8_t>{};
+        return std::span<const uint8_t>{};
       }
 
       size_t paddedNameSize = folly::align_ceil(header()->n_namesz, 4);
@@ -509,7 +509,7 @@ class ElfFile {
   /**
    * Retrieve the content of .note.gnu.build-id, if available.
    */
-  folly::Expected<span<const uint8_t>, FindNoteError> getNoteGnuBuildId()
+  folly::Expected<std::span<const uint8_t>, FindNoteError> getNoteGnuBuildId()
       const noexcept;
 
   /**

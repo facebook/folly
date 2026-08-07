@@ -29,7 +29,7 @@
 namespace folly {
 
 std::vector<char const*> cli_args_strings_to_c_strings(
-    span<std::string const> args);
+    std::span<std::string const> args);
 
 class cli_apply_args_files_receiver {
  public:
@@ -161,7 +161,7 @@ namespace folly {
 void cli_apply_args_files(
     cli_apply_args_files_receiver& receiver,
     std::filesystem::path const& current_dir,
-    span<std::string const> args,
+    std::span<std::string const> args,
     cli_apply_args_files_options const& options = {});
 
 /// Applies args-file expansion to a list of arguments.
@@ -169,7 +169,8 @@ void cli_apply_args_files(
 /// Throws cli_apply_args_files_error on any error (file not found, parse
 /// error).
 std::vector<std::string> cli_apply_args_files(
-    std::filesystem::path const& current_dir, span<std::string const> args);
+    std::filesystem::path const& current_dir,
+    std::span<std::string const> args);
 
 std::vector<std::string> cli_apply_args_files(
     std::filesystem::path const& current_dir,

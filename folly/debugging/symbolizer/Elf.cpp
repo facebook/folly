@@ -516,7 +516,7 @@ const char* ElfFile::getSymbolName(const Symbol& symbol) const noexcept {
   return getString(*linkSection, symbol.second->st_name);
 }
 
-folly::Expected<span<const uint8_t>, ElfFile::FindNoteError>
+folly::Expected<std::span<const uint8_t>, ElfFile::FindNoteError>
 ElfFile::getNoteGnuBuildId() const noexcept {
   auto filter = [](const Note& note) {
     return note.getName() == "GNU" && note.getType() == NT_GNU_BUILD_ID;

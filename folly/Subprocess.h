@@ -144,7 +144,7 @@ class SubprocessFdActionsList {
   value_type const* end_;
 
  public:
-  explicit SubprocessFdActionsList(span<value_type const> rep) noexcept;
+  explicit SubprocessFdActionsList(std::span<value_type const> rep) noexcept;
 
   value_type const* begin() const noexcept;
   value_type const* end() const noexcept;
@@ -533,7 +533,7 @@ class Subprocess {
     /// will see the written value (e.g. via an environment variable backed
     /// by this buffer). On platforms where vfork does not share address
     /// space (e.g. Apple), the write may not be visible to the parent.
-    Options& addPrintPidToBuffer(span<char> buf);
+    Options& addPrintPidToBuffer(std::span<char> buf);
 
     Options& addRLimit(
         int resource, rlimit limit, std::shared_ptr<int> errout = nullptr);

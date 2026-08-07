@@ -116,7 +116,7 @@ TEST_F(UnicodeTest, unicode_code_point_to_utf8) {
   };
   for (auto const& [cp, expected] : test_vector) {
     auto const result = unicode_code_point_to_utf8(cp);
-    auto const actual = span(result.data, result.size);
+    auto const actual = std::span(result.data, result.size);
     EXPECT_THAT(actual, testing::ElementsAreArray(expected));
   }
 }

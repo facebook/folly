@@ -56,7 +56,7 @@ template <typename CharT>
 class stdfind_scalar_finder_first_of {
  private:
   using value_type = CharT;
-  using view = span<CharT const>;
+  using view = std::span<CharT const>;
 
   alignas(sizeof(view)) view const alphabet_;
 
@@ -86,7 +86,7 @@ template <typename CharT, bool Eq>
 class default_scalar_finder_first_op_of {
  private:
   using value_type = CharT;
-  using view = span<CharT const>;
+  using view = std::span<CharT const>;
 
   alignas(sizeof(view)) view alphabet_;
 
@@ -128,7 +128,7 @@ template <typename CharT, bool Eq>
 class ltindex_scalar_finder_first_op_of {
  private:
   using value_type = CharT;
-  using view = span<CharT const>;
+  using view = std::span<CharT const>;
   using index = std::array<bool, 256>;
 
   static_assert(sizeof(value_type) == 1);
@@ -181,7 +181,7 @@ template <typename CharT, bool Eq>
 class ltsparse_scalar_finder_first_op_of {
  private:
   using value_type = CharT;
-  using view = span<CharT const>;
+  using view = std::span<CharT const>;
 
   static_assert(sizeof(value_type) == 1);
 
@@ -235,7 +235,7 @@ template <typename CharT, bool Eq>
 class default_vector_finder_first_op_of {
  private:
   using value_type = CharT;
-  using view = span<CharT const>;
+  using view = std::span<CharT const>;
 
   static_assert(sizeof(value_type) == 1);
 
@@ -318,7 +318,7 @@ template <typename CharT, bool Eq>
 class shuffle_vector_finder_first_op_of {
  private:
   using value_type = CharT;
-  using view = span<CharT const>;
+  using view = std::span<CharT const>;
   using shufvec = std::array<value_type, 256>;
 
   struct shuffle {
@@ -443,7 +443,7 @@ template <typename CharT, bool Eq>
 class azmatch_vector_finder_first_op_of {
  private:
   using value_type = CharT;
-  using view = span<CharT const>;
+  using view = std::span<CharT const>;
   using matchvec = std::array<value_type, 256>;
 
   struct meta {
@@ -464,7 +464,9 @@ class azmatch_vector_finder_first_op_of {
   }
 
   static constexpr size_t next_segment(
-      view& alphabet, span<value_type, 16> out, span<bool, 256> seen) noexcept {
+      view& alphabet,
+      std::span<value_type, 16> out,
+      std::span<bool, 256> seen) noexcept {
     if (!alphabet.size()) {
       return 0;
     }
@@ -487,7 +489,7 @@ class azmatch_vector_finder_first_op_of {
     size_t rounds = 0;
     matchvec vec{};
     while (true) {
-      auto segment = span<value_type, 16>{vec.data() + 16 * rounds, 16};
+      auto segment = std::span<value_type, 16>{vec.data() + 16 * rounds, 16};
       auto segsize = next_segment(alphabet, segment, seen);
       if (!segsize) {
         break;
@@ -655,7 +657,7 @@ using azmatch_vector_finder_first_not_of =
 template <typename Vector, typename Scalar>
 class composite_finder_first_of : private Vector, Scalar {
  private:
-  using view = span<char const>;
+  using view = std::span<char const>;
 
  public:
   constexpr explicit composite_finder_first_of(view const alphabet) noexcept
