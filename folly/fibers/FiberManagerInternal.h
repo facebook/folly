@@ -266,7 +266,7 @@ class FiberManager : public ::folly::Executor {
    */
   template <typename F>
   auto addTaskFuture(F&& func)
-      -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>>;
+      -> folly::Future<folly::lift_unit_t<std::invoke_result_t<F>>>;
 
   /**
    * Add a new task to be executed. Must be called from FiberManager's thread.
@@ -290,7 +290,7 @@ class FiberManager : public ::folly::Executor {
    */
   template <typename F>
   auto addTaskEagerFuture(F&& func)
-      -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>>;
+      -> folly::Future<folly::lift_unit_t<std::invoke_result_t<F>>>;
 
   /**
    * Add a new task to be executed. Safe to call from other threads.
@@ -310,7 +310,7 @@ class FiberManager : public ::folly::Executor {
    */
   template <typename F>
   auto addTaskRemoteFuture(F&& func)
-      -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>>;
+      -> folly::Future<folly::lift_unit_t<std::invoke_result_t<F>>>;
 
   // Executor interface calls addTaskRemote
   void add(folly::Func f) override { addTaskRemote(std::move(f)); }
@@ -349,7 +349,7 @@ class FiberManager : public ::folly::Executor {
    * @return value returned by func().
    */
   template <typename F>
-  invoke_result_t<F> runInMainContext(F&& func);
+  std::invoke_result_t<F> runInMainContext(F&& func);
 
   /**
    * Returns a refference to a fiber-local context for given Fiber. Should be
@@ -699,7 +699,7 @@ FOLLY_ERASE typename FirstArgOf<F>::type::value_type await(F&& func) {
  * @return value returned by func().
  */
 template <typename F>
-invoke_result_t<F> inline runInMainContext(F&& func);
+std::invoke_result_t<F> inline runInMainContext(F&& func);
 
 /**
  * Returns a refference to a fiber-local context for given Fiber. Should be

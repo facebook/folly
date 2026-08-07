@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include <utility>
 
 #include <glog/logging.h>
@@ -174,7 +175,7 @@ using async_inner_type_t = typename async_inner_type<T>::type;
 // async_invocable_inner_type
 template <typename F, typename... Args>
 using async_invocable_inner_type =
-    async_inner_type<invoke_result_t<F, Args...>>;
+    async_inner_type<std::invoke_result_t<F, Args...>>;
 
 template <typename F, typename... Args>
 using async_invocable_inner_type_t =

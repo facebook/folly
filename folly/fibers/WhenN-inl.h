@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <type_traits>
 #include <folly/Optional.h>
 #include <folly/fibers/FiberManagerInternal.h>
 #include <folly/fibers/ForEach.h>
@@ -24,16 +25,16 @@ namespace fibers {
 template <class InputIterator>
 typename std::enable_if<
     !std::is_same<
-        invoke_result_t<
+        std::invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>,
         void>::value,
     std::vector<std::pair<
         size_t,
-        invoke_result_t<
+        std::invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>>>>::type
 collectN(InputIterator first, InputIterator last, size_t n) {
-  using Result =
-      invoke_result_t<typename std::iterator_traits<InputIterator>::value_type>;
+  using Result = std::invoke_result_t<
+      typename std::iterator_traits<InputIterator>::value_type>;
   assert(n > 0);
   assert(std::distance(first, last) >= 0);
   assert(n <= static_cast<size_t>(std::distance(first, last)));
@@ -83,7 +84,7 @@ collectN(InputIterator first, InputIterator last, size_t n) {
 template <class InputIterator>
 typename std::enable_if<
     std::is_same<
-        invoke_result_t<
+        std::invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>,
         void>::value,
     std::vector<size_t>>::type
@@ -138,14 +139,14 @@ template <class InputIterator>
 typename std::vector<
     typename std::enable_if<
         !std::is_same<
-            invoke_result_t<
+            std::invoke_result_t<
                 typename std::iterator_traits<InputIterator>::value_type>,
             void>::value,
-        invoke_result_t<
+        std::invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>>::
         type> inline collectAll(InputIterator first, InputIterator last) {
-  using Result =
-      invoke_result_t<typename std::iterator_traits<InputIterator>::value_type>;
+  using Result = std::invoke_result_t<
+      typename std::iterator_traits<InputIterator>::value_type>;
   size_t n = size_t(std::distance(first, last));
   std::vector<Result> results;
   std::vector<size_t> order(n);
@@ -170,7 +171,7 @@ typename std::vector<
 template <class InputIterator>
 typename std::enable_if<
     std::is_same<
-        invoke_result_t<
+        std::invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>,
         void>::value,
     void>::type inline collectAll(InputIterator first, InputIterator last) {
@@ -180,12 +181,12 @@ typename std::enable_if<
 template <class InputIterator>
 typename std::enable_if<
     !std::is_same<
-        invoke_result_t<
+        std::invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>,
         void>::value,
     typename std::pair<
         size_t,
-        invoke_result_t<
+        std::invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>>>::
     type inline collectAny(InputIterator first, InputIterator last) {
   auto result = collectN(first, last, 1);
@@ -196,7 +197,7 @@ typename std::enable_if<
 template <class InputIterator>
 typename std::enable_if<
     std::is_same<
-        invoke_result_t<
+        std::invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>,
         void>::value,
     size_t>::type inline collectAny(InputIterator first, InputIterator last) {

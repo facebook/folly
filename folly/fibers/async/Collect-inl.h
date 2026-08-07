@@ -71,7 +71,7 @@ void foreach(std::index_sequence<I...>, Func&& func, Ts&&... ts) {
 
 template <typename Out, typename T>
 typename std::enable_if<
-    !std::is_same<invoke_result_t<T>, Async<void>>::value,
+    !std::is_same<std::invoke_result_t<T>, Async<void>>::value,
     Async<void>>::type
 executeAndMaybeAssign(Out& outref, T&& task) {
   tryEmplaceWith(outref, [task = static_cast<T&&>(task)] {
@@ -82,7 +82,7 @@ executeAndMaybeAssign(Out& outref, T&& task) {
 
 template <typename Out, typename T>
 typename std::enable_if<
-    std::is_same<invoke_result_t<T>, Async<void>>::value,
+    std::is_same<std::invoke_result_t<T>, Async<void>>::value,
     Async<void>>::type
 executeAndMaybeAssign(Out& outref, T&& task) {
   tryEmplaceWith(outref, [task = static_cast<T&&>(task)] {
@@ -93,7 +93,8 @@ executeAndMaybeAssign(Out& outref, T&& task) {
 }
 
 template <typename T>
-using collected_result_t = lift_unit_t<async_inner_type_t<invoke_result_t<T>>>;
+using collected_result_t =
+    lift_unit_t<async_inner_type_t<std::invoke_result_t<T>>>;
 
 template <
     typename T,

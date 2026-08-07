@@ -15,6 +15,7 @@
  */
 
 #include <memory>
+#include <type_traits>
 #include <vector>
 
 namespace folly {
@@ -89,7 +90,7 @@ template <typename T>
 template <typename F>
 void TaskIterator<T>::addTask(F&& func) {
   static_assert(
-      std::is_convertible<invoke_result_t<F>, T>::value,
+      std::is_convertible<std::invoke_result_t<F>, T>::value,
       "TaskIterator<T>: T must be convertible from func()'s return type");
 
   auto taskId = context_->totalTasks++;
@@ -111,10 +112,10 @@ void TaskIterator<T>::addTask(F&& func) {
 }
 
 template <class InputIterator>
-TaskIterator<
-    invoke_result_t<typename std::iterator_traits<InputIterator>::value_type>>
+TaskIterator<std::invoke_result_t<
+    typename std::iterator_traits<InputIterator>::value_type>>
 addTasks(InputIterator first, InputIterator last) {
-  typedef invoke_result_t<
+  typedef std::invoke_result_t<
       typename std::iterator_traits<InputIterator>::value_type>
       ResultType;
   typedef TaskIterator<ResultType> IteratorType;

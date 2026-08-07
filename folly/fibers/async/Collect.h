@@ -17,6 +17,7 @@
 #pragma once
 
 #include <algorithm>
+#include <type_traits>
 #include <vector>
 
 #include <folly/Traits.h>
@@ -45,7 +46,7 @@ template <
     class InputIterator,
     typename FuncType =
         typename std::iterator_traits<InputIterator>::value_type,
-    typename ResultType = invoke_result_t<FuncType>>
+    typename ResultType = std::invoke_result_t<FuncType>>
 Async<std::vector<typename std::enable_if<
     !std::is_same<ResultType, Async<void>>::value,
     async_inner_type_t<ResultType>>::type>>
@@ -58,7 +59,7 @@ template <
     class InputIterator,
     typename FuncType =
         typename std::iterator_traits<InputIterator>::value_type,
-    typename ResultType = invoke_result_t<FuncType>>
+    typename ResultType = std::invoke_result_t<FuncType>>
 typename std::
     enable_if<std::is_same<ResultType, Async<void>>::value, Async<void>>::
         type inline collectAll(InputIterator first, InputIterator last);

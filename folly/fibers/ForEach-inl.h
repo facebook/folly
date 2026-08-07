@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <type_traits>
 #include <folly/fibers/FiberManagerInternal.h>
 #include <folly/functional/Invoke.h>
 
@@ -23,14 +24,16 @@ namespace fibers {
 namespace {
 
 template <class F, class G>
-typename std::enable_if<!std::is_same<invoke_result_t<F>, void>::value, void>::
-    type inline callFuncs(F&& f, G&& g, size_t id) {
+typename std::enable_if<
+    !std::is_same<std::invoke_result_t<F>, void>::value,
+    void>::type inline callFuncs(F&& f, G&& g, size_t id) {
   g(id, f());
 }
 
 template <class F, class G>
-typename std::enable_if<std::is_same<invoke_result_t<F>, void>::value, void>::
-    type inline callFuncs(F&& f, G&& g, size_t id) {
+typename std::enable_if<
+    std::is_same<std::invoke_result_t<F>, void>::value,
+    void>::type inline callFuncs(F&& f, G&& g, size_t id) {
   f();
   g(id);
 }

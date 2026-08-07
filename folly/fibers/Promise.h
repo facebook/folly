@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include <folly/Try.h>
 #include <folly/fibers/traits.h>
 #include <folly/functional/Invoke.h>
@@ -98,13 +99,13 @@ class Promise {
 
   template <class F>
   typename std::enable_if<
-      std::is_convertible<invoke_result_t<F>, T>::value &&
+      std::is_convertible<std::invoke_result_t<F>, T>::value &&
       !std::is_same<T, void>::value>::type
   fulfilHelper(F&& func);
 
   template <class F>
   typename std::enable_if<
-      std::is_same<invoke_result_t<F>, void>::value &&
+      std::is_same<std::invoke_result_t<F>, void>::value &&
       std::is_same<T, void>::value>::type
   fulfilHelper(F&& func);
 };

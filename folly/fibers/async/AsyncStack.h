@@ -22,11 +22,13 @@
 #include <folly/fibers/async/Async.h>
 #include <folly/tracing/AsyncStack.h>
 
+#include <type_traits>
+
 namespace folly::fibers::async {
 namespace detail {
 
 template <typename F>
-FOLLY_NOINLINE invoke_result_t<F> executeWithNewRoot(
+FOLLY_NOINLINE std::invoke_result_t<F> executeWithNewRoot(
     F&& func, AsyncStackFrame* FOLLY_NULLABLE callerFrame) {
   AsyncStackRoot newRoot;
   newRoot.setStackFrameContext();
@@ -69,7 +71,7 @@ Async<async_invocable_inner_type_t<F>> executeWithNewRoot(
  * stacks.
  */
 template <typename F>
-invoke_result_t<F> runInMainContextWithTracing(F&& func) {
+std::invoke_result_t<F> runInMainContextWithTracing(F&& func) {
   DCHECK(detail::onFiber());
   auto* callerFrame = []() {
     auto* root = tryGetCurrentAsyncStackRoot();

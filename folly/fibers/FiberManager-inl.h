@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include <folly/functional/Invoke.h>
 #include <folly/futures/Promise.h>
 
@@ -24,8 +25,8 @@ namespace fibers {
 
 template <typename F>
 auto FiberManager::addTaskFuture(F&& func)
-    -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>> {
-  using T = invoke_result_t<F>;
+    -> folly::Future<folly::lift_unit_t<std::invoke_result_t<F>>> {
+  using T = std::invoke_result_t<F>;
   using FutureT = folly::lift_unit_t<T>;
 
   folly::Promise<FutureT> p;
@@ -40,8 +41,8 @@ auto FiberManager::addTaskFuture(F&& func)
 
 template <typename F>
 auto FiberManager::addTaskEagerFuture(F&& func)
-    -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>> {
-  using T = invoke_result_t<F>;
+    -> folly::Future<folly::lift_unit_t<std::invoke_result_t<F>>> {
+  using T = std::invoke_result_t<F>;
   using FutureT = typename folly::lift_unit<T>::type;
 
   folly::Promise<FutureT> p;
@@ -56,8 +57,8 @@ auto FiberManager::addTaskEagerFuture(F&& func)
 
 template <typename F>
 auto FiberManager::addTaskRemoteFuture(F&& func)
-    -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>> {
-  folly::Promise<folly::lift_unit_t<invoke_result_t<F>>> p;
+    -> folly::Future<folly::lift_unit_t<std::invoke_result_t<F>>> {
+  folly::Promise<folly::lift_unit_t<std::invoke_result_t<F>>> p;
   auto f = p.getFuture();
   addTaskRemote(
       [p = std::move(p), func = std::forward<F>(func), this]() mutable {

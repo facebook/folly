@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cassert>
+#include <type_traits>
 
 #include <folly/CPortability.h>
 #include <folly/Memory.h>
@@ -45,7 +46,7 @@ inline FiberManager::Options preprocessOptions(FiberManager::Options opts) {
 }
 
 template <class F>
-FOLLY_NOINLINE invoke_result_t<F> runNoInline(F&& func) {
+FOLLY_NOINLINE std::invoke_result_t<F> runNoInline(F&& func) {
   return func();
 }
 
@@ -433,7 +434,7 @@ template <typename F, typename G>
 struct FiberManager::AddTaskFinallyHelper {
   class Func;
 
-  typedef invoke_result_t<F> Result;
+  typedef std::invoke_result_t<F> Result;
 
   class Finally {
    public:
@@ -488,7 +489,7 @@ struct FiberManager::AddTaskFinallyHelper {
 
 template <typename F, typename G>
 Fiber* FiberManager::createTaskFinally(F&& func, G&& finally) {
-  typedef invoke_result_t<F> Result;
+  typedef std::invoke_result_t<F> Result;
 
   static_assert(
       IsRvalueRefTry<typename FirstArgOf<G>::type>::value,
@@ -543,12 +544,12 @@ void FiberManager::addTaskFinallyEager(F&& func, G&& finally) {
 }
 
 template <typename F>
-invoke_result_t<F> FiberManager::runInMainContext(F&& func) {
+std::invoke_result_t<F> FiberManager::runInMainContext(F&& func) {
   if (FOLLY_UNLIKELY(activeFiber_ == nullptr)) {
     return runNoInline(std::forward<F>(func));
   }
 
-  typedef invoke_result_t<F> Result;
+  typedef std::invoke_result_t<F> Result;
 
   folly::Try<Result> result;
   auto f = [&func, &result]() mutable {
@@ -631,7 +632,7 @@ typename FirstArgOf<F>::type::value_type inline await_async(F&& func) {
 }
 
 template <typename F>
-invoke_result_t<F> inline runInMainContext(F&& func) {
+std::invoke_result_t<F> inline runInMainContext(F&& func) {
   auto fm = FiberManager::getFiberManagerUnsafe();
   if (FOLLY_UNLIKELY(fm == nullptr)) {
     return runNoInline(std::forward<F>(func));

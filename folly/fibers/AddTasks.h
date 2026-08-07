@@ -17,6 +17,7 @@
 #pragma once
 
 #include <functional>
+#include <type_traits>
 #include <vector>
 
 #include <folly/Optional.h>
@@ -42,7 +43,7 @@ class TaskIterator;
  * @return movable, non-copyable iterator
  */
 template <class InputIterator>
-TaskIterator<invoke_result_t<
+TaskIterator<std::invoke_result_t<
     typename std::iterator_traits<InputIterator>::
         value_type>> inline addTasks(InputIterator first, InputIterator last);
 
@@ -113,8 +114,8 @@ class TaskIterator {
 
  private:
   template <class InputIterator>
-  friend TaskIterator<
-      invoke_result_t<typename std::iterator_traits<InputIterator>::value_type>>
+  friend TaskIterator<std::invoke_result_t<
+      typename std::iterator_traits<InputIterator>::value_type>>
   addTasks(InputIterator first, InputIterator last);
 
   struct Context {
