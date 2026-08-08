@@ -24,7 +24,7 @@
 #include <random>
 #include <vector>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <folly/Benchmark.h>
 #include <folly/Format.h>
 #include <folly/portability/GFlags.h>
