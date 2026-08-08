@@ -109,9 +109,6 @@ struct atomic_notify_all_fn {
 inline constexpr auto atomic_notify_all =
     detail::atomic_notification::atomic_notify_all_fn{};
 
-//  mimic: std::atomic_uint_fast_wait_t, p1135r0
-using atomic_uint_fast_wait_t = std::atomic<std::uint32_t>;
-
 } // namespace folly
 
 #include <folly/synchronization/AtomicNotification-inl.h>

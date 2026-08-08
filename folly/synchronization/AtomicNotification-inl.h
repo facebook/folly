@@ -24,10 +24,10 @@ namespace detail {
 namespace atomic_notification {
 /**
  * We use Futex<std::atomic> as the alias that has the lowest performance
- * overhead with respect to atomic notifications.  Assert that
- * atomic_uint_fast_wait_t is the same as Futex<std::atomic>
+ * overhead with respect to atomic notifications.  Assert that it is the same as
+ * std::atomic<std::uint32_t>, which is what callers pass in.
  */
-static_assert(std::is_same<atomic_uint_fast_wait_t, Futex<std::atomic>>{});
+static_assert(std::is_same<std::atomic<std::uint32_t>, Futex<std::atomic>>{});
 
 /**
  * Implementation and specializations for the atomic_wait() family of
