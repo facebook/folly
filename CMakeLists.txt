@@ -368,6 +368,8 @@ option(BUILD_BENCHMARKS "If enabled, compile the benchmarks." OFF)
 option(BUILD_BROKEN_TESTS "If enabled, compile tests that are known to be broken." OFF)
 option(BUILD_HANGING_TESTS "If enabled, compile tests that are known to hang." OFF)
 option(BUILD_SLOW_TESTS "If enabled, compile tests that take a while to run in debug mode." OFF)
+option(BUILD_FUZZ_TARGETS
+  "If enabled, compile the libFuzzer-based fuzz targets under folly/fuzz/." OFF)
 if (BUILD_TESTS OR BUILD_BENCHMARKS)
   option(USE_CMAKE_GOOGLE_TEST_INTEGRATION "If enabled, use the google test integration included in CMake." ON)
   find_package(GMock MODULE REQUIRED)
@@ -1076,4 +1078,12 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         TEST singleton_thread_local_test SOURCES SingletonThreadLocalTest.cpp
     )
   endif()
+endif()
+
+# ---------------------------------------------------------------------------
+# Fuzz targets (OSS-Fuzz integration + local developer fuzzing)
+# Enable with -DBUILD_FUZZ_TARGETS=ON. Requires a Clang toolchain.
+# ---------------------------------------------------------------------------
+if (BUILD_FUZZ_TARGETS)
+  add_subdirectory(${FOLLY_DIR}/fuzz ${CMAKE_CURRENT_BINARY_DIR}/folly/fuzz)
 endif()
