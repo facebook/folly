@@ -1469,13 +1469,9 @@ tryTo(StringPiece src) noexcept {
       is_arithmetic_v<Tgt>,
       detail::CheckTrailingSpace,
       detail::ReturnUnit<Error>>::type;
-  // Compute the value outside the then() lambda to avoid a clang dead-store
-  // miscompile that drops the parsed value when the then_ chain inlines.
-  auto parsed = parseTo(src, result).then(Check());
-  if (parsed.hasError()) {
-    return makeUnexpected(std::move(parsed.error()));
-  }
-  return result;
+  return parseTo(src, result).then(Check(), [&](Unit) {
+    return std::move(result);
+  });
 }
 
 template <class Tgt, class Src>
@@ -1517,27 +1513,23 @@ inline
 template <class Tgt>
 Expected<Tgt, detail::ParseToError<Tgt>> tryTo(StringPiece* src) noexcept {
   Tgt result;
-  // Compute the value outside the lambda: same clang dead-store workaround
-  // as tryTo(StringPiece) above.
-  auto parsed = parseTo(*src, result);
-  if (parsed.hasError()) {
-    return makeUnexpected(std::move(parsed.error()));
-  }
-  *src = parsed.value();
-  return result;
+  return parseTo(*src, result).then([&, src](StringPiece sp) -> Tgt {
+    *src = sp;
+    return std::move(result);
+  });
 }
 
 template <class Tgt>
 Tgt to(StringPiece* src) {
   Tgt result{};
-  // Compute the value outside the lambda: same clang dead-store workaround
-  // as tryTo(StringPiece) above.
-  auto parsed = parseTo(*src, result);
-  if (parsed.hasError()) {
-    throw_exception(makeConversionError(parsed.error(), *src));
-  }
-  *src = parsed.value();
-  return result;
+  using Error = detail::ParseToError<Tgt>;
+  return parseTo(*src, result)
+      .thenOrThrow(
+          [&, src](StringPiece sp) -> Tgt {
+            *src = sp;
+            return std::move(result);
+          },
+          [=](Error e) { return makeConversionError(e, *src); });
 }
 
 /**
