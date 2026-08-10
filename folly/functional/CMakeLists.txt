@@ -29,14 +29,13 @@ folly_add_library(
   HEADERS
     Invoke.h
   EXPORTED_DEPS
+    Boost::headers
     folly_cpp_attributes
     folly_lang_customization_point
     folly_portability
     folly_preprocessor
     folly_traits
     folly_utility
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(
