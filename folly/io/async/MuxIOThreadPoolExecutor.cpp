@@ -233,7 +233,7 @@ void MuxIOThreadPoolExecutor::maybeUnregisterEventBases(Observer* o) {
 
 void MuxIOThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
   maybeUnregisterEventBases(o.get());
-  ThreadPoolExecutor::addObserver(std::move(o));
+  ThreadPoolExecutor::removeObserver(std::move(o));
 }
 
 std::vector<folly::Executor::KeepAlive<folly::EventBase>>
