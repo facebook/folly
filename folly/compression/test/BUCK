@@ -61,6 +61,7 @@ fb_dirsync_cpp_binary(
         "QuotientMultiSetBenchmark.cpp",
     ],
     deps = [
+        "fbsource//third-party/boost:boost_sort",
         "fbsource//third-party/fmt:fmt",
         "//folly:benchmark",
         "//folly:random",
@@ -71,9 +72,6 @@ fb_dirsync_cpp_binary(
         "//folly/container:enumerate",
         "//folly/container:f14_hash",
         "//folly/init:init",
-    ],
-    external_deps = [
-        ("boost", None, "boost_sort"),
     ],
 )
 

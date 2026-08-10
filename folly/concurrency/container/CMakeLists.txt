@@ -45,13 +45,12 @@ folly_add_library(
   HEADERS
     LockFreeRingBuffer.h
   EXPORTED_DEPS
+    Boost::headers
     folly_detail_turn_sequencer
     folly_portability
     folly_portability_unistd
     folly_synchronization_sanitize_thread
     folly_traits
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(

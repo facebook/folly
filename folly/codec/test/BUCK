@@ -32,12 +32,10 @@ fb_dirsync_cpp_benchmark(
     srcs = ["UuidBenchmark.cpp"],
     compiler_flags = ["-flto"],
     deps = [
+        "fbsource//third-party/boost:boost_lexical_cast",
+        "fbsource//third-party/boost:boost_uuid",
         "//folly:benchmark",
         "//folly/codec:uuid",
     ],
-    external_deps = [
-        ("boost", None, "boost_lexical_cast"),
-        ("boost", None, "boost_uuid"),
-        ("util-linux", None, "uuid"),
-    ],
+    external_deps = [("util-linux", None, "uuid")],
 )

@@ -17,6 +17,7 @@ fb_dirsync_cpp_unittest(
     srcs = ["RelaxedConcurrentPriorityQueueTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/boost:boost_thread",
         "fbsource//third-party/glog:glog",
         "//folly:random",
         "//folly:spin_lock",
@@ -25,9 +26,6 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/test:deterministic_schedule",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
     ],
 )
 
@@ -63,8 +61,5 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/synchronization/test:barrier",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
     ],
 )
