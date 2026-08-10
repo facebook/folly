@@ -191,10 +191,10 @@ void setSymbolizedFrame(
       .findAddress(address, mode, frame, extraInlineFrames);
 }
 
-// SymbolCache contains mapping between an address and its frames. The first
-// frame is the normal function call, and the following are stacked inline
-// function calls if any. Most addresses have no inlined frames, so optimize for
-// the single-entry case using small_vector.
+// SymbolCache contains mapping between an address and its frames: the stacked
+// inline function calls, if any, followed by the non-inlined call. Most
+// addresses have no inlined frames, so optimize for the single-entry case using
+// small_vector.
 using CachedSymbolizedFrames = folly::small_vector<SymbolizedFrame, 1>;
 
 using UnsyncSymbolCache = EvictingCacheMap<uintptr_t, CachedSymbolizedFrames>;
@@ -224,6 +224,58 @@ bool containedInExecutableSegment(
     return sh.p_vaddr <= instructionAddr &&
         instructionAddr < (sh.p_vaddr + sh.p_memsz);
   });
+}
+
+// Number of leading frames that were filled in.
+size_t countFrames(folly::Range<SymbolizedFrame*> frames) {
+  return std::distance(
+      frames.begin(),
+      std::find_if(frames.begin(), frames.end(), [](const SymbolizedFrame& f) {
+        return !f.found;
+      }));
+}
+
+// Symbolize `adjusted` (an ELF-relative address) in `elfFile`, resolving up to
+// `maxInline` inlined calls. Returns the inline frames followed by the
+// non-inlined call, i.e. the layout SymbolCache stores.
+CachedSymbolizedFrames symbolizeAddress(
+    ElfCacheBase* const elfCache,
+    const std::shared_ptr<ElfFile>& elfFile,
+    uintptr_t adjusted,
+    LocationInfoMode mode,
+    size_t maxInline) {
+  CachedSymbolizedFrames result;
+  result.reserve(maxInline + 1);
+  result.resize(maxInline);
+  auto const inlineFrames = folly::range(result);
+
+  SymbolizedFrame callerFrame;
+  setSymbolizedFrame(
+      elfCache, callerFrame, elfFile, adjusted, mode, inlineFrames);
+
+  // Drop the inline slots that were not filled in; the caller goes last.
+  result.resize(countFrames(inlineFrames));
+  result.push_back(std::move(callerFrame));
+  return result;
+}
+
+// Splice `src` into `frames` at `index`, shifting the frames in
+// [index + 1, addrCount) right to make room for its inline frames. Returns the
+// number of inline frames inserted.
+size_t spliceFrames(
+    folly::Range<SymbolizedFrame*> frames,
+    size_t index,
+    size_t addrCount,
+    const CachedSymbolizedFrames& src) {
+  size_t const numInlined = src.size() - 1;
+  if (numInlined != 0) {
+    std::move_backward(
+        frames.begin() + index + 1,
+        frames.begin() + addrCount,
+        frames.begin() + addrCount + numInlined);
+  }
+  std::copy(src.begin(), src.end(), frames.begin() + index);
+  return numInlined;
 }
 
 } // namespace
@@ -297,15 +349,6 @@ size_t Symbolizer::symbolize(
     frames[i].addr = addrs[i];
   }
 
-  // Find out how many frames were filled in.
-  auto countFrames = [](folly::Range<SymbolizedFrame*> framesRange) {
-    return std::distance(
-        framesRange.begin(),
-        std::find_if(framesRange.begin(), framesRange.end(), [&](auto frame) {
-          return !frame.found;
-        }));
-  };
-
   for (auto lmap = dbg->r_map; lmap != nullptr && remaining != 0;
        lmap = lmap->l_next) {
     // The empty string is used in place of the filename for the link_map
@@ -326,77 +369,54 @@ size_t Symbolizer::symbolize(
       }
 
       auto const addr = frame.addr;
+      // Room left at the end of `frames` to expand inline calls into.
+      size_t const inlineCapacity = frameCount - addrCount;
+
+      CachedSymbolizedFrames resolved;
       if (symbolCache_) {
         // Need a write lock, because EvictingCacheMap brings found item to
         // front of eviction list.
         auto lockedSymbolCache = symbolCache_->wlock();
-
         auto const iter = lockedSymbolCache->find(addr);
         if (iter != lockedSymbolCache->end()) {
-          size_t numCachedFrames = iter->second.size();
-          // 1 entry in cache is the non-inlined function call and that one
-          // already has space reserved at `frames[i]`
-          auto numInlineFrames = numCachedFrames - 1;
-          if (numInlineFrames <= frameCount - addrCount) {
-            // Move the rest of the frames to make space for inlined frames.
-            std::move_backward(
-                frames.begin() + i + 1,
-                frames.begin() + addrCount,
-                frames.begin() + addrCount + numInlineFrames);
-            // Overwrite frames[i] too (the non-inlined function call entry).
-            std::copy(
-                iter->second.begin(),
-                iter->second.begin() + numInlineFrames + 1,
-                frames.begin() + i);
-            i += numInlineFrames;
-            addrCount += numInlineFrames;
-          }
-          continue;
+          resolved = iter->second;
         }
       }
 
-      // Get the unrelocated, ELF-relative address by normalizing via the
-      // address at which the object is loaded.
-      auto const eaddr = static_cast<ElfAddr>(addr);
-      auto const maddr = lmap->l_addr;
-      auto const adjusted = eaddr < maddr ? ~ElfAddr(0) : eaddr - maddr;
-      size_t numInlined = 0;
-      if (containedInExecutableSegment(*elfFile, adjusted)) {
-        if (mode_ == LocationInfoMode::FULL_WITH_INLINE &&
-            frameCount > addrCount) {
-          size_t maxInline = std::min<size_t>(
-              kMaxInlineLocationInfoPerFrame, frameCount - addrCount);
-          // First use the trailing empty frames (index starting from addrCount)
-          // to get the inline call stack, then rotate these inline functions
-          // before the caller at `frame[i]`.
-          folly::Range<SymbolizedFrame*> inlineFrameRange(
-              frames.begin() + addrCount,
-              frames.begin() + addrCount + maxInline);
-          setSymbolizedFrame(
-              cache_, frame, elfFile, adjusted, mode_, inlineFrameRange);
-
-          numInlined = countFrames(inlineFrameRange);
-          // Rotate inline frames right before its caller frame.
-          std::rotate(
-              frames.begin() + i,
-              frames.begin() + addrCount,
-              frames.begin() + addrCount + numInlined);
-          addrCount += numInlined;
-        } else {
-          setSymbolizedFrame(cache_, frame, elfFile, adjusted, mode_);
+      if (!resolved.empty()) {
+        if (resolved.size() - 1 > inlineCapacity) {
+          // TODO: this leaves the frame unsymbolized, which is worse than a
+          // cache miss would have been.
+          continue;
         }
+        // TODO: `remaining` is not decremented here, so a fully cached range
+        // still walks every object in the link map.
+      } else {
+        // Get the unrelocated, ELF-relative address by normalizing via the
+        // address at which the object is loaded.
+        auto const eaddr = static_cast<ElfAddr>(addr);
+        auto const maddr = lmap->l_addr;
+        auto const adjusted = eaddr < maddr ? ~ElfAddr(0) : eaddr - maddr;
+        if (!containedInExecutableSegment(*elfFile, adjusted)) {
+          continue; // Not in this object, retry against the next one.
+        }
+
+        size_t const maxInline = mode_ == LocationInfoMode::FULL_WITH_INLINE
+            ? std::min<size_t>(kMaxInlineLocationInfoPerFrame, inlineCapacity)
+            : 0;
+        resolved =
+            symbolizeAddress(cache_, elfFile, adjusted, mode_, maxInline);
         --remaining;
         if (symbolCache_) {
           // Frames may already have been set here. It's fine to overwrite as
           // the value should be the same.
-          symbolCache_->wlock()->set(
-              addr,
-              CachedSymbolizedFrames(
-                  frames.begin() + i, frames.begin() + i + numInlined + 1));
+          symbolCache_->wlock()->set(addr, resolved);
         }
-        // Skip over the newly added inlined items.
-        i += numInlined;
       }
+
+      size_t const numInlined = spliceFrames(frames, i, addrCount, resolved);
+      addrCount += numInlined;
+      i += numInlined; // Skip over the newly added inlined items.
     }
   }
 
