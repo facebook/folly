@@ -385,12 +385,10 @@ size_t Symbolizer::symbolize(
 
       if (!resolved.empty()) {
         if (resolved.size() - 1 > inlineCapacity) {
-          // TODO: this leaves the frame unsymbolized, which is worse than a
-          // cache miss would have been.
-          continue;
+          // Not enough room for all the cached inline frames. Keep the
+          // innermost ones that fit, and the non-inlined call at the end.
+          resolved.erase(resolved.begin() + inlineCapacity, resolved.end() - 1);
         }
-        // TODO: `remaining` is not decremented here, so a fully cached range
-        // still walks every object in the link map.
       } else {
         // Get the unrelocated, ELF-relative address by normalizing via the
         // address at which the object is loaded.
@@ -406,7 +404,6 @@ size_t Symbolizer::symbolize(
             : 0;
         resolved =
             symbolizeAddress(cache_, elfFile, adjusted, mode_, maxInline);
-        --remaining;
         if (symbolCache_) {
           // Frames may already have been set here. It's fine to overwrite as
           // the value should be the same.
@@ -414,6 +411,7 @@ size_t Symbolizer::symbolize(
         }
       }
 
+      --remaining;
       size_t const numInlined = spliceFrames(frames, i, addrCount, resolved);
       addrCount += numInlined;
       i += numInlined; // Skip over the newly added inlined items.

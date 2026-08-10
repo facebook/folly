@@ -561,6 +561,38 @@ TEST(SymbolizerTest, InlineFunctionWithCache) {
   expectFramesEq(frames, frames2);
 }
 
+// A cached entry carrying inline frames must still symbolize the non-inlined
+// call when there is no room left to expand the inline frames into.
+TEST(SymbolizerTest, InlineFunctionCacheHitNoExtraFrames) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
+  Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 100);
+
+  // Populate the cache with entries that have inline frames.
+  FrameArray<100> frames;
+  gComparatorGetStackTraceArg = &frames;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<100>);
+  call_inlineB_inlineA_lfind();
+  symbolizer.symbolize(frames);
+  SCOPED_TRACE_FRAMES(frames);
+
+  FrameArray<9> frames2;
+  gComparatorGetStackTraceArg = &frames2;
+  gComparatorGetStackTrace =
+      reinterpret_function_cast<bool(void*)>(getStackTrace<9>);
+  call_inlineB_inlineA_lfind();
+  symbolizer.symbolize(frames2);
+  SCOPED_TRACE_FRAMES(frames2);
+
+  // Every slot is taken by an address, so there is nowhere to put the cached
+  // inline frames.
+  ASSERT_EQ(9, frames2.frameCount);
+  for (size_t i = 0; i < frames2.frameCount; ++i) {
+    EXPECT_TRUE(frames2.frames[i].found) << "frame " << i << " not symbolized";
+  }
+}
+
 int64_t functionWithTwoParameters(size_t a, int32_t b) {
   return a + b;
 }
