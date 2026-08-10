@@ -135,6 +135,7 @@ fb_dirsync_cpp_library(
     ],
     use_raw_headers = True,
     deps = [
+        "fbsource//third-party/boost:boost_regex",
         ":file_util",
         ":map_util",
         ":overload",
@@ -145,6 +146,7 @@ fb_dirsync_cpp_library(
         "//folly/stats:streaming_stats",
     ],
     exported_deps = [
+        "fbsource//third-party/boost:boost",
         "fbsource//third-party/glog:glog",
         ":benchmark_util",
         ":portability",
@@ -155,12 +157,6 @@ fb_dirsync_cpp_library(
         "//folly/functional:invoke",
         "//folly/lang:hint",
         "//folly/portability:gflags",
-    ],
-    external_deps = [
-        ("boost", None, "boost_regex"),
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
@@ -353,6 +349,7 @@ fb_dirsync_cpp_library(
     platforms = (CXX, ANDROID, APPLE),
     use_raw_headers = True,
     deps = [
+        "fbsource//third-party/boost:boost_range",
         ":conv",
         ":scope_guard",
         ":string",
@@ -369,6 +366,8 @@ fb_dirsync_cpp_library(
         "//folly/system:shell",
     ],
     exported_deps = [
+        "fbsource//third-party/boost:boost",
+        "fbsource//third-party/boost:boost_container",
         ":exception",
         ":file",
         ":file_util",
@@ -382,14 +381,7 @@ fb_dirsync_cpp_library(
         "//folly/io:iobuf",
         "//folly/portability:sys_resource",
     ],
-    external_deps = [
-        ("boost", None, "boost_range"),
-        ("glibc", None, "dl"),
-    ],
-    exported_external_deps = [
-        "boost",
-        ("boost", None, "boost_container"),
-    ],
+    external_deps = [("glibc", None, "dl")],
 )
 
 fb_dirsync_cpp_library(
@@ -405,6 +397,7 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     xplat_impl = folly_xplat_library,
     deps = [
+        "fbsource//third-party/boost:boost_regex",
         "fbsource//third-party/glog:glog",
     ],
     exported_deps = [
@@ -412,9 +405,6 @@ fb_dirsync_cpp_library(
         ":expected",
         ":string",
         "//folly/hash:hash",
-    ],
-    external_deps = [
-        ("boost", None, "boost_regex"),
     ],
 )
 
@@ -587,6 +577,8 @@ fb_dirsync_cpp_library(
     fbobjc_complete_nullability = True,
     use_raw_headers = True,
     deps = [
+        "fbsource//third-party/boost:boost",
+        "fbsource//third-party/boost:boost_algorithm",
         "fbsource//third-party/glog:glog",
         ":utility",
     ],
@@ -615,10 +607,6 @@ fb_dirsync_cpp_library(
         "//folly/lang:bits",
         "//folly/lang:exception",
         "//folly/portability:constexpr",
-    ],
-    external_deps = [
-        "boost",
-        ("boost", None, "boost_algorithm"),
     ],
 )
 
@@ -1163,6 +1151,7 @@ fb_dirsync_cpp_library(
     ],
     xplat_impl = folly_xplat_library,
     deps = [
+        "fbsource//third-party/boost:boost",
         "fbsource//third-party/fmt:fmt",
         ":exception",
         ":format",
@@ -1190,9 +1179,6 @@ fb_dirsync_cpp_library(
         "//folly/net:network_socket",
         "//folly/portability:config",
         "//folly/portability:sockets",
-    ],
-    external_deps = [
-        "boost",
     ],
 )
 
@@ -1980,9 +1966,9 @@ fb_dirsync_cpp_library(
     headers = ["TimeoutQueue.h"],
     apple_sdks = (IOS, MACOSX),
     use_raw_headers = True,
-    exported_external_deps = [
-        "boost",
-        ("boost", None, "boost_multi_index"),
+    exported_deps = [
+        "fbsource//third-party/boost:boost",
+        "fbsource//third-party/boost:boost_multi_index",
     ],
 )
 
@@ -2083,13 +2069,11 @@ fb_dirsync_cpp_library(
     headers = ["Padded.h"],
     use_raw_headers = True,
     exported_deps = [
+        "fbsource//third-party/boost:boost",
         ":portability",
         ":traits",
         "//folly/functional:invoke",
         "//folly/portability:sys_types",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
@@ -2184,10 +2168,8 @@ fb_dirsync_cpp_library(
     ],
     use_raw_headers = True,
     exported_deps = [
+        "fbsource//third-party/boost:boost_regex",
         ":range",
-    ],
-    exported_external_deps = [
-        ("boost", None, "boost_regex"),
     ],
 )
 
@@ -2308,6 +2290,7 @@ fb_dirsync_cpp_library(
         "//folly/memory:allocator",
     ],
     exported_deps = [
+        "fbsource//third-party/boost:boost_random",
         "fbsource//third-party/glog:glog",
         ":constexpr_math",
         ":likely",
@@ -2315,9 +2298,6 @@ fb_dirsync_cpp_library(
         ":thread_local",
         "//folly/detail:iterators",
         "//folly/synchronization:micro_spin_lock",
-    ],
-    exported_external_deps = [
-        ("boost", None, "boost_random"),
     ],
 )
 

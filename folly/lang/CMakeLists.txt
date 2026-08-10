@@ -36,6 +36,7 @@ folly_add_library(
   HEADERS
     Aligned.h
   EXPORTED_DEPS
+    folly_cpp_attributes
     folly_lang_align
     folly_utility
 )

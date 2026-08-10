@@ -86,6 +86,7 @@ folly_add_library(
   EXPORTED_DEPS
     ${GLOG_LIBRARIES}
     folly_container_span
+    folly_cpp_attributes
     folly_detail_iterators
     folly_fbstring
     folly_fbvector

@@ -94,6 +94,7 @@ folly_add_library(
     Benchmark.h
     detail/BenchmarkAdaptive.h
   DEPS
+    Boost::regex
     folly_detail_perf_scoped
     folly_file_util
     folly_json_dynamic
@@ -104,6 +105,7 @@ folly_add_library(
     folly_string
   EXPORTED_DEPS
     ${GLOG_LIBRARIES}
+    Boost::headers
     folly_benchmark_util
     folly_functional_invoke
     folly_lang_hint
@@ -113,9 +115,6 @@ folly_add_library(
     folly_range
     folly_scope_guard
     folly_traits
-  EXTERNAL_DEPS
-    Boost::headers
-    Boost::regex
 )
 
 folly_add_library(
@@ -247,14 +246,13 @@ folly_add_library(
     folly_memory_allocator
   EXPORTED_DEPS
     ${GLOG_LIBRARIES}
+    Boost::headers
     folly_constexpr_math
     folly_detail_iterators
     folly_likely
     folly_memory
     folly_synchronization_micro_spin_lock
     folly_thread_local
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(
@@ -375,6 +373,7 @@ folly_add_library(
     json.h
   DEPS
     ${GLOG_LIBRARIES}
+    Boost::headers
     folly_utility
   EXPORTED_DEPS
     folly_c_portability
@@ -401,8 +400,6 @@ folly_add_library(
     folly_traits
     folly_unicode
     folly_utility
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(
@@ -699,6 +696,7 @@ folly_add_library(
   HEADERS
     Indestructible.h
   EXPORTED_DEPS
+    folly_cpp_attributes
     folly_traits
     folly_utility
 )
@@ -941,6 +939,7 @@ folly_add_library(
     MacAddress.h
     SocketAddress.h
   DEPS
+    Boost::headers
     fmt::fmt
     folly_detail_ip_address_source
     folly_exception
@@ -967,8 +966,6 @@ folly_add_library(
     folly_portability_sockets
     folly_range
     folly_unit
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(
@@ -1030,12 +1027,11 @@ folly_add_library(
   HEADERS
     Padded.h
   EXPORTED_DEPS
+    Boost::headers
     folly_functional_invoke
     folly_portability
     folly_portability_sys_types
     folly_traits
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(
@@ -1303,6 +1299,7 @@ if(NOT WIN32)
     HEADERS
       Subprocess.h
     DEPS
+      Boost::headers
       folly_conv
       folly_lang_assume
       folly_logging_logging
@@ -1318,6 +1315,7 @@ if(NOT WIN32)
       folly_system_at_fork
       folly_system_shell
     EXPORTED_DEPS
+      Boost::headers
       folly_container_span
       folly_exception
       folly_file
@@ -1330,8 +1328,6 @@ if(NOT WIN32)
       folly_portability
       folly_portability_sys_resource
       folly_range
-    EXTERNAL_DEPS
-      Boost::headers
   )
 endif()
 
@@ -1409,7 +1405,7 @@ folly_add_library(
     TimeoutQueue.cpp
   HEADERS
     TimeoutQueue.h
-  EXTERNAL_DEPS
+  EXPORTED_DEPS
     Boost::headers
 )
 
@@ -1477,24 +1473,24 @@ folly_add_library(
     Uri.h
   DEPS
     ${GLOG_LIBRARIES}
+    Boost::regex
   EXPORTED_DEPS
     folly_conv
     folly_expected
     folly_hash_hash
     folly_string
-  EXTERNAL_DEPS
-    Boost::regex
 )
+set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::regex)
 
 folly_add_library(
   NAME utf8_string
   HEADERS
     UTF8String.h
   EXPORTED_DEPS
-    folly_range
-  EXTERNAL_DEPS
     Boost::regex
+    folly_range
 )
+set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::regex)
 
 folly_add_library(
   NAME utf8_string_icu

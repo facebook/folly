@@ -28,12 +28,10 @@ fb_dirsync_cpp_benchmark(
     srcs = ["StableRadixSortBenchmark.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/boost:boost_sort",
         "//folly:benchmark",
         "//folly/algorithm:stable_radix_sort",
         "//folly/init:init",
         "//folly/stats/detail:double_radix_sort",
-    ],
-    external_deps = [
-        ("boost", None, "boost_sort"),
     ],
 )
