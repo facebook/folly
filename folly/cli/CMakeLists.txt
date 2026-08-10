@@ -41,6 +41,7 @@ folly_add_library(
     ProgramOptions.h
   DEPS
     ${GLOG_LIBRARIES}
+    Boost::headers
     fmt::fmt
     folly_conv
     folly_file_util
@@ -48,14 +49,14 @@ folly_add_library(
     folly_io_fs_util
     folly_portability
   EXPORTED_DEPS
+    Boost::program_options
     folly_c_portability
     folly_optional
     folly_portability_gflags
     folly_string
   EXTERNAL_DEPS
     ${GFLAGS_LIBRARIES}
-    Boost::headers
-    Boost::program_options
 )
+set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::program_options)
 
 endif() # LIBGFLAGS_FOUND OR gflags_FOUND
