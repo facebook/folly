@@ -1733,6 +1733,8 @@ class AutomaticCodec final : public Codec {
  private:
   bool doNeedsUncompressedLength() const override;
   uint64_t doMaxUncompressedLength() const override;
+  Optional<uint64_t> doGetUncompressedLength(
+      const IOBuf* data, Optional<uint64_t> uncompressedLength) const override;
 
   uint64_t doMaxCompressedLength(uint64_t) const override {
     throw std::runtime_error(
@@ -1929,6 +1931,24 @@ std::unique_ptr<IOBuf> AutomaticCodec::doUncompress(
   }
 
   throw std::runtime_error("AutomaticCodec error: Unknown compressed data");
+}
+
+Optional<uint64_t> AutomaticCodec::doGetUncompressedLength(
+    const IOBuf* data, Optional<uint64_t> uncompressedLength) const {
+  // Dispatch the same way doUncompress() does, so that the length reported is
+  // the one the codec that would actually decompress the data knows about.
+  // Without this the base implementation echoes back `uncompressedLength`,
+  // which silently reports "unknown" even for formats such as zstd that record
+  // the length in their frame header.
+  for (auto&& codec : codecs_) {
+    if (codec->canUncompress(data, uncompressedLength)) {
+      return codec->getUncompressedLength(data, uncompressedLength);
+    }
+  }
+  if (terminalCodec_) {
+    return terminalCodec_->getUncompressedLength(data, uncompressedLength);
+  }
+  return uncompressedLength;
 }
 
 using CodecFactory = std::unique_ptr<Codec> (*)(int, CodecType);

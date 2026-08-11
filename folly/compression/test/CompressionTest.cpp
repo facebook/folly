@@ -1159,6 +1159,21 @@ TEST_P(AutomaticCodecTest, maxUncompressedLength) {
   EXPECT_LE(codec_->maxUncompressedLength(), auto_->maxUncompressedLength());
 }
 
+TEST_P(AutomaticCodecTest, getUncompressedLength) {
+  constexpr uint64_t uncompressedLength = 1000;
+  auto original = IOBuf::wrapBuffer(randomDataHolder.data(uncompressedLength));
+  auto compressed = codec_->compress(original.get());
+
+  // Whatever the codec that would decompress this knows, the automatic codec
+  // reports as well; codecs that do not record the length still say so.
+  EXPECT_EQ(
+      codec_->getUncompressedLength(compressed.get()),
+      auto_->getUncompressedLength(compressed.get()));
+  EXPECT_EQ(
+      uncompressedLength,
+      auto_->getUncompressedLength(compressed.get(), uncompressedLength));
+}
+
 TEST_P(AutomaticCodecTest, DefaultCodec) {
   const uint64_t length = 42;
   std::vector<std::unique_ptr<Codec>> codecs;
