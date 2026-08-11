@@ -118,6 +118,7 @@ class IoUringProvidedBufferRing {
 
   void ringRefill() noexcept;
   bool getNewRefillArea() noexcept;
+  void tryReclaimArea() noexcept;
   std::unique_ptr<IOBuf> getIoBufSingle(
       uint16_t bid, size_t length, bool hasMore) noexcept;
 
