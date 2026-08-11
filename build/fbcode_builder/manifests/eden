@@ -23,7 +23,6 @@ folly
 fbthrift
 fb303
 cpptoml
-rocksdb
 re2
 libgit2
 pexpect
