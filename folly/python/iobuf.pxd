@@ -102,6 +102,7 @@ cdef class IOBuf:
 
 cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view)
 cdef IOBuf from_unique_ptr(unique_ptr[cIOBuf] iobuf)
+cdef bytes iobuf_chain_to_bytes(cIOBuf* head)
 cdef api object python_iobuf_from_ptr(unique_ptr[cIOBuf] iobuf)
 cdef api cIOBuf from_python_iobuf(object iobuf) except *
 

@@ -40,10 +40,11 @@ class IOBufTests(unittest.TestCase):
         self.assertEqual(ebuf.chain_size(), 0)
         self.assertEqual(ebuf.chain_count(), 8)
         self.assertEqual(b"".join(ebuf), b"")
+        self.assertEqual(ebuf.chain_bytes(), b"")
         self.assertEqual(b"", bytes(ebuf))
 
     def test_chain(self) -> None:
-        control = [b"facebook", b"thrift", b"python3", b"cython"]
+        control = [b"facebook\x00", b"", bytes(range(256)), b"cython"]
         chain = make_chain([IOBuf(x) for x in control])
         self.assertTrue(chain.is_chained)
         self.assertTrue(chain)
@@ -54,6 +55,7 @@ class IOBufTests(unittest.TestCase):
         # pyre-fixme[6]: For 1st argument expected `Buffer` but got `Optional[IOBuf]`.
         self.assertEqual(memoryview(chain.next), control[1])
         self.assertEqual(b"".join(chain), b"".join(control))
+        self.assertEqual(chain.chain_bytes(), b"".join(control))
 
     def test_cyclic_chain(self) -> None:
         control = [b"aaa", b"aaaa"]
@@ -67,6 +69,7 @@ class IOBufTests(unittest.TestCase):
         # pyre-fixme[6]: For 1st argument expected `Buffer` but got `Optional[IOBuf]`.
         self.assertEqual(memoryview(chain.next), control[1])
         self.assertEqual(b"".join(chain), b"".join(control))
+        self.assertEqual(chain.chain_bytes(), b"".join(control))
 
     def test_hash(self) -> None:
         x = b"omg"
@@ -91,9 +94,10 @@ class IOBufTests(unittest.TestCase):
         self.assertEqual(b"".join(iter(xb)), x)
 
     def test_bytes(self) -> None:
-        x = b"omgwtfbbq"
+        x = b"omg\x00wtfbbq"
         xb = IOBuf(x)
         self.assertEqual(bytes(xb), x)
+        self.assertEqual(xb.chain_bytes(), x)
 
     def test_cmp(self) -> None:
         x = IOBuf(b"abc")

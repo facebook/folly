@@ -16,12 +16,47 @@ import sys
 from builtins import memoryview as py_memoryview
 from folly.executor cimport get_running_executor
 from cpython cimport Py_buffer
+from cpython.bytes cimport PyBytes_AS_STRING, PyBytes_FromStringAndSize
 from weakref import WeakValueDictionary
 from cpython.object cimport Py_LT, Py_LE, Py_EQ, Py_NE, Py_GT, Py_GE
 from cython.operator cimport dereference as deref
+from libc.string cimport memcpy
 
 __cache = WeakValueDictionary()
 __all__ = ['IOBuf']
+
+
+cdef extern from "Python.h":
+    Py_ssize_t PY_SSIZE_T_MAX
+
+
+cdef bytes iobuf_chain_to_bytes(cIOBuf* head):
+    if head == NULL:
+        raise ValueError("Cannot convert a null IOBuf")
+
+    cdef uint64_t chain_length = head.computeChainDataLength()
+    if chain_length > <uint64_t>PY_SSIZE_T_MAX:
+        raise OverflowError("IOBuf chain is too large for Python bytes")
+
+    cdef bytes result = PyBytes_FromStringAndSize(
+        NULL,
+        <Py_ssize_t>chain_length,
+    )
+    cdef char* destination = PyBytes_AS_STRING(result)
+    cdef cIOBuf* current = head
+    cdef Py_ssize_t offset = 0
+    cdef uint64_t segment_length
+
+    while True:
+        segment_length = current.length()
+        if segment_length != 0:
+            memcpy(destination + offset, current.data(), segment_length)
+            offset += segment_length
+        current = current.next()
+        if current == head:
+            break
+
+    return result
 
 
 cdef unique_ptr[cIOBuf] create_new_iobuf(ssize_t capacity):
@@ -126,7 +161,7 @@ cdef class IOBuf:
             >>> buf1 = IOBuf(b"hello")
             >>> buf2 = IOBuf(b" world")
             >>> chain = make_chain([buf1, buf2])
-            >>> b''.join(chain)
+            >>> chain.chain_bytes()
             b'hello world'
             >>> chain.chain_size()
             11
@@ -202,6 +237,9 @@ cdef class IOBuf:
 
     def chain_count(self):
         return self._this.countChainElements()
+
+    def chain_bytes(self):
+        return iobuf_chain_to_bytes(self._this)
 
     def __bytes__(self):
         return <bytes>self._this.data()[:self._this.length()]
