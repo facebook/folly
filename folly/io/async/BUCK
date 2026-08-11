@@ -917,7 +917,6 @@ fb_dirsync_cpp_library(
     exported_deps = [
         ":delayed_destruction",
         ":liburing",
-        "//folly:expected",
         "//folly/io:iobuf",
         "//folly/synchronization:distributed_mutex",
     ],

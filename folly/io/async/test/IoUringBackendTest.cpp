@@ -1398,17 +1398,11 @@ TEST(IoUringBackend, ProvidedBufferRing) {
 
     auto* bufferProvider = backend->bufferProvider();
     ASSERT_NE(bufferProvider, nullptr);
-    // Buffers must be consumed in kernel ring-head order. bufferCount is
-    // rounded up to a power of two, so cycle through count() ids in order.
-    uint32_t ringCount = bufferProvider->count();
-    uint32_t nextBid = 0;
     for (int i = 0; i < 16; i++) {
-      bufferProvider->getIoBuf(nextBid, 1, false);
-      nextBid = (nextBid + 1) % ringCount;
+      bufferProvider->getIoBuf(i % kBuffs, 1, false);
     }
     for (int i = 0; i < keep; i++) {
-      bufs.push_back(bufferProvider->getIoBuf(nextBid, 1, false));
-      nextBid = (nextBid + 1) % ringCount;
+      bufs.push_back(bufferProvider->getIoBuf(i % kBuffs, 1, false));
     }
   }
 }
@@ -1577,9 +1571,6 @@ TEST(IoUringBackend, IncrementalBuffers) {
   EXPECT_EQ("AB", toString(iob3a));
   EXPECT_EQ(data3.substr(len3a, len3b), toString(iob3b));
 
-  // At this point both of the ring's initial 2 buffers are fully consumed and
-  // still held. With the dynamic area model the next read grows the area pool
-  // instead of returning ENOBUFS, so it must succeed with fresh data.
   readers.clear();
   addReaders(1);
 
@@ -1588,32 +1579,119 @@ TEST(IoUringBackend, IncrementalBuffers) {
   backend->eb_event_base_loop(EVLOOP_ONCE);
 
   ASSERT_EQ(5, cqes.size());
-  EXPECT_EQ(10, cqes[4].first)
-      << "read should succeed via a grown area, not ENOBUFS";
+  EXPECT_EQ(-ENOBUFS, cqes[4].first);
 
-  uint16_t bufferId4 = cqes[4].second >> 16;
-  bool hasMore4 = !!(cqes[4].second & IORING_CQE_F_BUF_MORE);
-  auto iob4 = bufferProvider->getIoBuf(bufferId4, cqes[4].first, hasMore4);
+  iob1.reset();
+  iob2.reset();
+
+  readers.clear();
+  addReaders(1);
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+
+  ASSERT_EQ(6, cqes.size());
+  EXPECT_EQ(-ENOBUFS, cqes[5].first);
+
+  iob3a.reset();
+
+  readers.clear();
+  addReaders(1);
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+
+  ASSERT_EQ(7, cqes.size());
+  EXPECT_EQ(10, cqes[6].first);
+
+  uint16_t bufferId4 = cqes[6].second >> 16;
+  bool hasMore4 = !!(cqes[6].second & IORING_CQE_F_BUF_MORE);
+  auto iob4 = bufferProvider->getIoBuf(bufferId4, cqes[6].first, hasMore4);
+
+  EXPECT_EQ(bufferId1, bufferId4);
   EXPECT_TRUE(hasMore4);
   EXPECT_EQ(data4, toString(iob4));
 
-  auto* providedBufferRing =
-      dynamic_cast<folly::IoUringProvidedBufferRing*>(bufferProvider);
-  ASSERT_NE(providedBufferRing, nullptr);
-  EXPECT_EQ(0u, providedBufferRing->getAndResetEnobufCount())
-      << "ring should grow instead of returning ENOBUFS";
+  iob3b.reset();
+  readers.clear();
+  addReaders(1);
+
+  std::string data5 = generateTestData(22, 'A');
+  ASSERT_EQ(22, folly::fileops::write(fds[1], data5.c_str(), data5.size()));
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+
+  ASSERT_EQ(8, cqes.size());
+  EXPECT_EQ(22, cqes[7].first);
+
+  uint16_t bufferId5 = cqes[7].second >> 16;
+  bool hasMore5 = !!(cqes[7].second & IORING_CQE_F_BUF_MORE);
+  auto iob5 = bufferProvider->getIoBuf(bufferId5, cqes[7].first, hasMore5);
+
+  EXPECT_EQ(bufferId5, bufferId1);
+  EXPECT_FALSE(hasMore5);
+  ASSERT_NE(iob5, nullptr);
+  EXPECT_EQ(data5, toString(iob5));
+
+  readers.clear();
+  addReaders(1);
+  std::string data6 = generateTestData(32, 'a');
+  ASSERT_EQ(32, folly::fileops::write(fds[1], data6.c_str(), data6.size()));
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+
+  ASSERT_EQ(9, cqes.size());
+  EXPECT_EQ(32, cqes[8].first);
+
+  uint16_t bufferId6 = cqes[8].second >> 16;
+  bool hasMore6 = !!(cqes[8].second & IORING_CQE_F_BUF_MORE);
+  auto iob6 = bufferProvider->getIoBuf(bufferId6, cqes[8].first, hasMore6);
+
+  EXPECT_NE(bufferId6, bufferId5);
+  EXPECT_FALSE(hasMore6);
+  ASSERT_NE(iob6, nullptr);
+  EXPECT_EQ(data6, toString(iob6));
+
+  readers.clear();
+  addReaders(1);
+
+  std::string data7 = generateTestData(10, 'Z');
+  ASSERT_EQ(10, folly::fileops::write(fds[1], data7.c_str(), data7.size()));
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+
+  ASSERT_EQ(10, cqes.size());
+  EXPECT_EQ(-ENOBUFS, cqes[9].first);
+
+  iob6.reset();
+
+  readers.clear();
+  addReaders(1);
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+
+  ASSERT_EQ(11, cqes.size());
+  EXPECT_EQ(10, cqes[10].first);
+
+  uint16_t bufferId7 = cqes[10].second >> 16;
+  bool hasMore7 = !!(cqes[10].second & IORING_CQE_F_BUF_MORE);
+  auto iob7 = bufferProvider->getIoBuf(bufferId7, cqes[10].first, hasMore7);
+
+  EXPECT_EQ(bufferId6, bufferId7);
+  EXPECT_TRUE(hasMore7);
+  EXPECT_EQ(data7, toString(iob7));
 
   backend.reset();
   EXPECT_EQ(data4, toString(iob4));
+  EXPECT_EQ(data5, toString(iob5));
+  EXPECT_EQ(data7, toString(iob7));
+
+  iob4.reset();
+  iob5.reset();
+  iob7.reset();
 }
 
-TEST(IoUringBackend, ProvidedBufferRingGrowthUnderLoad) {
+TEST(IoUringBackend, IncrementalBuffersEnobufTracking) {
   auto evbPtr = getEventBase();
   std::unique_ptr<folly::IoUringBackend> backend;
   try {
-    /* 2 buffers of size 32 bytes */
+    /* 2 buffers of size 32 bytes with incremental buffers enabled */
     folly::IoUringOptions options;
-    options.setInitialProvidedBuffers(32, 2); // 32 bytes per buffer, 2 buffers
+    options
+        .setInitialProvidedBuffers(32, 2) // 32 bytes per buffer, 2 buffers
+        .setEnableIncrementalBuffers(true);
     backend = std::make_unique<folly::IoUringBackend>(std::move(options));
   } catch (folly::IoUringBackend::NotAvailable const&) {
   }
@@ -1714,47 +1792,105 @@ TEST(IoUringBackend, ProvidedBufferRingGrowthUnderLoad) {
   auto iob2 = bufferProvider->getIoBuf(bufferId2, cqes[1].first, hasMore2);
   EXPECT_EQ(data2, toString(iob2));
 
+  readers.clear();
+  addReaders(2);
+
+  std::string data3 = generateTestData(34, 'A');
+  ASSERT_EQ(34, folly::fileops::write(fds[1], data3.c_str(), data3.size()));
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+  ASSERT_EQ(4, cqes.size());
+
+  uint16_t bufferId3a = cqes[2].second >> 16;
+  bool hasMore3a = !!(cqes[2].second & IORING_CQE_F_BUF_MORE);
+  auto iob3a = bufferProvider->getIoBuf(bufferId3a, cqes[2].first, hasMore3a);
+
+  uint16_t bufferId3b = cqes[3].second >> 16;
+  bool hasMore3b = !!(cqes[3].second & IORING_CQE_F_BUF_MORE);
+  auto iob3b = bufferProvider->getIoBuf(bufferId3b, cqes[3].first, hasMore3b);
+
+  readers.clear();
+  addReaders(1);
+
+  std::string data4 = generateTestData(10, 'Z');
+  ASSERT_EQ(10, folly::fileops::write(fds[1], data4.c_str(), data4.size()));
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+
+  ASSERT_EQ(5, cqes.size());
+  EXPECT_EQ(-ENOBUFS, cqes[4].first);
+
+  iob1.reset();
+  iob2.reset();
+
+  readers.clear();
+  addReaders(1);
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+
+  ASSERT_EQ(6, cqes.size());
+  EXPECT_EQ(-ENOBUFS, cqes[5].first);
+
   auto* providedBufferRing =
       dynamic_cast<folly::IoUringProvidedBufferRing*>(bufferProvider);
   ASSERT_NE(providedBufferRing, nullptr);
+  uint64_t resetCount = providedBufferRing->getAndResetEnobufCount();
+  EXPECT_EQ(2, resetCount) << "getAndResetEnobufCount should return 2";
 
-  // With the dynamic area model the ring grows on demand instead of returning
-  // ENOBUFS once the initial buffers are held. Keep holding every buffer handed
-  // out and drive more reads than the initial ring size (2). Each read must
-  // still succeed (never -ENOBUFS) because refill grows the area pool, and the
-  // data must remain correct.
-  std::vector<std::unique_ptr<folly::IOBuf>> held;
-  held.push_back(std::move(iob1));
-  held.push_back(std::move(iob2));
+  iob3a.reset();
 
-  constexpr int kExtraReads = 12; // well beyond the initial 2 buffers
-  for (int i = 0; i < kExtraReads; i++) {
-    readers.clear();
-    addReaders(1);
+  readers.clear();
+  addReaders(1);
+  backend->eb_event_base_loop(EVLOOP_ONCE);
 
-    std::string data = generateTestData(32, 'A' + (i % 20));
-    ASSERT_EQ(32, folly::fileops::write(fds[1], data.c_str(), data.size()));
-    backend->eb_event_base_loop(EVLOOP_ONCE);
+  ASSERT_EQ(7, cqes.size());
+  EXPECT_EQ(10, cqes[6].first);
 
-    ASSERT_EQ(static_cast<size_t>(3 + i), cqes.size());
-    const auto& cqe = cqes.back();
-    ASSERT_EQ(32, cqe.first)
-        << "read " << i << " should succeed via a grown area, not ENOBUFS";
+  uint16_t bufferId4 = cqes[6].second >> 16;
+  bool hasMore4 = !!(cqes[6].second & IORING_CQE_F_BUF_MORE);
+  auto iob4 = bufferProvider->getIoBuf(bufferId4, cqes[6].first, hasMore4);
+  EXPECT_EQ(data4, toString(iob4));
 
-    uint16_t bufferId = cqe.second >> 16;
-    bool hasMore = !!(cqe.second & IORING_CQE_F_BUF_MORE);
-    auto iob = bufferProvider->getIoBuf(bufferId, cqe.first, hasMore);
-    EXPECT_EQ(data, toString(iob));
-    held.push_back(std::move(iob));
-  }
+  iob3b.reset();
+  readers.clear();
+  addReaders(1);
 
-  // No ENOBUFS should have been recorded: the ring grew to satisfy demand.
-  EXPECT_EQ(0u, providedBufferRing->getAndResetEnobufCount())
-      << "ring should grow instead of returning ENOBUFS";
-  EXPECT_TRUE(bufferProvider->available());
+  std::string data5 = generateTestData(22, 'B');
+  ASSERT_EQ(22, folly::fileops::write(fds[1], data5.c_str(), data5.size()));
+  backend->eb_event_base_loop(EVLOOP_ONCE);
 
-  // Releasing everything lets buffers be returned and reused.
-  held.clear();
+  ASSERT_EQ(8, cqes.size());
+  EXPECT_EQ(22, cqes[7].first);
+
+  uint16_t bufferId5 = cqes[7].second >> 16;
+  bool hasMore5 = !!(cqes[7].second & IORING_CQE_F_BUF_MORE);
+  auto iob5 = bufferProvider->getIoBuf(bufferId5, cqes[7].first, hasMore5);
+  EXPECT_EQ(data5, toString(iob5));
+
+  readers.clear();
+  addReaders(1);
+  std::string data6 = generateTestData(32, 'C');
+  ASSERT_EQ(32, folly::fileops::write(fds[1], data6.c_str(), data6.size()));
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+
+  ASSERT_EQ(9, cqes.size());
+  EXPECT_EQ(32, cqes[8].first);
+
+  uint16_t bufferId6 = cqes[8].second >> 16;
+  bool hasMore6 = !!(cqes[8].second & IORING_CQE_F_BUF_MORE);
+  auto iob6 = bufferProvider->getIoBuf(bufferId6, cqes[8].first, hasMore6);
+  EXPECT_EQ(data6, toString(iob6));
+
+  readers.clear();
+  addReaders(1);
+
+  std::string data7 = generateTestData(10, 'X');
+  ASSERT_EQ(10, folly::fileops::write(fds[1], data7.c_str(), data7.size()));
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+
+  ASSERT_EQ(10, cqes.size());
+  EXPECT_EQ(-ENOBUFS, cqes[9].first);
+
+  uint64_t resetCount2 = providedBufferRing->getAndResetEnobufCount();
+  EXPECT_EQ(1, resetCount2)
+      << "getAndResetEnobufCount should return 1 after the 3rd ENOBUFS";
 }
 
 TEST(IoUringBackend, ReceiveBundleTest) {
@@ -1929,7 +2065,6 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
   auto* bufferProvider = backend->bufferProvider();
   ASSERT_NE(bufferProvider, nullptr);
   EXPECT_EQ(bufferProvider, backend->bufferProvider());
-  // bufferCount=5 is rounded up to the next power of two (8).
   EXPECT_EQ(8, bufferProvider->count());
 
   struct Reader : folly::IoSqeBase {
@@ -1995,11 +2130,8 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
   ASSERT_NE(providedBufferRing, nullptr);
 
   int utilization = providedBufferRing->getUtilPct();
-  // Utilization counts only user-held buffers (consumed, not yet returned)
-  // over all areas. There are 2 initial areas of 8 buffers each (16 total).
-  // Holding 8 buffers => 8/16 = 50%.
-  EXPECT_EQ(50, utilization)
-      << "8 of 16 buffers (count=8 x 2 areas) held, expected 50%";
+  EXPECT_EQ(100, utilization)
+      << "All 8 buffers in use, expected 100% utilization";
 
   iobuf4.reset();
   iobuf5.reset();
@@ -2007,7 +2139,8 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
   iobuf7.reset();
 
   utilization = providedBufferRing->getUtilPct();
-  EXPECT_EQ(25, utilization) << "4 of 16 buffers held, expected 25%";
+  EXPECT_EQ(50, utilization)
+      << "4 out of 8 buffers in use, expected 50% utilization";
 
   iobuf0.reset();
   iobuf1.reset();
@@ -2015,7 +2148,7 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
   iobuf3.reset();
 
   utilization = providedBufferRing->getUtilPct();
-  EXPECT_EQ(0, utilization) << "No buffers held, expected 0% utilization";
+  EXPECT_EQ(0, utilization) << "No buffers in use, expected 0% utilization";
 
   readers.clear();
 }
@@ -2036,11 +2169,8 @@ TEST(IoUringBackend, ProvidedBufferUtilizationFullRing) {
       dynamic_cast<folly::IoUringProvidedBufferRing*>(bufferProvider);
   ASSERT_NE(providedBufferRing, nullptr);
 
-  // Utilization counts only user-held buffers. A freshly created ring has all
-  // its buffers posted into the kernel ring but none handed to the user yet, so
-  // it reports 0%.
   EXPECT_EQ(0, providedBufferRing->getUtilPct())
-      << "Freshly created full ring, no buffers held, expected 0%";
+      << "Freshly created full ring, expected 0% utilization";
 }
 
 TEST(IoUringBackend, DeferTaskRun) {
