@@ -24,6 +24,10 @@ NEW_BINARY+="/$(basename "$BINARY")"
 
 echo "$NEW_BINARY" "$DWP"
 
-OUTPUT=$(tr -d '[:space:]' <<<$($NEW_BINARY))
+RESULT=$("$NEW_BINARY")
+STATUS=$?
+OUTPUT=$(tr -d '[:space:]' <<<"$RESULT")
 echo "Unit test output is " "$OUTPUT"
-[[ $OUTPUT =~ "[PASSED]16tests" ]] && exit 0 || exit 5
+# The exit status is the pass/fail signal; matching the gtest summary
+# additionally rejects a run in which every test was skipped.
+[[ $STATUS -eq 0 && $OUTPUT =~ \[PASSED\][1-9][0-9]*tests? ]] && exit 0 || exit 5
