@@ -55,6 +55,11 @@ Py_Weak(const char*) PyUnicode_AsUTF8(PyObject*);
 
 // Basic GIL Handling
 Py_Weak(PyThreadState*) PyThreadState_Get(void);
+#if PY_VERSION_HEX >= 0x030d0000 // >= 3.13
+Py_Weak(PyThreadState*) PyThreadState_GetUnchecked(void);
+#else
+Py_Weak(PyThreadState*) _PyThreadState_UncheckedGet(void);
+#endif
 Py_Weak(PyThreadState*) PyGILState_GetThisThreadState(void);
 Py_Weak(int) PyGILState_Check(void);
 Py_Weak(PyGILState_STATE) PyGILState_Ensure(void);
