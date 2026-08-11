@@ -107,9 +107,6 @@ class IoUringProvidedBufferRing {
 
   void mapRing();
   void initialRegister();
-  size_t ringMemSize() const noexcept {
-    return sizeof(struct io_uring_buf_ring) * ringBufferCount_;
-  }
 
   struct BufferArea;
 
@@ -209,6 +206,8 @@ class IoUringProvidedBufferRing {
 
   // Hot fields (cacheline 2)
   alignas(folly::hardware_constructive_interference_size) io_uring* ringIoPtr;
+  void* ringMem_{nullptr};
+  size_t ringMemSize_{0};
   uint32_t shutdownReferences_{0};
   uint32_t enobufCount_{0};
   BufferArea* bufferActiveArea_{nullptr};
