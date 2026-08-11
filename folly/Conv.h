@@ -1493,16 +1493,16 @@ inline
       detail::CheckTrailingSpace,
       detail::ReturnUnit<Error>>::type;
   auto tmp = detail::parseToWrap(src, result);
-  // returning outside of lambda to avoid clang 21 header-unit bug
-  tmp.thenOrThrow(
-         Check(),
-         [&](Error e) { throw_exception(makeConversionError(e, src)); })
+
+  return tmp
       .thenOrThrow(
-          [&](Unit) {},
+          Check(),
+          [&](Error e) { throw_exception(makeConversionError(e, src)); })
+      .thenOrThrow(
+          [&](Unit) { return std::move(result); },
           [&](Error e) {
             throw_exception(makeConversionError(e, tmp.value()));
           });
-  return result;
 }
 
 /**
