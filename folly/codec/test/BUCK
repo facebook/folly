@@ -32,8 +32,8 @@ fb_dirsync_cpp_benchmark(
     srcs = ["UuidBenchmark.cpp"],
     compiler_flags = ["-flto"],
     deps = [
-        "fbsource//third-party/boost:boost_lexical_cast",
-        "fbsource//third-party/boost:boost_uuid",
+        "fbsource//third-party/boost:boost_lexical_cast",  # @manual
+        "fbsource//third-party/boost:boost_uuid",  # @manual
         "//folly:benchmark",
         "//folly/codec:uuid",
     ],
