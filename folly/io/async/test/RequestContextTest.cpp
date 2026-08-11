@@ -602,6 +602,57 @@ TEST_F(RequestContextTest, ConcurrentDataRefRelease) {
   }
 }
 
+TEST_F(RequestContextTest, ClearOutlivesConcurrentDeleteRefRelease) {
+  std::atomic<int> step{0};
+  bool deleted = false;
+
+  struct Foo : public RequestData {
+    Foo(std::atomic<int>& s, bool& d) : step_(s), deleted_(d) {}
+    ~Foo() override { deleted_ = true; }
+    bool hasCallback() override { return false; }
+    void onClear() override {
+      // One delete count held by the thread running onClear(), one held by
+      // ctx1's retired state; no clear counts left.
+      EXPECT_EQ(refCount(), 2);
+      step_.store(1); // onClear() is running.
+      while (step_.load() < 2) {
+        /* Wait for the main thread to release the delete count. */;
+      }
+      // The releasing thread still holds a delete count, so the object must
+      // have survived.
+      EXPECT_FALSE(deleted_);
+    }
+    std::atomic<int>& step_;
+    bool& deleted_;
+  };
+
+  const std::string key = "clear-outlives-delete-ref";
+  std::shared_ptr<folly::RequestContext> sp1;
+
+  auto th = std::thread([&]() {
+    folly::RequestContextScopeGuard g0; // Creates ctx0 holding data.
+    folly::RequestContext::get()->setContextData(
+        key, std::make_unique<Foo>(step, deleted));
+    {
+      folly::ShallowCopyRequestContextScopeGuard g1;
+      // ctx1 has a second reference to data.
+      sp1 = folly::RequestContext::saveContext();
+      // Releases ctx1's clear count and leaves a delete count in ctx1's
+      // retired state.
+      folly::RequestContext::get()->clearContextData(key);
+    }
+    // End of g0 releases the last clear count, running onClear().
+  });
+
+  while (step.load() < 1) {
+    /* Wait for onClear() to start. */;
+  }
+  sp1.reset(); // Destroying ctx1 releases the remaining delete count.
+  step.store(2);
+  th.join();
+  EXPECT_TRUE(deleted);
+}
+
 TEST_F(RequestContextTest, AccessAllThreadsDestructionGuard) {
   constexpr auto kNumThreads = 128;
 

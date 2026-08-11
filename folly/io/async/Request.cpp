@@ -72,7 +72,7 @@ Synchronized<F14FastMap<std::string, uint32_t>>& RequestToken::getCache() {
 FOLLY_ALWAYS_INLINE
 void RequestData::acquireRef() {
   auto rc = keepAliveCounter_.fetch_add(
-      kClearCount + kDeleteCount, std::memory_order_relaxed);
+      kClearDeleteCounts, std::memory_order_relaxed);
   DCHECK_GE(rc, 0);
 }
 
@@ -99,12 +99,26 @@ void RequestData::releaseRefDeleteOnly() {
 FOLLY_ALWAYS_INLINE
 void RequestData::releaseRefClearDelete() {
   auto rc = keepAliveCounter_.load(std::memory_order_acquire);
-  if (FOLLY_LIKELY(rc == (kClearCount + kDeleteCount))) {
+  if (FOLLY_LIKELY(rc == kClearDeleteCounts)) {
     this->onClear();
     delete this;
-  } else {
-    releaseRefClearDeleteSlow();
+    return;
   }
+  // After decrementing the delete count, another thread could be left
+  // with the last reference and delete the object, so after the
+  // operation we cannot safely access the object. In particular we
+  // cannot call `onClear()` on it, so we only combine the decrements
+  // if the clear count is left positive, so that we are not
+  // responsible for invoking the callback.
+  if (rc - kClearDeleteCounts >= kClearCount &&
+      keepAliveCounter_.compare_exchange_strong(
+          rc,
+          rc - kClearDeleteCounts,
+          std::memory_order_release,
+          std::memory_order_relaxed)) {
+    return;
+  }
+  releaseRefClearDeleteSlow();
 }
 
 FOLLY_NOINLINE

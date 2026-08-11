@@ -116,6 +116,7 @@ class RequestData {
 
   static constexpr int kDeleteCount = 0x1;
   static constexpr int kClearCount = 0x1000;
+  static constexpr int kClearDeleteCounts = kClearCount + kDeleteCount;
 
   // Reference-counting functions.
   // Increment the reference count.
