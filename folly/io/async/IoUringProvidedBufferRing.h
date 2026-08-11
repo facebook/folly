@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <limits>
+#include <vector>
+
 #include <folly/io/async/IoUringBase.h>
 #include <folly/io/async/Liburing.h>
 #include <folly/synchronization/DistributedMutex.h>
@@ -70,9 +73,7 @@ class IoUringProvidedBufferRing {
   std::unique_ptr<IOBuf> getIoBuf(const struct io_uring_cqe* cqe) noexcept;
 
   uint32_t count() const noexcept { return ringBufferCount_; }
-  bool available() const noexcept {
-    return !enobuf_.load(std::memory_order_relaxed);
-  }
+  bool available() const noexcept { return !enobuf_; }
   size_t sizePerBuffer() const noexcept { return sizePerBuffer_; }
   uint16_t gid() const noexcept { return gid_; }
 
@@ -100,17 +101,25 @@ class IoUringProvidedBufferRing {
   IoUringProvidedBufferRing& operator=(IoUringProvidedBufferRing const&) =
       delete;
 
-  void mapMemory();
+  void mapRing();
   void initialRegister();
 
-  void returnBuffer(uint16_t i) noexcept;
+  struct BufferArea;
+
+  BufferArea* addArea() noexcept;
 
   void delayedDestroy(uint32_t refs) noexcept;
   void incBufferState(
-      uint16_t bufId, bool hasMore, size_t bytesConsumed) noexcept;
-  void decBufferState(uint16_t bufId) noexcept;
+      BufferArea& area,
+      uint16_t bid,
+      bool hasMore,
+      size_t bytesConsumed) noexcept;
+  void decBufferState(BufferArea& area, uint16_t bid) noexcept;
+
+  void ringRefill() noexcept;
+  bool getNewRefillArea() noexcept;
   std::unique_ptr<IOBuf> getIoBufSingle(
-      uint16_t i, size_t length, bool hasMore) noexcept;
+      uint16_t bid, size_t length, bool hasMore) noexcept;
 
   std::atomic<uint16_t>* sharedTail() {
     return reinterpret_cast<std::atomic<uint16_t>*>(&ringPtr_->tail);
@@ -121,9 +130,9 @@ class IoUringProvidedBufferRing {
         expected, value, std::memory_order_release);
   }
 
-  char* getData(uint16_t i) {
-    auto offset = static_cast<size_t>(i) * sizePerBuffer_;
-    return bufferBuffer_ + offset;
+  char* getData(BufferArea& area, uint16_t bid) {
+    auto offset = static_cast<size_t>(bid) * sizePerBuffer_;
+    return area.buffers + offset;
   }
 
   struct io_uring_buf* ringBuf(uint32_t idx) const noexcept {
@@ -134,40 +143,73 @@ class IoUringProvidedBufferRing {
     return id & (ringBufferCount_ - 1);
   }
 
+  uint16_t ringFillLevel() const noexcept { return ringTail_ - ringHead_; }
+
+  uint16_t ringFreeEntries() const noexcept {
+    return ringBufferCount_ - ringFillLevel();
+  }
+
+  bool ringIsFull() const noexcept {
+    return ringFillLevel() >= ringBufferCount_;
+  }
+
+  bool areaIsDrained(const BufferArea& area) const noexcept {
+    return area.outstanding.load(std::memory_order_acquire) == 0;
+  }
+
+  uint64_t areasOutstandingSum() const noexcept {
+    uint64_t outstanding = 0;
+    for (auto& area : areas_) {
+      outstanding += area->outstanding.load(std::memory_order_relaxed);
+    }
+    return outstanding;
+  }
+
   struct BufferState {
     uint16_t bufId{0};
-    // Starting with a refCount of 1, to account for moreData incoming
-    // in the incremental buffer case.
+    BufferArea* area{nullptr};
     std::atomic<uint32_t> refCount{1};
     unsigned int offset{0};
     IoUringProvidedBufferRing* parent{nullptr};
   };
 
+  struct BufferArea {
+    char* buffers{nullptr};
+    std::unique_ptr<BufferState[]> states;
+    std::atomic<uint32_t> outstanding{0};
+    size_t memSize{0};
+  };
+
+  std::unique_ptr<BufferArea> createArea() noexcept;
+
   static void checkInvariants();
   static void bufFreeFn(void*, void* userData) noexcept;
 
-  // Hot fields
+  // Hot fields (cacheline 1)
   alignas(folly::hardware_constructive_interference_size)
-      std::unique_ptr<BufferState[]> bufferStates_;
+      std::vector<std::unique_ptr<BufferArea>> areas_;
   struct io_uring_buf_ring* ringPtr_{nullptr};
-  char* bufferBuffer_{nullptr};
   folly::DistributedMutex mutex_;
   uint32_t sizePerBuffer_{0};
-  uint32_t bufferGetCount_{0};
-  uint32_t ringReturnedBuffers_{0};
-  uint32_t bufferReturnedCount{0};
   uint32_t ringBufferCount_{0};
-  bool useIncremental_{false};
-  std::atomic<bool> enobuf_{false};
-  std::atomic<bool> wantsShutdown_{false};
-  std::atomic<uint32_t> enobufCount_{0};
-
-  // Cold fields
-  alignas(folly::hardware_constructive_interference_size) io_uring* ringIoPtr;
-  uint32_t shutdownReferences_{0};
+  uint16_t ringTail_{0};
+  uint16_t ringHead_{0};
+  uint16_t areaCount_{0};
   uint16_t const gid_{0};
-  uint32_t allSize_{0};
-  void* buffer_{nullptr};
+  uint32_t bufferGetCount_{0};
+  uint32_t bufferReturnedCount{0};
+
+  // Hot fields (cacheline 2)
+  alignas(folly::hardware_constructive_interference_size) io_uring* ringIoPtr;
+  void* ringMem_{nullptr};
+  size_t ringMemSize_{0};
+  uint32_t shutdownReferences_{0};
+  uint32_t enobufCount_{0};
+  BufferArea* bufferActiveArea_{nullptr};
+  BufferArea* bufferRefillArea_{nullptr};
+  bool useIncremental_{false};
+  bool enobuf_{false};
+  std::atomic<bool> wantsShutdown_{false};
 };
 
 } // namespace folly
