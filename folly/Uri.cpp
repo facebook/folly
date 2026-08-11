@@ -56,12 +56,13 @@ Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
 Expected<Uri, UriFormatError> Uri::tryFromString(StringPiece str) noexcept {
   Uri result;
 
-  static const boost::regex uriRegex(
+  static const auto& uriRegex = *new boost::regex(
       "([a-zA-Z][a-zA-Z0-9+.-]*):" // scheme:
       "([^?#]*)" // authority and path
       "(?:\\?([^#]*))?" // ?query
       "(?:#(.*))?"); // #fragment
-  static const boost::regex authorityAndPathRegex("//([^/]*)(/.*)?");
+  static const auto& authorityAndPathRegex =
+      *new boost::regex("//([^/]*)(/.*)?");
 
   boost::cmatch match;
   if (FOLLY_UNLIKELY(
@@ -87,7 +88,7 @@ Expected<Uri, UriFormatError> Uri::tryFromString(StringPiece str) noexcept {
     result.hasAuthority_ = false;
     result.path_ = authorityAndPath.str();
   } else {
-    static const boost::regex authorityRegex(
+    static const auto& authorityRegex = *new boost::regex(
         "(?:([^@:]*)(?::([^@]*))?@)?" // username, password
         "(\\[[^\\]]*\\]|[^\\[:]*)" // host (IP-literal (e.g. '['+IPv6+']',
                                    // dotted-IPv4, or named host)
@@ -164,7 +165,7 @@ std::string Uri::hostname() const {
 const std::vector<std::pair<std::string, std::string>>& Uri::getQueryParams() {
   if (!query_.empty() && queryParams_.empty()) {
     // Parse query string
-    static const boost::regex queryParamRegex(
+    static const auto& queryParamRegex = *new boost::regex(
         "(^|&)" /*start of query or start of parameter "&"*/
         "([^=&]*)=?" /*parameter name and "=" if value is expected*/
         "([^=&]*)" /*parameter value*/
