@@ -124,6 +124,7 @@ class IoUringProvidedBufferRing {
   void decBufferState(BufferArea& area, uint16_t bid) noexcept;
 
   void ringRefill() noexcept;
+  void ringMaybeRefill() noexcept;
   bool getNewRefillArea() noexcept;
   void tryReclaimArea() noexcept;
   std::unique_ptr<IOBuf> getIoBufSingle(
@@ -215,6 +216,7 @@ class IoUringProvidedBufferRing {
   BufferArea* bufferRefillArea_{nullptr};
   bool useIncremental_{false};
   bool enobuf_{false};
+  uint16_t ringRefillThreshold_{1};
   std::atomic<bool> wantsShutdown_{false};
 };
 

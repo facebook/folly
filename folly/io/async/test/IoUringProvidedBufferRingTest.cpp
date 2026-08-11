@@ -57,6 +57,10 @@ class IoUringProvidedBufferRingTestHelper {
   uint64_t outstandingSum() { return ring.areasOutstandingSum(); }
   uint16_t headBid() { return ring.ringBuf(ring.ringHead_)->bid; }
 
+  void setRingRefillThreshold(uint16_t threshold) {
+    ring.ringRefillThreshold_ = threshold;
+  }
+
   int areaOfPtr(const void* p) {
     for (uint32_t a = 0; a < ring.areaCount_; a++) {
       const char* base = ring.areas_[a]->buffers;
@@ -297,6 +301,7 @@ TEST_F(IoUringProvidedBufferRingTest, BundleFollowsRefillOrderAcrossReuse) {
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
+  helper.setRingRefillThreshold(1);
 
   std::vector<std::unique_ptr<folly::IOBuf>> held;
   bool tested = false;
@@ -359,6 +364,7 @@ TEST_F(IoUringProvidedBufferRingTest, ReuseStabilizesWithoutUnboundedGrowth) {
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
+  helper.setRingRefillThreshold(1);
 
   for (int i = 0; i < 200; i++) {
     auto buf = consumeOne(*bufRing, helper, 64);
@@ -487,6 +493,7 @@ TEST_F(IoUringProvidedBufferRingTest, BundleAcrossAreaBoundary) {
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
+  helper.setRingRefillThreshold(1);
 
   auto held0 = consumeOne(*bufRing, helper, 64);
   ASSERT_EQ(helper.areaCount(), 2u);
@@ -538,6 +545,7 @@ TEST_F(IoUringProvidedBufferRingTest, ShrinkAfterGrowthDownToFloor) {
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
+  helper.setRingRefillThreshold(1);
   ASSERT_EQ(helper.areaCount(), 2u);
 
   std::vector<std::unique_ptr<folly::IOBuf>> held;
@@ -576,6 +584,7 @@ TEST_F(IoUringProvidedBufferRingTest, NoShrinkWhenLessThanHalfFreeSlots) {
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
+  helper.setRingRefillThreshold(1);
 
   std::vector<std::unique_ptr<folly::IOBuf>> held;
   std::vector<int> heldArea;
@@ -645,6 +654,7 @@ TEST_F(IoUringProvidedBufferRingTest, ShrinkNeverRemovesActiveOrRefillArea) {
   };
   auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
   IoUringProvidedBufferRingTestHelper helper(*bufRing);
+  helper.setRingRefillThreshold(1);
 
   std::vector<std::unique_ptr<folly::IOBuf>> held;
   std::vector<int> heldArea;
@@ -671,6 +681,34 @@ TEST_F(IoUringProvidedBufferRingTest, ShrinkNeverRemovesActiveOrRefillArea) {
     EXPECT_GE(helper.areaCount(), 2u);
     buf.reset();
   }
+}
+
+TEST_F(IoUringProvidedBufferRingTest, ringRefillThresholdBatchesRefills) {
+  constexpr uint32_t kBufferCount = 16;
+  constexpr uint8_t kThreshold = 4;
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = kBufferCount,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
+  IoUringProvidedBufferRingTestHelper helper(*bufRing);
+  helper.setRingRefillThreshold(kThreshold);
+  ASSERT_EQ(helper.ringAvailable(), kBufferCount);
+
+  std::vector<std::unique_ptr<folly::IOBuf>> held;
+
+  for (uint8_t i = 1; i < kThreshold; i++) {
+    held.push_back(consumeOne(*bufRing, helper, 64));
+    EXPECT_EQ(helper.ringAvailable(), kBufferCount - i)
+        << "refill must be batched, not run per consumption (i=" << i << ")";
+  }
+
+  held.push_back(consumeOne(*bufRing, helper, 64));
+  EXPECT_EQ(helper.ringAvailable(), kBufferCount)
+      << "threshold consumption should trigger a batched refill";
 }
 
 #endif
