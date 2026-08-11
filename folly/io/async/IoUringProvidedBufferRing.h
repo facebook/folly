@@ -80,12 +80,9 @@ class IoUringProvidedBufferRing {
   // Returns the buffer utilization as an integer percentage (0-100).
   int getUtilPct() const noexcept;
 
-  uint16_t areaCount() const noexcept { return areaCount_; }
-
   struct Stats {
     uint32_t enobufCount{0};
     int utilPct{-1};
-    uint16_t areaCount{0};
 
     auto operator<=>(const Stats&) const = default;
   };
@@ -93,7 +90,6 @@ class IoUringProvidedBufferRing {
   void getStats(Stats& stats) noexcept {
     stats.enobufCount = getAndResetEnobufCount();
     stats.utilPct = getUtilPct();
-    stats.areaCount = areaCount_;
   }
 
  private:
