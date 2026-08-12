@@ -184,13 +184,13 @@ folly_add_library(
   HEADERS
     PerfScoped.h
   DEPS
+    Boost::regex
     folly_conv
     folly_system_pid
     folly_testing_test_util
     ${FOLLY_DETAIL_PERF_SCOPED_SELECT_DEPS}
-  EXTERNAL_DEPS
-    Boost::regex
 )
+set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::regex)
 
 folly_add_library(
   NAME poly_detail
