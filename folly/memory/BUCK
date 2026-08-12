@@ -24,6 +24,7 @@ fb_dirsync_cpp_library(
     ],
     use_raw_headers = True,
     exported_deps = [
+        "fbsource//third-party/boost:boost",
         ":allocator",
         ":malloc",
         "//folly:conv",
@@ -33,9 +34,6 @@ fb_dirsync_cpp_library(
         "//folly/lang:checked_math",
         "//folly/lang:exception",
         "//folly/lang:safe_assert",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 

@@ -33,6 +33,7 @@ folly_add_library(
     Arena-inl.h
     Arena.h
   EXPORTED_DEPS
+    Boost::headers
     folly_conv
     folly_lang_align
     folly_lang_checked_math
@@ -42,8 +43,6 @@ folly_add_library(
     folly_memory
     folly_memory_allocator
     folly_memory_malloc
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(
