@@ -36,7 +36,7 @@ static std::string test_find_resource_buck2(std::string_view resource) {
   buf << std::ifstream(res.string()).rdbuf();
   auto const dyn = folly::parseJson(buf.str());
   auto const tgt = dyn[resource].asString();
-  auto const ret = exe.parent_path() / tgt;
+  auto const ret = (exe.parent_path() / tgt).lexically_normal();
   return ret.string();
 }
 
