@@ -178,17 +178,23 @@ class ReadMostlyAtomicObserver;
 template <typename T>
 class Snapshot {
  public:
-  const T& operator*() const { return *get(); }
+  const T& operator*() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return *get();
+  }
 
   /**
    * Never returns nullptr
    */
-  const T* operator->() const { return get(); }
+  const T* operator->() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return get();
+  }
 
   /**
    * Never returns nullptr
    */
-  const T* get() const { return data_.get(); }
+  const T* get() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return data_.get();
+  }
 
   /**
    * Never returns nullptr
