@@ -1,3 +1,4 @@
+load("@fbsource//tools/build_defs:testpilot_defs.bzl", "tpx_labels")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
@@ -148,7 +149,7 @@ fb_dirsync_cpp_unittest(
         "DistributedMutexTest.cpp",
     ],
     labels = [
-        "heavyweight",
+        tpx_labels.heavyweight,
         "slow",
     ],
     deps = [
@@ -349,14 +350,12 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_library(
     name = "semaphore",
     headers = ["Semaphore.h"],
+    deps = ["fbsource//third-party/boost:boost"],
     exported_deps = [
+        "fbsource//third-party/boost:boost",
         "//folly:optional",
         "//folly:scope_guard",
         "//folly/lang:exception",
-    ],
-    external_deps = ["boost"],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
