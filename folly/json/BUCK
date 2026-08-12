@@ -25,6 +25,7 @@ fb_dirsync_cpp_library(
         "//folly/portability:constexpr",
     ],
     exported_deps = [
+        "fbsource//third-party/boost:boost",
         "//folly:c_portability",
         "//folly:conv",
         "//folly:cpp_attributes",
@@ -42,9 +43,6 @@ fb_dirsync_cpp_library(
         "//folly/container:f14_hash",
         "//folly/detail:iterators",
         "//folly/lang:exception",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
@@ -83,6 +81,7 @@ fb_dirsync_cpp_library(
     srcs = ["JSONSchema.cpp"],
     headers = ["JSONSchema.h"],
     deps = [
+        "fbsource//third-party/boost:boost_regex",
         "//folly:c_portability",
         "//folly:conv",
         "//folly:memory",
@@ -95,9 +94,6 @@ fb_dirsync_cpp_library(
         "//folly:exception_wrapper",
         "//folly:range",
         "//folly/json:dynamic",
-    ],
-    external_deps = [
-        ("boost", None, "boost_regex"),
     ],
 )
 
@@ -113,15 +109,13 @@ fb_dirsync_cpp_library(
         "//folly:optional",
     ],
     exported_deps = [
+        "fbsource//third-party/boost:boost",
         ":dynamic",
         "//folly:c_portability",
         "//folly:conv",
         "//folly:json",  # @manual
         "//folly:scope_guard",
         "//folly:traits",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 

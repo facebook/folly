@@ -34,6 +34,7 @@ folly_add_library(
     folly_portability_constexpr
     folly_unicode
   EXPORTED_DEPS
+    Boost::headers
     folly_c_portability
     folly_container_access
     folly_container_f14_hash
@@ -51,8 +52,6 @@ folly_add_library(
     folly_range
     folly_traits
     folly_utility
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(
@@ -66,14 +65,13 @@ folly_add_library(
     ${GLOG_LIBRARIES}
     folly_optional
   EXPORTED_DEPS
+    Boost::headers
     folly_c_portability
     folly_conv
     folly_json
     folly_json_dynamic
     folly_scope_guard
     folly_traits
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(
@@ -121,6 +119,7 @@ folly_add_library(
   HEADERS
     JSONSchema.h
   DEPS
+    Boost::regex
     folly_c_portability
     folly_conv
     folly_memory
@@ -132,9 +131,8 @@ folly_add_library(
     folly_exception_wrapper
     folly_json_dynamic
     folly_range
-  EXTERNAL_DEPS
-    Boost::regex
 )
+set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::regex)
 
 folly_add_library(
   NAME json_test_util
