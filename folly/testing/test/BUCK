@@ -7,6 +7,7 @@ fb_dirsync_cpp_unittest(
     srcs = ["TestUtilTest.cpp"],
     headers = [],
     deps = [
+        "fbsource//third-party/boost:boost_algorithm",
         "fbsource//third-party/glog:glog",
         "//folly:memory",
         "//folly/portability:fcntl",
@@ -14,8 +15,5 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:stdlib",
         "//folly/portability:unistd",
         "//folly/testing:test_util",
-    ],
-    external_deps = [
-        ("boost", None, "boost_algorithm"),
     ],
 )
