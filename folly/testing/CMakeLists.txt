@@ -22,6 +22,7 @@ folly_add_library(
     TestUtil.h
   DEPS
     ${GLOG_LIBRARIES}
+    Boost::regex
     folly_exception
     folly_ext_test_ext
     folly_file
@@ -33,6 +34,5 @@ folly_add_library(
     folly_io_fs_util
     folly_range
     folly_scope_guard
-  EXTERNAL_DEPS
-    Boost::regex
 )
+set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::regex)
