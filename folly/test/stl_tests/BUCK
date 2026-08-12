@@ -7,6 +7,8 @@ fb_dirsync_cpp_unittest(
     srcs = ["StlVectorTest.cpp"],
     labels = ["slow"],
     deps = [
+        "fbsource//third-party/boost:boost",  # @manual
+        "fbsource//third-party/boost:boost_preprocessor",  # @manual
         "//folly:conv",
         "//folly:fbvector",
         "//folly:portability",
@@ -16,9 +18,5 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/test:test_utils",
-    ],
-    external_deps = [
-        "boost",
-        ("boost", None, "boost_preprocessor"),
     ],
 )
