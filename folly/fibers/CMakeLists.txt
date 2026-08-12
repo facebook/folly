@@ -63,10 +63,10 @@ folly_add_library(
     BoostContextCompatibility.h
   EXPORTED_DEPS
     ${GLOG_LIBRARIES}
-    folly_function
-  EXTERNAL_DEPS
     Boost::context
+    folly_function
 )
+set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::context)
 
 folly_add_library(
   NAME core
