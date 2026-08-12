@@ -212,6 +212,7 @@ fbcode_target(
     srcs = ["StackTraceTest.cpp"],
     labels = ["oss-broken"],
     deps = [
+        "fbsource//third-party/boost:boost_regex",
         "fbsource//third-party/glog:glog",
         "//folly/coro:blocking_wait",
         "//folly/coro:task",
@@ -221,9 +222,6 @@ fbcode_target(
         "//folly/portability:gtest",
         "//folly/test:test_utils",
         "//folly/testing:test_util",
-    ],
-    external_deps = [
-        ("boost", None, "boost_regex"),
     ],
 )
 
