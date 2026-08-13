@@ -90,7 +90,6 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   void notifyOnWrite() { callbackWithState_.notifyOnWrite(); }
   size_t getTotalBytesWritten() { return bytesWritten_; }
   folly::IOBuf* getData() const { return data_.get(); }
-  bool notifPending() const { return refs_ > 1; }
 
   folly::SemiFuture<VecResFlags> detachEventBase() {
     handle_ = nullptr;
@@ -146,6 +145,10 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
     auto res = cqe->res;
     auto flags = cqe->flags;
 
+    if (!(flags & IORING_CQE_F_NOTIF)) {
+      prepareForReuse();
+    }
+
     if (!handle_) {
       detachedSignal_(res, flags);
       return;
@@ -167,7 +170,6 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
     if (res >= 0) {
       consumeBytes(res);
       if (msg_.msg_iovlen > 0) {
-        prepareForReuse();
         handle_->onSendPartial(res);
       } else {
         handle_->onSendComplete(res);
@@ -178,6 +180,9 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   }
 
   void callbackCancelled(const io_uring_cqe* cqe) noexcept override {
+    if (!(cqe->flags & IORING_CQE_F_NOTIF)) {
+      prepareForReuse();
+    }
     if (cqe->flags & IORING_CQE_F_MORE) {
       return;
     }
@@ -394,7 +399,7 @@ void IoUringSendHandle::failWrite(const AsyncSocketException& ex) {
     sendCallback_->detachIOBuf(*buf);
   }
 
-  if (req->inFlight() && !req->notifPending()) {
+  if (req->inFlight()) {
     backend_->cancel(req);
   } else {
     req->destroy();

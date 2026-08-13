@@ -423,7 +423,8 @@ void IoSqeBase::internalSubmit(io_uring_sqe* sqe) noexcept {
 }
 
 void IoSqeBase::internalCallback(const io_uring_cqe* cqe) noexcept {
-  if (!(cqe->flags & IORING_CQE_F_MORE)) {
+  auto flags = cqe->flags;
+  if (!(flags & (IORING_CQE_F_MORE | IORING_CQE_F_NOTIF))) {
     inFlight_ = false;
   }
   if (evb_) {
