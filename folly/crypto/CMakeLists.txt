@@ -26,11 +26,8 @@ folly_add_library(
   DEPS
     folly_lang_bits
   EXPORTED_DEPS
-    folly_range
-  EXTERNAL_DEPS
     ${LIBSODIUM_LIBRARIES}
-  EXTERNAL_INCLUDE_DIRS
-    ${LIBSODIUM_INCLUDE_DIRS}
+    folly_range
 )
 
 folly_add_library(
@@ -44,6 +41,7 @@ folly_add_library(
     folly_cpu_id
     folly_memory
   EXPORTED_DEPS
+    ${LIBSODIUM_LIBRARIES}
     folly_crypto_blake2xb
     folly_crypto_detail_lt_hash_internal
     folly_crypto_detail_math_operation_avx2_disable
@@ -53,10 +51,6 @@ folly_add_library(
     folly_lang_bits
     folly_optional
     folly_range
-  EXTERNAL_DEPS
-    ${LIBSODIUM_LIBRARIES}
-  EXTERNAL_INCLUDE_DIRS
-    ${LIBSODIUM_INCLUDE_DIRS}
 )
 
 folly_add_library(
@@ -71,6 +65,7 @@ folly_add_library(
     folly_cpu_id
     folly_memory
   EXPORTED_DEPS
+    ${LIBSODIUM_LIBRARIES}
     folly_crypto_blake2xb
     folly_crypto_detail_lt_hash_internal
     folly_crypto_detail_math_operation_avx2
@@ -80,10 +75,6 @@ folly_add_library(
     folly_lang_bits
     folly_optional
     folly_range
-  EXTERNAL_DEPS
-    ${LIBSODIUM_LIBRARIES}
-  EXTERNAL_INCLUDE_DIRS
-    ${LIBSODIUM_INCLUDE_DIRS}
 )
 
 folly_add_library(
@@ -98,6 +89,7 @@ folly_add_library(
     folly_cpu_id
     folly_memory
   EXPORTED_DEPS
+    ${LIBSODIUM_LIBRARIES}
     folly_crypto_blake2xb
     folly_crypto_detail_lt_hash_internal
     folly_crypto_detail_math_operation_avx2_disable
@@ -107,10 +99,6 @@ folly_add_library(
     folly_lang_bits
     folly_optional
     folly_range
-  EXTERNAL_DEPS
-    ${LIBSODIUM_LIBRARIES}
-  EXTERNAL_INCLUDE_DIRS
-    ${LIBSODIUM_INCLUDE_DIRS}
 )
 
 add_subdirectory(detail)

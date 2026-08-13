@@ -36,15 +36,13 @@ fb_dirsync_cpp_benchmark(
     headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
+        "fbsource//third-party/libsodium:sodium",
         "//folly:benchmark",
         "//folly:random",
         "//folly/crypto:lt_hash",
         "//folly/crypto:lt_hash_sse2",
         "//folly/init:init",
         "//folly/io:iobuf",
-    ],
-    external_deps = [
-        ("libsodium", None, "sodium"),
     ],
 )
 
@@ -56,14 +54,12 @@ fb_dirsync_cpp_benchmark(
     headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
+        "fbsource//third-party/libsodium:sodium",
         "//folly:benchmark",
         "//folly:random",
         "//folly/crypto:lt_hash_sse2",  # @manual
         "//folly/init:init",
         "//folly/io:iobuf",
-    ],
-    external_deps = [
-        ("libsodium", None, "sodium"),
     ],
 )
 
@@ -75,15 +71,13 @@ fb_dirsync_cpp_benchmark(
     headers = [],
     deps = [
         "fbsource//third-party/glog:glog",
+        "fbsource//third-party/libsodium:sodium",
         "//folly:benchmark",
         "//folly:random",
         "//folly/crypto:lt_hash_avx2",  # @manual
         "//folly/crypto:lt_hash_sse2",
         "//folly/init:init",
         "//folly/io:iobuf",
-    ],
-    external_deps = [
-        ("libsodium", None, "sodium"),
     ],
 )
 

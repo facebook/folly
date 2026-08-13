@@ -17,6 +17,7 @@ fb_dirsync_cpp_library(
         "//folly:memory",
     ],
     exported_deps = [
+        "fbsource//third-party/libsodium:sodium",
         ":blake2xb",
         "//folly:optional",
         "//folly:range",
@@ -26,9 +27,6 @@ fb_dirsync_cpp_library(
         "//folly/crypto/detail:math_operation_sse2_disable",  # @manual
         "//folly/io:iobuf",
         "//folly/lang:bits",
-    ],
-    exported_external_deps = [
-        ("libsodium", None, "sodium"),
     ],
 )
 
@@ -47,6 +45,7 @@ fb_dirsync_cpp_library(
         "//folly:memory",
     ],
     exported_deps = [
+        "fbsource//third-party/libsodium:sodium",
         ":blake2xb",
         "//folly:optional",
         "//folly:range",
@@ -56,9 +55,6 @@ fb_dirsync_cpp_library(
         "//folly/crypto/detail:math_operation_sse2",  # @manual
         "//folly/io:iobuf",
         "//folly/lang:bits",
-    ],
-    exported_external_deps = [
-        ("libsodium", None, "sodium"),
     ],
 )
 
@@ -75,10 +71,8 @@ fb_dirsync_cpp_library(
         "//folly/lang:bits",
     ],
     exported_deps = [
+        "fbsource//third-party/libsodium:sodium",
         "//folly:range",
-    ],
-    exported_external_deps = [
-        ("libsodium", None, "sodium"),
     ],
 )
 
@@ -97,6 +91,7 @@ fb_dirsync_cpp_library(
         "//folly:memory",
     ],
     exported_deps = [
+        "fbsource//third-party/libsodium:sodium",
         ":blake2xb",
         "//folly:optional",
         "//folly:range",
@@ -106,8 +101,5 @@ fb_dirsync_cpp_library(
         "//folly/crypto/detail:math_operation_sse2",  # @manual
         "//folly/io:iobuf",
         "//folly/lang:bits",
-    ],
-    exported_external_deps = [
-        ("libsodium", None, "sodium"),
     ],
 )

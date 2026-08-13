@@ -47,6 +47,10 @@ folly_add_library(
     folly_crypto_detail_lt_hash_internal
     folly_lang_bits
     folly_memory
+  EXTERNAL_DEPS
+    ${LIBSODIUM_LIBRARIES}
+  EXTERNAL_INCLUDE_DIRS
+    ${LIBSODIUM_INCLUDE_DIRS}
 )
 
 if (IS_X86_64_ARCH)
@@ -62,6 +66,10 @@ folly_add_library(
     folly_crypto_detail_lt_hash_internal
     folly_lang_bits
     folly_memory
+  EXTERNAL_DEPS
+    ${LIBSODIUM_LIBRARIES}
+  EXTERNAL_INCLUDE_DIRS
+    ${LIBSODIUM_INCLUDE_DIRS}
 )
 
 if (IS_X86_64_ARCH)
@@ -78,6 +86,10 @@ folly_add_library(
     folly_crypto_detail_lt_hash_internal
     folly_lang_bits
     folly_memory
+  EXTERNAL_DEPS
+    ${LIBSODIUM_LIBRARIES}
+  EXTERNAL_INCLUDE_DIRS
+    ${LIBSODIUM_INCLUDE_DIRS}
 )
 
 folly_add_library(
@@ -89,4 +101,8 @@ folly_add_library(
     folly_crypto_detail_lt_hash_internal
     folly_lang_bits
     folly_memory
+  EXTERNAL_DEPS
+    ${LIBSODIUM_LIBRARIES}
+  EXTERNAL_INCLUDE_DIRS
+    ${LIBSODIUM_INCLUDE_DIRS}
 )
