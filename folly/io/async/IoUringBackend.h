@@ -82,7 +82,6 @@ class IoUringBackend : public EventBaseBackendBase {
   bool useReqBatching() const {
     return options_.timeout.count() > 0 && options_.batchSize > 0;
   }
-  bool supportAsyncSocket() { return options_.nativeAsyncSocketSupport; }
   bool useBundles() const {
     return options_.providedBufUseBundles &&
         (params_.features & IORING_FEAT_RECVSEND_BUNDLE);
