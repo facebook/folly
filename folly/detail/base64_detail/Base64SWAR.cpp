@@ -17,7 +17,6 @@
 #include <array>
 #include <cstring>
 #include <folly/Portability.h>
-#include <folly/detail/base64_detail/Base64Constants.h>
 #include <folly/detail/base64_detail/Base64HiddenConstants.h>
 #include <folly/detail/base64_detail/Base64SWAR.h>
 #include <folly/detail/base64_detail/Base64Scalar.h>
