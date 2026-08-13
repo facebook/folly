@@ -205,6 +205,7 @@ folly_add_library(
   HEADERS
     PThread.h
   DEPS
+    Boost::headers
     folly_lang_assume
   EXPORTED_DEPS
     folly_portability
@@ -212,8 +213,6 @@ folly_add_library(
     folly_portability_sched
     folly_portability_time
     folly_portability_windows
-  EXTERNAL_DEPS
-    Boost::headers
 )
 if(WIN32)
   target_link_libraries(folly_portability_pthread_obj PUBLIC Boost::thread)
