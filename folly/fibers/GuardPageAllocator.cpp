@@ -313,8 +313,12 @@ void dumpFiberOverflowStack() {
   if (dumping.exchange(true)) {
     return;
   }
+  // Static, not a local: this runs on the small per-fiber sigaltstack. Safe
+  // only because `dumping` above is never cleared, so this is single-entry for
+  // the life of the process -- if that ever changes, this must go back on the
+  // stack.
   constexpr size_t kMaxAddresses = 100;
-  uintptr_t addresses[kMaxAddresses];
+  static uintptr_t addresses[kMaxAddresses];
   const ssize_t n =
       folly::symbolizer::getStackTraceSafe(addresses, kMaxAddresses);
   if (n <= 0) {
