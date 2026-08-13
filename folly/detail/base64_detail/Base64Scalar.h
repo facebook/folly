@@ -82,6 +82,15 @@ struct Base64ScalarImpl {
   }
 
   static constexpr char* encode(const char* f, const char* l, char* o) {
+    // clang-21+ over-vectorizes this small scalar loop, spilling ~768B onto the
+    // stack (frame 168B -> 936B at -O3) with no throughput benefit -- the bulk
+    // path uses explicit SIMD intrinsics and is unaffected. Disable
+    // auto-vectorization for just this loop; revert once the underlying LLVM
+    // codegen bug is fixed and backported to llvm-fb:21.
+    // FIXME(T284058114)
+#if defined(__clang__)
+#pragma clang loop vectorize(disable) interleave(disable)
+#endif
     while ((l - f) >= 3) {
       std::uint8_t aaab = f[0];
       std::uint8_t bbcc = f[1];
