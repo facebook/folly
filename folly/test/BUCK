@@ -357,13 +357,11 @@ fb_dirsync_cpp_benchmark(
     name = "conv_benchmark",
     srcs = ["ConvBenchmark.cpp"],
     deps = [
+        "fbsource//third-party/boost:boost_lexical_cast",  # @manual
         "//folly:benchmark",
         "//folly:conv",
         "//folly/container:foreach",
         "//folly/lang:to_ascii",
-    ],
-    external_deps = [
-        ("boost", None, "boost_lexical_cast"),
     ],
 )
 
@@ -577,6 +575,7 @@ fb_dirsync_cpp_unittest(
     srcs = ["FBStringTest.cpp"],
     allocator = "jemalloc",
     deps = [
+        "fbsource//third-party/boost:boost_algorithm",  # @manual
         "fbsource//third-party/glog:glog",
         ":test_utils",
         "//folly:conv",
@@ -586,9 +585,6 @@ fb_dirsync_cpp_unittest(
         "//folly:utility",
         "//folly/container:foreach",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        ("boost", None, "boost_algorithm"),
     ],
 )
 
@@ -633,6 +629,7 @@ fb_dirsync_cpp_unittest(
         "FOLLY_FILE_LOCK_TEST_HELPER": "$(exe_target :file_test_lock_helper)",
     },
     deps = [
+        "fbsource//third-party/boost:boost_thread",  # @manual
         "fbsource//third-party/glog:glog",
         "//folly:file",
         "//folly:string",
@@ -641,9 +638,6 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/testing:test_util",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
     ],
 )
 
@@ -1106,6 +1100,7 @@ fb_dirsync_cpp_unittest(
     srcs = ["MPMCQueueTest.cpp"],
     labels = ["heavyweight"],
     deps = [
+        "fbsource//third-party/boost:boost",  # @manual
         "fbsource//third-party/fmt:fmt",
         ":deterministic_schedule",
         "//folly:format",
@@ -1116,9 +1111,6 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:sys_time",
         "//folly/portability:unistd",
         "//folly/synchronization/test:barrier",
-    ],
-    external_deps = [
-        "boost",
     ],
 )
 
@@ -1186,12 +1178,10 @@ fb_dirsync_cpp_unittest(
     name = "overload_test",
     srcs = ["OverloadTest.cpp"],
     deps = [
+        "fbsource//third-party/boost:boost_variant",  # @manual
         "//folly:discriminated_ptr",
         "//folly:overload",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        ("boost", None, "boost_variant"),
     ],
 )
 
@@ -1301,6 +1291,8 @@ fb_dirsync_cpp_unittest(
         ],
     }),
     deps = [
+        "fbsource//third-party/boost:boost_algorithm",  # @manual
+        "fbsource//third-party/boost:boost_range",  # @manual
         "fbsource//third-party/range-v3:range-v3",
         "//folly:memory",
         "//folly:range",
@@ -1310,10 +1302,6 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:gtest",
         "//folly/portability:sys_mman",
         "//folly/portability:unistd",
-    ],
-    external_deps = [
-        ("boost", None, "boost_algorithm"),
-        ("boost", None, "boost_range"),
     ],
 )
 
@@ -1339,6 +1327,7 @@ fb_dirsync_cpp_unittest(
     }),
     labels = ["heavyweight"],
     deps = [
+        "fbsource//third-party/boost:boost_thread",  # @manual
         ":deterministic_schedule",
         ":test_utils",
         "//folly:benchmark",
@@ -1349,9 +1338,6 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:gflags",
         "//folly/portability:gtest",
         "//folly/synchronization:rw_spin_lock",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
     ],
 )
 
@@ -1482,13 +1468,13 @@ fb_dirsync_cpp_benchmark(
         "--json",
     ],
     deps = [
+        "fbsource//third-party/boost:boost_algorithm",  # @manual
         "fbsource//third-party/fmt:fmt",
         "//folly:benchmark",
         "//folly:format",
         "//folly:random",
         "//folly:string",
     ],
-    external_deps = [("boost", None, "boost_algorithm")],
 )
 
 fb_dirsync_cpp_benchmark(
@@ -1506,6 +1492,7 @@ fb_dirsync_cpp_unittest(
     name = "string_test",
     srcs = ["StringTest.cpp"],
     deps = [
+        "fbsource//third-party/boost:boost_regex",  # @manual
         "fbsource//third-party/glog:glog",
         ":test_utils",
         "//folly:fbvector",
@@ -1513,9 +1500,6 @@ fb_dirsync_cpp_unittest(
         "//folly/container:array",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        ("boost", None, "boost_regex"),
     ],
 )
 
@@ -1536,6 +1520,7 @@ fb_dirsync_cpp_unittest(
         ":subprocess_test_parent_death_helper",
     ],
     deps = [
+        "fbsource//third-party/boost:boost_container",  # @manual
         "fbsource//third-party/glog:glog",
         ":subprocess_test_parent_death_helper",  # @manual
         "//folly:exception",
@@ -1554,9 +1539,6 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:sys_syscall",
         "//folly/portability:unistd",
         "//folly/testing:test_util",
-    ],
-    external_deps = [
-        ("boost", None, "boost_container"),
     ],
 )
 
@@ -1658,15 +1640,13 @@ fb_dirsync_cpp_benchmark(
     name = "thread_local_benchmark",
     srcs = ["ThreadLocalBenchmark.cpp"],
     deps = [
+        "fbsource//third-party/boost:boost_thread",  # @manual
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:thread_local",
         "//folly/lang:keep",
         "//folly/portability:gflags",
         "//folly/synchronization:latch",
-    ],
-    external_deps = [
-        ("boost", None, "boost_thread"),
     ],
 )
 
@@ -1789,12 +1769,10 @@ fb_dirsync_cpp_unittest(
     name = "uri_test",
     srcs = ["UriTest.cpp"],
     deps = [
+        "fbsource//third-party/boost:boost_algorithm",  # @manual
         "fbsource//third-party/glog:glog",
         "//folly:uri",
         "//folly/portability:gtest",
-    ],
-    external_deps = [
-        ("boost", None, "boost_algorithm"),
     ],
 )
 
