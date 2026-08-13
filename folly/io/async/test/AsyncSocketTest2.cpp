@@ -249,7 +249,6 @@ class AsyncSocketTest : public ::testing::TestWithParam<BackendType> {
                 []() -> std::unique_ptr<EventBaseBackendBase> {
                   IoUringBackend::Options options;
                   options.setInitialProvidedBuffers(2048, 2000);
-                  options.setNativeAsyncSocketSupport(true);
                   return std::make_unique<IoUringBackend>(std::move(options));
                 }));
       } catch (IoUringBackend::NotAvailable const&) {
@@ -268,7 +267,6 @@ class AsyncSocketTest : public ::testing::TestWithParam<BackendType> {
           []() -> std::unique_ptr<EventBaseBackendBase> {
             IoUringBackend::Options options;
             options.setInitialProvidedBuffers(2048, 2000);
-            options.setNativeAsyncSocketSupport(true);
             return std::make_unique<IoUringBackend>(std::move(options));
           }));
     } else {
@@ -455,7 +453,6 @@ class AsyncSocketConnectTFOTest
                 []() -> std::unique_ptr<EventBaseBackendBase> {
                   IoUringBackend::Options options;
                   options.setInitialProvidedBuffers(2048, 2000);
-                  options.setNativeAsyncSocketSupport(true);
                   return std::make_unique<IoUringBackend>(std::move(options));
                 }));
       } catch (IoUringBackend::NotAvailable const&) {
@@ -781,7 +778,6 @@ class AsyncSocketToSTest : public ::testing::TestWithParam<BackendType> {
             std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
                 []() -> std::unique_ptr<EventBaseBackendBase> {
                   IoUringBackend::Options options;
-                  options.setNativeAsyncSocketSupport(true);
                   return std::make_unique<IoUringBackend>(std::move(options));
                 }));
       } catch (IoUringBackend::NotAvailable const&) {
@@ -4790,7 +4786,6 @@ TEST(
     evb = std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
         []() -> std::unique_ptr<EventBaseBackendBase> {
           IoUringBackend::Options options;
-          options.setNativeAsyncSocketSupport(true);
           return std::make_unique<IoUringBackend>(std::move(options));
         }));
   } catch (IoUringBackend::NotAvailable const&) {
@@ -8691,7 +8686,6 @@ TEST_F(AsyncSocketByteEventTest, EnableByteEventsThrowsWithIoUringBackend) {
     evb = std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
         []() -> std::unique_ptr<EventBaseBackendBase> {
           IoUringBackend::Options options;
-          options.setNativeAsyncSocketSupport(true);
           return std::make_unique<IoUringBackend>(std::move(options));
         }));
   } catch (IoUringBackend::NotAvailable const&) {
