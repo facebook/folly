@@ -151,8 +151,7 @@ using ZeroCopyMMapMemStore = ZeroCopyMMapMemStoreFallback;
 
 #if FOLLY_HAS_LIBURING
 bool checkIoUringBackend(folly::EventBase* evb) {
-  auto backend = dynamic_cast<folly::IoUringBackend*>(evb->getBackend());
-  return backend != nullptr && backend->supportAsyncSocket();
+  return dynamic_cast<folly::IoUringBackend*>(evb->getBackend()) != nullptr;
 }
 #else
 bool checkIoUringBackend(folly::EventBase*) {
