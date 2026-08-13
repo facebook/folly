@@ -11446,3 +11446,98 @@ TEST_P(AsyncSocketTest, MoveSocketWithActiveRead) {
   movedSock->close();
   socket->close();
 }
+
+TEST_P(AsyncSocketTest, PreReceivedDataOrderedBeforeRecvAcrossMove) {
+  TestServer server;
+  EventBase& evb = getEventBase();
+
+  auto socket = AsyncSocket::newSocket(&evb);
+  ConnCallback connCb;
+  socket->connect(&connCb, server.getAddress(), 30);
+  evb.loop();
+  ASSERT_EQ(connCb.state, STATE_SUCCEEDED);
+
+  auto acceptedFd = server.acceptFD();
+  auto serverSock = AsyncSocket::UniquePtr(new AsyncSocket(&evb, acceptedFd));
+
+  const std::string pre = "PRE";
+  serverSock->setPreReceivedData(IOBuf::copyBuffer(pre.data(), pre.size()));
+
+  auto movedSock = AsyncSocket::UniquePtr(new AsyncSocket(serverSock.get()));
+  serverSock.reset();
+
+  const std::string wire = "WIRE";
+  ReadCallback readCb;
+  readCb.dataAvailableCallback = [&] {
+    if (readCb.dataRead() >= pre.size() + wire.size()) {
+      evb.terminateLoopSoon();
+    }
+  };
+  movedSock->setReadCB(&readCb);
+
+  WriteCallback writeCb;
+  socket->write(&writeCb, wire.data(), wire.size());
+  evb.loop();
+
+  readCb.verifyData((pre + wire).data(), pre.size() + wire.size());
+
+  movedSock->close();
+  socket->close();
+}
+
+TEST_P(AsyncSocketTest, MoveEventBaseWithActiveRead) {
+  if (GetParam() != BackendType::IO_URING) {
+    GTEST_SKIP() << "io_uring recv-handle detach/clone across EventBases";
+  }
+
+  TestServer server;
+  EventBase& evb = getEventBase();
+  auto evb2 = makeEventBase();
+
+  auto socket = AsyncSocket::newSocket(&evb);
+  ConnCallback connCb;
+  socket->connect(&connCb, server.getAddress(), 30);
+  evb.loop();
+  ASSERT_EQ(connCb.state, STATE_SUCCEEDED);
+
+  auto acceptedFd = server.acceptFD();
+  auto serverSock = AsyncSocket::UniquePtr(new AsyncSocket(&evb, acceptedFd));
+
+  ReadCallback readCb;
+  readCb.dataAvailableCallback = [&] { evb.terminateLoopSoon(); };
+  serverSock->setReadCB(&readCb);
+
+  const std::string first = "first";
+  WriteCallback writeCb;
+  socket->write(&writeCb, first.data(), first.size());
+  evb.loop();
+  ASSERT_EQ(readCb.dataRead(), first.size());
+
+  const std::string second = "second";
+  const size_t want = first.size() + second.size();
+  readCb.dataAvailableCallback = [&] {
+    if (readCb.dataRead() >= want) {
+      evb2->terminateLoopSoon();
+    }
+  };
+
+  ASSERT_TRUE(serverSock->isDetachable());
+  serverSock->detachEventBase();
+  serverSock->attachEventBase(evb2.get());
+
+  socket->write(&writeCb, second.data(), second.size());
+
+  for (int i = 0; i < 50 && readCb.dataRead() < want; ++i) {
+    evb.runAfterDelay([&] { evb.terminateLoopSoon(); }, 20);
+    evb.loop();
+    evb2->runAfterDelay([&] { evb2->terminateLoopSoon(); }, 20);
+    evb2->loop();
+  }
+
+  readCb.verifyData((first + second).data(), want);
+
+  serverSock->detachEventBase();
+  serverSock->attachEventBase(&evb);
+  serverSock->close();
+  socket->close();
+}
