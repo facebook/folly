@@ -37,11 +37,10 @@ folly_add_library(
   HEADERS
     BitIterator.h
   EXPORTED_DEPS
+    Boost::headers
     folly_container_detail_bit_iterator_detail
     folly_lang_bits
     folly_portability
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(
@@ -76,11 +75,10 @@ folly_add_library(
   HEADERS
     EvictingCacheMap.h
   EXPORTED_DEPS
+    Boost::headers
     folly_container_f14_hash
     folly_container_heterogeneous_access
     folly_lang_exception
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(
@@ -194,17 +192,16 @@ folly_add_library(
     IntrusiveHeap.h
   EXPORTED_DEPS
     ${GLOG_LIBRARIES}
+    Boost::headers
     folly_lang_builtin
     folly_portability
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(
   NAME intrusive_list
   HEADERS
     IntrusiveList.h
-  EXTERNAL_DEPS
+  EXPORTED_DEPS
     Boost::headers
 )
 
@@ -260,6 +257,7 @@ folly_add_library(
     RegexMatchCache.h
   DEPS
     ${GLOG_LIBRARIES}
+    Boost::regex
     fmt::fmt
     folly_map_util
     folly_portability_windows
@@ -272,9 +270,8 @@ folly_add_library(
     folly_function
     folly_hash_unique_hash_key
     folly_lang_bits
-  EXTERNAL_DEPS
-    Boost::regex
 )
+set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::regex)
 
 folly_add_library(
   NAME reserve
@@ -292,6 +289,7 @@ folly_add_library(
   HEADERS
     small_vector.h
   EXPORTED_DEPS
+    Boost::headers
     folly_constexpr_math
     folly_format_traits
     folly_functional_invoke
@@ -307,8 +305,6 @@ folly_add_library(
     folly_portability_malloc
     folly_scope_guard
     folly_traits
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(

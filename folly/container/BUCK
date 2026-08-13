@@ -122,12 +122,10 @@ fb_dirsync_cpp_library(
     compiler_flags = ["-fno-omit-frame-pointer"],
     use_raw_headers = True,
     exported_deps = [
+        "fbsource//third-party/boost:boost",
         "//folly/container:f14_hash",
         "//folly/container:heterogeneous_access",
         "//folly/lang:exception",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
@@ -202,12 +200,10 @@ fb_dirsync_cpp_library(
     headers = ["BitIterator.h"],
     use_raw_headers = True,
     exported_deps = [
+        "fbsource//third-party/boost:boost",
         "//folly:portability",
         "//folly/container/detail:bit_iterator_detail",
         "//folly/lang:bits",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
@@ -259,12 +255,10 @@ fb_dirsync_cpp_library(
     ],
     use_raw_headers = True,
     exported_deps = [
+        "fbsource//third-party/boost:boost",
         "fbsource//third-party/glog:glog",
         "//folly:portability",
         "//folly/lang:builtin",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
@@ -284,6 +278,7 @@ fb_dirsync_cpp_library(
     headers = ["RegexMatchCache.h"],
     use_raw_headers = True,
     deps = [
+        "fbsource//third-party/boost:boost_regex",
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
         "//folly:map_util",
@@ -298,9 +293,6 @@ fb_dirsync_cpp_library(
         "//folly:function",
         "//folly/hash:unique_hash_key",
         "//folly/lang:bits",
-    ],
-    external_deps = [
-        ("boost", None, "boost_regex"),
     ],
 )
 
@@ -399,9 +391,7 @@ fb_dirsync_cpp_library(
     headers = ["IntrusiveList.h"],
     compiler_flags = ["-fno-omit-frame-pointer"],
     use_raw_headers = True,
-    exported_external_deps = [
-        "boost",
-    ],
+    exported_deps = ["fbsource//third-party/boost:boost"],
 )
 
 fb_dirsync_cpp_library(
@@ -422,6 +412,7 @@ fb_dirsync_cpp_library(
     compiler_flags = ["-fno-omit-frame-pointer"],
     use_raw_headers = True,
     exported_deps = [
+        "fbsource//third-party/boost:boost",
         "//folly:constexpr_math",
         "//folly:format_traits",
         "//folly:likely",
@@ -437,9 +428,6 @@ fb_dirsync_cpp_library(
         "//folly/memory:malloc",
         "//folly/memory:sanitize_leak",
         "//folly/portability:malloc",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
