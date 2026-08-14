@@ -720,41 +720,19 @@ class CursorBase {
     // We might be at the end of buffer.
     advanceBufferIfEmpty();
 
-    std::unique_ptr<folly::IOBuf> tmp;
     size_t copied = 0;
-    for (int loopCount = 0; true; ++loopCount) {
+    for (bool first = true;; first = false) {
       // Fast path: it all fits in one buffer.
-      size_t available = length();
+      const size_t available = length();
       if (FOLLY_LIKELY(available >= len)) {
-        if (loopCount == 0) {
-          crtBuf_->cloneOneInto(buf);
-          buf.trimStart(crtPos_ - crtBegin_);
-          buf.trimEnd(buf.length() - len);
-        } else {
-          tmp = crtBuf_->cloneOne();
-          tmp->trimStart(crtPos_ - crtBegin_);
-          tmp->trimEnd(tmp->length() - len);
-          buf.prependChain(std::move(tmp));
-        }
-
-        crtPos_ += len;
+        shareCurrent(buf, len, first);
         advanceBufferIfEmpty();
         return copied + len;
       }
 
       // A bounded cursor can stop short of the end of the buffer, in which
       // case the clone must stop there too.
-      if (loopCount == 0) {
-        crtBuf_->cloneOneInto(buf);
-        buf.trimStart(crtPos_ - crtBegin_);
-        buf.trimEnd(buf.length() - available);
-      } else {
-        tmp = crtBuf_->cloneOne();
-        tmp->trimStart(crtPos_ - crtBegin_);
-        tmp->trimEnd(tmp->length() - available);
-        buf.prependChain(std::move(tmp));
-      }
-
+      shareCurrent(buf, available, first);
       copied += available;
       if (FOLLY_UNLIKELY(!tryAdvanceBuffer())) {
         return copied;
@@ -1014,6 +992,24 @@ class CursorBase {
   }
 
   void advanceDone() {}
+
+  // Places one piece of a clone: the first piece becomes the destination
+  // itself, later ones are chained onto it. The piece points at the n bytes
+  // under the cursor, which stay alive only as long as the buffer holding
+  // them does.
+  void shareCurrent(folly::IOBuf& buf, size_t n, bool first) {
+    if (first) {
+      crtBuf_->cloneOneInto(buf);
+      buf.trimStart(crtPos_ - crtBegin_);
+      buf.trimEnd(buf.length() - n);
+    } else {
+      auto piece = crtBuf_->cloneOne();
+      piece->trimStart(crtPos_ - crtBegin_);
+      piece->trimEnd(piece->length() - n);
+      buf.prependChain(std::move(piece));
+    }
+    crtPos_ += n;
+  }
 
   FOLLY_NOINLINE size_t peekBytesSlow() {
     size_t available = 0;
