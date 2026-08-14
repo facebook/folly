@@ -49,7 +49,6 @@
 #endif
 #endif
 
-#include <folly/lang/Exception.h> /* nolint */
 #include <folly/memory/detail/MallocImpl.h> /* nolint */
 
 #include <cassert>
