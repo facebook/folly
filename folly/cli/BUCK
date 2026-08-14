@@ -45,7 +45,6 @@ fb_dirsync_cpp_library(
         "//folly:string",
         "//folly/portability:gflags",
     ],
-    external_deps = ["gflags"],
 )
 
 fb_dirsync_cpp_library(

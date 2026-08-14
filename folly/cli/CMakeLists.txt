@@ -54,8 +54,6 @@ folly_add_library(
     folly_optional
     folly_portability_gflags
     folly_string
-  EXTERNAL_DEPS
-    ${GFLAGS_LIBRARIES}
 )
 set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::program_options)
 
