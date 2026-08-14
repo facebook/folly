@@ -1613,6 +1613,42 @@ TEST_P(AsyncSocketConnectTFOTest, ConnectWriteAndRead) {
 }
 
 /**
+ * Installing a read callback after the peer has shut down its write side must
+ * be reported through readErr(), not by aborting. invalidState() runs the
+ * failure path, which can destroy the socket via its callbacks, so setReadCB()
+ * has to hold a DestructorGuard before it -- including on the early-return
+ * path taken when SHUT_READ is already set.
+ */
+TEST_P(AsyncSocketTest, SetReadCallbackAfterEOFReportsError) {
+  TestServer server;
+
+  EventBase& evb = getEventBase();
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+
+  ReadCallback rcb;
+  socket->setReadCB(&rcb);
+
+  // Send a FIN so the socket sees EOF and marks reads shut down while it is
+  // otherwise still established.
+  std::shared_ptr<BlockingSocket> acceptedSocket = server.accept();
+  netops::shutdown(acceptedSocket->getNetworkSocket(), SHUT_WR);
+
+  evb.loop();
+
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+  ASSERT_EQ(rcb.state, STATE_SUCCEEDED); // readEOF()
+
+  ReadCallback rcb2;
+  socket->setReadCB(&rcb2);
+  EXPECT_EQ(rcb2.state, STATE_FAILED);
+  EXPECT_EQ(rcb2.exception.getType(), AsyncSocketException::NOT_OPEN);
+
+  socket->close();
+}
+
+/**
  * Test writing to the socket then shutting down writes before the connect
  * attempt finishes.
  */
