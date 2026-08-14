@@ -434,16 +434,15 @@ RequestContext::State::insertNewData(
     cur->acquireDataRefs();
   }
   if (data && data->hasCallback()) {
-    // If data has callback, insert in callback structure, call onSet.
-    bool inserted = cur->callbackData_.template insert<true>(data.get(), true);
+    // If data has callback, insert in callback structure, call onSet
+    bool inserted = cur->callbackData_.insert(data.get(), true);
     DCHECK(inserted);
     data->onSet();
   }
   if (data) {
     data->acquireRef();
   }
-  bool inserted =
-      cur->requestData_.template insert<true>(token, data.release());
+  bool inserted = cur->requestData_.insert(token, data.release());
   DCHECK(inserted);
   return newCombined;
 }
