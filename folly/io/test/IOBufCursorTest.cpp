@@ -542,6 +542,153 @@ TEST(IOBuf, cloneStopsAtCursorBoundInChain) {
   EXPECT_EQ("hello wo", toString(cloned));
 }
 
+TEST(IOBuf, cloneManagedSharesManagedBuffers) {
+  auto iobuf = IOBuf::create(8);
+  append(iobuf, "hello");
+  auto tail = IOBuf::create(8);
+  append(tail, " world");
+  iobuf->appendToChain(std::move(tail));
+
+  IOBuf cloned;
+  Cursor(iobuf.get()).clone(cloned, 11, CloneOwnership::Managed);
+
+  // Managed data is shared, exactly as an ordinary clone would share it.
+  EXPECT_EQ(2, cloned.countChainElements());
+  EXPECT_TRUE(cloned.isShared());
+  EXPECT_EQ(iobuf->data(), cloned.data());
+  EXPECT_EQ("hello world", toString(cloned));
+}
+
+TEST(IOBuf, cloneManagedCopiesUnmanagedTightly) {
+  constexpr size_t kCapacity = 4096;
+  auto data = std::make_unique<char[]>(kCapacity);
+  memcpy(data.get(), "hello world", 11);
+  auto wrapped = IOBuf::wrapBuffer(data.get(), kCapacity);
+
+  IOBuf cloned;
+  Cursor cursor(wrapped.get());
+  cursor.skip(6);
+  cursor.clone(cloned, 5, CloneOwnership::Managed);
+
+  // The clone owns its data, and is sized by the cloned range rather than by
+  // the buffer that range came from.
+  EXPECT_TRUE(cloned.isManaged());
+  EXPECT_EQ(1, cloned.countChainElements());
+  EXPECT_LT(cloned.capacity(), kCapacity);
+
+  wrapped.reset();
+  data.reset();
+  EXPECT_EQ("world", toString(cloned));
+}
+
+TEST(IOBuf, cloneManagedMergesUnmanagedRuns) {
+  std::string he = "he", llo = "llo ", wor = "wor", ld = "ld";
+  auto chain = IOBuf::wrapBuffer(he.data(), he.size());
+  chain->appendToChain(IOBuf::wrapBuffer(llo.data(), llo.size()));
+  chain->appendToChain(IOBuf::copyBuffer(wor));
+  chain->appendToChain(IOBuf::wrapBuffer(ld.data(), ld.size()));
+
+  IOBuf cloned;
+  Cursor(chain.get()).clone(cloned, 11, CloneOwnership::Managed);
+
+  // The two adjacent unmanaged buffers are copied into one, so the chain has
+  // three elements rather than four, and the managed buffer between them is
+  // still shared rather than copied.
+  EXPECT_EQ(3, cloned.countChainElements());
+  EXPECT_EQ(6, cloned.length());
+  EXPECT_TRUE(cloned.isManaged());
+  EXPECT_EQ(chain->next()->next()->data(), cloned.next()->data());
+  EXPECT_EQ("hello world", toString(cloned));
+}
+
+TEST(IOBuf, cloneManagedSpansEmptyBuffers) {
+  // A chain can hold empty buffers; cloning has to look past one rather than
+  // treat it as the end of the data.
+  auto chain = IOBuf::copyBuffer(StringPiece("hello"));
+  chain->appendToChain(IOBuf::create(0));
+  chain->appendToChain(IOBuf::copyBuffer(StringPiece(" world")));
+
+  IOBuf cloned;
+  EXPECT_EQ(
+      11, Cursor(chain.get()).cloneAtMost(cloned, 11, CloneOwnership::Managed));
+  EXPECT_EQ("hello world", toString(cloned));
+}
+
+TEST(IOBuf, cloneManagedSpansEmptyUnmanagedBuffer) {
+  // An empty buffer between a run to copy and a buffer to share: the decision
+  // has to be made on the buffer holding the next byte, not on the empty one.
+  std::string hello = "hello";
+  auto chain = IOBuf::wrapBuffer(hello.data(), hello.size());
+  chain->appendToChain(IOBuf::wrapBuffer(hello.data(), 0));
+  chain->appendToChain(IOBuf::copyBuffer(StringPiece(" world")));
+
+  IOBuf cloned;
+  EXPECT_EQ(
+      11, Cursor(chain.get()).cloneAtMost(cloned, 11, CloneOwnership::Managed));
+  EXPECT_EQ("hello world", toString(cloned));
+}
+
+TEST(IOBuf, cloneManagedStopsAtCursorBound) {
+  std::string data(30, 'x');
+  auto chain = IOBuf::wrapBuffer(data.data(), 10);
+  chain->appendToChain(IOBuf::wrapBuffer(data.data() + 10, 10));
+  chain->appendToChain(IOBuf::wrapBuffer(data.data() + 20, 10));
+
+  // The bound falls inside the second buffer, so the copy has to stop there
+  // rather than run to the end of the chain.
+  Cursor cursor(chain.get(), 15);
+  IOBuf cloned;
+  EXPECT_EQ(15, cursor.cloneAtMost(cloned, 30, CloneOwnership::Managed));
+  EXPECT_EQ(15, cloned.computeChainDataLength());
+  EXPECT_TRUE(cloned.isManaged());
+}
+
+TEST(IOBuf, cloneManagedIntoSourceBuffer) {
+  // The destination may be the very buffer the cursor is reading from.
+  std::string storage = "hello world";
+  auto buf = IOBuf::wrapBuffer(storage.data(), storage.size());
+
+  Cursor cursor(buf.get());
+  EXPECT_EQ(11, cursor.cloneAtMost(*buf, 11, CloneOwnership::Managed));
+  EXPECT_TRUE(buf->isManaged());
+  std::fill(storage.begin(), storage.end(), '\xff');
+  EXPECT_EQ("hello world", toString(*buf));
+}
+
+TEST(IOBuf, cloneManagedIntoSourceChainHead) {
+  std::string storage = "hello world";
+  auto chain = IOBuf::wrapBuffer(storage.data(), 5);
+  chain->appendToChain(IOBuf::wrapBuffer(storage.data() + 5, 6));
+
+  // Same, with the destination the head of the chain being read.
+  Cursor cursor(chain.get());
+  EXPECT_EQ(11, cursor.cloneAtMost(*chain, 11, CloneOwnership::Managed));
+  EXPECT_TRUE(chain->isManaged());
+  std::fill(storage.begin(), storage.end(), '\xff');
+  EXPECT_EQ("hello world", toString(*chain));
+}
+
+TEST(IOBuf, cloneManagedTruncated) {
+  std::string data = "hello";
+  auto wrapped = IOBuf::wrapBuffer(data.data(), data.size());
+
+  IOBuf cloned;
+  EXPECT_EQ(
+      5,
+      Cursor(wrapped.get()).cloneAtMost(cloned, 20, CloneOwnership::Managed));
+  EXPECT_TRUE(cloned.isManaged());
+  EXPECT_EQ("hello", toString(cloned));
+
+  EXPECT_THROW(
+      Cursor(wrapped.get()).clone(cloned, 20, CloneOwnership::Managed),
+      std::out_of_range);
+
+  std::unique_ptr<IOBuf> owned;
+  Cursor(wrapped.get()).clone(owned, 5, CloneOwnership::Managed);
+  EXPECT_TRUE(owned->isManaged());
+  EXPECT_EQ("hello", toString(*owned));
+}
+
 TEST(IOBuf, Appender) {
   std::unique_ptr<IOBuf> head(IOBuf::create(10));
   append(head, "hello");

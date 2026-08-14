@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <vector>
+
 #include <folly/Benchmark.h>
 #include <folly/Format.h>
 #include <folly/Range.h>
@@ -126,6 +128,66 @@ BENCHMARK(cloneBenchmark, iters) {
       c.clone(out, 1);
     }
   }
+}
+
+namespace {
+
+// Clones `len` bytes out of an input laid out as `chunkSize` chunks, each
+// either owned by IOBuf or wrapping memory that it does not own.
+void runCloneOwnershipBenchmark(
+    size_t iters,
+    size_t len,
+    size_t chunkSize,
+    bool managedInput,
+    CloneOwnership ownership) {
+  folly::BenchmarkSuspender braces;
+  std::vector<char> storage(len);
+  unique_ptr<IOBuf> input;
+  for (size_t offset = 0; offset < storage.size(); offset += chunkSize) {
+    const size_t n = std::min(chunkSize, storage.size() - offset);
+    auto buf = managedInput
+        ? IOBuf::copyBuffer(storage.data() + offset, n)
+        : IOBuf::wrapBuffer(storage.data() + offset, n);
+    if (input) {
+      input->appendToChain(std::move(buf));
+    } else {
+      input = std::move(buf);
+    }
+  }
+  folly::IOBuf out;
+  braces.dismiss();
+  while (iters--) {
+    Cursor c(input.get());
+    c.clone(out, len, ownership);
+    folly::doNotOptimizeAway(out.length());
+  }
+  braces.rehire();
+}
+
+} // namespace
+
+BENCHMARK(cloneSharedFromUnmanaged, iters) {
+  runCloneOwnershipBenchmark(iters, 64, 64, false, CloneOwnership::Shared);
+}
+
+BENCHMARK(cloneManagedFromUnmanaged, iters) {
+  runCloneOwnershipBenchmark(iters, 64, 64, false, CloneOwnership::Managed);
+}
+
+BENCHMARK(cloneSharedFromUnmanagedChain, iters) {
+  runCloneOwnershipBenchmark(iters, 4096, 512, false, CloneOwnership::Shared);
+}
+
+BENCHMARK(cloneManagedFromUnmanagedChain, iters) {
+  runCloneOwnershipBenchmark(iters, 4096, 512, false, CloneOwnership::Managed);
+}
+
+BENCHMARK(cloneSharedFromManagedChain, iters) {
+  runCloneOwnershipBenchmark(iters, 4096, 512, true, CloneOwnership::Shared);
+}
+
+BENCHMARK(cloneManagedFromManagedChain, iters) {
+  runCloneOwnershipBenchmark(iters, 4096, 512, true, CloneOwnership::Managed);
 }
 
 BENCHMARK(read, iters) {
