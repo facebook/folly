@@ -23,6 +23,7 @@ fb_dirsync_cpp_library(
     labels = ["EXCLUDED_FROM_LINK_GROUPS"],
     use_raw_headers = True,
     deps = [
+        "fbsource//third-party/glibc:dl",
         "fbsource//third-party/glog:glog",
         ":exception_abi",
         ":stacktrace",
@@ -32,9 +33,6 @@ fb_dirsync_cpp_library(
     ],
     exported_deps = [
         "//folly/portability:config",
-    ],
-    external_deps = [
-        ("glibc", None, "dl"),
     ],
 )
 
@@ -202,6 +200,7 @@ fb_dirsync_cpp_library(
     link_whole = True,
     supports_python_dlopen = True,
     deps = [
+        "fbsource//third-party/glibc:dl",
         "//folly:indestructible",
         "//folly:portability",
         "//folly:shared_mutex",
@@ -209,9 +208,6 @@ fb_dirsync_cpp_library(
     ],
     exported_deps = [
         ":compatibility",
-    ],
-    external_deps = [
-        ("glibc", None, "dl"),
     ],
 )
 

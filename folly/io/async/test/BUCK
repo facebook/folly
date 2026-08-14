@@ -247,6 +247,7 @@ fb_dirsync_cpp_unittest(
     labels = ["case-isolation-failure"],
     supports_static_listing = False,
     deps = [
+        "fbsource//third-party/glibc:rt",
         ":async_socket_test_lib",  # @manual
         ":blocking_socket",
         ":callback_state_enum",
@@ -275,9 +276,6 @@ fb_dirsync_cpp_unittest(
         "//folly/synchronization:rw_spin_lock",
         "//folly/test:socket_address_test_helper",
         "//folly/testing:test_util",
-    ],
-    external_deps = [
-        ("glibc", None, "rt"),
     ],
 )
 
@@ -940,6 +938,7 @@ fbcode_target(
     },
     supports_static_listing = False,
     deps = [
+        "fbsource//third-party/glibc:dl",
         ":async_ssl_socket_test_lib",  # @manual
         ":blocking_socket",
         ":mocks",
@@ -977,9 +976,6 @@ fbcode_target(
         "//folly/portability:string",
         "//folly/portability:unistd",
         "//folly/testing:test_util",
-    ],
-    external_deps = [
-        ("glibc", None, "dl"),
     ],
 )
 

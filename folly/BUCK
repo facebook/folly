@@ -349,7 +349,8 @@ fb_dirsync_cpp_library(
     platforms = (CXX, ANDROID, APPLE),
     use_raw_headers = True,
     deps = [
-        "fbsource//third-party/boost:boost_range",  # @manual
+        "fbsource//third-party/boost:boost_range",
+        "fbsource//third-party/glibc:dl",
         ":conv",
         ":scope_guard",
         ":string",
@@ -381,7 +382,6 @@ fb_dirsync_cpp_library(
         "//folly/io:iobuf",
         "//folly/portability:sys_resource",
     ],
-    external_deps = [("glibc", None, "dl")],
 )
 
 fb_dirsync_cpp_library(
@@ -2043,17 +2043,13 @@ fb_dirsync_cpp_library(
     cxx_deps = ["//third-party/toolchains:rt"],
     use_raw_headers = True,
     deps = [
+        "fbsource//third-party/glibc:dl",
         ":c_portability",
         ":likely",
     ],
     exported_deps = [
+        "fbsource//third-party/glibc:rt",
         "//folly/portability:time",
-    ],
-    external_deps = [
-        ("glibc", None, "dl"),
-    ],
-    exported_external_deps = [
-        ("glibc", None, "rt"),
     ],
 )
 

@@ -267,14 +267,12 @@ fb_dirsync_cpp_library(
         "//folly/lang:assume",
     ],
     exported_deps = [
+        "fbsource//third-party/glibc:pthread",
         ":config",
         ":sched",
         ":time",
         ":windows",
         "//folly:portability",
-    ],
-    exported_external_deps = [
-        ("glibc", None, "pthread"),
     ],
 )
 
@@ -395,10 +393,8 @@ fb_dirsync_cpp_library(
         "//folly:portability",
     ],
     exported_deps = [
+        "fbsource//third-party/glibc:rt",
         ":sys_types",
-    ],
-    exported_external_deps = [
-        ("glibc", None, "rt"),
     ],
 )
 
@@ -495,10 +491,8 @@ fb_dirsync_cpp_library(
         "//folly:utility",
     ],
     exported_deps = [
+        "fbsource//third-party/glibc:rt",
         ":config",
-    ],
-    exported_external_deps = [
-        ("glibc", None, "rt"),
     ],
 )
 
