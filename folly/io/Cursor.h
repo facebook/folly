@@ -742,12 +742,16 @@ class CursorBase {
         return copied + len;
       }
 
+      // A bounded cursor can stop short of the end of the buffer, in which
+      // case the clone must stop there too.
       if (loopCount == 0) {
         crtBuf_->cloneOneInto(buf);
         buf.trimStart(crtPos_ - crtBegin_);
+        buf.trimEnd(buf.length() - available);
       } else {
         tmp = crtBuf_->cloneOne();
         tmp->trimStart(crtPos_ - crtBegin_);
+        tmp->trimEnd(tmp->length() - available);
         buf.prependChain(std::move(tmp));
       }
 

@@ -514,6 +514,34 @@ TEST(IOBuf, cloneWithEmptyBufAtStart) {
   EXPECT_TRUE(eq(lo, cloned));
 }
 
+TEST(IOBuf, cloneStopsAtCursorBound) {
+  auto iobuf = IOBuf::create(16);
+  append(iobuf, "hello world");
+
+  // The clone must hold exactly the bytes the bounded cursor could read, and
+  // no more: anything past the bound is not this cursor's to hand out.
+  Cursor cursor(iobuf.get(), 5);
+  IOBuf cloned;
+  EXPECT_EQ(5, cursor.cloneAtMost(cloned, 8));
+  EXPECT_EQ(5, cloned.computeChainDataLength());
+  EXPECT_EQ("hello", toString(cloned));
+}
+
+TEST(IOBuf, cloneStopsAtCursorBoundInChain) {
+  auto chain = IOBuf::create(8);
+  append(chain, "hello");
+  auto tail = IOBuf::create(8);
+  append(tail, " world");
+  chain->appendToChain(std::move(tail));
+
+  // The bound falls inside the second buffer of the chain.
+  Cursor cursor(chain.get(), 8);
+  IOBuf cloned;
+  EXPECT_EQ(8, cursor.cloneAtMost(cloned, 11));
+  EXPECT_EQ(8, cloned.computeChainDataLength());
+  EXPECT_EQ("hello wo", toString(cloned));
+}
+
 TEST(IOBuf, Appender) {
   std::unique_ptr<IOBuf> head(IOBuf::create(10));
   append(head, "hello");
