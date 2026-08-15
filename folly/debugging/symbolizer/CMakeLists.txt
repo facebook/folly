@@ -76,14 +76,13 @@ folly_add_library(
     folly_portability_sys_mman
     folly_scope_guard
   EXPORTED_DEPS
+    Boost::headers
     folly_debugging_symbolizer_elf
     folly_hash_hash
     folly_memory_reentrant_allocator
     folly_optional
     folly_portability_config
     folly_range
-  EXTERNAL_DEPS
-    Boost::headers
 )
 
 folly_add_library(

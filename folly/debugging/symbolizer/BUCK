@@ -78,15 +78,13 @@ fb_dirsync_cpp_library(
         "//folly/portability:sys_mman",
     ],
     exported_deps = [
+        "fbsource//third-party/boost:boost",
         ":elf",
         "//folly:optional",
         "//folly:range",
         "//folly/hash:hash",
         "//folly/memory:reentrant_allocator",
         "//folly/portability:config",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
