@@ -49,6 +49,7 @@ fb_dirsync_cpp_library(
         "//folly/system:thread_name",
     ],
     exported_deps = [
+        "fbsource//third-party/boost:boost",  # @manual
         "fbsource//third-party/glog:glog",
         ":async_base_fwd",
         ":delayed_destruction",
@@ -88,9 +89,6 @@ fb_dirsync_cpp_library(
         "//folly/synchronization:baton",
         "//folly/synchronization:call_once",
         "//folly/system:pid",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
@@ -147,6 +145,7 @@ fb_dirsync_cpp_library(
     headers = ["AsyncSocket.h"],
     use_raw_headers = True,
     deps = [
+        "fbsource//third-party/boost:boost_preprocessor",  # @manual
         "fbsource//third-party/fmt:fmt",
         ":io_uring_backend",
         "//folly:exception",
@@ -181,9 +180,6 @@ fb_dirsync_cpp_library(
         "//folly/net:tcpinfo",
         "//folly/net:tcpinfo_dispatcher",
         "//folly/portability:sockets",
-    ],
-    external_deps = [
-        ("boost", None, "boost_preprocessor"),
     ],
 )
 
@@ -349,6 +345,7 @@ fb_dirsync_cpp_library(
     headers = ["AsyncUDPSocket.h"],
     use_raw_headers = True,
     deps = [
+        "fbsource//third-party/boost:boost_preprocessor",  # @manual
         "//folly:likely",
         "//folly:small_vector",
         "//folly:utility",
@@ -369,9 +366,6 @@ fb_dirsync_cpp_library(
         "//folly/net:net_ops",
         "//folly/net:net_ops_dispatcher",
         "//folly/net:network_socket",
-    ],
-    external_deps = [
-        ("boost", None, "boost_preprocessor"),
     ],
 )
 
@@ -638,6 +632,7 @@ fb_dirsync_cpp_library(
     headers = ["AsyncIO.h"],
     use_raw_headers = True,
     deps = [
+        "fbsource//third-party/boost:boost",  # @manual
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
         "//folly:exception",
@@ -652,9 +647,6 @@ fb_dirsync_cpp_library(
         "DEFAULT": [],
         "ovr_config//os:linux": ["fbsource//third-party/libaio:aio"],
     }),
-    external_deps = [
-        "boost",
-    ],
 )
 
 liburing_deps = select({
@@ -695,6 +687,7 @@ fb_dirsync_cpp_library(
         "//folly/portability:sys_uio",
     ],
     exported_deps = [
+        "fbsource//third-party/boost:boost",  # @manual
         ":async_base",
         ":async_socket",
         ":async_socket_exception",
@@ -710,9 +703,6 @@ fb_dirsync_cpp_library(
         "//folly/io:socket_option_map",
         "//folly/net:net_ops_dispatcher",
         "//folly/portability:sockets",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
@@ -777,6 +767,7 @@ fb_dirsync_cpp_library(
     headers = ["EventBasePoller.h"],
     use_raw_headers = True,
     deps = [
+        "fbsource//third-party/boost:boost",  # @manual
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
         "//folly:file_util",
@@ -792,9 +783,6 @@ fb_dirsync_cpp_library(
         "//folly:function",
         "//folly:range",
         "//folly:synchronized",
-    ],
-    external_deps = [
-        "boost",
     ],
 )
 
@@ -873,6 +861,7 @@ fb_dirsync_cpp_library(
         "//folly/tracing:static_tracepoint",
     ],
     exported_deps = [
+        "fbsource//third-party/boost:boost",  # @manual
         "fbsource//third-party/glog:glog",
         ":async_base",
         ":delayed_destruction",
@@ -891,9 +880,6 @@ fb_dirsync_cpp_library(
         "//folly/io:iobuf",
         "//folly/lang:bits",
         "//folly/portability:asm",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
@@ -915,14 +901,12 @@ fb_dirsync_cpp_library(
         "//folly/portability:sys_mman",
     ],
     exported_deps = [
+        "fbsource//third-party/boost:boost",  # @manual
         ":delayed_destruction",
         ":liburing",
         "//folly:expected",
         "//folly/io:iobuf",
         "//folly/synchronization:distributed_mutex",
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
