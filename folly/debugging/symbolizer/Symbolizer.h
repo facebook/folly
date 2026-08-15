@@ -28,6 +28,7 @@
 #include <folly/debugging/symbolizer/Dwarf.h>
 #include <folly/debugging/symbolizer/ElfCache.h>
 #include <folly/debugging/symbolizer/StackTrace.h>
+#include <folly/debugging/symbolizer/SymbolCache.h>
 #include <folly/debugging/symbolizer/SymbolizePrinter.h>
 #include <folly/debugging/symbolizer/SymbolizedFrame.h>
 #include <folly/io/IOBuf.h>
@@ -160,10 +161,7 @@ class Symbolizer {
   ElfCacheBase* const cache_;
   const LocationInfoMode mode_;
   const std::string exePath_;
-
-  // Details in cpp file to minimize header dependencies
-  struct SymbolCache;
-  std::unique_ptr<SymbolCache> symbolCache_;
+  std::unique_ptr<SymbolCacheBase> symbolCache_;
 };
 
 /**

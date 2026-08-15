@@ -131,6 +131,21 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "symbol_cache",
+    srcs = ["SymbolCache.cpp"],
+    headers = ["SymbolCache.h"],
+    use_raw_headers = True,
+    deps = [
+        "//folly:synchronized",
+        "//folly/container:evicting_cache_map",
+    ],
+    exported_deps = [
+        ":symbolized_frame",
+        "//folly:small_vector",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "symbolize_printer",
     exported_deps = [":symbolizer"],
 )
@@ -159,8 +174,6 @@ fb_dirsync_cpp_library(
         "//folly:portability",
         "//folly:scope_guard",
         "//folly:small_vector",
-        "//folly:synchronized",
-        "//folly/container:evicting_cache_map",
         "//folly/debugging/symbolizer/detail:debug",
         "//folly/lang:safe_assert",
         "//folly/lang:to_ascii",
@@ -173,6 +186,7 @@ fb_dirsync_cpp_library(
         ":dwarf",
         ":elf_cache",
         ":stack_trace",
+        ":symbol_cache",
         ":symbolized_frame",
         "//folly:fbstring",
         "//folly:optional",

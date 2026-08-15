@@ -73,6 +73,16 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_unittest,
+    name = "symbol_cache_test",
+    srcs = ["SymbolCacheTest.cpp"],
+    deps = [
+        "//folly/debugging/symbolizer:symbol_cache",
+        "//folly/portability:gtest",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_binary,
     name = "simple_elf",
     srcs = ["SimpleElf.cpp"],

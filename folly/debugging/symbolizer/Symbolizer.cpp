@@ -21,8 +21,6 @@
 #include <folly/FileUtil.h>
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
-#include <folly/Synchronized.h>
-#include <folly/container/EvictingCacheMap.h>
 #include <folly/debugging/symbolizer/Dwarf.h>
 #include <folly/debugging/symbolizer/Elf.h>
 #include <folly/debugging/symbolizer/ElfCache.h>
@@ -191,14 +189,6 @@ void setSymbolizedFrame(
       .findAddress(address, mode, frame, extraInlineFrames);
 }
 
-// SymbolCache contains mapping between an address and its frames: the stacked
-// inline function calls, if any, followed by the non-inlined call. Most
-// addresses have no inlined frames, so optimize for the single-entry case using
-// small_vector.
-using CachedSymbolizedFrames = folly::small_vector<SymbolizedFrame, 1>;
-
-using UnsyncSymbolCache = EvictingCacheMap<uintptr_t, CachedSymbolizedFrames>;
-
 /**
  * @param instructionAddr The address of an instruction after it has been
  * adjusted by the linker's `l_addr`.
@@ -280,11 +270,6 @@ size_t spliceFrames(
 
 } // namespace
 
-struct Symbolizer::SymbolCache : public Synchronized<UnsyncSymbolCache> {
-  using Super = Synchronized<UnsyncSymbolCache>;
-  using Super::Super;
-};
-
 bool Symbolizer::isAvailable() {
   return detail::get_r_debug();
 }
@@ -298,12 +283,10 @@ Symbolizer::Symbolizer(
       mode_(mode),
       exePath_(std::move(exePath)) {
   if (symbolCacheSize > 0) {
-    symbolCache_ =
-        std::make_unique<SymbolCache>(UnsyncSymbolCache{symbolCacheSize});
+    symbolCache_ = makeLruSymbolCache(symbolCacheSize);
   }
 }
 
-// Needs complete type for SymbolCache
 Symbolizer::~Symbolizer() {}
 
 size_t Symbolizer::symbolize(
@@ -374,13 +357,7 @@ size_t Symbolizer::symbolize(
 
       CachedSymbolizedFrames resolved;
       if (symbolCache_) {
-        // Need a write lock, because EvictingCacheMap brings found item to
-        // front of eviction list.
-        auto lockedSymbolCache = symbolCache_->wlock();
-        auto const iter = lockedSymbolCache->find(addr);
-        if (iter != lockedSymbolCache->end()) {
-          resolved = iter->second;
-        }
+        symbolCache_->find(addr, resolved);
       }
 
       if (!resolved.empty()) {
@@ -407,7 +384,7 @@ size_t Symbolizer::symbolize(
         if (symbolCache_) {
           // Frames may already have been set here. It's fine to overwrite as
           // the value should be the same.
-          symbolCache_->wlock()->set(addr, resolved);
+          symbolCache_->insert(addr, resolved);
         }
       }
 
