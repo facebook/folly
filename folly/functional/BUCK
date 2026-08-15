@@ -18,15 +18,13 @@ fb_dirsync_cpp_library(
     headers = ["Invoke.h"],
     use_raw_headers = True,
     exported_deps = [
+        "fbsource//third-party/boost:boost_preprocessor",
         "//folly:cpp_attributes",
         "//folly:portability",
         "//folly:preprocessor",
         "//folly:traits",
         "//folly:utility",
         "//folly/lang:customization_point",
-    ],
-    exported_external_deps = [
-        ("boost", None, "boost_preprocessor"),
     ],
 )
 
