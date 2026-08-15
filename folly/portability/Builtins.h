@@ -124,7 +124,11 @@ FOLLY_ALWAYS_INLINE int __builtin_ffsll(long long x) {
   unsigned long index;
   return int(_BitScanForward64(&index, (unsigned long long)x) ? index + 1 : 0);
 }
+#endif
 
+// __popcnt is an x86 intrinsic, so unavailable on ARM. Same condition as
+// __builtin_popcountll below.
+#if defined(_M_IX86) || defined(_M_X64)
 FOLLY_ALWAYS_INLINE int __builtin_popcount(unsigned int x) {
   return int(__popcnt(x));
 }
@@ -135,7 +139,7 @@ FOLLY_ALWAYS_INLINE int __builtin_popcountl(unsigned long x) {
   return int(__popcnt(x));
 }
 #endif // !defined(_MSC_VER) || !defined(FOLLY_DETAIL_MSC_BUILTIN_SUPPORT)
-#endif
+#endif // defined(_M_IX86) || defined(_M_X64)
 
 #if !defined(_MSC_VER) || !defined(FOLLY_DETAIL_MSC_BUILTIN_SUPPORT)
 #if defined(_M_IX86)
