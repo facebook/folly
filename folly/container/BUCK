@@ -130,6 +130,17 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "generational_cache_map",
+    headers = ["GenerationalCacheMap.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly:shared_mutex",
+        "//folly/concurrency:concurrent_hash_map",
+        "//folly/synchronization:hazptr",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "weighted_evicting_cache_map",
     headers = [
         "WeightedEvictingCacheMap.h",

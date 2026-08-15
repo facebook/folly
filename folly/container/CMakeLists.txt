@@ -150,6 +150,16 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME generational_cache_map
+  HEADERS
+    GenerationalCacheMap.h
+  EXPORTED_DEPS
+    folly_concurrency_concurrent_hash_map
+    folly_shared_mutex
+    folly_synchronization_hazptr
+)
+
+folly_add_library(
   NAME heap_vector_types
   HEADERS
     heap_vector_types.h

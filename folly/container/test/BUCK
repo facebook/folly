@@ -560,6 +560,16 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
+fb_dirsync_cpp_unittest(
+    name = "generational_cache_map_test",
+    srcs = ["GenerationalCacheMapTest.cpp"],
+    deps = [
+        "//folly:conv",
+        "//folly/container:generational_cache_map",
+        "//folly/portability:gtest",
+    ],
+)
+
 fb_dirsync_cpp_library(
     name = "f14_test_util",
     headers = [
