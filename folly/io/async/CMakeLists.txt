@@ -626,7 +626,6 @@ folly_add_library(
     folly_string
   EXPORTED_DEPS
     Boost::headers
-    folly_expected
     folly_io_async_delayed_destruction
     folly_io_async_liburing
     folly_io_iobuf

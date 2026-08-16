@@ -16,11 +16,6 @@
 
 #include <folly/io/async/IoUringProvidedBufferRing.h>
 
-#include <algorithm>
-#include <new>
-#include <optional>
-#include <utility>
-
 #include <folly/Conv.h>
 #include <folly/String.h>
 #include <folly/lang/Align.h>
@@ -31,18 +26,17 @@
 namespace {
 constexpr uint32_t kMinBufferSize = 32;
 constexpr uint32_t kHugePageSizeBytes = 1024 * 1024 * 2;
+constexpr uint32_t kBufferAlignBytes = 32;
 constexpr uint32_t kMaxRingRefillEntries = 32768;
-constexpr uint32_t kInitialAreaCount = 2;
-constexpr uint32_t kRingRefillFreeThreshold = 256;
-constexpr uint32_t kMaxAreaCount = 64;
 } // namespace
 
 namespace folly {
 
 void IoUringProvidedBufferRing::checkInvariants() {
-  // This object is carefully packed into two 64 byte cache lines. These
-  // cachelines holds the hottest fields accessed during hot code, i.e.
-  // getIoBuf()
+  // This object is carefully packed into two 64 byte cache lines. The first
+  // cache line contains all of the fields accessed during hot code, i.e.
+  // getIoBuf() and returnBuffer(). The second cache line contains all the warm
+  // and cold fields that are rarely accessed.
   static_assert(
       sizeof(IoUringProvidedBufferRing) ==
       2 * folly::hardware_constructive_interference_size);
@@ -62,99 +56,53 @@ IoUringProvidedBufferRing::UniquePtr IoUringProvidedBufferRing::create(
       new IoUringProvidedBufferRing(ioRingPtr, options));
 }
 
-void IoUringProvidedBufferRing::mapRing() {
-  auto memSize = ringMemSize();
-  off_t offset = IORING_OFF_PBUF_RING |
-      (static_cast<uint64_t>(gid_) << IORING_OFF_PBUF_SHIFT);
+void IoUringProvidedBufferRing::mapMemory() {
+  uint32_t ringMemSize = sizeof(struct io_uring_buf) * ringBufferCount_;
+  ringMemSize =
+      folly::to_narrow(folly::align_ceil(ringMemSize, kBufferAlignBytes));
 
-  auto ringMem = ::mmap(
+  auto bufferSize = sizePerBuffer_ * ringBufferCount_;
+  allSize_ = ringMemSize + bufferSize;
+
+  int pages;
+  allSize_ = folly::to_narrow(folly::align_ceil(allSize_, kHugePageSizeBytes));
+  pages = allSize_ / kHugePageSizeBytes;
+
+  buffer_ = ::mmap(
       nullptr,
-      memSize,
-      PROT_READ | PROT_WRITE,
-      MAP_SHARED | MAP_POPULATE,
-      ringIoPtr->ring_fd,
-      offset);
-
-  if (ringMem == MAP_FAILED) {
-    auto errnoCopy = errno;
-    ::io_uring_unregister_buf_ring(ringIoPtr, gid_);
-    throw std::runtime_error(
-        folly::to<std::string>(
-            "unable to map ring memory of size ",
-            memSize,
-            ": ",
-            folly::errnoStr(errnoCopy)));
-  }
-
-  ringPtr_ = static_cast<struct io_uring_buf_ring*>(ringMem);
-}
-
-std::unique_ptr<IoUringProvidedBufferRing::BufferArea>
-IoUringProvidedBufferRing::createArea() noexcept {
-  size_t memSize = static_cast<size_t>(ringBufferCount_) * sizePerBuffer_;
-  memSize = folly::align_ceil(memSize, kHugePageSizeBytes);
-
-  void* mem = ::mmap(
-      nullptr,
-      memSize,
+      allSize_,
       PROT_READ | PROT_WRITE,
       MAP_ANONYMOUS | MAP_PRIVATE,
       -1,
       0);
 
-  if (mem == MAP_FAILED) {
-    PLOG(ERROR) << "unable to allocate area block of size " << memSize;
-    return nullptr;
+  if (buffer_ == MAP_FAILED) {
+    auto errnoCopy = errno;
+    throw std::runtime_error(
+        folly::to<std::string>(
+            "unable to allocate pages of size ",
+            allSize_,
+            " pages=",
+            pages,
+            ": ",
+            folly::errnoStr(errnoCopy)));
   }
 
-  int ret = ::madvise(mem, memSize, MADV_HUGEPAGE);
+  ringPtr_ = static_cast<struct io_uring_buf_ring*>(buffer_);
+  bufferBuffer_ = static_cast<char*>(buffer_) + ringMemSize;
+
+  int ret = ::madvise(buffer_, allSize_, MADV_HUGEPAGE);
   PLOG_IF(ERROR, ret) << "cannot enable huge pages";
-
-  try {
-    auto area = std::make_unique<BufferArea>();
-    area->memSize = memSize;
-    area->buffers = static_cast<char*>(mem);
-    area->states = std::make_unique<BufferState[]>(ringBufferCount_);
-    for (uint16_t b = 0; b < ringBufferCount_; b++) {
-      area->states[b].area = area.get();
-      area->states[b].bufId = b;
-      area->states[b].parent = this;
-      area->states[b].offset = 0;
-    }
-    return area;
-  } catch (const std::bad_alloc& ex) {
-    ::munmap(mem, memSize);
-    LOG(ERROR) << "unable to allocate area metadata: " << ex.what();
-    return nullptr;
-  }
-}
-
-IoUringProvidedBufferRing::BufferArea*
-IoUringProvidedBufferRing::addArea() noexcept {
-  if (areaCount_ == std::numeric_limits<decltype(areaCount_)>::max()) {
-    LOG(ERROR) << "cannot add area: areaCount_ would exceed "
-               << std::numeric_limits<decltype(areaCount_)>::max();
-    return nullptr;
-  }
-
-  auto area = createArea();
-  if (area == nullptr) {
-    return nullptr;
-  }
-
-  BufferArea* areaPtr = area.get();
-  areas_.push_back(std::move(area));
-  areaCount_++;
-  return areaPtr;
 }
 
 IoUringProvidedBufferRing::IoUringProvidedBufferRing(
     io_uring* ioRingPtr, Options options)
-    : sizePerBuffer_(std::max(options.bufferSize, kMinBufferSize)),
+    : bufferStates_(),
+      sizePerBuffer_(std::max(options.bufferSize, kMinBufferSize)),
       ringBufferCount_(options.bufferCount),
-      gid_(options.gid),
+      useIncremental_(options.useIncrementalBuffers),
       ringIoPtr(ioRingPtr),
-      useIncremental_(options.useIncrementalBuffers) {
+      gid_(options.gid) {
   if (ringBufferCount_ > kMaxRingRefillEntries) {
     throw std::runtime_error(
         folly::to<std::string>(
@@ -178,45 +126,37 @@ IoUringProvidedBufferRing::IoUringProvidedBufferRing(
     ringBufferCount_ = adjustedBufferCount;
   }
 
-  areas_.reserve(kMaxAreaCount);
-
-  if (ringBufferCount_ <= kRingRefillFreeThreshold) {
-    ringRefillThreshold_ = (ringBufferCount_ >> 1);
-  } else {
-    ringRefillThreshold_ = kRingRefillFreeThreshold;
-  }
-
+  mapMemory();
   initialRegister();
-  mapRing();
 
-  for (uint32_t i = 0; i < kInitialAreaCount; i++) {
-    if (addArea() == nullptr) {
-      throw std::runtime_error(
-          "unable to allocate initial provided buffer areas");
-    }
+  bufferStates_ = std::make_unique<BufferState[]>(ringBufferCount_);
+  for (uint16_t i = 0; i < ringBufferCount_; i++) {
+    bufferStates_[i].bufId = i;
+    bufferStates_[i].parent = this;
+    bufferStates_[i].offset = 0;
   }
 
-  bufferActiveArea_ = areas_[0].get();
-  bufferRefillArea_ = areas_[0].get();
-
-  ringRefill();
+  for (size_t i = 0; i < ringBufferCount_; i++) {
+    returnBuffer(i);
+  }
 }
 
 void IoUringProvidedBufferRing::enobuf() noexcept {
-  ringRefill();
-  if (ringFillLevel() > 0) {
-    return;
-  }
-  if (!enobuf_) {
-    enobuf_ = true;
-    enobufCount_++;
+  {
+    // what we want to do is something like
+    // if (cachedTail_ != localTail_) {
+    //   publish();
+    //   enobuf_ = false;
+    // }
+    // but if we are processing a batch it doesn't really work
+    // because we'll likely get an ENOBUF straight after
+    enobuf_.store(true, std::memory_order_relaxed);
+    enobufCount_.fetch_add(1, std::memory_order_relaxed);
   }
 }
 
 uint32_t IoUringProvidedBufferRing::getAndResetEnobufCount() noexcept {
-  auto count = enobufCount_;
-  enobufCount_ = 0;
-  return count;
+  return enobufCount_.exchange(0, std::memory_order_relaxed);
 }
 
 void IoUringProvidedBufferRing::destroy() noexcept {
@@ -230,122 +170,23 @@ void IoUringProvidedBufferRing::destroy() noexcept {
   delayedDestroy(remaining);
 }
 
-bool IoUringProvidedBufferRing::getNewRefillArea() noexcept {
-  // areas_ are sorted so that recently used area at move to the end of the
-  // vector. This allows to keep the potentially free areas to the front
-  auto drained =
-      std::find_if(areas_.begin(), areas_.end(), [this](const auto& area) {
-        return areaIsDrained(*area);
-      });
-  if (drained != areas_.end()) {
-    auto area = drained->get();
-    DCHECK(area != bufferActiveArea_ && area != bufferRefillArea_)
-        << "active and refill areas must not be drained";
-    bufferRefillArea_ = area;
-    std::rotate(drained, drained + 1, areas_.end());
-    tryReclaimArea();
-    return true;
+void IoUringProvidedBufferRing::returnBuffer(uint16_t i) noexcept {
+  if (useIncremental_) {
+    bufferStates_[i].offset = 0;
+    bufferStates_[i].refCount.store(1);
   }
 
-  if (areaCount_ >= kMaxAreaCount) {
-    return false;
+  uint16_t this_idx = static_cast<uint16_t>(ringReturnedBuffers_++);
+  uint16_t next_tail = this_idx + 1;
+
+  auto* r = ringBuf(this_idx);
+  r->addr = reinterpret_cast<__u64>(getData(i));
+  r->len = sizePerBuffer_;
+  r->bid = i;
+
+  if (tryPublish(this_idx, next_tail)) {
+    enobuf_.store(false, std::memory_order_relaxed);
   }
-
-  // No drained area available and cap not reached. Grow the pool by one and
-  // refill from it.
-  auto newArea = addArea();
-  if (newArea == nullptr) {
-    return false;
-  }
-  bufferRefillArea_ = newArea;
-  return true;
-}
-
-void IoUringProvidedBufferRing::ringRefill() noexcept {
-  auto startTail = ringTail_;
-
-  // ringIndex(ringTail_) == 0 means we are at an area boundary: either the
-  // previous ringRefill consumed all of the refill area, or we are using a
-  // newly allocated area. In the former case grab a new refill area.
-  if (ringIndex(ringTail_) == 0 && !areaIsDrained(*bufferRefillArea_) &&
-      !getNewRefillArea()) {
-    return;
-  }
-
-  uint16_t pendingOutstanding = 0;
-  auto freeEntries = ringFreeEntries();
-  while (freeEntries--) {
-    uint16_t bid = ringIndex(ringTail_);
-    if (useIncremental_) {
-      bufferRefillArea_->states[bid].offset = 0;
-      bufferRefillArea_->states[bid].refCount.store(1);
-    }
-
-    auto* r = ringBuf(ringTail_);
-    ringTail_++;
-    r->addr = reinterpret_cast<__u64>(getData(*bufferRefillArea_, bid));
-    r->len = sizePerBuffer_;
-    r->bid = bid;
-    pendingOutstanding++;
-
-    // We reached the end of the refill area, flush the pendingOutstanding
-    // counter at once and get a new area if there are still freeEntries to
-    // refill
-    if (ringIndex(ringTail_) == 0) {
-      bufferRefillArea_->outstanding.fetch_add(
-          pendingOutstanding, std::memory_order_relaxed);
-      pendingOutstanding = 0;
-      if (freeEntries && !getNewRefillArea()) {
-        break;
-      }
-    }
-  }
-  if (pendingOutstanding > 0) {
-    bufferRefillArea_->outstanding.fetch_add(
-        pendingOutstanding, std::memory_order_relaxed);
-  }
-
-  // If we refilled entries, then try to update the shared tail
-  if (ringTail_ != startTail) {
-    if (tryPublish(startTail, ringTail_)) {
-      enobuf_ = false;
-    }
-  }
-}
-
-void IoUringProvidedBufferRing::ringMaybeRefill() noexcept {
-  if (ringFreeEntries() >= ringRefillThreshold_) {
-    ringRefill();
-  }
-}
-
-void IoUringProvidedBufferRing::tryReclaimArea() noexcept {
-  if (areaCount_ <= kInitialAreaCount ||
-      areasOutstandingSum() > ((areaCount_ * ringBufferCount_) >> 1)) {
-    return;
-  }
-
-  std::optional<uint32_t> victimIndex;
-  for (uint32_t areaIndex = 0; areaIndex < areaCount_; ++areaIndex) {
-    const BufferArea* area = areas_[areaIndex].get();
-    if (!areaIsDrained(*area)) {
-      continue;
-    }
-    if (area == bufferActiveArea_ || area == bufferRefillArea_) {
-      continue;
-    }
-    victimIndex = areaIndex;
-    break;
-  }
-
-  if (!victimIndex) {
-    return;
-  }
-
-  BufferArea* victim = areas_[*victimIndex].get();
-  ::munmap(victim->buffers, victim->memSize);
-  areas_.erase(areas_.begin() + *victimIndex);
-  areaCount_--;
 }
 
 void IoUringProvidedBufferRing::bufFreeFn(
@@ -353,19 +194,18 @@ void IoUringProvidedBufferRing::bufFreeFn(
   auto* bufferState = static_cast<BufferState*>(userData);
   IoUringProvidedBufferRing* parent = bufferState->parent;
   uint16_t bufId = bufferState->bufId;
-  BufferArea* area = bufferState->area;
-  parent->decBufferState(*area, bufId);
+  parent->decBufferState(bufId);
 }
 
 std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBufSingle(
-    uint16_t bid, size_t length, bool hasMore) noexcept {
+    uint16_t i, size_t length, bool hasMore) noexcept {
   std::unique_ptr<IOBuf> ret;
   DCHECK(!wantsShutdown_);
-  DCHECK_LT(bid, ringBufferCount_)
-      << "Buffer index " << bid << " exceeds buffer count " << ringBufferCount_;
+  DCHECK_LT(i, ringBufferCount_)
+      << "Buffer index " << i << " exceeds buffer count " << ringBufferCount_;
 
-  auto* bufferStart = getData(*bufferActiveArea_, bid);
-  BufferState* info = &bufferActiveArea_->states[bid];
+  auto* bufferStart = getData(i);
+  BufferState* info = &bufferStates_[i];
   if (useIncremental_) {
     unsigned int currentOffset = info->offset;
     auto* dataPtr = bufferStart + currentOffset;
@@ -381,20 +221,16 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBufSingle(
   }
 
   ret->markExternallySharedOne();
-  incBufferState(*bufferActiveArea_, bid, hasMore, length);
+  incBufferState(i, hasMore, length);
 
-  ringMaybeRefill();
   return ret;
 }
 
 std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
     uint16_t startBufId, size_t totalLength, bool hasMore) noexcept {
-  DCHECK_EQ(ringBuf(ringHead_)->bid, startBufId)
-      << "ringHead_ out of sync with kernel ring head";
-
   size_t currentAvailable = sizePerBuffer_;
   if (useIncremental_) {
-    currentAvailable -= bufferActiveArea_->states[startBufId].offset;
+    currentAvailable -= bufferStates_[startBufId].offset;
   }
   if (totalLength <= currentAvailable) {
     return getIoBufSingle(startBufId, totalLength, hasMore);
@@ -402,15 +238,15 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
 
   std::unique_ptr<IOBuf> head;
   size_t remainingLength = totalLength;
-  uint16_t bid = startBufId;
+  uint16_t currentBufId = startBufId;
 
   while (remainingLength > 0) {
-    DCHECK_LT(bid, ringBufferCount_)
-        << "Buffer index " << bid << " exceeds buffer count "
+    DCHECK_LT(currentBufId, ringBufferCount_)
+        << "Buffer index " << currentBufId << " exceeds buffer count "
         << ringBufferCount_;
 
-    BufferState* bufferState = &bufferActiveArea_->states[bid];
-    char* bufferStart = getData(*bufferActiveArea_, bid);
+    BufferState* bufferState = &bufferStates_[currentBufId];
+    char* bufferStart = getData(currentBufId);
     unsigned int currentOffset = 0;
     size_t availableInBuffer = sizePerBuffer_;
 
@@ -438,14 +274,11 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
       head->appendToChain(std::move(chunk));
     }
 
-    bool bufHasMore = hasMore && isLastChunk;
-    incBufferState(*bufferActiveArea_, bid, bufHasMore, currentChunkSize);
+    incBufferState(currentBufId, hasMore && isLastChunk, currentChunkSize);
     remainingLength -= currentChunkSize;
-
-    bid = ringIndex(bid + 1);
+    currentBufId = ringIndex(currentBufId + 1);
   }
 
-  ringMaybeRefill();
   return head;
 }
 
@@ -460,10 +293,11 @@ std::unique_ptr<IOBuf> IoUringProvidedBufferRing::getIoBuf(
 void IoUringProvidedBufferRing::initialRegister() {
   struct io_uring_buf_reg reg{};
   memset(&reg, 0, sizeof(reg));
+  reg.ring_addr = reinterpret_cast<__u64>(ringPtr_);
   reg.ring_entries = ringBufferCount_;
   reg.bgid = gid_;
 
-  int flags = IOU_PBUF_RING_MMAP | (useIncremental_ ? IOU_PBUF_RING_INC : 0);
+  int flags = useIncremental_ ? IOU_PBUF_RING_INC : 0;
   int ret = ::io_uring_register_buf_ring(ringIoPtr, &reg, flags);
 
   if (ret) {
@@ -485,40 +319,25 @@ void IoUringProvidedBufferRing::initialRegister() {
 
 void IoUringProvidedBufferRing::delayedDestroy(uint32_t refs) noexcept {
   if (refs == 0) {
-    ::munmap(ringPtr_, ringMemSize());
-    for (auto& area : areas_) {
-      ::munmap(area->buffers, area->memSize);
-    }
+    ::munmap(buffer_, allSize_);
     delete this;
   }
 }
 
 void IoUringProvidedBufferRing::incBufferState(
-    BufferArea& area,
-    uint16_t bid,
-    bool hasMore,
-    size_t bytesConsumed) noexcept {
+    uint16_t bufId, bool hasMore, size_t bytesConsumed) noexcept {
   bufferGetCount_++;
 
   if (useIncremental_ && hasMore) {
-    BufferState* bufferState = &area.states[bid];
-    bufferState->refCount.fetch_add(1);
-    bufferState->offset += bytesConsumed;
+    bufferStates_[bufId].refCount.fetch_add(1);
+    bufferStates_[bufId].offset += bytesConsumed;
   }
 
-  if (!hasMore) {
-    ringHead_++;
-
-    // We consumed all the buffers of the current area. active area becomes the
-    // refill area
-    if (bid == ringBufferCount_ - 1) {
-      bufferActiveArea_ = bufferRefillArea_;
-    }
-  }
+  // No need to handle regular buffers, since it is never really
+  // incremented beyond the original assingment of 1 instead of 0.
 }
 
-void IoUringProvidedBufferRing::decBufferState(
-    BufferArea& area, uint16_t bid) noexcept {
+void IoUringProvidedBufferRing::decBufferState(uint16_t bufId) noexcept {
   std::unique_lock lock{mutex_};
   bufferReturnedCount++;
 
@@ -530,23 +349,31 @@ void IoUringProvidedBufferRing::decBufferState(
   }
 
   if (!useIncremental_) {
-    area.outstanding.fetch_sub(1, std::memory_order_release);
+    returnBuffer(bufId);
     return;
   }
 
-  auto oldRefCount = area.states[bid].refCount.fetch_sub(1);
+  uint16_t oldRefCount = bufferStates_[bufId].refCount.fetch_sub(1);
   if (oldRefCount == 1) {
-    area.outstanding.fetch_sub(1, std::memory_order_release);
+    returnBuffer(bufId);
   }
 }
 
 int IoUringProvidedBufferRing::getUtilPct() const noexcept {
-  uint64_t totalBuffers = areaCount_ * ringBufferCount_;
-  auto outstanding = areasOutstandingSum();
-  auto inRing = ringFillLevel();
-  uint64_t inUse = (outstanding > inRing) ? (outstanding - inRing) : 0;
-  inUse = std::min(inUse, totalBuffers);
+  uint32_t totalBuffers = ringBufferCount_;
+  uint16_t head = 0;
+  int ret = ::io_uring_buf_ring_head(ringIoPtr, gid_, &head);
+  if (ret != 0) {
+    return ret;
+  }
+  // tail and head are free-running 16-bit counters (the kernel masks them only
+  // when indexing into bufs[]). Cast the difference to uint16_t so a completely
+  // full ring (tail - head == ringBufferCount_) is preserved rather than masked
+  // to 0.
+  uint32_t available = static_cast<uint16_t>(ringPtr_->tail - head);
+  available = std::min(available, totalBuffers);
 
+  uint32_t inUse = totalBuffers - available;
   return (100 * inUse) / totalBuffers;
 }
 

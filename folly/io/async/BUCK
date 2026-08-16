@@ -904,7 +904,6 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/boost:boost",  # @manual
         ":delayed_destruction",
         ":liburing",
-        "//folly:expected",
         "//folly/io:iobuf",
         "//folly/synchronization:distributed_mutex",
     ],
