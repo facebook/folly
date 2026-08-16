@@ -87,7 +87,7 @@ folly_add_library(
     ExecutionObserver.h
   DEPS
     folly_tracing_static_tracepoint
-  EXTERNAL_DEPS
+  EXPORTED_DEPS
     Boost::headers
 )
 
