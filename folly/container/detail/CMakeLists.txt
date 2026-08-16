@@ -19,9 +19,8 @@ folly_add_library(
   HEADERS
     BitIteratorDetail.h
   EXPORTED_DEPS
-    folly_portability_sys_types
-  EXTERNAL_DEPS
     Boost::headers
+    folly_portability_sys_types
 )
 
 folly_add_library(
