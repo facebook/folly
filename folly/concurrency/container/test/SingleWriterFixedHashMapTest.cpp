@@ -167,6 +167,36 @@ TEST(SingleWriterFixedHashMap, copyTombstones) {
   copy_tombstones_test();
 }
 
+void duplicate_insert_test() {
+  SWFHM m(4);
+
+  ASSERT_TRUE(m.insert(1, 10));
+  // Callers rely on insert() rejecting an already-present key: a second VALID
+  // slot for the same key would make erase() leave a stale entry behind, which
+  // iteration then treats as live.
+  ASSERT_FALSE(m.insert(1, 20));
+  ASSERT_EQ(m.size(), 1);
+  ASSERT_EQ(m.used(), 1);
+  ASSERT_EQ(m.available(), 3);
+  ASSERT_EQ(m.find(1).value(), 10);
+
+  ASSERT_TRUE(m.erase(1));
+  ASSERT_EQ(m.size(), 0);
+  ASSERT_EQ(m.begin(), m.end());
+  ASSERT_FALSE(m.contains(1));
+
+  // Erased keys are insertable again, reusing the tombstone.
+  ASSERT_TRUE(m.insert(1, 30));
+  ASSERT_FALSE(m.insert(1, 40));
+  ASSERT_EQ(m.size(), 1);
+  ASSERT_EQ(m.used(), 1);
+  ASSERT_EQ(m.find(1).value(), 30);
+}
+
+TEST(SingleWriterFixedHashMap, duplicateInsert) {
+  duplicate_insert_test();
+}
+
 // Benchmarks
 
 template <typename Func>
