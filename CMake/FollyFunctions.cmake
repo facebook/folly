@@ -341,6 +341,12 @@ define_property(GLOBAL PROPERTY FOLLY_COMPONENT_TARGETS
 )
 set_property(GLOBAL PROPERTY FOLLY_COMPONENT_TARGETS "")
 
+define_property(GLOBAL PROPERTY FOLLY_GRANULAR_TARGETS
+  BRIEF_DOCS "List of all granular folly targets"
+  FULL_DOCS "Used to aggregate all component targets into the INTERFACE folly library when FOLLY_BUILD_MONOLITHIC is OFF"
+)
+set_property(GLOBAL PROPERTY FOLLY_GRANULAR_TARGETS "")
+
 # Track deferred dependencies to be linked after all targets are created
 # Each entry is: "target|visibility|dep1,dep2,dep3"
 define_property(GLOBAL PROPERTY FOLLY_DEFERRED_DEPS
@@ -495,6 +501,7 @@ function(folly_add_library)
   # Track OBJECT target for monolithic aggregation (unless excluded)
   if(NOT FOLLY_LIB_EXCLUDE_FROM_MONOLITH)
     set_property(GLOBAL APPEND PROPERTY FOLLY_COMPONENT_TARGETS ${_obj_target})
+    set_property(GLOBAL APPEND PROPERTY FOLLY_GRANULAR_TARGETS ${_target_name})
     # Track external deps for the monolithic library
     if(FOLLY_LIB_EXTERNAL_DEPS)
       set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS ${FOLLY_LIB_EXTERNAL_DEPS})
@@ -684,50 +691,76 @@ endfunction()
 # Create the monolithic folly library from all component OBJECT libraries
 # Call this after all add_subdirectory() calls and folly_resolve_deferred_dependencies()
 function(folly_create_monolithic_library)
-  get_property(_component_targets GLOBAL PROPERTY FOLLY_COMPONENT_TARGETS)
+  if(FOLLY_BUILD_MONOLITHIC)
+    get_property(_component_targets GLOBAL PROPERTY FOLLY_COMPONENT_TARGETS)
 
-  # Collect all object files from component targets
-  set(_all_objects)
-  foreach(_target IN LISTS _component_targets)
-    list(APPEND _all_objects $<TARGET_OBJECTS:${_target}>)
-  endforeach()
-
-  # Create the monolithic library
-  add_library(folly ${_all_objects})
-  if(BUILD_SHARED_LIBS)
-    set_property(TARGET folly PROPERTY POSITION_INDEPENDENT_CODE ON)
-  endif()
-  set_property(TARGET folly PROPERTY VERSION ${PACKAGE_VERSION})
-
-  apply_folly_compile_options_to_target(folly)
-  target_compile_features(folly INTERFACE cxx_generic_lambdas)
-
-  target_include_directories(folly
-    PUBLIC
-      $<BUILD_INTERFACE:${TOP_DIR}>
-      $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
-      $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>
-  )
-
-  target_link_libraries(folly PUBLIC folly_deps)
-
-  # Link all external dependencies that were tracked from component targets
-  get_property(_external_deps GLOBAL PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS)
-  if(_external_deps)
-    list(REMOVE_DUPLICATES _external_deps)
-    target_link_libraries(folly PUBLIC ${_external_deps})
-  endif()
-
-  # Create alias for consistency
-  add_library(Folly::folly ALIAS folly)
-
-  # For shared builds: link all granular INTERFACE targets to the monolithic library
-  if(BUILD_SHARED_LIBS)
-    # CMP0079: target_link_libraries allows use with targets in other directories
-    cmake_policy(SET CMP0079 NEW)
-    get_property(_interface_targets GLOBAL PROPERTY FOLLY_GRANULAR_INTERFACE_TARGETS)
-    foreach(_target IN LISTS _interface_targets)
-      target_link_libraries(${_target} INTERFACE folly)
+    # Collect all object files from component targets
+    set(_all_objects)
+    foreach(_target IN LISTS _component_targets)
+      list(APPEND _all_objects $<TARGET_OBJECTS:${_target}>)
     endforeach()
+
+    # Create the monolithic library
+    add_library(folly ${_all_objects})
+    if(BUILD_SHARED_LIBS)
+      set_property(TARGET folly PROPERTY POSITION_INDEPENDENT_CODE ON)
+    endif()
+    set_property(TARGET folly PROPERTY VERSION ${PACKAGE_VERSION})
+
+    apply_folly_compile_options_to_target(folly)
+    target_compile_features(folly INTERFACE cxx_generic_lambdas)
+
+    target_include_directories(folly
+      PUBLIC
+        $<BUILD_INTERFACE:${TOP_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
+        $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>
+    )
+
+    target_link_libraries(folly PUBLIC folly_deps)
+
+    # Link all external dependencies that were tracked from component targets
+    get_property(_external_deps GLOBAL PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS)
+    if(_external_deps)
+      list(REMOVE_DUPLICATES _external_deps)
+      target_link_libraries(folly PUBLIC ${_external_deps})
+    endif()
+
+    # Create alias for consistency
+    add_library(Folly::folly ALIAS folly)
+
+    # For shared builds: link all granular INTERFACE targets to the monolithic library
+    if(BUILD_SHARED_LIBS)
+      # CMP0079: target_link_libraries allows use with targets in other directories
+      cmake_policy(SET CMP0079 NEW)
+      get_property(_interface_targets GLOBAL PROPERTY FOLLY_GRANULAR_INTERFACE_TARGETS)
+      foreach(_target IN LISTS _interface_targets)
+        target_link_libraries(${_target} INTERFACE folly)
+      endforeach()
+    endif()
+  else()
+    # Skip monolithic assembly, aggregate component libraries into an INTERFACE target
+    add_library(folly INTERFACE)
+    set_property(TARGET folly PROPERTY VERSION ${PACKAGE_VERSION})
+    target_compile_features(folly INTERFACE cxx_generic_lambdas)
+
+    target_include_directories(folly
+      INTERFACE
+        $<BUILD_INTERFACE:${TOP_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
+        $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>
+    )
+
+    get_property(_granular_targets GLOBAL PROPERTY FOLLY_GRANULAR_TARGETS)
+    target_link_libraries(folly INTERFACE ${_granular_targets})
+    target_link_libraries(folly INTERFACE folly_deps)
+
+    get_property(_external_deps GLOBAL PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS)
+    if(_external_deps)
+      list(REMOVE_DUPLICATES _external_deps)
+      target_link_libraries(folly INTERFACE ${_external_deps})
+    endif()
+
+    add_library(Folly::folly ALIAS folly)
   endif()
 endfunction()
