@@ -21,11 +21,13 @@ folly_add_library(
   HEADERS
     FsUtil.h
   DEPS
+    Boost::filesystem
     folly_exception
     folly_portability_windows
-  EXTERNAL_DEPS
+  EXPORTED_DEPS
     Boost::filesystem
 )
+set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::filesystem)
 
 folly_add_library(
   NAME global_shutdown_socket_set
@@ -47,6 +49,8 @@ folly_add_library(
   HEADERS
     HugePages.h
   DEPS
+    Boost::headers
+    Boost::regex
     folly_conv
     folly_format
     folly_gen_base
@@ -55,13 +59,12 @@ folly_add_library(
     folly_portability_windows
     folly_string
   EXPORTED_DEPS
+    Boost::headers
     folly_io_fs_util
     folly_portability_unistd
     folly_range
-  EXTERNAL_DEPS
-    Boost::headers
-    Boost::regex
 )
+set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::regex)
 
 folly_add_library(
   NAME iobuf

@@ -136,6 +136,8 @@ fb_dirsync_cpp_library(
     srcs = ["HugePages.cpp"],
     headers = ["HugePages.h"],
     deps = [
+        "fbsource//third-party/boost:boost",  # @manual
+        "fbsource//third-party/boost:boost_regex",  # @manual
         "//folly:conv",
         "//folly:format",
         "//folly:string",
@@ -145,16 +147,10 @@ fb_dirsync_cpp_library(
         "//folly/portability:windows",
     ],
     exported_deps = [
+        "fbsource//third-party/boost:boost",  # @manual
         "//folly:range",
         "//folly/io:fs_util",
         "//folly/portability:unistd",
-    ],
-    external_deps = [
-        "boost",
-        ("boost", None, "boost_regex"),
-    ],
-    exported_external_deps = [
-        "boost",
     ],
 )
 
@@ -163,11 +159,9 @@ fb_dirsync_cpp_library(
     srcs = ["FsUtil.cpp"],
     headers = ["FsUtil.h"],
     deps = [
+        "fbsource//third-party/boost:boost_filesystem",  # @manual
         "//folly:exception",
         "//folly/portability:windows",
     ],
-    external_deps = [("boost", None, "boost_filesystem")],
-    exported_external_deps = [
-        ("boost", None, "boost_filesystem"),
-    ],
+    exported_deps = ["fbsource//third-party/boost:boost_filesystem"],  # @manual
 )
