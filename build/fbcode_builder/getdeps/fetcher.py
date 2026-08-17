@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-# pyre-strict
-
 import errno
 import hashlib
 import os

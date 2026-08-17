@@ -1,1 +1,0 @@
-# pyre-strict

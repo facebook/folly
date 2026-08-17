@@ -9,7 +9,6 @@ Split out from builder.py so the gating logic
 (linux/darwin/top-level-vs-dep) can be unit-tested in isolation.
 """
 
-# pyre-strict
 
 from __future__ import annotations
 
