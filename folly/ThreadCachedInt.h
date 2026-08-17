@@ -145,7 +145,7 @@ class ThreadCachedInt {
 
     void increment(IntT inc) {
       if (FOLLY_LIKELY(!reset_.load(std::memory_order_acquire))) {
-        // This thread is the only writer to val_, so it's fine do do
+        // This thread is the only writer to val_, so it's fine to do
         // a relaxed load and do the addition non-atomically.
         val_.store(
             val_.load(std::memory_order_relaxed) + inc,

@@ -221,7 +221,7 @@ class CaptureFD {
   using ChunkCob = std::function<void(folly::StringPiece)>;
 
   /**
-   * chunk_cob is is guaranteed to consume all the captured output. It is
+   * chunk_cob is guaranteed to consume all the captured output. It is
    * invoked on each readIncremental(), and also on FD release to capture
    * as-yet unread lines.  Chunks can be empty.
    */
