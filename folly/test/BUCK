@@ -828,7 +828,10 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "group_varint_test_ssse3",
     srcs = ["GroupVarintTest.cpp"],
-    compiler_flags = ["-mssse3"],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//cpu:x86_64": ["-mssse3"],
+    }),
     deps = [
         "//folly:group_varint",
         "//folly/portability:gtest",
