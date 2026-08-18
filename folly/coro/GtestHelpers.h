@@ -287,7 +287,7 @@ inline auto gtestLogCurrentException(Out&& out) {
       (condition), #condition, false, true, CO_GTEST_FATAL_FAILURE_)
 #define CO_ASSERT_FALSE(condition) \
   GTEST_TEST_BOOLEAN_(             \
-      !(condition), #condition, true, false, CO_GTEST_FATAL_FAILURE_)
+      (condition), #condition, true, false, CO_GTEST_FATAL_FAILURE_)
 
 #if defined(GTEST_IS_NULL_LITERAL_)
 #define CO_ASSERT_EQ(val1, val2)                                            \
