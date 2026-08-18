@@ -26,6 +26,7 @@
 #include <folly/String.h>
 #include <folly/debugging/exception_tracer/ExceptionAbi.h>
 #include <folly/debugging/exception_tracer/StackTrace.h>
+#include <folly/debugging/symbolizer/SymbolCache.h>
 #include <folly/debugging/symbolizer/Symbolizer.h>
 
 #if __has_include(<dlfcn.h>)
@@ -89,10 +90,11 @@ void printExceptionInfo(
     std::vector<SymbolizedFrame> frames;
     frames.resize(frameCount);
 
+    const auto mode = (options & SymbolizePrinter::NO_FILE_AND_LINE)
+        ? LocationInfoMode::DISABLED
+        : Symbolizer::kDefaultLocationInfoMode;
     Symbolizer symbolizer(
-        (options & SymbolizePrinter::NO_FILE_AND_LINE)
-            ? LocationInfoMode::DISABLED
-            : Symbolizer::kDefaultLocationInfoMode);
+        /*cache=*/nullptr, mode, getSharedSymbolCache(mode));
     symbolizer.symbolize(addresses, frames.data(), frameCount);
 
     OStreamSymbolizePrinter osp(out, options);
