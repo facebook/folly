@@ -94,7 +94,7 @@ static_assert( //
 template <typename T>
 struct ContainsTest : ::testing::Test {};
 
-struct ContainsTestSpeicalCases : ::testing::Test {};
+struct ContainsTestSpecialCases : ::testing::Test {};
 
 using TypesToTest = ::testing::Types<
     std::int8_t,
@@ -154,14 +154,14 @@ TYPED_TEST(ContainsTest, Basic) {
   }
 }
 
-TEST_F(ContainsTestSpeicalCases, Pointers) {
+TEST_F(ContainsTestSpecialCases, Pointers) {
   std::array ints = {0, 1, 2, 3};
   std::array ptrs = {&ints[0], &ints[1], &ints[3]};
   EXPECT_TRUE(folly::simd::contains(ptrs, &ints[1]));
   EXPECT_FALSE(folly::simd::contains(ptrs, &ints[2]));
 }
 
-TEST_F(ContainsTestSpeicalCases, AsanShouldDetectInvalidRange) {
+TEST_F(ContainsTestSpecialCases, AsanShouldDetectInvalidRange) {
   SKIP_IF(!folly::kIsSanitizeAddress);
 
   std::vector<int> v;
