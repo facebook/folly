@@ -281,11 +281,20 @@ Symbolizer::Symbolizer(
     std::string exePath)
     : cache_(cache ? cache : defaultElfCache()),
       mode_(mode),
-      exePath_(std::move(exePath)) {
-  if (symbolCacheSize > 0) {
-    symbolCache_ = makeLruSymbolCache(symbolCacheSize);
-  }
-}
+      exePath_(std::move(exePath)),
+      ownedSymbolCache_(
+          symbolCacheSize > 0 ? makeLruSymbolCache(symbolCacheSize) : nullptr),
+      symbolCache_(ownedSymbolCache_.get()) {}
+
+Symbolizer::Symbolizer(
+    ElfCacheBase* cache,
+    LocationInfoMode mode,
+    SymbolCacheBase& symbolCache,
+    std::string exePath)
+    : cache_(cache ? cache : defaultElfCache()),
+      mode_(mode),
+      exePath_(std::move(exePath)),
+      symbolCache_(&symbolCache) {}
 
 Symbolizer::~Symbolizer() {}
 

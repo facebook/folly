@@ -79,5 +79,32 @@ class SymbolCacheBase {
  */
 std::unique_ptr<SymbolCacheBase> makeLruSymbolCache(size_t capacity);
 
+/**
+ * A cache of roughly `capacity` entries, backed by a
+ * folly::GenerationalCacheMap: lookups are lock-free, and an address that stops
+ * appearing in stack traces is eventually evicted in favour of one that does.
+ *
+ * Prefer this to the LRU flavour wherever traces are symbolized often enough
+ * for lookups to contend.
+ */
+std::unique_ptr<SymbolCacheBase> makeGenerationalSymbolCache(size_t capacity);
+
+/** A cache that stores nothing. */
+std::unique_ptr<SymbolCacheBase> makeNullSymbolCache();
+
+/**
+ * The process-wide cache for `mode`.
+ *
+ * There is one per LocationInfoMode because entries are keyed by address alone
+ * and are not interchangeable across modes. All of them are tied to
+ * defaultElfCache(): a cached frame holds a shared_ptr to the ElfFile it came
+ * from and its name points into that file's mapped string table, so a
+ * process-lifetime cache pins every object it has seen. Never hand one to a
+ * Symbolizer built on a SignalSafeElfCache.
+ *
+ * Returns a null cache when caching is disabled by flag.
+ */
+SymbolCacheBase& getSharedSymbolCache(LocationInfoMode mode);
+
 } // namespace symbolizer
 } // namespace folly

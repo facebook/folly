@@ -127,6 +127,9 @@ folly_add_library(
     SymbolCache.h
   DEPS
     folly_container_evicting_cache_map
+    folly_container_generational_cache_map
+    folly_indestructible
+    folly_portability_gflags
     folly_synchronized
   EXPORTED_DEPS
     folly_debugging_symbolizer_symbolized_frame

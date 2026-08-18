@@ -85,6 +85,8 @@ enum class LocationInfoMode {
   // Scan .debug_info (super slower, use with caution) for inline functions in
   // addition to FULL.
   FULL_WITH_INLINE,
+  // Not a mode. Sizes anything held per mode; keep it last.
+  NUM_MODES,
 };
 
 /**

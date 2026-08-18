@@ -116,6 +116,18 @@ class Symbolizer {
       size_t symbolCacheSize = 0,
       std::string exePath = "/proc/self/exe");
 
+  /**
+   * Symbolize through a cache owned by the caller, so that it can be shared
+   * with other Symbolizers. It must outlive this object, and must only be
+   * shared with Symbolizers using the same `mode` and `cache`; see
+   * SymbolCacheBase.
+   */
+  Symbolizer(
+      ElfCacheBase* cache,
+      LocationInfoMode mode,
+      SymbolCacheBase& symbolCache,
+      std::string exePath = "/proc/self/exe");
+
   ~Symbolizer();
 
   /**
@@ -161,7 +173,8 @@ class Symbolizer {
   ElfCacheBase* const cache_;
   const LocationInfoMode mode_;
   const std::string exePath_;
-  std::unique_ptr<SymbolCacheBase> symbolCache_;
+  const std::unique_ptr<SymbolCacheBase> ownedSymbolCache_;
+  SymbolCacheBase* const symbolCache_;
 };
 
 /**

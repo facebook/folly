@@ -134,8 +134,11 @@ fb_dirsync_cpp_library(
     headers = ["SymbolCache.h"],
     use_raw_headers = True,
     deps = [
+        "//folly:indestructible",
         "//folly:synchronized",
         "//folly/container:evicting_cache_map",
+        "//folly/container:generational_cache_map",
+        "//folly/portability:gflags",
     ],
     exported_deps = [
         ":symbolized_frame",

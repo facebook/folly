@@ -16,15 +16,27 @@
 
 #include <folly/debugging/symbolizer/SymbolCache.h>
 
+#include <array>
 #include <utility>
 
+#include <folly/Indestructible.h>
 #include <folly/Synchronized.h>
 #include <folly/container/EvictingCacheMap.h>
+#include <folly/container/GenerationalCacheMap.h>
 #include <folly/portability/Config.h>
+#include <folly/portability/GFlags.h>
 
 // Nothing here is reachable without a Symbolizer, which needs ELF and DWARF, so
 // there is no reason to instantiate the machinery elsewhere.
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
+FOLLY_GFLAGS_DEFINE_uint64(
+    folly_symbolizer_symbol_cache_capacity,
+    50000,
+    "Capacity of each process-wide symbol cache returned by "
+    "folly::symbolizer::getSharedSymbolCache(), one per LocationInfoMode. An "
+    "entry costs roughly 200 bytes, and a cache only grows to what it is "
+    "actually used for. Zero disables symbol caching.");
 
 namespace folly {
 namespace symbolizer {
@@ -58,10 +70,62 @@ class LruSymbolCache : public SymbolCacheBase {
   Cache cache_;
 };
 
+class GenerationalSymbolCache : public SymbolCacheBase {
+ public:
+  explicit GenerationalSymbolCache(size_t capacity) : map_(capacity) {}
+
+  bool find(uintptr_t address, CachedSymbolizedFrames& out) override {
+    const auto found = map_.find(address);
+    if (!found) {
+      return false;
+    }
+    out = *found;
+    return true;
+  }
+
+  void insert(uintptr_t address, CachedSymbolizedFrames frames) override {
+    map_.set(address, std::move(frames));
+  }
+
+ private:
+  GenerationalCacheMap<uintptr_t, CachedSymbolizedFrames> map_;
+};
+
+class NullSymbolCache : public SymbolCacheBase {
+ public:
+  bool find(uintptr_t, CachedSymbolizedFrames&) override { return false; }
+  void insert(uintptr_t, CachedSymbolizedFrames) override {}
+};
+
+constexpr size_t kNumModes = static_cast<size_t>(LocationInfoMode::NUM_MODES);
+
 } // namespace
 
 std::unique_ptr<SymbolCacheBase> makeLruSymbolCache(size_t capacity) {
   return std::make_unique<LruSymbolCache>(capacity);
+}
+
+std::unique_ptr<SymbolCacheBase> makeGenerationalSymbolCache(size_t capacity) {
+  return std::make_unique<GenerationalSymbolCache>(capacity);
+}
+
+std::unique_ptr<SymbolCacheBase> makeNullSymbolCache() {
+  return std::make_unique<NullSymbolCache>();
+}
+
+SymbolCacheBase& getSharedSymbolCache(LocationInfoMode mode) {
+  using Caches = std::array<std::unique_ptr<SymbolCacheBase>, kNumModes>;
+  static Indestructible<Caches> caches([] {
+    const auto capacity = FLAGS_folly_symbolizer_symbol_cache_capacity;
+    Caches result;
+    for (auto& cache : result) {
+      cache = capacity > 0
+          ? makeGenerationalSymbolCache(capacity)
+          : makeNullSymbolCache();
+    }
+    return result;
+  }());
+  return *(*caches)[static_cast<size_t>(mode)];
 }
 
 } // namespace symbolizer

@@ -74,3 +74,43 @@ TEST(SymbolCacheTest, LruEvictsBeyondCapacity) {
   EXPECT_FALSE(cache->find(0, frames));
   EXPECT_TRUE(cache->find(4 * kCapacity - 1, frames));
 }
+
+TEST(SymbolCacheTest, GenerationalMissThenHit) {
+  auto cache = makeGenerationalSymbolCache(128);
+  CachedSymbolizedFrames frames;
+
+  EXPECT_FALSE(cache->find(0xabc, frames));
+  EXPECT_TRUE(frames.empty())
+      << "misses should not modify the output parameter";
+
+  cache->insert(0xabc, makeFrames(0x1000, 3));
+
+  ASSERT_TRUE(cache->find(0xabc, frames));
+  ASSERT_EQ(3, frames.size());
+  EXPECT_EQ(0x1002, frames[2].addr);
+}
+
+TEST(SymbolCacheTest, NullCacheStoresNothing) {
+  auto cache = makeNullSymbolCache();
+  CachedSymbolizedFrames frames;
+
+  cache->insert(0xabc, makeFrames(0xabc));
+  EXPECT_FALSE(cache->find(0xabc, frames));
+}
+
+// Entries are keyed by address alone, so modes must not share a cache: a
+// DISABLED entry carries no file and line information where a FAST one does.
+TEST(SymbolCacheTest, SharedCachesAreDistinctPerMode) {
+  auto& disabled = getSharedSymbolCache(LocationInfoMode::DISABLED);
+  auto& fast = getSharedSymbolCache(LocationInfoMode::FAST);
+
+  EXPECT_NE(&disabled, &fast);
+  EXPECT_EQ(&disabled, &getSharedSymbolCache(LocationInfoMode::DISABLED));
+
+  constexpr uintptr_t kAddress = 0x5eed;
+  disabled.insert(kAddress, makeFrames(kAddress));
+
+  CachedSymbolizedFrames frames;
+  EXPECT_TRUE(disabled.find(kAddress, frames));
+  EXPECT_FALSE(fast.find(kAddress, frames));
+}
