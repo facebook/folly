@@ -17,6 +17,7 @@
 #include <folly/io/IOBuf.h>
 
 #include <cstddef>
+#include <limits>
 #include <random>
 #include <unordered_map>
 
@@ -1573,6 +1574,19 @@ TEST(IOBuf, CoalesceEmptyBuffers) {
   auto br = b1->coalesce();
 
   EXPECT_TRUE(ByteRange(StringPiece("hello")) == br);
+}
+
+// A chain whose coalesced capacity (length + newHeadroom + newTailroom)
+// overflows size_t must throw std::bad_alloc rather than wrapping around to a
+// small capacity, allocating an undersized buffer, and overflowing it while
+// copying the data.
+TEST(IOBuf, CoalesceCapacityOverflow) {
+  auto head = fromStr("hello");
+  head->insertAfterThisOne(fromStr("world"));
+  ASSERT_TRUE(head->isChained());
+
+  constexpr auto kMax = std::numeric_limits<std::size_t>::max();
+  EXPECT_THROW(head->coalesceWithHeadroomTailroom(kMax, kMax), std::bad_alloc);
 }
 
 TEST(IOBuf, CloneCoalescedChain) {
