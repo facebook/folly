@@ -24,7 +24,6 @@ folly_add_library(
     folly_c_portability
     folly_net_detail_socket_file_descriptor_map
     folly_scope_guard
-    folly_utility
   EXPORTED_DEPS
     folly_net_network_socket
     folly_portability

@@ -25,10 +25,10 @@
 
 #include <cstddef>
 #include <stdexcept> // IWYU pragma: keep -- used in __EMSCRIPTEN__ blocks
+#include <type_traits>
 
 #include <folly/CPortability.h>
 #include <folly/ScopeGuard.h> // IWYU pragma: keep -- used in _WIN32 blocks
-#include <folly/Utility.h>
 #include <folly/net/detail/SocketFileDescriptorMap.h>
 
 #ifdef _WIN32
@@ -38,17 +38,23 @@
 #if (defined(__linux__) && !defined(__ANDROID__)) ||                       \
     (defined(__ANDROID__) && __ANDROID_API__ >= 21 /* released 2014 */) || \
     defined(__FreeBSD__) || defined(__SGX__) || defined(__EMSCRIPTEN__)
-static_assert(folly::to_bool(::recvmmsg));
-static_assert(folly::to_bool(::sendmmsg));
+static_assert(std::is_function_v<decltype(::recvmmsg)>);
+static_assert(std::is_function_v<decltype(::sendmmsg)>);
 #else
-static int (*recvmmsg)(...) = nullptr;
-static int (*sendmmsg)(...) = nullptr;
+// referenced only from the discarded branch of `if constexpr (kHasMmsg)`
+[[maybe_unused]] static int (*recvmmsg)(...) = nullptr;
+[[maybe_unused]] static int (*sendmmsg)(...) = nullptr;
 #endif
 
 namespace folly {
 namespace netops {
 
 namespace {
+// unused under __EMSCRIPTEN__, where the wrappers below throw instead
+[[maybe_unused]] static constexpr bool kHasMmsg =
+    std::is_function_v<decltype(::recvmmsg)> &&
+    std::is_function_v<decltype(::sendmmsg)>;
+
 #ifdef _WIN32
 // WSA has to be explicitly initialized.
 static struct WinSockInit {
@@ -399,7 +405,7 @@ int recvmmsg(
 #if defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
-  if (to_bool(::recvmmsg)) {
+  if constexpr (kHasMmsg) {
     return wrapSocketFunction<int>(::recvmmsg, s, msgvec, vlen, flags, timeout);
   }
   // implement via recvmsg
@@ -544,7 +550,7 @@ int sendmmsg(
 #if defined(__EMSCRIPTEN__)
   throw std::logic_error("Not implemented!");
 #else
-  if (to_bool(::sendmmsg)) {
+  if constexpr (kHasMmsg) {
     return wrapSocketFunction<int>(::sendmmsg, socket, msgvec, vlen, flags);
   }
   // implement via sendmsg
