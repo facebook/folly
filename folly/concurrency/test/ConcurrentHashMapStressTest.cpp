@@ -95,7 +95,8 @@ TYPED_TEST_P(ConcurrentHashMapStressTest, StressTestReclamation) {
 
   // Test with (2^16)+ threads, enough to overflow a 16 bit integer.
   // It should be uncommon to have more than 2^32 concurrent accesses.
-  static constexpr uint64_t num_threads = 1u << 16; // 2^16
+  static constexpr uint64_t num_threads =
+      folly::kIsSanitize ? (1u << 10) : (1u << 16);
   static constexpr uint64_t iters = 100;
   // Separately allocating the thread args would be costly. This cost can be
   // optimized by allocating them all together.
@@ -108,7 +109,7 @@ TYPED_TEST_P(ConcurrentHashMapStressTest, StressTestReclamation) {
   // faulting in each top page of each thread stack is costly. This cost can be
   // optimized by prefaulting the entire mapping. There will still be a TLB miss
   // in each thread but perhaps that would be tolerable.
-  constexpr size_t stack_size = 1u << 16; // 64KiB
+  constexpr size_t stack_size = folly::kIsSanitize ? (1u << 18) : (1u << 16);
 #if !defined(_WIN32)
   const auto mm_len = stack_size * num_threads;
   const auto mm_prot = PROT_READ | PROT_WRITE;
