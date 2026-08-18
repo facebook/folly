@@ -29,7 +29,6 @@ fb_dirsync_cpp_library(
         ":stacktrace",
         "//folly:portability",
         "//folly:string",
-        "//folly/debugging/symbolizer:symbol_cache",
         "//folly/debugging/symbolizer:symbolizer",
     ],
     exported_deps = [
