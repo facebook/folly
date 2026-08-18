@@ -24,7 +24,6 @@
 #include <folly/Exception.h>
 #include <folly/container/F14Map.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
-#include <folly/executors/EDFThreadPoolExecutor.h>
 #include <folly/executors/FutureExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
@@ -101,8 +100,8 @@ FOLLY_KEEP std::unique_ptr<QueueObserverFactory> make_queue_observer_factory(
 template <typename T>
 class ThreadPoolExecutorTypedTest : public ::testing::Test {};
 
-using ValueTypes = ::testing::
-    Types<CPUThreadPoolExecutor, IOThreadPoolExecutor, EDFThreadPoolExecutor>;
+using ValueTypes =
+    ::testing::Types<CPUThreadPoolExecutor, IOThreadPoolExecutor>;
 
 TYPED_TEST_SUITE(ThreadPoolExecutorTypedTest, ValueTypes);
 
@@ -273,10 +272,6 @@ static void poolStats() {
 
 TEST(ThreadPoolExecutorTest, CPUPoolStats) {
   poolStats<CPUThreadPoolExecutor>();
-}
-
-TEST(ThreadPoolExecutorTest, EDFPoolStats) {
-  poolStats<EDFThreadPoolExecutor>();
 }
 
 TEST(ThreadPoolExecutorTest, IOPoolStats) {
@@ -626,10 +621,6 @@ TEST(ThreadPoolExecutorTest, AddWithPriority) {
   // IO exe doesn't support priorities
   IOThreadPoolExecutor ioExe(10);
   EXPECT_THROW(ioExe.addWithPriority(f, 0), std::runtime_error);
-
-  // EDF exe doesn't support priorities
-  EDFThreadPoolExecutor edfExe(10);
-  EXPECT_THROW(edfExe.addWithPriority(f, 0), std::runtime_error);
 
   CPUThreadPoolExecutor cpuExe(10, 3);
   cpuExe.addWithPriority(f, -1);

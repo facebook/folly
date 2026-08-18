@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 
@@ -23,18 +22,6 @@ fb_dirsync_cpp_unittest(
         "//folly/executors:codel",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
-    ],
-)
-
-fb_dirsync_cpp_benchmark(
-    name = "EDFThreadPoolExecutorBenchmark",
-    srcs = ["EDFThreadPoolExecutorBenchmark.cpp"],
-    deps = [
-        "//folly:benchmark",
-        "//folly:mpmc_queue",
-        "//folly/executors:cpu_thread_pool_executor",
-        "//folly/executors:edf_thread_pool_executor",
-        "//folly/executors:thread_pool_executor",
     ],
 )
 
@@ -175,7 +162,6 @@ fbcode_target(
         "//folly:exception",
         "//folly/container:f14_hash",
         "//folly/executors:cpu_thread_pool_executor",
-        "//folly/executors:edf_thread_pool_executor",
         "//folly/executors:future_executor",
         "//folly/executors:io_thread_pool_executor",
         "//folly/executors:thread_pool_executor",
@@ -330,6 +316,7 @@ fb_dirsync_cpp_unittest(
     ],
     deps = [
         "//folly:random",
+        "//folly/executors:edf_thread_pool_executor",
         "//folly/executors:striped_edf_thread_pool_executor",
         "//folly/portability:gtest",
         "//folly/portability:sched",

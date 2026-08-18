@@ -17,9 +17,11 @@
 #include <folly/executors/StripedEDFThreadPoolExecutor.h>
 
 #include <algorithm>
+#include <stdexcept>
 #include <vector>
 
 #include <folly/Random.h>
+#include <folly/executors/EDFThreadPoolExecutor.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sched.h>
 #include <folly/portability/Unistd.h>
@@ -89,4 +91,20 @@ TEST(StripedEDFThreadPoolExecutor, Stop) {
   executor.add([] {}, 10);
   // There are no threads, the task will be dropped.
   executor.stop();
+}
+
+// A priority is easily confused with a deadline, so the executor rejects it
+// rather than silently ignoring the argument.
+TEST(StripedEDFThreadPoolExecutor, RejectsPriorities) {
+  folly::StripedEDFThreadPoolExecutor executor(std::pair<size_t, size_t>{0, 0});
+  EXPECT_THROW(executor.addWithPriority([] {}, 0), std::runtime_error);
+}
+
+// EDFThreadPoolExecutor is a StripedEDFThreadPoolExecutor with strictOrdering
+// enabled, so it must honor the strict global ordering without pinning. This
+// also guards that the wrapper actually forwards strictOrdering = true.
+TEST(EDFThreadPoolExecutor, StrictOrdering) {
+  folly::EDFThreadPoolExecutor executor(
+      0, std::make_shared<folly::NamedThreadFactory>("EDFThreadPool"));
+  submitAndVerifyOrdering(executor);
 }

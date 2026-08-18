@@ -17,6 +17,7 @@
 #include <folly/executors/StripedEDFThreadPoolExecutor.h>
 
 #include <optional>
+#include <stdexcept>
 
 #include <glog/logging.h>
 #include <folly/concurrency/CacheLocality.h>
@@ -215,6 +216,13 @@ void StripedEDFThreadPoolExecutor::add(
   for (auto& f : fs) {
     add(std::move(f), deadline);
   }
+}
+
+void StripedEDFThreadPoolExecutor::addWithPriority(
+    Func /* func */, int8_t /* priority */) {
+  throw std::runtime_error(
+      "StripedEDFThreadPoolExecutor does not support priorities; "
+      "use add(Func, deadline) to schedule by deadline");
 }
 
 } // namespace folly

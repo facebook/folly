@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/SoftRealTimeExecutor.h>
 #include <folly/synchronization/ThrottledLifoSem.h>
@@ -74,6 +76,11 @@ class StripedEDFThreadPoolExecutor
   // SoftRealTimeExecutor
   void add(Func f, uint64_t deadline) override;
   void add(std::vector<Func> fs, uint64_t deadline) override;
+
+  // Priorities are not supported: a priority is easily confused with a
+  // deadline, so it is rejected rather than silently ignored. Use
+  // add(Func, deadline) to schedule by deadline.
+  [[noreturn]] void addWithPriority(Func func, int8_t priority) override;
 
  private:
   static Options defaultOptions() { return {}; }

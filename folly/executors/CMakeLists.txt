@@ -63,17 +63,10 @@ folly_add_library(
 
 folly_add_library(
   NAME edf_thread_pool_executor
-  SRCS
-    EDFThreadPoolExecutor.cpp
   HEADERS
     EDFThreadPoolExecutor.h
-  DEPS
-    ${GLOG_LIBRARIES}
-    folly_concurrency_process_local_unique_id
-    folly_tracing_static_tracepoint
   EXPORTED_DEPS
-    folly_executors_soft_real_time_executor
-    folly_executors_thread_pool_executor
+    folly_executors_striped_edf_thread_pool_executor
     folly_synchronization_throttled_lifo_sem
 )
 
