@@ -70,13 +70,11 @@ folly_add_library(
   DEPS
     ${GLOG_LIBRARIES}
     folly_concurrency_process_local_unique_id
-    folly_portability_gflags
-    folly_synchronization_lifo_sem
-    folly_synchronization_throttled_lifo_sem
     folly_tracing_static_tracepoint
   EXPORTED_DEPS
     folly_executors_soft_real_time_executor
     folly_executors_thread_pool_executor
+    folly_synchronization_throttled_lifo_sem
 )
 
 folly_add_library(

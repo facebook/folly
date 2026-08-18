@@ -314,14 +314,12 @@ fb_dirsync_cpp_library(
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly/concurrency:process_local_unique_id",
-        "//folly/portability:gflags",
-        "//folly/synchronization:lifo_sem",
-        "//folly/synchronization:throttled_lifo_sem",
         "//folly/tracing:static_tracepoint",
     ],
     exported_deps = [
         ":soft_real_time_executor",
         ":thread_pool_executor",
+        "//folly/synchronization:throttled_lifo_sem",
     ],
 )
 

@@ -24,31 +24,9 @@
 
 #include <folly/executors/SoftRealTimeExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
+#include <folly/synchronization/ThrottledLifoSem.h>
 
 namespace folly {
-
-class EDFThreadPoolSemaphore {
- public:
-  virtual ~EDFThreadPoolSemaphore() = default;
-  virtual void post(uint32_t value) = 0;
-  virtual void wait() = 0;
-  virtual uint32_t valueGuess() const = 0;
-};
-
-template <class Semaphore>
-class EDFThreadPoolSemaphoreImpl : public EDFThreadPoolSemaphore {
- public:
-  template <class... Args>
-  explicit EDFThreadPoolSemaphoreImpl(Args&&... args)
-      : sem_(std::forward<Args>(args)...) {}
-
-  void post(uint32_t value) override { sem_.post(value); }
-  void wait() override { sem_.wait(); }
-  uint32_t valueGuess() const override { return sem_.valueGuess(); }
-
- private:
-  Semaphore sem_;
-};
 
 /**
  * `EDFThreadPoolExecutor` is a `SoftRealTimeExecutor` that implements the
@@ -66,17 +44,15 @@ class EDFThreadPoolExecutor
   static constexpr uint64_t kLatestDeadline =
       std::numeric_limits<uint64_t>::max();
 
-  static std::unique_ptr<EDFThreadPoolSemaphore> makeDefaultSemaphore();
-  static std::unique_ptr<EDFThreadPoolSemaphore> makeLifoSemSemaphore();
-  static std::unique_ptr<EDFThreadPoolSemaphore> makeThrottledLifoSemSemaphore(
-      std::chrono::nanoseconds wakeUpInterval = {});
+  struct Options {
+    ThrottledLifoSem::Options tlsOptions;
+  };
 
   explicit EDFThreadPoolExecutor(
       std::size_t numThreads,
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("EDFThreadPool"),
-      std::unique_ptr<EDFThreadPoolSemaphore> semaphore =
-          makeDefaultSemaphore());
+      const Options& options = {});
 
   ~EDFThreadPoolExecutor() override;
 
@@ -100,7 +76,7 @@ class EDFThreadPoolExecutor
   void registerTaskEnqueue(const Task& task);
 
   std::unique_ptr<TaskQueue> taskQueue_;
-  std::unique_ptr<EDFThreadPoolSemaphore> sem_;
+  ThrottledLifoSem sem_;
   std::atomic<int> threadsToStop_{0};
 };
 

@@ -30,15 +30,8 @@
 
 #include <glog/logging.h>
 #include <folly/concurrency/ProcessLocalUniqueId.h>
-#include <folly/portability/GFlags.h>
-#include <folly/synchronization/LifoSem.h>
 #include <folly/synchronization/ThrottledLifoSem.h>
 #include <folly/tracing/StaticTracepoint.h>
-
-FOLLY_GFLAGS_DEFINE_bool(
-    folly_edfthreadpoolexecutor_use_throttled_lifo_sem,
-    true,
-    "EDFThreadPoolExecutor will use ThrottledLifoSem by default");
 
 namespace folly {
 
@@ -250,33 +243,13 @@ class EDFThreadPoolExecutor::TaskQueue {
   std::atomic<uint64_t> curDeadline_ = kLatestDeadline;
 };
 
-/* static */ std::unique_ptr<EDFThreadPoolSemaphore>
-EDFThreadPoolExecutor::makeDefaultSemaphore() {
-  return FLAGS_folly_edfthreadpoolexecutor_use_throttled_lifo_sem
-      ? makeThrottledLifoSemSemaphore()
-      : makeLifoSemSemaphore();
-}
-
-/* static */ std::unique_ptr<EDFThreadPoolSemaphore>
-EDFThreadPoolExecutor::makeLifoSemSemaphore() {
-  return std::make_unique<EDFThreadPoolSemaphoreImpl<LifoSem>>();
-}
-
-/* static */ std::unique_ptr<EDFThreadPoolSemaphore>
-EDFThreadPoolExecutor::makeThrottledLifoSemSemaphore(
-    std::chrono::nanoseconds wakeUpInterval) {
-  ThrottledLifoSem::Options opts;
-  opts.wakeUpInterval = wakeUpInterval;
-  return std::make_unique<EDFThreadPoolSemaphoreImpl<ThrottledLifoSem>>(opts);
-}
-
 EDFThreadPoolExecutor::EDFThreadPoolExecutor(
     std::size_t numThreads,
     std::shared_ptr<ThreadFactory> threadFactory,
-    std::unique_ptr<EDFThreadPoolSemaphore> semaphore)
+    const Options& options)
     : ThreadPoolExecutor(numThreads, numThreads, std::move(threadFactory)),
       taskQueue_(std::make_unique<TaskQueue>()),
-      sem_(std::move(semaphore)) {
+      sem_(options.tlsOptions) {
   setNumThreads(numThreads);
   registerThreadPoolExecutor(this);
 }
@@ -295,7 +268,7 @@ void EDFThreadPoolExecutor::add(Func f, uint64_t deadline) {
   auto task = std::make_shared<Task>(std::move(f), deadline);
   registerTaskEnqueue(*task);
   taskQueue_->push(std::move(task));
-  sem_->post(1);
+  sem_.post(1);
 }
 
 void EDFThreadPoolExecutor::add(std::vector<Func> fs, uint64_t deadline) {
@@ -307,11 +280,11 @@ void EDFThreadPoolExecutor::add(std::vector<Func> fs, uint64_t deadline) {
   auto task = std::make_shared<Task>(std::move(fs), deadline);
   registerTaskEnqueue(*task);
   taskQueue_->push(std::move(task));
-  sem_->post(static_cast<uint32_t>(total));
+  sem_.post(static_cast<uint32_t>(total));
 }
 
 size_t EDFThreadPoolExecutor::getTaskQueueSize() const {
-  return sem_->valueGuess();
+  return sem_.valueGuess();
 }
 
 bool EDFThreadPoolExecutor::tryStopThread(
@@ -346,7 +319,7 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
     return;
   }
   for (;;) {
-    sem_->wait();
+    sem_.wait();
 
     // We consumed a post so the queue is non-empty, but we need to discard
     // finished tasks.
@@ -420,7 +393,7 @@ void EDFThreadPoolExecutor::stopThreads(std::size_t numThreads) {
   threadsToStop_.fetch_add(numThreads, std::memory_order_relaxed);
   taskQueue_->push(
       std::make_shared<Task>(Task::Poison{}, static_cast<int>(numThreads)));
-  sem_->post(numThreads);
+  sem_.post(numThreads);
 }
 
 // threadListLock_ is read (or write) locked.
