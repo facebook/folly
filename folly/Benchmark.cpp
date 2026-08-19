@@ -29,6 +29,7 @@
 #include <vector>
 
 #include <folly/FileUtil.h>
+#include <folly/Function.h>
 #include <folly/MapUtil.h>
 #include <folly/Overload.h>
 #include <folly/String.h>
@@ -159,8 +160,8 @@ FOLLY_GFLAGS_DEFINE_bool(
 FOLLY_GFLAGS_DEFINE_string(
     bm_perf_args,
     "",
-    "Attach `perf` during measurement (skips the first iteration "
-    "for setup). Example: --bm_perf_args=\"record -g\"");
+    "Attach `perf` to one benchmark's measurement, selected with --bm_regex. "
+    "Example: --bm_perf_args=\"record -g\"");
 #endif
 
 FOLLY_GFLAGS_DEFINE_bool(
@@ -505,6 +506,11 @@ namespace {
 constexpr std::string_view kUnitHeaders = "relative  time/iter   iters/s";
 constexpr std::string_view kUnitHeadersPadding = "     ";
 
+// BENCHMARK_DRAW_TEXT entries pass the name filters but are not measured.
+bool isPseudoBenchmark(const std::string& name) {
+  return !name.empty() && name[0] == '"';
+}
+
 std::string headerContents(std::string_view file, size_t columns) {
   const size_t maxFileNameChars =
       columns - kUnitHeaders.size() - kUnitHeadersPadding.size();
@@ -570,7 +576,7 @@ class BenchmarkResultsPrinter {
         separator('-');
         continue;
       }
-      if (s[0] == '"') {
+      if (isPseudoBenchmark(s)) {
         // Strips quote characters from the beginning and end of the name.
         line(s.substr(1, s.length() - 2));
         continue;
@@ -955,13 +961,70 @@ bool userSetGflag([[maybe_unused]] const char* name) {
 #endif
 }
 
+// Report a user-facing error and exit without a stack trace.
+[[noreturn]] void fatalUsage(const std::string& msg) {
+  std::cerr << detail::kANSIBoldRed << msg << detail::kANSIReset << std::endl;
+  exit(1);
+}
+
+void validatePerfUsage(const BenchmarksToRun& toRun) {
+#if FOLLY_PERF_IS_SUPPORTED
+  const bool perfRequested = !FLAGS_bm_perf_args.empty();
+#else
+  constexpr bool perfRequested = false;
+#endif
+  if (!perfRequested) {
+    return;
+  }
+
+  if (FLAGS_bm_mode == "adaptive") {
+    fatalUsage(
+        "--bm_perf_args is not supported in --bm_mode=adaptive, which "
+        "interleaves benchmark and baseline samples so that there is no "
+        "region for perf to bracket. Use --bm_mode=best-of.");
+  }
+
+  std::vector<std::string> selected;
+  selected.reserve(toRun.benchmarks.size());
+  for (const auto* bm : toRun.benchmarks) {
+    if (!isPseudoBenchmark(bm->name)) {
+      selected.push_back(bm->name);
+    }
+  }
+
+  if (selected.size() == 1) {
+    return;
+  }
+
+  if (selected.empty()) {
+    fatalUsage(
+        "--bm_perf_args is set, but the current filters select no benchmarks, "
+        "so perf would profile only the harness. --bm_list prints what is "
+        "selectable. Note that --bm_regex is a regex, so parentheses in "
+        "parameterized names such as 'gather(2MB)' have to be escaped.");
+  }
+
+  constexpr std::size_t kNamesToShow = 3;
+  const auto shownCount = std::min(kNamesToShow, selected.size());
+  auto shown = join(", ", selected.begin(), selected.begin() + shownCount);
+  if (selected.size() > shownCount) {
+    shown += fmt::format(", and {} more", selected.size() - shownCount);
+  }
+
+  fatalUsage(
+      fmt::format(
+          "--bm_perf_args profiles one benchmark at a time, but the current "
+          "filters select {} of them ({}). perf attaches to the whole process, "
+          "so the counters would be a single unattributable sum. Narrow the "
+          "selection with --bm_regex; --bm_list prints what the current "
+          "filters select.",
+          selected.size(),
+          shown));
+}
+
 // Check that no mode-incompatible flags were explicitly set.
 void validateFlagCombinations() {
-  // Log a user-facing error and exit without a stack trace.
-  auto fatal = [](const std::string& msg) {
-    LOG(ERROR) << detail::kANSIBoldRed << msg << detail::kANSIReset;
-    exit(1);
-  };
+  auto fatal = [](const std::string& msg) { fatalUsage(msg); };
 
   if (FLAGS_bm_mode != "best-of" && FLAGS_bm_mode != "adaptive") {
     fatal(
@@ -987,9 +1050,7 @@ void validateFlagCombinations() {
           "(--bm_target_percentile).");
     }
     if (userSetGflag("bm_profile")) {
-      fatal(
-          "--bm_profile is not supported in adaptive mode. "
-          "Use --bm_perf_args to attach perf in any mode.");
+      fatal("--bm_profile is not supported in adaptive mode.");
     }
   } else {
     // Best-of mode
@@ -1038,7 +1099,8 @@ int64_t resolveSliceUsec() {
 std::pair<std::set<std::string>, std::vector<detail::BenchmarkResult>>
 runBenchmarksWithPrinterImpl(
     BenchmarkResultsPrinter* FOLLY_NULLABLE printer,
-    const BenchmarksToRun& toRun) {
+    const BenchmarksToRun& toRun,
+    FunctionRef<detail::PerfScoped()> setUpPerf) {
   vector<detail::BenchmarkResult> results;
   results.reserve(toRun.benchmarks.size());
 
@@ -1110,13 +1172,19 @@ runBenchmarksWithPrinterImpl(
     const detail::BenchmarkRegistration& bm = *toRun.benchmarks[i];
     bool shouldDrawLineAfter = shouldDrawLineTracker();
 
-    if (FLAGS_bm_profile) {
-      elapsed = runProfilingGetNSPerIteration(bm.func, globalBaseline.first);
-    } else {
-      elapsed = FLAGS_bm_estimate_time
-          ? runBenchmarkGetNSPerIterationEstimate(bm.func, globalBaseline.first)
-          : runBenchmarkGetNSPerIteration(
-                bm.func, globalBaseline.first, sliceUsec);
+    {
+      detail::PerfScoped perf =
+          isPseudoBenchmark(bm.name) ? detail::PerfScoped{} : setUpPerf();
+
+      if (FLAGS_bm_profile) {
+        elapsed = runProfilingGetNSPerIteration(bm.func, globalBaseline.first);
+      } else {
+        elapsed = FLAGS_bm_estimate_time
+            ? runBenchmarkGetNSPerIterationEstimate(
+                  bm.func, globalBaseline.first)
+            : runBenchmarkGetNSPerIteration(
+                  bm.func, globalBaseline.first, sliceUsec);
+      }
     }
 
     // if customized user counters is used, it cannot print the result in real
@@ -1224,14 +1292,24 @@ PerfScoped BenchmarkingStateBase::doSetUpPerfScoped(
 }
 
 PerfScoped BenchmarkingStateBase::setUpPerfScoped() const {
-  std::vector<std::string> perfArgs;
 #if FOLLY_PERF_IS_SUPPORTED
+  std::vector<std::string> perfArgs;
   folly::split(' ', FLAGS_bm_perf_args, perfArgs, true);
-#endif
   if (perfArgs.empty()) {
     return PerfScoped{};
   }
-  return doSetUpPerfScoped(perfArgs);
+  try {
+    return doSetUpPerfScoped(perfArgs);
+  } catch (const std::exception& e) {
+    fatalUsage(
+        fmt::format(
+            "--bm_perf_args=\"{}\" could not be started: {}",
+            FLAGS_bm_perf_args,
+            e.what()));
+  }
+#else
+  return PerfScoped{};
+#endif
 }
 
 template <typename Printer>
@@ -1242,10 +1320,12 @@ BenchmarkingStateBase::runBenchmarksWithPrinter(Printer* printer) const {
   }
   std::lock_guard guard(mutex_);
   BenchmarksToRun toRun = selectBenchmarksToRun(benchmarks_);
+  validatePerfUsage(toRun);
   maybeRunWarmUpIteration(toRun);
 
-  detail::PerfScoped perf = setUpPerfScoped();
-  return runBenchmarksWithPrinterImpl(printer, toRun);
+  return runBenchmarksWithPrinterImpl(printer, toRun, [this] {
+    return setUpPerfScoped();
+  });
 }
 
 std::vector<BenchmarkResult> BenchmarkingStateBase::runBenchmarksWithResults()
@@ -1291,7 +1371,7 @@ void runBenchmarks() {
 
   if (FLAGS_bm_list) {
     auto bmNames = state.getBenchmarkList();
-    for (auto testName : bmNames) {
+    for (const auto& testName : bmNames) {
       std::cout << testName << std::endl;
     }
     return;

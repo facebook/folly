@@ -200,6 +200,12 @@ TEST_F(BenchmarkingStateTest, PerfBasic) {
   int setUpPerfCalled = 0;
   std::vector<std::string> expectedArgs;
 
+  state.addBenchmark(__FILE__, "a", [&] {
+    doBaseline();
+    TestClock::advance(std::chrono::nanoseconds(1));
+    return 1;
+  });
+
   state.perfSetup = [&](const std::vector<std::string>& args) {
     ++setUpPerfCalled;
     EXPECT_EQ(expectedArgs, args);
@@ -219,7 +225,65 @@ TEST_F(BenchmarkingStateTest, PerfBasic) {
     setUpPerfCalled = 0;
     expectedArgs = {"stat", "-e", "cache-misses,cache-references"};
     (void)state.runBenchmarksWithResults();
+    EXPECT_EQ(1, setUpPerfCalled);
   }
+}
+
+TEST_F(BenchmarkingStateTest, PerfRejectsMultipleBenchmarks) {
+  state.addBenchmark(__FILE__, "a", [&] {
+    doBaseline();
+    return 1;
+  });
+  state.addBenchmark(__FILE__, "b", [&] {
+    doBaseline();
+    return 1;
+  });
+
+  folly::gflags::FlagSaver _;
+  folly::gflags::SetCommandLineOption("bm_perf_args", "stat");
+
+  EXPECT_EXIT(
+      (void)state.runBenchmarksWithResults(),
+      ::testing::ExitedWithCode(1),
+      "profiles one benchmark at a time");
+}
+
+TEST_F(BenchmarkingStateTest, PerfRejectsEmptySelection) {
+  state.addBenchmark(__FILE__, "a", [&] {
+    doBaseline();
+    return 1;
+  });
+
+  folly::gflags::FlagSaver _;
+  folly::gflags::SetCommandLineOption("bm_perf_args", "stat");
+  folly::gflags::SetCommandLineOption("bm_regex", "matches-nothing");
+
+  EXPECT_EXIT(
+      (void)state.runBenchmarksWithResults(),
+      ::testing::ExitedWithCode(1),
+      "select no benchmarks");
+}
+
+TEST_F(BenchmarkingStateTest, PerfIgnoresTextEntries) {
+  int setUpPerfCalled = 0;
+
+  state.addBenchmark(__FILE__, "\"some text\"", [&] { return 0; });
+  state.addBenchmark(__FILE__, "a", [&] {
+    doBaseline();
+    TestClock::advance(std::chrono::nanoseconds(1));
+    return 1;
+  });
+
+  state.perfSetup = [&](const std::vector<std::string>&) {
+    ++setUpPerfCalled;
+    return PerfScoped{};
+  };
+
+  folly::gflags::FlagSaver _;
+  folly::gflags::SetCommandLineOption("bm_perf_args", "stat");
+  (void)state.runBenchmarksWithResults();
+
+  EXPECT_EQ(1, setUpPerfCalled);
 }
 
 TEST_F(BenchmarkingStateTest, PerfSkipsAnIteration) {
