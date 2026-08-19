@@ -23,7 +23,6 @@ from folly.python.test.simplegenerator import SimpleGenerator
 
 class GeneratorTest(unittest.IsolatedAsyncioTestCase):
     async def test_iter_generator(self) -> None:
-        # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
         gen = SimpleGenerator("normal")
         expected = 1
         async for v in gen:
@@ -32,7 +31,6 @@ class GeneratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(expected, 6)
 
     async def test_iter_generator_empty(self) -> None:
-        # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
         gen = SimpleGenerator("empty")
         async for _ in gen:  # noqa: F841
             self.assertFalse(True, "this should never run")
@@ -42,7 +40,6 @@ class GeneratorTest(unittest.IsolatedAsyncioTestCase):
             )
 
     async def test_iter_generator_error(self) -> None:
-        # pyre-fixme[16]: Module `test` has no attribute `simplegenerator`.
         gen = SimpleGenerator("error")
         async for v in gen:
             self.assertEqual(v, 42)

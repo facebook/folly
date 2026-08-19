@@ -112,7 +112,6 @@ class FatalTests(unittest.TestCase):
             rb"crashing to category foo\.bar$",
             re.MULTILINE,
         )
-        # pyrefly: ignore [bad-argument-type]
         self.assertRegex(err, regex)
 
     def test_static_init(self):
@@ -131,7 +130,6 @@ class FatalTests(unittest.TestCase):
             rb"crashing during static destruction$",
             re.MULTILINE,
         )
-        # pyrefly: ignore [bad-argument-type]
         self.assertRegex(err, regex)
 
     def test_fatal_xlog_if(self):

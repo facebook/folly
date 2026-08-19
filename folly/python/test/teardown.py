@@ -50,7 +50,6 @@ class Teardown(IsolatedAsyncioTestCase):
 
         async def test() -> None:
             # Sanity check
-            # pyre-fixme[16]: Module `test` has no attribute `simplebridgecoro`.
             self.assertEqual(123, await simplebridgecoro.sleep_then_echo(1, 123))
 
             # Schedule a sleep for 1s and the immediately exit
