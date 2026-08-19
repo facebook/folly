@@ -8,6 +8,7 @@ fb_dirsync_cpp_unittest(
     srcs = ["ContainsTest.cpp"],
     headers = [],
     deps = [
+        "//folly:c_portability",
         "//folly/algorithm/simd:contains",
         "//folly/algorithm/simd/detail:simd_contains_impl",
         "//folly/portability:gtest",

@@ -18,6 +18,7 @@
 
 #include <folly/algorithm/simd/detail/ContainsImpl.h>
 
+#include <folly/CPortability.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 
@@ -161,12 +162,12 @@ TEST_F(ContainsTestSpecialCases, Pointers) {
   EXPECT_FALSE(folly::simd::contains(ptrs, &ints[2]));
 }
 
+#ifdef FOLLY_SANITIZE_ADDRESS
 TEST_F(ContainsTestSpecialCases, AsanShouldDetectInvalidRange) {
-  SKIP_IF(!folly::kIsSanitizeAddress);
-
   std::vector<int> v;
   v.resize(3);
   std::span<int> s(v.data() + 1, v.data() + 4);
   EXPECT_DEATH(
       (folly::simd::contains(s, 0)), "AddressSanitizer: heap-buffer-overflow");
 }
+#endif
