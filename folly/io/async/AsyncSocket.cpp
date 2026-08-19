@@ -3756,13 +3756,9 @@ void AsyncSocket::checkForImmediateRead() noexcept {
     }
   }
 
-  if (iouRecvHandle_ && readCallback_ && eventBase_ == originalEventBase &&
-      iouRecvHandle_->hasQueuedData()) {
-    readCallback_->readBufferAvailable(iouRecvHandle_->getQueuedData());
-  }
-
   if (iouRecvHandle_ && readCallback_ && eventBase_ == originalEventBase) {
     iouRecvHandle_->submit(readCallback_->maxBufferSize());
+    iouRecvHandle_->drainCompletedReads();
   }
 }
 

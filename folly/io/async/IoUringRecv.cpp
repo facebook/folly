@@ -280,10 +280,6 @@ bool IoUringRecvHandle::update(uint16_t eventFlags) {
     readEnabled_ = false;
   }
 
-  if (pendingRead_) {
-    processPendingRead();
-  }
-
   return true;
 }
 
@@ -293,24 +289,17 @@ void IoUringRecvHandle::submit(size_t maxSize) {
   // Some ReadCallbacks have a small peeking getReadBuffer() size, intended to
   // peek a few bytes in the socket. For these, issue a non-multishot recv.
   request_->setRecvLen(maxSize < kSmallRecvSize ? maxSize : 0);
-  if (pendingRead_) {
-    if (!pendingRead_->isReady()) {
-      return;
-    }
-    processPendingRead();
-  }
-
-  if (!request_->inFlight()) {
-    backend_->submitSoon(*request_);
-  }
+  ensureRecvArmed();
 }
 
-bool IoUringRecvHandle::hasQueuedData() {
-  return queuedReceivedData_ && !queuedReceivedData_->empty();
-}
+void IoUringRecvHandle::drainCompletedReads() {
+  if (!readEnabled_ || !queuedReceivedData_) {
+    return;
+  }
 
-std::unique_ptr<IOBuf> IoUringRecvHandle::getQueuedData() {
-  return std::move(queuedReceivedData_);
+  DestructorGuard dg(this);
+  auto data = std::exchange(queuedReceivedData_, nullptr);
+  recvCallback_->recvSuccess(std::move(data));
 }
 
 void IoUringRecvHandle::detachEventBase() {
@@ -385,22 +374,33 @@ void IoUringRecvHandle::processPendingRead() {
     auto data = std::move(*pendingRead_).get();
     pendingRead_.reset();
 
-    if (data) {
-      if (!queuedReceivedData_) {
-        queuedReceivedData_ = std::move(data);
-      } else {
-        queuedReceivedData_->appendToChain(std::move(data));
-      }
-    }
+    appendQueuedData(std::move(data));
+    drainCompletedReads();
+    ensureRecvArmed();
+  }
+}
 
-    if (readEnabled_ && queuedReceivedData_) {
-      recvCallback_->recvSuccess(std::move(queuedReceivedData_));
-    }
-
-    if (backend_ && readEnabled_ && !request_->inFlight()) {
-      backend_->submitSoon(*request_);
+void IoUringRecvHandle::appendQueuedData(std::unique_ptr<IOBuf> data) {
+  if (data) {
+    if (queuedReceivedData_) {
+      queuedReceivedData_->appendToChain(std::move(data));
+    } else {
+      queuedReceivedData_ = std::move(data);
     }
   }
+}
+
+void IoUringRecvHandle::ensureRecvArmed() {
+  if (!backend_) {
+    return;
+  }
+  CHECK(request_);
+
+  if (!readEnabled_ || pendingRead_ || request_->inFlight()) {
+    return;
+  }
+
+  backend_->submitSoon(*request_);
 }
 
 void IoUringRecvHandle::onRecvComplete(std::unique_ptr<IOBuf> data) {
@@ -414,27 +414,14 @@ void IoUringRecvHandle::onRecvComplete(std::unique_ptr<IOBuf> data) {
     return;
   }
 
-  if (readEnabled_) {
-    CHECK(!queuedReceivedData_);
-    recvCallback_->recvSuccess(std::move(data));
-  } else {
-    if (!queuedReceivedData_) {
-      queuedReceivedData_ = std::move(data);
-    } else {
-      queuedReceivedData_->appendToChain(std::move(data));
-    }
-  }
-
-  if (backend_ && readEnabled_ && !request_->inFlight()) {
-    backend_->submitSoon(*request_);
-  }
+  appendQueuedData(std::move(data));
+  drainCompletedReads();
+  ensureRecvArmed();
 }
 
 void IoUringRecvHandle::onEnobufs() {
   CHECK(!request_->inFlight());
-  if (backend_ && readEnabled_) {
-    backend_->submitSoon(*request_);
-  }
+  ensureRecvArmed();
 }
 
 void IoUringRecvHandle::onRecvEOF() {
@@ -508,11 +495,7 @@ void IoUringRecvHandle::submit(size_t /*maxSize*/) {
   folly::terminate_with<std::runtime_error>("io_uring not supported");
 }
 
-bool IoUringRecvHandle::hasQueuedData() {
-  folly::terminate_with<std::runtime_error>("io_uring not supported");
-}
-
-std::unique_ptr<IOBuf> IoUringRecvHandle::getQueuedData() {
+void IoUringRecvHandle::drainCompletedReads() {
   folly::terminate_with<std::runtime_error>("io_uring not supported");
 }
 
@@ -530,6 +513,14 @@ void IoUringRecvHandle::setPendingRead(
 }
 
 void IoUringRecvHandle::processPendingRead() {
+  folly::terminate_with<std::runtime_error>("io_uring not supported");
+}
+
+void IoUringRecvHandle::appendQueuedData(std::unique_ptr<IOBuf> /*data*/) {
+  folly::terminate_with<std::runtime_error>("io_uring not supported");
+}
+
+void IoUringRecvHandle::ensureRecvArmed() {
   folly::terminate_with<std::runtime_error>("io_uring not supported");
 }
 

@@ -64,9 +64,7 @@ class IoUringRecvHandle : public DelayedDestruction {
 
   bool update(uint16_t eventFlags);
   void submit(size_t maxSize);
-
-  bool hasQueuedData();
-  std::unique_ptr<IOBuf> getQueuedData();
+  void drainCompletedReads();
 
   void detachEventBase();
   void cancel();
@@ -88,6 +86,8 @@ class IoUringRecvHandle : public DelayedDestruction {
 
   void setPendingRead(EventBase* evb, PendingRead&& future);
   void processPendingRead();
+  void appendQueuedData(std::unique_ptr<IOBuf> data);
+  void ensureRecvArmed();
 
   class RecvRequest;
   void onRecvComplete(std::unique_ptr<IOBuf> data);
