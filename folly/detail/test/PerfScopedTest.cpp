@@ -21,8 +21,12 @@
 #include <folly/portability/Unistd.h>
 #include <folly/test/TestUtils.h>
 
+#include <algorithm>
 #include <filesystem>
+#include <numeric>
+#include <stdexcept>
 #include <thread>
+#include <vector>
 
 #if FOLLY_PERF_IS_SUPPORTED
 
@@ -104,6 +108,47 @@ TEST(PerfScopedTest, StatNoOutput) {
   // Just verifying that this doesn't crash.
   PerfScoped perf{{"stat"}};
   std::this_thread::sleep_for(std::chrono::seconds(1));
+}
+
+// A few milliseconds of real work, returning a checksum so that it cannot be
+// optimized away. perf reports "<not counted>" for a task that never gets
+// scheduled, so the window cannot just be a sleep.
+int burnCpu() {
+  std::vector<int> data(1024);
+  std::iota(data.begin(), data.end(), 0);
+  for (int i = 0; i != 20000; ++i) {
+    std::reverse(data.begin(), data.end());
+  }
+  return data.back();
+}
+
+TEST(PerfScopedTest, ShortWindowIsCounted) {
+  SKIP_IF(!std::filesystem::exists(kPerfBinaryPath)) << "Missing perf binary";
+  std::string output;
+  int checksum = 0;
+
+  {
+    PerfScoped perf{{"stat", "-e", "instructions"}, &output};
+    checksum = burnCpu();
+  }
+
+  EXPECT_EQ(1023, checksum);
+  EXPECT_THAT(output, ::testing::HasSubstr("instructions"));
+  EXPECT_THAT(output, ::testing::Not(::testing::HasSubstr("<not counted>")));
+}
+
+TEST(PerfScopedTest, ThrowsWhenPerfCannotStart) {
+  SKIP_IF(!std::filesystem::exists(kPerfBinaryPath)) << "Missing perf binary";
+  EXPECT_THROW(
+      PerfScoped({"stat", "-e", "definitely-not-a-real-event"}),
+      std::runtime_error);
+}
+
+TEST(PerfScopedTest, RejectsCallerSuppliedWindowArgs) {
+  EXPECT_THROW(PerfScoped({"stat", "--delay=100"}), std::invalid_argument);
+  EXPECT_THROW(
+      PerfScoped({"stat", "--control=fifo:/tmp/a,/tmp/b"}),
+      std::invalid_argument);
 }
 
 } // namespace
