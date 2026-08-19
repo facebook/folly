@@ -10179,6 +10179,75 @@ TEST_P(AsyncSocketTest, PreReceivedData) {
   evb.loop();
 }
 
+class TrackingMovableReadCallback : public ReadCallback {
+ public:
+  using ReadCallback::ReadCallback;
+
+  void readDataAvailable(size_t len) noexcept override {
+    ++readDataAvailableCalls;
+    ReadCallback::readDataAvailable(len);
+  }
+
+  void readBufferAvailable(std::unique_ptr<IOBuf> readBuf) noexcept override {
+    ++readBufferAvailableCalls;
+    maxReadBufferSize =
+        std::max(maxReadBufferSize, readBuf->computeChainDataLength());
+    ReadCallback::readBufferAvailable(std::move(readBuf));
+  }
+
+  size_t readDataAvailableCalls{0};
+  size_t readBufferAvailableCalls{0};
+  size_t maxReadBufferSize{0};
+};
+
+TEST_P(AsyncSocketTest, IoUringMovableCallbackHandsOffToMovableCallback) {
+  if (GetParam() != BackendType::IO_URING) {
+    GTEST_SKIP() << "native io_uring recv behavior";
+  }
+
+  TestServer server;
+  EventBase& evb = getEventBase();
+  auto socket = AsyncSocket::newSocket(&evb);
+  socket->connect(nullptr, server.getAddress(), 30);
+  evb.loop();
+  auto acceptedSocket = server.accept();
+
+  TrackingMovableReadCallback firstCallback(5);
+  TrackingMovableReadCallback secondCallback;
+  firstCallback.dataAvailableCallback = [&] {
+    socket->setReadCB(nullptr);
+    socket->setReadCB(&secondCallback);
+    evb.terminateLoopSoon();
+  };
+  secondCallback.dataAvailableCallback = [&] {
+    if (secondCallback.dataRead() == 6) {
+      evb.terminateLoopSoon();
+    }
+  };
+
+  socket->setReadCB(&firstCallback);
+  const std::array<uint8_t, 5> first{'f', 'i', 'r', 's', 't'};
+  acceptedSocket->write(first.data(), first.size());
+  evb.loop();
+
+  EXPECT_EQ(firstCallback.dataRead(), first.size());
+  firstCallback.verifyData(first.data(), first.size());
+  EXPECT_EQ(firstCallback.readDataAvailableCalls, 0);
+  EXPECT_GT(firstCallback.readBufferAvailableCalls, 0);
+
+  const std::array<uint8_t, 6> second{'s', 'e', 'c', 'o', 'n', 'd'};
+  acceptedSocket->write(second.data(), second.size());
+  evb.loop();
+
+  EXPECT_EQ(secondCallback.dataRead(), 6);
+  secondCallback.verifyData("second", 6);
+  EXPECT_EQ(secondCallback.readDataAvailableCalls, 0);
+  EXPECT_GT(secondCallback.readBufferAvailableCalls, 0);
+
+  socket->close();
+  acceptedSocket->close();
+}
+
 TEST_P(AsyncSocketTest, PreReceivedDataOnly) {
   TestServer server;
 
@@ -10197,6 +10266,7 @@ TEST_P(AsyncSocketTest, PreReceivedDataOnly) {
     peekCallback.verifyData("hello", 5);
     acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("hello"));
     EXPECT_TRUE(acceptedSocket->readable());
+    acceptedSocket->setReadCB(nullptr);
     acceptedSocket->setReadCB(&readCallback);
   };
   readCallback.dataAvailableCallback = [&]() {
@@ -10223,7 +10293,7 @@ TEST_P(AsyncSocketTest, PreReceivedDataPartial) {
   auto acceptedSocket = server.acceptAsync(&evb);
 
   ReadCallback peekCallback;
-  ReadCallback smallReadCallback(3);
+  TrackingMovableReadCallback smallReadCallback(3);
   ReadCallback normalReadCallback;
   peekCallback.dataAvailableCallback = [&]() {
     peekCallback.verifyData("hello", 5);
@@ -10231,7 +10301,15 @@ TEST_P(AsyncSocketTest, PreReceivedDataPartial) {
     acceptedSocket->setReadCB(&smallReadCallback);
   };
   smallReadCallback.dataAvailableCallback = [&]() {
-    smallReadCallback.verifyData("hel", 3);
+    if (GetParam() == BackendType::IO_URING) {
+      smallReadCallback.verifyData("hello", 5);
+    } else {
+      smallReadCallback.verifyData("hel", 3);
+    }
+    acceptedSocket->setReadCB(nullptr);
+    if (GetParam() == BackendType::IO_URING) {
+      acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("lo"));
+    }
     acceptedSocket->setReadCB(&normalReadCallback);
   };
   normalReadCallback.dataAvailableCallback = [&]() {
