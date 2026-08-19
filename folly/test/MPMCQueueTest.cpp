@@ -692,7 +692,9 @@ void runMtProdConsEmulatedFutex() {
     LOG(INFO) << PC_BENCH((QueueType(10000)), 10, 1, n, *caller);
     LOG(INFO) << PC_BENCH((QueueType(10000)), 1, 10, n, *caller);
     LOG(INFO) << PC_BENCH((QueueType(10000)), 10, 10, n, *caller);
-    LOG(INFO) << PC_BENCH((QueueType(100000)), 32, 100, n, *caller);
+    if constexpr (!folly::kIsSanitizeThread) {
+      LOG(INFO) << PC_BENCH((QueueType(100000)), 32, 100, n, *caller);
+    }
   }
 }
 
