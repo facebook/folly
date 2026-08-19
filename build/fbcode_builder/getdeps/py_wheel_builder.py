@@ -100,9 +100,7 @@ class PythonWheelBuilder(BuilderBase):
     that can be used by add_fb_python_library()/add_fb_python_executable() CMake rules.
     """
 
-    # pyre-fixme[13]: Attribute `dist_info_dir` is never initialized.
     dist_info_dir: str
-    # pyre-fixme[13]: Attribute `template_format_dict` is never initialized.
     template_format_dict: dict[str, str]
 
     def _build(self, reconfigure: bool) -> None:
@@ -276,7 +274,6 @@ class PythonWheelBuilder(BuilderBase):
             platform=match.group("platform"),
         )
 
-    # pyre-fixme[24]: Generic type `email.message.Message` expects 2 type parameters.
     def _read_wheel_metadata(self, wheel_name: WheelNameInfo) -> email.message.Message:
         metadata_path = os.path.join(self.dist_info_dir, "WHEEL")
         with codecs.open(metadata_path, "r", encoding="utf-8") as f:

@@ -49,7 +49,6 @@ class CargoBuilder(BuilderBase):
         )
         self.build_doc = build_doc
         self.ws_dir: str | None = workspace_dir
-        # pyre-fixme[8]: Attribute has type `Optional[List[str]]`; used as
         #  `Union[None, List[str], str]`.
         self.manifests_to_build: list[str] | None = (
             # pyrefly: ignore [bad-assignment]
@@ -205,7 +204,6 @@ opt-level = "{}"
                 build_args,
             )
         else:
-            # pyre-fixme[16]: Optional type has no attribute `__iter__`.
             for manifest in self.manifests_to_build:
                 self.run_cargo(
                     self.install_dirs,
@@ -245,7 +243,6 @@ opt-level = "{}"
             if self.build_doc and not filter_args:
                 self.run_cargo(self.install_dirs, "doc", ["--no-deps"])
         else:
-            # pyre-fixme[16]: Optional type has no attribute `__iter__`.
             for manifest in self.manifests_to_build:
                 margs = ["--manifest-path", self.manifest_dir(manifest)]
                 self.run_cargo(
@@ -486,7 +483,6 @@ path = "{null_file}"
                                     file=sys.stderr,
                                 )
                                 existing_crates.add(c)
-                        # pyre-fixme[61]: `name` is undefined, or not always defined.
                         dep_to_crates.setdefault(name, set()).update(existing_crates)
         return dep_to_crates
 

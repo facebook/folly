@@ -117,7 +117,6 @@ def run_cmd(
     if log_file is not None:
         with open(log_file, "a", encoding="utf-8", errors="surrogateescape") as log:
 
-            # pyre-fixme[53]: Captured variable `log` is not annotated.
             def log_function(msg: str) -> None:
                 log.write(msg)
                 log_to_stdout(msg)
@@ -248,7 +247,6 @@ else:
         assert p.stdout is not None
         buffer_size = 64
         while True:
-            # pyre-fixme[16]: Optional type has no attribute `read`.
             data = p.stdout.read(buffer_size)
             if not data:
                 break

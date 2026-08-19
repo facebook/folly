@@ -950,7 +950,6 @@ class ManifestParser:
             src_dir,
             build_dir,
             inst_dir,
-            # pyre-fixme[6]: For 9th argument expected `bool` but got `Optional[str]`.
             build_doc,
             workspace_dir,
             manifests_to_build,

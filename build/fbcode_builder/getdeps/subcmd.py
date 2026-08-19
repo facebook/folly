@@ -67,11 +67,8 @@ def cmd(
             NAME = name
             HELP = help
 
-        # pyre-fixme[6]: For 1st argument expected `Type[SubCmd]` but got
         #  `Type[SubclassedCmd]`.
-        # pyre-fixme[16]: Callable `cmd` has no attribute `wrapper`.
         cmd_table.append(SubclassedCmd)
-        # pyre-fixme[7]: Expected `Type[SubCmd]` but got `Type[SubclassedCmd]`.
         return SubclassedCmd
 
     return wrapper

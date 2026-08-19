@@ -105,7 +105,6 @@ def simple_copytree(src_dir: str, dest_dir: str, symlinks: bool = False) -> str:
 def _remove_readonly_and_try_again(
     func: Callable[..., object],
     path: str,
-    # pyre-fixme[24]: Generic type `type` expects 1 type parameter, use
     #  `typing.Type[<base type>]` to avoid runtime subscripting errors.
     exc_info: tuple[type, BaseException, object],
 ) -> None:

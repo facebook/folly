@@ -103,7 +103,6 @@ class BuildOptions:
                 break
 
         # Detect what repository and project we are being run from.
-        # pyre-fixme[4]: Attribute must be annotated.
         self.repo_root, self.repo_project = detect_project(os.getcwd())
 
         # If we are running from an fbsource repository, set self.fbsource_dir
@@ -329,14 +328,11 @@ class BuildOptions:
                 # Try extra hard to find openssl, needed with homebrew on macOS
                 if found and p.startswith("openssl"):
                     candidate = homebrew_package_prefix("openssl@1.1")
-                    # pyre-fixme[6]: For 1st argument expected
                     #  `Union[PathLike[bytes], PathLike[str], bytes, int, str]` but got
                     #  `Optional[str]`.
                     if candidate and os.path.exists(candidate):
-                        # pyre-fixme[6]: For 2nd argument expected `str` but got
                         #  `Optional[str]`.
                         os.environ["OPENSSL_ROOT_DIR"] = candidate
-                        # pyrefly: ignore [unsupported-operation]
                         env["OPENSSL_ROOT_DIR"] = os.environ["OPENSSL_ROOT_DIR"]
 
         if self.fbsource_dir:
@@ -345,7 +341,6 @@ class BuildOptions:
             )
             yarn_exe = "yarn.bat" if self.is_windows() else "yarn"
             env["YARN_PATH"] = os.path.join(
-                # pyre-fixme[6]: For 1st argument expected `LiteralString` but got
                 #  `Optional[str]`.
                 self.fbsource_dir,
                 "xplat/third-party/yarn/",
@@ -353,14 +348,12 @@ class BuildOptions:
             )
             node_exe = "node-win-x64.exe" if self.is_windows() else "node"
             env["NODE_BIN"] = os.path.join(
-                # pyre-fixme[6]: For 1st argument expected `LiteralString` but got
                 #  `Optional[str]`.
                 self.fbsource_dir,
                 "xplat/third-party/node/bin/",
                 node_exe,
             )
             env["RUST_VENDORED_CRATES_DIR"] = os.path.join(
-                # pyre-fixme[6]: For 1st argument expected `LiteralString` but got
                 #  `Optional[str]`.
                 self.fbsource_dir,
                 "third-party/rust/vendor",
@@ -496,7 +489,6 @@ class BuildOptions:
                 libdir: str = os.path.join(d, lib)
                 if os.path.exists(libdir):
                     found = True
-                    # pyre-fixme[6]: For 2nd argument expected `str` but got
                     #  `Optional[str]`.
                     add_path_entry(env, self.lib_path, libdir, append=append)
                     # module detection for python is old fashioned and needs flags

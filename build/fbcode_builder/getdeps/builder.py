@@ -51,7 +51,6 @@ class BuilderBase:
     ) -> None:
         self.env: Env = Env()
         if env:
-            # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got
             #  `Env`.
             self.env.update(env)
 
@@ -118,7 +117,6 @@ class BuilderBase:
     ) -> int:
         if env:
             e = self.env.copy()
-            # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got
             #  `Env`.
             e.update(env)
             env = e
@@ -168,7 +166,6 @@ class BuilderBase:
         patchfile = os.path.join(
             self.build_opts.fbcode_builder_dir,
             "patches",
-            # pyre-fixme[6]: For 3rd argument expected `Union[PathLike[str], str]`
             #  but got `Optional[str]`.
             self.patchfile,
         )
@@ -437,7 +434,6 @@ class MakeBuilder(BuilderBase):
 
         cmd = (
             [self._make_binary, "-j%s" % self.num_jobs]
-            # pyre-fixme[58]: `+` is not supported for operand types
             #  `list[Optional[str]]` and `Optional[list[str]]`.
             + self.test_args
             + self._get_prefix()
@@ -608,7 +604,6 @@ class MesonBuilder(BuilderBase):
 
     def _build(self, reconfigure: bool) -> None:
         env = self._compute_env()
-        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
         meson: str | None = path_search(env, "meson")
         if meson is None:
             raise Exception("Failed to find Meson")
@@ -913,7 +908,6 @@ if __name__ == "__main__":
             # separator, so translate the runtime path to something
             # that cmake will parse
             defines["CMAKE_INSTALL_RPATH"] = ";".join(
-                # pyre-fixme[16]: Optional type has no attribute `split`.
                 env.get("DYLD_LIBRARY_PATH", "").split(":")
             )
             # Tell cmake that we want to set the rpath in the tree
@@ -986,7 +980,6 @@ if __name__ == "__main__":
             env["DESTDIR"] = self.inst_dir
 
         # Resolve the cmake that we installed
-        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
         cmake = path_search(env, "cmake")
         if cmake is None:
             raise Exception("Failed to find CMake")
@@ -1004,7 +997,6 @@ if __name__ == "__main__":
             self._write_build_script(
                 cmd_prefix=self._get_cmd_prefix(),
                 cmake=cmake,
-                # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but
                 #  got `Env`.
                 ctest=path_search(env, "ctest"),
                 env=env,
@@ -1050,7 +1042,6 @@ if __name__ == "__main__":
             return
 
         env = self._compute_env()
-        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
         cmake = path_search(env, "cmake")
         if cmake is None:
             raise RuntimeError("unable to find cmake")
@@ -1134,9 +1125,7 @@ if __name__ == "__main__":
         timeout: int | None = None,
     ) -> None:
         env = self._compute_env()
-        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
         ctest: str | None = path_search(env, "ctest")
-        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
         cmake = path_search(env, "cmake")
 
         # Build only the missing test executables needed for the given filter.
@@ -1190,10 +1179,7 @@ if __name__ == "__main__":
                     return p.get("value", defval)
             return defval
 
-        # pyre-fixme[53]: Captured variable `cmake` is not annotated.
-        # pyre-fixme[53]: Captured variable `env` is not annotated.
         def list_tests() -> list[dict[str, object]]:
-            # pyrefly: ignore [no-matching-overload]
             output = subprocess.check_output(
                 [require_command(ctest, "ctest"), "--show-only=json-v1"],
                 env=env,
@@ -1258,7 +1244,6 @@ if __name__ == "__main__":
         try:
             from .facebook.testinfra import start_run
 
-            # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got
             #  `Env`.
             tpx = path_search(env, "tpx")
         except ImportError:
@@ -1457,7 +1442,6 @@ class OpenSSLBuilder(BuilderBase):
             bindir = os.path.join(self.loader.get_project_install_dir(m), "bin")
             add_path_entry(env, "PATH", bindir, append=False)
 
-        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
         perl = typing.cast(str, path_search(env, "perl", "perl"))
 
         make_j_args = []
@@ -1781,7 +1765,6 @@ install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
         env = self._compute_env()
 
         # Resolve the cmake that we installed
-        # pyre-fixme[6]: For 1st argument expected `Mapping[str, str]` but got `Env`.
         cmake = path_search(env, "cmake")
 
         # pyre-fixme[6]: For 1st argument expected `List[str]` but got
