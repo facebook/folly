@@ -271,12 +271,6 @@ struct IoUringOptions {
     return *this;
   }
 
-  IoUringOptions& setNativeAsyncSocketSupport(bool v) {
-    nativeAsyncSocketSupport = v;
-
-    return *this;
-  }
-
   IoUringOptions& setArenaRegion(void* base, size_t size, uint32_t index) {
     arenaRegion.iov_base = base;
     arenaRegion.iov_len = size;
@@ -341,8 +335,6 @@ struct IoUringOptions {
 
   // Incremental Buffers
   bool enableIncrementalBuffers{false};
-
-  bool nativeAsyncSocketSupport{false};
 
   struct iovec arenaRegion{};
   uint32_t arenaIndex{0};
