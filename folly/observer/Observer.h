@@ -409,7 +409,10 @@ class AtomicObserver {
   T get() const;
   T operator*() const { return get(); }
 
-  const Observer<T>& getUnderlyingObserver() const { return observer_; }
+  const Observer<T>& getUnderlyingObserver() const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return observer_;
+  }
 
  private:
   mutable std::atomic<T> cachedValue_{};
@@ -448,7 +451,10 @@ class TLObserver {
     return static_cast<F&&>(f)(*snapshot);
   }
 
-  const Observer<T>& getUnderlyingObserver() const { return observer_; }
+  const Observer<T>& getUnderlyingObserver() const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return observer_;
+  }
 
  private:
   Observer<T> observer_;
@@ -466,7 +472,10 @@ class ReadMostlyAtomicObserver {
   T get() const;
   T operator*() const { return get(); }
 
-  const Observer<T>& getUnderlyingObserver() const { return observer_; }
+  const Observer<T>& getUnderlyingObserver() const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return observer_;
+  }
 
  private:
   Observer<T> observer_;

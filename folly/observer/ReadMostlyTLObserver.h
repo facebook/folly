@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/CppAttributes.h>
 #include <folly/concurrency/memory/ReadMostlySharedPtr.h>
 #include <folly/observer/Observer.h>
 #include <folly/observer/detail/ObserverManager.h>
@@ -66,7 +67,10 @@ class ReadMostlyTLObserver {
     return static_cast<F&&>(f)(*snapshot);
   }
 
-  const Observer<T>& getUnderlyingObserver() const { return observer_; }
+  const Observer<T>& getUnderlyingObserver() const
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return observer_;
+  }
 
  private:
   ReadMostlySharedPtr<const T> refresh() const {
