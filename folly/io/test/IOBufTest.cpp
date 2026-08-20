@@ -1589,6 +1589,22 @@ TEST(IOBuf, CoalesceCapacityOverflow) {
   EXPECT_THROW(head->coalesceWithHeadroomTailroom(kMax, kMax), std::bad_alloc);
 }
 
+// cloneCoalescedAsValueWithHeadroomTailroom (and the unique_ptr wrapper that
+// forwards to it) must throw std::bad_alloc when the coalesced capacity
+// overflows size_t rather than wrapping around to an undersized buffer.
+TEST(IOBuf, CloneCoalescedCapacityOverflow) {
+  auto head = fromStr("hello");
+  head->insertAfterThisOne(fromStr("world"));
+  ASSERT_TRUE(head->isChained());
+
+  constexpr auto kMax = std::numeric_limits<std::size_t>::max();
+  EXPECT_THROW(
+      head->cloneCoalescedWithHeadroomTailroom(kMax, kMax), std::bad_alloc);
+  EXPECT_THROW(
+      head->cloneCoalescedAsValueWithHeadroomTailroom(kMax, kMax),
+      std::bad_alloc);
+}
+
 TEST(IOBuf, CloneCoalescedChain) {
   auto b = IOBuf::createChain(1000, 100);
   b->advance(10);
