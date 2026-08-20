@@ -83,12 +83,10 @@ fb_dirsync_cpp_library(
     headers = ["Event.h"],
     use_raw_headers = True,
     exported_deps = [
+        "fbsource//third-party/libevent:libevent",
         ":fcntl",
         ":windows",
         "//folly/net/detail:socket_file_descriptor_map",
-    ],
-    exported_external_deps = [
-        "libevent",
     ],
 )
 
