@@ -964,6 +964,33 @@ class EventBase
   static std::unique_ptr<EventBaseBackendBase> getDefaultBackend();
   static std::unique_ptr<EventBaseBackendBase> getTestBackend(int napiId);
 
+  // Number of outstanding loop keepalives. The loop will not exit while this is
+  // nonzero. Exposed for diagnostics, e.g. a shutdown-hang backstop checking
+  // whether a worker EventBase is being held alive by a leaked
+  // Executor::KeepAlive.
+  size_t loopKeepAliveCount() const;
+
+  // Optional, process-global tracing hooks invoked (on the calling thread) from
+  // keepAliveAcquire() and keepAliveRelease() for every EventBase when set.
+  // Default null => no effect and negligible cost (a relaxed load + branch), so
+  // services that do not opt in pay nothing. Intended for opt-in diagnostics --
+  // e.g. capturing the call sites of outstanding loop keepalives to debug a
+  // shutdown hang. Callbacks run on the keepalive hot path: they must be fast
+  // and must not throw.
+  //
+  // Acquire fires after the count is incremented, release before it is
+  // decremented -- including when the release defers the actual decrement onto
+  // the loop thread -- so a callback always runs while the reference it
+  // describes is still held.
+  //
+  // Not synchronized with in-flight keepalive operations: install once at
+  // startup, before the EventBases being traced exist. Replacing or clearing a
+  // callback while other threads acquire or release may still invoke the old
+  // one afterwards.
+  using KeepAliveTraceCallback = void (*)(EventBase*);
+  static void setKeepAliveAcquireTraceCallback(KeepAliveTraceCallback cb);
+  static void setKeepAliveReleaseTraceCallback(KeepAliveTraceCallback cb);
+
  protected:
   bool keepAliveAcquire() noexcept override;
   void keepAliveRelease() noexcept override;
@@ -978,7 +1005,6 @@ class EventBase
 
   folly::VirtualEventBase* tryGetVirtualEventBase();
 
-  size_t loopKeepAliveCount();
   void applyLoopKeepAlive();
 
   /*

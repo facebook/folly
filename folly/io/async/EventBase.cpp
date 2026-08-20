@@ -751,12 +751,35 @@ void EventBase::loopMainCleanup() {
       loopState_ ? kSuspendedTid : kNotRunningTid, std::memory_order_release);
 }
 
+namespace {
+std::atomic<EventBase::KeepAliveTraceCallback> gKeepAliveAcquireTraceCallback{
+    nullptr};
+std::atomic<EventBase::KeepAliveTraceCallback> gKeepAliveReleaseTraceCallback{
+    nullptr};
+} // namespace
+
+void EventBase::setKeepAliveAcquireTraceCallback(KeepAliveTraceCallback cb) {
+  gKeepAliveAcquireTraceCallback.store(cb, std::memory_order_relaxed);
+}
+
+void EventBase::setKeepAliveReleaseTraceCallback(KeepAliveTraceCallback cb) {
+  gKeepAliveReleaseTraceCallback.store(cb, std::memory_order_relaxed);
+}
+
 bool EventBase::keepAliveAcquire() noexcept {
   loopKeepAliveCount_.fetch_add(1, std::memory_order_relaxed);
+  auto cb = gKeepAliveAcquireTraceCallback.load(std::memory_order_relaxed);
+  if (FOLLY_UNLIKELY(cb != nullptr)) {
+    cb(this);
+  }
   return true;
 }
 
 void EventBase::keepAliveRelease() noexcept {
+  auto cb = gKeepAliveReleaseTraceCallback.load(std::memory_order_relaxed);
+  if (FOLLY_UNLIKELY(cb != nullptr)) {
+    cb(this);
+  }
   size_t count = loopKeepAliveCount_.load(std::memory_order_relaxed);
   do {
     DCHECK_GE(count, 1);
@@ -774,7 +797,7 @@ void EventBase::keepAliveRelease() noexcept {
       count, count - 1, std::memory_order_acq_rel, std::memory_order_relaxed));
 }
 
-size_t EventBase::loopKeepAliveCount() {
+size_t EventBase::loopKeepAliveCount() const {
   return loopKeepAliveCount_.load(std::memory_order_acquire);
 }
 
