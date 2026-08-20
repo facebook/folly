@@ -146,14 +146,13 @@ fb_dirsync_cpp_library(
         "ovr_config//runtime:fbcode": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
     }),
     use_raw_headers = True,
-    exported_deps = [":config"],
-    exported_external_deps = select({
-        "DEFAULT": ["gflags"] if should_enable_gflags() else [],
-        "fbsource//xplat/folly/buck_config:folly-gflags-enabled": ["gflags"],
-        "ovr_config//os:linux": ["gflags"],
-        "ovr_config//os:macos": ["gflags"],
-        "ovr_config//os:windows": ["gflags"],
-        "ovr_config//runtime:fbcode": ["gflags"],
+    exported_deps = [":config"] + select({
+        "DEFAULT": ["fbsource//third-party/gflags:gflags"] if should_enable_gflags() else [],
+        "fbsource//xplat/folly/buck_config:folly-gflags-enabled": ["fbsource//third-party/gflags:gflags"],
+        "ovr_config//os:linux": ["fbsource//third-party/gflags:gflags"],
+        "ovr_config//os:macos": ["fbsource//third-party/gflags:gflags"],
+        "ovr_config//os:windows": ["fbsource//third-party/gflags:gflags"],
+        "ovr_config//runtime:fbcode": ["fbsource//third-party/gflags:gflags"],
     }),
 )
 
