@@ -45,6 +45,7 @@ Py_Weak(void) PyErr_Fetch(PyObject**, PyObject**, PyObject**);
 
 // Object Handling
 Py_Weak(PyObject*) PyObject_Repr(PyObject*);
+Py_Weak(PyObject*) PyObject_GetAttrString(PyObject*, const char*);
 
 // Unicode && Bytes Handling
 Py_Weak(char*) PyBytes_AsString(PyObject*);
