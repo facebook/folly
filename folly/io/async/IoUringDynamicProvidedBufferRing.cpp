@@ -272,6 +272,10 @@ void IoUringDynamicProvidedBufferRing::ringRefill() noexcept {
     return;
   }
 
+  if (ringFillLevel() == 0) {
+    bufferActiveArea_ = bufferRefillArea_;
+  }
+
   uint16_t pendingOutstanding = 0;
   auto freeEntries = ringFreeEntries();
   while (freeEntries--) {

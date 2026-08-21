@@ -57,6 +57,10 @@ class IoUringDynamicProvidedBufferRingTestHelper {
   uint32_t ringAvailable() { return ring.ringTail_ - ring.ringHead_; }
   uint64_t outstandingSum() { return ring.areasOutstandingSum(); }
   uint16_t headBid() { return ring.ringBuf(ring.ringHead_)->bid; }
+  const unsigned char* headAddr() {
+    return reinterpret_cast<const unsigned char*>(
+        ring.ringBuf(ring.ringHead_)->addr);
+  }
 
   void setRingRefillThreshold(uint16_t threshold) {
     ring.ringRefillThreshold_ = threshold;
@@ -723,6 +727,37 @@ TEST_F(
   held.push_back(consumeOne(*bufRing, helper, 64));
   EXPECT_EQ(helper.ringAvailable(), kBufferCount)
       << "threshold consumption should trigger a batched refill";
+}
+
+TEST_F(
+    IoUringDynamicProvidedBufferRingTest, RefillAfterAreaCapUsesRecycledArea) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 2,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+
+  std::vector<std::unique_ptr<folly::IOBuf>> held;
+  for (int i = 0; i < 1000 && helper.ringAvailable() > 0; i++) {
+    held.push_back(consumeOne(*bufRing, helper, 64));
+  }
+  ASSERT_EQ(helper.areaCount(), 64u);
+  ASSERT_EQ(helper.ringAvailable(), 0u);
+
+  held.erase(held.begin(), held.begin() + options.bufferCount);
+
+  bufRing->enobuf();
+  ASSERT_EQ(helper.ringAvailable(), options.bufferCount);
+
+  for (uint32_t i = 0; i < options.bufferCount; i++) {
+    const auto* posted = helper.headAddr();
+    auto buf = consumeOne(*bufRing, helper, 64);
+    EXPECT_EQ(buf->data(), posted);
+  }
 }
 
 #endif
