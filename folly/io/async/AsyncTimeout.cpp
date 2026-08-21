@@ -138,9 +138,23 @@ void AsyncTimeout::libeventCallback(libevent_fd_t fd, short events, void* arg) {
   // this can't possibly fire if timeout->eventBase_ is nullptr
   timeout->timeoutManager_->bumpHandlingTime();
 
-  RequestContextScopeGuard rctx(timeout->context_);
+  // Read these before running the callback, which is allowed to destroy the
+  // timeout. Folds away entirely when !kInternalEventsCanStallLoop.
+  auto* timeoutManager = timeout->timeoutManager_;
+  const bool internal =
+      kInternalEventsCanStallLoop &&
+      static_cast<bool>(
+          event_ref_flags(timeout->event_.getEvent()) & EVLIST_INTERNAL);
 
-  timeout->timeoutExpired();
+  {
+    RequestContextScopeGuard rctx(timeout->context_);
+
+    timeout->timeoutExpired();
+  }
+
+  if (internal) {
+    timeoutManager->yieldAfterInternalEvent();
+  }
 }
 
 } // namespace folly

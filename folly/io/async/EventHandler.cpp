@@ -151,13 +151,27 @@ void EventHandler::libeventCallback(libevent_fd_t fd, short events, void* arg) {
   // this can't possibly fire if handler->eventBase_ is nullptr
   handler->eventBase_->bumpHandlingTime();
 
-  RequestContextSaverScopeGuard rctxGuard;
-  ExecutionObserverScopeGuard guard(
-      &handler->eventBase_->getExecutionObserverList(),
-      &handler->eventBase_,
-      folly::ExecutionObserver::CallbackType::Event);
+  // Read these before running the callback, which is allowed to destroy the
+  // handler. Folds away entirely when !kInternalEventsCanStallLoop.
+  auto* eventBase = handler->eventBase_;
+  const bool internal =
+      kInternalEventsCanStallLoop &&
+      static_cast<bool>(
+          folly::event_ref_flags(handler->event_.getEvent()) & EVLIST_INTERNAL);
 
-  handler->handlerReady(uint16_t(events));
+  {
+    RequestContextSaverScopeGuard rctxGuard;
+    ExecutionObserverScopeGuard guard(
+        &handler->eventBase_->getExecutionObserverList(),
+        &handler->eventBase_,
+        folly::ExecutionObserver::CallbackType::Event);
+
+    handler->handlerReady(uint16_t(events));
+  }
+
+  if (internal) {
+    eventBase->yieldAfterInternalEvent();
+  }
 }
 
 void EventHandler::setEventBase(EventBase* eventBase) {

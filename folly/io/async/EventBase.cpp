@@ -72,6 +72,7 @@ class EventBaseBackend : public folly::EventBaseBackendBase {
 
   int eb_event_base_loop(int flags) override;
   int eb_event_base_loopbreak() override;
+  void eb_yield_after_internal_event() override;
 
   int eb_event_add(Event& event, const struct timeval* timeout) override;
   int eb_event_del(EventBaseBackendBase::Event& event) override;
@@ -81,11 +82,19 @@ class EventBaseBackend : public folly::EventBaseBackendBase {
   bool setEdgeTriggered(Event& event) override;
 
  private:
+  void initYieldEvent();
+
+  static void yieldCallback(folly::libevent_fd_t, short, void*) {}
+
   event_base* evb_;
+  // See eb_yield_after_internal_event(). Assigned but deliberately never
+  // added, so it costs nothing until it is activated.
+  struct event yieldEvent_;
 };
 
 EventBaseBackend::EventBaseBackend() {
   evb_ = event_base_new();
+  initYieldEvent();
 }
 
 EventBaseBackend::EventBaseBackend(event_base* evb) : evb_(evb) {
@@ -93,6 +102,12 @@ EventBaseBackend::EventBaseBackend(event_base* evb) : evb_(evb) {
     LOG(ERROR) << "EventBase(): Pass nullptr as event base.";
     throw std::invalid_argument("EventBase(): event base cannot be nullptr");
   }
+  initYieldEvent();
+}
+
+void EventBaseBackend::initYieldEvent() {
+  event_set(&yieldEvent_, -1, 0, &EventBaseBackend::yieldCallback, nullptr);
+  event_base_set(evb_, &yieldEvent_);
 }
 
 int EventBaseBackend::eb_event_base_loop(int flags) {
@@ -101,6 +116,24 @@ int EventBaseBackend::eb_event_base_loop(int flags) {
 
 int EventBaseBackend::eb_event_base_loopbreak() {
   return event_base_loopbreak(evb_);
+}
+
+void EventBaseBackend::eb_yield_after_internal_event() {
+  // Callers gate on kInternalEventsCanStallLoop, so this is only reached on
+  // the libevent versions that need it.
+  //
+  // Activating a non-internal event is what makes the dispatch count as work,
+  // so event_base_loop() exits EVLOOP_ONCE after finishing the events it has
+  // already made active. That matches what libevent 1.4 does, and what the
+  // EventBase loop expects. Activating an assigned but never added event is
+  // libevent's own idiom for scheduling an immediate callback, used by
+  // event_base_once(); because it is never added it does not count towards
+  // event_haveevents(), so it cannot keep loop() alive.
+  //
+  // loopbreak() would be marginally cheaper but returns without running the
+  // rest of this dispatch, and loopexit() allocates, going through
+  // event_base_once().
+  event_active(&yieldEvent_, EV_TIMEOUT, 1);
 }
 
 int EventBaseBackend::eb_event_add(
@@ -856,6 +889,19 @@ void EventBase::bumpHandlingTime() {
 
     VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__
              << " (loop) startWork_ " << startWork_.time_since_epoch().count();
+  }
+}
+
+void EventBase::yieldAfterInternalEvent() {
+  // Reached only from an event callback, so the loop thread. Both the
+  // loopCallbacks_ read and what the backend does with this are unsynchronized
+  // and rely on that.
+  dcheckIsInEventBaseThread();
+  // Nothing to return to the loop for if the callback did not leave any work
+  // behind, and the backends that need this are the ones where returning is
+  // not free.
+  if (!loopCallbacks_.empty()) {
+    evb_->eb_yield_after_internal_event();
   }
 }
 
