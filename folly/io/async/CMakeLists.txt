@@ -585,6 +585,26 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME io_uring_dynamic_provided_buffer_ring
+  SRCS
+    IoUringDynamicProvidedBufferRing.cpp
+  HEADERS
+    IoUringBase.h
+    IoUringDynamicProvidedBufferRing.h
+  DEPS
+    folly_conv
+    folly_lang_align
+    folly_portability_sys_mman
+    folly_string
+  EXPORTED_DEPS
+    Boost::headers
+    folly_io_async_delayed_destruction
+    folly_io_async_liburing
+    folly_io_iobuf
+    folly_synchronization_distributed_mutex
+)
+
+folly_add_library(
   NAME io_uring_event
   SRCS
     IoUringEvent.cpp

@@ -1,0 +1,527 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <folly/io/async/IoUringDynamicProvidedBufferRing.h>
+
+#include <atomic>
+#include <thread>
+#include <vector>
+
+#include <gtest/gtest.h>
+
+#if FOLLY_HAS_LIBURING
+
+using namespace ::testing;
+using namespace ::std;
+using namespace ::folly;
+
+struct IoUringDynamicProvidedBufferRingTest : testing::Test {};
+
+namespace folly {
+class IoUringDynamicProvidedBufferRingTestHelper {
+ public:
+  explicit IoUringDynamicProvidedBufferRingTestHelper(
+      IoUringDynamicProvidedBufferRing& ring)
+      : ring(ring) {}
+
+  uint32_t ringBufferCount() { return ring.ringBufferCount_; }
+  uint32_t returnedBuffers() { return ring.bufferReturnedCount; }
+  uint32_t areaCount() { return ring.areaCount_; }
+
+  const char* areaData(uint32_t area, uint16_t bid) {
+    return ring.getData(*ring.areas_[area], bid);
+  }
+  uint32_t areaOutstanding(uint32_t area) {
+    return ring.areas_[area]->outstanding.load();
+  }
+
+  uint32_t activeArea() { return areaIndexOf(ring.bufferActiveArea_); }
+  uint32_t refillArea() { return areaIndexOf(ring.bufferRefillArea_); }
+
+  bool available() { return ring.available(); }
+  uint32_t enobufCount() { return ring.getAndResetEnobufCount(); }
+
+  uint32_t ringAvailable() { return ring.ringTail_ - ring.ringHead_; }
+  uint16_t headBid() { return ring.ringBuf(ring.ringHead_)->bid; }
+
+  int areaOfPtr(const void* p) {
+    for (uint32_t a = 0; a < ring.areaCount_; a++) {
+      const char* base = ring.areas_[a]->buffers;
+      const char* end = base +
+          static_cast<size_t>(ring.ringBufferCount_) * ring.sizePerBuffer_;
+      if (p >= base && p < end) {
+        return static_cast<int>(a);
+      }
+    }
+    return -1;
+  }
+
+  IoUringDynamicProvidedBufferRing& ring;
+
+ private:
+  uint32_t areaIndexOf(
+      const IoUringDynamicProvidedBufferRing::BufferArea* area) {
+    for (uint32_t a = 0; a < ring.areaCount_; a++) {
+      if (ring.areas_[a].get() == area) {
+        return a;
+      }
+    }
+    return std::numeric_limits<uint32_t>::max();
+  }
+};
+} // namespace folly
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, Create) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 1024,
+      .bufferSize = 4096,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  EXPECT_EQ(bufRing->count(), 1024);
+  EXPECT_TRUE(bufRing->available());
+  EXPECT_EQ(bufRing->sizePerBuffer(), 4096);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+  EXPECT_EQ(helper.ringBufferCount(), 1024);
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, CreateNoHugepages) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 2048,
+      .bufferSize = 4096,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  EXPECT_EQ(bufRing->count(), 2048);
+  EXPECT_TRUE(bufRing->available());
+  EXPECT_EQ(bufRing->sizePerBuffer(), 4096);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+  EXPECT_EQ(helper.ringBufferCount(), 2048);
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, BufferMinSize) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 16,
+      .bufferSize = 8,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  EXPECT_EQ(bufRing->count(), 16);
+  EXPECT_TRUE(bufRing->available());
+  // constexpr size_t kMinBufferSize = 32;
+  EXPECT_EQ(bufRing->sizePerBuffer(), 32);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+  EXPECT_EQ(helper.ringBufferCount(), 16);
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, BufferCountCheck) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  uint16_t bgid = 0;
+
+  auto makeOptions = [&bgid](uint32_t bufferCount) {
+    return IoUringDynamicProvidedBufferRing::Options{
+        .gid = bgid++,
+        .bufferCount = bufferCount,
+        .bufferSize = 32,
+    };
+  };
+
+  auto minRing =
+      IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(2));
+  EXPECT_EQ(minRing->count(), 2);
+
+  auto maxRing =
+      IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(32768));
+  EXPECT_EQ(maxRing->count(), 32768);
+
+  auto bufRing =
+      IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(1000));
+  EXPECT_EQ(bufRing->count(), 1024);
+
+  auto roundedRing =
+      IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(1));
+  EXPECT_EQ(roundedRing->count(), 2);
+
+  EXPECT_THROW(
+      IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(0)),
+      std::runtime_error);
+
+  EXPECT_THROW(
+      IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(32769)),
+      std::runtime_error);
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, DelayedDestruction) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 1024,
+      .bufferSize = 4096,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto buf1 = bufRing->getIoBuf(0, 1024, false);
+  auto buf2 = bufRing->getIoBuf(1, 1024, false);
+  buf1.reset();
+  bufRing.reset();
+  buf2.reset();
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, ConcurrentDecBufferState) {
+  constexpr size_t kBufsPerThread = 1024;
+  constexpr int kNumThreads = 16;
+  constexpr uint32_t kBufferCount = kBufsPerThread * kNumThreads;
+
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = kBufferCount,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+
+  // Acquire all buffers
+  std::vector<std::unique_ptr<IOBuf>> bufs;
+  bufs.reserve(kBufferCount);
+  for (uint32_t i = 0; i < kBufferCount; i++) {
+    bufs.push_back(bufRing->getIoBuf(i, 32, false));
+  }
+
+  // Distribute buffers across threads
+  std::atomic<bool> go{false};
+  std::vector<std::thread> threads;
+  for (int t = 0; t < kNumThreads; t++) {
+    size_t start = t * kBufsPerThread;
+    std::vector<std::unique_ptr<IOBuf>> threadBufs;
+    threadBufs.reserve(kBufsPerThread);
+    for (size_t i = start; i < start + kBufsPerThread; i++) {
+      threadBufs.push_back(std::move(bufs[i]));
+    }
+
+    threads.emplace_back([&go, threadBufs = std::move(threadBufs)]() mutable {
+      while (!go.load(std::memory_order_acquire)) {
+      }
+      // Each reset triggers free_fn -> decBufferState
+      for (auto& buf : threadBufs) {
+        buf.reset();
+      }
+    });
+  }
+
+  go.store(true, std::memory_order_release);
+  for (auto& t : threads) {
+    t.join();
+  }
+
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+  EXPECT_EQ(helper.returnedBuffers(), kBufferCount);
+}
+
+TEST_F(
+    IoUringDynamicProvidedBufferRingTest,
+    IncrementalPartiallyConsumedSingleBuffer) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 4,
+      .bufferSize = 64,
+      .useIncrementalBuffers = true,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+
+  auto first = bufRing->getIoBuf(0, 30, true);
+  EXPECT_EQ(first->length(), 30);
+
+  auto second = bufRing->getIoBuf(0, 40, false);
+  EXPECT_TRUE(second->isChained());
+  EXPECT_EQ(second->computeChainDataLength(), 40);
+  EXPECT_EQ(second->length(), 34);
+  EXPECT_EQ(second->next()->length(), 6);
+}
+
+static std::unique_ptr<folly::IOBuf> consumeOne(
+    folly::IoUringDynamicProvidedBufferRing& ring,
+    folly::IoUringDynamicProvidedBufferRingTestHelper& helper,
+    size_t len) {
+  uint16_t bid = helper.headBid();
+  return ring.getIoBuf(bid, len, false);
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, GrowsOnExhaustion) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 8,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+  ASSERT_EQ(helper.areaCount(), 2u);
+
+  std::vector<std::unique_ptr<folly::IOBuf>> held;
+  for (int i = 0; i < 8; i++) {
+    held.push_back(consumeOne(*bufRing, helper, 64));
+  }
+  EXPECT_EQ(helper.areaCount(), 2u);
+
+  for (int i = 0; i < 8; i++) {
+    held.push_back(consumeOne(*bufRing, helper, 64));
+  }
+  EXPECT_EQ(helper.areaCount(), 3u);
+}
+
+TEST_F(
+    IoUringDynamicProvidedBufferRingTest, BundleFollowsRefillOrderAcrossReuse) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 4,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+
+  std::vector<std::unique_ptr<folly::IOBuf>> held;
+  bool tested = false;
+  for (int step = 0; step < 300 && !tested; step++) {
+    uint16_t headBid = helper.headBid();
+    uint32_t front = helper.activeArea();
+    uint32_t next = helper.refillArea();
+    if (headBid != 0 && next != front) {
+      uint32_t avail = helper.ringAvailable();
+      uint32_t tailOfFront = options.bufferCount - headBid; // entries in front
+      if (avail > tailOfFront) {
+        // A bundle starting at headBid straddles from the active area into the
+        // refill area. Its segments must follow refill's posted area order
+        // regardless of the areas' absolute indices in areas_.
+        auto buf =
+            bufRing->getIoBuf(headBid, options.bufferSize * avail, false);
+        std::vector<int> segAreas;
+        const folly::IOBuf* cur = buf.get();
+        do {
+          segAreas.push_back(helper.areaOfPtr(cur->data()));
+          cur = cur->next();
+        } while (cur != buf.get());
+
+        std::vector<int> expected;
+        for (uint32_t i = 0; i < avail; i++) {
+          expected.push_back(
+              i < tailOfFront ? static_cast<int>(front)
+                              : static_cast<int>(next));
+        }
+        EXPECT_EQ(segAreas, expected)
+            << "bundle segments must follow refill's posted area order "
+               "(front="
+            << front << ", next=" << next << ")";
+        held.push_back(std::move(buf));
+        tested = true;
+        break;
+      }
+    }
+    if (helper.ringAvailable() == 0) {
+      break;
+    }
+    auto b = consumeOne(*bufRing, helper, 64);
+    if (helper.areaOfPtr(b->data()) == static_cast<int>(helper.refillArea())) {
+      b.reset();
+    } else {
+      held.push_back(std::move(b));
+    }
+  }
+  EXPECT_TRUE(tested)
+      << "expected a straddling bundle to exercise the area boundary";
+}
+
+TEST_F(
+    IoUringDynamicProvidedBufferRingTest,
+    ReuseStabilizesWithoutUnboundedGrowth) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 8,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+
+  for (int i = 0; i < 200; i++) {
+    auto buf = consumeOne(*bufRing, helper, 64);
+    buf.reset();
+  }
+  EXPECT_EQ(helper.areaCount(), 2u)
+      << "prompt returns must let areas be reused, not grow unboundedly";
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, GrowthIsCappedWhenAllBuffersHeld) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 2,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+
+  // A reader that never releases buffers forces the pool to grow, since no
+  // area ever drains. Growth must stop at the cap (kMaxAreaCount) rather than
+  // allocating without bound.
+  std::vector<std::unique_ptr<folly::IOBuf>> held;
+  for (int i = 0; i < 10000 && helper.available(); i++) {
+    if (helper.ringAvailable() == 0) {
+      bufRing->enobuf();
+      continue;
+    }
+    held.push_back(consumeOne(*bufRing, helper, 64));
+  }
+
+  EXPECT_LE(helper.areaCount(), 64u) << "area growth must be capped";
+  EXPECT_FALSE(helper.available())
+      << "capped pool with all buffers held must signal ENOBUFS backpressure";
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, ReuseOnlyWhenFullyDrained) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 8,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+
+  std::vector<std::unique_ptr<folly::IOBuf>> tmp;
+  const uint32_t consumedArea = helper.activeArea();
+  for (int i = 0; i < 4; i++) {
+    tmp.push_back(consumeOne(*bufRing, helper, 64));
+  }
+  tmp.clear(); // return the 4 held buffers
+  EXPECT_GT(helper.areaOutstanding(consumedArea), 0u)
+      << "some entries still queued in ring keep the area non-drained";
+
+  std::vector<std::unique_ptr<folly::IOBuf>> held;
+  for (int i = 0; i < 4; i++) {
+    held.push_back(consumeOne(*bufRing, helper, 64));
+  }
+  EXPECT_EQ(helper.areaCount(), 2u)
+      << "consumed area has outstanding > 0, must not be reused; pool must grow";
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, activeAreaMatchesRefillOrder) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 8,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+
+  std::vector<std::unique_ptr<folly::IOBuf>> held;
+  for (int pass = 0; pass < 3; pass++) {
+    for (int i = 0; i < 8; i++) {
+      uint32_t expectedArea = helper.activeArea();
+
+      uint16_t bid = helper.headBid();
+      auto buf = bufRing->getIoBuf(bid, 64, false);
+      EXPECT_EQ(helper.areaOfPtr(buf->data()), static_cast<int>(expectedArea))
+          << "consumed buffer must belong to the area refill posted";
+      held.push_back(std::move(buf));
+    }
+  }
+  EXPECT_GT(helper.areaCount(), 1u);
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, ContiguityWithinFullRingLoad) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 8,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+
+  uint16_t bid = helper.headBid();
+  ASSERT_EQ(bid, 0);
+  auto buf = bufRing->getIoBuf(bid, 64 * 3, false);
+  ASSERT_TRUE(buf->isChained());
+
+  const uint8_t* prevEnd = nullptr;
+  const folly::IOBuf* cur = buf.get();
+  do {
+    if (prevEnd) {
+      EXPECT_EQ(cur->data(), prevEnd) << "segments must be contiguous";
+    }
+    prevEnd = cur->data() + cur->length();
+    cur = cur->next();
+  } while (cur != buf.get());
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, BundleAcrossAreaBoundary) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 4,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+
+  auto held0 = consumeOne(*bufRing, helper, 64);
+  ASSERT_EQ(helper.areaCount(), 2u);
+  const uint32_t front = helper.activeArea();
+  const uint32_t next = helper.refillArea();
+  EXPECT_NE(front, next);
+
+  uint16_t bid = helper.headBid();
+  ASSERT_EQ(bid, 1);
+  auto buf = bufRing->getIoBuf(bid, 64 * 4, false);
+  ASSERT_TRUE(buf->isChained());
+
+  std::vector<int> segAreas;
+  const folly::IOBuf* cur = buf.get();
+  do {
+    segAreas.push_back(helper.areaOfPtr(cur->data()));
+    cur = cur->next();
+  } while (cur != buf.get());
+
+  const std::vector<int> expected{
+      static_cast<int>(front),
+      static_cast<int>(front),
+      static_cast<int>(front),
+      static_cast<int>(next)};
+  EXPECT_EQ(segAreas, expected)
+      << "bundle segments must follow refill's posted area order";
+}
+
+#endif

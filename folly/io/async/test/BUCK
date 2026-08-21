@@ -1349,6 +1349,15 @@ fbcode_target(
 )
 
 fbcode_target(
+    _kind = cpp_unittest,
+    name = "io_uring_dynamic_provided_buffer_ring_test",
+    srcs = ["IoUringDynamicProvidedBufferRingTest.cpp"],
+    deps = [
+        "//folly/io/async:io_uring_dynamic_provided_buffer_ring",
+    ],
+)
+
+fbcode_target(
     _kind = cpp_binary,
     name = "registered_fd_benchmark",
     srcs = ["RegisteredFdBenchmark.cpp"],

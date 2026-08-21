@@ -910,6 +910,32 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "io_uring_dynamic_provided_buffer_ring",
+    srcs = [
+        "IoUringDynamicProvidedBufferRing.cpp",
+    ],
+    headers = [
+        "IoUringBase.h",
+        "IoUringDynamicProvidedBufferRing.h",
+    ],
+    modular_headers = False,
+    use_raw_headers = True,
+    deps = [
+        "//folly:conv",
+        "//folly:string",
+        "//folly/lang:align",
+        "//folly/portability:sys_mman",
+    ],
+    exported_deps = [
+        "fbsource//third-party/boost:boost",  # @manual
+        ":delayed_destruction",
+        ":liburing",
+        "//folly/io:iobuf",
+        "//folly/synchronization:distributed_mutex",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "io_uring_zero_copy_buffer_pool",
     srcs = [
         "IoUringZeroCopyBufferPool.cpp",
