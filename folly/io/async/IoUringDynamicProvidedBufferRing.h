@@ -80,9 +80,12 @@ class IoUringDynamicProvidedBufferRing {
   // Returns the buffer utilization as an integer percentage (0-100).
   int getUtilPct() const noexcept;
 
+  uint16_t areaCount() const noexcept { return areaCount_; }
+
   struct Stats {
     uint32_t enobufCount{0};
     int utilPct{-1};
+    uint16_t areaCount{0};
 
     auto operator<=>(const Stats&) const = default;
   };
@@ -90,6 +93,7 @@ class IoUringDynamicProvidedBufferRing {
   void getStats(Stats& stats) noexcept {
     stats.enobufCount = getAndResetEnobufCount();
     stats.utilPct = getUtilPct();
+    stats.areaCount = areaCount_;
   }
 
  private:
@@ -106,6 +110,9 @@ class IoUringDynamicProvidedBufferRing {
 
   void mapRing();
   void initialRegister();
+  size_t ringMemSize() const noexcept {
+    return sizeof(struct io_uring_buf_ring) * ringBufferCount_;
+  }
 
   struct BufferArea;
 
@@ -205,8 +212,6 @@ class IoUringDynamicProvidedBufferRing {
 
   // Hot fields (cacheline 2)
   alignas(folly::hardware_constructive_interference_size) io_uring* ringIoPtr;
-  void* ringMem_{nullptr};
-  size_t ringMemSize_{0};
   uint32_t shutdownReferences_{0};
   uint32_t enobufCount_{0};
   BufferArea* bufferActiveArea_{nullptr};
