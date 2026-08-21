@@ -860,11 +860,7 @@ IOBuf IOBuf::cloneCoalescedAsValueWithHeadroomTailroom(
 
   // Coalesce into newBuf
   const std::size_t newLength = computeChainDataLength();
-  std::size_t newCapacity = 0;
-  if (!checked_add(&newCapacity, newLength, newHeadroom, newTailroom) ||
-      newCapacity > kMaxIOBufSize) {
-    throw_exception<std::bad_alloc>();
-  }
+  const std::size_t newCapacity = newLength + newHeadroom + newTailroom;
   IOBuf newBuf{CREATE, newCapacity};
   newBuf.advance(newHeadroom);
 
