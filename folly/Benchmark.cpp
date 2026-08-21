@@ -804,6 +804,19 @@ void checkRunMode() {
   }
 }
 
+void warnIfCommandLineFlagsWereNotParsed() {
+#if FOLLY_HAVE_LIBGFLAGS && __has_include(<gflags/gflags.h>)
+  if (FLAGS_bm_quiet || !folly::gflags::GetArgvs().empty()) {
+    return;
+  }
+
+  std::cerr
+      << detail::kANSIBoldYellow << "WARNING: " << detail::kANSIReset
+      << "runBenchmarks() called before Init(); --bm_* flags will be ignored."
+      << std::endl;
+#endif
+}
+
 namespace {
 
 struct BenchmarksToRun {
@@ -1367,6 +1380,8 @@ std::string benchmarkResultsToString(
 } // namespace detail
 
 void runBenchmarks() {
+  warnIfCommandLineFlagsWereNotParsed();
+
   auto& state = detail::globalBenchmarkState();
 
   if (FLAGS_bm_list) {
