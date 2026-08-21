@@ -18,6 +18,8 @@
 
 #include <algorithm>
 #include <new>
+#include <optional>
+#include <utility>
 
 #include <folly/Conv.h>
 #include <folly/String.h>
@@ -234,6 +236,7 @@ bool IoUringDynamicProvidedBufferRing::getNewRefillArea() noexcept {
         << "active and refill areas must not be drained";
     bufferRefillArea_ = area;
     std::rotate(drained, drained + 1, areas_.end());
+    tryReclaimArea();
     return true;
   }
 
@@ -301,6 +304,35 @@ void IoUringDynamicProvidedBufferRing::ringRefill() noexcept {
       enobuf_ = false;
     }
   }
+}
+
+void IoUringDynamicProvidedBufferRing::tryReclaimArea() noexcept {
+  if (areaCount_ <= kInitialAreaCount ||
+      areasOutstandingSum() > ((areaCount_ * ringBufferCount_) >> 1)) {
+    return;
+  }
+
+  std::optional<uint32_t> victimIndex;
+  for (uint32_t areaIndex = 0; areaIndex < areaCount_; ++areaIndex) {
+    const BufferArea* area = areas_[areaIndex].get();
+    if (!areaIsDrained(*area)) {
+      continue;
+    }
+    if (area == bufferActiveArea_ || area == bufferRefillArea_) {
+      continue;
+    }
+    victimIndex = areaIndex;
+    break;
+  }
+
+  if (!victimIndex) {
+    return;
+  }
+
+  BufferArea* victim = areas_[*victimIndex].get();
+  ::munmap(victim->buffers, victim->memSize);
+  areas_.erase(areas_.begin() + *victimIndex);
+  areaCount_--;
 }
 
 void IoUringDynamicProvidedBufferRing::bufFreeFn(

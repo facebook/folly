@@ -55,6 +55,7 @@ class IoUringDynamicProvidedBufferRingTestHelper {
   uint32_t enobufCount() { return ring.getAndResetEnobufCount(); }
 
   uint32_t ringAvailable() { return ring.ringTail_ - ring.ringHead_; }
+  uint64_t outstandingSum() { return ring.areasOutstandingSum(); }
   uint16_t headBid() { return ring.ringBuf(ring.ringHead_)->bid; }
 
   int areaOfPtr(const void* p) {
@@ -522,6 +523,167 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, BundleAcrossAreaBoundary) {
       static_cast<int>(next)};
   EXPECT_EQ(segAreas, expected)
       << "bundle segments must follow refill's posted area order";
+}
+
+static void growHolding(
+    folly::IoUringDynamicProvidedBufferRing& ring,
+    folly::IoUringDynamicProvidedBufferRingTestHelper& helper,
+    uint32_t count,
+    std::vector<std::unique_ptr<folly::IOBuf>>& held,
+    std::vector<int>& heldArea) {
+  for (uint32_t i = 0; i < count; i++) {
+    auto buf = consumeOne(ring, helper, 64);
+    heldArea.push_back(helper.areaOfPtr(buf->data()));
+    held.push_back(std::move(buf));
+  }
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, ShrinkAfterGrowthDownToFloor) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 8,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+  ASSERT_EQ(helper.areaCount(), 2u);
+
+  std::vector<std::unique_ptr<folly::IOBuf>> held;
+  std::vector<int> heldArea;
+  while (helper.areaCount() < 4u && helper.ringAvailable() > 0) {
+    growHolding(*bufRing, helper, 1, held, heldArea);
+  }
+  const uint32_t grownCount = helper.areaCount();
+  ASSERT_GT(grownCount, 2u) << "precondition: pool must have grown";
+
+  held.clear();
+  heldArea.clear();
+
+  uint32_t prev = helper.areaCount();
+  for (int i = 0; i < 500 && helper.ringAvailable() > 0; i++) {
+    auto buf = consumeOne(*bufRing, helper, 64);
+    buf.reset();
+    bufRing->enobuf();
+    const uint32_t now = helper.areaCount();
+    ASSERT_LE(now, prev) << "pool must never grow while shrinking";
+    ASSERT_LE(prev - now, 1u) << "at most one area freed per pass";
+    ASSERT_GE(now, 2u) << "must never drop below the floor";
+    prev = now;
+  }
+  EXPECT_EQ(helper.areaCount(), 2u)
+      << "pool must shrink back down to the floor of kInitialAreaCount";
+}
+
+TEST_F(
+    IoUringDynamicProvidedBufferRingTest, NoShrinkWhenLessThanHalfFreeSlots) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 8,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+
+  std::vector<std::unique_ptr<folly::IOBuf>> held;
+  std::vector<int> heldArea;
+  growHolding(*bufRing, helper, 32, held, heldArea);
+  ASSERT_EQ(helper.areaCount(), 5u);
+
+  for (size_t i = 0; i < held.size(); i++) {
+    if (heldArea[i] == 0) {
+      held[i].reset();
+    }
+  }
+  ASSERT_EQ(helper.areaOutstanding(0), 0u);
+
+  uint64_t totalSlots = helper.areaCount() * options.bufferCount;
+  uint64_t halfTotal = totalSlots >> 1;
+  ASSERT_GT(helper.outstandingSum(), halfTotal)
+      << "precondition: outstanding must exceed 50% of total slots";
+
+  uint32_t areaCountBefore = helper.areaCount();
+  bufRing->enobuf();
+  EXPECT_EQ(helper.areaCount(), areaCountBefore)
+      << "must not shrink when less than 50% of slots are free";
+}
+
+TEST_F(IoUringDynamicProvidedBufferRingTest, ShrinkWhenMoreThanHalfFreeSlots) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 8,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+
+  std::vector<std::unique_ptr<folly::IOBuf>> held;
+  std::vector<int> heldArea;
+  growHolding(*bufRing, helper, 32, held, heldArea);
+  ASSERT_EQ(helper.areaCount(), 5u);
+
+  for (size_t i = 0; i < held.size(); i++) {
+    if (heldArea[i] == 0 || heldArea[i] == 1 || heldArea[i] == 2) {
+      held[i].reset();
+    }
+  }
+  ASSERT_EQ(helper.areaOutstanding(0), 0u);
+  ASSERT_EQ(helper.areaOutstanding(1), 0u);
+  ASSERT_EQ(helper.areaOutstanding(2), 0u);
+
+  uint64_t totalSlots = helper.areaCount() * options.bufferCount;
+  uint64_t halfTotal = totalSlots >> 1;
+  ASSERT_LE(helper.outstandingSum(), halfTotal)
+      << "precondition: outstanding must be at most 50% of total slots";
+
+  bufRing->enobuf();
+  EXPECT_LT(helper.areaCount(), 5u)
+      << "must shrink when more than 50% of slots are free";
+}
+
+TEST_F(
+    IoUringDynamicProvidedBufferRingTest,
+    ShrinkNeverRemovesActiveOrRefillArea) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = 8,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+
+  std::vector<std::unique_ptr<folly::IOBuf>> held;
+  std::vector<int> heldArea;
+  growHolding(*bufRing, helper, 32, held, heldArea);
+  ASSERT_EQ(helper.areaCount(), 5u);
+
+  for (size_t i = 0; i < held.size(); i++) {
+    if (heldArea[i] == 0 || heldArea[i] == 1 || heldArea[i] == 2) {
+      held[i].reset();
+    }
+  }
+
+  bufRing->enobuf();
+  ASSERT_EQ(helper.areaCount(), 4u)
+      << "a non-refill drained area must be freed";
+  const uint32_t refill = helper.refillArea();
+  ASSERT_LT(refill, helper.areaCount())
+      << "refill area must still be a live area";
+
+  for (int i = 0; i < 100 && helper.ringAvailable() > 0; i++) {
+    auto buf = consumeOne(*bufRing, helper, 64);
+    EXPECT_GE(helper.areaOfPtr(buf->data()), 0)
+        << "every handed-out buffer must resolve to a live area";
+    EXPECT_GE(helper.areaCount(), 2u);
+    buf.reset();
+  }
 }
 
 #endif
