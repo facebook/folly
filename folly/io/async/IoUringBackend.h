@@ -40,8 +40,8 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/io/async/IoUringBase.h>
+#include <folly/io/async/IoUringBufferProvider.h>
 #include <folly/io/async/IoUringOptions.h>
-#include <folly/io/async/IoUringProvidedBufferRing.h>
 #include <folly/io/async/IoUringZeroCopyBufferPool.h>
 #include <folly/io/async/Liburing.h>
 #include <folly/portability/Asm.h>
@@ -208,7 +208,7 @@ class IoUringBackend : public EventBaseBackendBase {
   void cancel(IoSqeBase* sqe);
 
   // built in buffer provider
-  IoUringProvidedBufferRing* bufferProvider() {
+  IoUringBufferProvider* bufferProvider() {
     return bufferProviders_
         [bufferProviderIdx_++ & (bufferProviders_.size() - 1)]
             .get();
@@ -226,7 +226,7 @@ class IoUringBackend : public EventBaseBackendBase {
 
   struct IoUringStats {
     IoUringZeroCopyBufferPool::Stats zcrx;
-    IoUringProvidedBufferRing::Stats providedBuffer;
+    IoUringBufferProvider::Stats providedBuffer;
 
     auto operator<=>(const IoUringStats&) const = default;
   };
@@ -238,7 +238,7 @@ class IoUringBackend : public EventBaseBackendBase {
     }
 
     if (hasBufferProvider()) {
-      IoUringProvidedBufferRing* bufProvider =
+      IoUringBufferProvider* bufProvider =
           bufferProviders_[bufferProviderIdx_ & (bufferProviders_.size() - 1)]
               .get();
       bufProvider->getStats(stats.providedBuffer);
@@ -477,7 +477,7 @@ class IoUringBackend : public EventBaseBackendBase {
     void prepRecvmsgMultishot(io_uring_sqe* sqe, int fd, msghdr* msg) noexcept {
       CHECK(sqe);
       ::io_uring_prep_recvmsg_multishot(sqe, fd, msg, MSG_TRUNC);
-      if (IoUringProvidedBufferRing* bp = backend_->bufferProvider()) {
+      if (auto* bp = backend_->bufferProvider()) {
         sqe->buf_group = bp->gid();
         sqe->flags |= IOSQE_BUFFER_SELECT;
       }
@@ -867,7 +867,7 @@ class IoUringBackend : public EventBaseBackendBase {
   // submit
   IoSqeBaseList submitList_;
   uint16_t bufferProviderGidNext_{0};
-  std::vector<IoUringProvidedBufferRing::UniquePtr> bufferProviders_;
+  std::vector<std::unique_ptr<IoUringBufferProvider>> bufferProviders_;
   uint64_t bufferProviderIdx_{0};
   IoUringZeroCopyBufferPool::UniquePtr zcBufferPool_;
 

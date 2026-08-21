@@ -1353,6 +1353,27 @@ TEST(IoUringBackend, ProvidedBuffers) {
       "56", toString(bufferProvider->getIoBuf(cqes[0].second >> 16, 2, false)));
 }
 
+TEST(IoUringBackend, DynamicProvidedBuffers) {
+  auto evbPtr = getEventBase();
+  std::unique_ptr<folly::IoUringBackend> backend;
+  try {
+    folly::IoUringOptions options;
+    options.setInitialProvidedBuffers(32, 2).setProvidedBufferRingMode(
+        folly::IoUringOptions::ProvidedBufferRingMode::Dynamic);
+    backend = std::make_unique<folly::IoUringBackend>(std::move(options));
+  } catch (folly::IoUringBackend::NotAvailable const&) {
+  }
+  SKIP_IF(!backend) << "Backend not available";
+
+  auto* bufferProvider = backend->bufferProvider();
+  ASSERT_NE(bufferProvider, nullptr);
+  EXPECT_EQ(2, bufferProvider->count());
+
+  folly::IoUringBufferProvider::Stats stats;
+  bufferProvider->getStats(stats);
+  EXPECT_EQ(2, stats.areaCount);
+}
+
 TEST(IoUringBackend, ProvidedBufferRingsPow2) {
   folly::IoUringOptions options;
   EXPECT_THROW(options.setProvidedBufRings(3), std::runtime_error);
@@ -1828,10 +1849,7 @@ TEST(IoUringBackend, IncrementalBuffersEnobufTracking) {
   ASSERT_EQ(6, cqes.size());
   EXPECT_EQ(-ENOBUFS, cqes[5].first);
 
-  auto* providedBufferRing =
-      dynamic_cast<folly::IoUringProvidedBufferRing*>(bufferProvider);
-  ASSERT_NE(providedBufferRing, nullptr);
-  uint64_t resetCount = providedBufferRing->getAndResetEnobufCount();
+  uint64_t resetCount = bufferProvider->getAndResetEnobufCount();
   EXPECT_EQ(2, resetCount) << "getAndResetEnobufCount should return 2";
 
   iob3a.reset();
@@ -1888,7 +1906,7 @@ TEST(IoUringBackend, IncrementalBuffersEnobufTracking) {
   ASSERT_EQ(10, cqes.size());
   EXPECT_EQ(-ENOBUFS, cqes[9].first);
 
-  uint64_t resetCount2 = providedBufferRing->getAndResetEnobufCount();
+  uint64_t resetCount2 = bufferProvider->getAndResetEnobufCount();
   EXPECT_EQ(1, resetCount2)
       << "getAndResetEnobufCount should return 1 after the 3rd ENOBUFS";
 }
@@ -1977,7 +1995,7 @@ TEST(IoUringBackend, ReceiveBundleTest) {
     SimpleReader(
         int fd,
         uint16_t bgid,
-        folly::IoUringProvidedBufferRing* bufProvider,
+        folly::IoUringBufferProvider* bufProvider,
         std::string* received,
         bool* gotBundle,
         bool* eofReceived)
@@ -2022,7 +2040,7 @@ TEST(IoUringBackend, ReceiveBundleTest) {
    private:
     int fd_;
     uint16_t bgid_;
-    folly::IoUringProvidedBufferRing* bufProvider_;
+    folly::IoUringBufferProvider* bufProvider_;
     std::string* received_;
     bool* gotBundle_;
     bool* eofReceived_;
@@ -2125,11 +2143,7 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
   auto iobuf6 = bufferProvider->getIoBuf(cqes[6].second >> 16, 100, false);
   auto iobuf7 = bufferProvider->getIoBuf(cqes[7].second >> 16, 100, false);
 
-  auto* providedBufferRing =
-      dynamic_cast<folly::IoUringProvidedBufferRing*>(bufferProvider);
-  ASSERT_NE(providedBufferRing, nullptr);
-
-  int utilization = providedBufferRing->getUtilPct();
+  int utilization = bufferProvider->getUtilPct();
   EXPECT_EQ(100, utilization)
       << "All 8 buffers in use, expected 100% utilization";
 
@@ -2138,7 +2152,7 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
   iobuf6.reset();
   iobuf7.reset();
 
-  utilization = providedBufferRing->getUtilPct();
+  utilization = bufferProvider->getUtilPct();
   EXPECT_EQ(50, utilization)
       << "4 out of 8 buffers in use, expected 50% utilization";
 
@@ -2147,7 +2161,7 @@ TEST(IoUringBackend, ProvidedBufferUtilization) {
   iobuf2.reset();
   iobuf3.reset();
 
-  utilization = providedBufferRing->getUtilPct();
+  utilization = bufferProvider->getUtilPct();
   EXPECT_EQ(0, utilization) << "No buffers in use, expected 0% utilization";
 
   readers.clear();
@@ -2165,11 +2179,7 @@ TEST(IoUringBackend, ProvidedBufferUtilizationFullRing) {
   ASSERT_NE(bufferProvider, nullptr);
   EXPECT_EQ(1024, bufferProvider->count());
 
-  auto* providedBufferRing =
-      dynamic_cast<folly::IoUringProvidedBufferRing*>(bufferProvider);
-  ASSERT_NE(providedBufferRing, nullptr);
-
-  EXPECT_EQ(0, providedBufferRing->getUtilPct())
+  EXPECT_EQ(0, bufferProvider->getUtilPct())
       << "Freshly created full ring, expected 0% utilization";
 }
 

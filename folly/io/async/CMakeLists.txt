@@ -544,7 +544,7 @@ folly_add_library(
     folly_function
     folly_io_async_async_base
     folly_io_async_delayed_destruction
-    folly_io_async_io_uring_provided_buffer_ring
+    folly_io_async_io_uring_buffer_provider
     folly_io_async_io_uring_zero_copy_buffer_pool
     folly_io_async_liburing
     folly_io_iobuf
@@ -570,6 +570,17 @@ folly_add_library(
   EXPORTED_DEPS
     folly_executor
     folly_io_async_async_base
+)
+
+folly_add_library(
+  NAME io_uring_buffer_provider
+  SRCS
+    IoUringBufferProvider.cpp
+  HEADERS
+    IoUringBufferProvider.h
+  EXPORTED_DEPS
+    folly_io_async_io_uring_dynamic_provided_buffer_ring
+    folly_io_async_io_uring_provided_buffer_ring
 )
 
 folly_add_library(

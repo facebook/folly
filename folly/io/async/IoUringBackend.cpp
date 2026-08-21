@@ -1035,7 +1035,7 @@ void IoUringBackend::initSubmissionLinked() {
 
   if (options_.initialProvidedBuffersCount) {
     try {
-      IoUringProvidedBufferRing::Options options = {
+      IoUringBufferProvider::Options options = {
           .gid = nextBufferProviderGid(),
           .bufferCount = options_.initialProvidedBuffersCount,
           .bufferSize = options_.initialProvidedBuffersEachSize,
@@ -1043,10 +1043,14 @@ void IoUringBackend::initSubmissionLinked() {
       };
       for (size_t i = 0; i < options_.providedBufRings; i++) {
         bufferProviders_.push_back(
-            IoUringProvidedBufferRing::create(this->ioRingPtr(), options));
+            IoUringBufferProvider::create(
+                this->ioRingPtr(),
+                options_.providedBufferRingMode ==
+                    IoUringOptions::ProvidedBufferRingMode::Dynamic,
+                options));
         options.gid = nextBufferProviderGid();
       }
-    } catch (const IoUringProvidedBufferRing::LibUringCallError& ex) {
+    } catch (const IoUringBufferProvider::LibUringCallError& ex) {
       LOG(ERROR) << folly::to<std::string>(
           "failed to make provided buffer ring, buffer count: ",
           options_.initialProvidedBuffersCount,

@@ -865,7 +865,7 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/glog:glog",
         ":async_base",
         ":delayed_destruction",
-        ":io_uring_provided_buffer_ring",
+        ":io_uring_buffer_provider",
         ":io_uring_zero_copy_buffer_pool",
         ":liburing",
         "//folly:c_portability",
@@ -932,6 +932,22 @@ fb_dirsync_cpp_library(
         ":liburing",
         "//folly/io:iobuf",
         "//folly/synchronization:distributed_mutex",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "io_uring_buffer_provider",
+    srcs = [
+        "IoUringBufferProvider.cpp",
+    ],
+    headers = [
+        "IoUringBufferProvider.h",
+    ],
+    modular_headers = False,
+    use_raw_headers = True,
+    exported_deps = [
+        ":io_uring_dynamic_provided_buffer_ring",
+        ":io_uring_provided_buffer_ring",
     ],
 )
 

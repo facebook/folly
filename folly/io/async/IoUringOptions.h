@@ -47,6 +47,11 @@ using SrcPortForQueueIdCallback = folly::Function<int(
     uint16_t maxPort)>;
 
 struct IoUringOptions {
+  enum class ProvidedBufferRingMode {
+    Fixed,
+    Dynamic,
+  };
+
   enum Flags {
     POLL_SQ = 0x1,
     POLL_CQ = 0x2,
@@ -147,6 +152,11 @@ struct IoUringOptions {
   IoUringOptions& setInitialProvidedBuffers(uint32_t eachSize, uint32_t count) {
     initialProvidedBuffersCount = count;
     initialProvidedBuffersEachSize = eachSize;
+    return *this;
+  }
+
+  IoUringOptions& setProvidedBufferRingMode(ProvidedBufferRingMode mode) {
+    providedBufferRingMode = mode;
     return *this;
   }
 
@@ -289,6 +299,7 @@ struct IoUringOptions {
   uint32_t initialProvidedBuffersCount{0};
   uint32_t initialProvidedBuffersEachSize{0};
   uint32_t providedBufRings{1};
+  ProvidedBufferRingMode providedBufferRingMode{ProvidedBufferRingMode::Fixed};
   bool providedBufUseBundles{false};
 
   uint32_t flags{0};

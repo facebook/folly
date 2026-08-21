@@ -198,7 +198,7 @@ class IoUringRecvHandle::RecvRequest
   DestructorGuard handleGuard_;
   bool useBundles_{false};
 
-  IoUringProvidedBufferRing* bufferRing_{nullptr};
+  IoUringBufferProvider* bufferRing_{nullptr};
   IoUringZeroCopyBufferPool* bufferPool_{nullptr};
   size_t recvLen_{0};
   std::unique_ptr<IOBuf> fallbackBuffer_;
