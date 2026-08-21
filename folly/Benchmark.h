@@ -52,6 +52,9 @@ namespace folly {
 
 /**
  * Runs all benchmarks defined. Usually put in main().
+ *
+ * Caution: call folly::Init before runBenchmarks() for command-line benchmark
+ * flags to have an effect.
  */
 void runBenchmarks();
 

@@ -16,6 +16,7 @@ Using `folly/Benchmark.h` is very simple. Here's an example:
 
 ``` Cpp
     #include <folly/Benchmark.h>
+    #include <folly/init/Init.h>
     #include <vector>
     using namespace std;
     using namespace folly;
@@ -33,7 +34,8 @@ Using `folly/Benchmark.h` is very simple. Here's an example:
         v.insert(v.end(), i);
       }
     }
-    int main() {
+    int main(int argc, char** argv) {
+      Init init(&argc, &argv);
       runBenchmarks();
     }
 ```
@@ -70,6 +72,7 @@ implicitly `unsigned`. Consider a slightly reworked example:
 ``` Cpp
     #include <folly/Benchmark.h>
     #include <folly/container/Foreach.h>
+    #include <folly/init/Init.h>
     #include <vector>
     using namespace std;
     using namespace folly;
@@ -85,7 +88,8 @@ implicitly `unsigned`. Consider a slightly reworked example:
         v.insert(v.end(), i);
       }
     }
-    int main() {
+    int main(int argc, char** argv) {
+      Init init(&argc, &argv);
       runBenchmarks();
     }
 ```
@@ -126,6 +130,7 @@ compares with it:
 ``` Cpp
     #include <folly/Benchmark.h>
     #include <folly/container/Foreach.h>
+    #include <folly/init/Init.h>
     #include <vector>
     using namespace std;
     using namespace folly;
@@ -141,7 +146,8 @@ compares with it:
         v.insert(v.end(), i);
       }
     }
-    int main() {
+    int main(int argc, char** argv) {
+      Init init(&argc, &argv);
       runBenchmarks();
     }
 ```
