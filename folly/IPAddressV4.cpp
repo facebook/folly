@@ -19,7 +19,7 @@
 #include <ostream>
 #include <string>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <folly/Conv.h>
 #include <folly/IPAddress.h>
