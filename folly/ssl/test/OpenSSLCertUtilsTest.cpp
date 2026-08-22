@@ -540,6 +540,22 @@ const std::string kTestCertWithMixedSan = folly::stripLeftMargin(R"(
   -----END CERTIFICATE-----
 )");
 
+// SAN: IP:127.0.0.1, IP:::1, DNS:ip.example.com
+const std::string kTestCertWithIpSan = folly::stripLeftMargin(R"(
+  -----BEGIN CERTIFICATE-----
+  MIIBrzCCAVSgAwIBAgIUCnGvdtHLIk3xpNgOyIRJx8JFEoowCgYIKoZIzj0EAwIw
+  ETEPMA0GA1UEAwwGaXB0ZXN0MCAXDTI2MDcwMjIzMjgwOFoYDzIxMjYwNjA4MjMy
+  ODA4WjARMQ8wDQYDVQQDDAZpcHRlc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNC
+  AASYSO4d5hqBVTBsRVT85pazOkjix2XnlXaRGgMsDq6Q/gs/LKX7zDBxD3Wo91iN
+  0Xgsis2JTbp760eB/xtMwz8Ao4GHMIGEMB0GA1UdDgQWBBTzBGjCCQTQfI5cYw/t
+  ZcetoJon6jAfBgNVHSMEGDAWgBTzBGjCCQTQfI5cYw/tZcetoJon6jAPBgNVHRMB
+  Af8EBTADAQH/MDEGA1UdEQQqMCiHBH8AAAGHEAAAAAAAAAAAAAAAAAAAAAGCDmlw
+  LmV4YW1wbGUuY29tMAoGCCqGSM49BAMCA0kAMEYCIQC9OqMY3kvP2rXdb+4/uBMl
+  5hHEz75dsgQi2SxQR+VY2gIhAKD8qWAzXZPWGaW8Z6uxMZahv9VCYLEnMEvXzUoW
+  FyD/
+  -----END CERTIFICATE-----
+)");
+
 TEST_P(OpenSSLCertUtilsTest, TestX509UriSans) {
   auto x509 = readCertFromData(kTestCertWithUriSan);
   EXPECT_NE(x509, nullptr);
@@ -575,6 +591,27 @@ TEST_P(OpenSSLCertUtilsTest, TestX509MixedSans) {
       "spiffe://example.org/database/mysql001",
   };
   EXPECT_EQ(uriSans, expectedUris);
+}
+
+TEST_P(OpenSSLCertUtilsTest, TestX509SubjectAltNameEntriesWithIPs) {
+  auto x509 = readCertFromData(kTestCertWithIpSan);
+  EXPECT_NE(x509, nullptr);
+
+  std::vector<folly::IPAddress> ips;
+  std::vector<std::string> dnsNames;
+  for (const auto& name :
+       folly::ssl::OpenSSLCertUtils::getSubjectAltNameEntries(*x509)) {
+    if (const auto* ip = std::get_if<folly::IPAddress>(&name)) {
+      ips.emplace_back(*ip);
+    } else if (const auto* dns = std::get_if<folly::ssl::DnsName>(&name)) {
+      dnsNames.emplace_back(dns->value);
+    }
+  }
+
+  const std::vector<folly::IPAddress> expected{
+      folly::IPAddress("127.0.0.1"), folly::IPAddress("::1")};
+  EXPECT_EQ(ips, expected);
+  EXPECT_EQ(dnsNames, std::vector<std::string>{"ip.example.com"});
 }
 
 TEST_P(OpenSSLCertUtilsTest, TestX509NoUriSans) {

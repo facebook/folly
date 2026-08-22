@@ -16,6 +16,8 @@
 
 #include <folly/ssl/OpenSSLCertUtils.h>
 
+#include <optional>
+
 #include <folly/FileUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
@@ -47,6 +49,45 @@ std::string asn1ToString(ASN1_STRING* a) {
     }
     return std::string(reinterpret_cast<char*>(data), len);
   }
+}
+
+std::optional<std::string> getStringSubjectAltName(const ASN1_STRING* value) {
+  const auto* data =
+      reinterpret_cast<const char*>(ASN1_STRING_get0_data(value));
+  const int len = ASN1_STRING_length(value);
+  if (!data || len <= 0) {
+    return std::nullopt;
+  }
+  return std::string(data, len);
+}
+
+std::optional<IPAddress> getIpSubjectAltName(const ASN1_STRING* value) {
+  const auto* data = ASN1_STRING_get0_data(value);
+  const int len = ASN1_STRING_length(value);
+  if (!data || (len != 4 && len != 16)) {
+    return std::nullopt;
+  }
+  return IPAddress::fromBinary(ByteRange(data, static_cast<size_t>(len)));
+}
+
+std::optional<GeneralName> getSubjectAltName(const GENERAL_NAME& name) {
+  if (name.type == GEN_DNS) {
+    if (auto value = getStringSubjectAltName(name.d.dNSName)) {
+      return GeneralName{DnsName{std::move(*value)}};
+    }
+  }
+  if (name.type == GEN_URI) {
+    if (auto value =
+            getStringSubjectAltName(name.d.uniformResourceIdentifier)) {
+      return GeneralName{UriName{std::move(*value)}};
+    }
+  }
+  if (name.type == GEN_IPADD) {
+    if (auto value = getIpSubjectAltName(name.d.iPAddress)) {
+      return GeneralName{std::move(*value)};
+    }
+  }
+  return std::nullopt;
 }
 
 std::string getExtOid(X509_EXTENSION* extension) {
@@ -113,34 +154,27 @@ Optional<std::string> OpenSSLCertUtils::getIssuerCommonName(const X509& x509) {
 
 std::vector<std::string> OpenSSLCertUtils::getSubjectAltNames(
     const X509& x509) {
-  auto names = reinterpret_cast<STACK_OF(GENERAL_NAME)*>(
-      X509_get_ext_d2i(&x509, NID_subject_alt_name, nullptr, nullptr));
-  if (!names) {
-    return {};
-  }
-  SCOPE_EXIT {
-    sk_GENERAL_NAME_pop_free(names, GENERAL_NAME_free);
-  };
-
-  std::vector<std::string> ret;
-  auto count = sk_GENERAL_NAME_num(names);
-  for (int i = 0; i < count; i++) {
-    auto genName = sk_GENERAL_NAME_value(names, i);
-    if (!genName || genName->type != GEN_DNS) {
-      continue;
+  std::vector<std::string> result;
+  for (auto& name : getSubjectAltNameEntries(x509)) {
+    if (auto* dnsName = std::get_if<DnsName>(&name)) {
+      result.emplace_back(std::move(dnsName->value));
     }
-    auto nameData = reinterpret_cast<const char*>(
-        ASN1_STRING_get0_data(genName->d.dNSName));
-    auto nameLen = ASN1_STRING_length(genName->d.dNSName);
-    if (!nameData || nameLen <= 0) {
-      continue;
-    }
-    ret.emplace_back(nameData, nameLen);
   }
-  return ret;
+  return result;
 }
 
 std::vector<std::string> OpenSSLCertUtils::getSubjectAltNameURIs(
+    const X509& x509) {
+  std::vector<std::string> result;
+  for (auto& name : getSubjectAltNameEntries(x509)) {
+    if (auto* uriName = std::get_if<UriName>(&name)) {
+      result.emplace_back(std::move(uriName->value));
+    }
+  }
+  return result;
+}
+
+std::vector<GeneralName> OpenSSLCertUtils::getSubjectAltNameEntries(
     const X509& x509) {
   auto names = reinterpret_cast<STACK_OF(GENERAL_NAME)*>(
       X509_get_ext_d2i(&x509, NID_subject_alt_name, nullptr, nullptr));
@@ -152,22 +186,18 @@ std::vector<std::string> OpenSSLCertUtils::getSubjectAltNameURIs(
   };
 
   auto count = sk_GENERAL_NAME_num(names);
-  std::vector<std::string> ret;
-  ret.reserve(count);
+  std::vector<GeneralName> result;
+  result.reserve(count);
   for (int i = 0; i < count; i++) {
-    auto genName = sk_GENERAL_NAME_value(names, i);
-    if (!genName || genName->type != GEN_URI) {
+    auto name = sk_GENERAL_NAME_value(names, i);
+    if (!name) {
       continue;
     }
-    auto nameData = reinterpret_cast<const char*>(
-        ASN1_STRING_get0_data(genName->d.uniformResourceIdentifier));
-    auto nameLen = ASN1_STRING_length(genName->d.uniformResourceIdentifier);
-    if (!nameData || nameLen <= 0) {
-      continue;
+    if (auto value = getSubjectAltName(*name)) {
+      result.emplace_back(std::move(*value));
     }
-    ret.emplace_back(nameData, nameLen);
   }
-  return ret;
+  return result;
 }
 
 std::vector<std::string> OpenSSLCertUtils::getExtendedKeyUsage(

@@ -26,6 +26,7 @@ folly_add_library(
     folly_string
   EXPORTED_DEPS
     folly_io_iobuf
+    folly_network_address
     folly_optional
     folly_portability_openssl
     folly_ssl_openssl_ptr_types

@@ -43,6 +43,7 @@ fb_dirsync_cpp_library(
     ],
     exported_deps = [
         ":openssl_ptr_types",
+        "//folly:network_address",
         "//folly:optional",
         "//folly/io:iobuf",
         "//folly/portability:openssl",

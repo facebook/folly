@@ -20,8 +20,10 @@
 #include <map>
 #include <set>
 #include <string>
+#include <variant>
 #include <vector>
 
+#include <folly/IPAddress.h>
 #include <folly/Optional.h>
 #include <folly/io/IOBuf.h>
 #include <folly/portability/OpenSSL.h>
@@ -30,6 +32,16 @@
 namespace folly {
 namespace ssl {
 
+struct DnsName {
+  std::string value;
+};
+
+struct UriName {
+  std::string value;
+};
+
+using GeneralName = std::variant<DnsName, UriName, folly::IPAddress>;
+
 class OpenSSLCertUtils {
  public:
   // Note: non-const until OpenSSL 1.1.0
@@ -37,9 +49,15 @@ class OpenSSLCertUtils {
 
   static Optional<std::string> getIssuerCommonName(const X509& x509);
 
+  // Returns DNS name subjectAltName entries in certificate order.
   static std::vector<std::string> getSubjectAltNames(const X509& x509);
 
+  // Returns URI subjectAltName entries in certificate order.
   static std::vector<std::string> getSubjectAltNameURIs(const X509& x509);
+
+  // Returns DNS name, URI, and IP address subjectAltName entries in certificate
+  // order. Other GENERAL_NAME types are ignored.
+  static std::vector<GeneralName> getSubjectAltNameEntries(const X509& x509);
 
   /**
    * Return the Extended Key Usage (EKU) entries, if any, from the cert.
