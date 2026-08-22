@@ -23,6 +23,16 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME division
+  HEADERS
+    Division.h
+  EXPORTED_DEPS
+    folly_lang_assume
+    folly_portability
+    folly_traits
+)
+
+folly_add_library(
   NAME float_control
   HEADERS
     FloatControl.h

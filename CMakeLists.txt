@@ -802,6 +802,10 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST lang_to_ascii_test SOURCES ToAsciiTest.cpp
       TEST lang_type_info_test SOURCES TypeInfoTest.cpp
 
+    DIRECTORY math/test/
+      BENCHMARK math_division_bench SOURCES DivisionBench.cpp
+      TEST math_division_test SOURCES DivisionTest.cpp
+
     DIRECTORY memory/test/
       TEST memory_arena_test WINDOWS_DISABLED SOURCES ArenaTest.cpp
       TEST memory_reentrant_allocator_test WINDOWS_DISABLED

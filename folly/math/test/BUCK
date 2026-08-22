@@ -3,6 +3,27 @@ load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirs
 
 oncall("fbcode_entropy_wardens_folly")
 
+fb_dirsync_cpp_benchmark(
+    name = "division_bench",
+    srcs = ["DivisionBench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/init:init",
+        "//folly/lang:keep",
+        "//folly/math:division",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "division_test",
+    srcs = ["DivisionTest.cpp"],
+    deps = [
+        "//folly:traits",
+        "//folly/math:division",
+        "//folly/portability:gtest",
+    ],
+)
+
 fb_dirsync_cpp_unittest(
     name = "reproducible_accumulator_test",
     srcs = ["ReproducibleAccumulatorTest.cpp"],
