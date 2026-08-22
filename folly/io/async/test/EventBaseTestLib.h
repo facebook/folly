@@ -2787,6 +2787,56 @@ TYPED_TEST_P(EventBaseTest, LoopRearmsNotificationQueue) {
   EXPECT_EQ(evbPtr->getNumLoopCallbacks(), 0);
 }
 
+TYPED_TEST_P(EventBaseTest, LoopRearmsNotificationQueueWhileBlocked) {
+  auto evbPtr = this->makeEventBase();
+  auto& evb = *evbPtr;
+
+  // A registered non-internal event that never fires, so that the loop blocks
+  // in the backend instead of exiting for lack of events, which would drain
+  // the notification queue on the way out and hide the problem.
+  SocketPair sp;
+  struct IdleHandler : public EventHandler {
+    IdleHandler(EventBase* eb, int fd)
+        : EventHandler(eb, NetworkSocket::fromFd(fd)) {}
+    void handlerReady(uint16_t) noexcept override {}
+  };
+  IdleHandler idle(&evb, sp[0]);
+  ASSERT_TRUE(idle.registerHandler(EventHandler::READ | EventHandler::PERSIST));
+
+  // Keep the first iterations non-blocking, so that the wakeup that
+  // startConsuming() writes to the queue fd is consumed and the queue is
+  // rearmed before the loop settles. Without this the loop can wedge during
+  // startup and never reach the state under test here.
+  Baton<> up;
+  evb.runInLoop([&] { up.post(); });
+
+  // loop(), with no keepalive held, registers the notification queue as an
+  // internal event.
+  std::thread t([&] { evb.loop(); });
+  up.wait();
+  // Let the loop settle into a blocking dispatch.
+  /* sleep override */ std::this_thread::sleep_for(
+      std::chrono::milliseconds(100));
+
+  // Delivering the first task disarms the queue and defers the rearm to a loop
+  // callback. If the loop does not regain control to run that callback, the
+  // queue stays disarmed and no later producer writes the wakeup fd, so the
+  // second task is lost forever.
+  for (size_t i = 0; i < 2; ++i) {
+    Baton<> done;
+    evb.runInEventBaseThread([&] { done.post(); });
+    EXPECT_TRUE(done.try_wait_for(std::chrono::seconds(30)))
+        << "task " << i << " was never delivered";
+  }
+
+  evb.terminateLoopSoon();
+  // Wake the loop through the non-internal event too, so that it observes the
+  // stop request even if the notification queue is stuck, that is, when this
+  // test is failing.
+  writeToFD(sp[1], 1);
+  t.join();
+}
+
 TYPED_TEST_P(EventBaseTest, GetThreadIdCollector) {
   auto evbPtr = this->makeEventBase();
   auto* collector = evbPtr->getThreadIdCollector();
@@ -3132,6 +3182,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     LastLoopKeepAliveTriggeringDestruction,
     EventBaseObserver,
     LoopRearmsNotificationQueue,
+    LoopRearmsNotificationQueueWhileBlocked,
     GetThreadIdCollector,
     Suspension,
     DrivableExecutorTest,

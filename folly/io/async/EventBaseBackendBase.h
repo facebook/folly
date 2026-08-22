@@ -29,6 +29,25 @@ namespace folly {
 class EventBase;
 class EventBaseBackendBase;
 
+// Whether dispatching a callback for an internal event can leave the backend
+// loop blocked instead of returning to the EventBase loop.
+//
+// libevent 0617a818 "Make EVLOOP_ONCE ignore internal events", first released
+// in 2.0.9-rc, made event_base_loop() exit EVLOOP_ONCE only if it ran a
+// callback on a non-internal event; before it, and in 1.4, the loop exits once
+// the active queue drains, whichever events ran. LIBEVENT_VERSION_NUMBER is
+// itself the 2.0 boundary: 1.4 does not define it, only
+// _EVENT_NUMERIC_VERSION.
+//
+// This is the only place the version is tested. Where it is false the checks
+// guarding eb_yield_after_internal_event() fold away entirely.
+inline constexpr bool kInternalEventsCanStallLoop =
+#if defined(LIBEVENT_VERSION_NUMBER) && LIBEVENT_VERSION_NUMBER >= 0x02000900
+    true;
+#else
+    false;
+#endif
+
 class EventBaseEvent {
  public:
   EventBaseEvent() = default;
@@ -153,6 +172,16 @@ class EventBaseBackendBase {
   virtual event_base* getEventBase() = 0;
   virtual int eb_event_base_loop(int flags) = 0;
   virtual int eb_event_base_loopbreak() = 0;
+
+  // Called after dispatching the callback of an internal event, when the
+  // EventBase needs the loop to return so it can run the loop callbacks that
+  // callback scheduled. Only called when kInternalEventsCanStallLoop.
+  //
+  // EventBase's loop assumes eb_event_base_loop(EVLOOP_ONCE) returns after
+  // dispatching anything, which is why only the libevent backend overrides
+  // this: the default is a no-op, correct for any backend that returns after
+  // dispatching, internal or not.
+  virtual void eb_yield_after_internal_event() {}
 
   virtual int eb_event_add(Event& event, const struct timeval* timeout) = 0;
   virtual int eb_event_del(Event& event) = 0;
