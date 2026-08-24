@@ -817,12 +817,17 @@ pid_t Subprocess::spawnInternalDoFork(SpawnRawArgs const& args) {
     return pid;
   }
 
+  spawnInternalChild(args);
+}
+
+[[noreturn]] FOLLY_DETAIL_SUBPROCESS_RAW void Subprocess::spawnInternalChild(
+    SpawnRawArgs const& args) {
   // From this point onward, we are in the child.
 
   // Fork a second time if detach_ was requested.
   // This must be done before signals are restored in prepareChild()
   if (args.detach) {
-    pid = detail::subprocess_libc::vfork();
+    pid_t pid = detail::subprocess_libc::vfork();
     if (pid == -1) {
       // Inform our parent process of the error so it can throw in the parent.
       childError(args, kChildFailure, errno);

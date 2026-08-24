@@ -1029,6 +1029,7 @@ class Subprocess {
       int syncPipeFd = -1);
 
   static pid_t spawnInternalDoFork(SpawnRawArgs const& args);
+  [[noreturn]] static void spawnInternalChild(SpawnRawArgs const& args);
   [[noreturn]] static void childError(
       SpawnRawArgs const& args, int errCode, int errnoValue);
 

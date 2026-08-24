@@ -509,6 +509,16 @@ TEST(SimpleSubprocessTest, Detach) {
   EXPECT_LE(end - start, 5s);
 }
 
+TEST(SimpleSubprocessTest, DetachExecutesSuccessfully) {
+  Subprocess proc(
+      std::vector<std::string>{"/bin/echo", "detached"},
+      Subprocess::Options().pipeStdout().detach());
+  EXPECT_EQ(-1, proc.pid());
+  std::string output;
+  ASSERT_TRUE(readFile(proc.stdoutFd(), output)) << errnoStr(errno);
+  EXPECT_EQ("detached\n", output);
+}
+
 TEST(SimpleSubprocessTest, DetachExecFails) {
   // Errors executing the process should be propagated from the grandchild
   // process back to the original parent process.
