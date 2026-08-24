@@ -7,11 +7,12 @@ observed time. Works on quiet systems. On noisy VMs, it fails — benchmark `A`
 runs during a slow period, `B` during a fast one, distorting their relative
 performance.
 
-`--bm_mode=adaptive` interleaves short slices of all benchmarks in random order. All
-benchmarks see the same system states. It runs until results are both *stable*
-(not oscillating) and *precise* (confidence interval narrow enough).
+`--bm_mode=adaptive` interleaves short slices of all benchmarks in random order.
+All benchmarks see the same system states. It runs until results are both
+_stable_ (not oscillating) and _precise_ (confidence interval narrow enough).
 
 **What adaptive gives you:**
+
 - **Within-run precision**: Benchmarks in the same run are fairly compared under
   the same system conditions.
 - **Measurement stability**: When we detect the system state is oscillating, we
@@ -20,17 +21,18 @@ benchmarks see the same system states. It runs until results are both *stable*
   best-of mode.
 
 **What adaptive does NOT guarantee:**
+
 - **Absolute accuracy**: Binary layout changes, thermal effects, and long-term
   system state can still shift results.
 - **Run-to-run reproducibility**: A converged run today may differ from
-  tomorrow's converged run, by more than `--bm_target_precision_pct` might suggest.
-  But, in practice, run-to-run results are still very close.
+  tomorrow's converged run, by more than `--bm_target_precision_pct` might
+  suggest. But, in practice, run-to-run results are still very close.
 
 When adaptive mode converges, results closely agree with best-of mode's "good
 runs" — the ones where you got lucky. Best-of mode trends slightly lower since
 it targets minimum; adaptive targets a percentile (default: 33rd).
 
-**In summary**: adaptive tries to take the luck out of *within-run* comparisons,
+**In summary**: adaptive tries to take the luck out of _within-run_ comparisons,
 at the cost of occasionally longer runtime. For cross-run comparisons (e.g.,
 before/after your commit), run both builds under the same conditions and rely on
 relative differences, not absolute values.
@@ -53,25 +55,25 @@ buck2 run @//mode/opt //your:benchmark -- --bm_mode=adaptive --bm_max_secs=30
 Pass `--bm_target_precision_pct` to control the convergence threshold — the
 measurement's 95% confidence interval must be narrower than this percentage of
 the estimate (the default `0.4` means precise to 0.4ns out of 100ns), with a
-10ps absolute floor for near-zero-cost benchmarks where relative precision is not
-meaningful. Tighten it (e.g., `0.1`) if you need finer discrimination between
-benchmarks, but note that binary layout effects (see below) often dominate at
-that level.
+10ps absolute floor for near-zero-cost benchmarks where relative precision is
+not meaningful. Tighten it (e.g., `0.1`) if you need finer discrimination
+between benchmarks, but note that binary layout effects (see below) often
+dominate at that level.
 
-*Watch out*: a "converged" measurement can still be wrong — see the next
+_Watch out_: a "converged" measurement can still be wrong — see the next
 section.
 
-Add `--bm_verbose` for under-the-hood stats: sampling rounds,
-convergence progress.
+Add `--bm_verbose` for under-the-hood stats: sampling rounds, convergence
+progress.
 
 Use `--bm_min_secs` if you want higher confidence over speed — ensures each
 benchmark runs at least that long.
 
 For all flag details, see `folly/Benchmark.cpp`.
 
-*Aside: All comparisons are with "best-of" mode. `--bm_estimate_time` computes
-a genuinely different value and is slower. Its utility is unclear to the author
-of adaptive mode.*
+_Aside: All comparisons are with "best-of" mode. `--bm_estimate_time` computes a
+genuinely different value and is slower. Its utility is unclear to the author of
+adaptive mode._
 
 ---
 
@@ -83,9 +85,10 @@ System-state changes lasting longer than a run (tens of seconds) are invisible.
 You can have a stable, converged run that doesn't match the next one.
 
 **For cross-run comparisons** (e.g., comparing your commit to baseline):
+
 - Run both builds back-to-back in the same session if possible
 - Repeat runs minutes to hours apart to catch long-term drift
-- Look at *relative* differences between benchmarks, not absolute values
+- Look at _relative_ differences between benchmarks, not absolute values
 - Consider running on dedicated benchmark hardware if available
 
 ### Binary layout variations
@@ -111,12 +114,12 @@ LOG(INFO) << rawOss.str();
 
 **This is inherent to microbenchmarking.** There is no "true" runtime for a
 microbenchmark independent of its binary layout. Adaptive mode improves
-*relative* comparisons within a run (different benchmarks see the same system
+_relative_ comparisons within a run (different benchmarks see the same system
 state), but absolute values can shift between builds.
 
 **Implication**: Don't obsess over 0.1% accuracy targets. Binary layout effects
 can easily introduce 5-20% variance. Use adaptive to get stable, precise
-*comparisons*, not "perfect" absolute measurements.
+_comparisons_, not "perfect" absolute measurements.
 
 ---
 
@@ -127,6 +130,7 @@ converge, the numbers are suspect — thermal throttling, noisy neighbors,
 background tasks.
 
 **If you see persistent `[unstable]` warnings:**
+
 - Try again later (or on a quieter machine)
 - Consider if the instability is real (does your code have variance?)
 - If most benchmarks converge but one doesn't, the benchmark itself may be
@@ -141,6 +145,7 @@ background tasks.
 The default `--bm_target_percentile=33.3` is a heuristic, not science.
 
 **Rationale:**
+
 - **p0 (minimum)** gives an over-optimistic estimate. For example, it can hide
   code misbehavior caused by low-grade system contention.
 - **p50 (median)** is more robust but is biased by transient system slowdowns.
@@ -152,8 +157,8 @@ vs. slow path), low percentiles might hide the slow path. If you care about tail
 latencies, try `--bm_target_percentile=90` etc.
 
 **Comparison to best-of mode:** Best-of mode reports p0 (minimum across all
-iterations). Adaptive's p33 will trend slightly higher but is more repeatable
-on noisy systems. If comparing adaptive to best-of, expect a small difference on
+iterations). Adaptive's p33 will trend slightly higher but is more repeatable on
+noisy systems. If comparing adaptive to best-of, expect a small difference on
 the same binary under quiet conditions.
 
 ---
@@ -164,12 +169,12 @@ A benchmark is **stable** when first-half and second-half estimates agree.
 
 Split samples chronologically. Compute percentile estimate and confidence
 interval for each half. Stable means:
+
 - First-half estimate is within second-half's CI
 - Second-half estimate is within first-half's CI
 
-E.g., after 200 samples: first-half p33 = 4.2ns ± 0.1ns, second-half
-p33 = 4.3ns ± 0.15ns — stable, because each estimate falls within the other's
-interval.
+E.g., after 200 samples: first-half p33 = 4.2ns ± 0.1ns, second-half p33 = 4.3ns
+± 0.15ns — stable, because each estimate falls within the other's interval.
 
 Never drops samples. As count grows, CIs shrink, halves must eventually agree
 (or timeout shows your system is too noisy).
@@ -180,7 +185,7 @@ agree.
 
 **Stability ≠ accuracy.** You can have a stable, precise measurement of the
 "wrong" number (due to binary layout, thermal throttling that persists all run,
-etc.). But an *unstable* measurement is definitely unreliable.
+etc.). But an _unstable_ measurement is definitely unreliable.
 
 ---
 
@@ -188,7 +193,7 @@ etc.). But an *unstable* measurement is definitely unreliable.
 
 ### Statistical robustness
 
-We target a percentile, not a mean.  While costlier to compute than mean/stdev,
+We target a percentile, not a mean. While costlier to compute than mean/stdev,
 order statistics are robust to outliers, and don't assume a distribution.
 **Aside:** we use neither `StreamingStats.h` (online mean/stdev) nor `TDigest.h`
 (approx quantiles) because we don't have to -- see below.
@@ -201,7 +206,7 @@ practice we always have enough samples to make that a good choice.
 Most CPU usage should go to the benchmarks, not the harness. Choices to achieve
 this:
 
-**Rare convergence checks**: Every 150ms, not every sample.  The O(n log n)
+**Rare convergence checks**: Every 150ms, not every sample. The O(n log n)
 sorting for percentile CIs is amortized, making complex machinery like
 `TDigest.h` unnecessary for our use-case.
 
@@ -221,12 +226,12 @@ from function call boundaries.
 **Self-calibrating iteration counts**
 
 Each benchmark starts at `iterCount=1` and self-adjusts after every sample so
-that each measurement slice takes ~`bm_slice_usec`.  This avoids a separate
-calibration phase, which was susceptible to cold-start effects (page faults,
-TLB misses) that could lock `iterCount` at 1 for the entire run.
+that each measurement slice takes ~`bm_slice_usec`. This avoids a separate
+calibration phase, which was susceptible to cold-start effects (page faults, TLB
+misses) that could lock `iterCount` at 1 for the entire run.
 
-> *Note:* `bm_slice_usec` should be high enough to avoid interference from the
-> harness code.  The default of 1ms is the reasonable minimum -- 100μs already
+> _Note:_ `bm_slice_usec` should be high enough to avoid interference from the
+> harness code. The default of 1ms is the reasonable minimum -- 100μs already
 > shows serious interference.
 
 **Interleaved sampling**
@@ -243,6 +248,7 @@ while not converged:
 **Are we done?**
 
 For each benchmark:
+
 1. Check stability (split-half agreement)
 2. Check accuracy (CI width < max(relative target, 10ps floor))
 3. Done when both pass, or timeout
