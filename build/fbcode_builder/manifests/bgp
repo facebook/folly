@@ -17,7 +17,9 @@ builder = nop
 [dependencies]
 boost
 fb303
-fboss
+# The explicit prohibition is deliberate: a bare `!default` would let a future
+# consumer of both fboss and bgp silently re-enable the services trees.
+fboss = !default, !services
 fbthrift
 fizz
 fmt
