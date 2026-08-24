@@ -158,6 +158,7 @@ fb_dirsync_cpp_unittest(
     xplat_impl = folly_xplat_cxx_test,
     deps = [
         "fbsource//third-party/python:python",
+        "fbsource//third-party/python:python-for-embedding",  # @manual
         "//folly:scope_guard",
         "//folly/portability:gtest",
         "//folly/python:error",
@@ -174,6 +175,7 @@ fb_dirsync_cpp_unittest(
     xplat_impl = folly_xplat_cxx_test,
     deps = [
         "fbsource//third-party/python:python",
+        "fbsource//third-party/python:python-for-embedding",  # @manual
         "//folly/executors:manual_executor",
         "//folly/portability:gtest",
         "//folly/python:iobuf_ext",
