@@ -1,8 +1,6 @@
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cython_library.bzl", "CYTHON_DEFAULT_APPLE_SDKS", "CYTHON_DEFAULT_PLATFORMS")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cython_library.bzl", "fb_dirsync_cython_library")
-load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
 load("../defs.bzl", "folly_xplat_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -502,14 +500,16 @@ fb_dirsync_cython_library(
     ],
 )
 
-fb_dirsync_rule(
+fb_dirsync_cpp_library(
     name = "scoped_gil_release",
     headers = [
         "ScopedGILRelease.h",
     ],
-    fbcode_only = True,
-    fbcode_rule = cpp_library,
+    apple_sdks = CYTHON_DEFAULT_APPLE_SDKS,
+    platforms = CYTHON_DEFAULT_PLATFORMS,
+    use_raw_headers = True,
     visibility = ["PUBLIC"],
+    xplat_impl = folly_xplat_library,
     exported_deps = [
         ":weak",
     ],
