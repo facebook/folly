@@ -21,6 +21,7 @@
 #include <folly/Subprocess.h>
 
 #if defined(__linux__)
+#include <signal.h>
 #include <sys/prctl.h>
 #endif
 #include <dlfcn.h>
@@ -43,6 +44,7 @@
 #include <folly/logging/xlog.h>
 #include <folly/portability/Dirent.h>
 #include <folly/portability/Fcntl.h>
+#include <folly/portability/Sched.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Stdlib.h>
 #include <folly/portability/SysMman.h>
@@ -226,6 +228,12 @@ struct Subprocess::SpawnRawArgs {
   char const* childDir{};
   AttrWithMeta<int> linuxCGroupFd{-1, nullptr};
   AttrWithMeta<char const*> linuxCGroupPath{nullptr, nullptr};
+#if defined(__linux__)
+  // Set by the parent immediately before clone3(CLONE_INTO_CGROUP) and cleared
+  // again if that call fails. Read only by the child, to know that the kernel
+  // has already done the cgroup placement.
+  bool linuxCGroupPlacedByKernel{};
+#endif
   bool closeOtherFds{};
 #if defined(__linux__)
   Options::AttrWithMeta<cpu_set_t> const* cpuSet{};
@@ -799,9 +807,177 @@ void Subprocess::spawnInternal(
   // We should only throw if we got an error via the errFd, and we know the
   // child has exited and can be immediately waited for.  In all other cases,
   // we have no way of cleaning up the child.
-  pid_ = spawnInternalDoFork(args);
+  pid_t pid = -1;
+#if defined(__linux__)
+  pid = spawnInternalTryCloneIntoCGroup(args, options);
+#endif
+  if (pid < 0) {
+    pid = spawnInternalDoFork(args);
+  }
+  pid_ = pid;
   returnCode_ = ProcessReturnCode::makeRunning();
 }
+
+#if defined(__linux__)
+
+namespace {
+
+#if defined(CLONE_INTO_CGROUP)
+constexpr uint64_t kCloneIntoCGroup = CLONE_INTO_CGROUP;
+#else
+constexpr uint64_t kCloneIntoCGroup = 1ULL << 33; // Introduced in Linux 5.7.
+#endif
+
+//  Exactly vfork's flags plus the cgroup placement: share the address space,
+//  and suspend the parent until the child execs or _exits. stack stays 0, so
+//  the child also inherits the parent's stack pointer, which is safe only
+//  because CLONE_VFORK keeps the two from running at the same time.
+[[maybe_unused]] constexpr uint64_t kCloneIntoCGroupFlags =
+    uint64_t(CLONE_VM) | uint64_t(CLONE_VFORK) | kCloneIntoCGroup;
+
+//  clone3 must be issued with no intervening call frame -- see the comment on
+//  spawnInternalDoClone3 -- which is what FOLLY_DETAIL_LINUX_SYSCALL_INLINE_2
+//  provides. The frameless shared-stack invariant that makes that safe has only
+//  been audited on x86-64 and AArch64, so the fast path is compiled in only
+//  there. Everywhere else kHasCloneIntoCGroup is false, this whole path is
+//  compiled out, and the option is silently inert (the spawn always falls back
+//  to fork). Enabling a new architecture is deliberately two steps: add the
+//  inline stub, then, once its frame behavior has been audited, add it to this
+//  guard and the matching one on spawnInternalDoClone3.
+#if (defined(__x86_64__) || defined(__aarch64__)) && defined(SYS_clone3)
+constexpr long kSysClone3 = SYS_clone3;
+#else
+constexpr long kSysClone3 = -1;
+#endif
+constexpr bool kHasCloneIntoCGroup = kSysClone3 >= 0;
+
+//  Remember results treated as unsupported per calling thread. A seccomp filter
+//  may be installed without TSYNC and synthesize these errnos for only one
+//  thread; that must not disable clone3 for every caller in the process.
+thread_local bool tCloneIntoCGroupUnsupported{!kHasCloneIntoCGroup};
+
+//  After these errors, stop trying clone3(CLONE_INTO_CGROUP) on this thread:
+//
+//    ENOSYS  clone3 is unavailable because the kernel predates Linux 5.3 or
+//            this thread's seccomp filter reports it as unavailable.
+//    E2BIG   clone3 exists, but the kernel's clone_args predates the cgroup
+//            field. Linux 5.3 through 5.6 reject our nonzero trailing field.
+//    EINVAL  clone3 rejected this request. A target-specific fork hook may
+//            return this error as well.
+//
+//  Caching is a heuristic: the flags, struct size, SIGCHLD exit signal, and
+//  zero stack are fixed across spawns, but the cgroup fd is not. A
+//  target-specific EINVAL can therefore disable this optimization for the rest
+//  of the thread's lifetime; the vfork fallback remains correct.
+//
+//  Retry errors known to be target-specific or transient, such as EBADF,
+//  ENODEV, EACCES, EPERM, EOPNOTSUPP, EBUSY, ENOMEM, or EAGAIN on every spawn.
+//
+//  If system headers provide CLONE_INTO_CGROUP, require their value to match
+//  the Linux UAPI value used with older headers. A mismatch could enable the
+//  wrong clone flag and place the child incorrectly.
+static_assert(
+    kCloneIntoCGroup == (1ULL << 33), "CLONE_INTO_CGROUP must be bit 33");
+
+bool isCloneIntoCGroupUnsupported(int errnoValue) {
+  return errnoValue == ENOSYS || errnoValue == E2BIG || errnoValue == EINVAL;
+}
+
+} // namespace
+
+//  Returns the child pid if the kernel created it inside the configured
+//  cgroup, or -1 if the caller should spawn the ordinary way. Every failure
+//  before creating a child returns -1, leaving the caller free to use the
+//  existing vfork path and its setLinuxCGroup* errout contract.
+pid_t Subprocess::spawnInternalTryCloneIntoCGroup(
+    SpawnRawArgs& args, Options const& options) {
+  if (!options.linuxCGroupUseClone3_ || tCloneIntoCGroupUnsupported) {
+    return -1;
+  }
+
+  int cgroupFd = args.linuxCGroupFd.value;
+  int openedCgroupFd = -1;
+  if (args.linuxCGroupPath.value) {
+    // O_PATH suffices: the kernel resolves the cgroup from the dentry, and
+    // documents that an O_PATH descriptor is acceptable here.
+    openedCgroupFd =
+        ::open(args.linuxCGroupPath.value, O_PATH | O_DIRECTORY | O_CLOEXEC);
+    if (openedCgroupFd < 0) {
+      return -1; // let the child open it and report through its errout
+    }
+    cgroupFd = openedCgroupFd;
+  }
+  if (cgroupFd < 0) {
+    return -1; // no cgroup was configured
+  }
+  SCOPE_EXIT {
+    if (openedCgroupFd >= 0) {
+      ::close(openedCgroupFd);
+    }
+  };
+
+  args.linuxCGroupPlacedByKernel = true;
+  pid_t const rc = spawnInternalDoClone3(args, cgroupFd);
+  if (rc >= 0) {
+    spawnedIntoLinuxCGroup_ = true;
+    return rc;
+  }
+
+  args.linuxCGroupPlacedByKernel = false;
+  if (isCloneIntoCGroupUnsupported(-rc)) {
+    tCloneIntoCGroupUnsupported = true;
+  }
+  return -1;
+}
+
+//  Creates the child directly inside the cgroup that cgroupFd refers to.
+//
+//  Returns the child pid to the parent, or a negative errno value. Unlike
+//  spawnInternalDoFork this neither throws nor leaves a child behind when it
+//  fails, so the caller is free to retry with the vfork path.
+//
+//  The clone3 syscall is issued as inline asm, in this frame, on purpose.
+//  CLONE_VM makes the child share this stack, and stack == 0 makes it share
+//  the stack pointer too, so everything the child pushes lands below the
+//  frames through which the suspended parent will later return. Routing the
+//  syscall through a helper function -- syscall(2) included -- would put that
+//  helper's own return address inside the child's scribble zone and corrupt
+//  the parent's return path. This is the same constraint that makes libc
+//  implement vfork as a frameless assembly stub.
+//
+//  For the same reason the parent must not depend on any local that was live
+//  across the syscall; only the syscall's register result is trustworthy. The
+//  cgroup fd is therefore owned and closed by the caller.
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING("-Wclobbered")
+FOLLY_DETAIL_SUBPROCESS_RAW
+pid_t Subprocess::spawnInternalDoClone3(
+    SpawnRawArgs const& args, int cgroupFd) {
+#if defined(__x86_64__) || defined(__aarch64__)
+  folly::detail::clone_args cloneArgs{};
+  cloneArgs.flags = kCloneIntoCGroupFlags;
+  cloneArgs.exit_signal = uint64_t(SIGCHLD);
+  cloneArgs.cgroup = uint64_t(unsigned(cgroupFd));
+
+  long rc;
+  FOLLY_DETAIL_LINUX_SYSCALL_INLINE_2(
+      rc, kSysClone3, &cloneArgs, sizeof(cloneArgs));
+  if (rc == 0) {
+    spawnInternalChild(args);
+  }
+  return pid_t(rc);
+#else
+  //  Unreachable: on an unaudited architecture kHasCloneIntoCGroup is false, so
+  //  spawnInternalTryCloneIntoCGroup latches the feature unsupported and never
+  //  calls this. It exists only so the translation unit still links there.
+  (void)args;
+  (void)cgroupFd;
+  return pid_t(-ENOSYS);
+#endif
+}
+FOLLY_POP_WARNING
+
+#endif // defined(__linux__)
 
 // With -Wclobbered, gcc complains about vfork potentially clobbering the
 // childDir variable, even though we only use it on the child side of the
@@ -811,6 +987,12 @@ FOLLY_PUSH_WARNING
 FOLLY_GCC_DISABLE_WARNING("-Wclobbered")
 FOLLY_DETAIL_SUBPROCESS_RAW
 pid_t Subprocess::spawnInternalDoFork(SpawnRawArgs const& args) {
+#if defined(__linux__)
+  // Reaching here means the child has to place itself. If this ever fired, a
+  // failed clone3 attempt would have left the child skipping placement with
+  // nothing written to errout, i.e. silently outside its cgroup.
+  DCHECK(!args.linuxCGroupPlacedByKernel);
+#endif
   pid_t pid = detail::subprocess_libc::vfork();
   checkUnixError(pid, errno, "failed to fork");
   if (pid != 0) {
@@ -976,9 +1158,15 @@ int Subprocess::prepareChild(SpawnRawArgs const& args) {
     }
   }
 
-  // Move the child process into a linux cgroup, if one is given
-  if (auto rc = prepareChildDoLinuxCGroup(args)) {
-    return rc;
+  // Move the child process into a linux cgroup, if one is given and the
+  // kernel has not already placed us there at clone3 time.
+#if defined(__linux__)
+  if (!args.linuxCGroupPlacedByKernel)
+#endif
+  {
+    if (auto rc = prepareChildDoLinuxCGroup(args)) {
+      return rc;
+    }
   }
 
   for (size_t i = 0; i < args.rlimitsSize; ++i) {

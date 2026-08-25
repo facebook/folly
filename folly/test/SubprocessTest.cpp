@@ -16,10 +16,23 @@
 
 #include <folly/Subprocess.h>
 
+#if defined(__linux__)
+#include <linux/filter.h>
+#include <linux/seccomp.h>
+#include <sys/prctl.h>
+#endif
+#include <sys/stat.h>
+
+#include <array>
+#include <atomic>
 #include <chrono>
+#include <cstddef>
+#include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 #include <boost/container/flat_set.hpp>
@@ -1222,6 +1235,494 @@ TEST(SetLinuxCGroup, CanSetCGroupPathPresentProcsNoOpenIntoErrnum) {
   proc.wait();
   EXPECT_EQ(0, proc.returnCode().exitStatus());
 }
+
+//// setLinuxCGroupUseClone3
+////
+//// The tests that need a real cgroup v2 directory skip when the test
+//// environment does not provide a writable one. Set
+//// FOLLY_TEST_REQUIRE_CLONE_INTO_CGROUP=1 to turn those skips into failures.
+
+namespace {
+
+bool cloneIntoCGroupRequired() {
+  return ::getenv("FOLLY_TEST_REQUIRE_CLONE_INTO_CGROUP") != nullptr;
+}
+
+// The "0::" line of a /proc/<pid>/cgroup dump is the unified hierarchy.
+std::optional<std::string> unifiedCGroupOf(std::string_view procSelfCgroup) {
+  std::vector<std::string_view> lines;
+  folly::split('\n', procSelfCgroup, lines);
+  for (auto line : lines) {
+    if (line.starts_with("0::")) {
+      return std::string(line.substr(3));
+    }
+  }
+  return std::nullopt;
+}
+
+// A freshly created child of the test process's own cgroup, removed on
+// destruction. Empty filesystemPath means the environment cannot provide one.
+struct ScopedTestCGroup {
+  folly::fs::path filesystemPath;
+  std::string unifiedPath;
+
+  ~ScopedTestCGroup() {
+    if (filesystemPath.empty()) {
+      return;
+    }
+    // A cgroup stays busy until the kernel reaps the last exited member.
+    for (int i = 0; i < 500; ++i) {
+      if (::rmdir(filesystemPath.c_str()) == 0 || errno == ENOENT) {
+        return;
+      }
+      /* sleep override */
+      std::this_thread::sleep_for(10ms);
+    }
+    ADD_FAILURE() << "could not remove " << filesystemPath << ": "
+                  << ::strerror(errno);
+  }
+};
+
+// Creating a cgroup is not the same as being allowed to run in one. A sandbox
+// may permit the mkdir and the ordinary migrate-after-fork, yet SIGKILL any
+// process *born* into a cgroup created underneath its own -- buck2's action
+// cgroup pool does exactly that, so the test binary sees it under tpx but not
+// when run directly. Probe with a throwaway spawn instead of assuming.
+bool cloneIntoCGroupUsable(const folly::fs::path& dir) {
+  auto options = Subprocess::Options();
+  options.setLinuxCGroupPath(dir.string()).setLinuxCGroupUseClone3();
+  try {
+    Subprocess proc(std::vector{"/bin/true"s}, options);
+    const bool placed = proc.spawnedIntoLinuxCGroup();
+    return proc.wait().succeeded() && placed;
+  } catch (const SubprocessSpawnError&) {
+    return false;
+  }
+}
+
+std::unique_ptr<ScopedTestCGroup> makeTestCGroup() {
+  auto result = std::make_unique<ScopedTestCGroup>();
+  std::string procSelfCgroup;
+  if (!readFile("/proc/self/cgroup", procSelfCgroup)) {
+    return result;
+  }
+  auto parent = unifiedCGroupOf(procSelfCgroup);
+  // The unified line always carries an absolute path. Anything else means we
+  // cannot tell where we are, and a bare "0::" would make the indexing below
+  // read past the end.
+  if (!parent || parent->empty() || parent->front() != '/') {
+    return result;
+  }
+  auto name = fmt::format("folly-subprocess-test-{}", ::getpid());
+  // In a container the test may run at the cgroup root, where joining naively
+  // would build "//name" while the child reports "/name" back through
+  // /proc/self/cgroup.
+  auto unified = *parent == "/"
+      ? fmt::format("/{}", name)
+      : fmt::format("{}/{}", *parent, name);
+  auto path = folly::fs::path("/sys/fs/cgroup") / unified.substr(1);
+  if (::mkdir(path.c_str(), 0755) != 0 && errno != EEXIST) {
+    return result;
+  }
+  if (!cloneIntoCGroupUsable(path)) {
+    ::rmdir(path.c_str());
+    return result;
+  }
+  result->filesystemPath = std::move(path);
+  result->unifiedPath = std::move(unified);
+  return result;
+}
+
+// Returns the child's own unified cgroup, or nullopt if it could not be read.
+std::optional<std::string> spawnAndReadOwnCGroup(
+    Subprocess::Options& options, bool* usedClone3) {
+  Subprocess proc(std::vector{"/bin/cat"s, "/proc/self/cgroup"s}, options);
+  if (usedClone3) {
+    *usedClone3 = proc.spawnedIntoLinuxCGroup();
+  }
+  auto output = proc.communicate();
+  EXPECT_TRUE(proc.wait().succeeded());
+  return unifiedCGroupOf(output.first);
+}
+
+// True if this environment actually creates the child with
+// clone3(CLONE_INTO_CGROUP) for the cgroup at cgroupPath. The error-path tests
+// use this to confirm they exercise the CLONE_VM shared-stack error channel
+// they cover, rather than silently passing through the fork fallback when
+// clone3 is unavailable.
+bool clone3PlacesChild(const std::string& cgroupPath) {
+  auto options = Subprocess::Options();
+  options.setLinuxCGroupPath(cgroupPath).setLinuxCGroupUseClone3();
+  Subprocess proc(std::vector{"/bin/true"s}, options);
+  const bool used = proc.spawnedIntoLinuxCGroup();
+  proc.wait();
+  return used;
+}
+
+} // namespace
+
+TEST(SetLinuxCGroupUseClone3, PlacesChildInCGroupByPath) {
+  auto cgroup = makeTestCGroup();
+  if (cgroup->filesystemPath.empty()) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "no usable cgroup v2 dir for clone3 placement";
+    GTEST_SKIP() << "no usable cgroup v2 dir for clone3 placement";
+  }
+
+  auto options = Subprocess::Options().pipeStdout();
+  options.setLinuxCGroupPath(cgroup->filesystemPath.string())
+      .setLinuxCGroupUseClone3();
+  bool usedClone3 = false;
+  auto actual = spawnAndReadOwnCGroup(options, &usedClone3);
+
+  if (!usedClone3) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "clone3(CLONE_INTO_CGROUP) unavailable";
+    GTEST_SKIP() << "clone3(CLONE_INTO_CGROUP) unavailable";
+  }
+  ASSERT_TRUE(actual.has_value());
+  EXPECT_EQ(cgroup->unifiedPath, *actual);
+}
+
+TEST(SetLinuxCGroupUseClone3, PlacesChildInCGroupByFd) {
+  auto cgroup = makeTestCGroup();
+  if (cgroup->filesystemPath.empty()) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "no usable cgroup v2 dir for clone3 placement";
+    GTEST_SKIP() << "no usable cgroup v2 dir for clone3 placement";
+  }
+  folly::File cgroupDir(cgroup->filesystemPath.c_str(), O_RDONLY | O_DIRECTORY);
+
+  auto options = Subprocess::Options().pipeStdout();
+  options.setLinuxCGroupFd(cgroupDir.fd()).setLinuxCGroupUseClone3();
+  bool usedClone3 = false;
+  auto actual = spawnAndReadOwnCGroup(options, &usedClone3);
+
+  if (!usedClone3) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "clone3(CLONE_INTO_CGROUP) unavailable";
+    GTEST_SKIP() << "clone3(CLONE_INTO_CGROUP) unavailable";
+  }
+  ASSERT_TRUE(actual.has_value());
+  EXPECT_EQ(cgroup->unifiedPath, *actual);
+}
+
+TEST(SetLinuxCGroupUseClone3, PlacesDetachedGrandchildInCGroup) {
+  auto cgroup = makeTestCGroup();
+  if (cgroup->filesystemPath.empty()) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "no usable cgroup v2 dir for clone3 placement";
+    GTEST_SKIP() << "no usable cgroup v2 dir for clone3 placement";
+  }
+
+  auto options = Subprocess::Options().pipeStdout().detach();
+  options.setLinuxCGroupPath(cgroup->filesystemPath.string())
+      .setLinuxCGroupUseClone3();
+  Subprocess proc(std::vector{"/bin/cat"s, "/proc/self/cgroup"s}, options);
+  if (!proc.spawnedIntoLinuxCGroup()) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "clone3(CLONE_INTO_CGROUP) unavailable";
+    GTEST_SKIP() << "clone3(CLONE_INTO_CGROUP) unavailable";
+  }
+  std::string output;
+  ASSERT_TRUE(readFile(proc.stdoutFd(), output)) << ::strerror(errno);
+  auto actual = unifiedCGroupOf(output);
+  ASSERT_TRUE(actual.has_value()) << output;
+  EXPECT_EQ(cgroup->unifiedPath, *actual);
+}
+
+// The child setup that the fbagent collector path relies on must survive the
+// clone3 backend: dropped stdin, both pipes, closeOtherFds, a cleared signal
+// mask, and a custom environment.
+TEST(SetLinuxCGroupUseClone3, PreservesFullChildSetup) {
+  auto cgroup = makeTestCGroup();
+  if (cgroup->filesystemPath.empty()) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "no usable cgroup v2 dir for clone3 placement";
+    GTEST_SKIP() << "no usable cgroup v2 dir for clone3 placement";
+  }
+  folly::File spare("/dev/null", O_RDONLY);
+  ASSERT_GT(spare.fd(), STDERR_FILENO);
+
+  sigset_t emptyMask;
+  ASSERT_EQ(0, ::sigemptyset(&emptyMask));
+  auto options =
+      Subprocess::Options()
+          .stdinFd(Subprocess::DEV_NULL)
+          .pipeStdout()
+          .pipeStderr()
+          .closeOtherFds()
+          .setSignalMask(emptyMask);
+  options.setLinuxCGroupPath(cgroup->filesystemPath.string())
+      .setLinuxCGroupUseClone3();
+  const std::vector<std::string> env{"FOLLY_TEST_MARKER=present"};
+
+  Subprocess proc(
+      std::vector{
+          "/bin/sh"s,
+          "-c"s,
+          fmt::format(
+              "test ! -e /proc/self/fd/{} && echo \"$FOLLY_TEST_MARKER\" && "
+              "cat /proc/self/cgroup",
+              spare.fd())},
+      options,
+      nullptr,
+      &env);
+  const bool usedClone3 = proc.spawnedIntoLinuxCGroup();
+  auto output = proc.communicate();
+  EXPECT_TRUE(proc.wait().succeeded());
+  if (!usedClone3) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "clone3(CLONE_INTO_CGROUP) unavailable";
+    GTEST_SKIP() << "clone3(CLONE_INTO_CGROUP) unavailable";
+  }
+
+  EXPECT_TRUE(output.second.empty()) << output.second;
+  EXPECT_THAT(output.first, testing::StartsWith("present\n"));
+  auto actual = unifiedCGroupOf(output.first);
+  ASSERT_TRUE(actual.has_value()) << output.first;
+  EXPECT_EQ(cgroup->unifiedPath, *actual);
+}
+
+// An exec failure must still be reported through the child error channel,
+// which under CLONE_VM lives on the shared stack.
+TEST(SetLinuxCGroupUseClone3, ReportsExecFailure) {
+  auto cgroup = makeTestCGroup();
+  if (cgroup->filesystemPath.empty()) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "no usable cgroup v2 dir for clone3 placement";
+    GTEST_SKIP() << "no usable cgroup v2 dir for clone3 placement";
+  }
+  if (!clone3PlacesChild(cgroup->filesystemPath.string())) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "clone3(CLONE_INTO_CGROUP) unavailable";
+    GTEST_SKIP() << "clone3(CLONE_INTO_CGROUP) unavailable";
+  }
+  auto options = Subprocess::Options();
+  options.setLinuxCGroupPath(cgroup->filesystemPath.string())
+      .setLinuxCGroupUseClone3();
+  try {
+    Subprocess(std::vector{"/no/such/executable"s}, options);
+    FAIL() << "expected the exec to fail";
+  } catch (const SubprocessSpawnError& error) {
+    EXPECT_EQ(ENOENT, error.errnoValue());
+    EXPECT_THAT(error.what(), testing::HasSubstr("failed to execute"));
+  }
+}
+
+// A child-preparation failure must still be reported, and must not be masked
+// by the clone3 backend.
+TEST(SetLinuxCGroupUseClone3, ReportsChildPreparationFailure) {
+  auto cgroup = makeTestCGroup();
+  if (cgroup->filesystemPath.empty()) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "no usable cgroup v2 dir for clone3 placement";
+    GTEST_SKIP() << "no usable cgroup v2 dir for clone3 placement";
+  }
+  if (!clone3PlacesChild(cgroup->filesystemPath.string())) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "clone3(CLONE_INTO_CGROUP) unavailable";
+    GTEST_SKIP() << "clone3(CLONE_INTO_CGROUP) unavailable";
+  }
+  folly::test::TemporaryDirectory missing;
+  auto gone = missing.path() / "not-created";
+  auto options = Subprocess::Options().chdir(gone.string());
+  options.setLinuxCGroupPath(cgroup->filesystemPath.string())
+      .setLinuxCGroupUseClone3();
+  try {
+    Subprocess(std::vector{"/bin/true"s}, options);
+    FAIL() << "expected the chdir to fail";
+  } catch (const SubprocessSpawnError& error) {
+    EXPECT_EQ(ENOENT, error.errnoValue());
+    EXPECT_THAT(error.what(), testing::HasSubstr("error preparing"));
+  }
+}
+
+// Requesting clone3 for a directory that is not a cgroup must behave exactly
+// as it does without the request: the child falls back to opening
+// cgroup.procs, and reports through the errout.
+TEST(SetLinuxCGroupUseClone3, FallsBackToCGroupProcsWrite) {
+  folly::test::TemporaryDirectory cgdir; // not a real cgroup dir
+  auto cgprocs = cgdir.path() / "cgroup.procs";
+  const int fd = ::creat(cgprocs.native().c_str(), 0644);
+  ASSERT_NE(-1, fd) << ::strerror(errno);
+  ASSERT_EQ(0, ::close(fd));
+
+  int errnum = 0;
+  auto options = Subprocess::Options().pipeStdout();
+  options
+      .setLinuxCGroupPath(
+          cgdir.path().string(), to_shared_ptr_non_owning(&errnum))
+      .setLinuxCGroupUseClone3();
+
+  Subprocess proc(std::vector{"/bin/echo"s, "fallback"s}, options);
+  EXPECT_FALSE(proc.spawnedIntoLinuxCGroup());
+  auto output = proc.communicate();
+  EXPECT_TRUE(proc.wait().succeeded());
+  EXPECT_EQ("fallback\n", output.first);
+  EXPECT_EQ(0, errnum) << ::strerror(errnum);
+
+  // The child took the legacy path, so it wrote itself into cgroup.procs.
+  std::string written;
+  ASSERT_TRUE(readFile(cgprocs.native().c_str(), written));
+  EXPECT_EQ("0", written);
+}
+
+// A missing cgroup directory must still surface through the errout, and must
+// not become a spawn failure just because clone3 was requested.
+TEST(SetLinuxCGroupUseClone3, FallsBackAndReportsMissingCGroup) {
+  folly::test::TemporaryDirectory parent;
+  auto missing = parent.path() / "absent";
+  int errnum = 0;
+  auto options = Subprocess::Options();
+  options
+      .setLinuxCGroupPath(missing.string(), to_shared_ptr_non_owning(&errnum))
+      .setLinuxCGroupUseClone3();
+
+  Subprocess proc(std::vector{"/bin/true"s}, options);
+  EXPECT_FALSE(proc.spawnedIntoLinuxCGroup());
+  EXPECT_TRUE(proc.wait().succeeded());
+  EXPECT_EQ(ENOENT, errnum) << ::strerror(errnum);
+}
+
+// Without an errout, a missing cgroup must still abort the spawn.
+TEST(SetLinuxCGroupUseClone3, FallsBackAndThrowsWithoutErrout) {
+  folly::test::TemporaryDirectory parent;
+  auto missing = parent.path() / "absent";
+  auto options = Subprocess::Options();
+  options.setLinuxCGroupPath(missing.string()).setLinuxCGroupUseClone3();
+  EXPECT_THROW(
+      Subprocess(std::vector{"/bin/true"s}, options), SubprocessSpawnError);
+}
+
+// Asking for clone3 without asking for a cgroup is a no-op, not an error.
+TEST(SetLinuxCGroupUseClone3, IgnoredWithoutCGroupTarget) {
+  auto options = Subprocess::Options().pipeStdout().setLinuxCGroupUseClone3();
+  Subprocess proc(std::vector{"/bin/echo"s, "no-cgroup"s}, options);
+  EXPECT_FALSE(proc.spawnedIntoLinuxCGroup());
+  auto output = proc.communicate();
+  EXPECT_TRUE(proc.wait().succeeded());
+  EXPECT_EQ("no-cgroup\n", output.first);
+}
+
+// The shared-stack contract has to hold when many threads spawn at once, and
+// no descriptor may leak on either path.
+TEST(SetLinuxCGroupUseClone3, ConcurrentSpawnsDoNotLeakFds) {
+  auto cgroup = makeTestCGroup();
+  if (cgroup->filesystemPath.empty()) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "no usable cgroup v2 dir for clone3 placement";
+    GTEST_SKIP() << "no usable cgroup v2 dir for clone3 placement";
+  }
+  auto countOpenFds = [] {
+    size_t n = 0;
+    for (auto const& e : folly::fs::directory_iterator("/proc/self/fd")) {
+      (void)e;
+      ++n;
+    }
+    return n;
+  };
+
+  constexpr size_t kThreads = 8;
+  constexpr size_t kPerThread = 20;
+  const size_t before = countOpenFds();
+  std::atomic<size_t> placed{0};
+  std::vector<std::thread> threads;
+  threads.reserve(kThreads);
+  for (size_t t = 0; t < kThreads; ++t) {
+    threads.emplace_back([&] {
+      for (size_t i = 0; i < kPerThread; ++i) {
+        auto options = Subprocess::Options().pipeStdout();
+        options.setLinuxCGroupPath(cgroup->filesystemPath.string())
+            .setLinuxCGroupUseClone3();
+        Subprocess proc(std::vector{"/bin/true"s}, options);
+        if (proc.spawnedIntoLinuxCGroup()) {
+          placed.fetch_add(1, std::memory_order_relaxed);
+        }
+        proc.communicate();
+        EXPECT_TRUE(proc.wait().succeeded());
+      }
+    });
+  }
+  for (auto& th : threads) {
+    th.join();
+  }
+  const size_t after = countOpenFds();
+  EXPECT_EQ(before, after);
+  if (cloneIntoCGroupRequired()) {
+    EXPECT_EQ(kThreads * kPerThread, placed.load());
+  }
+}
+
+#if defined(SYS_clone3)
+TEST(SetLinuxCGroupUseClone3, SeccompFailureDoesNotDisableOtherThreads) {
+  auto cgroup = makeTestCGroup();
+  if (cgroup->filesystemPath.empty()) {
+    ASSERT_FALSE(cloneIntoCGroupRequired())
+        << "no usable cgroup v2 dir for clone3 placement";
+    GTEST_SKIP() << "no usable cgroup v2 dir for clone3 placement";
+  }
+
+  struct FilteredResult {
+    bool installed{};
+    bool usedClone3{};
+    bool childSucceeded{};
+    int installErrno{};
+    std::string exception;
+  } result;
+
+  std::thread filtered([&] {
+    auto filter = std::to_array<sock_filter>({
+        BPF_STMT(
+            BPF_LD | BPF_W | BPF_ABS,
+            static_cast<uint32_t>(offsetof(struct seccomp_data, nr))),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, SYS_clone3, 0, 1),
+        BPF_STMT(
+            BPF_RET | BPF_K, SECCOMP_RET_ERRNO | (ENOSYS & SECCOMP_RET_DATA)),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+    });
+    struct sock_fprog program = {
+        .len = static_cast<unsigned short>(filter.size()),
+        .filter = filter.data(),
+    };
+    if (folly::detail::linux_syscall(
+            SYS_prctl, PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == -1 ||
+        folly::detail::linux_syscall(
+            SYS_prctl, PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &program, 0, 0) ==
+            -1) {
+      result.installErrno = errno;
+      return;
+    }
+    result.installed = true;
+    try {
+      auto options = Subprocess::Options();
+      options.setLinuxCGroupPath(cgroup->filesystemPath.string())
+          .setLinuxCGroupUseClone3();
+      Subprocess proc(std::vector{"/bin/true"s}, options);
+      result.usedClone3 = proc.spawnedIntoLinuxCGroup();
+      result.childSucceeded = proc.wait().succeeded();
+    } catch (const std::exception& ex) {
+      result.exception = ex.what();
+    }
+  });
+  filtered.join();
+
+  if (!result.installed) {
+    GTEST_SKIP() << "cannot install clone3 seccomp filter: "
+                 << ::strerror(result.installErrno);
+  }
+  ASSERT_TRUE(result.exception.empty()) << result.exception;
+  EXPECT_FALSE(result.usedClone3);
+  EXPECT_TRUE(result.childSucceeded);
+
+  auto options = Subprocess::Options();
+  options.setLinuxCGroupPath(cgroup->filesystemPath.string())
+      .setLinuxCGroupUseClone3();
+  Subprocess proc(std::vector{"/bin/true"s}, options);
+  EXPECT_TRUE(proc.spawnedIntoLinuxCGroup());
+  EXPECT_TRUE(proc.wait().succeeded());
+}
+#endif
 
 #endif
 

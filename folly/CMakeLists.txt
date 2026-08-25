@@ -1305,6 +1305,7 @@ if(NOT WIN32)
       folly_logging_logging
       folly_portability_dirent
       folly_portability_fcntl
+      folly_portability_sched
       folly_portability_sockets
       folly_portability_stdlib
       folly_portability_sys_mman

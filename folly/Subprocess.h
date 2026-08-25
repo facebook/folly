@@ -505,6 +505,32 @@ class Subprocess {
         int cgroupFd, std::shared_ptr<int> errout = nullptr);
     Options& setLinuxCGroupPath(
         const std::string& cgroupPath, std::shared_ptr<int> errout = nullptr);
+
+    /**
+     * Ask the kernel to create the child directly inside the cgroup configured
+     * by setLinuxCGroup*, using clone3(CLONE_INTO_CGROUP), instead of letting
+     * the child migrate itself by writing to cgroup.procs after the fork.
+     *
+     * Migrating an existing task takes the write side of the kernel's
+     * cgroup_threadgroup_rwsem while cgroup_mutex is held; on a percpu-rwsem
+     * that costs an RCU grace period, and it serializes other cgroup operations
+     * that take cgroup_mutex. Creating the task in place needs only the read
+     * side that fork already takes.
+     *
+     * If clone3 fails before creating a child, the spawn transparently falls
+     * back to vfork plus the cgroup.procs write, preserving the legacy
+     * placement and errout contract. Once clone3 succeeds there is no retry. A
+     * task born in a cgroup can be observed or treated differently from one
+     * migrated there after fork, so enable this only for targets that support
+     * born-in-place execution. Use spawnedIntoLinuxCGroup() to find out which
+     * path a given spawn took.
+     *
+     * Requires Linux 5.7+ and, currently, x86-64 or AArch64.
+     */
+    Options& setLinuxCGroupUseClone3(bool useClone3 = true) {
+      linuxCGroupUseClone3_ = useClone3;
+      return *this;
+    }
 #endif
 
     Options& setUid(uid_t uid, std::shared_ptr<int> errout = nullptr) {
@@ -563,6 +589,7 @@ class Subprocess {
     AttrWithMeta<int> linuxCGroupFd_{-1, nullptr}; // -1 means no cgroup
     AttrWithMeta<std::string> linuxCGroupPath_{}; // empty means no cgroup
 #if defined(__linux__)
+    bool linuxCGroupUseClone3_{false};
     int parentDeathSignal_{0};
     Optional<AttrWithMeta<cpu_set_t>> cpuSet_;
 #endif
@@ -639,6 +666,23 @@ class Subprocess {
    * or has already been wait()ed upon.
    */
   pid_t pid() const;
+
+#if defined(__linux__)
+  /**
+   * Whether the kernel created this child directly inside the cgroup requested
+   * by Options::setLinuxCGroup*, as asked for by setLinuxCGroupUseClone3().
+   *
+   * False means the child was placed the ordinary way, by writing cgroup.procs
+   * after the fork -- either because clone3(CLONE_INTO_CGROUP) was not
+   * requested, or because it was unavailable and the spawn fell back. It says
+   * nothing about whether the child reached exec or survived target-cgroup
+   * policy. Legacy placement errors are still reported through the
+   * setLinuxCGroup* errout.
+   */
+  bool spawnedIntoLinuxCGroup() const noexcept {
+    return spawnedIntoLinuxCGroup_;
+  }
+#endif
 
   /**
    * Return the child's status (as per wait()) if the process has already
@@ -1029,6 +1073,14 @@ class Subprocess {
       int syncPipeFd = -1);
 
   static pid_t spawnInternalDoFork(SpawnRawArgs const& args);
+#if defined(__linux__)
+  // Returns the child pid, or -1 if the caller should use the fork path.
+  pid_t spawnInternalTryCloneIntoCGroup(
+      SpawnRawArgs& args, Options const& options);
+  // Returns the child pid, or a negative errno value. Never throws: the caller
+  // decides whether to fall back to spawnInternalDoFork().
+  static pid_t spawnInternalDoClone3(SpawnRawArgs const& args, int cgroupFd);
+#endif
   [[noreturn]] static void spawnInternalChild(SpawnRawArgs const& args);
   [[noreturn]] static void childError(
       SpawnRawArgs const& args, int errCode, int errnoValue);
@@ -1066,6 +1118,9 @@ class Subprocess {
   pid_t pid_{-1};
   ProcessReturnCode returnCode_;
   TimeoutDuration::rep destroyBehavior_ = DestroyBehaviorFatal;
+#if defined(__linux__)
+  bool spawnedIntoLinuxCGroup_{false};
+#endif
 
   /**
    * Represents a pipe between this process, and the child process (or its

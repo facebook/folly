@@ -358,6 +358,7 @@ fb_dirsync_cpp_library(
         "//folly/logging:logging",
         "//folly/portability:dirent",
         "//folly/portability:fcntl",
+        "//folly/portability:sched",
         "//folly/portability:sockets",
         "//folly/portability:stdlib",
         "//folly/portability:sys_mman",
