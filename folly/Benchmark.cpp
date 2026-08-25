@@ -1047,6 +1047,9 @@ void validateFlagCombinations() {
   }
 
   if (FLAGS_bm_mode == "adaptive") {
+    if (FLAGS_bm_min_secs > FLAGS_bm_max_secs) {
+      fatal("--bm_min_secs must not exceed --bm_max_secs.");
+    }
     if (userSetGflag("bm_min_iters")) {
       fatal("--bm_min_iters is only useful in --bm_mode=best-of.");
     }
