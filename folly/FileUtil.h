@@ -20,6 +20,7 @@
 #include <sys/types.h>
 
 #include <cassert>
+#include <filesystem>
 #include <limits>
 
 #include <folly/Portability.h>
@@ -193,6 +194,18 @@ bool readFile(
 }
 
 /**
+ * Same as above, but takes a std::filesystem::path instead of fd
+ */
+template <class Container>
+  requires(std::same_as<std::filesystem::path::value_type, char>)
+bool readFile(
+    const std::filesystem::path& path,
+    Container& out,
+    size_t num_bytes = std::numeric_limits<size_t>::max()) {
+  return readFile(path.c_str(), out, num_bytes);
+}
+
+/**
  * Writes container to file. The container is assumed to be
  * contiguous, with element size equal to 1, and offering STL-like
  * methods empty(), size(), and indexed access
@@ -223,6 +236,19 @@ bool writeFile(
   bool ok = data.empty() ||
       writeFull(fd, &data[0], data.size()) == static_cast<ssize_t>(data.size());
   return closeNoInt(fd) == 0 && ok;
+}
+
+/**
+ * Same as above, but takes a std::filesystem::path instead of filename
+ */
+template <class Container>
+  requires(std::same_as<std::filesystem::path::value_type, char>)
+bool writeFile(
+    const Container& data,
+    const std::filesystem::path& filename,
+    int flags = O_WRONLY | O_CREAT | O_TRUNC,
+    mode_t mode = 0666) {
+  return writeFile(data, filename.c_str(), flags, mode);
 }
 
 /* For atomic writes, do we sync to guarantee ordering or not? */
