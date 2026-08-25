@@ -426,6 +426,47 @@ class AsyncUDPSocket : public EventHandler {
       const std::unique_ptr<folly::IOBuf>& buf);
 
   /**
+   * Send the data in buffer to destination, using `cmsgs` as the per-datagram
+   * ancillary data. Returns the return code from ::sendmsg.
+   *
+   * The socket-level cmsgs are the baseline and `cmsgs` overrides them key by
+   * key, mirroring how the kernel lets a cmsg override the corresponding
+   * setsockopt value for one datagram. Socket-level keys that `cmsgs` does not
+   * mention are still sent. Precedence, highest first:
+   *
+   *   `cmsgs`  >  setAdditionalCmsgsFunc()  >  setCmsgs()/appendCmsgs()
+   *
+   * The order of the lower two is whatever write()/writev() already do: the
+   * dynamic cmsgs are unioned over the default ones without being overwritten.
+   *
+   * setNontrivialCmsgs() entries are always sent; they cannot be overridden
+   * per call because `cmsgs` only carries int-valued options.
+   *
+   * `cmsgs` itself is not retained: it is borrowed for the duration of the
+   * call, and a subsequent write() carries only the socket-level cmsgs. That
+   * is what makes this usable on a socket shared by many destinations —
+   * appendCmsgs() would instead persist the value into every later write,
+   * which may belong to a different peer.
+   *
+   * This is not free of socket-state side effects: like every other write
+   * entrypoint it calls setAdditionalCmsgsFunc()'s callback, refreshing the
+   * socket's dynamic cmsgs.
+   *
+   * GSO, zerocopy and SCM_TXTIME are not available here; use writeGSO() for
+   * those. Ancillary data is only carried where FOLLY_HAVE_MSG_ERRQUEUE or
+   * _WIN32 is defined, i.e. Linux and Windows — the same scope as writev().
+   * Elsewhere (macOS/BSD) a non-empty `cmsgs` returns -1 with EOPNOTSUPP.
+   *
+   * Callers on a hot path should keep one map alive and overwrite its values
+   * rather than building a new one per datagram, so that no allocation
+   * happens per write.
+   */
+  virtual ssize_t writeWithCmsgs(
+      const folly::SocketAddress& address,
+      const std::unique_ptr<folly::IOBuf>& buf,
+      const SocketCmsgMap& cmsgs);
+
+  /**
    * Send the data in buffers to destination. Returns the return code from
    * ::sendmmsg.
    * bufs is an array of std::unique_ptr<folly::IOBuf>
@@ -811,6 +852,17 @@ class AsyncUDPSocket : public EventHandler {
   virtual ssize_t writevImpl(
       netops::Msgheader* msg, [[maybe_unused]] WriteOptions options);
 
+  // The one serializer every single-datagram write ends up in: writes
+  // `additionalCmsgs`, then the socket-level cmsgs, then the nontrivial
+  // cmsgs, then GSO and SCM_TXTIME into the control buffer already attached
+  // to `msg`, and sends. `additionalCmsgs` wins over the socket-level cmsgs
+  // key by key, and is only read where ancillary data is supported; the
+  // parameter is otherwise compiled out of the body.
+  virtual ssize_t writeWithCmsgsImpl(
+      netops::Msgheader* msg,
+      WriteOptions options,
+      [[maybe_unused]] const SocketCmsgMap& additionalCmsgs);
+
   size_t handleErrMessages() noexcept;
 
   void failErrMessageRead(const AsyncSocketException& ex);
@@ -823,6 +875,22 @@ class AsyncUDPSocket : public EventHandler {
   ReadCallback* readCallback_;
 
  private:
+  // Shared bodies of writeGSO()/writev() and writeWithCmsgs(). Non-virtual:
+  // an empty `additionalCmsgs` still dispatches through the virtual
+  // writev()/writevImpl(), so subclass overrides keep seeing ordinary writes.
+  ssize_t writeGSOWithCmsgs(
+      const folly::SocketAddress& address,
+      const std::unique_ptr<folly::IOBuf>& buf,
+      WriteOptions options,
+      const SocketCmsgMap& additionalCmsgs);
+
+  ssize_t writevWithCmsgs(
+      const folly::SocketAddress& address,
+      const struct iovec* vec,
+      size_t iovec_len,
+      WriteOptions options,
+      const SocketCmsgMap& additionalCmsgs);
+
   // EventHandler
   void handlerReady(uint16_t events) noexcept override;
 

@@ -36,6 +36,12 @@ struct MockAsyncUDPSocketT : public Base {
   MOCK_METHOD(
       ssize_t, write, (const SocketAddress&, const std::unique_ptr<IOBuf>&));
   MOCK_METHOD(
+      ssize_t,
+      writeWithCmsgs,
+      (const SocketAddress&,
+       const std::unique_ptr<IOBuf>&,
+       const SocketCmsgMap&));
+  MOCK_METHOD(
       int,
       writem,
       (Range<SocketAddress const*>,

@@ -568,6 +568,14 @@ ssize_t AsyncUDPSocket::writeGSO(
     const folly::SocketAddress& address,
     const std::unique_ptr<folly::IOBuf>& buf,
     WriteOptions options) {
+  return writeGSOWithCmsgs(address, buf, options, SocketCmsgMap{});
+}
+
+ssize_t AsyncUDPSocket::writeGSOWithCmsgs(
+    const folly::SocketAddress& address,
+    const std::unique_ptr<folly::IOBuf>& buf,
+    WriteOptions options,
+    const SocketCmsgMap& additionalCmsgs) {
   // UDP's typical MTU size is 1500, so high number of buffers
   //   really do not make sense. Optimize for buffer chains with
   //   buffers less than 16, which is the highest I can think of
@@ -581,7 +589,10 @@ ssize_t AsyncUDPSocket::writeGSO(
     iovec_len = 1;
   }
 
-  return writev(address, vec, iovec_len, options);
+  if (additionalCmsgs.empty()) {
+    return writev(address, vec, iovec_len, options);
+  }
+  return writevWithCmsgs(address, vec, iovec_len, options, additionalCmsgs);
 }
 
 int AsyncUDPSocket::getZeroCopyFlags() {
@@ -756,83 +767,30 @@ ssize_t AsyncUDPSocket::write(
       address, buf, WriteOptions(0 /*gsoVal*/, false /* zerocopyVal*/));
 }
 
-ssize_t AsyncUDPSocket::writev(
-    const folly::SocketAddress& address,
-    const struct iovec* vec,
-    size_t iovec_len,
-    WriteOptions options) {
-  CHECK_NE(NetworkSocket(), fd_) << "Socket not yet bound";
-  netops::Msgheader msg;
-  sockaddr_storage addrStorage;
-  address.getAddress(&addrStorage);
-
-  if (!connected_) {
-    msg.setName(&addrStorage, address.getActualSize());
-  } else {
-    if (connectedAddress_ != address) {
-      errno = ENOTSUP;
-      return -1;
-    }
-    msg.setName(nullptr, 0);
-  }
-  msg.setIovecs(vec, iovec_len);
-  msg.setCmsgPtr(nullptr);
-  msg.setCmsgLen(0);
-  msg.setFlags(0);
-
-#if defined(FOLLY_HAVE_MSG_ERRQUEUE) || defined(_WIN32)
-  maybeUpdateDynamicCmsgs();
-
-  constexpr size_t kSmallSizeMax = 5;
-  size_t controlBufSize = options.gso > 0 ? 1 : 0;
-  controlBufSize +=
-      cmsgs_->size() * (CMSG_SPACE(sizeof(int)) / CMSG_SPACE(sizeof(uint16_t)));
-
-  if (nontrivialCmsgs_.empty() && controlBufSize <= kSmallSizeMax) {
-    // Avoid allocating 0 length array. Doing so leads to exceptions
-    if (controlBufSize == 0) {
-      return writevImpl(&msg, options);
-    }
-
-    // suppress "warning: variable length array 'control' is used [-Wvla]"
-    FOLLY_PUSH_WARNING
-    FOLLY_GNU_DISABLE_WARNING("-Wvla")
-    // we will allocate this on the stack anyway even if we do not use it
-    char control
-        [(BOOST_PP_IF(FOLLY_HAVE_VLA_01, controlBufSize, kSmallSizeMax)) *
-         (CMSG_SPACE(sizeof(uint16_t)))];
-    memset(control, 0, sizeof(control));
-    msg.setCmsgPtr(control);
-    FOLLY_POP_WARNING
-    return writevImpl(&msg, options);
-  } else {
-    controlBufSize *= CMSG_SPACE(sizeof(uint16_t));
-    for (const auto& itr : nontrivialCmsgs_) {
-      controlBufSize += CMSG_SPACE(itr.second.size());
-    }
-    std::unique_ptr<char[]> control(new char[controlBufSize]);
-    memset(control.get(), 0, controlBufSize);
-    msg.setCmsgPtr(control.get());
-    return writevImpl(&msg, options);
-  }
-#else
-  CHECK_LT(options.gso, 1) << "GSO not supported";
-#ifdef _WIN32
-  return netops::wsaSendMsgDirect(fd_, msg.getMsg());
-#else
-  return sendmsg(fd_, msg.getMsg(), 0);
-#endif
-#endif
-}
-
-ssize_t AsyncUDPSocket::writevImpl(
-    netops::Msgheader* msg, WriteOptions options) {
+ssize_t AsyncUDPSocket::writeWithCmsgsImpl(
+    netops::Msgheader* msg,
+    WriteOptions options,
+    [[maybe_unused]] const SocketCmsgMap& additionalCmsgs) {
 #if defined(FOLLY_HAVE_MSG_ERRQUEUE) || defined(_WIN32)
   XPLAT_CMSGHDR* cm = nullptr;
-
-  for (auto itr = cmsgs_->begin(); itr != cmsgs_->end(); ++itr) {
-    const auto key = itr->first;
-    const auto val = itr->second;
+  for (const auto& itr : additionalCmsgs) {
+    const auto key = itr.first;
+    const auto val = itr.second;
+    msg->incrCmsgLen(sizeof(val));
+    cm = msg->getFirstOrNextCmsgHeader(cm);
+    if (cm) {
+      cm->cmsg_level = key.level;
+      cm->cmsg_type = key.optname;
+      cm->cmsg_len = F_CMSG_LEN(sizeof(val));
+      F_COPY_CMSG_INT_DATA(cm, &val, sizeof(val));
+    }
+  }
+  for (const auto& itr : *cmsgs_) {
+    if (additionalCmsgs.find(itr.first) != additionalCmsgs.end()) {
+      continue;
+    }
+    const auto key = itr.first;
+    const auto val = itr.second;
     msg->incrCmsgLen(sizeof(val));
     cm = msg->getFirstOrNextCmsgHeader(cm);
     if (cm) {
@@ -900,6 +858,127 @@ ssize_t AsyncUDPSocket::writevImpl(
   }
   return ret;
 #endif
+}
+
+ssize_t AsyncUDPSocket::writeWithCmsgs(
+    const folly::SocketAddress& address,
+    const std::unique_ptr<folly::IOBuf>& buf,
+    const SocketCmsgMap& cmsgs) {
+  CHECK_NE(NetworkSocket(), fd_) << "Socket not yet bound";
+  if (!buf) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  return writeGSOWithCmsgs(
+      address, buf, WriteOptions(0 /*gsoVal*/, false /*zerocopyVal*/), cmsgs);
+}
+
+ssize_t AsyncUDPSocket::writev(
+    const folly::SocketAddress& address,
+    const struct iovec* vec,
+    size_t iovec_len,
+    WriteOptions options) {
+  return writevWithCmsgs(address, vec, iovec_len, options, SocketCmsgMap{});
+}
+
+ssize_t AsyncUDPSocket::writevWithCmsgs(
+    const folly::SocketAddress& address,
+    const struct iovec* vec,
+    size_t iovec_len,
+    WriteOptions options,
+    const SocketCmsgMap& additionalCmsgs) {
+  CHECK_NE(NetworkSocket(), fd_) << "Socket not yet bound";
+  netops::Msgheader msg{};
+  sockaddr_storage addrStorage{};
+  address.getAddress(&addrStorage);
+
+  if (!connected_) {
+    msg.setName(&addrStorage, address.getActualSize());
+  } else {
+    if (connectedAddress_ != address) {
+      errno = ENOTSUP;
+      return -1;
+    }
+    msg.setName(nullptr, 0);
+  }
+  msg.setIovecs(vec, iovec_len);
+  msg.setCmsgPtr(nullptr);
+  msg.setCmsgLen(0);
+  msg.setFlags(0);
+
+#if defined(FOLLY_HAVE_MSG_ERRQUEUE) || defined(_WIN32)
+  maybeUpdateDynamicCmsgs();
+
+  // Socket-level cmsgs are the baseline; the per-call map overrides them key
+  // by key, the way an IP_TOS cmsg overrides inet->tos in the kernel. Only the
+  // socket-level keys `additionalCmsgs` does not name add to the control
+  // buffer.
+  size_t numCmsgs = additionalCmsgs.size();
+  for (const auto& itr : *cmsgs_) {
+    if (additionalCmsgs.find(itr.first) == additionalCmsgs.end()) {
+      ++numCmsgs;
+    }
+  }
+
+  // An empty `additionalCmsgs` must still dispatch through writevImpl() so
+  // that subclasses overriding it keep seeing ordinary writes.
+  const auto sendMsg = [&]() {
+    if (additionalCmsgs.empty()) {
+      return writevImpl(&msg, options);
+    }
+    return writeWithCmsgsImpl(&msg, options, additionalCmsgs);
+  };
+
+  constexpr size_t kSmallSizeMax = 5;
+  size_t controlBufSize = options.gso > 0 ? 1 : 0;
+  controlBufSize +=
+      numCmsgs * (CMSG_SPACE(sizeof(int)) / CMSG_SPACE(sizeof(uint16_t)));
+
+  if (nontrivialCmsgs_.empty() && controlBufSize <= kSmallSizeMax) {
+    // Avoid allocating 0 length array. Doing so leads to exceptions
+    if (controlBufSize == 0) {
+      return sendMsg();
+    }
+
+    // suppress "warning: variable length array 'control' is used [-Wvla]"
+    FOLLY_PUSH_WARNING
+    FOLLY_GNU_DISABLE_WARNING("-Wvla")
+    // we will allocate this on the stack anyway even if we do not use it
+    char control
+        [(BOOST_PP_IF(FOLLY_HAVE_VLA_01, controlBufSize, kSmallSizeMax)) *
+         (CMSG_SPACE(sizeof(uint16_t)))];
+    memset(control, 0, sizeof(control));
+    msg.setCmsgPtr(control);
+    FOLLY_POP_WARNING
+    return sendMsg();
+  } else {
+    controlBufSize *= CMSG_SPACE(sizeof(uint16_t));
+    for (const auto& itr : nontrivialCmsgs_) {
+      controlBufSize += CMSG_SPACE(itr.second.size());
+    }
+    std::unique_ptr<char[]> control(new char[controlBufSize]);
+    memset(control.get(), 0, controlBufSize);
+    msg.setCmsgPtr(control.get());
+    return sendMsg();
+  }
+#else
+  if (!additionalCmsgs.empty()) {
+    errno = EOPNOTSUPP;
+    return -1;
+  }
+  CHECK_LT(options.gso, 1) << "GSO not supported";
+#ifdef _WIN32
+  return netops::wsaSendMsgDirect(fd_, msg.getMsg());
+#else
+  return sendmsg(fd_, msg.getMsg(), 0);
+#endif
+#endif
+}
+
+ssize_t AsyncUDPSocket::writevImpl(
+    netops::Msgheader* msg, WriteOptions options) {
+  return writeWithCmsgsImpl(msg, options, SocketCmsgMap{});
 }
 
 ssize_t AsyncUDPSocket::writev(

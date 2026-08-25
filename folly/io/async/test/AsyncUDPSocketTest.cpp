@@ -978,6 +978,14 @@ MATCHER_P(HasCmsgs, cmsgs, "") {
             sizeof(somark));
         sentCmsgs[{SOL_SOCKET, SO_MARK}] = somark;
       }
+      if (cmsg->cmsg_type == SO_PRIORITY) {
+        uint32_t priority;
+        memcpy(
+            &priority,
+            reinterpret_cast<struct timespec*>(CMSG_DATA(cmsg)),
+            sizeof(priority));
+        sentCmsgs[{SOL_SOCKET, SO_PRIORITY}] = priority;
+      }
     }
     if (cmsg->cmsg_level == IPPROTO_IP) {
       if (cmsg->cmsg_type == IP_TOS) {
@@ -995,6 +1003,24 @@ MATCHER_P(HasCmsgs, cmsgs, "") {
             reinterpret_cast<struct timespec*>(CMSG_DATA(cmsg)),
             sizeof(ttl));
         sentCmsgs[{IPPROTO_IP, IP_TTL}] = ttl;
+      }
+    }
+    if (cmsg->cmsg_level == IPPROTO_IPV6) {
+      if (cmsg->cmsg_type == IPV6_TCLASS) {
+        uint32_t tclass;
+        memcpy(
+            &tclass,
+            reinterpret_cast<struct timespec*>(CMSG_DATA(cmsg)),
+            sizeof(tclass));
+        sentCmsgs[{IPPROTO_IPV6, IPV6_TCLASS}] = tclass;
+      }
+      if (cmsg->cmsg_type == IPV6_HOPLIMIT) {
+        uint32_t hoplimit;
+        memcpy(
+            &hoplimit,
+            reinterpret_cast<struct timespec*>(CMSG_DATA(cmsg)),
+            sizeof(hoplimit));
+        sentCmsgs[{IPPROTO_IPV6, IPV6_HOPLIMIT}] = hoplimit;
       }
     }
   }
@@ -1103,6 +1129,208 @@ TEST_F(AsyncUDPSocketTest, TestWriteCmsg) {
             1 /*gsoVal*/, false /* zerocopyVal*/));
   }
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
+  socket_->close();
+}
+
+TEST_F(AsyncUDPSocketTest, TestWriteWithCmsgs) {
+  folly::SocketAddress addr("127.0.0.1", 10000);
+  auto netOpsDispatcher =
+      std::make_shared<NiceMock<folly::netops::test::MockDispatcher>>();
+  socket_->setOverrideNetOpsDispatcher(netOpsDispatcher);
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  // With nothing set on the socket, the caller's cmsgs are what the kernel
+  // sees, and whatever sendmsg returns is handed back to the caller unchanged.
+  {
+    folly::SocketCmsgMap cmsgs;
+    cmsgs[{IPPROTO_IP, IP_TOS}] = 0x90;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(cmsgs), _))
+        .WillOnce(Return(1234));
+    EXPECT_EQ(
+        1234,
+        socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), cmsgs));
+  }
+  // A sendmsg failure is propagated rather than swallowed.
+  {
+    folly::SocketCmsgMap cmsgs;
+    cmsgs[{IPPROTO_IP, IP_TOS}] = 0x90;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(cmsgs), _))
+        .WillOnce(Return(-1));
+    EXPECT_EQ(
+        -1,
+        socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), cmsgs));
+  }
+  // The IPv4 and IPv6 TOS cmsgs together, which is what a relay marking a
+  // dual-stack socket per destination actually sends.
+  {
+    folly::SocketCmsgMap cmsgs;
+    cmsgs[{IPPROTO_IP, IP_TOS}] = 0x90;
+    cmsgs[{IPPROTO_IPV6, IPV6_TCLASS}] = 0x90;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(cmsgs), _));
+    socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), cmsgs);
+  }
+  // Nothing is retained on the socket, so a plain write that follows is clean.
+  {
+    folly::SocketCmsgMap expectedCmsgs;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
+    socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  }
+  // Two writes with different values do not leak into each other. This is the
+  // case a shared server socket hits when marking traffic per destination.
+  {
+    folly::SocketCmsgMap first;
+    first[{IPPROTO_IP, IP_TOS}] = 0x90;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(first), _));
+    socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), first);
+
+    folly::SocketCmsgMap second;
+    second[{IPPROTO_IP, IP_TOS}] = 0x00;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(second), _));
+    socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), second);
+  }
+  // With no socket-level cmsgs, an empty map sends no ancillary data at all.
+  {
+    folly::SocketCmsgMap empty;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(empty), _));
+    socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), empty);
+  }
+  // More entries than the stack threshold, so this takes the heap path.
+  {
+    folly::SocketCmsgMap many;
+    many[{IPPROTO_IP, IP_TOS}] = 0x90;
+    many[{IPPROTO_IP, IP_TTL}] = 64;
+    many[{IPPROTO_IPV6, IPV6_TCLASS}] = 0x90;
+    many[{IPPROTO_IPV6, IPV6_HOPLIMIT}] = 64;
+    many[{SOL_SOCKET, SO_MARK}] = 123;
+    many[{SOL_SOCKET, SO_PRIORITY}] = 6;
+    ASSERT_GT(many.size(), 5u) << "must exceed kSmallSizeMax to reach the heap";
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(many), _));
+    socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), many);
+  }
+  // Socket-level cmsgs are the baseline: a key the caller does not mention
+  // still goes out, and a key present in both takes the per-write value.
+  folly::SocketCmsgMap socketLevel;
+  socketLevel[{SOL_SOCKET, SO_MARK}] = 123;
+  socketLevel[{IPPROTO_IP, IP_TOS}] = 0x20;
+  socket_->setCmsgs(socketLevel);
+  {
+    folly::SocketCmsgMap perWrite;
+    perWrite[{IPPROTO_IP, IP_TOS}] = 0x90;
+
+    folly::SocketCmsgMap expectedCmsgs;
+    expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 123;
+    expectedCmsgs[{IPPROTO_IP, IP_TOS}] = 0x90;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
+    socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), perWrite);
+  }
+  // An empty map overrides nothing, so the socket-level cmsgs still go out.
+  {
+    folly::SocketCmsgMap empty;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(socketLevel), _));
+    socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), empty);
+  }
+  // Nothing the caller passed is retained, so a plain write that follows
+  // carries the socket-level cmsgs and only those.
+  {
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(socketLevel), _));
+    socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  }
+  // Three levels of precedence, with all three claiming IP_TOS and the lower
+  // two claiming SO_MARK. The relative order of the lower two is the existing
+  // write() behaviour, which lets the dynamic cmsgs win.
+  {
+    socket_->setAdditionalCmsgsFunc([]() {
+      folly::SocketCmsgMap additionalCmsgs;
+      additionalCmsgs[{IPPROTO_IP, IP_TTL}] = 64;
+      additionalCmsgs[{SOL_SOCKET, SO_MARK}] = 999;
+      additionalCmsgs[{IPPROTO_IP, IP_TOS}] = 0x11;
+      return additionalCmsgs;
+    });
+
+    folly::SocketCmsgMap perWrite;
+    perWrite[{IPPROTO_IP, IP_TOS}] = 0x90;
+
+    folly::SocketCmsgMap expectedCmsgs;
+    expectedCmsgs[{IPPROTO_IP, IP_TTL}] = 64; // only the func sets this
+    expectedCmsgs[{SOL_SOCKET, SO_MARK}] = 999; // the func beats setCmsgs
+    expectedCmsgs[{IPPROTO_IP, IP_TOS}] = 0x90; // the caller beats both
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, HasCmsgs(expectedCmsgs), _));
+    socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), perWrite);
+  }
+  // setNontrivialCmsgs() entries carry values the per-write map cannot
+  // express, so they are always sent alongside it.
+  {
+    socket_->setAdditionalCmsgsFunc(AsyncUDPSocket::AdditionalCmsgsFunc{});
+    socket_->setCmsgs(folly::SocketCmsgMap{});
+
+    struct linger sl{
+        .l_onoff = 1,
+        .l_linger = 123,
+    };
+    folly::SocketNontrivialCmsgMap nontrivialCmsgs;
+    nontrivialCmsgs[{SOL_SOCKET, SO_LINGER}] =
+        std::string(reinterpret_cast<const char*>(&sl), sizeof(sl));
+    socket_->setNontrivialCmsgs(nontrivialCmsgs);
+
+    folly::SocketCmsgMap perWrite;
+    perWrite[{IPPROTO_IP, IP_TOS}] = 0x90;
+    EXPECT_CALL(
+        *netOpsDispatcher,
+        sendmsg(
+            _,
+            AllOf(HasCmsgs(perWrite), HasNontrivialCmsgs(nontrivialCmsgs)),
+            _));
+    socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), perWrite);
+  }
+#elif !defined(_WIN32)
+  // Platforms with neither MSG_ERRQUEUE nor the Windows cmsg path cannot carry
+  // ancillary data at all, so a non-empty map is rejected before the socket is
+  // touched.
+  {
+    folly::SocketCmsgMap cmsgs;
+    cmsgs[{IPPROTO_IP, IP_TOS}] = 0x90;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, _, _)).Times(0);
+    errno = 0;
+    EXPECT_EQ(
+        -1,
+        socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), cmsgs));
+    EXPECT_EQ(EOPNOTSUPP, errno);
+    testing::Mock::VerifyAndClearExpectations(netOpsDispatcher.get());
+  }
+  // An empty map asks for no ancillary data, so the write still goes out.
+  {
+    folly::SocketCmsgMap empty;
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, _, _)).Times(1);
+    socket_->writeWithCmsgs(addr, folly::IOBuf::copyBuffer("hey"), empty);
+  }
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
+  socket_->close();
+}
+
+TEST_F(AsyncUDPSocketTest, TestWriteWithCmsgsErrorPaths) {
+  folly::SocketAddress addr("127.0.0.1", 10000);
+  auto netOpsDispatcher =
+      std::make_shared<NiceMock<folly::netops::test::MockDispatcher>>();
+  socket_->setOverrideNetOpsDispatcher(netOpsDispatcher);
+
+  folly::SocketCmsgMap cmsgs;
+  cmsgs[{IPPROTO_IP, IP_TOS}] = 0x90;
+
+  // A null buf is a caller error and must not reach the socket.
+  EXPECT_CALL(*netOpsDispatcher, sendmsg(_, _, _)).Times(0);
+  errno = 0;
+  std::unique_ptr<folly::IOBuf> nullBuf;
+  EXPECT_EQ(-1, socket_->writeWithCmsgs(addr, nullBuf, cmsgs));
+  EXPECT_EQ(EINVAL, errno);
+
+  // On a connected socket, sending anywhere else is rejected.
+  socket_->connect(addr);
+  folly::SocketAddress other("127.0.0.1", 10001);
+  errno = 0;
+  EXPECT_EQ(
+      -1,
+      socket_->writeWithCmsgs(other, folly::IOBuf::copyBuffer("hey"), cmsgs));
+  EXPECT_EQ(ENOTSUP, errno);
+
   socket_->close();
 }
 
