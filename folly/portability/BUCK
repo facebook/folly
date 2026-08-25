@@ -243,12 +243,10 @@ fb_dirsync_cpp_library(
     }),
     use_raw_headers = True,
     exported_deps = [
+        "fbsource//xplat/third-party/openssl:crypto",
+        "fbsource//xplat/third-party/openssl:ssl",
         ":windows",
         "//folly:portability",
-    ],
-    exported_external_deps = [
-        ("openssl", None, "crypto"),
-        ("openssl", None, "ssl"),
     ],
 )
 

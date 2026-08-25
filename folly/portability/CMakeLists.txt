@@ -208,8 +208,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_portability
     folly_portability_windows
-  EXTERNAL_DEPS
-    ${OPENSSL_LIBRARIES}
 )
 
 folly_add_library(
