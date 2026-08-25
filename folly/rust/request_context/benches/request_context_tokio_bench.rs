@@ -51,7 +51,7 @@ fn bench_spawn_throughput(c: &mut Criterion) {
         b.iter(|| {
             rt.block_on(async {
                 let handles: Vec<_> = (0..n)
-                    .map(|_| tokio::spawn(async { criterion::black_box(()) }))
+                    .map(|_| tokio::spawn(async { std::hint::black_box(()) }))
                     .collect();
                 futures::future::join_all(handles).await
             })
@@ -64,7 +64,7 @@ fn bench_spawn_throughput(c: &mut Criterion) {
             rt.block_on(async {
                 RequestContext::create();
                 let handles: Vec<_> = (0..n)
-                    .map(|_| tokio::spawn(async { criterion::black_box(()) }))
+                    .map(|_| tokio::spawn(async { std::hint::black_box(()) }))
                     .collect();
                 futures::future::join_all(handles).await
             })
@@ -93,7 +93,7 @@ fn bench_poll_throughput(c: &mut Criterion) {
                             for _ in 0..yields_per_task {
                                 tokio::task::yield_now().await;
                             }
-                            criterion::black_box(())
+                            std::hint::black_box(())
                         })
                     })
                     .collect();
@@ -113,7 +113,7 @@ fn bench_poll_throughput(c: &mut Criterion) {
                             for _ in 0..yields_per_task {
                                 tokio::task::yield_now().await;
                             }
-                            criterion::black_box(())
+                            std::hint::black_box(())
                         })
                     })
                     .collect();
