@@ -14,8 +14,7 @@
 
 import asyncio
 from cython.operator cimport dereference as deref
-from cpython.weakref cimport PyWeakref_NewRef, PyWeakref_GetObject
-from cpython cimport PyObject
+from cpython.weakref cimport PyWeakref_NewRef
 from libcpp.memory cimport unique_ptr
 from folly.executor cimport get_executor
 from libcpp.cast cimport (
@@ -76,7 +75,7 @@ cdef cFiberManager* get_fiber_manager_impl(const cFiberManagerOptions& opts):
     loop = asyncio.get_event_loop()
     cdef FiberManager manager = None
 
-    if last_loop is not None and <PyObject*>loop is PyWeakref_GetObject(last_loop):
+    if last_loop is not None and loop is last_loop():
         manager = last_manager
     if manager is None:
         try:
