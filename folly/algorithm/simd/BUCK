@@ -39,10 +39,12 @@ fb_dirsync_cpp_library(
     exported_deps = [
         "//folly:range",
         "//folly/container:span",
-    ],
-    exported_external_deps = [
-        "tbb",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//runtime:fbcode-no-arvr": [
+            "fbsource//third-party/tbb:tp2-or-buckified-tbb",
+        ],
+    }),
 )
 
 fb_dirsync_cpp_library(
