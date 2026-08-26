@@ -5614,7 +5614,7 @@ using SafeVersionedSplitHeavyList = ConcurrentBSkipList<
     VersionedKey,
     /*PayloadType=*/void,
     /*B=*/4,
-    bskip_detail::kDefaultReadPolicy<VersionedKey>,
+    KeyReadPolicy::Locked,
     LeafStoragePolicy::Separate,
     VersionedSplitHeavyPolicy>;
 
