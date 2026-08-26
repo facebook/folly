@@ -29,6 +29,7 @@
 #include <folly/container/detail/F14Table.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Align.h>
+#include <folly/lang/Exception.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/memory/Allocator.h>
 #include <folly/memory/Malloc.h>
@@ -1283,17 +1284,20 @@ class VectorContainerPolicy
           size * sizeof(Value));
     } else {
       for (std::size_t i = 0; i < size; ++i, ++src, ++dst) {
-        try {
-          // TODO(T31574848): clean up assume-s used to optimize placement new
-          assume(dst != nullptr);
-          AllocTraits::construct(a, dst, constructorArgFor(*src));
-        } catch (...) {
-          for (Value* cleanup = std::addressof(values_[0]); cleanup != dst;
-               ++cleanup) {
-            AllocTraits::destroy(a, cleanup);
-          }
-          throw;
-        }
+        catch_exception(
+            [&] {
+              // TODO(T31574848): clean up assume-s used to optimize placement
+              // new
+              assume(dst != nullptr);
+              AllocTraits::construct(a, dst, constructorArgFor(*src));
+            },
+            [&] {
+              for (Value* cleanup = std::addressof(values_[0]); cleanup != dst;
+                   ++cleanup) {
+                AllocTraits::destroy(a, cleanup);
+              }
+              rethrow_current_exception();
+            });
       }
     }
     return true;
