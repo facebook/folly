@@ -24,6 +24,7 @@
 #include <folly/debugging/symbolizer/Dwarf.h>
 #include <folly/debugging/symbolizer/Elf.h>
 #include <folly/debugging/symbolizer/ElfCache.h>
+#include <folly/debugging/symbolizer/SymbolCache.h>
 #include <folly/debugging/symbolizer/detail/Debug.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/lang/ToAscii.h>
@@ -583,10 +584,9 @@ std::string getStackTraceStr(
     return {};
   }
 
-  ElfCache elfCache;
   LocationInfoMode mode =
       showFullInfo ? LocationInfoMode::FULL : LocationInfoMode::FAST;
-  Symbolizer symbolizer(&elfCache, mode);
+  Symbolizer symbolizer(/*cache=*/nullptr, mode, getSharedSymbolCache(mode));
   symbolizer.symbolize(addresses, frames, frameCount);
 
   StringSymbolizePrinter printer;
