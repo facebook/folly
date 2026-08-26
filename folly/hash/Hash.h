@@ -121,7 +121,87 @@ constexpr uint64_t commutative_hash_128_to_64(
 }
 
 /**
+ * Pelle Evensen's moremur 64 bit mix function.
+ *
+ * A bijection over the 64-bit integers with strong avalanche: it passes the
+ * full RRC/PractRand mixer test battery, at lower cost, two multiplies and
+ * three xorshifts on a shorter dependency chain. Usable as a drop-in finalizer
+ * for 64-bit keys; see moremur_unmix64 for the inverse.
+ *
+ * https://mostlymangling.blogspot.com/2019/12/stronger-better-morer-moremur-better.html
+ *
+ * @methodset moremur
+ */
+FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow")
+constexpr uint64_t moremur_mix64(uint64_t key) noexcept {
+  key ^= key >> 27;
+  key *= UINT64_C(0x3c79ac492ba7b653);
+  key ^= key >> 33;
+  key *= UINT64_C(0x1c69b3f74ac4ae35);
+  key ^= key >> 27;
+  return key;
+}
+
+/**
+ * Inverse of moremur_mix64.
+ *
+ * @methodset moremur
+ */
+FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow")
+constexpr uint64_t moremur_unmix64(uint64_t key) noexcept {
+  key ^= (key >> 27) ^ (key >> 54);
+  key *= UINT64_C(0xc47c8f6b6bafb41d); // inverse of 0x1c69b3f74ac4ae35
+  key ^= key >> 33;
+  key *= UINT64_C(0xc09c5fe5bd6dfddb); // inverse of 0x3c79ac492ba7b653
+  key ^= (key >> 27) ^ (key >> 54);
+  return key;
+}
+
+/**
+ * Low-bias 32 bit mix function.
+ *
+ * A bijection over the 32-bit integers with strong avalanche: two multiplies
+ * and three xorshifts, with constants found by the hash-prospector search to
+ * minimize avalanche bias (~0.107, vs ~0.174 for the widely-cited "lowbias32"
+ * constants and far higher for jenkins_rev_mix32, whose sparse (1 + 2^k)
+ * multipliers diffuse poorly). Both faster and substantially higher quality
+ * than jenkins_rev_mix32; usable as a drop-in finalizer for 32-bit keys. See
+ * lowbias_unmix32 for the inverse.
+ *
+ * https://github.com/skeeto/hash-prospector/issues/19
+ *
+ * @methodset lowbias
+ */
+FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow")
+constexpr uint32_t lowbias_mix32(uint32_t key) noexcept {
+  key ^= key >> 16;
+  key *= UINT32_C(0x21f0aaad);
+  key ^= key >> 15;
+  key *= UINT32_C(0x735a2d97);
+  key ^= key >> 15;
+  return key;
+}
+
+/**
+ * Inverse of lowbias_mix32.
+ *
+ * @methodset lowbias
+ */
+FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow")
+constexpr uint32_t lowbias_unmix32(uint32_t key) noexcept {
+  key ^= (key >> 15) ^ (key >> 30);
+  key *= UINT32_C(0x97132227); // inverse of 0x735a2d97
+  key ^= (key >> 15) ^ (key >> 30);
+  key *= UINT32_C(0x333c4925); // inverse of 0x21f0aaad
+  key ^= key >> 16;
+  return key;
+}
+
+/**
  * Thomas Wang 64 bit mix hash function.
+ *
+ * DEPRECATED: Prefer moremur_mix64() for new code, it's both faster and
+ * higher quality.
  *
  * @methodset twang
  */
@@ -172,6 +252,9 @@ constexpr uint32_t twang_32from64(uint64_t key) noexcept {
 
 /**
  * Robert Jenkins' reversible 32 bit mix hash function.
+ *
+ * DEPRECATED: Prefer lowbias_mix32() for new code, it's both faster and
+ * higher quality.
  *
  * @methodset jenkins
  */

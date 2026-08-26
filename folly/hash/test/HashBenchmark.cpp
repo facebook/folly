@@ -51,6 +51,14 @@ extern "C" FOLLY_KEEP uint64_t check_folly_twang_unmix64(uint64_t key) {
   return folly::hash::twang_unmix64(key);
 }
 
+extern "C" FOLLY_KEEP uint64_t check_folly_moremur_mix64(uint64_t key) {
+  return folly::hash::moremur_mix64(key);
+}
+
+extern "C" FOLLY_KEEP uint64_t check_folly_moremur_unmix64(uint64_t key) {
+  return folly::hash::moremur_unmix64(key);
+}
+
 extern "C" FOLLY_KEEP uint32_t check_folly_twang_32from64(uint64_t key) {
   return folly::hash::twang_32from64(key);
 }
@@ -63,6 +71,14 @@ extern "C" FOLLY_KEEP uint32_t check_folly_jenkins_rev_unmix32(uint32_t key) {
   return folly::hash::jenkins_rev_unmix32(key);
 }
 
+extern "C" FOLLY_KEEP uint32_t check_folly_lowbias_mix32(uint32_t key) {
+  return folly::hash::lowbias_mix32(key);
+}
+
+extern "C" FOLLY_KEEP uint32_t check_folly_lowbias_unmix32(uint32_t key) {
+  return folly::hash::lowbias_unmix32(key);
+}
+
 extern "C" FOLLY_KEEP uint64_t
 check_folly_spooky_hash_v2_hash_32(void const* data, size_t size) {
   return folly::hash::SpookyHashV2::Hash32(data, size, 0);
@@ -72,6 +88,49 @@ extern "C" FOLLY_KEEP uint64_t
 check_folly_spooky_hash_v2_hash_64(void const* data, size_t size) {
   return folly::hash::SpookyHashV2::Hash64(data, size, 0);
 }
+
+// Latency (dependent-chain) benchmarks for the 64-bit integer mixers: each
+// iteration feeds the previous result straight back in, so the reported time
+// is the mixer's back-to-back latency. Both mixers are bijections, so the
+// chain never degenerates. moremur_mix64 is shown relative to twang_mix64.
+BENCHMARK(twang_mix64, iters) {
+  uint64_t x = iters;
+  for (unsigned i = 0; i < iters; ++i) {
+    x = folly::hash::twang_mix64(x);
+  }
+  folly::doNotOptimizeAway(x);
+}
+
+BENCHMARK_RELATIVE(moremur_mix64, iters) {
+  uint64_t x = iters;
+  for (unsigned i = 0; i < iters; ++i) {
+    x = folly::hash::moremur_mix64(x);
+  }
+  folly::doNotOptimizeAway(x);
+}
+
+BENCHMARK_DRAW_LINE();
+
+// Same latency (dependent-chain) benchmark for the 32-bit integer mixers:
+// lowbias_mix32 shown relative to the (deprecated) jenkins_rev_mix32 baseline.
+// Both are bijections, so the chain never degenerates.
+BENCHMARK(jenkins_rev_mix32, iters) {
+  uint32_t x = static_cast<uint32_t>(iters);
+  for (unsigned i = 0; i < iters; ++i) {
+    x = folly::hash::jenkins_rev_mix32(x);
+  }
+  folly::doNotOptimizeAway(x);
+}
+
+BENCHMARK_RELATIVE(lowbias_mix32, iters) {
+  uint32_t x = static_cast<uint32_t>(iters);
+  for (unsigned i = 0; i < iters; ++i) {
+    x = folly::hash::lowbias_mix32(x);
+  }
+  folly::doNotOptimizeAway(x);
+}
+
+BENCHMARK_DRAW_LINE();
 
 namespace detail {
 

@@ -70,6 +70,34 @@ TEST(Hash, TWangUnmix64) {
   }
 }
 
+TEST(Hash, MoremurMix64) {
+  uint64_t i1 = UINT64_C(0x78a87873e2d31daf);
+  uint64_t i1_res = UINT64_C(0x7fa1ca2f4b7f3aeb);
+  EXPECT_EQ(i1_res, moremur_mix64(i1));
+  EXPECT_EQ(i1, moremur_unmix64(i1_res));
+
+  uint64_t i2 = UINT64_C(0x0123456789abcdef);
+  uint64_t i2_res = UINT64_C(0x6d97305f56288c62);
+  EXPECT_EQ(i2_res, moremur_mix64(i2));
+  EXPECT_EQ(i2, moremur_unmix64(i2_res));
+}
+
+namespace {
+void checkMoremur(uint64_t r) {
+  uint64_t result = moremur_mix64(r);
+  EXPECT_EQ(r, moremur_unmix64(result));
+}
+} // namespace
+
+TEST(Hash, MoremurUnmix64) {
+  // We'll try (1 << i), (1 << i) + 1, (1 << i) - 1
+  for (int i = 1; i < 64; i++) {
+    checkMoremur((uint64_t(1) << i) - 1);
+    checkMoremur(uint64_t(1) << i);
+    checkMoremur((uint64_t(1) << i) + 1);
+  }
+}
+
 TEST(Hash, TWang32From64) {
   uint64_t i1 = 0x78a87873e2d31dafULL;
   uint32_t i1_res = 1525586863ul;
@@ -105,6 +133,34 @@ TEST(Hash, JenkinsRevUnmix32) {
     checkJenkins((1U << i) - 1);
     checkJenkins(1U << i);
     checkJenkins((1U << i) + 1);
+  }
+}
+
+TEST(Hash, LowbiasMix32) {
+  uint32_t i1 = UINT32_C(0x12345678);
+  uint32_t i1_res = UINT32_C(0x16e776bd);
+  EXPECT_EQ(i1_res, lowbias_mix32(i1));
+  EXPECT_EQ(i1, lowbias_unmix32(i1_res));
+
+  uint32_t i2 = UINT32_C(0xdeadbeef);
+  uint32_t i2_res = UINT32_C(0x2a2acaf2);
+  EXPECT_EQ(i2_res, lowbias_mix32(i2));
+  EXPECT_EQ(i2, lowbias_unmix32(i2_res));
+}
+
+namespace {
+void checkLowbias(uint32_t r) {
+  uint32_t result = lowbias_mix32(r);
+  EXPECT_EQ(r, lowbias_unmix32(result));
+}
+} // namespace
+
+TEST(Hash, LowbiasUnmix32) {
+  // We'll try (1 << i), (1 << i) + 1, (1 << i) - 1
+  for (int i = 1; i < 32; i++) {
+    checkLowbias((1U << i) - 1);
+    checkLowbias(1U << i);
+    checkLowbias((1U << i) + 1);
   }
 }
 
