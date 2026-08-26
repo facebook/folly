@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <cassert>
 #include <climits>
 #include <utility>
@@ -26,9 +27,22 @@
 #include <folly/Utility.h>
 #include <folly/lang/Exception.h>
 
+//  Compiles in the keep-alive object trace points below. Off by default: this
+//  header reaches nearly every translation unit, so the trace points cost
+//  binary size in every binary in the repo even with no hooks installed. Set it
+//  for the whole build, never for a subset of targets -- the trace points sit
+//  in inline and template functions whose out-of-line copies are comdat-folded
+//  across translation units, so a mixed build silently gets whichever copy the
+//  linker keeps.
+#ifndef FOLLY_ENABLE_KEEPALIVE_OBJ_TRACE
+#define FOLLY_ENABLE_KEEPALIVE_OBJ_TRACE 0
+#endif
+
 namespace folly {
 
 using Func = Function<void()>;
+
+class Executor;
 
 namespace detail {
 
@@ -47,9 +61,100 @@ class ExecutorKeepAliveBase {
   static constexpr uintptr_t kExecutorMask = ~kFlagMask;
 };
 
+//  Optional, process-global tracing hooks for keep-alive ownership, keyed by
+//  the address of the ExecutorKeepAlive object itself rather than by the
+//  executor it refers to. Keying on the instance is what makes a release
+//  pairable with its acquire: a move re-keys the existing record instead of
+//  looking like a release plus an unrelated acquire, so the recorded set is
+//  the exact set of live keep-alives rather than a biased sample of them.
+//
+//  Only keep-alives which hold an executor reference count are acquired and
+//  released: dummy and alias keep-alives hold none, and are skipped on exactly
+//  the same condition ExecutorKeepAlive::reset() uses to decide whether to call
+//  keepAliveRelease(). The move hook is deliberately not filtered that way: it
+//  fires for every move, so `from` may be an address no acquire ever reported.
+//  A hook must read that as "`to` holds no counted reference either" and drop
+//  any record it holds for `to` -- which is also what clears a record stranded
+//  at a recycled address.
+//
+//  This is a debug facility. Without FOLLY_ENABLE_KEEPALIVE_OBJ_TRACE the trace
+//  points compile away and the keep-alive path is unchanged. With it, and with
+//  no hooks installed, each trace point is a relaxed load of a never-written
+//  global and a FOLLY_UNLIKELY branch. With hooks installed it costs whatever
+//  the hook costs on every acquire, release and move process-wide -- install
+//  only for a diagnostic run. The hooks run from arbitrary threads: they must
+//  be fast and must not throw.
+using KeepAliveObjTraceHook = void (*)(const void* obj, Executor* target);
+using KeepAliveObjMoveHook = void (*)(const void* from, const void* to);
+
+//  Function-local statics rather than out-of-line globals: this header is
+//  included nearly everywhere, and a global defined in Executor.cpp would give
+//  every translation unit that instantiates a keep-alive an undefined symbol
+//  unless it also took a link-time dependency on Executor.cpp. std::atomic's
+//  constructor is constexpr, so these are constant-initialized and carry no
+//  thread-safe-static guard: the load below stays a plain relaxed load.
+FOLLY_EXPORT FOLLY_ALWAYS_INLINE std::atomic<KeepAliveObjTraceHook>&
+keepAliveObjAcquireHook() {
+  static std::atomic<KeepAliveObjTraceHook> hook{nullptr};
+  return hook;
+}
+
+FOLLY_EXPORT FOLLY_ALWAYS_INLINE std::atomic<KeepAliveObjTraceHook>&
+keepAliveObjReleaseHook() {
+  static std::atomic<KeepAliveObjTraceHook> hook{nullptr};
+  return hook;
+}
+
+FOLLY_EXPORT FOLLY_ALWAYS_INLINE std::atomic<KeepAliveObjMoveHook>&
+keepAliveObjMoveHook() {
+  static std::atomic<KeepAliveObjMoveHook> hook{nullptr};
+  return hook;
+}
+
+inline void traceKeepAliveObjAcquire(
+    [[maybe_unused]] const void* obj,
+    [[maybe_unused]] Executor* target) noexcept {
+#if FOLLY_ENABLE_KEEPALIVE_OBJ_TRACE
+  auto hook = keepAliveObjAcquireHook().load(std::memory_order_relaxed);
+  if (FOLLY_UNLIKELY(hook != nullptr)) {
+    hook(obj, target);
+  }
+#endif
+}
+
+inline void traceKeepAliveObjRelease(
+    [[maybe_unused]] const void* obj,
+    [[maybe_unused]] Executor* target) noexcept {
+#if FOLLY_ENABLE_KEEPALIVE_OBJ_TRACE
+  auto hook = keepAliveObjReleaseHook().load(std::memory_order_relaxed);
+  if (FOLLY_UNLIKELY(hook != nullptr)) {
+    hook(obj, target);
+  }
+#endif
+}
+
+inline void traceKeepAliveObjMove(
+    [[maybe_unused]] const void* from,
+    [[maybe_unused]] const void* to) noexcept {
+#if FOLLY_ENABLE_KEEPALIVE_OBJ_TRACE
+  auto hook = keepAliveObjMoveHook().load(std::memory_order_relaxed);
+  if (FOLLY_UNLIKELY(hook != nullptr)) {
+    hook(from, to);
+  }
+#endif
+}
+
 } // namespace detail
 
-class Executor;
+//  Install (or, with all-null arguments, remove) the keep-alive object tracing
+//  hooks described above. Not synchronized with in-flight keep-alive
+//  operations: install once at startup, before the threads being traced exist.
+//  Returns false when FOLLY_ENABLE_KEEPALIVE_OBJ_TRACE is unset: the hooks are
+//  stored, but no trace point will ever call them.
+bool setKeepAliveObjTraceHooks(
+    detail::KeepAliveObjTraceHook acquire,
+    detail::KeepAliveObjTraceHook release,
+    detail::KeepAliveObjMoveHook move);
 
 /**
  * `ExecutorKeepAlive` is a safe pointer to an `Executor`.
@@ -83,7 +188,9 @@ class ExecutorKeepAlive : private detail::ExecutorKeepAliveBase {
   }
 
   ExecutorKeepAlive(ExecutorKeepAlive&& other) noexcept
-      : storage_(std::exchange(other.storage_, 0)) {}
+      : storage_(std::exchange(other.storage_, 0)) {
+    detail::traceKeepAliveObjMove(&other, this);
+  }
 
   ExecutorKeepAlive(const ExecutorKeepAlive& other) noexcept;
 
@@ -95,6 +202,7 @@ class ExecutorKeepAlive : private detail::ExecutorKeepAliveBase {
       ExecutorKeepAlive<OtherExecutor>&& other) noexcept
       : ExecutorKeepAlive(other.get(), other.storage_ & kFlagMask) {
     other.storage_ = 0;
+    detail::traceKeepAliveObjMove(&other, this);
   }
 
   template <
@@ -107,8 +215,11 @@ class ExecutorKeepAlive : private detail::ExecutorKeepAliveBase {
   /* implicit */ ExecutorKeepAlive(ExecutorT* executor);
 
   ExecutorKeepAlive& operator=(ExecutorKeepAlive&& other) noexcept {
+    //  reset() first, so the release of the overwritten value is traced before
+    //  the move re-keys the incoming one onto this address.
     reset();
     storage_ = std::exchange(other.storage_, 0);
+    detail::traceKeepAliveObjMove(&other, this);
     return *this;
   }
 
@@ -260,12 +371,21 @@ class Executor {
   // Will never be called if keepAliveAcquire() returns false.
   virtual void keepAliveRelease() noexcept;
 
+  //  This is the sole origin of a reference-counting (non-dummy, non-alias)
+  //  keep-alive: every such keep-alive is either made here or moved from one
+  //  that was, so tracing the acquire here -- rather than in the individual
+  //  ExecutorKeepAlive constructors, all of which funnel through
+  //  getKeepAliveToken() -- pairs one acquire with the one release in reset().
+  //  The captured stack still names the original caller, since the
+  //  constructors are simply further up the same stack.
   template <typename ExecutorT>
   static KeepAlive<ExecutorT> makeKeepAlive(ExecutorT* executor) {
     static_assert(
         std::is_base_of<Executor, ExecutorT>::value,
         "makeKeepAlive only works for folly::Executor implementations.");
-    return KeepAlive<ExecutorT>{executor, uintptr_t(0)};
+    KeepAlive<ExecutorT> keepAlive{executor, uintptr_t(0)};
+    detail::traceKeepAliveObjAcquire(&keepAlive, executor);
+    return keepAlive;
   }
 
  private:
@@ -301,6 +421,7 @@ void ExecutorKeepAlive<ExecutorT>::reset() noexcept {
   if (Executor* executor = get()) {
     auto const flags = std::exchange(storage_, 0) & kFlagMask;
     if (!(flags & (kDummyFlag | kAliasFlag))) {
+      detail::traceKeepAliveObjRelease(this, executor);
       executor->keepAliveRelease();
     }
   }

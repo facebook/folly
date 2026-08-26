@@ -26,6 +26,16 @@
 
 namespace folly {
 
+bool setKeepAliveObjTraceHooks(
+    detail::KeepAliveObjTraceHook acquire,
+    detail::KeepAliveObjTraceHook release,
+    detail::KeepAliveObjMoveHook move) {
+  detail::keepAliveObjAcquireHook().store(acquire, std::memory_order_relaxed);
+  detail::keepAliveObjReleaseHook().store(release, std::memory_order_relaxed);
+  detail::keepAliveObjMoveHook().store(move, std::memory_order_relaxed);
+  return FOLLY_ENABLE_KEEPALIVE_OBJ_TRACE != 0;
+}
+
 void Executor::invokeCatchingExnsLog(char const* const prefix) noexcept {
   auto ep = current_exception();
   LOG(ERROR) << prefix << " threw unhandled " << exceptionStr(ep);
