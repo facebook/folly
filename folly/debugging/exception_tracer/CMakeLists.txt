@@ -84,6 +84,7 @@ folly_add_library(
     ${GLOG_LIBRARIES}
     folly_debugging_exception_tracer_exception_abi
     folly_debugging_exception_tracer_stacktrace
+    folly_debugging_symbolizer_symbol_cache
     folly_debugging_symbolizer_symbolizer
     folly_portability
     folly_string
