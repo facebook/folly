@@ -1,5 +1,6 @@
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
 load("@fbsource//tools/build_defs:platform_defs.bzl", "ANDROID", "CXX", "FBCODE")
+load("@fbsource//tools/build_defs:testpilot_defs.bzl", "tpx_labels")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
@@ -112,7 +113,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "atomic_hash_map_test",
     srcs = ["AtomicHashMapTest.cpp"],
-    labels = ["heavyweight"],
+    labels = [tpx_labels.heavyweight],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:atomic_hash_map",
@@ -307,7 +308,7 @@ fb_dirsync_cpp_unittest(
     name = "concurrent_skip_list_test",
     srcs = ["ConcurrentSkipListTest.cpp"],
     labels = [
-        "heavyweight",
+        tpx_labels.heavyweight,
         "slow",
     ],
     deps = [
@@ -1101,7 +1102,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "mpmc_queue_test",
     srcs = ["MPMCQueueTest.cpp"],
-    labels = ["heavyweight"],
+    labels = [tpx_labels.heavyweight],
     deps = [
         "fbsource//third-party/boost:boost",  # @manual
         "fbsource//third-party/fmt:fmt",
@@ -1328,7 +1329,7 @@ fb_dirsync_cpp_unittest(
             "-Wno-shadow-compatible-local",
         ],
     }),
-    labels = ["heavyweight"],
+    labels = [tpx_labels.heavyweight],
     deps = [
         "fbsource//third-party/boost:boost_thread",  # @manual
         ":deterministic_schedule",
