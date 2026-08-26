@@ -20,24 +20,10 @@ from libcpp.memory cimport make_unique, unique_ptr
 from cython.operator cimport dereference as deref
 from weakref import WeakKeyDictionary
 from cpython.ref cimport PyObject
-from cpython.weakref cimport PyWeakref_NewRef, PyWeakref_GetObject
 
 # asyncio Loops to AsyncioExecutor
 loop_to_q = WeakKeyDictionary()
 _RaiseKeyError = object()
-
-# weak reference to the last seen event loop
-_last_loop = None
-# AsyncioExecutor for the last seen event loop
-_last_executor = None
-
-
-# cleanup callback that clears _last_loop and _last_executor when the loop
-# referenced by _last_loop is collected
-def _clean_last_executor(_wr):
-    global _last_loop, _last_executor
-    _last_loop = None
-    _last_executor = None
 
 
 cdef class AsyncioExecutor:
@@ -126,7 +112,6 @@ cdef cAsyncioExecutor* get_running_executor(bint running) noexcept:
 
 cdef cAsyncioExecutor* get_running_executor_drive(
     bint running, bint driveBeforeDealloc) noexcept:
-    global _last_loop, _last_executor
     try:
         if running:
             loop = asyncio.get_running_loop()
@@ -134,33 +119,21 @@ cdef cAsyncioExecutor* get_running_executor_drive(
             loop = asyncio.get_event_loop()
     except RuntimeError:
         return NULL
-    cdef AsyncioExecutor executor = None
-    if _last_loop is not None and <PyObject*>loop is PyWeakref_GetObject(_last_loop):
-        executor = _last_executor
-    if executor is None:
-        try:
-            executor = <AsyncioExecutor>(loop_to_q[loop])
-        except KeyError:
-            if sys.platform == "win32":
-                proactor = ProactorExecutor(loop._proactor._iocp)
-                queue = IocpQueue(proactor)
-                queue.swap(loop)
-                executor = proactor
-            else:
-                nq = NotificationQueueAsyncioExecutor(driveBeforeDealloc)
-                loop.add_reader(nq.fileno(), nq.drive)
-                executor = nq
-            loop_to_q[loop] = executor
-        _last_loop = PyWeakref_NewRef(loop, _clean_last_executor)
-        _last_executor = executor
+    try:
+        executor = <AsyncioExecutor>(loop_to_q[loop])
+    except KeyError:
+        if sys.platform == "win32":
+            executor = ProactorExecutor(loop._proactor._iocp)
+            queue = IocpQueue(executor)
+            queue.swap(loop)
+        else:
+            executor = NotificationQueueAsyncioExecutor(driveBeforeDealloc)
+            loop.add_reader(executor.fileno(), executor.drive)
+        loop_to_q[loop] = executor
     return executor._executor
 
 
 cdef int set_executor_for_loop(object loop, cAsyncioExecutor* c_executor) noexcept:
-    global _last_loop, _last_executor
-    # drop the fast-path cache to avoid returning a stale executor
-    _last_loop = None
-    _last_executor = None
     if c_executor == NULL:
         del loop_to_q[loop]
         return 0
