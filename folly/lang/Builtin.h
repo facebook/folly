@@ -102,7 +102,7 @@ FOLLY_ERASE void prefetch_(void const* addr) noexcept {
   __prefetch(addr);
 #elif FOLLY_SSE >= 1
   //  _mm_prefetch takes no rw hint, so only locality survives the mapping.
-  constexpr auto hint[] = {
+  constexpr int hint[] = {
       _MM_HINT_NTA,
       _MM_HINT_T2,
       _MM_HINT_T1,
