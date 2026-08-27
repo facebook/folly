@@ -51,7 +51,7 @@ benchmarks:
 
   folly/tool/benchmark_ab.py reanalyze --out OUT
 
-Reports also flag unusually high run-to-run variation.
+Reports also flag unusually high or widespread run-to-run variation.
 
 Results:
 
@@ -77,7 +77,7 @@ The comma-separated `before±Δ` pairs show whether the change is consistent
 across rounds.  They are sorted by `before` timing, not by run order.
 Parentheses mark a pair whose Δ missed a section threshold.
 
-Within each priority section, rows are sorted by estimated Δ, smallest first.
+Each win/regression section sorts benchmarks by estimated Δ, smallest first.
 """
 
 
@@ -340,6 +340,7 @@ class SpreadAnalysis:
     row_to_eligible_spreads: dict[ComparisonRow, tuple[SideSpread, ...]]
     round_count: int
     eligible_side_count: int
+    broad_spread_count: int
     median_pct: float | None  # None when no timing series is eligible
     calibration: SpreadCalibration | None  # None below MIN_SPREAD_COHORT_SIZE
 
@@ -429,14 +430,20 @@ def add_report_arguments(parser: argparse.ArgumentParser) -> None:
         metavar="NS",
         type=nonnegative_float,
         default=1.0,
-        help="absolute nanosecond threshold for high-priority sections",
+        help=(
+            "absolute threshold for high-priority sections; also used to detect "
+            "widespread run-to-run variation"
+        ),
     )
     parser.add_argument(
         "--hi-pct",
         metavar="PCT",
         type=nonnegative_float,
         default=10.0,
-        help="percentage threshold for high-priority sections",
+        help=(
+            "percentage threshold for high-priority sections; also used with "
+            "--hi-ns to detect widespread run-to-run variation"
+        ),
     )
     parser.add_argument(
         "--lo-ns",
@@ -456,6 +463,17 @@ def add_report_arguments(parser: argparse.ArgumentParser) -> None:
         help=(
             "percentage threshold for low-priority sections; also the smallest "
             "relative range flagged as high spread"
+        ),
+    )
+    # TODO: Calibrate this guessed default against known broadly noisy runs.
+    parser.add_argument(
+        "--broad-spread-pct",
+        metavar="PCT",
+        type=nonnegative_float,
+        default=50.0,
+        help=(
+            "percentage of timing series that must meet --hi-ns and --hi-pct "
+            "to raise the broad-spread alarm; requires at least 20 series"
         ),
     )
 
@@ -581,6 +599,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("--lo-ns must not exceed --hi-ns")
     if args.lo_pct > args.hi_pct:
         raise SystemExit("--lo-pct must not exceed --hi-pct")
+    if not 0 < args.broad_spread_pct <= 100:
+        raise SystemExit("--broad-spread-pct must be greater than 0 and at most 100")
 
 
 def benchmark_query(pattern: str) -> str:
@@ -1295,6 +1315,7 @@ def analyze_spread(
     rows: tuple[ComparisonRow, ...],
     *,
     round_count: int,
+    broad_threshold: Threshold,
     high_spread_minimum: Threshold,
 ) -> SpreadAnalysis:
     row_to_eligible_spreads: dict[ComparisonRow, tuple[SideSpread, ...]] = {}
@@ -1329,11 +1350,17 @@ def analyze_spread(
     )
     eligible_spread_pcts = [spread.pct for spread in eligible_spreads]
     eligible_side_count = len(eligible_spread_pcts)
+    broad_spread_count = sum(
+        display_round(spread.range_ns) >= display_round(broad_threshold.ns)
+        and display_round(spread.pct) >= display_round(broad_threshold.pct)
+        for spread in eligible_spreads
+    )
     if not eligible_spread_pcts:
         return SpreadAnalysis(
             row_to_eligible_spreads=row_to_eligible_spreads,
             round_count=round_count,
             eligible_side_count=0,
+            broad_spread_count=0,
             median_pct=None,
             calibration=None,
         )
@@ -1345,6 +1372,7 @@ def analyze_spread(
             row_to_eligible_spreads=row_to_eligible_spreads,
             round_count=round_count,
             eligible_side_count=eligible_side_count,
+            broad_spread_count=broad_spread_count,
             median_pct=median_pct,
             calibration=None,
         )
@@ -1360,6 +1388,7 @@ def analyze_spread(
         row_to_eligible_spreads=row_to_eligible_spreads,
         round_count=round_count,
         eligible_side_count=eligible_side_count,
+        broad_spread_count=broad_spread_count,
         median_pct=median_pct,
         calibration=SpreadCalibration(
             outlier_cutoff_pct=outlier_cutoff_pct,
@@ -1490,6 +1519,7 @@ def analyze_report(
     spread = analyze_spread(
         rows,
         round_count=len({key[0] for key in artifacts}),
+        broad_threshold=hi_threshold,
         high_spread_minimum=lo_threshold,
     )
     classified_row_ids = {
@@ -1545,12 +1575,19 @@ def threshold_rounding_warning(
 ) -> list[str]:
     if all(
         value == display_round(value)
-        for value in (args.hi_ns, args.hi_pct, args.lo_ns, args.lo_pct)
+        for value in (
+            args.hi_ns,
+            args.hi_pct,
+            args.lo_ns,
+            args.lo_pct,
+            args.broad_spread_pct,
+        )
     ):
         return []
     return [
         ("**Note:** " if markdown else "Note: ")
-        + "Thresholds were rounded to one decimal place for classification.",
+        + "Thresholds were rounded to one decimal place when deciding results "
+        "and alarms.",
         "",
     ]
 
@@ -1571,36 +1608,73 @@ def summary_text(
     return f"{fmt_value(summary.before)}{fmt_signed_value(summary.delta)}ns{suffix}"
 
 
-def spread_summary_text(spread: SpreadAnalysis) -> str:
-    if spread.median_pct is None:
-        return "Run-to-run spread (range / median): not calculated"
-    return (
-        "Run-to-run spread (range / median): median "
-        f"{fmt_value(spread.median_pct)}% across "
-        f"{spread.eligible_side_count} timing series"
-    )
-
-
-def spread_context_lines(spread: SpreadAnalysis) -> list[str]:
+def spread_summary_lines(spread: SpreadAnalysis) -> list[str]:
+    lines = [
+        "Run-to-run spread per before/after series:",
+        "  Metric: (max - min) / median",
+    ]
     if spread.round_count < 2:
-        return ["Spread needs at least 2 recorded rounds"]
+        return lines + ["  Not calculated: need at least 2 recorded rounds"]
     if spread.median_pct is None:
-        return [
-            "No before/after timing series has data for every round and median "
+        return lines + [
+            "  Not calculated: no complete series has median "
             f">{fmt_value(MIN_RELATIVE_MEDIAN_NS)}ns"
         ]
+
+    lines.append(
+        f"  Median: {fmt_value(spread.median_pct)}% across "
+        f"{spread.eligible_side_count} timing series"
+    )
     if spread.calibration is None:
-        return [
-            "High-spread flags skipped: need at least "
+        return lines + [
+            "  High spread threshold and broad alarm: need at least "
             f"{MIN_SPREAD_COHORT_SIZE} timing series"
         ]
 
     calibration = spread.calibration
+    cutoff_text = (
+        "Tukey outlier cutoff"
+        if calibration.high_spread_threshold.pct == calibration.outlier_cutoff_pct
+        else f"Tukey outlier cutoff: {fmt_value(calibration.outlier_cutoff_pct)}%"
+    )
+    lines.append(
+        "  High spread threshold: "
+        f">{fmt_value(calibration.high_spread_threshold.pct)}% "
+        f"({cutoff_text}) and "
+        f">={fmt_value(calibration.high_spread_threshold.ns)}ns"
+    )
+    return lines
+
+
+def broad_spread_warning_lines(
+    spread: SpreadAnalysis,
+    args: argparse.Namespace,
+    *,
+    markdown: bool,
+) -> list[str]:
+    if spread.eligible_side_count < MIN_SPREAD_COHORT_SIZE:
+        return []
+    pct = 100.0 * spread.broad_spread_count / spread.eligible_side_count
+    if display_round(pct) < display_round(args.broad_spread_pct):
+        return []
+    count = (
+        f"{spread.broad_spread_count}/{spread.eligible_side_count} before/after "
+        f"series ({fmt_value(pct)}%)"
+    )
+    range_threshold = (
+        f"{fmt_value(args.hi_ns)}ns and {fmt_value(args.hi_pct)}% of their median"
+    )
+    if markdown:
+        return [
+            "**Warning: High run-to-run spread across the benchmark set.** "
+            f"{count} have a run-to-run range of at least {range_threshold}.",
+            "",
+        ]
     return [
-        "High spread: range "
-        f">{fmt_value(calibration.high_spread_threshold.pct)}% of median and "
-        f">={fmt_value(calibration.high_spread_threshold.ns)}ns "
-        f"(Tukey outlier cutoff: {fmt_value(calibration.outlier_cutoff_pct)}%)",
+        "WARNING: High run-to-run spread across the benchmark set",
+        f"  {count} have a run-to-run range of at least",
+        f"  {range_threshold}.",
+        "",
     ]
 
 
@@ -1766,6 +1840,7 @@ def render_markdown(
     manifest: MeasurementManifest,
 ) -> str:
     targets = manifest.targets
+    spread_lines = spread_summary_lines(report.spread)
     lines = [
         f"**Output:** `{args.out}`",
         "",
@@ -1790,10 +1865,6 @@ def render_markdown(
         f"- hi-pri `>={fmt_value(args.hi_ns)}ns` and `>={fmt_value(args.hi_pct)}%`",
         f"- lo-pri `>={fmt_value(args.lo_ns)}ns` and `>={fmt_value(args.lo_pct)}%`",
         "",
-        f"**{spread_summary_text(report.spread)}**",
-        "",
-        *(f"- {detail}" for detail in spread_context_lines(report.spread)),
-        "",
         *threshold_rounding_warning(args, markdown=True),
     ]
     lines.extend(needs_attention_markdown(report, out_dir=args.out))
@@ -1806,7 +1877,20 @@ def render_markdown(
                 pct=fmt_value(manifest.bm_target_percentile),
             ).splitlines(),
             "",
+            f"**{spread_lines[0]}**",
+            "",
+            *(f"- {detail.strip()}" for detail in spread_lines[1:]),
+            "",
+            *broad_spread_warning_lines(report.spread, args, markdown=True),
         ]
+    )
+    lines.extend(
+        comparison_table(
+            report,
+            title="High run-to-run spread without a reportable change",
+            rows=report.unclassified_high_spread_rows,
+            section=None,
+        )
     )
     for section in report.sections:
         lines.extend(
@@ -1817,14 +1901,6 @@ def render_markdown(
                 section=section,
             )
         )
-    lines.extend(
-        comparison_table(
-            report,
-            title="High run-to-run spread without a reportable change",
-            rows=report.unclassified_high_spread_rows,
-            section=None,
-        )
-    )
     return "\n".join(lines)
 
 
@@ -1904,8 +1980,6 @@ def render_comparison_text(
         "Thresholds for estimated Δ:",
         f"  hi-pri >={fmt_value(args.hi_ns)}ns and >={fmt_value(args.hi_pct)}%",
         f"  lo-pri >={fmt_value(args.lo_ns)}ns and >={fmt_value(args.lo_pct)}%",
-        spread_summary_text(report.spread),
-        *(f"  {detail}" for detail in spread_context_lines(report.spread)),
         "",
         *threshold_rounding_warning(args, markdown=False),
     ]
@@ -1919,7 +1993,18 @@ def render_comparison_text(
                 pct=fmt_value(manifest.bm_target_percentile),
             ).splitlines(),
             "",
+            *spread_summary_lines(report.spread),
+            "",
+            *broad_spread_warning_lines(report.spread, args, markdown=False),
         ]
+    )
+    lines.extend(
+        comparison_terminal(
+            report,
+            title="High run-to-run spread without a reportable change",
+            rows=report.unclassified_high_spread_rows,
+            section=None,
+        )
     )
     for section in report.sections:
         lines.extend(
@@ -1930,14 +2015,6 @@ def render_comparison_text(
                 section=section,
             )
         )
-    lines.extend(
-        comparison_terminal(
-            report,
-            title="High run-to-run spread without a reportable change",
-            rows=report.unclassified_high_spread_rows,
-            section=None,
-        )
-    )
     return "\n".join(lines).rstrip()
 
 

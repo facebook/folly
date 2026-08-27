@@ -13,10 +13,6 @@
 - hi-pri `>=1.0ns` and `>=10.0%`
 - lo-pri `>=0.5ns` and `>=5.0%`
 
-**Run-to-run spread (range / median): not calculated**
-
-- No before/after timing series has data for every round and median >2.0ns
-
 ## Needs attention: Benchmark run was incomplete after 1 try
 
 - Round 1, `fbcode//folly/test:bench` (before); [see logs](round_1/before_bench).
@@ -47,7 +43,12 @@ The comma-separated `before±Δ` pairs show whether the change is consistent
 across rounds.  They are sorted by `before` timing, not by run order.
 Parentheses mark a pair whose Δ missed a section threshold.
 
-Within each priority section, rows are sorted by estimated Δ, smallest first.
+Each win/regression section sorts benchmarks by estimated Δ, smallest first.
+
+**Run-to-run spread per before/after series:**
+
+- Metric: (max - min) / median
+- Not calculated: no complete series has median >2.0ns
 
 ## High-priority wins
 
