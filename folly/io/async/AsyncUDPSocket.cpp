@@ -87,6 +87,12 @@ void AsyncUDPSocket::fromMsg(
         (cmsg->cmsg_level == SOL_IPV6 && cmsg->cmsg_type == IPV6_TCLASS)) {
       params.tos = *(uint8_t*)CMSG_DATA(cmsg);
     } else if (
+        (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_TTL) ||
+        (cmsg->cmsg_level == SOL_IPV6 && cmsg->cmsg_type == IPV6_HOPLIMIT)) {
+      int ttl;
+      memcpy(&ttl, CMSG_DATA(cmsg), sizeof(ttl));
+      params.ttl = static_cast<uint8_t>(ttl);
+    } else if (
         cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
       auto* pktinfo = reinterpret_cast<struct in6_pktinfo*>(CMSG_DATA(cmsg));
       folly::SocketAddress addr;
@@ -296,6 +302,28 @@ void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
   }
 
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  if (recvTtl_) {
+    int flag = 1;
+    if (family == AF_INET6) {
+      if (netops::setsockopt(
+              socket, IPPROTO_IPV6, IPV6_RECVHOPLIMIT, &flag, sizeof(flag)) !=
+          0) {
+        throw AsyncSocketException(
+            AsyncSocketException::NOT_OPEN,
+            "failed to set IPV6_RECVHOPLIMIT on the socket",
+            errno);
+      }
+    } else if (family == AF_INET) {
+      if (netops::setsockopt(
+              socket, IPPROTO_IP, IP_RECVTTL, &flag, sizeof(flag)) != 0) {
+        throw AsyncSocketException(
+            AsyncSocketException::NOT_OPEN,
+            "failed to set IP_RECVTTL on the socket",
+            errno);
+      }
+    }
+  }
+
   if (recvDstAddr_) {
     // Set socket option to receive the destination address per packet via
     // IPV6_PKTINFO/IP_PKTINFO ancillary cmsgs.
@@ -1506,7 +1534,7 @@ void AsyncUDPSocket::handleRead() noexcept {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
     bool use_gro = gro_.has_value() && (gro_.value() > 0);
     bool use_ts = ts_.has_value() && (ts_.value() > 0);
-    if (use_gro || use_ts || recvTos_ || recvDstAddr_) {
+    if (use_gro || use_ts || recvTos_ || recvTtl_ || recvDstAddr_) {
       char control[ReadCallback::OnDataAvailableParams::kCmsgSpace] = {};
 
       struct msghdr msg = {};

@@ -52,6 +52,7 @@ class AsyncUDPSocket : public EventHandler {
       using Timestamp = std::array<struct timespec, 3>;
       folly::Optional<Timestamp> ts;
       uint8_t tos = 0;
+      uint8_t ttl = 0;
       // Destination address the packet was sent to (from IPV6_PKTINFO /
       // IP_PKTINFO). Populated only when setRecvDstAddr(true) was called.
       folly::Optional<folly::SocketAddress> localAddress;
@@ -59,7 +60,7 @@ class AsyncUDPSocket : public EventHandler {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
       static constexpr size_t kCmsgSpace = CMSG_SPACE(sizeof(uint16_t)) +
           CMSG_SPACE(sizeof(Timestamp)) + CMSG_SPACE(sizeof(uint8_t)) +
-          CMSG_SPACE(sizeof(struct in6_pktinfo)) +
+          CMSG_SPACE(sizeof(int)) + CMSG_SPACE(sizeof(struct in6_pktinfo)) +
           CMSG_SPACE(sizeof(struct in_pktinfo));
 #endif
     };
@@ -624,6 +625,18 @@ class AsyncUDPSocket : public EventHandler {
   virtual bool getRecvTos() { return recvTos_; }
 
   /**
+   * Set IPV6_RECVHOPLIMIT/IP_RECVTTL to allow receiving of the IPv6 Hop
+   * Limit/IPv4 TTL field
+   */
+  virtual void setRecvTtl(bool recvTtl) { recvTtl_ = recvTtl; }
+
+  /**
+   * Get IPV6_RECVHOPLIMIT/IP_RECVTTL status of the socket. If true, the IPv6
+   * Hop Limit/IPv4 TTL field should be populated in OnDataAvailableParams.
+   */
+  virtual bool getRecvTtl() { return recvTtl_; }
+
+  /**
    * Set IPV6_RECVPKTINFO/IP_PKTINFO to receive the destination address each
    * datagram was sent to. When enabled, OnDataAvailableParams::localAddress
    * is populated for each received packet. Useful for UDP servers bound to
@@ -915,6 +928,7 @@ class AsyncUDPSocket : public EventHandler {
   bool freeBind_{false};
   bool transparent_{false};
   bool recvTos_{false};
+  bool recvTtl_{false};
   bool recvDstAddr_{false};
   int rcvBuf_{0};
   int sndBuf_{0};

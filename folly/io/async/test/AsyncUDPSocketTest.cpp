@@ -199,6 +199,8 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     socket_ = std::make_unique<AsyncUDPSocket>(evb_);
     socket_->setRecvTos(recvTos_);
     ASSERT_EQ(socket_->getRecvTos(), recvTos_);
+    socket_->setRecvTtl(recvTtl_);
+    ASSERT_EQ(socket_->getRecvTtl(), recvTtl_);
 
     try {
       if (bindSocket_ == BindSocket::YES) {
@@ -276,10 +278,14 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
             << client.describe() << " - " << std::string(buf_, len);
     VLOG(4) << n_ << " left";
     VLOG(4) << "Type of Service value:" << params.tos;
+    VLOG(4) << "TTL value:" << static_cast<int>(params.ttl);
 
     ++pongRecvd_;
     if (params.tos != 0) {
       ++tosMessagesRecvd_;
+    }
+    if (params.ttl != 0) {
+      ++ttlMessagesRecvd_;
     }
 
     sendPing();
@@ -305,6 +311,8 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
 
   int tosMessagesRecvd() const { return tosMessagesRecvd_; }
 
+  int ttlMessagesRecvd() const { return ttlMessagesRecvd_; }
+
   AsyncUDPSocket& getSocket() { return *socket_; }
 
   void setShouldConnect(
@@ -314,6 +322,8 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   }
 
   void setRecvTos(bool recvTos) { recvTos_ = recvTos; }
+
+  void setRecvTtl(bool recvTtl) { recvTtl_ = recvTtl; }
 
   bool error() const { return error_; }
 
@@ -332,6 +342,8 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   int pongRecvd_{0};
   int tosMessagesRecvd_{0};
   bool recvTos_{false};
+  int ttlMessagesRecvd_{0};
+  bool recvTtl_{false};
 
   int n_{0};
   char buf_[1024];
@@ -500,6 +512,11 @@ class AsyncSocketIntegrationTest : public Test {
       folly::Optional<folly::SocketAddress> connectedAddress,
       BindSocket bindSocket = BindSocket::YES);
 
+  std::unique_ptr<UDPClient> performPingPongRecvTtlTest(
+      folly::SocketAddress writeAddress,
+      folly::Optional<folly::SocketAddress> connectedAddress,
+      BindSocket bindSocket = BindSocket::YES);
+
   std::unique_ptr<std::thread> serverThread;
   std::unique_ptr<UDPServer> server;
   folly::EventBase sevb;
@@ -603,6 +620,32 @@ AsyncSocketIntegrationTest::performPingPongRecvTosTest(
   return client;
 }
 
+std::unique_ptr<UDPClient>
+AsyncSocketIntegrationTest::performPingPongRecvTtlTest(
+    folly::SocketAddress writeAddress,
+    folly::Optional<folly::SocketAddress> connectedAddress,
+    BindSocket bindSocket) {
+  auto client = std::make_unique<UDPClient>(&cevb);
+  if (connectedAddress) {
+    client->setShouldConnect(*connectedAddress, bindSocket);
+  }
+  // Start event loop in a separate thread
+  auto clientThread = std::thread([this]() { cevb.loopForever(); });
+
+  // Wait for event loop to start
+  cevb.waitUntilRunning();
+
+  // Enable receiving the IP header TTL
+  client->setRecvTtl(true);
+
+  // Send ping
+  cevb.runInEventBaseThread([&]() { client->start(writeAddress, 100); });
+
+  // Wait for client to finish
+  clientThread.join();
+  return client;
+}
+
 TEST_F(AsyncSocketIntegrationTest, PingPong) {
   startServer();
   auto pingClient = performPingPongTest(server->address(), folly::none);
@@ -641,6 +684,22 @@ TEST_F(AsyncSocketIntegrationTest, PingPongRecvTos) {
   // This should succeed.
   ASSERT_GT(pingClient->pongRecvd(), 0);
   ASSERT_GT(pingClient->tosMessagesRecvd(), 0);
+}
+
+TEST_F(AsyncSocketIntegrationTest, PingPongRecvTtlDisabled) {
+  startServer();
+  auto pingClient = performPingPongTest(server->address(), folly::none);
+  // This should succeed.
+  ASSERT_GT(pingClient->pongRecvd(), 0);
+  ASSERT_EQ(pingClient->ttlMessagesRecvd(), 0);
+}
+
+TEST_F(AsyncSocketIntegrationTest, PingPongRecvTtl) {
+  startServer();
+  auto pingClient = performPingPongRecvTtlTest(server->address(), folly::none);
+  // This should succeed.
+  ASSERT_GT(pingClient->pongRecvd(), 0);
+  ASSERT_GT(pingClient->ttlMessagesRecvd(), 0);
 }
 
 class ConnectedAsyncSocketIntegrationTest
