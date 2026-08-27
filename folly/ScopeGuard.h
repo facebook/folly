@@ -95,13 +95,15 @@ struct ScopeGuardDismissed {};
 
 class ScopeGuardImplBase {
  public:
-  void dismiss() noexcept { dismissed_ = true; }
-  void rehire() noexcept { dismissed_ = false; }
+  FOLLY_CXX20_CONSTEXPR void dismiss() noexcept { dismissed_ = true; }
+  FOLLY_CXX20_CONSTEXPR void rehire() noexcept { dismissed_ = false; }
 
  protected:
-  ScopeGuardImplBase(bool dismissed = false) noexcept : dismissed_(dismissed) {}
+  FOLLY_CXX20_CONSTEXPR ScopeGuardImplBase(bool dismissed = false) noexcept
+      : dismissed_(dismissed) {}
 
   [[noreturn]] static void terminate() noexcept;
+  FOLLY_CXX20_CONSTEXPR
   static ScopeGuardImplBase makeEmptyScopeGuard() noexcept {
     return ScopeGuardImplBase{};
   }
@@ -112,13 +114,14 @@ class ScopeGuardImplBase {
 template <typename FunctionType, bool InvokeNoexcept>
 class ScopeGuardImpl : public ScopeGuardImplBase {
  public:
-  explicit ScopeGuardImpl(FunctionType& fn) noexcept(
+  FOLLY_CXX20_CONSTEXPR explicit ScopeGuardImpl(FunctionType& fn) noexcept(
       std::is_nothrow_copy_constructible_v<FunctionType>)
       : ScopeGuardImpl(
             std::as_const(fn),
             makeFailsafe(
                 std::is_nothrow_copy_constructible<FunctionType>{}, &fn)) {}
 
+  FOLLY_CXX20_CONSTEXPR
   explicit ScopeGuardImpl(const FunctionType& fn) noexcept(
       std::is_nothrow_copy_constructible_v<FunctionType>)
       : ScopeGuardImpl(
@@ -126,19 +129,20 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
             makeFailsafe(
                 std::is_nothrow_copy_constructible<FunctionType>{}, &fn)) {}
 
-  explicit ScopeGuardImpl(FunctionType&& fn) noexcept(
+  FOLLY_CXX20_CONSTEXPR explicit ScopeGuardImpl(FunctionType&& fn) noexcept(
       std::is_nothrow_move_constructible_v<FunctionType>)
       : ScopeGuardImpl(
             std::move_if_noexcept(fn),
             makeFailsafe(
                 std::is_nothrow_move_constructible<FunctionType>{}, &fn)) {}
 
+  FOLLY_CXX20_CONSTEXPR
   explicit ScopeGuardImpl(FunctionType&& fn, ScopeGuardDismissed) noexcept(
       std::is_nothrow_move_constructible_v<FunctionType>)
       // No need for failsafe in this case, as the guard is dismissed.
       : ScopeGuardImplBase{true}, function_(std::forward<FunctionType>(fn)) {}
 
-  ScopeGuardImpl(ScopeGuardImpl&& other) noexcept(
+  FOLLY_CXX20_CONSTEXPR ScopeGuardImpl(ScopeGuardImpl&& other) noexcept(
       std::is_nothrow_move_constructible_v<FunctionType>)
       : function_(std::move_if_noexcept(other.function_)) {
     // If the above line attempts a copy and the copy throws, other is
@@ -149,35 +153,46 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
     dismissed_ = std::exchange(other.dismissed_, true);
   }
 
-  ~ScopeGuardImpl() noexcept(InvokeNoexcept) {
+  FOLLY_CXX20_CONSTEXPR ~ScopeGuardImpl() noexcept(InvokeNoexcept) {
     if (!dismissed_) {
       execute();
     }
   }
 
  private:
+  FOLLY_CXX20_CONSTEXPR
   static ScopeGuardImplBase makeFailsafe(std::true_type, const void*) noexcept {
     return makeEmptyScopeGuard();
   }
 
   template <typename Fn>
-  static auto makeFailsafe(std::false_type, Fn* fn) noexcept
+  FOLLY_CXX20_CONSTEXPR static auto makeFailsafe(
+      std::false_type, Fn* fn) noexcept
       -> ScopeGuardImpl<decltype(std::ref(*fn)), InvokeNoexcept> {
     return ScopeGuardImpl<decltype(std::ref(*fn)), InvokeNoexcept>{
         std::ref(*fn)};
   }
 
   template <typename Fn>
-  explicit ScopeGuardImpl(Fn&& fn, ScopeGuardImplBase&& failsafe)
+  FOLLY_CXX20_CONSTEXPR explicit ScopeGuardImpl(
+      Fn&& fn, ScopeGuardImplBase&& failsafe)
       : ScopeGuardImplBase{}, function_(std::forward<Fn>(fn)) {
     failsafe.dismiss();
   }
 
   void* operator new(std::size_t) = delete;
 
-  void execute() noexcept(InvokeNoexcept) {
+  FOLLY_CXX20_CONSTEXPR void execute() noexcept(InvokeNoexcept) {
     if constexpr (InvokeNoexcept) {
       static_assert(std::is_same_v<void, decltype(function_())>);
+#if FOLLY_CPLUSPLUS >= 202002L
+      //  no exception can be thrown under constant evaluation, so the
+      //  terminate-on-throw wrapper is both unnecessary and not constexpr
+      if (std::is_constant_evaluated()) {
+        function_();
+        return;
+      }
+#endif
       catch_exception(function_, &terminate);
     } else {
       function_();
@@ -209,7 +224,8 @@ using ScopeGuardImplDecay = ScopeGuardImpl<std::decay_t<F>, INE>;
  * @refcode folly/docs/examples/folly/ScopeGuard2.cpp
  */
 template <typename F>
-[[nodiscard]] detail::ScopeGuardImplDecay<F, true> makeGuard(F&& f) noexcept(
+[[nodiscard]] FOLLY_CXX20_CONSTEXPR detail::ScopeGuardImplDecay<F, true>
+makeGuard(F&& f) noexcept(
     noexcept(detail::ScopeGuardImplDecay<F, true>(static_cast<F&&>(f)))) {
   return detail::ScopeGuardImplDecay<F, true>(static_cast<F&&>(f));
 }
@@ -223,7 +239,7 @@ template <typename F>
  * @refcode folly/docs/examples/folly/ScopeGuard2.cpp
  */
 template <typename F>
-[[nodiscard]] detail::ScopeGuardImplDecay<F, true>
+[[nodiscard]] FOLLY_CXX20_CONSTEXPR detail::ScopeGuardImplDecay<F, true>
 makeDismissedGuard(F&& f) noexcept(
     noexcept(detail::ScopeGuardImplDecay<F, true>(
         static_cast<F&&>(f), detail::ScopeGuardDismissed{}))) {
@@ -298,8 +314,8 @@ ScopeGuardForNewException<std::decay_t<FunctionType>, false> operator+(
 enum class ScopeGuardOnExit {};
 
 template <typename FunctionType>
-ScopeGuardImpl<std::decay_t<FunctionType>, true> operator+(
-    detail::ScopeGuardOnExit, FunctionType&& fn) {
+FOLLY_CXX20_CONSTEXPR ScopeGuardImpl<std::decay_t<FunctionType>, true>
+operator+(detail::ScopeGuardOnExit, FunctionType&& fn) {
   return ScopeGuardImpl<std::decay_t<FunctionType>, true>(
       std::forward<FunctionType>(fn));
 }
