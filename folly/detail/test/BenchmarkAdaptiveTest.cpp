@@ -251,6 +251,26 @@ TEST(AdaptiveTest, TimeoutBeforeMinimumSamplesReportsIncompleteRun) {
   EXPECT_EQ(logs.find("[RUN INCOMPLETE] Did not converge:"), std::string::npos);
 }
 
+TEST(AdaptiveTest, ConvergenceOnFinalSampleWinsOverTimeout) {
+  folly::test::CaptureFD stderrCapture(fileno(stderr));
+  auto opts = defaultTestOptions();
+  opts.sliceUsec = 250'000;
+  opts.targetPrecisionPct = 100.0;
+  opts.minSamples = 4;
+  opts.maxSecs = 1;
+
+  std::vector<BenchmarkRegistration> benchmarks{makeReg("constant", 250ms)};
+  const auto result = runBenchmarksAdaptive(
+      toPtrs(benchmarks), defaultBaseline(), noOpSuspenderBaseline(), opts);
+  stderrCapture.release();
+  const auto logs = stderrCapture.read();
+
+  EXPECT_EQ(result.totalRounds, opts.minSamples);
+  EXPECT_NE(logs.find("Converged:"), std::string::npos);
+  EXPECT_EQ(logs.find("Exceeded max_secs"), std::string::npos);
+  EXPECT_EQ(logs.find("[RUN INCOMPLETE]"), std::string::npos);
+}
+
 TEST(AdaptiveTest, SingleBenchmark) {
   std::vector<BenchmarkRegistration> benchmarks{makeReg("bench1", 15ns)};
   auto result = runBenchmarksAdaptive(

@@ -166,6 +166,7 @@ struct BenchState {
   std::vector<std::pair<double, UserCounters>> samples{};
   nanoseconds elapsed{0};
   bool done = false; // benchmarks only
+  bool timedOut = false; // benchmarks only
 
   // Extract just the timing values for statistical analysis.
   std::vector<double> timings() const {
@@ -233,21 +234,24 @@ struct BenchState {
         elapsed >= duration<double>(opts->minSecs);
   }
 
+  bool hasConverged() const {
+    return hasMetMinimums() && isStable() &&
+        isPrecise(
+               SortedSamples(timings()).percentileCI(opts->targetPercentile),
+               opts->targetPrecisionPct);
+  }
+
   bool checkDone() {
-    if (elapsed >= seconds(opts->maxSecs)) {
+    if (hasConverged()) {
       done = true;
       return true;
     }
-    if (!hasMetMinimums()) {
-      return false;
+    if (elapsed >= seconds(opts->maxSecs)) {
+      done = true;
+      timedOut = true;
+      return true;
     }
-    if (!isStable()) {
-      return false;
-    }
-    done = isPrecise(
-        SortedSamples(timings()).percentileCI(opts->targetPercentile),
-        opts->targetPrecisionPct);
-    return done;
+    return false;
   }
 
   UserCounters countersForEstimate(double estimate) const {
@@ -475,8 +479,7 @@ struct SamplingLoop {
       if (!s.checkDone()) {
         allDone = false;
       } else if (!wasDone && opts.verbose && !opts.quiet) {
-        bool exceeded = s.elapsed >= seconds(opts.maxSecs);
-        if (!exceeded) {
+        if (!s.timedOut) {
           converged += "\n  " + s.formatStats();
         } else if (!s.hasMetMinimums()) {
           timedOutBeforeMinimums += "\n  " + s.formatStats();
@@ -593,11 +596,7 @@ AdaptiveResult runBenchmarksAdaptive(
     for (const auto& s : states) {
       if (!s.hasMetMinimums()) {
         didNotMeetMinimums += "\n  " + s.formatStats();
-      } else if (
-          !s.isStable() ||
-          !isPrecise(
-              SortedSamples(s.timings()).percentileCI(opts.targetPercentile),
-              opts.targetPrecisionPct)) {
+      } else if (!s.hasConverged()) {
         didNotConverge += "\n  " + s.formatStats();
       }
     }
