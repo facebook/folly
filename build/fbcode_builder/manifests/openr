@@ -28,6 +28,11 @@ folly
 googletest
 re2
 range-v3
+gcc12
+
+[cmake.defines.all(distro=centos_stream,distro_vers=9)]
+CMAKE_C_COMPILER=/opt/rh/gcc-toolset-12/root/usr/bin/gcc
+CMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-12/root/usr/bin/g++
 
 [cmake.defines.test=on]
 BUILD_TESTS=ON
