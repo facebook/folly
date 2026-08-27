@@ -20,6 +20,7 @@
 
 #include <folly/portability/GTest.h>
 
+#include <random>
 #include <vector>
 
 using jha = folly::JemallocHugePageAllocator;
@@ -31,6 +32,47 @@ static constexpr int kb(int kilos) {
 static constexpr int mb(int megs) {
   return kb(megs * 1024);
 }
+
+namespace {
+
+template <size_t Alignment>
+struct alignas(Alignment) OverAlignedValue {
+  std::byte data[Alignment];
+};
+
+template <typename T>
+void expectAlignedAllocations() {
+  using Allocator = typename std::allocator_traits<
+      folly::CxxHugePageAllocator<uint8_t>>::template rebind_alloc<T>;
+
+  constexpr size_t kSamples = 1024;
+  constexpr size_t kMaxLiveAllocations = 64;
+
+  Allocator allocator;
+  std::minstd_rand rng;
+  std::vector<std::pair<T*, size_t>> allocations;
+  allocations.reserve(kMaxLiveAllocations);
+  for (size_t sample = 0; sample < kSamples; ++sample) {
+    const size_t count = 1 + rng() % 128;
+    auto* allocation = allocator.allocate(count);
+    ASSERT_NE(nullptr, allocation);
+    EXPECT_EQ(0, reinterpret_cast<uintptr_t>(allocation) % alignof(T));
+    allocations.emplace_back(allocation, count);
+
+    if (allocations.size() == kMaxLiveAllocations) {
+      const size_t index = rng() % allocations.size();
+      const auto [releasedAllocation, releasedCount] = allocations[index];
+      allocator.deallocate(releasedAllocation, releasedCount);
+      allocations[index] = allocations.back();
+      allocations.pop_back();
+    }
+  }
+  for (const auto& [allocation, count] : allocations) {
+    allocator.deallocate(allocation, count);
+  }
+}
+
+} // namespace
 
 TEST(JemallocHugePageAllocatorTest, Basic) {
   EXPECT_FALSE(jha::initialized());
@@ -299,6 +341,11 @@ TEST(JemallocHugePageAllocatorTest, STLAllocator) {
   if (initialized) {
     EXPECT_TRUE(jha::addressInArena(&map1[1][0]));
   }
+}
+
+TEST(JemallocHugePageAllocatorTest, STLAllocatorSupportsOverAlignedRebind) {
+  expectAlignedAllocations<OverAlignedValue<32>>();
+  expectAlignedAllocations<OverAlignedValue<64>>();
 }
 
 TEST(JemallocHugePageAllocatorTest, Grow) {

@@ -23,6 +23,9 @@
 
 namespace folly {
 
+template <typename T>
+class CxxHugePageAllocator;
+
 /**
  * An allocator which uses Jemalloc to create a dedicated huge page arena,
  * backed by 2MB huge pages (on linux x86-64).
@@ -72,6 +75,13 @@ class JemallocHugePageAllocator {
   static bool addressInArena(void* address);
 
  private:
+  template <typename T>
+  friend class CxxHugePageAllocator;
+
+  static void* allocateAligned(size_t size, size_t alignment);
+
+  static void deallocateAligned(void* p);
+
   static bool hugePagesAllocSupported();
 
   static int flags_;
@@ -92,9 +102,17 @@ class CxxHugePageAllocator {
   explicit CxxHugePageAllocator(CxxHugePageAllocator<U> const&) {}
 
   T* allocate(std::size_t n) {
+    if constexpr (alignof(T) > alignof(std::max_align_t)) {
+      return static_cast<T*>(JemallocHugePageAllocator::allocateAligned(
+          sizeof(T) * n, alignof(T)));
+    }
     return static_cast<T*>(JemallocHugePageAllocator::allocate(sizeof(T) * n));
   }
   void deallocate(T* p, std::size_t n) {
+    if constexpr (alignof(T) > alignof(std::max_align_t)) {
+      JemallocHugePageAllocator::deallocateAligned(p);
+      return;
+    }
     JemallocHugePageAllocator::deallocate(p, sizeof(T) * n);
   }
 

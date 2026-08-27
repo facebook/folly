@@ -19,6 +19,7 @@
 #include <sstream>
 
 #include <folly/CPortability.h>
+#include <folly/Memory.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/Malloc.h>
 #include <folly/portability/String.h>
@@ -410,6 +411,16 @@ void* JemallocHugePageAllocator::allocate(size_t size) {
   return hugePagesAllocSupported() ? mallocx(size, flags_) : malloc(size);
 }
 
+void* JemallocHugePageAllocator::allocateAligned(
+    size_t size, size_t alignment) {
+#if FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED
+  if (hugePagesAllocSupported()) {
+    return mallocx(size, flags_ | MALLOCX_ALIGN(alignment));
+  }
+#endif
+  return folly::aligned_malloc(size, alignment);
+}
+
 void* JemallocHugePageAllocator::reallocate(void* p, size_t size) {
   return hugePagesAllocSupported()
       ? rallocx(p, size, flags_)
@@ -418,6 +429,16 @@ void* JemallocHugePageAllocator::reallocate(void* p, size_t size) {
 
 void JemallocHugePageAllocator::deallocate(void* p, size_t) {
   hugePagesAllocSupported() ? dallocx(p, flags_) : free(p);
+}
+
+void JemallocHugePageAllocator::deallocateAligned(void* p) {
+#if FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED
+  if (hugePagesAllocSupported()) {
+    dallocx(p, flags_);
+    return;
+  }
+#endif
+  folly::aligned_free(p);
 }
 
 bool JemallocHugePageAllocator::initialized() {

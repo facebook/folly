@@ -79,6 +79,7 @@ folly_add_library(
   DEPS
     ${GLOG_LIBRARIES}
     folly_c_portability
+    folly_memory
     folly_memory_malloc
     folly_portability_malloc
     folly_portability_string

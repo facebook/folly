@@ -178,6 +178,7 @@ fb_dirsync_cpp_library(
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:c_portability",
+        "//folly:memory",
         "//folly/memory:malloc",
         "//folly/portability:malloc",
         "//folly/portability:string",
