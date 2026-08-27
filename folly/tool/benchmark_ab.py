@@ -173,18 +173,18 @@ class AttemptPaths:
 class AttemptArtifact:
     json_path: Path
     returncode: int | None
-    convergence_failed: bool | None
+    run_incomplete: bool | None
 
     @property
     def completed(self) -> bool:
-        return self.returncode is not None and self.convergence_failed is not None
+        return self.returncode is not None and self.run_incomplete is not None
 
     @property
     def usable(self) -> bool:
         return (
             self.returncode == 0
             and self.json_path.exists()
-            and self.convergence_failed is False
+            and self.run_incomplete is False
         )
 
 
@@ -814,19 +814,19 @@ def load_attempt_artifact(paths: AttemptPaths) -> AttemptArtifact:
         return AttemptArtifact(
             json_path=paths.json,
             returncode=None,
-            convergence_failed=None,
+            run_incomplete=None,
         )
     completion: object = json.loads(paths.completion.read_text(encoding="utf-8"))
     if type(completion) is not dict:
         raise ValueError(f"invalid attempt completion file: {paths.completion}")
     returncode = completion.get("returncode")
-    convergence_failed = completion.get("convergence_failed")
-    if type(returncode) is not int or type(convergence_failed) is not bool:
+    run_incomplete = completion.get("run_incomplete")
+    if type(returncode) is not int or type(run_incomplete) is not bool:
         raise ValueError(f"invalid attempt completion file: {paths.completion}")
     return AttemptArtifact(
         json_path=paths.json,
         returncode=returncode,
-        convergence_failed=convergence_failed,
+        run_incomplete=run_incomplete,
     )
 
 
@@ -834,14 +834,14 @@ def write_attempt_completion(
     completion_path: Path,
     *,
     returncode: int,
-    convergence_failed: bool,
+    run_incomplete: bool,
 ) -> None:
     temporary_path = completion_path.with_suffix(".tmp")
     temporary_path.write_text(
         json.dumps(
             {
                 "returncode": returncode,
-                "convergence_failed": convergence_failed,
+                "run_incomplete": run_incomplete,
             },
             sort_keys=True,
         )
@@ -878,8 +878,8 @@ def attempt_problem_summary(attempt: AttemptArtifact) -> str:
         return f"failed with exit {attempt.returncode}"
     if not attempt.json_path.exists():
         return "did not write JSON"
-    if attempt.convergence_failed:
-        return "did not converge"
+    if attempt.run_incomplete:
+        return "run was incomplete"
     return "was not usable"
 
 
@@ -910,16 +910,16 @@ def run_one_benchmark(
             ),
             log_path=paths.log,
         )
-        convergence_failed = log_has_convergence_failure(paths.log)
+        run_incomplete = log_has_incomplete_run(paths.log)
         artifact = AttemptArtifact(
             json_path=paths.json,
             returncode=returncode,
-            convergence_failed=convergence_failed,
+            run_incomplete=run_incomplete,
         )
         write_attempt_completion(
             paths.completion,
             returncode=returncode,
-            convergence_failed=convergence_failed,
+            run_incomplete=run_incomplete,
         )
         attempts.append(artifact)
         if artifact.usable:
@@ -990,12 +990,12 @@ def run_rounds(
 ### Stored artifact loading
 
 
-def log_has_convergence_failure(log_path: Path) -> bool:
-    # TODO: Extend //folly:benchmark's JSON contract to identify which rows
-    # converged, so benchmark_ab can retain converged rows from a partial run.
+def log_has_incomplete_run(log_path: Path) -> bool:
+    # TODO: Extend //folly:benchmark's JSON contract with per-benchmark
+    # completion status, so benchmark_ab can retain usable rows from a partial run.
     if not log_path.exists():
         return True
-    return "Did not converge:" in log_path.read_text(encoding="utf-8", errors="replace")
+    return "[RUN INCOMPLETE]" in log_path.read_text(encoding="utf-8", errors="replace")
 
 
 def load_results(json_path: Path) -> dict[BenchmarkId, float]:
@@ -1108,7 +1108,7 @@ def needs_attention_for_run(
         elif any(not attempt.json_path.exists() for attempt in attempts):
             reason = f"Benchmark run wrote no JSON after {try_count_text(count)}"
         else:
-            reason = f"Benchmark run did not converge after {try_count_text(count)}"
+            reason = f"Benchmark run was incomplete after {try_count_text(count)}"
     return NeedsAttention(
         round_number=artifact.round_number,
         side=artifact.side,

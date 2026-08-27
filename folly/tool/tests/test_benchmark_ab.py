@@ -74,7 +74,7 @@ class RelativeRevisionWorkspace(CheckoutTrackingWorkspace):
 @dataclass
 class FakeBuckRunner:
     expected_target: str
-    nonconverged_runs: int = 0
+    incomplete_runs: int = 0
     run_count: int = 0
 
     def run_buck(
@@ -97,9 +97,11 @@ class FakeBuckRunner:
             )
         )
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        # Simulate non-converged runs followed by a successful run.
+        # Simulate incomplete runs followed by a successful run.
         log_path.write_text(
-            "Did not converge:\n" if self.run_count <= self.nonconverged_runs else "",
+            "[RUN INCOMPLETE] Did not converge:\n"
+            if self.run_count <= self.incomplete_runs
+            else "",
             encoding="utf-8",
         )
         # Distinguish runs so tests can verify which attempt supplied the result.
@@ -146,7 +148,7 @@ class BenchmarkAbTest(unittest.TestCase):
             attempt,
         )
         paths.directory.mkdir(parents=True)
-        convergence_failed = results is None
+        run_incomplete = results is None
         paths.json.write_text(
             json.dumps(
                 []
@@ -160,13 +162,13 @@ class BenchmarkAbTest(unittest.TestCase):
             encoding="utf-8",
         )
         paths.log.write_text(
-            "did not converge\n" if convergence_failed else "",
+            "[RUN INCOMPLETE] Did not converge:\n" if run_incomplete else "",
             encoding="utf-8",
         )
         benchmark_ab.write_attempt_completion(
             paths.completion,
             returncode=0,
-            convergence_failed=convergence_failed,
+            run_incomplete=run_incomplete,
         )
 
     def _materialize_artifacts(self, out: Path) -> None:
@@ -504,7 +506,7 @@ class BenchmarkAbTest(unittest.TestCase):
             )
             buck = FakeBuckRunner(
                 self.target.build_target,
-                nonconverged_runs=1,
+                incomplete_runs=1,
             )
 
             artifact = benchmark_ab.run_one_benchmark(
@@ -519,7 +521,7 @@ class BenchmarkAbTest(unittest.TestCase):
             self.assertEqual(2, buck.run_count)
             self.assertEqual(
                 [True, False],
-                [attempt.convergence_failed for attempt in artifact.attempts],
+                [attempt.run_incomplete for attempt in artifact.attempts],
             )
             self.assertEqual(
                 {self._benchmark("measured"): 2.0},
@@ -535,15 +537,18 @@ class BenchmarkAbTest(unittest.TestCase):
                 buck_executable=Path(sys.executable),
             )
 
-            # Folly writes the convergence marker to stderr. If it escapes the
-            # log, run_one_benchmark() can accept a non-converged result.
+            # Folly writes the incomplete-run marker to stderr. If it escapes
+            # the log, run_one_benchmark() can accept an unusable result.
             returncode = workspace.run_buck(
-                ["-c", "import sys; print('Did not converge:', file=sys.stderr)"],
+                [
+                    "-c",
+                    "import sys; print('[RUN INCOMPLETE]', file=sys.stderr)",
+                ],
                 log_path=log_path,
             )
 
             self.assertEqual(0, returncode)
-            self.assertTrue(benchmark_ab.log_has_convergence_failure(log_path))
+            self.assertTrue(benchmark_ab.log_has_incomplete_run(log_path))
 
     def test_workspace_queries_buck_from_discovered_cell(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -660,21 +665,6 @@ else:
                     expected,
                     benchmark_ab.benchmark_text(report, build_target, benchmark),
                 )
-
-    def test_convergence_check_uses_adaptive_failure_marker(self) -> None:
-        with tempfile.TemporaryDirectory() as temp:
-            log_path = Path(temp) / "benchmark.log"
-
-            # Verbose logs include benchmark names, so a name containing this
-            # word must not turn a successful run into a retry.
-            log_path.write_text(
-                "unconverged_benchmark\ndid not converge:\n",
-                encoding="utf-8",
-            )
-            self.assertFalse(benchmark_ab.log_has_convergence_failure(log_path))
-
-            log_path.write_text("Did not converge:\n", encoding="utf-8")
-            self.assertTrue(benchmark_ab.log_has_convergence_failure(log_path))
 
     def test_reanalyze_requires_a_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

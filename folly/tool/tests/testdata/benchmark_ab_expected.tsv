@@ -1,5 +1,5 @@
 class	estimated_delta_ns	estimated_delta_pct	median_before_ns	median_after_ns	benchmark	benchmark_file	target	details	before_Δ
-needs-attention							fbcode//folly/test:bench	before round 1; Benchmark run did not converge after 1 try; logs: round_1/before_bench	
+needs-attention							fbcode//folly/test:bench	before round 1; Benchmark run was incomplete after 1 try; logs: round_1/before_bench	
 only-after					only_after	fixture.cpp	fbcode//folly/test:bench	rounds 2-4	
 only-before					only_before	fixture.cpp	fbcode//folly/test:bench	rounds 2-4	
 win-hi-pri	-2.0	-13.3	15.0	13.0	same_name	win.cpp	fbcode//folly/test:bench		10.0-2.0, 15.0-2.0, (20.0-0.5)

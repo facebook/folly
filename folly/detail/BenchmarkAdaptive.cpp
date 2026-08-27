@@ -92,6 +92,16 @@ bool isPrecise(const PercentileCI& ci, double targetPrecisionPct) {
   return ci.width() <= precisionBudgetNs(ci.estimate, targetPrecisionPct);
 }
 
+void logRunIncomplete(const char* reason, const std::string& benchmarks) {
+  if (benchmarks.empty()) {
+    return;
+  }
+  // `benchmark_ab.py::log_has_incomplete_run()` matches only this sigil; the
+  // reason remains a human-readable diagnostic.
+  LOG(ERROR) << kANSIBoldRed << "[RUN INCOMPLETE] " << reason << ":"
+             << kANSIReset << benchmarks;
+}
+
 std::string formatPrecision(const PercentileCI& ci, double targetPrecisionPct) {
   std::ostringstream oss;
   auto budget = precisionBudgetNs(ci.estimate, targetPrecisionPct);
@@ -218,13 +228,17 @@ struct BenchState {
             .isStable;
   }
 
+  bool hasMetMinimums() const {
+    return samples.size() >= opts->minSamples &&
+        elapsed >= duration<double>(opts->minSecs);
+  }
+
   bool checkDone() {
     if (elapsed >= seconds(opts->maxSecs)) {
       done = true;
       return true;
     }
-    if (samples.size() < opts->minSamples ||
-        elapsed < duration<double>(opts->minSecs)) {
+    if (!hasMetMinimums()) {
       return false;
     }
     if (!isStable()) {
@@ -329,14 +343,20 @@ FOLLY_NOINLINE std::string formatIntermediateReport(
     tableResults.push_back(
         {s.reg->file, s.name, pctile, s.countersForEstimate(pctile)});
 
-    bool converged = s.samples.size() >= opts.minSamples && s.isStable() &&
+    bool converged = s.hasMetMinimums() && s.isStable() &&
         isPrecise(sorted.percentileCI(opts.targetPercentile),
                   opts.targetPrecisionPct);
     if (converged) {
       annotations.emplace_back();
     } else {
       anyNonConverged = true;
-      annotations.emplace_back(s.isStable() ? "[imprecise]" : "[unstable]");
+      if (!s.hasMetMinimums()) {
+        annotations.emplace_back("[gathering minimums]");
+      } else if (s.isStable()) {
+        annotations.emplace_back("[imprecise]");
+      } else {
+        annotations.emplace_back("[unstable]");
+      }
       if (s.samples.size() >= opts.minSamples) {
         stats += "\n  " + s.formatStats();
       }
@@ -447,7 +467,8 @@ struct SamplingLoop {
     }
 
     // Check done and collect newly-done benchmarks by category
-    std::string converged, timedOutUnstable, timedOutImprecise;
+    std::string converged, timedOutBeforeMinimums, timedOutUnstable,
+        timedOutImprecise;
     bool allDone = true;
     for (auto& s : states) {
       bool wasDone = s.done;
@@ -457,6 +478,8 @@ struct SamplingLoop {
         bool exceeded = s.elapsed >= seconds(opts.maxSecs);
         if (!exceeded) {
           converged += "\n  " + s.formatStats();
+        } else if (!s.hasMetMinimums()) {
+          timedOutBeforeMinimums += "\n  " + s.formatStats();
         } else if (!s.isStable()) {
           timedOutUnstable += "\n  " + s.formatStats();
         } else {
@@ -468,6 +491,13 @@ struct SamplingLoop {
     if (!converged.empty()) {
       msg += fmt::format(
           "\n{}→ Converged:{}{}", kANSIBoldGreen, kANSIReset, converged);
+    }
+    if (!timedOutBeforeMinimums.empty()) {
+      msg += fmt::format(
+          "\n{}→ Exceeded max_secs (minimums unmet):{}{}",
+          kANSIBoldYellow,
+          kANSIReset,
+          timedOutBeforeMinimums);
     }
     if (!timedOutUnstable.empty()) {
       msg += fmt::format(
@@ -556,22 +586,23 @@ AdaptiveResult runBenchmarksAdaptive(
         states);
   }
 
-  // Log errors for benchmarks that didn't converge (stability or CI failures)
+  // Report unmet minimums separately from convergence failures.
   {
-    std::string msg;
+    std::string didNotConverge;
+    std::string didNotMeetMinimums;
     for (const auto& s : states) {
-      if (!s.isStable() ||
+      if (!s.hasMetMinimums()) {
+        didNotMeetMinimums += "\n  " + s.formatStats();
+      } else if (
+          !s.isStable() ||
           !isPrecise(
               SortedSamples(s.timings()).percentileCI(opts.targetPercentile),
               opts.targetPrecisionPct)) {
-        msg += "\n  " + s.formatStats();
+        didNotConverge += "\n  " + s.formatStats();
       }
     }
-    if (!msg.empty()) {
-      // If this text changes, update `log_has_convergence_failure()` in
-      // `folly/tool/benchmark_ab.py`.
-      LOG(ERROR) << kANSIBoldRed << "Did not converge:" << kANSIReset << msg;
-    }
+    logRunIncomplete("Did not converge", didNotConverge);
+    logRunIncomplete("Did not meet minimums", didNotMeetMinimums);
   }
 
   result.results.reserve(states.size());

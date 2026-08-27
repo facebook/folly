@@ -13,7 +13,7 @@
 - hi-pri `>=1.0ns` and `>=10.0%`
 - lo-pri `>=0.5ns` and `>=5.0%`
 
-## Needs attention: Benchmark run did not converge after 1 try
+## Needs attention: Benchmark run was incomplete after 1 try
 
 - Round 1, `fbcode//folly/test:bench` (before); [see logs](round_1/before_bench).
 

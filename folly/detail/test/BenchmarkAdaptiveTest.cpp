@@ -17,6 +17,7 @@
 #include <folly/detail/BenchmarkAdaptive.h>
 
 #include <folly/portability/GTest.h>
+#include <folly/testing/TestUtil.h>
 
 #include <cmath>
 
@@ -223,6 +224,31 @@ TEST(AdaptiveTest, EmptyBenchmarks) {
       {}, defaultBaseline(), noOpSuspenderBaseline(), defaultTestOptions());
   EXPECT_TRUE(result.results.empty());
   EXPECT_EQ(result.totalRounds, 0);
+}
+
+TEST(AdaptiveTest, TimeoutBeforeMinimumSamplesReportsIncompleteRun) {
+  folly::test::CaptureFD stderrCapture(fileno(stderr));
+  auto opts = defaultTestOptions();
+  opts.sliceUsec = 250'000;
+  opts.targetPrecisionPct = 100.0;
+  opts.minSamples = 100;
+  opts.maxSecs = 1;
+  opts.verbose = false;
+  opts.quiet = true;
+
+  std::vector<BenchmarkRegistration> benchmarks{makeReg("constant", 250ms)};
+  const auto result = runBenchmarksAdaptive(
+      toPtrs(benchmarks), defaultBaseline(), noOpSuspenderBaseline(), opts);
+  stderrCapture.release();
+  const auto logs = stderrCapture.read();
+
+  // Four constant samples pass split-half stability and precision. The run is
+  // unusable only because it did not reach `minSamples`.
+  EXPECT_GE(result.totalRounds, 4);
+  EXPECT_LT(result.totalRounds, opts.minSamples);
+  EXPECT_NE(
+      logs.find("[RUN INCOMPLETE] Did not meet minimums:"), std::string::npos);
+  EXPECT_EQ(logs.find("[RUN INCOMPLETE] Did not converge:"), std::string::npos);
 }
 
 TEST(AdaptiveTest, SingleBenchmark) {
