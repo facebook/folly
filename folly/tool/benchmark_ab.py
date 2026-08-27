@@ -53,17 +53,20 @@ benchmarks:
 
 Results:
 
-  15.2+11.1ns (+73.0%): try_to_result_error
+  15.2+11.1ns (+73.0%; 24/25 agree): try_to_result_error
     //folly/result/test:result_bench
-    15.2+11.2, 15.2+11.1, 15.3+11.0
+    14.9+11.4, 15.0+11.3, (15.2+0.1), 15.2+11.1, 15.4+10.9
 """
 
 RESULT_DOC = """\
 Each result line starts with the median "before" timing and a Hodges-Lehmann
 estimate of Δ ns.  We get one adaptive p{pct} timing per contributing run; the
 estimate is the median of every "after" minus "before" combination (e.g., 25
-differences from 5+5 round timings).  It also shows (Δ%) when median "before"
-exceeds 2ns.
+differences from 5+5 round timings).
+
+The headline also shows:
+- `(Δ%)` when median "before" exceeds 2ns.
+- `(24/25 agree)` when displayed differences do not all support estimated Δ.
 
 A benchmark appears in the lo-pri or hi-pri section when estimated Δ meets
 both that section's nanosecond and percentage thresholds.
@@ -279,6 +282,22 @@ class ComparisonRow:
     build_target: str
     benchmark: BenchmarkId
     observations: tuple[Observation, ...]
+
+
+@dataclass(frozen=True)
+class DirectionAgreement:
+    agreeing: int
+    total: int
+
+    @property
+    def text(self) -> str:
+        if self.agreeing == self.total:
+            return ""
+        return f"{self.agreeing}/{self.total} agree"
+
+    @property
+    def pct(self) -> float:
+        return 100.0 * self.agreeing / self.total
 
 
 @dataclass(frozen=True)
@@ -1184,6 +1203,27 @@ def comparison_summary(
     )
 
 
+def direction_agreement(row: ComparisonRow) -> DirectionAgreement:
+    """Count before/after combinations that support Δ at report precision."""
+
+    # A difference displayed as 0.0ns is compatible with either direction.
+    def sign(value: float) -> int:
+        displayed = display_round(value)
+        return (displayed > 0) - (displayed < 0)
+
+    estimated_sign = sign(comparison_summary(row.observations).delta)
+    before = tuple(obs.before for obs in row.observations)
+    after = tuple(obs.after for obs in row.observations)
+    return DirectionAgreement(
+        agreeing=sum(
+            sign(after_time - before_time) in (0, estimated_sign)
+            for before_time in before
+            for after_time in after
+        ),
+        total=len(before) * len(after),
+    )
+
+
 def bucket_rows(
     rows: dict[tuple[str, BenchmarkId], list[Observation]],
     *,
@@ -1338,12 +1378,20 @@ def threshold_rounding_warning(
     ]
 
 
-def summary_text(summary: ComparisonSummary, pct_min_before_ns: float) -> str:
+def summary_text(
+    summary: ComparisonSummary,
+    pct_min_before_ns: float,
+    *,
+    agreement: str = "",
+) -> str:
     # TODO: Scale slower rows to us or s, including their per-run values.
-    percentage = ""
+    details = []
     if summary.before > pct_min_before_ns:
-        percentage = f" ({fmt_signed_value(summary.pct)}%)"
-    return f"{fmt_value(summary.before)}{fmt_signed_value(summary.delta)}ns{percentage}"
+        details.append(f"{fmt_signed_value(summary.pct)}%")
+    if agreement:
+        details.append(agreement)
+    suffix = f" ({'; '.join(details)})" if details else ""
+    return f"{fmt_value(summary.before)}{fmt_signed_value(summary.delta)}ns{suffix}"
 
 
 def threshold_pairs(
@@ -1397,6 +1445,7 @@ def section_table(report: ComparisonReport, section: ReportSection) -> list[str]
                     summary_text(
                         comparison_summary(row.observations),
                         PCT_MIN_BEFORE_NS,
+                        agreement=direction_agreement(row).text,
                     ),
                     benchmark_text(report, row.build_target, row.benchmark),
                     row.build_target,
@@ -1562,7 +1611,7 @@ def section_terminal(
     for row in section.rows:
         lines.extend(
             [
-                f"{summary_text(comparison_summary(row.observations), PCT_MIN_BEFORE_NS)}: "
+                f"{summary_text(comparison_summary(row.observations), PCT_MIN_BEFORE_NS, agreement=direction_agreement(row).text)}: "
                 f"{benchmark_text(report, row.build_target, row.benchmark)}",
                 f"  {row.build_target}",
                 f"  {', '.join(threshold_pairs(row, section=section, markdown=False))}",
@@ -1669,6 +1718,7 @@ def tsv_rows(
                     "estimated_delta_pct": fmt_value(summary.pct),
                     "median_before_ns": fmt_value(summary.before),
                     "median_after_ns": fmt_value(summary.after),
+                    "direction_agreement_pct": fmt_value(direction_agreement(row).pct),
                     "benchmark": row.benchmark.name,
                     "benchmark_file": row.benchmark.file,
                     "target": row.build_target,
@@ -1692,6 +1742,7 @@ def render_tsv(report: ComparisonReport, *, out_dir: Path) -> str:
             "estimated_delta_pct",
             "median_before_ns",
             "median_after_ns",
+            "direction_agreement_pct",
             "benchmark",
             "benchmark_file",
             "target",

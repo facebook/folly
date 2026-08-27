@@ -28,8 +28,11 @@ Legend:
 Each result line starts with the median "before" timing and a Hodges-Lehmann
 estimate of Δ ns.  We get one adaptive p33.3 timing per contributing run; the
 estimate is the median of every "after" minus "before" combination (e.g., 25
-differences from 5+5 round timings).  It also shows (Δ%) when median "before"
-exceeds 2ns.
+differences from 5+5 round timings).
+
+The headline also shows:
+- `(Δ%)` when median "before" exceeds 2ns.
+- `(24/25 agree)` when displayed differences do not all support estimated Δ.
 
 A benchmark appears in the lo-pri or hi-pri section when estimated Δ meets
 both that section's nanosecond and percentage thresholds.
@@ -42,19 +45,19 @@ Within each priority section, rows are sorted by estimated Δ, smallest first.
 
 High-priority wins:
 
-15.0-2.0ns (-13.3%): same_name (win.cpp)
+15.0-2.0ns (-13.3%; 6/9 agree): same_name (win.cpp)
   fbcode//folly/test:bench
   10.0-2.0, 15.0-2.0, (20.0-0.5)
 
 Low-priority wins:
 
-15.0-0.8ns (-5.3%): low_win
+15.0-0.8ns (-5.3%; 6/9 agree): low_win
   fbcode//folly/test:bench
   10.0-0.8, 15.0-0.8, (20.0-0.8)
 
 Low-priority regressions:
 
-15.0+0.8ns (+5.3%): low_loss
+15.0+0.8ns (+5.3%; 6/9 agree): low_loss
   fbcode//folly/test:bench
   10.0+0.8, 15.0+0.8, (20.0+0.8)
 

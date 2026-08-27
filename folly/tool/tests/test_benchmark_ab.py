@@ -134,6 +134,20 @@ class BenchmarkAbTest(unittest.TestCase):
     def _benchmark(name: str) -> benchmark_ab.BenchmarkId:
         return benchmark_ab.BenchmarkId(file="fixture.cpp", name=name)
 
+    def _row(
+        self,
+        name: str,
+        pairs: Sequence[tuple[float, float]],
+    ) -> benchmark_ab.ComparisonRow:
+        return benchmark_ab.ComparisonRow(
+            build_target=self.target.build_target,
+            benchmark=self._benchmark(name),
+            observations=tuple(
+                benchmark_ab.Observation(round_number, before, after)
+                for round_number, (before, after) in enumerate(pairs, start=1)
+            ),
+        )
+
     def _write_attempt_artifact(
         self,
         out: Path,
@@ -178,6 +192,7 @@ class BenchmarkAbTest(unittest.TestCase):
                 (10.0, 10.2),
                 (10.0, 10.3),
             ),
+            # Round 1 is absent, but the remaining 3x3 differences all agree.
             benchmark_ab.BenchmarkId(file="loss.cpp", name="same_name"): (
                 (1.0, 3.0),
                 (1.5, 3.0),
@@ -824,26 +839,19 @@ else:
             ).pct,
         )
 
-    def test_bucket_omits_mixed_directions_with_zero_estimated_delta(self) -> None:
-        rows = {
-            (self.target.build_target, self._benchmark("mixed_directions")): [
-                benchmark_ab.Observation(round_number, 10.0, after)
-                for round_number, after in enumerate(
-                    (8.0, 8.0, 8.0, 12.0, 12.0, 12.0),
-                    start=1,
-                )
-            ]
-        }
-        threshold = benchmark_ab.Threshold(ns=1.0, pct=10.0)
+    def test_direction_agreement_ignores_sub_display_precision(self) -> None:
+        almost_tied = self._row("almost_tied", ((10.0, 9.96), (10.0, 11.0)))
+        self.assertEqual("", benchmark_ab.direction_agreement(almost_tied).text)
 
-        self.assertEqual(
-            (),
-            benchmark_ab.bucket_rows(rows, direction=-1, threshold=threshold),
+    def test_zero_estimate_has_no_direction_agreement(self) -> None:
+        row = self._row(
+            "mixed_directions",
+            tuple((10.0, after) for after in (8.0, 8.0, 8.0, 12.0, 12.0, 12.0)),
         )
-        self.assertEqual(
-            (),
-            benchmark_ab.bucket_rows(rows, direction=1, threshold=threshold),
-        )
+
+        # A zero estimate must not inherit either nonzero direction: the mixed
+        # timing combinations should be visible as disagreement, not confidence.
+        self.assertEqual("0/36 agree", benchmark_ab.direction_agreement(row).text)
 
     def test_bucket_classifies_by_cross_side_estimate_not_round_votes(self) -> None:
         rows = {
