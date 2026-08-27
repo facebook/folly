@@ -36,10 +36,16 @@ The positional arguments are Buck target patterns.  At the "before" revision,
 the tool expands each pattern to runnable C++ tests and binaries that
 transitively depend on `//folly:benchmark`, excluding targets with the Buck
 label `not_a_folly_benchmark`.  It runs that fixed target set at both revisions.
-Benchmark targets absent from "before" are not measured.  Each round checks out
-both requested `sl` revisions.  At the end, we restore the starting revision.
-A failed target invocation, or one where any benchmark fails to converge, is
-retried. Results contribute only after a successful, fully converged attempt.
+Benchmark targets absent from "before" are not measured. Before measurement,
+the tool builds both revisions and saves their executables in the artifact
+directory under `binaries/{before,after}/<unique artifact name>` within
+`--out`. It then runs those saved executables directly. A build failure aborts
+immediately; complete output remains in `build_{before,after}.log` within
+`--out`.
+
+Each side's benchmark executable is attempted up to `--max-run-attempts` after
+a process failure or nonconverged run. Exhausted runs are reported as unusable.
+The starting revision is restored after success or failure.
 
 The output directory stores the raw benchmark output plus text, Markdown, and
 sortable TSV reports. A concise comparison goes to stdout; progress goes to
@@ -86,6 +92,7 @@ import csv
 import io
 import json
 import math
+import os
 import re
 import shutil
 import statistics
@@ -395,7 +402,17 @@ class BuckRunner(Protocol):
     ) -> int: ...
 
 
-class Workspace(BuckQuery, BuckRunner, Protocol):
+class BenchmarkRunner(Protocol):
+    def run_executable(
+        self,
+        executable: Path,
+        arguments: Sequence[str],
+        *,
+        log_path: Path,
+    ) -> int: ...
+
+
+class Workspace(BuckQuery, BuckRunner, BenchmarkRunner, Protocol):
     def has_changes(self, *, include_untracked: bool) -> bool: ...
 
     def resolve_revision(self, revision: str) -> str: ...
@@ -831,6 +848,23 @@ class SaplingWorkspace:
                 text=True,
             ).returncode
 
+    def run_executable(
+        self,
+        executable: Path,
+        arguments: Sequence[str],
+        *,
+        log_path: Path,
+    ) -> int:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("w", encoding="utf-8") as out:
+            return subprocess.run(
+                [str(executable), *arguments],
+                cwd=self.root,
+                stdout=out,
+                stderr=subprocess.STDOUT,
+                text=True,
+            ).returncode
+
     def has_changes(self, *, include_untracked: bool) -> bool:
         return bool(
             subprocess.check_output(
@@ -912,14 +946,9 @@ def attempt_paths(
 def benchmark_arguments(
     args: argparse.Namespace,
     *,
-    target: BenchmarkTarget,
     json_path: Path,
 ) -> list[str]:
     return [
-        "run",
-        args.mode,
-        target.build_target,
-        "--",
         "--benchmark",
         "--bm_mode=adaptive",
         f"--bm_target_percentile={BM_TARGET_PERCENTILE}",
@@ -927,6 +956,91 @@ def benchmark_arguments(
         f"--bm_json_verbose={json_path}",
         "--bm_verbose",
     ]
+
+
+def save_built_executables(
+    *,
+    side: str,
+    log_path: Path,
+    out_dir: Path,
+    targets: Sequence[BenchmarkTarget],
+) -> dict[BenchmarkTarget, Path]:
+    target_to_output: dict[str, Path] = {}
+    expected_targets = {target.build_target for target in targets}
+    for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        build_target, separator, output = line.partition(" ")
+        if separator and build_target in expected_targets:
+            output_path = Path(output.strip())
+            previous = target_to_output.setdefault(build_target, output_path)
+            if previous != output_path:
+                raise SystemExit(
+                    f"{side} build reported multiple outputs for "
+                    f"{build_target}; full output: {log_path}"
+                )
+
+    binary_dir = out_dir / "binaries" / side
+    binary_dir.mkdir(parents=True, exist_ok=True)
+    executables: dict[BenchmarkTarget, Path] = {}
+    for target in targets:
+        source = target_to_output.get(target.build_target)
+        if (
+            source is None
+            or not source.is_absolute()
+            or not source.is_file()
+            or not os.access(source, os.X_OK)
+        ):
+            raise SystemExit(
+                f"{side} build did not report an executable for "
+                f"{target.build_target}; full output: {log_path}"
+            )
+        destination = binary_dir / target.artifact_name
+        shutil.copy2(source, destination)
+        executables[target] = destination
+    return executables
+
+
+def preflight_builds(
+    args: argparse.Namespace,
+    manifest: MeasurementManifest,
+    workspace: Workspace,
+) -> dict[tuple[str, BenchmarkTarget], Path]:
+    executables: dict[tuple[str, BenchmarkTarget], Path] = {}
+    for side, revision in (
+        (BEFORE_SIDE, manifest.before),
+        (AFTER_SIDE, manifest.after),
+    ):
+        workspace.checkout(revision)
+        log_path = args.out / f"build_{side}.log"
+        print(
+            progress_line(
+                f"building {len(manifest.targets)} targets ({side}); "
+                f"full output: {log_path}"
+            ),
+            file=sys.stderr,
+            flush=True,
+        )
+        returncode = workspace.run_buck(
+            [
+                "build",
+                manifest.mode,
+                "--show-full-output",
+                *(target.build_target for target in manifest.targets),
+            ],
+            log_path=log_path,
+        )
+        if returncode != 0:
+            raise SystemExit(
+                f"{side} revision build failed with exit {returncode}; "
+                f"full output: {log_path}"
+            )
+        for target, executable in save_built_executables(
+            side=side,
+            log_path=log_path,
+            out_dir=args.out,
+            targets=manifest.targets,
+        ).items():
+            executables[(side, target)] = executable
+    return executables
 
 
 def load_attempt_artifact(paths: AttemptPaths) -> AttemptArtifact:
@@ -1012,7 +1126,8 @@ def run_one_benchmark(
     round_count: int,
     side: str,
     target: BenchmarkTarget,
-    buck: BuckRunner,
+    executable: Path,
+    runner: BenchmarkRunner,
 ) -> RunArtifact:
     base_dir = run_dir(args.out, round_number, side, target)
     attempts: list[AttemptArtifact] = []
@@ -1024,10 +1139,10 @@ def run_one_benchmark(
     )
     for attempt in range(1, max_attempts + 1):
         paths = attempt_paths(base_dir, target, attempt)
-        returncode = buck.run_buck(
+        returncode = runner.run_executable(
+            executable,
             benchmark_arguments(
                 args,
-                target=target,
                 json_path=paths.json,
             ),
             log_path=paths.log,
@@ -1076,16 +1191,13 @@ def check_working_copy(args: argparse.Namespace, workspace: Workspace) -> None:
 def run_rounds(
     args: argparse.Namespace,
     manifest: MeasurementManifest,
-    workspace: Workspace,
+    executables: dict[tuple[str, BenchmarkTarget], Path],
+    runner: BenchmarkRunner,
 ) -> None:
     rounds = args.rounds
     started_at = time.monotonic()
     for round_number in range(1, rounds + 1):
-        for side, revision in (
-            (BEFORE_SIDE, manifest.before),
-            (AFTER_SIDE, manifest.after),
-        ):
-            workspace.checkout(revision)
+        for side in (BEFORE_SIDE, AFTER_SIDE):
             for target in manifest.targets:
                 run_one_benchmark(
                     args,
@@ -1093,7 +1205,8 @@ def run_rounds(
                     round_count=rounds,
                     side=side,
                     target=target,
-                    buck=workspace,
+                    executable=executables[(side, target)],
+                    runner=runner,
                 )
         print(
             progress_line(
@@ -2241,7 +2354,8 @@ def run_measurement(
             return 0
         args.out.mkdir(parents=True, exist_ok=True)
         write_manifest(args.out, manifest)
-        run_rounds(args, manifest, workspace)
+        executables = preflight_builds(args, manifest, workspace)
+        run_rounds(args, manifest, executables, workspace)
     except KeyboardInterrupt:
         print("\nAborted. Restoring source tree via:", file=sys.stderr)
         print(f"  sl goto {start_rev}", file=sys.stderr, flush=True)

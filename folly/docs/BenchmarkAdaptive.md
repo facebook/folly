@@ -53,12 +53,17 @@ buck2 run @//mode/opt //your:benchmark -- --bm_mode=adaptive --bm_max_secs=30
 ```
 
 Pass `--bm_target_precision_pct` to control the convergence threshold — the
-measurement's 95% confidence interval must be narrower than this percentage of
-the estimate (the default `0.4` means precise to 0.4ns out of 100ns), with a
-10ps absolute floor for near-zero-cost benchmarks where relative precision is
-not meaningful. Tighten it (e.g., `0.1`) if you need finer discrimination
-between benchmarks, but note that binary layout effects (see below) often
-dominate at that level.
+measurement's 95% confidence interval must be no wider than this percentage of
+the estimate (the default `0.4` allows a 0.4ns-wide interval for a 100ns
+estimate).
+
+Near zero, a 20ps absolute floor replaces relative precision that has no stable
+meaning. In two benchmark comparison batches, 20ps cleared every observed
+precision failure; 30ps and 50ps cleared no additional precision failure.
+
+`--bm_target_precision_pct` also controls split-half stability tolerance, so
+tightening it can still affect convergence when the 20ps floor controls the CI
+width test. Binary layout effects (see below) often dominate at that level.
 
 _Watch out_: a "converged" measurement can still be wrong — see the next
 section.
@@ -249,9 +254,11 @@ while not converged:
 
 For each benchmark:
 
-1. Check stability (split-half agreement)
-2. Check accuracy (CI width < max(relative target, 10ps floor))
-3. Done when both pass, or timeout
+1. Collect the minimum samples and measurement time
+2. Check stability (split-half agreement)
+3. Check precision (CI width <= max(relative target, 20ps floor))
+4. Stop when all three pass. On timeout, report an incomplete run instead of
+   convergence
 
 **Phase 4: Report**
 

@@ -29,6 +29,31 @@ from pathlib import Path
 from folly.tool import benchmark_ab
 
 
+def _write_fake_benchmark_output(
+    arguments: Sequence[str],
+    *,
+    log_path: Path,
+    value: float,
+    run_incomplete: bool = False,
+) -> None:
+    json_path = Path(
+        next(
+            argument.removeprefix("--bm_json_verbose=")
+            for argument in arguments
+            if argument.startswith("--bm_json_verbose=")
+        )
+    )
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "[RUN INCOMPLETE] Did not converge:\n" if run_incomplete else "",
+        encoding="utf-8",
+    )
+    json_path.write_text(
+        json.dumps([["fixture.cpp", "measured", value]]),
+        encoding="utf-8",
+    )
+
+
 class CheckoutTrackingWorkspace:
     def __init__(self) -> None:
         self.current_revision = "start"
@@ -43,6 +68,15 @@ class CheckoutTrackingWorkspace:
         log_path: Path,
     ) -> int:
         raise AssertionError("Buck should not run")
+
+    def run_executable(
+        self,
+        executable: Path,
+        arguments: Sequence[str],
+        *,
+        log_path: Path,
+    ) -> int:
+        raise AssertionError("benchmark executable should not run")
 
     def has_changes(self, *, include_untracked: bool) -> bool:
         return False
@@ -72,11 +106,12 @@ class RelativeRevisionWorkspace(CheckoutTrackingWorkspace):
         return [self.build_target]
 
 
-@dataclass
-class FakeBuckRunner:
-    expected_target: str
-    incomplete_runs: int = 0
-    run_count: int = 0
+class BuildTrackingWorkspace(RelativeRevisionWorkspace):
+    def __init__(self, build_target: str, returncodes: list[int]) -> None:
+        super().__init__(build_target)
+        self.returncodes = returncodes
+        self.build_calls: list[tuple[str, list[str], Path]] = []
+        self.run_calls: list[tuple[Path, list[str], Path]] = []
 
     def run_buck(
         self,
@@ -84,31 +119,72 @@ class FakeBuckRunner:
         *,
         log_path: Path,
     ) -> int:
+        self.build_calls.append((self.current_revision, list(arguments), log_path))
+        returncode = self.returncodes.pop(0)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        lines = [f"build output at {self.current_revision}"]
+        if returncode == 0:
+            source_dir = log_path.parent / ".fake_buck" / self.current_revision
+            source_dir.mkdir(parents=True, exist_ok=True)
+            for index, build_target in enumerate(arguments[3:], start=1):
+                source = source_dir / f"benchmark_{index}"
+                source.write_text(
+                    f"{build_target} at {self.current_revision}\n",
+                    encoding="utf-8",
+                )
+                source.chmod(0o755)
+                lines.append(f"{build_target} {source}")
+        log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return returncode
+
+    def run_executable(
+        self,
+        executable: Path,
+        arguments: Sequence[str],
+        *,
+        log_path: Path,
+    ) -> int:
+        self.run_calls.append((executable, list(arguments), log_path))
+        _write_fake_benchmark_output(
+            arguments,
+            log_path=log_path,
+            value=1.0,
+        )
+        return 0
+
+
+@dataclass
+class FakeBenchmarkRunner:
+    expected_executable: Path
+    incomplete_runs: int = 0
+    run_count: int = 0
+
+    def run_executable(
+        self,
+        executable: Path,
+        arguments: Sequence[str],
+        *,
+        log_path: Path,
+    ) -> int:
         self.run_count += 1
         if (
-            list(arguments[:3]) != ["run", "@mode/opt", self.expected_target]
-            or "--bm_target_percentile=33.3" not in arguments
+            executable != self.expected_executable
+            or list(arguments[:4])
+            != [
+                "--benchmark",
+                "--bm_mode=adaptive",
+                "--bm_target_percentile=33.3",
+                "--bm_max_secs=30",
+            ]
+            or arguments[-1] != "--bm_verbose"
         ):
             return 2
-        json_path = Path(
-            next(
-                argument.removeprefix("--bm_json_verbose=")
-                for argument in arguments
-                if argument.startswith("--bm_json_verbose=")
-            )
-        )
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        # Simulate incomplete runs followed by a successful run.
-        log_path.write_text(
-            "[RUN INCOMPLETE] Did not converge:\n"
-            if self.run_count <= self.incomplete_runs
-            else "",
-            encoding="utf-8",
-        )
         # Distinguish runs so tests can verify which attempt supplied the result.
-        json_path.write_text(
-            json.dumps([["fixture.cpp", "measured", float(self.run_count)]]),
-            encoding="utf-8",
+        _write_fake_benchmark_output(
+            arguments,
+            log_path=log_path,
+            value=float(self.run_count),
+            run_incomplete=self.run_count <= self.incomplete_runs,
         )
         return 0
 
@@ -460,6 +536,90 @@ class BenchmarkAbTest(unittest.TestCase):
                 str(raised.exception),
             )
 
+    def test_measurement_stops_after_preflight_build_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp) / "out"
+            args = benchmark_ab.parse_args(
+                [
+                    "measure",
+                    "--before=before",
+                    "--after=after",
+                    "--out",
+                    str(out),
+                    "//folly/test/...",
+                ]
+            )
+            workspace = BuildTrackingWorkspace(
+                self.target.build_target,
+                returncodes=[0, 3],
+            )
+
+            with self.assertRaises(SystemExit) as raised:
+                benchmark_ab.run_measurement(args, workspace)
+
+            self.assertEqual(
+                f"after revision build failed with exit 3; full output: "
+                f"{out / 'build_after.log'}",
+                str(raised.exception),
+            )
+
+            expected_arguments = [
+                "build",
+                "@mode/opt",
+                "--show-full-output",
+                self.target.build_target,
+            ]
+            self.assertEqual(
+                [
+                    ("before_node", expected_arguments, out / "build_before.log"),
+                    ("after_node", expected_arguments, out / "build_after.log"),
+                ],
+                workspace.build_calls,
+            )
+            self.assertEqual("start", workspace.current_revision)
+            self.assertIn(
+                "build output at after_node",
+                (out / "build_after.log").read_text(encoding="utf-8"),
+            )
+            self.assertFalse((out / "round_1").exists())
+
+    def test_measurement_runs_saved_executables(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp) / "out"
+            args = benchmark_ab.parse_args(
+                [
+                    "measure",
+                    "--before=before",
+                    "--after=after",
+                    "--rounds=1",
+                    "--out",
+                    str(out),
+                    "//folly/test/...",
+                ]
+            )
+            workspace = BuildTrackingWorkspace(
+                self.target.build_target,
+                returncodes=[0, 0],
+            )
+
+            with (
+                contextlib.redirect_stdout(io.StringIO()),
+                contextlib.redirect_stderr(io.StringIO()),
+            ):
+                self.assertEqual(0, benchmark_ab.run_measurement(args, workspace))
+
+            artifact_name = benchmark_ab.make_benchmark_targets(
+                (self.target.build_target,)
+            )[0].artifact_name
+            self.assertEqual(
+                [
+                    out / "binaries" / "before" / artifact_name,
+                    out / "binaries" / "after" / artifact_name,
+                ],
+                [call[0] for call in workspace.run_calls],
+            )
+            self.assertEqual("start", workspace.current_revision)
+
     def test_validate_args_rejects_dangerous_measurement_values(self) -> None:
         for options, error in (
             (("--bm-max-secs=0",), "--bm-max-secs must be at least 1"),
@@ -588,6 +748,46 @@ class BenchmarkAbTest(unittest.TestCase):
         self.assertEqual(200, len(long_name))
         self.assertTrue(long_name.endswith("important_benchmark"))
 
+    def test_save_built_executables_handles_duplicate_basenames(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            targets = benchmark_ab.make_benchmark_targets(
+                ("fbcode//foo/a:bench", "fbcode//foo_a:bench")
+            )
+            sources = []
+            for index in range(2):
+                source = root / f"source_{index}" / "bench"
+                source.parent.mkdir()
+                source.write_text(f"binary {index}\n", encoding="utf-8")
+                source.chmod(0o755)
+                sources.append(source)
+            log_path = root / "build_before.log"
+            log_path.write_text(
+                "\n".join(
+                    f"{target.build_target} {source}"
+                    for target, source in zip(targets, sources, strict=True)
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            saved = benchmark_ab.save_built_executables(
+                side=benchmark_ab.BEFORE_SIDE,
+                log_path=log_path,
+                out_dir=root,
+                targets=targets,
+            )
+
+            self.assertEqual(
+                [target.artifact_name for target in targets],
+                [saved[target].name for target in targets],
+            )
+            self.assertEqual(
+                ["binary 0\n", "binary 1\n"],
+                [saved[target].read_text(encoding="utf-8") for target in targets],
+            )
+            self.assertTrue(all(path.stat().st_mode & 0o111 for path in saved.values()))
+
     def test_run_one_benchmark_retries_until_result_is_usable(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             args = benchmark_ab.parse_args(
@@ -601,8 +801,9 @@ class BenchmarkAbTest(unittest.TestCase):
                     "//folly/test/...",
                 ]
             )
-            buck = FakeBuckRunner(
-                self.target.build_target,
+            executable = Path(temp) / "bench"
+            runner = FakeBenchmarkRunner(
+                executable,
                 incomplete_runs=1,
             )
 
@@ -612,10 +813,11 @@ class BenchmarkAbTest(unittest.TestCase):
                 round_count=1,
                 side=benchmark_ab.BEFORE_SIDE,
                 target=self.target,
-                buck=buck,
+                executable=executable,
+                runner=runner,
             )
 
-            self.assertEqual(2, buck.run_count)
+            self.assertEqual(2, runner.run_count)
             self.assertEqual(
                 [True, False],
                 [attempt.run_incomplete for attempt in artifact.attempts],
@@ -625,10 +827,10 @@ class BenchmarkAbTest(unittest.TestCase):
                 artifact.results,
             )
 
-    def test_workspace_combines_buck_stderr_with_log(self) -> None:
+    def test_workspace_combines_executable_stderr_with_log(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            log_path = root / "buck.log"
+            log_path = root / "benchmark.log"
             workspace = benchmark_ab.SaplingWorkspace(
                 root=root,
                 buck_executable=Path(sys.executable),
@@ -636,7 +838,8 @@ class BenchmarkAbTest(unittest.TestCase):
 
             # Folly writes the incomplete-run marker to stderr. If it escapes
             # the log, run_one_benchmark() can accept an unusable result.
-            returncode = workspace.run_buck(
+            returncode = workspace.run_executable(
+                Path(sys.executable),
                 [
                     "-c",
                     "import sys; print('[RUN INCOMPLETE]', file=sys.stderr)",

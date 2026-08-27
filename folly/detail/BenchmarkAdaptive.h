@@ -34,9 +34,9 @@ inline constexpr const char* kANSIBoldYellow = "\033[1;33m";
 inline constexpr const char* kANSIBoldRed = "\033[1;31m";
 inline constexpr const char* kANSIReset = "\033[0m";
 
-// Below 10ps, keep the row in the output instead of timing out on relative
-// precision that has no stable meaning near zero.
-inline constexpr double kBenchmarkPrecisionFloorNs = 0.01;
+// Near zero, allow a 20ps-wide 95% CI instead of requiring relative precision
+// that has no stable meaning. See `BenchmarkAdaptive.md` for calibration.
+inline constexpr double kBenchmarkPrecisionFloorNs = 0.02;
 
 // Confidence interval for a percentile estimate.
 struct PercentileCI {

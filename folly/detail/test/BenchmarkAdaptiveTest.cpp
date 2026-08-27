@@ -111,7 +111,7 @@ TEST(PrecisionBudgetTest, UsesAbsoluteFloorNearZero) {
   EXPECT_DOUBLE_EQ(precisionBudgetNs(0.0, 0.4), kBenchmarkPrecisionFloorNs);
   EXPECT_DOUBLE_EQ(precisionBudgetNs(0.1, 0.4), kBenchmarkPrecisionFloorNs);
   EXPECT_DOUBLE_EQ(precisionBudgetNs(2.5, 0.4), kBenchmarkPrecisionFloorNs);
-  EXPECT_DOUBLE_EQ(precisionBudgetNs(3.0, 0.4), 0.012);
+  EXPECT_DOUBLE_EQ(precisionBudgetNs(6.0, 0.4), 0.024);
   EXPECT_DOUBLE_EQ(precisionBudgetNs(100.0, 0.4), 0.4);
 }
 
