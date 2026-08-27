@@ -714,6 +714,15 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME indirect
+  HEADERS
+    Indirect.h
+  EXPORTED_DEPS
+    folly_cpp_attributes
+    folly_traits
+)
+
+folly_add_library(
   NAME intrusive_list
   HEADERS
     IntrusiveList.h

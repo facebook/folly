@@ -249,6 +249,10 @@ Improved thread local storage for non-trivial types.
 
 Queue with per-item timeout.
 
+#### [`Indirect.h`](Indirect.md)
+
+Allocator-aware heap value wrapper mirroring `std::indirect` (P1950R2/P3019R4, C++26) with deep copy and a valueless-after-move state.
+
 #### `Traits.h`
 
 Type traits that complement those defined in the standard C++11 header

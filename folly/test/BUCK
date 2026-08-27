@@ -1850,3 +1850,12 @@ fb_dirsync_cpp_library(
         "//folly/portability:gtest",
     ],
 )
+
+fb_dirsync_cpp_unittest(
+    name = "indirect_test",
+    srcs = ["IndirectTest.cpp"],
+    deps = [
+        "//folly:indirect",
+        "//folly/portability:gtest",
+    ],
+)
