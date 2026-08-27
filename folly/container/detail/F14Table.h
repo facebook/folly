@@ -97,6 +97,16 @@
 
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
+// On SVE2, derive the matching slot index straight from the svmatch predicate
+// (BRKB + CNTP) instead of rebuilding a NEON nibble mask. Keyed off SVE2
+// because svmatch is the SVE2-only intrinsic involved; the rest of the sequence
+// is SVE1.
+#if FOLLY_NEON && FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE && FOLLY_ARM_FEATURE_SVE2
+#define FOLLY_F14_SVE_PREDICATE_NATIVE_ACTIVE 1
+#else
+#define FOLLY_F14_SVE_PREDICATE_NATIVE_ACTIVE 0
+#endif
+
 namespace folly {
 
 struct F14TableStats {
@@ -808,6 +818,34 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     return {SparseMaskIter(mask), svptest_any(pred, matchPred)};
   }
 
+  // Visits the index of each slot whose tag matches, stopping early if func
+  // returns true; the return value is whether it stopped early.
+  //
+  // svbool_t is a sizeless type, so it cannot be stored in an iterator object
+  // and handed back to the caller. Inverting the loop keeps the predicate in a
+  // register, which lets the match index be derived without the round trip
+  // through a NEON nibble mask that tagMatchIter above has to perform.
+  template <typename F>
+  FOLLY_ALWAYS_INLINE bool forEachTagMatch(uint8x16_t needleV, F&& func) const {
+    svbool_t pred = svwhilelt_b8_u32(0, kCapacity);
+    svuint8_t tagV = svld1_u8(pred, &tags_[0]);
+    svbool_t rem =
+        svmatch_u8(pred, tagV, svset_neonq_u8(svundef_u8(), needleV));
+    // svmatch and svbic both set the condition flags, so this test is free.
+    while (svptest_any(pred, rem)) {
+      // BRKB sets the active lanes preceding the first match, so counting them
+      // yields that match's index.
+      unsigned i = static_cast<unsigned>(svcntp_b8(pred, svbrkb_z(pred, rem)));
+      FOLLY_SAFE_DCHECK(i < kCapacity, "");
+      if (func(i)) {
+        return true;
+      }
+      // Clear the visited lane: BRKA covers everything up to and including it.
+      rem = svbic_b_z(pred, rem, svbrka_z(pred, rem));
+    }
+    return false;
+  }
+
 #else
 
   std::pair<SparseMaskIter, bool> tagMatchIter(uint8x16_t needleV) const {
@@ -883,6 +921,25 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     }
     return mask & kFullMask;
   }
+#endif
+
+#if !FOLLY_F14_SVE_PREDICATE_NATIVE_ACTIVE
+
+  // Visits the index of each slot whose tag matches, stopping early if func
+  // returns true; the return value is whether it stopped early.
+  template <typename N, typename F>
+  FOLLY_ALWAYS_INLINE bool forEachTagMatch(N needleV, F&& func) const {
+    auto [hits, nonzero] = tagMatchIter(needleV);
+    if (nonzero) {
+      do {
+        if (func(hits.next())) {
+          return true;
+        }
+      } while (hits.hasNext());
+    }
+    return false;
+  }
+
 #endif
 
   auto occupiedIter() const {
@@ -1784,17 +1841,18 @@ class F14Table : public Policy {
       if (prefetch == Prefetch::ENABLED && Chunk::kChunkStride > 64) {
         prefetchAddr(chunk->itemAddr(8));
       }
-      auto [hits, nonzero] = chunk->tagMatchIter(needleV);
-      if (nonzero) {
-        do {
-          auto i = hits.next();
-          if (FOLLY_LIKELY(this->keyMatchesItem(key, chunk->item(i)))) {
-            // Tag match and key match were both successful.  The chance
-            // of a false tag match is ~1/255 for each key in the chunk
-            // (with a proper hash function).
-            return ItemIter{chunk, i};
-          }
-        } while (hits.hasNext());
+      ItemIter found{};
+      if (chunk->forEachTagMatch(needleV, [&](unsigned i) {
+            if (FOLLY_LIKELY(this->keyMatchesItem(key, chunk->item(i)))) {
+              // Tag match and key match were both successful.  The chance
+              // of a false tag match is ~1/255 for each key in the chunk
+              // (with a proper hash function).
+              found = ItemIter{chunk, i};
+              return true;
+            }
+            return false;
+          })) {
+        return found;
       }
       if (FOLLY_LIKELY(chunk->outboundOverflowCount() == 0)) {
         // No keys that wanted to be placed in this chunk were denied
@@ -1889,15 +1947,16 @@ class F14Table : public Policy {
       if (Chunk::kChunkStride > 64) {
         prefetchAddr(chunk->itemAddr(8));
       }
-      auto [hits, nonzero] = chunk->tagMatchIter(needleV);
-      if (nonzero) {
-        do {
-          auto i = hits.next();
-          if (FOLLY_LIKELY(
-                  func(this->keyForValue(this->valueAtItem(chunk->item(i)))))) {
-            return ItemIter{chunk, i};
-          }
-        } while (hits.hasNext());
+      ItemIter found{};
+      if (chunk->forEachTagMatch(needleV, [&](unsigned i) {
+            if (FOLLY_LIKELY(func(
+                    this->keyForValue(this->valueAtItem(chunk->item(i)))))) {
+              found = ItemIter{chunk, i};
+              return true;
+            }
+            return false;
+          })) {
+        return found;
       }
       if (FOLLY_LIKELY(chunk->outboundOverflowCount() == 0)) {
         break;
