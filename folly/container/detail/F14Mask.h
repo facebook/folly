@@ -27,6 +27,14 @@
 #include <folly/lang/Assume.h>
 #include <folly/lang/SafeAssert.h>
 
+#ifndef FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE && FOLLY_ARM_FEATURE_SVE2
+#define FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE 1
+#else
+#define FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE 0
+#endif
+#endif
+
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 namespace folly {

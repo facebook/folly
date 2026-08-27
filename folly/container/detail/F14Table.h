@@ -790,7 +790,7 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
   ////////
   // Tag filtering using NEON/SVE intrinsics
 
-#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+#if FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE
 
   // Returns the matching-tag iterator together with a fast "any match" flag
   // taken straight from the SVE predicate register, which lets the caller

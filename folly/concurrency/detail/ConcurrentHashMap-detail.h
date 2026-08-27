@@ -1017,7 +1017,7 @@ class alignas(64) SIMDTable {
 
 #ifdef __aarch64__
 
-#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE
+#if FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE
 
     ////////
     // Tag filtering using SVE intrinsics
