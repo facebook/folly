@@ -432,17 +432,11 @@ class BenchmarkAbTest(unittest.TestCase):
                     )
 
     def test_zero_thresholds_still_separate_wins_and_regressions(self) -> None:
-        rows = {
-            (self.target.build_target, self._benchmark("faster")): [
-                benchmark_ab.Observation(1, 10.0, 9.0)
-            ],
-            (self.target.build_target, self._benchmark("slower")): [
-                benchmark_ab.Observation(1, 10.0, 11.0)
-            ],
-            (self.target.build_target, self._benchmark("displayed_zero")): [
-                benchmark_ab.Observation(1, 10.0, 10.04)
-            ],
-        }
+        rows = (
+            self._row("faster", ((10.0, 9.0),)),
+            self._row("slower", ((10.0, 11.0),)),
+            self._row("displayed_zero", ((10.0, 10.04),)),
+        )
         threshold = benchmark_ab.Threshold(ns=0.0, pct=0.0)
 
         # With zero thresholds, direction at report precision is the only guard
@@ -663,6 +657,7 @@ else:
             benchmark_names_with_multiple_files=frozenset(
                 {(self.target.build_target, "duplicate")}
             ),
+            rows=(),
             sections=(),
         )
 
@@ -854,21 +849,18 @@ else:
         self.assertEqual("0/36 agree", benchmark_ab.direction_agreement(row).text)
 
     def test_bucket_classifies_by_cross_side_estimate_not_round_votes(self) -> None:
-        rows = {
-            (self.target.build_target, self._benchmark("regression")): [
-                benchmark_ab.Observation(round_number, before, after)
-                for round_number, (before, after) in enumerate(
-                    (
-                        (1.0, 101.0),
-                        (2.0, 1.5),
-                        (3.0, 2.5),
-                        (4.0, 3.5),
-                        (100.0, 5.0),
-                    ),
-                    start=1,
-                )
-            ]
-        }
+        rows = (
+            self._row(
+                "regression",
+                (
+                    (1.0, 101.0),
+                    (2.0, 1.5),
+                    (3.0, 2.5),
+                    (4.0, 3.5),
+                    (100.0, 5.0),
+                ),
+            ),
+        )
 
         # Four paired deltas are negative; inclusion proves that classification
         # uses the cross-side estimate rather than a per-round vote.
@@ -885,18 +877,15 @@ else:
         )
 
     def test_bucket_sorts_by_estimated_delta(self) -> None:
-        rows = {
-            (self.target.build_target, self._benchmark(benchmark)): [
-                benchmark_ab.Observation(round_number, before, after)
-                for round_number, (before, after) in enumerate(pairs, start=1)
-            ]
+        rows = tuple(
+            self._row(benchmark, pairs)
             for benchmark, pairs in (
                 ("large_win", ((20.0, 19.5), (10.0, 9.5), (15.0, 2.0))),
                 ("small_win", ((20.0, 15.0), (10.0, 8.0), (15.0, 14.0))),
                 ("large_loss", ((20.0, 20.5), (10.0, 10.5), (15.0, 28.0))),
                 ("small_loss", ((20.0, 25.0), (10.0, 12.0), (15.0, 16.0))),
             )
-        }
+        )
         threshold = benchmark_ab.Threshold(ns=0.1, pct=0.1)
 
         self.assertEqual(

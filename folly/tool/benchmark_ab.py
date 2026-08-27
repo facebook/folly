@@ -314,6 +314,7 @@ class ComparisonReport:
     needs_attention: tuple[NeedsAttention, ...]
     unpaired_rows: dict[tuple[str, BenchmarkId, str], list[int]]
     benchmark_names_with_multiple_files: frozenset[tuple[str, str]]
+    rows: tuple[ComparisonRow, ...]
     sections: tuple[ReportSection, ...]
 
 
@@ -1225,15 +1226,15 @@ def direction_agreement(row: ComparisonRow) -> DirectionAgreement:
 
 
 def bucket_rows(
-    rows: dict[tuple[str, BenchmarkId], list[Observation]],
+    rows: tuple[ComparisonRow, ...],
     *,
     direction: int,
     threshold: Threshold,
     exclude_threshold: Threshold | None = None,
 ) -> tuple[ComparisonRow, ...]:
-    selected: list[ComparisonRow] = []
-    for (build_target, benchmark), observations in rows.items():
-        summary = comparison_summary(tuple(observations))
+    selected = []
+    for row in rows:
+        summary = comparison_summary(row.observations)
         if display_round(direction * summary.delta) <= 0:
             continue
         if exclude_threshold is not None and exclude_threshold.met_by(
@@ -1241,13 +1242,7 @@ def bucket_rows(
         ):
             continue
         if threshold.met_by(summary, direction=direction):
-            selected.append(
-                ComparisonRow(
-                    build_target=build_target,
-                    benchmark=benchmark,
-                    observations=tuple(observations),
-                )
-            )
+            selected.append(row)
 
     return tuple(
         sorted(
@@ -1262,7 +1257,7 @@ def bucket_rows(
 
 
 def report_section(
-    rows: dict[tuple[str, BenchmarkId], list[Observation]],
+    rows: tuple[ComparisonRow, ...],
     *,
     title: str,
     classification: str,
@@ -1289,8 +1284,16 @@ def analyze_report(
     args: argparse.Namespace,
     targets: tuple[BenchmarkTarget, ...],
 ) -> ComparisonReport:
-    rows, needs_attention_runs, unpaired_rows = paired_observations(
+    paired_rows, needs_attention_runs, unpaired_rows = paired_observations(
         artifacts, args.out, targets
+    )
+    rows = tuple(
+        ComparisonRow(
+            build_target=build_target,
+            benchmark=benchmark,
+            observations=tuple(observations),
+        )
+        for (build_target, benchmark), observations in sorted(paired_rows.items())
     )
     target_and_name_to_files: dict[tuple[str, str], set[str]] = {}
     for artifact in artifacts.values():
@@ -1346,6 +1349,7 @@ def analyze_report(
             for target_and_name, files in target_and_name_to_files.items()
             if len(files) > 1
         ),
+        rows=rows,
         sections=sections,
     )
 
@@ -1397,7 +1401,7 @@ def summary_text(
 def threshold_pairs(
     row: ComparisonRow,
     *,
-    section: ReportSection,
+    section: ReportSection | None,
     markdown: bool,
 ) -> list[str]:
     pairs = []
@@ -1406,7 +1410,9 @@ def threshold_pairs(
         key=lambda observation: (observation.before, observation.round_number),
     ):
         text = f"{fmt_value(observation.before)}{fmt_signed_value(observation.delta)}"
-        if not section.threshold.met_by(observation, direction=section.direction):
+        if section is not None and not section.threshold.met_by(
+            observation, direction=section.direction
+        ):
             text = f"*({text})*" if markdown else f"({text})"
         pairs.append(text)
     return pairs
@@ -1708,26 +1714,42 @@ def tsv_rows(
                         "details": f"rounds {rounds_text(report.unpaired_rows[(target, benchmark, row_side)])}",
                     }
                 )
-    for section in report.sections:
-        for row in section.rows:
-            summary = comparison_summary(row.observations)
-            rows.append(
-                {
-                    "class": section.classification,
-                    "estimated_delta_ns": fmt_value(summary.delta),
-                    "estimated_delta_pct": fmt_value(summary.pct),
-                    "median_before_ns": fmt_value(summary.before),
-                    "median_after_ns": fmt_value(summary.after),
-                    "direction_agreement_pct": fmt_value(direction_agreement(row).pct),
-                    "benchmark": row.benchmark.name,
-                    "benchmark_file": row.benchmark.file,
-                    "target": row.build_target,
-                    "before_Δ": ", ".join(
-                        threshold_pairs(row, section=section, markdown=False)
-                    ),
-                }
+    row_to_section = {
+        row: section for section in report.sections for row in section.rows
+    }
+    for row in report.rows:
+        section = row_to_section.get(row)
+        rows.append(
+            tsv_comparison_row(
+                row,
+                classification=(
+                    section.classification if section is not None else "below-threshold"
+                ),
+                section=section,
             )
+        )
     return rows
+
+
+def tsv_comparison_row(
+    row: ComparisonRow,
+    *,
+    classification: str,
+    section: ReportSection | None,
+) -> dict[str, str]:
+    summary = comparison_summary(row.observations)
+    return {
+        "class": classification,
+        "estimated_delta_ns": fmt_value(summary.delta),
+        "estimated_delta_pct": fmt_value(summary.pct),
+        "median_before_ns": fmt_value(summary.before),
+        "median_after_ns": fmt_value(summary.after),
+        "direction_agreement_pct": fmt_value(direction_agreement(row).pct),
+        "benchmark": row.benchmark.name,
+        "benchmark_file": row.benchmark.file,
+        "target": row.build_target,
+        "before_Δ": ", ".join(threshold_pairs(row, section=section, markdown=False)),
+    }
 
 
 def render_tsv(report: ComparisonReport, *, out_dir: Path) -> str:
@@ -1737,15 +1759,15 @@ def render_tsv(report: ComparisonReport, *, out_dir: Path) -> str:
         delimiter="\t",
         lineterminator="\n",
         fieldnames=[
+            "benchmark",
+            "target",
+            "benchmark_file",
             "class",
             "estimated_delta_ns",
             "estimated_delta_pct",
             "median_before_ns",
             "median_after_ns",
             "direction_agreement_pct",
-            "benchmark",
-            "benchmark_file",
-            "target",
             "details",
             "before_Δ",
         ],

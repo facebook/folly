@@ -1,8 +1,9 @@
-class	estimated_delta_ns	estimated_delta_pct	median_before_ns	median_after_ns	direction_agreement_pct	benchmark	benchmark_file	target	details	before_Δ
-needs-attention								fbcode//folly/test:bench	before round 1; Benchmark run was incomplete after 1 try; logs: round_1/before_bench	
-only-after						only_after	fixture.cpp	fbcode//folly/test:bench	rounds 2-4	
-only-before						only_before	fixture.cpp	fbcode//folly/test:bench	rounds 2-4	
-win-hi-pri	-2.0	-13.3	15.0	13.0	66.7	same_name	win.cpp	fbcode//folly/test:bench		10.0-2.0, 15.0-2.0, (20.0-0.5)
-win-lo-pri	-0.8	-5.3	15.0	14.2	66.7	low_win	fixture.cpp	fbcode//folly/test:bench		10.0-0.8, 15.0-0.8, (20.0-0.8)
-loss-lo-pri	0.8	5.3	15.0	15.8	66.7	low_loss	fixture.cpp	fbcode//folly/test:bench		10.0+0.8, 15.0+0.8, (20.0+0.8)
-loss-hi-pri	1.2	80.0	1.5	3.0	100.0	same_name	loss.cpp	fbcode//folly/test:bench		1.0+2.0, 1.5+1.5, (2.0+0.2)
+benchmark	target	benchmark_file	class	estimated_delta_ns	estimated_delta_pct	median_before_ns	median_after_ns	direction_agreement_pct	details	before_Δ
+	fbcode//folly/test:bench		needs-attention						before round 1; Benchmark run was incomplete after 1 try; logs: round_1/before_bench	
+only_after	fbcode//folly/test:bench	fixture.cpp	only-after						rounds 2-4	
+only_before	fbcode//folly/test:bench	fixture.cpp	only-before						rounds 2-4	
+below_threshold	fbcode//folly/test:bench	fixture.cpp	below-threshold	0.2	2.0	10.0	10.2	100.0		10.0+0.1, 10.0+0.2, 10.0+0.3
+low_loss	fbcode//folly/test:bench	fixture.cpp	loss-lo-pri	0.8	5.3	15.0	15.8	66.7		10.0+0.8, 15.0+0.8, (20.0+0.8)
+low_win	fbcode//folly/test:bench	fixture.cpp	win-lo-pri	-0.8	-5.3	15.0	14.2	66.7		10.0-0.8, 15.0-0.8, (20.0-0.8)
+same_name	fbcode//folly/test:bench	loss.cpp	loss-hi-pri	1.2	80.0	1.5	3.0	100.0		1.0+2.0, 1.5+1.5, (2.0+0.2)
+same_name	fbcode//folly/test:bench	win.cpp	win-hi-pri	-2.0	-13.3	15.0	13.0	66.7		10.0-2.0, 15.0-2.0, (20.0-0.5)
