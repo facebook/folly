@@ -25,8 +25,7 @@ Resolve these once from `PATH`; use the fallback if absent:
 
 - `codex-reviewer.py`: `critic-iterate/codex-reviewer.py`.
 - `session_current_model_id.py`: `critic-iterate/session_current_model_id.py`.
-- `reformat-md`:
-  `$HOME/fbsource/fbcode/iaas/virtual_compute_platform/scripts/reformat-md`.
+- `reformat-md`: `scripts/reformat-md`.
 
 `.../name` means the resolved absolute path. Stop if unavailable.
 
