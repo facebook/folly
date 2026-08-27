@@ -27,3 +27,24 @@ diff --git a/tools/build/src/tools/msvc.jam b/tools/build/src/tools/msvc.jam
              if [ MATCH "(14.3)" : $(version) ]
              {
                  if $(.debug-configuration)
+diff --git a/tools/build/src/tools/clang.jam b/tools/build/src/tools/clang.jam
+--- a/tools/build/src/tools/clang.jam
++++ b/tools/build/src/tools/clang.jam
+@@ -77,7 +77,7 @@ local rule init-flags-cross ( toolset : condition * : architecture + : address-
+     switch $(target-os)
+     {
+         case darwin : vendor = apple ; sys = darwin ;
+-        case linux : vendor = pc ; sys = linux ;
++        case linux : vendor = unknown ; sys = linux-gnu ;
+     }
+     local vendor-sys = $(vendor)-$(sys) ;
+     for local _architecture_ in $(architecture)
+@@ -87,7 +87,7 @@ local rule init-flags-cross ( toolset : condition * : architecture + : address-
+             local arch = unknown ;
+             switch $(_architecture_)-$(_address-model_)
+             {
+-                case arm-64 : arch = arm64 ;
++                case arm-64 : arch = aarch64 ;
+                 case arm-32 : arch = arm ;
+                 case x86-64 : arch = x86_64 ;
+                 case x86-32 : arch = i386 ;

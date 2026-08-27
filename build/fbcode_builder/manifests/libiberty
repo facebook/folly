@@ -5,11 +5,8 @@ name = libiberty
 binutils-devel
 binutils
 
-[debs.not(all(distro=ubuntu,distro_vers="24.04"))]
-binutils-dev
-
-[debs.all(distro=ubuntu,distro_vers="24.04")]
-binutils-x86-64-linux-gnu
+[debs]
+libiberty-dev
 
 [download]
 url = https://ftpmirror.gnu.org/gnu/binutils/binutils-2.43.tar.xz
