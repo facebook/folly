@@ -13,6 +13,10 @@
 - hi-pri `>=1.0ns` and `>=10.0%`
 - lo-pri `>=0.5ns` and `>=5.0%`
 
+**Run-to-run spread (range / median): not calculated**
+
+- No before/after timing series has data for every round and median >2.0ns
+
 ## Needs attention: Benchmark run was incomplete after 1 try
 
 - Round 1, `fbcode//folly/test:bench` (before); [see logs](round_1/before_bench).
