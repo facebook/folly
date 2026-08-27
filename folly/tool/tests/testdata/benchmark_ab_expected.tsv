@@ -1,9 +1,9 @@
-benchmark	target	benchmark_file	class	estimated_delta_ns	estimated_delta_pct	median_before_ns	median_after_ns	direction_agreement_pct	before_range_ns	before_range_pct_of_median	after_range_ns	after_range_pct_of_median	details	before_Δ
-	fbcode//folly/test:bench		needs-attention										before round 1; Benchmark run was incomplete after 1 try; logs: round_1/before_bench	
-only_after	fbcode//folly/test:bench	fixture.cpp	only-after										rounds 2-4	
-only_before	fbcode//folly/test:bench	fixture.cpp	only-before										rounds 2-4	
-below_threshold	fbcode//folly/test:bench	fixture.cpp	below-threshold	0.2	2.0	10.0	10.2	100.0						10.0+0.1, 10.0+0.2, 10.0+0.3
-low_loss	fbcode//folly/test:bench	fixture.cpp	loss-lo-pri	0.8	5.3	15.0	15.8	66.7						10.0+0.8, 15.0+0.8, (20.0+0.8)
-low_win	fbcode//folly/test:bench	fixture.cpp	win-lo-pri	-0.8	-5.3	15.0	14.2	66.7						10.0-0.8, 15.0-0.8, (20.0-0.8)
-same_name	fbcode//folly/test:bench	loss.cpp	loss-hi-pri	1.2	80.0	1.5	3.0	100.0						1.0+2.0, 1.5+1.5, (2.0+0.2)
-same_name	fbcode//folly/test:bench	win.cpp	win-hi-pri	-2.0	-13.3	15.0	13.0	66.7						10.0-2.0, 15.0-2.0, (20.0-0.5)
+benchmark	target	benchmark_file	class	estimated_delta_ns	estimated_delta_pct	median_before_ns	median_after_ns	direction_agreement_pct	ignore_n_slowest	before_range_ns	before_range_pct_of_median	after_range_ns	after_range_pct_of_median	details	before_Δ
+	fbcode//folly/test:bench		needs-attention											before round 1; Benchmark run was incomplete after 1 try; logs: round_1/before_bench	
+only_after	fbcode//folly/test:bench	fixture.cpp	only-after											rounds 2-4	
+only_before	fbcode//folly/test:bench	fixture.cpp	only-before											rounds 2-4	
+below_threshold	fbcode//folly/test:bench	fixture.cpp	below-threshold	0.2	2.0	10.0	10.2	100.0	1						10.0+0.1, 10.0+0.2, 10.0+0.3
+low_loss	fbcode//folly/test:bench	fixture.cpp	loss-lo-pri	0.8	5.3	15.0	15.8	66.7	1						10.0+0.8, 15.0+0.8, (20.0+0.8)
+low_win	fbcode//folly/test:bench	fixture.cpp	win-lo-pri	-0.8	-5.3	15.0	14.2	66.7	1						10.0-0.8, 15.0-0.8, (20.0-0.8)
+same_name	fbcode//folly/test:bench	loss.cpp	loss-hi-pri	1.2	80.0	1.5	3.0	100.0	1						1.0+2.0, 1.5+1.5, (2.0+0.2)
+same_name	fbcode//folly/test:bench	win.cpp	win-hi-pri	-2.0	-13.3	15.0	13.0	66.7	1						10.0-2.0, 15.0-2.0, (20.0-0.5)

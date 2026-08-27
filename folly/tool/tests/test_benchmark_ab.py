@@ -150,26 +150,41 @@ class BenchmarkAbTest(unittest.TestCase):
         )
 
     def _spread_rows(self) -> tuple[benchmark_ab.ComparisonRow, ...]:
-        return (
-            self._row(
-                "benchmark_0",
-                ((100.0, 100.0), (100.0, 101.0), (140.0, 100.0)),
-            ),
-            self._row(
-                "benchmark_1",
-                ((100.0, 120.0), (100.0, 121.0), (150.0, 120.0)),
-            ),
-            self._row(
-                "benchmark_2",
-                ((100.0, 100.0), (100.0, 101.0), (105.0, 100.0)),
-            ),
-            *(
-                self._row(
-                    f"benchmark_{index}",
-                    ((100.0, 100.0), (100.0, 101.0), (101.0, 100.0)),
-                )
-                for index in range(3, 10)
-            ),
+        stable_after = (100.0, 101.0, 100.0, 101.0, 100.0)
+        return tuple(
+            self._row(name, tuple(zip(before, after, strict=True)))
+            for name, before, after in (
+                (
+                    "persistent_spread",
+                    (100.0, 100.0, 100.0, 140.0, 200.0),
+                    stable_after,
+                ),
+                (
+                    # Effect estimation uses every timing (Δ=10ns); trimming
+                    # both sides would yield 0.
+                    "effect_and_spread",
+                    (10.0, 10.0, 10.0, 20.0, 20.0),
+                    (10.0, 10.0, 20.0, 30.0, 30.0),
+                ),
+                (
+                    "spread_threshold_boundary",
+                    (100.0, 100.0, 100.0, 105.0, 105.0),
+                    stable_after,
+                ),
+                (
+                    "single_slow_timing",
+                    (100.0, 100.0, 100.0, 100.0, 200.0),
+                    stable_after,
+                ),
+                *(
+                    (
+                        f"stable_{index}",
+                        (100.0, 100.0, 100.0, 101.0, 101.0),
+                        stable_after,
+                    )
+                    for index in range(4, 10)
+                ),
+            )
         )
 
     def _analyze_spread_report(
@@ -184,7 +199,7 @@ class BenchmarkAbTest(unittest.TestCase):
             run_incomplete=False,
         )
         artifacts: dict[tuple[int, str, str], benchmark_ab.RunArtifact] = {}
-        for round_index in range(3):
+        for round_index in range(len(rows[0].observations)):
             for side in (benchmark_ab.BEFORE_SIDE, benchmark_ab.AFTER_SIDE):
                 artifacts[(round_index + 1, side, self.target.build_target)] = (
                     benchmark_ab.RunArtifact(
@@ -465,6 +480,10 @@ class BenchmarkAbTest(unittest.TestCase):
                 ("--broad-spread-pct=0",),
                 "--broad-spread-pct must be greater than 0 and at most 100",
             ),
+            (
+                ("--spread-ignore-slowest=-1",),
+                "--spread-ignore-slowest must be nonnegative",
+            ),
         ):
             with self.subTest(options=options):
                 args = benchmark_ab.parse_args(
@@ -730,8 +749,9 @@ else:
             spread=benchmark_ab.SpreadAnalysis(
                 row_to_eligible_spreads={},
                 round_count=0,
-                eligible_side_count=0,
+                full_series_count=0,
                 broad_spread_count=0,
+                ignore_n_slowest=0,
                 median_pct=None,
                 calibration=None,
             ),
@@ -900,12 +920,25 @@ else:
         self.assertEqual(200.0, summary.pct)
 
     def test_spread_eligibility_is_per_side(self) -> None:
-        row = self._row("tiny_before", ((1.0, 10.0), (1.0, 11.0), (1.0, 12.0)))
+        # Exclusion moves the before median below the relative-reporting floor,
+        # but must not remove its full series from calibration or the broad alarm.
+        row = self._row(
+            "tiny_before",
+            (
+                (1.0, 10.0),
+                (1.0, 10.0),
+                (1.0, 10.0),
+                (4.0, 10.0),
+                (4.0, 10.0),
+                (100.0, 10.0),
+            ),
+        )
         spread = benchmark_ab.analyze_spread(
             (row,),
-            round_count=3,
+            round_count=6,
             broad_threshold=benchmark_ab.Threshold(ns=1.0, pct=10.0),
             high_spread_minimum=benchmark_ab.Threshold(ns=0.5, pct=5.0),
+            ignore_n_slowest=1,
         )
         report = benchmark_ab.ComparisonReport(
             needs_attention=(),
@@ -921,6 +954,8 @@ else:
             (benchmark_ab.AFTER_SIDE,),
             tuple(item.side for item in spread.eligible_spreads_for(row)),
         )
+        self.assertEqual(2, spread.full_series_count)
+        self.assertEqual(1, spread.broad_spread_count)
         tsv = benchmark_ab.tsv_comparison_row(
             report,
             row,
@@ -928,7 +963,8 @@ else:
             section=None,
         )
         self.assertNotIn("before_range_ns", tsv)
-        self.assertEqual("2.0", tsv["after_range_ns"])
+        self.assertEqual("0.0", tsv["after_range_ns"])
+        self.assertEqual("1", tsv["ignore_n_slowest"])
 
     def test_spread_requires_two_rounds(self) -> None:
         row = self._row("single_round", ((100.0, 100.0),))
@@ -937,11 +973,26 @@ else:
             round_count=1,
             broad_threshold=benchmark_ab.Threshold(ns=1.0, pct=10.0),
             high_spread_minimum=benchmark_ab.Threshold(ns=0.5, pct=5.0),
+            ignore_n_slowest=0,
         )
 
+        self.assertEqual(0, spread.full_series_count)
+        self.assertIsNone(spread.median_pct)
+
+    def test_spread_requires_two_timings_after_exclusions(self) -> None:
+        row = self._row("too_few_retained", ((100.0, 100.0), (101.0, 101.0)))
+        spread = benchmark_ab.analyze_spread(
+            (row,),
+            round_count=2,
+            broad_threshold=benchmark_ab.Threshold(ns=1.0, pct=10.0),
+            high_spread_minimum=benchmark_ab.Threshold(ns=0.5, pct=5.0),
+            ignore_n_slowest=1,
+        )
+
+        self.assertEqual(2, spread.full_series_count)
         self.assertIsNone(spread.median_pct)
         self.assertEqual(
-            "Not calculated: need at least 2 recorded rounds",
+            "Not calculated: need at least 2 timings after exclusions (1 available)",
             benchmark_ab.spread_summary_lines(spread)[-1].strip(),
         )
 
@@ -949,39 +1000,58 @@ else:
         # Ten benchmarks measured in every round contribute 20 before/after
         # series.
         rows = self._spread_rows()
+        rows_by_name = {row.benchmark.name: row for row in rows}
 
         hi_threshold = benchmark_ab.Threshold(ns=1.0, pct=10.0)
         high_spread_minimum = benchmark_ab.Threshold(ns=0.5, pct=4.96)
         too_small = benchmark_ab.analyze_spread(
             rows[:-1],
-            round_count=3,
+            round_count=5,
             broad_threshold=hi_threshold,
             high_spread_minimum=high_spread_minimum,
+            ignore_n_slowest=1,
         )
         calibrated = benchmark_ab.analyze_spread(
             rows,
-            round_count=3,
+            round_count=5,
             broad_threshold=hi_threshold,
             high_spread_minimum=high_spread_minimum,
+            ignore_n_slowest=1,
         )
 
         self.assertIsNone(too_small.calibration)
-        self.assertEqual((), too_small.high_spreads_for(rows[0]))
-        self.assertEqual(20, calibrated.eligible_side_count)
-        self.assertEqual(2, calibrated.broad_spread_count)
+        self.assertEqual(
+            (), too_small.high_spreads_for(rows_by_name["persistent_spread"])
+        )
+        self.assertEqual(20, calibrated.full_series_count)
+        self.assertEqual(4, calibrated.broad_spread_count)
+        # All timings, including isolated slow ones, set the Tukey cutoff.
         self.assertEqual(
             benchmark_ab.SpreadCalibration(
-                outlier_cutoff_pct=1.0,
-                high_spread_threshold=benchmark_ab.Threshold(ns=0.5, pct=4.96),
+                outlier_cutoff_pct=5.0,
+                high_spread_threshold=benchmark_ab.Threshold(ns=0.5, pct=5.0),
             ),
             calibrated.calibration,
         )
         self.assertEqual(
             (benchmark_ab.BEFORE_SIDE,),
-            tuple(spread.side for spread in calibrated.high_spreads_for(rows[0])),
+            tuple(
+                spread.side
+                for spread in calibrated.high_spreads_for(
+                    rows_by_name["persistent_spread"]
+                )
+            ),
         )
         # 5.0% does not exceed the displayed >5.0% cutoff.
-        self.assertEqual((), calibrated.high_spreads_for(rows[2]))
+        self.assertEqual(
+            (),
+            calibrated.high_spreads_for(rows_by_name["spread_threshold_boundary"]),
+        )
+        # A single slow timing is omitted from the row flag but remains visible
+        # to the benchmark-wide alarm.
+        self.assertEqual(
+            (), calibrated.high_spreads_for(rows_by_name["single_slow_timing"])
+        )
 
     def test_report_places_and_renders_high_spread_rows_once(self) -> None:
         args = benchmark_ab.parse_args(["reanalyze", "--out=out"])
@@ -989,10 +1059,10 @@ else:
         placed_names = [
             row.benchmark.name for section in report.sections for row in section.rows
         ] + [row.benchmark.name for row in report.unclassified_high_spread_rows]
-        self.assertEqual(1, placed_names.count("benchmark_0"))
-        self.assertEqual(1, placed_names.count("benchmark_1"))
+        self.assertEqual(1, placed_names.count("persistent_spread"))
+        self.assertEqual(1, placed_names.count("effect_and_spread"))
         self.assertEqual(
-            ["benchmark_0"],
+            ["persistent_spread"],
             [row.benchmark.name for row in report.unclassified_high_spread_rows],
         )
 
@@ -1001,24 +1071,18 @@ else:
             terminal,
             benchmark_ab.render_markdown(report, args, self._manifest()),
         ):
-            self.assertEqual(
-                1,
-                rendered.count(
-                    "High spread (before): 100.0-140.0ns (range is 40.0% of median)"
-                ),
-            )
-            self.assertEqual(
-                1,
-                rendered.count(
-                    "High spread (before): 100.0-150.0ns (range is 50.0% of median)"
-                ),
+            self.assertEqual(3, rendered.count("High spread ("))
+            self.assertIn(
+                "High spread (before; excluding 1 slowest): "
+                "100.0-140.0ns (40.0% of median)",
+                rendered,
             )
             self.assertIn(
                 "High run-to-run spread without a reportable change",
                 rendered,
             )
             self.assertIn(
-                "High spread threshold: >5.0% (Tukey outlier cutoff: 1.0%) and >=0.5ns",
+                "High spread threshold: >5.0% (Tukey outlier cutoff) and >=0.5ns",
                 rendered,
             )
             self.assertLess(
@@ -1032,19 +1096,19 @@ else:
             for row in benchmark_ab.tsv_rows(report, out_dir=Path("out"))
         }
         self.assertEqual(
-            [("high-spread", "40.0"), ("loss-hi-pri", "50.0")],
+            [("high-spread", "40.0"), ("loss-hi-pri", "100.0")],
             [
                 (
                     benchmark_to_tsv[name]["class"],
                     benchmark_to_tsv[name]["before_range_pct_of_median"],
                 )
-                for name in ("benchmark_0", "benchmark_1")
+                for name in ("persistent_spread", "effect_and_spread")
             ],
         )
 
     def test_broad_spread_warning_uses_configured_share(self) -> None:
         args = benchmark_ab.parse_args(
-            ["reanalyze", "--out=out", "--broad-spread-pct=10"]
+            ["reanalyze", "--out=out", "--broad-spread-pct=20"]
         )
         report = self._analyze_spread_report(args)
         for rendered in (
@@ -1055,10 +1119,10 @@ else:
                 "High run-to-run spread across the benchmark set",
                 rendered,
             )
-            self.assertIn("2/20 before/after series (10.0%)", rendered)
+            self.assertIn("4/20 before/after series (20.0%)", rendered)
 
         quiet_args = benchmark_ab.parse_args(
-            ["reanalyze", "--out=out", "--broad-spread-pct=10.1"]
+            ["reanalyze", "--out=out", "--broad-spread-pct=20.1"]
         )
         for rendered in (
             benchmark_ab.render_terminal(report, quiet_args, self._manifest()),

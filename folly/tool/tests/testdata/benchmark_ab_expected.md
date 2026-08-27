@@ -47,8 +47,8 @@ Each win/regression section sorts benchmarks by estimated Δ, smallest first.
 
 **Run-to-run spread per before/after series:**
 
-- Metric: (max - min) / median
-- Not calculated: no complete series has median >2.0ns
+- Metric: (max - min) / median, excluding 1 slowest
+- Not calculated: no complete series has median >2.0ns after exclusions
 
 ## High-priority wins
 

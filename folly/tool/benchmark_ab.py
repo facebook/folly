@@ -333,15 +333,17 @@ class SpreadCalibration:
 
 @dataclass(frozen=True)
 class SpreadAnalysis:
-    # Spread analysis considers a before/after timing series only when it has
-    # a measurement in every discovered round and its median exceeds
-    # MIN_RELATIVE_MEDIAN_NS. This eligibility rule applies only to spread;
-    # effect estimates still use all contributing timings.
+    # Spread analysis considers only complete before/after timing series.
+    # Calibration and the broad alarm use full series above
+    # MIN_RELATIVE_MEDIAN_NS; individual warnings apply the same floor after
+    # excluding slow timings. These exclusions do not affect effect estimates,
+    # which use all contributing timings.
     row_to_eligible_spreads: dict[ComparisonRow, tuple[SideSpread, ...]]
     round_count: int
-    eligible_side_count: int
+    full_series_count: int
     broad_spread_count: int
-    median_pct: float | None  # None when no timing series is eligible
+    ignore_n_slowest: int
+    median_pct: float | None  # None when no retained series is eligible
     calibration: SpreadCalibration | None  # None below MIN_SPREAD_COHORT_SIZE
 
     def eligible_spreads_for(self, row: ComparisonRow) -> tuple[SideSpread, ...]:
@@ -476,6 +478,18 @@ def add_report_arguments(parser: argparse.ArgumentParser) -> None:
             "to raise the broad-spread alarm; requires at least 20 series"
         ),
     )
+    parser.add_argument(
+        "--spread-ignore-slowest",
+        dest="ignore_n_slowest",
+        metavar="N",
+        type=int,
+        default=1,
+        help=(
+            "number of slowest timings ignored from each before/after series "
+            "when calculating per-benchmark spread; the broad alarm and "
+            "effect estimates use every timing"
+        ),
+    )
 
 
 def add_measure_parser(
@@ -595,6 +609,8 @@ def validate_args(args: argparse.Namespace) -> None:
             raise SystemExit("--max-run-attempts must be at least 1")
         if args.bm_max_secs < 1:
             raise SystemExit("--bm-max-secs must be at least 1")
+    if args.ignore_n_slowest < 0:
+        raise SystemExit("--spread-ignore-slowest must be nonnegative")
     if args.lo_ns > args.hi_ns:
         raise SystemExit("--lo-ns must not exceed --hi-ns")
     if args.lo_pct > args.hi_pct:
@@ -1317,68 +1333,79 @@ def analyze_spread(
     round_count: int,
     broad_threshold: Threshold,
     high_spread_minimum: Threshold,
+    ignore_n_slowest: int,
 ) -> SpreadAnalysis:
+    retained_timing_count = round_count - ignore_n_slowest
     row_to_eligible_spreads: dict[ComparisonRow, tuple[SideSpread, ...]] = {}
+    all_timing_spreads: list[SideSpread] = []
     for row in rows:
-        # A range needs at least two timings. Compare like-sized samples because
-        # ranges grow as more rounds are added.
+        # Compare like-sized samples because ranges grow as rounds are added.
         if round_count < 2 or len(row.observations) != round_count:
             continue
         eligible_row_spreads = []
         for side in (BEFORE_SIDE, AFTER_SIDE):
-            values = tuple(
+            values = sorted(
                 getattr(observation, side) for observation in row.observations
             )
-            median = statistics.median(values)
-            if median <= MIN_RELATIVE_MEDIAN_NS:
+            full_median = statistics.median(values)
+            if full_median > MIN_RELATIVE_MEDIAN_NS:
+                all_timing_spreads.append(
+                    SideSpread(
+                        side=side,
+                        minimum=values[0],
+                        maximum=values[-1],
+                        median=full_median,
+                    )
+                )
+            if retained_timing_count < 2:
                 continue
+            retained_values = values[:retained_timing_count]
+            retained_median = statistics.median(retained_values)
+            if retained_median <= MIN_RELATIVE_MEDIAN_NS:
+                continue
+            # Per-benchmark warnings ignore isolated slow runs. The Tukey cutoff
+            # still uses full ranges, so removing a timing cannot lower it.
             eligible_row_spreads.append(
                 SideSpread(
                     side=side,
-                    minimum=min(values),
-                    maximum=max(values),
-                    median=median,
+                    minimum=retained_values[0],
+                    maximum=retained_values[-1],
+                    median=retained_median,
                 )
             )
         if eligible_row_spreads:
             row_to_eligible_spreads[row] = tuple(eligible_row_spreads)
 
-    eligible_spreads = tuple(
-        spread
+    retained_spread_pcts = [
+        spread.pct
         for eligible_row_spreads in row_to_eligible_spreads.values()
         for spread in eligible_row_spreads
-    )
-    eligible_spread_pcts = [spread.pct for spread in eligible_spreads]
-    eligible_side_count = len(eligible_spread_pcts)
+    ]
+    all_timing_spread_pcts = [spread.pct for spread in all_timing_spreads]
+    full_series_count = len(all_timing_spread_pcts)
+    # A slow round shared by many series is what the broad alarm diagnoses.
     broad_spread_count = sum(
         display_round(spread.range_ns) >= display_round(broad_threshold.ns)
         and display_round(spread.pct) >= display_round(broad_threshold.pct)
-        for spread in eligible_spreads
+        for spread in all_timing_spreads
     )
-    if not eligible_spread_pcts:
-        return SpreadAnalysis(
-            row_to_eligible_spreads=row_to_eligible_spreads,
-            round_count=round_count,
-            eligible_side_count=0,
-            broad_spread_count=0,
-            median_pct=None,
-            calibration=None,
-        )
-
-    median_pct = statistics.median(eligible_spread_pcts)
+    median_pct = (
+        statistics.median(retained_spread_pcts) if retained_spread_pcts else None
+    )
     # With fewer series, one benchmark can move the cutoff too much.
-    if eligible_side_count < MIN_SPREAD_COHORT_SIZE:
+    if full_series_count < MIN_SPREAD_COHORT_SIZE:
         return SpreadAnalysis(
             row_to_eligible_spreads=row_to_eligible_spreads,
             round_count=round_count,
-            eligible_side_count=eligible_side_count,
+            full_series_count=full_series_count,
             broad_spread_count=broad_spread_count,
+            ignore_n_slowest=ignore_n_slowest,
             median_pct=median_pct,
             calibration=None,
         )
 
     q1_pct, _, q3_pct = statistics.quantiles(
-        eligible_spread_pcts,
+        all_timing_spread_pcts,
         n=4,
         method="inclusive",
     )
@@ -1387,8 +1414,9 @@ def analyze_spread(
     return SpreadAnalysis(
         row_to_eligible_spreads=row_to_eligible_spreads,
         round_count=round_count,
-        eligible_side_count=eligible_side_count,
+        full_series_count=full_series_count,
         broad_spread_count=broad_spread_count,
+        ignore_n_slowest=ignore_n_slowest,
         median_pct=median_pct,
         calibration=SpreadCalibration(
             outlier_cutoff_pct=outlier_cutoff_pct,
@@ -1521,6 +1549,7 @@ def analyze_report(
         round_count=len({key[0] for key in artifacts}),
         broad_threshold=hi_threshold,
         high_spread_minimum=lo_threshold,
+        ignore_n_slowest=args.ignore_n_slowest,
     )
     classified_row_ids = {
         (row.build_target, row.benchmark)
@@ -1611,19 +1640,27 @@ def summary_text(
 def spread_summary_lines(spread: SpreadAnalysis) -> list[str]:
     lines = [
         "Run-to-run spread per before/after series:",
-        "  Metric: (max - min) / median",
+        f"  Metric: (max - min) / median, excluding {spread.ignore_n_slowest} slowest",
     ]
-    if spread.round_count < 2:
-        return lines + ["  Not calculated: need at least 2 recorded rounds"]
+    retained_timing_count = max(
+        spread.round_count - spread.ignore_n_slowest,
+        0,
+    )
+    if retained_timing_count < 2:
+        return lines + [
+            "  Not calculated: need at least 2 timings after exclusions "
+            f"({retained_timing_count} available)"
+        ]
     if spread.median_pct is None:
         return lines + [
             "  Not calculated: no complete series has median "
-            f">{fmt_value(MIN_RELATIVE_MEDIAN_NS)}ns"
+            f">{fmt_value(MIN_RELATIVE_MEDIAN_NS)}ns after exclusions"
         ]
 
     lines.append(
         f"  Median: {fmt_value(spread.median_pct)}% across "
-        f"{spread.eligible_side_count} timing series"
+        f"{sum(len(items) for items in spread.row_to_eligible_spreads.values())} "
+        "timing series"
     )
     if spread.calibration is None:
         return lines + [
@@ -1635,7 +1672,7 @@ def spread_summary_lines(spread: SpreadAnalysis) -> list[str]:
     cutoff_text = (
         "Tukey outlier cutoff"
         if calibration.high_spread_threshold.pct == calibration.outlier_cutoff_pct
-        else f"Tukey outlier cutoff: {fmt_value(calibration.outlier_cutoff_pct)}%"
+        else (f"Tukey outlier cutoff: {fmt_value(calibration.outlier_cutoff_pct)}%")
     )
     lines.append(
         "  High spread threshold: "
@@ -1652,14 +1689,14 @@ def broad_spread_warning_lines(
     *,
     markdown: bool,
 ) -> list[str]:
-    if spread.eligible_side_count < MIN_SPREAD_COHORT_SIZE:
+    if spread.full_series_count < MIN_SPREAD_COHORT_SIZE:
         return []
-    pct = 100.0 * spread.broad_spread_count / spread.eligible_side_count
+    pct = 100.0 * spread.broad_spread_count / spread.full_series_count
     if display_round(pct) < display_round(args.broad_spread_pct):
         return []
     count = (
-        f"{spread.broad_spread_count}/{spread.eligible_side_count} before/after "
-        f"series ({fmt_value(pct)}%)"
+        f"{spread.broad_spread_count}/{spread.full_series_count} "
+        f"before/after series ({fmt_value(pct)}%)"
     )
     range_threshold = (
         f"{fmt_value(args.hi_ns)}ns and {fmt_value(args.hi_pct)}% of their median"
@@ -1667,12 +1704,12 @@ def broad_spread_warning_lines(
     if markdown:
         return [
             "**Warning: High run-to-run spread across the benchmark set.** "
-            f"{count} have a run-to-run range of at least {range_threshold}.",
+            f"{count} have a full run-to-run range of at least {range_threshold}.",
             "",
         ]
     return [
         "WARNING: High run-to-run spread across the benchmark set",
-        f"  {count} have a run-to-run range of at least",
+        f"  {count} have a full run-to-run range of at least",
         f"  {range_threshold}.",
         "",
     ]
@@ -1685,9 +1722,10 @@ def spread_warning_texts(
     spreads = report.spread.high_spreads_for(row)
     return tuple(
         (
-            f"High spread ({spread.side}): "
+            f"High spread ({spread.side}; excluding "
+            f"{report.spread.ignore_n_slowest} slowest): "
             f"{fmt_value(spread.minimum)}-{fmt_value(spread.maximum)}ns "
-            f"(range is {fmt_value(spread.pct)}% of median)"
+            f"({fmt_value(spread.pct)}% of median)"
         )
         for spread in spreads
     )
@@ -2102,6 +2140,7 @@ def tsv_comparison_row(
         "median_before_ns": fmt_value(summary.before),
         "median_after_ns": fmt_value(summary.after),
         "direction_agreement_pct": fmt_value(direction_agreement(row).pct),
+        "ignore_n_slowest": str(report.spread.ignore_n_slowest),
         "benchmark": row.benchmark.name,
         "benchmark_file": row.benchmark.file,
         "target": row.build_target,
@@ -2129,6 +2168,7 @@ def render_tsv(report: ComparisonReport, *, out_dir: Path) -> str:
             "median_before_ns",
             "median_after_ns",
             "direction_agreement_pct",
+            "ignore_n_slowest",
             "before_range_ns",
             "before_range_pct_of_median",
             "after_range_ns",
