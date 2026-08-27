@@ -87,23 +87,17 @@ class IoUringRecvHandle::RecvRequest
     useBundles_ = backend->useBundles();
   }
 
-  void setRecvLen(size_t len) { recvLen_ = len; }
-
   void prepRecvNormal(struct io_uring_sqe* sqe) {
-    if (recvLen_ > 0) {
-      ::io_uring_prep_recv(sqe, fd_.toFd(), nullptr, recvLen_, 0);
-    } else {
-      ::io_uring_prep_recv_multishot(sqe, fd_.toFd(), nullptr, 0, 0);
-      if (useBundles_) {
-        sqe->ioprio |= IORING_RECVSEND_BUNDLE;
-      }
+    ::io_uring_prep_recv_multishot(sqe, fd_.toFd(), nullptr, 0, 0);
+    if (useBundles_) {
+      sqe->ioprio |= IORING_RECVSEND_BUNDLE;
     }
     sqe->buf_group = bufferRing_->gid();
     sqe->flags |= IOSQE_BUFFER_SELECT;
   }
 
   void prepRecvFallback(struct io_uring_sqe* sqe) {
-    size_t size = recvLen_ > 0 ? recvLen_ : goodMallocSize(16384);
+    const auto size = goodMallocSize(16384);
     fallbackBuffer_ = IOBuf::create(size);
     ::io_uring_prep_recv(
         sqe,
@@ -120,13 +114,7 @@ class IoUringRecvHandle::RecvRequest
     fallbackBuffer_.reset();
 
     if (bufferPool_) {
-      ::io_uring_prep_rw(
-          IORING_OP_RECV_ZC,
-          sqe,
-          fd_.toFd(),
-          nullptr,
-          static_cast<uint32_t>(recvLen_),
-          0);
+      ::io_uring_prep_rw(IORING_OP_RECV_ZC, sqe, fd_.toFd(), nullptr, 0, 0);
       sqe->ioprio |= IORING_RECV_MULTISHOT;
       return;
     }
@@ -200,7 +188,6 @@ class IoUringRecvHandle::RecvRequest
 
   IoUringBufferProvider* bufferRing_{nullptr};
   IoUringZeroCopyBufferPool* bufferPool_{nullptr};
-  size_t recvLen_{0};
   std::unique_ptr<IOBuf> fallbackBuffer_;
 };
 
@@ -283,12 +270,9 @@ bool IoUringRecvHandle::update(uint16_t eventFlags) {
   return true;
 }
 
-void IoUringRecvHandle::submit(size_t maxSize) {
+void IoUringRecvHandle::submit() {
   CHECK(readEnabled_);
   CHECK(request_);
-  // Some ReadCallbacks have a small peeking getReadBuffer() size, intended to
-  // peek a few bytes in the socket. For these, issue a non-multishot recv.
-  request_->setRecvLen(maxSize < kSmallRecvSize ? maxSize : 0);
   ensureRecvArmed();
 }
 
@@ -491,7 +475,7 @@ bool IoUringRecvHandle::update(uint16_t /*eventFlags*/) {
   folly::terminate_with<std::runtime_error>("io_uring not supported");
 }
 
-void IoUringRecvHandle::submit(size_t /*maxSize*/) {
+void IoUringRecvHandle::submit() {
   folly::terminate_with<std::runtime_error>("io_uring not supported");
 }
 

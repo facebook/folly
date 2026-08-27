@@ -3746,7 +3746,7 @@ void AsyncSocket::checkForImmediateRead() noexcept {
 
   if (iouRecvHandle_ && readCallback_ == callback &&
       eventBase_ == originalEventBase) {
-    iouRecvHandle_->submit(callback->maxBufferSize());
+    iouRecvHandle_->submit();
     iouRecvHandle_->drainCompletedReads();
   }
 }

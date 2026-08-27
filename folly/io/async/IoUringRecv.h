@@ -47,8 +47,6 @@ class IoUringRecvHandle : public DelayedDestruction {
   using PendingRead = SemiFuture<std::unique_ptr<IOBuf>>;
   using PendingReadMaybe = Optional<PendingRead>;
 
-  static constexpr size_t kSmallRecvSize = 4096;
-
   static UniquePtr create(
       EventBase* evb,
       NetworkSocket fd,
@@ -63,7 +61,7 @@ class IoUringRecvHandle : public DelayedDestruction {
       UniquePtr old);
 
   bool update(uint16_t eventFlags);
-  void submit(size_t maxSize);
+  void submit();
   void drainCompletedReads();
 
   void detachEventBase();

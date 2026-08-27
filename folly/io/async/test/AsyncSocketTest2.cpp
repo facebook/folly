@@ -10160,9 +10160,17 @@ TEST_P(AsyncSocketTest, PreReceivedData) {
   ReadCallback peekCallback(2);
   ReadCallback readCallback;
   peekCallback.dataAvailableCallback = [&]() {
-    peekCallback.verifyData("he", 2);
-    acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("h"));
-    acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("e"));
+    const auto peeked = peekCallback.dataRead();
+    if (peeked < 2) {
+      return;
+    }
+    peekCallback.verifyData("hello", peeked);
+    if (GetParam() == BackendType::IO_URING) {
+      acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("hello", peeked));
+    } else {
+      acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("h"));
+      acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("e"));
+    }
     acceptedSocket->setReadCB(nullptr);
     acceptedSocket->setReadCB(&readCallback);
   };
@@ -10343,14 +10351,21 @@ TEST_P(AsyncSocketTest, PreReceivedDataTakeover) {
   ReadCallback peekCallback(3);
   ReadCallback readCallback;
   peekCallback.dataAvailableCallback = [&]() {
-    peekCallback.verifyData("hel", 3);
-    acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("hello"));
+    const auto peeked = peekCallback.dataRead();
+    if (peeked < 3) {
+      return;
+    }
+    peekCallback.verifyData("hello", peeked);
+    acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("hello", peeked));
     acceptedSocket->setReadCB(nullptr);
     takeoverSocket =
         AsyncSocket::UniquePtr(new AsyncSocket(std::move(acceptedSocket)));
     takeoverSocket->setReadCB(&readCallback);
   };
   readCallback.dataAvailableCallback = [&]() {
+    if (readCallback.dataRead() < 5) {
+      return;
+    }
     readCallback.verifyData("hello", 5);
     takeoverSocket->setReadCB(nullptr);
   };
