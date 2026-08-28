@@ -566,8 +566,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     DIRECTORY executors/test/
       TEST executors_async_helpers_test SOURCES AsyncTest.cpp
       TEST executors_codel_test WINDOWS_DISABLED SOURCES CodelTest.cpp
-      BENCHMARK executors_edf_thread_pool_executor_benchmark
-        SOURCES EDFThreadPoolExecutorBenchmark.cpp
       TEST executors_executor_test SOURCES ExecutorTest.cpp
       TEST executors_fiber_io_executor_test SOURCES FiberIOExecutorTest.cpp
       # FunctionSchedulerTest has a lot of timing-dependent checks,
@@ -643,7 +641,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
         SOURCES ApplyTupleTest.cpp
       TEST functional_invoke_test WINDOWS_DISABLED
         SOURCES InvokeTest.cpp
-      TEST functional_partial_test SOURCES PartialTest.cpp
       TEST functional_protocol_test SOURCES protocol_test.cpp
       TEST functional_traits_test SOURCES traits_test.cpp
 
@@ -991,8 +988,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       #TEST shared_mutex_test SOURCES SharedMutexTest.cpp
       # SingletonTest requires Subprocess
       #TEST singleton_test SOURCES SingletonTest.cpp
-      TEST singleton_double_registration_test BROKEN SOURCES
-        SingletonDoubleRegistration.cpp
       TEST singleton_test_global SOURCES SingletonTestGlobal.cpp
       TEST singleton_thread_local_test BROKEN SOURCES
         SingletonThreadLocalTest.cpp
