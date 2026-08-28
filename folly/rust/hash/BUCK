@@ -1,0 +1,34 @@
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rust_library.bzl", "fb_dirsync_rust_library")
+
+oncall("rust_libraries")
+
+fb_dirsync_cpp_library(
+    name = "folly_hash_ffi",
+    srcs = ["hash.cpp"],
+    headers = ["hash.h"],
+    preferred_linkage = "static",
+    undefined_symbols = True,
+    deps = [
+        ":folly_hash@header",
+    ],
+    exported_deps = [
+        "fbsource//third-party/rust:cxx-core",
+        "//folly/hash:hash",
+    ],
+)
+
+fb_dirsync_rust_library(
+    name = "folly_hash",
+    srcs = [
+        "ffi.rs",
+        "lib.rs",
+        "tests.rs",
+    ],
+    cpp_deps = [":folly_hash_ffi"],
+    crate_root = "lib.rs",
+    cxx_bridge = "ffi.rs",
+    deps = [
+        "fbsource//third-party/rust:cxx",
+    ],
+)
