@@ -31,6 +31,7 @@
 #include <concepts>
 #include <cstddef>
 #include <initializer_list>
+#include <iterator>
 #include <ranges>
 #include <tuple>
 
@@ -331,10 +332,7 @@ class F14BasicSet {
     // is easy to disable at a particular call site by asking for an
     // initialCapacity of 1.
     bool autoReserve =
-        std::is_base_of<
-            std::random_access_iterator_tag,
-            typename std::iterator_traits<InputIt>::iterator_category>::value &&
-        initialCapacity == 0;
+        std::random_access_iterator<InputIt> && initialCapacity == 0;
     bulkInsert(first, last, autoReserve);
   }
 
@@ -346,10 +344,7 @@ class F14BasicSet {
     // ourself to situations that mimic bulk construction without an
     // explicit initialCapacity.
     bool autoReserve =
-        std::is_base_of<
-            std::random_access_iterator_tag,
-            typename std::iterator_traits<InputIt>::iterator_category>::value &&
-        bucket_count() == 0;
+        std::random_access_iterator<InputIt> && bucket_count() == 0;
     bulkInsert(first, last, autoReserve);
   }
 
