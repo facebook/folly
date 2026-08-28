@@ -16,8 +16,12 @@
 
 #include <folly/lang/ToAscii.h>
 
+#include <cstring>
+#include <random>
 #include <string>
+#include <utility>
 
+#include <folly/Traits.h>
 #include <folly/portability/GTest.h>
 
 template <int Base, typename F>
@@ -104,6 +108,79 @@ static void to_ascii_size_u64_10_compare(F _) {
     }
   }
 }
+
+//  The values at which the digit count changes: every power of two and every
+//  power of Base, each with its neighbors. A change-of-base estimate that lands
+//  on the wrong side of one of these is exactly how a sizing implementation
+//  goes wrong, so these probes localize the defect rather than merely find it.
+//
+//  Use to_ascii_size_idivs as the oracle for the two helpers below. Repeated
+//  division is the definition of the base-Base representation, so it shares no
+//  structure with the log change-of-base estimate under test, and the tests
+//  above already pin it against std::to_string and against known digit counts.
+template <uint64_t Base, typename F>
+static void to_ascii_size_boundaries(F _) {
+  auto const check = [&](uint64_t v) {
+    EXPECT_EQ(folly::detail::to_ascii_size_idivs<Base>(v), _(v))
+        << "base " << Base << " v " << v;
+  };
+  auto const around = [&](uint64_t v) {
+    if (v > 0) {
+      check(v - 1);
+    }
+    check(v);
+    if (v < ~uint64_t(0)) {
+      check(v + 1);
+    }
+  };
+
+  for (size_t p = 0; p < 64; ++p) {
+    around(uint64_t(1) << p);
+  }
+  for (uint64_t p = 1; p <= (~uint64_t(0)) / Base; p *= Base) {
+    around(p);
+  }
+  check(0);
+  check(~uint64_t(0));
+}
+
+//  Every small value, then a spread of values of every bit length, since the
+//  change-of-base estimate is driven by bit length.
+template <uint64_t Base, typename F>
+static void to_ascii_size_sweep(F _) {
+  auto const check = [&](uint64_t v) {
+    EXPECT_EQ(folly::detail::to_ascii_size_idivs<Base>(v), _(v))
+        << "base " << Base << " v " << v;
+  };
+
+  for (uint64_t v = 0; v < 4096; ++v) {
+    check(v);
+  }
+
+  std::mt19937_64 rng;
+  for (size_t bits = 1; bits <= 64; ++bits) {
+    auto const mask = bits == 64 ? ~uint64_t(0) : (uint64_t(1) << bits) - 1;
+    for (size_t i = 0; i < 64; ++i) {
+      check((rng() & mask) | (uint64_t(1) << (bits - 1)));
+    }
+  }
+}
+
+template <auto... Bases>
+static void to_ascii_size_clzll_bases(folly::vtag_t<Bases...>) {
+  (to_ascii_size_boundaries<Bases>(folly::detail::to_ascii_size_clzll<Bases>),
+   ...);
+  (to_ascii_size_sweep<Bases>(folly::detail::to_ascii_size_clzll<Bases>), ...);
+}
+
+template <uint64_t Lo, uint64_t... I>
+static folly::vtag_t<(Lo + I)...> to_ascii_bases_shifted_(
+    std::integer_sequence<uint64_t, I...>);
+
+//  The bases Lo through Hi inclusive, as a value list.
+template <uint64_t Lo, uint64_t Hi>
+using to_ascii_bases_range_ = decltype(to_ascii_bases_shifted_<Lo>(
+    std::make_integer_sequence<uint64_t, Hi - Lo + 1>{}));
 
 struct ToAsciiTest : testing::Test {};
 
@@ -210,6 +287,33 @@ TEST_F(ToAsciiTest, to_ascii_size_clzll_10_compare) {
   to_ascii_size_u64_10_compare(folly::detail::to_ascii_size_clzll<10>);
 }
 
+//  to_ascii_size_route sends only power-of-two bases and base 10 to the clzll
+//  implementation, so the bases below are reachable only by calling it
+//  directly. They are covered because the restriction lives in the caller:
+//  nothing about to_ascii_size_clzll itself is specific to the bases the router
+//  selects.
+TEST_F(ToAsciiTest, to_ascii_size_clzll_every_base) {
+  //  every base to_ascii_alphabet supports, then a few past it, where the
+  //  change-of-base derivation answers to arithmetic and to no alphabet
+  using bases_range = to_ascii_bases_range_<2, 36>;
+  using bases_extra =
+      folly::vtag_t<uint64_t(37), uint64_t(42), uint64_t(54), uint64_t(100)>;
+  using bases =
+      folly::value_list_concat_t<folly::vtag_t, bases_range, bases_extra>;
+
+  //  a range computed wrong would still be a valid list of bases, and would
+  //  still pass, so pin what it computed
+  static_assert(
+      std::is_same_v<folly::value_list_element_type_t<0, bases>, uint64_t>);
+  static_assert(folly::value_list_size_v<bases> == 35 + 4);
+  static_assert(folly::value_list_element_v<0, bases> == 2);
+  static_assert(folly::value_list_element_v<34, bases> == 36);
+  static_assert(folly::value_list_element_v<35, bases> == 37);
+  static_assert(folly::value_list_element_v<38, bases> == 100);
+
+  to_ascii_size_clzll_bases(bases{});
+}
+
 template <uint64_t Base>
 struct inputs;
 
@@ -277,4 +381,43 @@ TEST_F(ToAsciiTest, to_ascii_table_10_compare) {
     folly::detail::to_ascii_with_table<10, abc>(out, size, v);
     return size;
   });
+}
+
+//  Both public entry points route through the same implementation choice, so
+//  they agree byte for byte. They would still agree on a non-mobile build if
+//  the array overload bypassed the route, so this pins the contract rather than
+//  the routing itself.
+TEST_F(ToAsciiTest, to_ascii_with_overloads_agree_10) {
+  for (auto const v : inputs<10>::data) {
+    SCOPED_TRACE(v);
+
+    char arr[folly::to_ascii_size_max<10, uint64_t>];
+    auto const arr_size = folly::to_ascii_decimal(arr, v);
+
+    char rng[folly::to_ascii_size_max<10, uint64_t>];
+    auto const rng_size = folly::to_ascii_decimal(rng, rng + sizeof(rng), v);
+
+    EXPECT_EQ(std::to_string(v), std::string(arr, arr_size));
+    EXPECT_EQ(std::string(arr, arr_size), std::string(rng, rng_size));
+  }
+}
+
+//  The range overload reports a short buffer by writing nothing and returning
+//  0; a successful call always writes at least one byte.
+TEST_F(ToAsciiTest, to_ascii_with_range_too_small) {
+  constexpr char const sentinel = '\x7f';
+  char buf[8];
+  std::memset(buf, sentinel, sizeof(buf));
+
+  //  1234567890 needs 10 bytes and the range holds 8
+  EXPECT_EQ(0, folly::to_ascii_decimal(buf, buf + sizeof(buf), 1234567890u));
+  EXPECT_EQ(std::string(sizeof(buf), sentinel), std::string(buf, sizeof(buf)));
+
+  //  an empty range is too small even for a single digit
+  EXPECT_EQ(0, folly::to_ascii_decimal(buf, buf, 1u));
+  EXPECT_EQ(std::string(sizeof(buf), sentinel), std::string(buf, sizeof(buf)));
+
+  //  an exactly-sized range succeeds
+  EXPECT_EQ(3, folly::to_ascii_decimal(buf, buf + 3, 123u));
+  EXPECT_EQ("123", std::string(buf, 3));
 }

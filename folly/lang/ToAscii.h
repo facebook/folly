@@ -186,6 +186,49 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_size_array(uint64_t v) {
   return powers::size;
 }
 
+//  The largest e for which Base^e <= 2^bits, for bits in [0, 64], which is the
+//  log change-of-base floor(bits / log<2>(Base)).
+template <uint64_t Base>
+constexpr size_t to_ascii_size_clzll_exp(size_t bits) {
+  constexpr auto const max = ~uint64_t(0);
+  //  Base^(e+1) <= 2^bits is Base^e <= floor(2^bits / Base), which avoids the
+  //  overflow of forming Base^(e+1) directly. At bits == 64 the dividend is not
+  //  representable; it exceeds max by exactly 1, which rounds up the quotient
+  //  just when Base divides it, which is just when max % Base is Base - 1.
+  uint64_t const lim = bits < 64
+      ? (uint64_t(1) << bits) / Base
+      : max / Base + (max % Base == Base - 1 ? 1 : 0);
+  //  count the powers of Base within lim by dividing down rather than by
+  //  multiplying up, since Base^(e+1) is 2^64 exactly when Base divides it
+  size_t e = 0;
+  for (uint64_t q = lim; q; q /= Base) {
+    ++e;
+  }
+  return e;
+}
+
+//  The multiplier m for which (bits * m) >> shift is exactly the change-of-base
+//  to_ascii_size_clzll_exp<Base>(bits) for every bits in [0, 64].
+//
+//  Each bits admits a contiguous interval of such multipliers; the intersection
+//  over all bits is what makes the estimate below exact for every base rather
+//  than only for the bases to_ascii_size_route happens to send here. Returns 0
+//  when the intersection is empty, which callers reject at compile time.
+template <uint64_t Base>
+constexpr uint64_t to_ascii_size_clzll_mult(size_t shift) {
+  uint64_t lo = 0;
+  uint64_t hi = ~uint64_t(0);
+  for (size_t bits = 1; bits <= 64; ++bits) {
+    //  (bits * m) >> shift == e is e <= bits * m / 2^shift < e + 1
+    uint64_t const e = to_ascii_size_clzll_exp<Base>(bits);
+    uint64_t const elo = ((e << shift) + bits - 1) / bits;
+    uint64_t const ehi = (((e + 1) << shift) + bits - 1) / bits - 1;
+    lo = elo > lo ? elo : lo;
+    hi = ehi < hi ? ehi : hi;
+  }
+  return lo <= hi ? lo : 0;
+}
+
 //  For some architectures, we can get a little help from clzll, the "count
 //  leading zeros" builtin, which is backed by a single performant instruction.
 //
@@ -206,7 +249,7 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_size_clzll(uint64_t v) {
     return 1;
   }
 
-  //  log2 is approx log<2>(v)
+  //  vlog2 is approx log<2>(v)
   size_t const vlog2 = 64 - static_cast<size_t>(__builtin_clzll(v));
 
   //  handle directly when Base is power-of-two
@@ -215,12 +258,23 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_size_clzll(uint64_t v) {
     return vlog2 / blog2 + size_t(vlog2 % blog2 != 0);
   }
 
-  //  blog2r is approx 1 / log<2>(Base), used in log change-of-base just below
-  constexpr auto const blog2m = constexpr_log2(constexpr_pow(Base, 8));
-  constexpr auto const blog2r = 8. / double(blog2m);
+  //  mult / 2^shift is 1 / log<2>(Base), to just enough precision that the log
+  //  change-of-base just below is exact rather than approximate.
+  //
+  //  Any shift in [12, 57] serves, for every base up to 4096. Below that the
+  //  multiplier is too coarse for some bases to admit an exact one at all,
+  //  which the static_assert rejects; above it, the (e + 1) << shift within the
+  //  derivation silently overflows, which nothing rejects. Within the range
+  //  more bits buy nothing, since the multiplier is already exact, so take the
+  //  largest at which every multiplier is at most 2^16 and so costs aarch64 a
+  //  single movz rather than a movz/movk pair. At 17, base 3 already needs two.
+  constexpr size_t const shift = 16;
+  constexpr auto const mult = to_ascii_size_clzll_mult<Base>(shift);
+  static_assert(mult, "no exact change-of-base multiplier for this base");
 
-  //  vlogb is approx log<Base>(v) = log<2>(v) / log<2>(Base)
-  auto const vlogb = vlog2 * size_t(blog2r * 256) / 256;
+  //  vlogb is log<Base>(v) rounded down, so the digit count is vlogb or, once
+  //  v reaches Base^vlogb, one more
+  auto const vlogb = size_t((vlog2 * mult) >> shift);
 
   //  return vlogb, adjusted if necessary
   return vlogb + size_t(vlogb < powers::size && v >= powers::data.data[vlogb]);
@@ -228,8 +282,9 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_size_clzll(uint64_t v) {
 
 template <uint64_t Base>
 FOLLY_ALWAYS_INLINE size_t to_ascii_size_route(uint64_t v) {
-  //  clzll sizing is constant-time; use it for power-of-two bases and base 10,
-  //  where the log change-of-base approximation is exact for every uint64_t.
+  //  clzll sizing is constant-time; use it for power-of-two bases and base 10.
+  //  It is exact for every base, so widening this condition is a performance
+  //  question rather than a correctness one.
   return kIsArchAmd64 && (!(Base & (Base - 1)) || Base == 10) //
       ? to_ascii_size_clzll<Base>(v)
       : to_ascii_size_array<Base>(v);
@@ -292,12 +347,6 @@ FOLLY_ALWAYS_INLINE void to_ascii_with_table(
     *out = val >> (kIsLittleEndian ? 8 : 0);
   }
 }
-template <uint64_t Base, typename Alphabet>
-FOLLY_ALWAYS_INLINE size_t to_ascii_with_table(char* out, uint64_t v) {
-  auto const size = to_ascii_size_route<Base>(v);
-  to_ascii_with_table<Base, Alphabet>(out, size, v);
-  return size;
-}
 
 // Assumes that size >= number of digits in v. If >, the result is left-padded
 // with 0s.
@@ -321,7 +370,9 @@ to_ascii_with_route(char* outb, char const* oute, uint64_t v) {
 template <uint64_t Base, typename Alphabet, size_t N>
 FOLLY_ALWAYS_INLINE size_t to_ascii_with_route(char (&out)[N], uint64_t v) {
   static_assert(N >= to_ascii_powers<Base, decltype(v)>::size, "out too small");
-  return to_ascii_with_table<Base, Alphabet>(out, v);
+  auto const size = to_ascii_size_route<Base>(v);
+  to_ascii_with_route<Base, Alphabet>(out, size, v);
+  return size;
 }
 
 } // namespace detail
@@ -371,9 +422,15 @@ inline size_t to_ascii_size_decimal(uint64_t v) {
 //  Does *not* append a null terminator. It is the caller's responsibility to
 //  append a null terminator if one is required.
 //
-//  Assumes buffer points to at least to_ascii_size<Base>(v) bytes of writable
-//  memory. It is the caller's responsibility to provide a writable buffer with
-//  the required min size.
+//  Requires at least to_ascii_size<Base>(v) bytes of writable memory. The two
+//  overloads report a shortfall differently:
+//
+//  The [outb, oute) overload checks the range. When it is too small, nothing is
+//  written and the return is 0. A successful call writes at least one byte, so
+//  a return of 0 is unambiguously that failure and is never a short write.
+//
+//  The char[N] overload checks N against the largest value of type uint64_t at
+//  compile time, so it is always large enough and never returns 0.
 //
 //  async-signal-safe
 template <uint64_t Base, typename Alphabet>
@@ -415,7 +472,7 @@ size_t to_ascii_upper(char (&out)[N], uint64_t v) {
 
 //  to_ascii_decimal
 //
-//  An alias to to_ascii<10, false>.
+//  An alias to to_ascii_lower<10>.
 //
 //  async-signal-safe
 inline size_t to_ascii_decimal(char* outb, char const* oute, uint64_t v) {

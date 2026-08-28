@@ -263,6 +263,7 @@ fb_dirsync_cpp_unittest(
     name = "to_ascii_test",
     srcs = ["ToAsciiTest.cpp"],
     deps = [
+        "//folly:traits",
         "//folly/lang:to_ascii",
         "//folly/portability:gtest",
     ],
