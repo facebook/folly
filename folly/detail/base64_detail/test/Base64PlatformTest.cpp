@@ -91,7 +91,7 @@ constexpr std::string_view kBase64EncodeTable{
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="};
 
 std::array<std::uint8_t, 16> expectedLookupByIndex(
-    std::array<std::uint8_t, 16> in, const char* sampleTable) {
+    std::array<std::uint8_t, 16> in, std::string_view sampleTable) {
   std::array<std::uint8_t, 16> res{};
 
   for (std::size_t i = 0; i != in.size(); ++i) {
