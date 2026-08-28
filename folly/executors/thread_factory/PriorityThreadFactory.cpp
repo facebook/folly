@@ -16,6 +16,9 @@
 
 #include <folly/executors/thread_factory/PriorityThreadFactory.h>
 
+#include <atomic>
+#include <memory>
+
 #include <glog/logging.h>
 #include <folly/String.h>
 #include <folly/portability/SysResource.h>
@@ -26,28 +29,38 @@ namespace folly {
 
 PriorityThreadFactory::PriorityThreadFactory(
     std::shared_ptr<ThreadFactory> factory, int priority)
-    : InitThreadFactory(std::move(factory), [priority] {
-        if (setpriority(PRIO_PROCESS, 0, priority) == 0) {
-          return;
-        }
-        int errnoCopy = errno;
-        auto message = [&](std::ostream& os) {
-          // Likely cause of failure is lacking the necessary permissions to
-          // change thread priority; note that we may need higher permissions
-          // even if trying to set the default priority while the current
-          // priority is lower (niced), for example if the thread is spawned
-          // from a lower-priority thread.
-          os << "setpriority(" << priority << ") on thread \""
-             << folly::getCurrentThreadName().value_or("<unknown>") << "\" "
-             << "failed with error " << errnoCopy << " (" << errnoStr(errnoCopy)
-             << ")";
+    : InitThreadFactory(
+          std::move(factory),
+          [priority,
+           loggedFailure = std::make_shared<std::atomic<bool>>(false)] {
+            if (setpriority(PRIO_PROCESS, 0, priority) == 0) {
+              return;
+            }
+            int errnoCopy = errno;
+            // The failure is deterministic for a given factory: the priority
+            // and the process's privileges don't change between threads.
+            // Executors with dynamic thread pools recreate threads frequently,
+            // so log only the first failure per factory to avoid log spam.
+            if (loggedFailure->exchange(true)) {
+              return;
+            }
+            auto message = [&](std::ostream& os) {
+              // Likely cause of failure is lacking the necessary permissions to
+              // change thread priority; note that we may need higher
+              // permissions even if trying to set the default priority while
+              // the current priority is lower (niced), for example if the
+              // thread is spawned from a lower-priority thread.
+              os << "setpriority(" << priority << ") on thread \""
+                 << folly::getCurrentThreadName().value_or("<unknown>") << "\" "
+                 << "failed with error " << errnoCopy << " ("
+                 << errnoStr(errnoCopy) << ")";
 
-          errno = 0;
-          if (int p = getpriority(PRIO_PROCESS, 0); p != -1 || errno == 0) {
-            os << ". Current priority: " << p;
-          }
-        };
-        message(LOG(WARNING));
-      }) {}
+              errno = 0;
+              if (int p = getpriority(PRIO_PROCESS, 0); p != -1 || errno == 0) {
+                os << ". Current priority: " << p;
+              }
+            };
+            message(LOG(WARNING));
+          }) {}
 
 } // namespace folly
