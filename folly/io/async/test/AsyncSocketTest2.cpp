@@ -11609,10 +11609,6 @@ TEST_P(AsyncSocketTest, PreReceivedDataOrderedBeforeRecvAcrossMove) {
 }
 
 TEST_P(AsyncSocketTest, MoveEventBaseWithActiveRead) {
-  if (GetParam() != BackendType::IO_URING) {
-    GTEST_SKIP() << "io_uring recv-handle detach/clone across EventBases";
-  }
-
   TestServer server;
   EventBase& evb = getEventBase();
   auto evb2 = makeEventBase();
