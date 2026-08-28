@@ -186,6 +186,17 @@ class IoUringDynamicProvidedBufferRing {
   };
 
   struct BufferArea {
+    BufferArea(
+        IoUringDynamicProvidedBufferRing* parent,
+        uint32_t bufferCount,
+        uint32_t bufferSize);
+    ~BufferArea();
+
+    BufferArea(BufferArea&&) = delete;
+    BufferArea(const BufferArea&) = delete;
+    BufferArea& operator=(BufferArea&&) = delete;
+    BufferArea& operator=(const BufferArea&) = delete;
+
     char* buffers{nullptr};
     std::unique_ptr<BufferState[]> states;
     std::atomic<uint32_t> outstanding{0};

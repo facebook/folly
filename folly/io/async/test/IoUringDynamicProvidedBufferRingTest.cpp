@@ -180,6 +180,31 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, BufferCountCheck) {
       std::runtime_error);
 }
 
+TEST_F(IoUringDynamicProvidedBufferRingTest, FailedCreateReleasesRing) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  constexpr uint16_t kGid = 7;
+
+  IoUringDynamicProvidedBufferRing::Options failing = {
+      .gid = kGid,
+      .bufferCount = 32768,
+      .bufferSize = std::numeric_limits<uint32_t>::max(),
+  };
+  EXPECT_THROW(
+      IoUringDynamicProvidedBufferRing::create(&ring, failing),
+      std::runtime_error);
+
+  IoUringDynamicProvidedBufferRing::Options valid = {
+      .gid = kGid,
+      .bufferCount = 64,
+      .bufferSize = 1024,
+  };
+  IoUringDynamicProvidedBufferRing::UniquePtr bufRing;
+  ASSERT_NO_THROW(
+      bufRing = IoUringDynamicProvidedBufferRing::create(&ring, valid));
+  EXPECT_EQ(bufRing->count(), 64);
+}
+
 TEST_F(IoUringDynamicProvidedBufferRingTest, DelayedDestruction) {
   io_uring ring{};
   io_uring_queue_init(512, &ring, 0);

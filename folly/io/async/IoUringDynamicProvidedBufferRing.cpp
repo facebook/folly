@@ -91,40 +91,10 @@ void IoUringDynamicProvidedBufferRing::mapRing() {
 
 std::unique_ptr<IoUringDynamicProvidedBufferRing::BufferArea>
 IoUringDynamicProvidedBufferRing::createArea() noexcept {
-  size_t memSize = static_cast<size_t>(ringBufferCount_) * sizePerBuffer_;
-  memSize = folly::align_ceil(memSize, kHugePageSizeBytes);
-
-  void* mem = ::mmap(
-      nullptr,
-      memSize,
-      PROT_READ | PROT_WRITE,
-      MAP_ANONYMOUS | MAP_PRIVATE,
-      -1,
-      0);
-
-  if (mem == MAP_FAILED) {
-    PLOG(ERROR) << "unable to allocate area block of size " << memSize;
-    return nullptr;
-  }
-
-  int ret = ::madvise(mem, memSize, MADV_HUGEPAGE);
-  PLOG_IF(ERROR, ret) << "cannot enable huge pages";
-
   try {
-    auto area = std::make_unique<BufferArea>();
-    area->memSize = memSize;
-    area->buffers = static_cast<char*>(mem);
-    area->states = std::make_unique<BufferState[]>(ringBufferCount_);
-    for (uint16_t b = 0; b < ringBufferCount_; b++) {
-      area->states[b].area = area.get();
-      area->states[b].bufId = b;
-      area->states[b].parent = this;
-      area->states[b].offset = 0;
-    }
-    return area;
+    return std::make_unique<BufferArea>(this, ringBufferCount_, sizePerBuffer_);
   } catch (const std::bad_alloc& ex) {
-    ::munmap(mem, memSize);
-    LOG(ERROR) << "unable to allocate area metadata: " << ex.what();
+    LOG(ERROR) << "unable to create area: " << ex.what();
     return nullptr;
   }
 }
@@ -186,15 +156,15 @@ IoUringDynamicProvidedBufferRing::IoUringDynamicProvidedBufferRing(
     ringRefillThreshold_ = kRingRefillFreeThreshold;
   }
 
-  initialRegister();
-  mapRing();
-
   for (uint32_t i = 0; i < kInitialAreaCount; i++) {
     if (addArea() == nullptr) {
       throw std::runtime_error(
           "unable to allocate initial provided buffer areas");
     }
   }
+
+  initialRegister();
+  mapRing();
 
   bufferActiveArea_ = areas_[0].get();
   bufferRefillArea_ = areas_[0].get();
@@ -346,8 +316,6 @@ void IoUringDynamicProvidedBufferRing::tryReclaimArea() noexcept {
     return;
   }
 
-  BufferArea* victim = areas_[*victimIndex].get();
-  ::munmap(victim->buffers, victim->memSize);
   areas_.erase(areas_.begin() + *victimIndex);
   areaCount_--;
 }
@@ -487,12 +455,48 @@ void IoUringDynamicProvidedBufferRing::initialRegister() {
   }
 }
 
+IoUringDynamicProvidedBufferRing::BufferArea::BufferArea(
+    IoUringDynamicProvidedBufferRing* parent,
+    uint32_t bufferCount,
+    uint32_t bufferSize)
+    : states(std::make_unique<BufferState[]>(bufferCount)),
+      memSize(
+          folly::align_ceil(
+              static_cast<size_t>(bufferCount) * bufferSize,
+              kHugePageSizeBytes)) {
+  void* mem = ::mmap(
+      nullptr,
+      memSize,
+      PROT_READ | PROT_WRITE,
+      MAP_ANONYMOUS | MAP_PRIVATE,
+      -1,
+      0);
+
+  if (mem == MAP_FAILED) {
+    PLOG(ERROR) << "unable to allocate area block of size " << memSize;
+    throw std::bad_alloc();
+  }
+
+  int ret = ::madvise(mem, memSize, MADV_HUGEPAGE);
+  PLOG_IF(ERROR, ret) << "cannot enable huge pages";
+
+  buffers = static_cast<char*>(mem);
+
+  for (uint32_t b = 0; b < bufferCount; b++) {
+    states[b].area = this;
+    states[b].bufId = static_cast<uint16_t>(b);
+    states[b].parent = parent;
+    states[b].offset = 0;
+  }
+}
+
+IoUringDynamicProvidedBufferRing::BufferArea::~BufferArea() {
+  ::munmap(buffers, memSize);
+}
+
 void IoUringDynamicProvidedBufferRing::delayedDestroy(uint32_t refs) noexcept {
   if (refs == 0) {
     ::munmap(ringPtr_, ringMemSize());
-    for (auto& area : areas_) {
-      ::munmap(area->buffers, area->memSize);
-    }
     delete this;
   }
 }
