@@ -310,6 +310,7 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_library(
     name = "relaxed_atomic",
     headers = ["RelaxedAtomic.h"],
+    exported_deps = ["//folly:traits"],
 )
 
 fb_dirsync_cpp_library(

@@ -484,6 +484,30 @@ struct DeterministicAtomicImpl {
     return rv;
   }
 
+#if defined(__cpp_lib_atomic_min_max) && __cpp_lib_atomic_min_max >= 202403L
+  T fetch_min(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept
+    requires(is_non_bool_integral_v<T> || std::is_pointer_v<T>)
+  {
+    Schedule::beforeSharedAccess();
+    T rv = data_.fetch_min(v, mo);
+    FOLLY_TEST_DSCHED_VLOG(
+        this << ".fetch_min(" << std::hex << v << ") -> " << std::hex << rv);
+    Schedule::afterSharedAccess(true);
+    return rv;
+  }
+
+  T fetch_max(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept
+    requires(is_non_bool_integral_v<T> || std::is_pointer_v<T>)
+  {
+    Schedule::beforeSharedAccess();
+    T rv = data_.fetch_max(v, mo);
+    FOLLY_TEST_DSCHED_VLOG(
+        this << ".fetch_max(" << std::hex << v << ") -> " << std::hex << rv);
+    Schedule::afterSharedAccess(true);
+    return rv;
+  }
+#endif
+
   T operator&=(T v) noexcept {
     Schedule::beforeSharedAccess();
     T rv = (data_ &= v);

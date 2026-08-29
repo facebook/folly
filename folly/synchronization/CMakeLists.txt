@@ -328,6 +328,8 @@ folly_add_library(
   NAME relaxed_atomic
   HEADERS
     RelaxedAtomic.h
+  EXPORTED_DEPS
+    folly_traits
 )
 
 folly_add_library(

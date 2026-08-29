@@ -64,6 +64,26 @@ struct atomic_ref_base {
     return atomic().exchange(desired, order);
   }
 
+#if defined(__cpp_lib_atomic_min_max) && __cpp_lib_atomic_min_max >= 202403L
+  value_type fetch_min(
+      value_type arg,
+      std::memory_order order = std::memory_order_seq_cst) const noexcept
+    requires(
+        is_non_bool_integral_v<value_type> || std::is_pointer_v<value_type>)
+  {
+    return atomic().fetch_min(arg, order);
+  }
+
+  value_type fetch_max(
+      value_type arg,
+      std::memory_order order = std::memory_order_seq_cst) const noexcept
+    requires(
+        is_non_bool_integral_v<value_type> || std::is_pointer_v<value_type>)
+  {
+    return atomic().fetch_max(arg, order);
+  }
+#endif
+
   bool compare_exchange_weak(
       value_type& expected,
       value_type desired,
@@ -149,7 +169,7 @@ struct atomic_ref_integral_base : atomic_ref_base<T> {
 
 template <typename T, typename TD = remove_cvref_t<T>>
 using atomic_ref_select = conditional_t<
-    std::is_integral<TD>::value && !std::is_same<TD, bool>::value,
+    is_non_bool_integral_v<TD>,
     atomic_ref_integral_base<T>,
     atomic_ref_base<T>>;
 

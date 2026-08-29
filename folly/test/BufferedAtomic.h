@@ -18,6 +18,7 @@
 
 #include <sstream>
 
+#include <folly/Traits.h>
 #include <folly/synchronization/detail/AtomicUtils.h>
 #include <folly/test/DeterministicSchedule.h>
 
@@ -318,6 +319,22 @@ struct BufferedAtomic {
     Modification mod = [&](const T& prev) { return prev ^ v; };
     return doReadModifyWrite(mod, mo);
   }
+
+#if defined(__cpp_lib_atomic_min_max) && __cpp_lib_atomic_min_max >= 202403L
+  T fetch_min(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept
+    requires(is_non_bool_integral_v<T> || std::is_pointer_v<T>)
+  {
+    Modification mod = [&](const T& prev) { return v < prev ? v : prev; };
+    return doReadModifyWrite(mod, mo);
+  }
+
+  T fetch_max(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept
+    requires(is_non_bool_integral_v<T> || std::is_pointer_v<T>)
+  {
+    Modification mod = [&](const T& prev) { return prev < v ? v : prev; };
+    return doReadModifyWrite(mod, mo);
+  }
+#endif
 
  private:
   T doLoad(std::memory_order mo, bool rmw = false) const {

@@ -83,7 +83,31 @@ TEST_F(AtomicRefTest, integer) {
     EXPECT_EQ(17, prev);
     EXPECT_EQ(2, value);
   }
+
+#if defined(__cpp_lib_atomic_min_max) && __cpp_lib_atomic_min_max >= 202403L
+  {
+    long value = 17;
+    auto ref = folly::make_atomic_ref(value);
+    EXPECT_EQ(17, ref.fetch_min(13, std::memory_order_relaxed));
+    EXPECT_EQ(13, value);
+    EXPECT_EQ(13, ref.fetch_max(19, std::memory_order_relaxed));
+    EXPECT_EQ(19, value);
+  }
+#endif
 }
+
+#if defined(__cpp_lib_atomic_min_max) && __cpp_lib_atomic_min_max >= 202403L
+TEST_F(AtomicRefTest, pointer_min_max) {
+  int values[] = {1, 2, 3};
+  int* value = values + 1;
+  auto ref = folly::make_atomic_ref(value);
+
+  EXPECT_EQ(values + 1, ref.fetch_min(values, std::memory_order_relaxed));
+  EXPECT_EQ(values, value);
+  EXPECT_EQ(values, ref.fetch_max(values + 2, std::memory_order_relaxed));
+  EXPECT_EQ(values + 2, value);
+}
+#endif
 
 TEST_F(AtomicRefTest, integer_compare_exchange_weak) {
   auto const relaxed = std::memory_order_relaxed;

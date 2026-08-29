@@ -667,4 +667,82 @@ TEST_F(AtomicFetchModifyTest, contention) {
   EXPECT_EQ(iterate(2, iters.load(relaxed), op_), cell.load(relaxed));
 }
 
+struct AtomicFetchMinMaxTest : testing::Test {};
+
+struct AtomicFetchMinMaxMember {
+  using value_type = int;
+
+  int fetch_min(int arg, std::memory_order order) {
+    ++fetchMinCalls;
+    lastOrder = order;
+    return std::exchange(value, arg < value ? arg : value);
+  }
+
+  int fetch_max(int arg, std::memory_order order) {
+    ++fetchMaxCalls;
+    lastOrder = order;
+    return std::exchange(value, value < arg ? arg : value);
+  }
+
+  int value{5};
+  int fetchMinCalls{0};
+  int fetchMaxCalls{0};
+  std::memory_order lastOrder{seq_cst};
+};
+
+TEST_F(AtomicFetchMinMaxTest, min) {
+  std::atomic<int> cell{5};
+
+  EXPECT_EQ(5, folly::atomic_fetch_min(cell, 3, relaxed));
+  EXPECT_EQ(3, cell.load(relaxed));
+  EXPECT_EQ(3, folly::atomic_fetch_min(cell, 7));
+  EXPECT_EQ(3, cell.load());
+  EXPECT_EQ(3, folly::atomic_fetch_min(cell, 3));
+  EXPECT_EQ(3, cell.load());
+}
+
+TEST_F(AtomicFetchMinMaxTest, max) {
+  std::atomic<int> cell{5};
+
+  EXPECT_EQ(5, folly::atomic_fetch_max(cell, 7, relaxed));
+  EXPECT_EQ(7, cell.load(relaxed));
+  EXPECT_EQ(7, folly::atomic_fetch_max(cell, 3));
+  EXPECT_EQ(7, cell.load());
+  EXPECT_EQ(7, folly::atomic_fetch_max(cell, 7));
+  EXPECT_EQ(7, cell.load());
+}
+
+TEST_F(AtomicFetchMinMaxTest, atomicRef) {
+  int value = 5;
+  folly::atomic_ref<int> cell{value};
+
+  EXPECT_EQ(5, folly::atomic_fetch_min(cell, 3, relaxed));
+  EXPECT_EQ(3, value);
+  EXPECT_EQ(3, folly::atomic_fetch_max(cell, 7, relaxed));
+  EXPECT_EQ(7, value);
+}
+
+TEST_F(AtomicFetchMinMaxTest, member) {
+  AtomicFetchMinMaxMember cell;
+
+  EXPECT_EQ(5, folly::atomic_fetch_min(cell, 3, relaxed));
+  EXPECT_EQ(3, cell.value);
+  EXPECT_EQ(1, cell.fetchMinCalls);
+  EXPECT_EQ(relaxed, cell.lastOrder);
+
+  EXPECT_EQ(3, folly::atomic_fetch_max(cell, 7, acquire));
+  EXPECT_EQ(7, cell.value);
+  EXPECT_EQ(1, cell.fetchMaxCalls);
+  EXPECT_EQ(acquire, cell.lastOrder);
+}
+
+TEST_F(AtomicFetchMinMaxTest, fallback) {
+  std::atomic<double> cell{5};
+
+  EXPECT_EQ(5, folly::atomic_fetch_min(cell, 3, relaxed));
+  EXPECT_EQ(3, cell.load(relaxed));
+  EXPECT_EQ(3, folly::atomic_fetch_max(cell, 7, relaxed));
+  EXPECT_EQ(7, cell.load(relaxed));
+}
+
 } // namespace folly

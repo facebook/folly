@@ -19,6 +19,8 @@
 #include <atomic>
 #include <cstdint>
 
+#include <folly/Traits.h>
+
 namespace folly {
 
 //  relaxed_atomic
@@ -77,6 +79,30 @@ struct relaxed_atomic_base : protected std::atomic<T> {
     return atomic::exchange(desired, std::memory_order_relaxed);
   }
 
+#if defined(__cpp_lib_atomic_min_max) && __cpp_lib_atomic_min_max >= 202403L
+  T fetch_min(T arg) noexcept
+    requires(is_non_bool_integral_v<T> || std::is_pointer_v<T>)
+  {
+    return atomic::fetch_min(arg, std::memory_order_relaxed);
+  }
+  T fetch_min(T arg) volatile noexcept
+    requires(is_non_bool_integral_v<T> || std::is_pointer_v<T>)
+  {
+    return atomic::fetch_min(arg, std::memory_order_relaxed);
+  }
+
+  T fetch_max(T arg) noexcept
+    requires(is_non_bool_integral_v<T> || std::is_pointer_v<T>)
+  {
+    return atomic::fetch_max(arg, std::memory_order_relaxed);
+  }
+  T fetch_max(T arg) volatile noexcept
+    requires(is_non_bool_integral_v<T> || std::is_pointer_v<T>)
+  {
+    return atomic::fetch_max(arg, std::memory_order_relaxed);
+  }
+#endif
+
   bool compare_exchange_weak(T& expected, T desired) noexcept {
     return atomic::compare_exchange_weak(
         expected, desired, std::memory_order_relaxed);
@@ -111,6 +137,10 @@ struct relaxed_atomic_integral_base : private relaxed_atomic_base<T> {
   using base::compare_exchange_strong;
   using base::compare_exchange_weak;
   using base::exchange;
+#if defined(__cpp_lib_atomic_min_max) && __cpp_lib_atomic_min_max >= 202403L
+  using base::fetch_max;
+  using base::fetch_min;
+#endif
   using base::is_lock_free;
   using base::load;
   using base::store;

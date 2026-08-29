@@ -202,6 +202,22 @@ TYPED_TEST(RelaxedAtomicPointerTest, fetchSub) {
   EXPECT_EQ(-1, *v);
 }
 
+#if defined(__cpp_lib_atomic_min_max) && __cpp_lib_atomic_min_max >= 202403L
+TYPED_TEST(RelaxedAtomicPointerTest, fetchMin) {
+  int n[] = {-1, -2, -3};
+  TypeParam v{n + 1};
+  EXPECT_EQ(-2, *v.fetch_min(n));
+  EXPECT_EQ(-1, *v);
+}
+
+TYPED_TEST(RelaxedAtomicPointerTest, fetchMax) {
+  int n[] = {-1, -2, -3};
+  TypeParam v{n + 1};
+  EXPECT_EQ(-2, *v.fetch_max(n + 2));
+  EXPECT_EQ(-3, *v);
+}
+#endif
+
 TYPED_TEST(RelaxedAtomicPointerTest, operatorIncrPre) {
   int n[] = {-1, -2, -3};
   TypeParam v{n + 1};
@@ -333,6 +349,20 @@ TYPED_TEST(RelaxedAtomicIntegralTest, fetchXor) {
   EXPECT_EQ(6, v.fetch_xor(10));
   EXPECT_EQ(12, v);
 }
+
+#if defined(__cpp_lib_atomic_min_max) && __cpp_lib_atomic_min_max >= 202403L
+TYPED_TEST(RelaxedAtomicIntegralTest, fetchMin) {
+  TypeParam v{3};
+  EXPECT_EQ(3, v.fetch_min(1));
+  EXPECT_EQ(1, v);
+}
+
+TYPED_TEST(RelaxedAtomicIntegralTest, fetchMax) {
+  TypeParam v{3};
+  EXPECT_EQ(3, v.fetch_max(5));
+  EXPECT_EQ(5, v);
+}
+#endif
 
 TYPED_TEST(RelaxedAtomicIntegralTest, operatorIncrPre) {
   TypeParam v{3};

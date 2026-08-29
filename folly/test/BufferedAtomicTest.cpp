@@ -204,3 +204,24 @@ TEST(BufferedAtomic, singleThreadUnguardedAccess) {
   x.store(1);
   ASSERT_EQ(1, x.load());
 }
+
+#if defined(__cpp_lib_atomic_min_max) && __cpp_lib_atomic_min_max >= 202403L
+TEST(BufferedAtomic, fetchMinMax) {
+  BufferedDeterministicAtomic<int> value{5};
+
+  EXPECT_EQ(5, value.fetch_min(3, std::memory_order_relaxed));
+  EXPECT_EQ(3, value.load(std::memory_order_relaxed));
+  EXPECT_EQ(3, value.fetch_max(7, std::memory_order_relaxed));
+  EXPECT_EQ(7, value.load(std::memory_order_relaxed));
+}
+
+TEST(BufferedAtomic, fetchMinMaxPointer) {
+  int values[] = {1, 2, 3};
+  BufferedDeterministicAtomic<int*> value{values + 1};
+
+  EXPECT_EQ(values + 1, value.fetch_min(values, std::memory_order_relaxed));
+  EXPECT_EQ(values, value.load(std::memory_order_relaxed));
+  EXPECT_EQ(values, value.fetch_max(values + 2, std::memory_order_relaxed));
+  EXPECT_EQ(values + 2, value.load(std::memory_order_relaxed));
+}
+#endif

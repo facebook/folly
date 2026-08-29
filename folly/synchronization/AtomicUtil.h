@@ -186,6 +186,38 @@ struct atomic_fetch_modify_fn {
 };
 inline constexpr atomic_fetch_modify_fn atomic_fetch_modify{};
 
+//  atomic_fetch_min
+//
+//  Atomically replaces the value in the atomic with the lesser of the current
+//  value and the argument. Returns the previous value.
+//
+//  Uses Atomic::fetch_min when available, otherwise falling back to
+//  atomic_fetch_modify.
+struct atomic_fetch_min_fn {
+  template <typename Atomic>
+  atomic_value_type_t<Atomic> operator()(
+      Atomic& atomic,
+      atomic_value_type_t<Atomic> value,
+      std::memory_order mo = std::memory_order_seq_cst) const;
+};
+inline constexpr atomic_fetch_min_fn atomic_fetch_min{};
+
+//  atomic_fetch_max
+//
+//  Atomically replaces the value in the atomic with the greater of the current
+//  value and the argument. Returns the previous value.
+//
+//  Uses Atomic::fetch_max when available, otherwise falling back to
+//  atomic_fetch_modify.
+struct atomic_fetch_max_fn {
+  template <typename Atomic>
+  atomic_value_type_t<Atomic> operator()(
+      Atomic& atomic,
+      atomic_value_type_t<Atomic> value,
+      std::memory_order mo = std::memory_order_seq_cst) const;
+};
+inline constexpr atomic_fetch_max_fn atomic_fetch_max{};
+
 template <template <typename> class Atom>
 struct atomic_thread_fence_traits;
 

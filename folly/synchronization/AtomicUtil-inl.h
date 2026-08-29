@@ -504,4 +504,42 @@ atomic_value_type_t<Atomic> atomic_fetch_modify_fn::operator()(
   return curr;
 }
 
+namespace detail {
+
+template <typename Atomic>
+using detect_atomic_fetch_min = decltype(std::declval<Atomic&>().fetch_min(
+    atomic_value_type_t<Atomic>{}, std::memory_order_relaxed));
+
+template <typename Atomic>
+using detect_atomic_fetch_max = decltype(std::declval<Atomic&>().fetch_max(
+    atomic_value_type_t<Atomic>{}, std::memory_order_relaxed));
+
+} // namespace detail
+
+template <typename Atomic>
+atomic_value_type_t<Atomic> atomic_fetch_min_fn::operator()(
+    Atomic& atomic,
+    atomic_value_type_t<Atomic> const value,
+    std::memory_order const mo) const {
+  if constexpr (is_detected_v<detail::detect_atomic_fetch_min, Atomic>) {
+    return atomic.fetch_min(value, mo);
+  } else {
+    auto const op = [=](auto const& v) { return value < v ? value : v; };
+    return atomic_fetch_modify(atomic, op, mo);
+  }
+}
+
+template <typename Atomic>
+atomic_value_type_t<Atomic> atomic_fetch_max_fn::operator()(
+    Atomic& atomic,
+    atomic_value_type_t<Atomic> const value,
+    std::memory_order const mo) const {
+  if constexpr (is_detected_v<detail::detect_atomic_fetch_max, Atomic>) {
+    return atomic.fetch_max(value, mo);
+  } else {
+    auto const op = [=](auto const& v) { return v < value ? value : v; };
+    return atomic_fetch_modify(atomic, op, mo);
+  }
+}
+
 } // namespace folly
