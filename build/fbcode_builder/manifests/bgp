@@ -33,7 +33,11 @@ gcc12
 [shipit.pathmap]
 fbcode/neteng/fboss/bgp/public_tld = .
 fbcode/neteng/fboss/bgp = neteng/fboss/bgp
-fbcode/fboss/common = common
+# AddressUtil is shared code, not an FBOSS package dependency. Ship only this
+# header into the OSS common/ tree so BGP keeps the same include path.
+fbcode/common/network = common/network
+fbcode/fboss/common/fb303/if = common/fb303/if
+fbcode/fboss/common/network/if = common/network/if
 # common.thrift defines the @AllowSkipThriftCow annotation whose C++ type is
 # derived from its package, so rib_policy.thrift must resolve the exact FBOSS
 # schema. A committed copy under public_tld would duplicate the configerator
@@ -41,6 +45,9 @@ fbcode/fboss/common = common
 fbcode/configerator/structs/neteng/fboss/thrift = configerator/structs/neteng/fboss/thrift
 
 [shipit.strip]
+^fbcode/common/network/(?!AddressUtil\.h$).*
+^fbcode/fboss/common/fb303/if/(?!fb303\.thrift$).*
+^fbcode/fboss/common/network/if/(?!Address\.thrift$).*
 ^fbcode/neteng/fboss/bgp/.*facebook.*
 ^fbcode/neteng/fboss/bgp/.*\.bzl
 ^fbcode/neteng/fboss/bgp/\.llms/.*
