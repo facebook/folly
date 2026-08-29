@@ -409,6 +409,7 @@ folly_add_library(
   EXPORTED_DEPS
     folly_conv
     folly_fbstring
+    folly_lang_cstring_view
     folly_likely
     folly_portability
     folly_portability_sys_types

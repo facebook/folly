@@ -930,6 +930,7 @@ fb_dirsync_cpp_library(
         ":fbstring",
         ":likely",
         ":portability",
+        "//folly/lang:cstring_view",
         "//folly/portability:sys_types",
     ],
 )

@@ -473,6 +473,8 @@ fb_dirsync_cpp_unittest(
     srcs = ["ExceptionTest.cpp"],
     deps = [
         "//folly:exception",
+        "//folly:fbstring",
+        "//folly/lang:cstring_view",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/testing:test_util",

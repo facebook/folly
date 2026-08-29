@@ -18,7 +18,10 @@
 
 #include <cstdio>
 #include <memory>
+#include <string>
 
+#include <folly/FBString.h>
+#include <folly/lang/cstring_view.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/testing/TestUtil.h>
@@ -120,6 +123,45 @@ TEST(ExceptionTest, makeSystemError) {
   EXPECT_EQ(errorCategoryForErrnoDomain(), ex.code().category());
   EXPECT_TRUE(StringPiece{ex.what()}.contains("unexpected success"))
       << "what() string missing input message: " << ex.what();
+}
+
+TEST(ExceptionTest, makeSystemErrorExplicitOverloads) {
+  // Make sure errno isn't used: set it to something other than the code we
+  // pass to the Explicit overloads.
+  errno = ERANGE;
+
+  // Zero-argument overload: just the error code, no message.
+  auto ex = makeSystemErrorExplicit(EIO);
+  EXPECT_EQ(EIO, ex.code().value());
+  EXPECT_EQ(errorCategoryForErrnoDomain(), ex.code().category());
+
+  // const char* overload.
+  ex = makeSystemErrorExplicit(EIO, "boom");
+  EXPECT_EQ(EIO, ex.code().value());
+  EXPECT_TRUE(StringPiece{ex.what()}.contains("boom")) << ex.what();
+
+  // folly::cstring_view overload.
+  const cstring_view piece = "boom";
+  ex = makeSystemErrorExplicit(EIO, piece);
+  EXPECT_EQ(EIO, ex.code().value());
+  EXPECT_TRUE(StringPiece{ex.what()}.contains("boom")) << ex.what();
+
+  // folly::fbstring: routed through the cstring_view overload.
+  const fbstring fbstr = "boom";
+  ex = makeSystemErrorExplicit(EIO, fbstr);
+  EXPECT_EQ(EIO, ex.code().value());
+  EXPECT_TRUE(StringPiece{ex.what()}.contains("boom")) << ex.what();
+
+  // const std::string& overload.
+  const std::string str = "boom";
+  ex = makeSystemErrorExplicit(EIO, str);
+  EXPECT_EQ(EIO, ex.code().value());
+  EXPECT_TRUE(StringPiece{ex.what()}.contains("boom")) << ex.what();
+
+  // Variadic pack: multiple pieces, including a non-string argument.
+  ex = makeSystemErrorExplicit(EIO, "count=", 42);
+  EXPECT_EQ(EIO, ex.code().value());
+  EXPECT_TRUE(StringPiece{ex.what()}.contains("count=42")) << ex.what();
 }
 
 TEST(ExceptionTest, testCheckThrow) {

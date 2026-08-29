@@ -20,12 +20,15 @@
 
 #include <cstdio>
 #include <stdexcept>
+#include <string>
 #include <system_error>
+#include <type_traits>
 
 #include <folly/Conv.h>
 #include <folly/FBString.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
+#include <folly/lang/cstring_view.h>
 #include <folly/portability/SysTypes.h>
 
 namespace folly {
@@ -50,14 +53,49 @@ inline const std::error_category& errorCategoryForErrnoDomain() noexcept {
   return std::system_category();
 }
 
+inline std::system_error makeSystemErrorExplicit(int err) {
+  return std::system_error(err, errorCategoryForErrnoDomain());
+}
+
+// The common case. This also disambiguates a const char* / string-literal
+// argument, which would otherwise convert equally well to both the cstring_view
+// and the std::string overload below (an ambiguous call).
 inline std::system_error makeSystemErrorExplicit(int err, const char* msg) {
   return std::system_error(err, errorCategoryForErrnoDomain(), msg);
 }
 
-template <class... Args>
+// Any other single NUL-terminated string-like argument (e.g. fbstring,
+// cstring_view). It already owns a NUL-terminated buffer, so hand its c_str()
+// straight to the ctor instead of paying for a to<fbstring> conversion and
+// fbstring unshare.
+inline std::system_error makeSystemErrorExplicit(int err, cstring_view msg) {
+  return std::system_error(err, errorCategoryForErrnoDomain(), msg.c_str());
+}
+
+// std::string is stored directly by std::system_error, so pass it through
+// unchanged. This is preferred over the cstring_view overload for std::string
+// arguments and, unlike that overload, preserves any embedded NUL bytes.
+inline std::system_error makeSystemErrorExplicit(
+    int err, const std::string& msg) {
+  return std::system_error(err, errorCategoryForErrnoDomain(), msg);
+}
+
+// Fallback for callers passing multiple pieces to concatenate, or a single
+// non-string argument: build the std::string directly rather than routing
+// through fbstring. A single string-like argument is handled by the overloads
+// above, so it is excluded here to keep those fast paths (an unconstrained
+// template would otherwise be a better match than their conversions).
+template <
+    class... Args,
+    std::enable_if_t<
+        !(sizeof...(Args) == 1 &&
+          (std::is_convertible_v<Args, cstring_view> && ...)),
+        int> = 0>
 std::system_error makeSystemErrorExplicit(int err, Args&&... args) {
-  return makeSystemErrorExplicit(
-      err, to<fbstring>(std::forward<Args>(args)...).c_str());
+  return std::system_error(
+      err,
+      errorCategoryForErrnoDomain(),
+      to<std::string>(std::forward<Args>(args)...));
 }
 
 inline std::system_error makeSystemError(const char* msg) {
