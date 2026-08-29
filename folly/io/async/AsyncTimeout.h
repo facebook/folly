@@ -218,7 +218,13 @@ class AsyncTimeout {
       TCallback&& callback);
 
  private:
+  // Points event_ at the trampoline that suits internal, and clears the
+  // event_base that event_set() defaults to.
+  void initEvent(InternalEnum internal);
+
   static void libeventCallback(libevent_fd_t fd, short events, void* arg);
+  static void libeventInternalCallback(
+      libevent_fd_t fd, short events, void* arg);
 
   EventBaseBackendBase::Event event_;
 

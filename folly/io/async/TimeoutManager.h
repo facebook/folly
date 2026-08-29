@@ -80,6 +80,13 @@ class TimeoutManager {
   virtual bool isInTimeoutManagerThread() = 0;
 
   /**
+   * Called after an internal timeout's callback ran, to give the manager a
+   * chance to regain control of its loop. Managers that always regain it need
+   * not do anything.
+   */
+  virtual void yieldAfterInternalEvent() {}
+
+  /**
    * Runs the given Cob at some time after the specified number of
    * milliseconds.  (No guarantees exactly when.)
    *

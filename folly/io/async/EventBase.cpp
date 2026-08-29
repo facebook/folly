@@ -72,6 +72,7 @@ class EventBaseBackend : public folly::EventBaseBackendBase {
 
   int eb_event_base_loop(int flags) override;
   int eb_event_base_loopbreak() override;
+  void eb_yield_after_internal_event() override;
 
   int eb_event_add(Event& event, const struct timeval* timeout) override;
   int eb_event_del(EventBaseBackendBase::Event& event) override;
@@ -81,11 +82,18 @@ class EventBaseBackend : public folly::EventBaseBackendBase {
   bool setEdgeTriggered(Event& event) override;
 
  private:
+  void initYieldEvent();
+
+  static void yieldCallback(folly::libevent_fd_t, short, void*) {}
+
   event_base* evb_;
+  // See eb_yield_after_internal_event(). Assigned but never added.
+  struct event yieldEvent_{};
 };
 
 EventBaseBackend::EventBaseBackend() {
   evb_ = event_base_new();
+  initYieldEvent();
 }
 
 EventBaseBackend::EventBaseBackend(event_base* evb) : evb_(evb) {
@@ -93,6 +101,12 @@ EventBaseBackend::EventBaseBackend(event_base* evb) : evb_(evb) {
     LOG(ERROR) << "EventBase(): Pass nullptr as event base.";
     throw std::invalid_argument("EventBase(): event base cannot be nullptr");
   }
+  initYieldEvent();
+}
+
+void EventBaseBackend::initYieldEvent() {
+  event_set(&yieldEvent_, -1, 0, &EventBaseBackend::yieldCallback, nullptr);
+  event_base_set(evb_, &yieldEvent_);
 }
 
 int EventBaseBackend::eb_event_base_loop(int flags) {
@@ -101,6 +115,15 @@ int EventBaseBackend::eb_event_base_loop(int flags) {
 
 int EventBaseBackend::eb_event_base_loopbreak() {
   return event_base_loopbreak(evb_);
+}
+
+void EventBaseBackend::eb_yield_after_internal_event() {
+  // This is loopexit(), but faster. Activating a non-internal event is how
+  // loopexit() gets event_base_loop() to return from EVLOOP_ONCE; it allocates
+  // an ephemeral event to do that, we keep ours around. Since yieldEvent_ is
+  // never added it does not count towards event_haveevents(), so it cannot
+  // keep the loop alive either.
+  event_active(&yieldEvent_, EV_TIMEOUT, 1);
 }
 
 int EventBaseBackend::eb_event_add(
@@ -856,6 +879,16 @@ void EventBase::bumpHandlingTime() {
 
     VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__
              << " (loop) startWork_ " << startWork_.time_since_epoch().count();
+  }
+}
+
+void EventBase::yieldAfterInternalEvent() {
+  // Reached from an event callback, so the loop thread. The loopCallbacks_
+  // read and the backend call below both count on that.
+  dcheckIsInEventBaseThread();
+  // No reason to return to the loop if the callback left no work behind.
+  if (!loopCallbacks_.empty()) {
+    evb_->eb_yield_after_internal_event();
   }
 }
 

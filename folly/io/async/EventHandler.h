@@ -197,6 +197,10 @@ class EventHandler {
   void setEventBase(EventBase* eventBase);
 
   static void libeventCallback(libevent_fd_t fd, short events, void* arg);
+  // Installed in place of libeventCallback for handlers registered as
+  // internal; see registerImpl().
+  static void libeventInternalCallback(
+      libevent_fd_t fd, short events, void* arg);
 
   EventBaseBackendBase::Event event_;
   EventBase* eventBase_;

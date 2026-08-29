@@ -60,6 +60,18 @@ FOLLY_LIBEVENT_DEF_ACCESSORS2(callback)
 #undef FOLLY_LIBEVENT_COMPAT_PLUCK
 #undef FOLLY_LIBEVENT_DEF_ACCESSORS
 
+// Whether an internal event's callback can leave the loop blocked in the
+// backend. libevent 2.0.9 made event_base_loop() leave EVLOOP_ONCE only once
+// it has run a callback for a non-internal event; before that, and in 1.4, the
+// loop returns as soon as the active queue drains. 1.4 does not define
+// LIBEVENT_VERSION_NUMBER at all.
+inline constexpr bool kInternalEventsCanStallLoop =
+#if defined(LIBEVENT_VERSION_NUMBER) && LIBEVENT_VERSION_NUMBER >= 0x02000900
+    true;
+#else
+    false;
+#endif
+
 /**
  * low-level libevent utility functions
  */

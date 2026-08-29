@@ -154,6 +154,12 @@ class EventBaseBackendBase {
   virtual int eb_event_base_loop(int flags) = 0;
   virtual int eb_event_base_loopbreak() = 0;
 
+  // Called after dispatching an internal event's callback, when the EventBase
+  // needs the loop to return so it can run the loop callbacks that callback
+  // scheduled. The default suits any backend whose loop already returns after
+  // dispatching anything, internal or not.
+  virtual void eb_yield_after_internal_event() {}
+
   virtual int eb_event_add(Event& event, const struct timeval* timeout) = 0;
   virtual int eb_event_del(Event& event) = 0;
 
