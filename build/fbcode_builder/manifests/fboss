@@ -20,9 +20,13 @@ builder = nop
 [features]
 default = services
 services =
+exported_libraries =
 
-[cmake.defines.feature_services=off]
+[cmake.defines.all(feature_services=off,feature_exported_libraries=off)]
 FBOSS_BUILD_PROFILE=fsdb_client
+
+[cmake.defines.all(feature_services=off,feature_exported_libraries=on)]
+FBOSS_BUILD_PROFILE=exported_libraries
 
 # installed/fboss is unhashed because fboss is first-party, and the env var is
 # not otherwise hashed, so without this a profile flip in an existing scratch
