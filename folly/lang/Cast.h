@@ -55,7 +55,11 @@ template <typename Dst, typename Src>
   requires std::is_function_v<Src>
 FOLLY_ERASE Dst* reinterpret_function_cast(Src* src) noexcept {
   FOLLY_PUSH_WARNING
+  //  Not every clang that reaches this header knows the warning group, and an
+  //  unknown group is itself an error under -Werror.
+#if FOLLY_HAS_WARNING("-Wcast-function-type-mismatch")
   FOLLY_CLANG_DISABLE_WARNING("-Wcast-function-type-mismatch")
+#endif
   return reinterpret_cast<Dst*>(src);
   FOLLY_POP_WARNING
 }
