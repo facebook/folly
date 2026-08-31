@@ -415,10 +415,11 @@ class RequestContext {
       StaticContext& dereference() const { return *base(); }
 
       RootIdInfo getRootIdInfo() const {
-        return {
-            base()->rootId.load(std::memory_order_relaxed),
-            base().getThreadId(),
-            base().getOSThreadId()};
+        RootIdInfo info;
+        info.id = base()->rootId.load(std::memory_order_relaxed);
+        info.tid = base().getThreadId();
+        info.tidOS = base().getOSThreadId();
+        return info;
       }
     };
 
