@@ -75,7 +75,10 @@ pub mod bridge {
 
 #[cfg(test)]
 mod tests {
+    use rand::RngExt;
+    use rand::SeedableRng;
     use rand::rng;
+    use rand::rngs::StdRng;
     use rand::seq::SliceRandom;
 
     use super::bridge::*;
@@ -342,5 +345,34 @@ mod tests {
 
         let tdigest = new_tdigest_with_unsorted_values(100, &unsorted_values);
         assert!(tdigest.estimateQuantile(0.5_f64) < tdigest.estimateQuantile(0.9_f64));
+    }
+
+    #[test]
+    fn generated_inputs_preserve_statistics_and_bound_quantiles() {
+        let mut rng = StdRng::seed_from_u64(0x5EED_7D16_E57);
+
+        for case in 0..64 {
+            let len = rng.random_range(1..=128);
+            let values = (0..len)
+                .map(|_| f64::from(rng.random_range(-10_000_i16..=10_000)))
+                .collect::<Vec<_>>();
+            let expected_sum = values.iter().sum::<f64>();
+            let expected_min = values.iter().copied().reduce(f64::min).unwrap();
+            let expected_max = values.iter().copied().reduce(f64::max).unwrap();
+
+            let tdigest = new_tdigest_with_unsorted_values(100, &values);
+            assert_eq!(tdigest.count(), len as f64, "case {case}");
+            assert_eq!(tdigest.sum(), expected_sum, "case {case}");
+            assert_eq!(tdigest.mean(), expected_sum / len as f64, "case {case}");
+            assert_eq!(tdigest.min(), expected_min, "case {case}");
+            assert_eq!(tdigest.max(), expected_max, "case {case}");
+
+            assert!(
+                (0..=100)
+                    .map(|percent| tdigest.estimateQuantile(f64::from(percent) / 100.0))
+                    .all(|estimate| expected_min <= estimate && estimate <= expected_max),
+                "quantile outside input range in case {case}"
+            );
+        }
     }
 }
