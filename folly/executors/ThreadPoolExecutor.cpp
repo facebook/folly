@@ -129,14 +129,6 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
   ProcessedTaskInfo taskInfo;
   fillTaskInfo(task, taskInfo);
   taskInfo.waitTime = startTime - task.enqueueTime_;
-  FOLLY_SDT(
-      folly,
-      thread_pool_executor_task_dequeued,
-      threadFactory_->getNamePrefix().c_str(),
-      taskInfo.requestId,
-      taskInfo.enqueueTime.time_since_epoch().count(),
-      taskInfo.waitTime.count(),
-      taskInfo.taskId);
 
   {
     folly::RequestContextScopeGuard rctx(std::move(task.context_));
@@ -148,6 +140,15 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
     forEachTaskObserver([&](auto& observer) {
       observer.taskDequeued(taskInfo);
     });
+    FOLLY_SDT(
+        folly,
+        thread_pool_executor_task_dequeued,
+        threadFactory_->getNamePrefix().c_str(),
+        taskInfo.requestId,
+        taskInfo.enqueueTime.time_since_epoch().count(),
+        taskInfo.waitTime.count(),
+        taskInfo.taskId);
+
     if (task.expiration_ != nullptr &&
         taskInfo.waitTime >= task.expiration_->expiration) {
       task.func_ = nullptr;
