@@ -468,6 +468,15 @@ class SharedMutexImpl
   void unlock() {
     annotateReleased(annotate_rwlock_level::wrlock);
     OwnershipTrackerBase::endThreadOwnership();
+    // Keep this as one result-returning RMW.  Replacing it with a
+    // result-discarding bit-clear (C++26 atomic::store_and) plus a separate
+    // load emits a single lock-and rather than a cmpxchg retry loop, but
+    // breaks two things: the reload may observe a later lock generation, so
+    // the waiter bits it reports no longer describe the waiters this release
+    // owes a wakeup to; and when the RMW result shows no waiters, unlock must
+    // not read state_ again at all, because the release may already have let
+    // another thread destroy this mutex (see the destructor contract above).
+    //
     // It is possible that we have a left-over kWaitingNotS if the last
     // unlock_shared() that let our matching lock() complete finished
     // releasing before lock()'s futexWait went to sleep.  Clean it up now
