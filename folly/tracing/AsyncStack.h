@@ -19,12 +19,15 @@
 #include <atomic>
 #include <cassert>
 #include <cstdint>
+#include <optional>
+#include <type_traits>
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
 #include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/coro/Coroutine.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -493,6 +496,95 @@ struct AsyncStackRoot {
   // setStackFrameContext().
   void* returnAddress = nullptr;
 };
+
+/**
+ * The metadata attached to one frame of an async stack trace, if any.
+ *
+ * This optional-like type keeps the representation under Folly's control for
+ * profiler-facing arrays instead of depending on a library's std::optional
+ * layout. It is not a stable C++ ABI or wire format; an out-of-process payload
+ * decoder needs an explicit versioned contract. Presence is a separate flag
+ * rather than a reserved payload value because zero is valid metadata.
+ */
+class AsyncStackMetadata {
+ public:
+  using value_type = std::uintptr_t;
+
+  constexpr AsyncStackMetadata() noexcept : value_{0}, has_value_{false} {}
+
+  /* implicit */ constexpr AsyncStackMetadata(std::nullopt_t) noexcept
+      : value_{0}, has_value_{false} {}
+  /* implicit */ constexpr AsyncStackMetadata(value_type value) noexcept
+      : value_{value}, has_value_{true} {}
+
+  constexpr AsyncStackMetadata& operator=(std::nullopt_t) noexcept {
+    reset();
+    return *this;
+  }
+  constexpr AsyncStackMetadata& operator=(value_type value) noexcept {
+    emplace(value);
+    return *this;
+  }
+
+  constexpr const value_type& emplace(value_type value) noexcept {
+    value_ = value;
+    has_value_ = true;
+    return value_;
+  }
+
+  constexpr void reset() noexcept {
+    value_ = 0;
+    has_value_ = false;
+  }
+
+  constexpr void swap(AsyncStackMetadata& that) noexcept {
+    AsyncStackMetadata tmp = *this;
+    *this = that;
+    that = tmp;
+  }
+
+  constexpr bool has_value() const noexcept { return has_value_; }
+  constexpr explicit operator bool() const noexcept { return has_value(); }
+
+  constexpr const value_type& operator*() const noexcept {
+    assert(has_value());
+    return value_;
+  }
+  constexpr const value_type* operator->() const noexcept {
+    assert(has_value());
+    return &value_;
+  }
+
+  constexpr const value_type* get_pointer() const noexcept {
+    return has_value() ? &value_ : nullptr;
+  }
+
+  constexpr value_type value() const {
+    if (!has_value()) {
+      throw_exception<std::bad_optional_access>();
+    }
+    return value_;
+  }
+
+  constexpr value_type value_or(value_type fallback) const noexcept {
+    return has_value() ? value_ : fallback;
+  }
+
+  friend constexpr bool operator==(
+      const AsyncStackMetadata&, const AsyncStackMetadata&) noexcept = default;
+
+  friend constexpr void swap(
+      AsyncStackMetadata& a, AsyncStackMetadata& b) noexcept {
+    a.swap(b);
+  }
+
+ private:
+  value_type value_;
+  bool has_value_;
+};
+
+static_assert(std::is_trivially_copyable_v<AsyncStackMetadata>);
+static_assert(std::is_standard_layout_v<AsyncStackMetadata>);
 
 namespace detail {
 

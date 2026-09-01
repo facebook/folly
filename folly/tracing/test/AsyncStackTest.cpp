@@ -16,6 +16,8 @@
 
 #include <folly/tracing/AsyncStack.h>
 
+#include <limits>
+#include <optional>
 #include <unordered_set>
 #include <glog/logging.h>
 
@@ -49,6 +51,47 @@ TEST(AsyncStack, ScopedAsyncStackRoot) {
   }
 
   CHECK(folly::tryGetCurrentAsyncStackRoot() == nullptr);
+}
+
+TEST(AsyncStack, MetadataValueSemantics) {
+  // This type replaces `std::optional` in profiler output buffers, so it keeps
+  // optional semantics, including zero as a present value.
+  using Metadata = folly::AsyncStackMetadata;
+  constexpr auto kZero = Metadata::value_type{0};
+  constexpr auto kMax = std::numeric_limits<Metadata::value_type>::max();
+  auto empty = Metadata{};
+  auto null = Metadata{std::nullopt};
+  auto zero = Metadata{kZero};
+  auto max = Metadata{kMax};
+
+  EXPECT_FALSE(empty.has_value());
+  EXPECT_FALSE(static_cast<bool>(empty));
+  EXPECT_EQ(empty, null);
+  EXPECT_EQ(empty.get_pointer(), nullptr);
+  EXPECT_EQ(empty.value_or(kMax), kMax);
+  EXPECT_THROW(empty.value(), std::bad_optional_access);
+
+  EXPECT_TRUE(static_cast<bool>(zero));
+  EXPECT_EQ(zero.value(), kZero);
+  EXPECT_EQ(*zero, kZero);
+  EXPECT_THAT(zero.get_pointer(), testing::Pointee(kZero));
+  EXPECT_EQ(zero.operator->(), zero.get_pointer());
+  EXPECT_EQ(zero.value_or(kMax), kZero);
+  EXPECT_EQ(max.value(), kMax);
+
+  EXPECT_NE(null, zero);
+
+  empty = kZero;
+  EXPECT_EQ(empty, zero);
+  empty = std::nullopt;
+  EXPECT_EQ(empty, null);
+  EXPECT_EQ(empty.emplace(kMax), kMax);
+  EXPECT_EQ(empty, max);
+  swap(empty, zero);
+  EXPECT_EQ(empty.value(), kZero);
+  EXPECT_EQ(zero.value(), kMax);
+  zero.reset();
+  EXPECT_FALSE(zero.has_value());
 }
 
 TEST(AsyncStack, PushPop) {
