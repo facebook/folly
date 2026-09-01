@@ -62,7 +62,7 @@ ssize_t getStackTraceHeap(uintptr_t* addresses, size_t maxAddresses);
 
 /**
  * Get the current async stack trace into addresses, which has room for at least
- * maxAddresses frames. If no async operation is progress, then this will
+ * maxAddresses frames. If no async operation is in progress, then this will
  * write 0 frames.
  *
  * This will include both async and non-async frames. For example, the stack
@@ -75,7 +75,6 @@ ssize_t getStackTraceHeap(uintptr_t* addresses, size_t maxAddresses);
  * main      <--  non-async, root of async stack
  *
  * Returns the number of frames written in the array.
- * Returns -1 on failure.
  *
  * Async-signal-safe, but likely slower.
  */
