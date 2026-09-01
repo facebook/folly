@@ -29,6 +29,41 @@
 #include <folly/coro/Coroutine.h>
 #include <folly/lang/Exception.h>
 
+// `AsyncStackMetadataFrame` stores a reserved value as an `AsyncStackFrame`
+// return address. Its high bits do not match the sign-extension pattern
+// required for an x86-64 virtual address, and the value is not
+// instruction-aligned on AArch64.
+//
+// To add a 32-bit Linux target, reserve a permanent nonzero cookie below
+// `folly::kMinValidAddress`, verify marker construction and the C++ readers
+// under that ABI, and update out-of-process readers for its pointer width and
+// frame layout.
+#if UINTPTR_MAX == UINT64_MAX && \
+    (FOLLY_X64 || FOLLY_AARCH64 || defined(_M_ARM64) || defined(_M_ARM64EC))
+#define FOLLY_HAS_ASYNC_STACK_METADATA 1
+#else
+#define FOLLY_HAS_ASYNC_STACK_METADATA 0
+#endif
+
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+// `AsyncStackMetadataFrame` stores this permanent value with
+// `AsyncStackFrame::setReturnAddress()`.
+// External stack walkers may read this symbol from a shared library or an
+// executable that retains symbol information. A fully stripped static
+// executable may omit the name. If readers ever need to discover it there,
+// export it into `.dynsym` at the final ELF link with
+// `--export-dynamic-symbol=folly_async_stack_metadata_frame_cookie` (or the
+// `-Wl,` form through a compiler driver); attributes and source references
+// alone cannot make the name survive stripping. In fbsource, restore
+// `xplat_linker_flags` forwarding in `fb_dirsync_cpp_library` so xplat can use
+// the compiler-driver form while fbcode uses the raw linker flag. A future
+// metadata-frame format must use another value.
+extern "C" {
+FOLLY_EXPORT extern const std::uintptr_t
+    folly_async_stack_metadata_frame_cookie;
+}
+#endif
+
 namespace folly {
 
 // Gets the instruction pointer of the return-address of the current function.
@@ -470,10 +505,9 @@ struct AsyncStackRoot {
   // loop or callback invocation. May be null if this event loop is
   // not currently executing any async operations.
   //
-  // This is atomic primarily to enforce visibility of writes to the
-  // AsyncStackFrame that occur before the topFrame in other processes,
-  // such as profilers/debuggers that may be running concurrently
-  // with the current thread.
+  // This is atomic to publish this pointer to profilers and debuggers. It does
+  // not make the non-owning frame chain safe for a concurrent reader; the
+  // owning thread must not mutate or destroy reachable frames during a walk.
   std::atomic<AsyncStackFrame*> topFrame{nullptr};
 
   // Pointer to the next event loop context lower on the current
@@ -587,6 +621,17 @@ static_assert(std::is_trivially_copyable_v<AsyncStackMetadata>);
 static_assert(std::is_standard_layout_v<AsyncStackMetadata>);
 
 namespace detail {
+
+inline bool isAsyncStackMetadataFrame(const AsyncStackFrame& frame) noexcept {
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+  return reinterpret_cast<std::uintptr_t>(frame.getReturnAddress()) ==
+      folly_async_stack_metadata_frame_cookie;
+#else
+  // This build cannot create metadata markers through the supported API.
+  (void)frame;
+  return false;
+#endif
+}
 
 class ScopedAsyncStackRoot {
  public:

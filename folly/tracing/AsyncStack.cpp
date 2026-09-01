@@ -52,6 +52,14 @@ inline pthread_key_t folly_async_stack_root_tls_key = 0xFFFF'FFFFu;
 
 #endif // FOLLY_ASYNC_STACK_ROOT_USE_PTHREAD
 
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+extern "C" {
+[[FOLLY_ATTR_GNU_USED, FOLLY_ATTR_GNU_RETAIN]]
+FOLLY_EXPORT extern const std::uintptr_t
+    folly_async_stack_metadata_frame_cookie = 0xDEADBEEFDEADBEEFULL;
+}
+#endif
+
 namespace {
 struct SuspendedFrameTag {};
 } // namespace

@@ -94,6 +94,19 @@ TEST(AsyncStack, MetadataValueSemantics) {
   EXPECT_FALSE(zero.has_value());
 }
 
+TEST(AsyncStack, MetadataFrameRecognition) {
+  folly::AsyncStackFrame frame;
+  EXPECT_FALSE(folly::detail::isAsyncStackMetadataFrame(frame));
+  frame.setReturnAddress(&frame);
+  EXPECT_FALSE(folly::detail::isAsyncStackMetadataFrame(frame));
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+  frame.setReturnAddress(
+      // NOLINTNEXTLINE(performance-no-int-to-ptr): test cookie recognition
+      reinterpret_cast<void*>(folly_async_stack_metadata_frame_cookie));
+  EXPECT_TRUE(folly::detail::isAsyncStackMetadataFrame(frame));
+#endif
+}
+
 TEST(AsyncStack, PushPop) {
   folly::detail::ScopedAsyncStackRoot scopedRoot{nullptr};
 
