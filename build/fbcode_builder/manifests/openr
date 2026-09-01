@@ -20,6 +20,37 @@ builder = nop
 # openr uses a 4-core runner, so allow extra build time.
 timeout_minutes = 120
 
+# `full` preserves the complete Open/R build. `exported_libraries` installs
+# these component libraries:
+# - openr_constants
+# - openr_fbnl
+# - openr_network_util
+# - openr_system_metrics
+# It also installs these generated Thrift libraries:
+# - routing_policy_cpp2
+# - openr_config_cpp2
+# - network_cpp2
+# - platform_cpp2
+# - kv_store_cpp2
+# - types_cpp2
+# - openr_ctrl_cpp2
+# Public Open/R/common headers and Thrift definitions are included. Open/R
+# daemons, tools, tests, and unrelated libraries are omitted.
+# Consumers select the narrow profile with:
+# `openr = !default, !full, exported_libraries`
+[features]
+default = full
+full =
+exported_libraries =
+
+[cmake.defines.all(feature_full=off,feature_exported_libraries=on)]
+OPENR_BUILD_PROFILE=exported_libraries
+
+# Include the profile in the dependency hash so an existing scratch directory
+# cannot reuse an Open/R build made with a different target set.
+[depends.environment]
+OPENR_BUILD_PROFILE
+
 [dependencies]
 boost
 fb303
