@@ -344,8 +344,9 @@ IoUringZeroCopyBufferPoolImpl::~IoUringZeroCopyBufferPoolImpl() {
 
 void IoUringZeroCopyBufferPoolImpl::destroy() noexcept {
   std::unique_lock lock{mutex_};
-  DCHECK(bufDispensed_ >= rqTail_);
-  auto remaining = bufDispensed_.load(std::memory_order_relaxed) - rqTail_;
+  const auto dispensed = bufDispensed_.load(std::memory_order_relaxed);
+  DCHECK(dispensed >= rqTail_);
+  auto remaining = dispensed - rqTail_;
   // Drain refs in overflow queue
   remaining -= pendingBuffers_.size();
   shutdownReferences_ = remaining;
