@@ -124,9 +124,22 @@ int burnCpu() {
 
 TEST(PerfScopedTest, ShortWindowIsCounted) {
   SKIP_IF(!std::filesystem::exists(kPerfBinaryPath)) << "Missing perf binary";
+
+  constexpr int kProbeIterations = 32;
+  std::string probeOutput;
+  int probeChecksum = 0;
+  {
+    PerfScoped perf{{"stat", "-e", "instructions"}, &probeOutput};
+    for (int i = 0; i != kProbeIterations; ++i) {
+      probeChecksum += burnCpu();
+    }
+  }
+  EXPECT_EQ(1023 * kProbeIterations, probeChecksum);
+  SKIP_IF(probeOutput.find("<not counted>") != std::string::npos)
+      << "Hardware instructions counter is unavailable in this environment";
+
   std::string output;
   int checksum = 0;
-
   {
     PerfScoped perf{{"stat", "-e", "instructions"}, &output};
     checksum = burnCpu();
