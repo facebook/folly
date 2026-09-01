@@ -43,7 +43,9 @@ FOLLY_ERASE like_t<S, T>* down_cast(S* ptr) noexcept {
   static_assert(std::is_polymorphic<Q>::value, "not polymorphic");
   static_assert(std::is_base_of<Q, T>::value, "not down-castable");
   using R = like_t<S, T>;
+#if FOLLY_HAS_RTTI
   FOLLY_SAFE_DCHECK(dynamic_cast<R*>(ptr), "not a runtime down-cast");
+#endif
   return static_cast<R*>(ptr);
 }
 template <typename T, typename S>
