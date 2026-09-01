@@ -224,14 +224,18 @@ fbcode_target(
     deps = [
         "fbsource//third-party/boost:boost_regex",
         "fbsource//third-party/glog:glog",
+        "//folly:scope_guard",
         "//folly/coro:blocking_wait",
         "//folly/coro:task",
         "//folly/debugging/symbolizer:stack_trace",
         "//folly/debugging/symbolizer:symbolizer",
         "//folly/lang:hint",
         "//folly/portability:gtest",
+        "//folly/portability:sys_mman",
         "//folly/test:test_utils",
         "//folly/testing:test_util",
+        "//folly/tracing:async_stack",
+        "//folly/tracing/test:async_stack_test_utils",
     ],
 )
 

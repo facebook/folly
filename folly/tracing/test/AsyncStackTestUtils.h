@@ -19,9 +19,34 @@
 #include <array>
 #include <cstddef>
 
+#include <glog/logging.h>
+#include <folly/Utility.h>
+#include <folly/portability/SysMman.h>
 #include <folly/tracing/AsyncStack.h>
 
 namespace folly::test {
+
+template <typename T>
+class MappedPage : private folly::NonCopyableNonMovable {
+ public:
+  explicit MappedPage(int protection)
+      : memory_(mmap(
+            nullptr,
+            sizeof(T),
+            protection,
+            MAP_PRIVATE | MAP_ANONYMOUS,
+            -1,
+            0)) {
+    PCHECK(memory_ != MAP_FAILED);
+  }
+
+  ~MappedPage() { PCHECK(munmap(memory_, sizeof(T)) == 0); }
+
+  T* get() const noexcept { return static_cast<T*>(memory_); }
+
+ private:
+  void* memory_;
+};
 
 // Link the frames before they become visible; keep the last frame's parent.
 template <typename... Rest>

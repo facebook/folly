@@ -14,21 +14,109 @@
  * limitations under the License.
  */
 
+#include <array>
+#include <cstdint>
 #include <cstring>
+#include <limits>
 
+#include <folly/ScopeGuard.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Task.h>
 #include <folly/debugging/symbolizer/StackTrace.h>
 #include <folly/debugging/symbolizer/Symbolizer.h>
 #include <folly/lang/Hint.h>
+#include <folly/portability/SysMman.h>
 #include <folly/test/TestUtils.h>
 #include <folly/testing/TestUtil.h>
+#include <folly/tracing/AsyncStack.h>
+#include <folly/tracing/test/AsyncStackTestUtils.h>
 
 #include <boost/regex.hpp>
 
 #include <glog/logging.h>
 
 #include <folly/portability/GTest.h>
+
+namespace {
+
+using folly::test::MappedPage;
+
+// Keep this out of line so its stack frame remains visible to the walker.
+FOLLY_NOINLINE ssize_t captureWithUnreadableCurrentRoot(
+    folly::AsyncStackRoot* unreadableRoot,
+    std::uintptr_t* addresses,
+    size_t maxAddresses) {
+  auto* previousRoot = folly::exchangeCurrentAsyncStackRoot(unreadableRoot);
+  auto count =
+      folly::symbolizer::getAsyncStackTraceSafe(addresses, maxAddresses);
+  CHECK_EQ(folly::exchangeCurrentAsyncStackRoot(previousRoot), unreadableRoot);
+  return count;
+}
+
+} // namespace
+
+TEST(StackTraceTest, ZeroCapacityDoesNotReadCurrentRoot) {
+  // Crash-time state can be unreadable. Zero capacity must return before
+  // touching the current root.
+  MappedPage<folly::AsyncStackRoot> unreadableRoot{PROT_NONE};
+  EXPECT_EQ(
+      captureWithUnreadableCurrentRoot(unreadableRoot.get(), nullptr, 0), 0);
+}
+
+TEST(StackTraceTest, CurrentAddressAtCapacityDoesNotReadCurrentRoot) {
+  // The current return address fills the only output slot. The walker must not
+  // then dereference the unreadable current async root.
+  MappedPage<folly::AsyncStackRoot> unreadableRoot{PROT_NONE};
+  constexpr auto kCanary = std::numeric_limits<std::uintptr_t>::max();
+  std::uintptr_t address = kCanary;
+  EXPECT_EQ(
+      captureWithUnreadableCurrentRoot(unreadableRoot.get(), &address, 1), 1);
+  EXPECT_NE(address, kCanary);
+}
+
+#if FOLLY_HAS_BUILTIN(__builtin_frame_address)
+
+namespace {
+
+// NOLINTNEXTLINE(facebook-avoid-non-const-global-variables): API takes void*
+char capacityAddressSentinel;
+
+// Keep this out of line so its stack frame remains visible to the walker.
+FOLLY_NOINLINE ssize_t captureAsyncStackAtCapacity(
+    folly::AsyncStackRoot* unreadableRoot,
+    std::array<std::uintptr_t, 2>& addresses) {
+  using namespace folly;
+
+  auto* previousRoot = tryGetCurrentAsyncStackRoot();
+
+  detail::ScopedAsyncStackRoot scopedRoot;
+  AsyncStackFrame frame;
+  frame.setReturnAddress(&capacityAddressSentinel);
+  scopedRoot.activateFrame(frame);
+
+  auto& root = getCurrentAsyncStackRoot();
+  root.setNextRoot(unreadableRoot);
+  // `ScopedAsyncStackRoot` restores TLS from `nextRoot` in its destructor.
+  // Restore that link and detach its frame before the destructor runs.
+  SCOPE_EXIT {
+    root.setNextRoot(previousRoot);
+    deactivateAsyncStackFrame(frame);
+  };
+  return symbolizer::getAsyncStackTraceSafe(addresses.data(), addresses.size());
+}
+
+} // namespace
+
+TEST(StackTraceTest, AsyncFrameAtCapacityDoesNotReadNextRoot) {
+  // The async frame fills the second output slot. The walker must not then
+  // follow it into the unreadable next root.
+  MappedPage<folly::AsyncStackRoot> unreadableRoot{PROT_NONE};
+  std::array<std::uintptr_t, 2> addresses{};
+  EXPECT_EQ(captureAsyncStackAtCapacity(unreadableRoot.get(), addresses), 2);
+  EXPECT_EQ(
+      addresses[1], reinterpret_cast<std::uintptr_t>(&capacityAddressSentinel));
+}
+#endif
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 

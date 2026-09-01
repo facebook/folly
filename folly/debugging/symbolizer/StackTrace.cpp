@@ -381,6 +381,11 @@ WalkAsyncStackResult walkAsyncStack(
     addresses[result.numFrames++] =
         reinterpret_cast<std::uintptr_t>(asyncStackFrame->getReturnAddress());
 
+    // More stack reads cannot add output and may fault after the buffer fills.
+    if (result.numFrames == maxAddresses) {
+      break;
+    }
+
     auto* asyncStackFrameNext = asyncStackFrame->getParentFrame();
     if (asyncStackFrameNext == nullptr) {
       // Reached end of async-stack.
@@ -428,10 +433,21 @@ WalkAsyncStackResult walkAsyncStack(
 
 FOLLY_NOINLINE ssize_t
 getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses) {
+  if (maxAddresses == 0) {
+    return 0;
+  }
+
   size_t numFrames = 0;
   const auto* asyncStackRoot = tryGetCurrentAsyncStackRoot();
   if (asyncStackRoot == nullptr) {
     // No async operation in progress. Return empty stack
+    return numFrames;
+  }
+
+  addresses[numFrames++] =
+      reinterpret_cast<std::uintptr_t>(FOLLY_ASYNC_STACK_RETURN_ADDRESS());
+  // More stack reads cannot add output and may fault after the buffer fills.
+  if (numFrames == maxAddresses) {
     return numFrames;
   }
 
@@ -441,10 +457,6 @@ getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses) {
       reinterpret_cast<StackFrame*>(FOLLY_ASYNC_STACK_FRAME_POINTER());
   auto* normalStackFrameStop =
       reinterpret_cast<StackFrame*>(asyncStackRoot->getStackFramePointer());
-  if (numFrames < maxAddresses) {
-    addresses[numFrames++] =
-        reinterpret_cast<std::uintptr_t>(FOLLY_ASYNC_STACK_RETURN_ADDRESS());
-  }
   auto* asyncStackFrame = asyncStackRoot->getTopFrame();
 
   while (numFrames < maxAddresses &&

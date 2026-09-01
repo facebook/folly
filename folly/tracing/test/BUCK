@@ -10,7 +10,12 @@ oncall("fbcode_entropy_wardens_folly")
 fb_dirsync_cpp_library(
     name = "async_stack_test_utils",
     headers = ["AsyncStackTestUtils.h"],
-    deps = ["//folly/tracing:async_stack"],
+    exported_deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly:utility",
+        "//folly/portability:sys_mman",
+        "//folly/tracing:async_stack",
+    ],
 )
 
 fb_dirsync_cpp_unittest(
