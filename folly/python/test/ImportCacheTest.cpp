@@ -20,6 +20,13 @@
 #include <functional>
 #include <utility>
 
+#ifdef Py_GIL_DISABLED
+#include <chrono>
+#include <latch>
+#include <thread>
+#include <vector>
+#endif
+
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
 #include <folly/python/import.h>
@@ -111,6 +118,40 @@ TEST_F(ImportCacheTest, allowsRecursiveImportFromSameThread) {
   EXPECT_TRUE(cache());
   EXPECT_EQ(kRecursiveImports + 1, mock.callCount());
 }
+
+#ifdef Py_GIL_DISABLED
+// Only meaningful without the GIL: with it, the second caller cannot enter the
+// import while the first is still inside it.
+TEST_F(ImportCacheTest, initializesOnceWhenThreadsRace) {
+  auto& mock = MockCythonImport::getInstance();
+  import_cache_nocapture cache{MockCythonImport::import};
+
+  // Stay inside the import long enough for the other callers to pile up.
+  mock.onImport([] {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    return 0;
+  });
+
+  constexpr size_t kRacingCallers = 4;
+  std::latch allReady{kRacingCallers};
+  std::vector<std::thread> callers;
+  for (size_t i = 0; i < kRacingCallers; ++i) {
+    callers.emplace_back([&] {
+      // Attached, like a real cython import, so waiters exercise the detach in
+      // ScopedGILRelease.
+      PythonThreadState gil;
+      // Nobody calls cache() until every caller is attached and ready.
+      allReady.arrive_and_wait();
+      EXPECT_TRUE(cache());
+    });
+  }
+  for (auto& caller : callers) {
+    caller.join();
+  }
+
+  EXPECT_EQ(1, mock.callCount());
+}
+#endif
 
 } // namespace
 } // namespace folly::python::test

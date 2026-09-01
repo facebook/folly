@@ -22,10 +22,98 @@
 
 #include <folly/Likely.h>
 #include <folly/Portability.h>
+#include <folly/python/ScopedGILRelease.h>
 #include <folly/python/error.h>
+
+#ifndef PY_VERSION_HEX
+#error \
+    "Python.h must be included before folly/python/import.h checks Py_GIL_DISABLED"
+#endif
+
+#ifdef Py_GIL_DISABLED
+#include <chrono>
+#include <condition_variable>
+
+#include <folly/synchronization/AtomicNotification.h>
+#endif
 
 namespace folly {
 namespace python {
+#ifdef Py_GIL_DISABLED
+namespace detail {
+
+using ImportCacheThreadIdent = unsigned long;
+
+// PyThread_get_thread_ident does not require an attached Python thread state.
+// CPython thread identifiers are nonzero, leaving zero as the unlocked state.
+inline constexpr ImportCacheThreadIdent kImportCacheUnlocked = 0;
+
+class import_cache_call_guard {
+ public:
+  explicit import_cache_call_guard(std::atomic<ImportCacheThreadIdent>& owner)
+      : owner_{owner} {
+    auto const threadIdent = PyThread_get_thread_ident();
+
+    auto expected = kImportCacheUnlocked;
+    if (owner_.compare_exchange_strong(
+            expected,
+            threadIdent,
+            std::memory_order_acquire,
+            std::memory_order_relaxed)) {
+      owns_ = true;
+      return;
+    }
+
+    // On CAS failure, expected now holds the current owner. Matching the
+    // current thread means same-thread recursion, which must not wait.
+    if (expected == threadIdent) {
+      return;
+    }
+
+    // Bounded: this guard is invisible to CPython's import deadlock detector,
+    // so waiting forever on a cycle would hang with no diagnostic. Giving up
+    // falls back to the at-least-once behavior this cache already allows for
+    // reentrant imports.
+    auto const deadline = std::chrono::steady_clock::now() + kMaxWait;
+    // Detach while parked so free-threaded stop-the-world can reach a
+    // safepoint.
+    ScopedGILRelease release;
+    do {
+      if (folly::atomic_wait_until(&owner_, expected, deadline) ==
+          std::cv_status::timeout) {
+        return;
+      }
+      expected = kImportCacheUnlocked;
+    } while (!owner_.compare_exchange_strong(
+        expected,
+        threadIdent,
+        std::memory_order_acquire,
+        std::memory_order_relaxed));
+
+    owns_ = true;
+  }
+
+  ~import_cache_call_guard() {
+    if (owns_) {
+      owner_.store(kImportCacheUnlocked, std::memory_order_release);
+      folly::atomic_notify_all(&owner_);
+    }
+  }
+
+  import_cache_call_guard(import_cache_call_guard const&) = delete;
+  import_cache_call_guard& operator=(import_cache_call_guard const&) = delete;
+
+  bool owns() const { return owns_; }
+
+ private:
+  static constexpr std::chrono::seconds kMaxWait{60};
+
+  std::atomic<ImportCacheThreadIdent>& owner_;
+  bool owns_{false};
+};
+
+} // namespace detail
+#endif
 
 /**
  * Call-once like abstraction for cython-api module imports.
@@ -49,6 +137,16 @@ class import_cache_nocapture {
 
  private:
   FOLLY_NOINLINE bool call_slow() const {
+#ifdef Py_GIL_DISABLED
+    detail::import_cache_call_guard guard{owner_};
+    if (!guard.owns()) {
+      // Re-entered, or gave up waiting: another import is still in flight, so
+      // import again but leave publishing completion to the owner.
+      auto const val = fun_.load(std::memory_order_acquire);
+      return !val || 0 == val();
+    }
+#endif
+
     auto const val = fun_.load(std::memory_order_acquire);
     if (val && 0 != val()) {
       return false;
@@ -60,6 +158,10 @@ class import_cache_nocapture {
 
  private:
   mutable std::atomic<sig*> fun_; // if nullptr, already called
+#ifdef Py_GIL_DISABLED
+  mutable std::atomic<detail::ImportCacheThreadIdent> owner_{
+      detail::kImportCacheUnlocked};
+#endif
 };
 
 /**

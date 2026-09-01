@@ -54,6 +54,9 @@ Py_Weak(PyObject*)
 
 Py_Weak(const char*) PyUnicode_AsUTF8(PyObject*);
 
+// Thread Identity
+Py_Weak(unsigned long) PyThread_get_thread_ident(void);
+
 // Basic GIL Handling
 Py_Weak(PyThreadState*) PyThreadState_Get(void);
 #if PY_VERSION_HEX >= 0x030d0000 // >= 3.13

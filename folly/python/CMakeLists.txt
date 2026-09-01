@@ -58,6 +58,7 @@ set(BindingFiles
   "${CMAKE_CURRENT_SOURCE_DIR}/iobuf_ext.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/ProactorExecutor.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/request_context.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/ScopedGILRelease.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/Weak.h"
 )
 file(MAKE_DIRECTORY "${_cybld}/folly/")

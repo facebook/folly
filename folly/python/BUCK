@@ -242,8 +242,10 @@ fb_dirsync_cpp_library(
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
         ":error",
+        ":scoped_gil_release",
         "//folly:likely",
         "//folly:portability",
+        "//folly/synchronization:atomic_notification",
     ],
 )
 
