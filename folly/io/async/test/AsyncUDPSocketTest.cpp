@@ -278,13 +278,15 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
             << client.describe() << " - " << std::string(buf_, len);
     VLOG(4) << n_ << " left";
     VLOG(4) << "Type of Service value:" << params.tos;
-    VLOG(4) << "TTL value:" << static_cast<int>(params.ttl);
+    if (params.ttl) {
+      VLOG(4) << "TTL value:" << static_cast<int>(*params.ttl);
+    }
 
     ++pongRecvd_;
     if (params.tos != 0) {
       ++tosMessagesRecvd_;
     }
-    if (params.ttl != 0) {
+    if (params.ttl) {
       ++ttlMessagesRecvd_;
     }
 

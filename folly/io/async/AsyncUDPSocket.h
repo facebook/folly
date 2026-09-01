@@ -52,7 +52,7 @@ class AsyncUDPSocket : public EventHandler {
       using Timestamp = std::array<struct timespec, 3>;
       folly::Optional<Timestamp> ts;
       uint8_t tos = 0;
-      uint8_t ttl = 0;
+      folly::Optional<uint8_t> ttl;
       // Destination address the packet was sent to (from IPV6_PKTINFO /
       // IP_PKTINFO). Populated only when setRecvDstAddr(true) was called.
       folly::Optional<folly::SocketAddress> localAddress;
