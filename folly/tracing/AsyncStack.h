@@ -294,6 +294,8 @@ AsyncStackFrame& getDetachedRootAsyncStackFrame() noexcept;
 // Given an initial AsyncStackFrame, this will write `addresses` with
 // the return addresses of the frames in this async stack trace, up to
 // `maxAddresses` written.
+// Metadata marker frames are omitted and do not count against `maxAddresses`.
+// The walk stops if two metadata marker frames are adjacent.
 // This assumes `addresses` has `maxAddresses` allocated space available.
 // Returns the number of frames written.
 size_t getAsyncStackTraceFromInitialFrame(
@@ -633,6 +635,24 @@ inline bool isAsyncStackMetadataFrame(const AsyncStackFrame& frame) noexcept {
 #endif
 }
 
+struct MetadataFrameAdvanceResult {
+  AsyncStackFrame* frame;
+  bool foundAdjacentMetadataFrame;
+};
+
+// Two adjacent metadata frames mean the chain is invalid; normal metadata
+// construction never creates them. Skip one metadata frame, if present, and
+// report a second one so callers can stop before a marker cycle loops forever
+// without filling the output buffer.
+[[nodiscard]] inline MetadataFrameAdvanceResult advancePastMetadataFrame(
+    AsyncStackFrame* frame) noexcept {
+  if (frame == nullptr || !isAsyncStackMetadataFrame(*frame)) {
+    return {frame, false};
+  }
+  frame = frame->getParentFrame();
+  return {frame, frame != nullptr && isAsyncStackMetadataFrame(*frame)};
+}
+
 class ScopedAsyncStackRoot {
  public:
   explicit ScopedAsyncStackRoot(
@@ -649,6 +669,31 @@ class ScopedAsyncStackRoot {
 };
 
 } // namespace detail
+
+inline size_t getAsyncStackTraceFromInitialFrame(
+    folly::AsyncStackFrame* initialFrame,
+    std::uintptr_t* addresses,
+    size_t maxAddresses) {
+  size_t numFrames = 0;
+  auto* frame = initialFrame;
+  while (frame != nullptr && numFrames < maxAddresses) {
+    const auto advanceResult = detail::advancePastMetadataFrame(frame);
+    frame = advanceResult.frame;
+    if (frame == nullptr || advanceResult.foundAdjacentMetadataFrame) {
+      break;
+    }
+
+    addresses[numFrames++] =
+        reinterpret_cast<std::uintptr_t>(frame->getReturnAddress());
+    // The output is full; reading the unused parent link may fault.
+    if (numFrames == maxAddresses) {
+      break;
+    }
+    frame = frame->getParentFrame();
+  }
+  return numFrames;
+}
+
 } // namespace folly
 
 #include <folly/tracing/AsyncStack-inl.h>
