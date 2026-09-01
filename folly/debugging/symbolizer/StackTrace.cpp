@@ -429,23 +429,17 @@ WalkAsyncStackResult walkAsyncStack(
   }
   return result;
 }
-} // namespace
 
-FOLLY_NOINLINE ssize_t
-getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses) {
-  if (maxAddresses == 0) {
-    return 0;
-  }
-
+// Must inline: the caller passes its own frame pointer, which would not survive
+// a tail call into this helper.
+FOLLY_ALWAYS_INLINE ssize_t getAsyncStackTrace(
+    const AsyncStackRoot& asyncStackRoot,
+    void* framePointer,
+    void* returnAddress,
+    uintptr_t* addresses,
+    size_t maxAddresses) {
   size_t numFrames = 0;
-  const auto* asyncStackRoot = tryGetCurrentAsyncStackRoot();
-  if (asyncStackRoot == nullptr) {
-    // No async operation in progress. Return empty stack
-    return numFrames;
-  }
-
-  addresses[numFrames++] =
-      reinterpret_cast<std::uintptr_t>(FOLLY_ASYNC_STACK_RETURN_ADDRESS());
+  addresses[numFrames++] = reinterpret_cast<std::uintptr_t>(returnAddress);
   // More stack reads cannot add output and may fault after the buffer fills.
   if (numFrames == maxAddresses) {
     return numFrames;
@@ -453,11 +447,10 @@ getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses) {
 
   // Start by walking the normal stack until we get to the frame right before
   // the frame that holds the async root.
-  auto* normalStackFrame =
-      reinterpret_cast<StackFrame*>(FOLLY_ASYNC_STACK_FRAME_POINTER());
+  auto* normalStackFrame = reinterpret_cast<StackFrame*>(framePointer);
   auto* normalStackFrameStop =
-      reinterpret_cast<StackFrame*>(asyncStackRoot->getStackFramePointer());
-  auto* asyncStackFrame = asyncStackRoot->getTopFrame();
+      reinterpret_cast<StackFrame*>(asyncStackRoot.getStackFramePointer());
+  auto* asyncStackFrame = asyncStackRoot.getTopFrame();
 
   while (numFrames < maxAddresses &&
          (normalStackFrame != nullptr || asyncStackFrame != nullptr)) {
@@ -475,6 +468,27 @@ getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses) {
     asyncStackFrame = walkAsyncStackResult.asyncStackFrame;
   }
   return numFrames;
+}
+} // namespace
+
+FOLLY_NOINLINE ssize_t
+getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses) {
+  if (maxAddresses == 0) {
+    return 0;
+  }
+
+  const auto* asyncStackRoot = tryGetCurrentAsyncStackRoot();
+  if (asyncStackRoot == nullptr) {
+    // No async operation in progress. Return empty stack
+    return 0;
+  }
+
+  return getAsyncStackTrace(
+      *asyncStackRoot,
+      FOLLY_ASYNC_STACK_FRAME_POINTER(),
+      FOLLY_ASYNC_STACK_RETURN_ADDRESS(),
+      addresses,
+      maxAddresses);
 }
 
 } // namespace symbolizer
