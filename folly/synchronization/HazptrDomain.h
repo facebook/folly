@@ -23,6 +23,7 @@
 #include <folly/concurrency/container/atomic_grow_array.h>
 #include <folly/container/F14Set.h>
 #include <folly/detail/StaticSingletonManager.h>
+#include <folly/lang/Builtin.h>
 #include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/Hazptr-fwd.h>
@@ -610,16 +611,33 @@ class hazptr_domain {
     // reduce the impact of loop-carried dependencies. Note that the parallelism
     // here refers to instruction-level parallism v.s. thread-level parallelism
     // or processor-level parallelism.
+    //
+    // A node's successor is discovered one round before the round that
+    // dereferences it, further ahead than the out-of-order window can reach, so
+    // the core will not issue that load early on its own. Prefetching the
+    // successor as soon as its address is known further mitigates the impact of
+    // loop-carried dependency chains.
+    //
+    // Retired objects are typically cold, so this is a real miss per node.
+    // Prefetch into L2, not L1. L1 line-fill buffer entries are scarce, so
+    // pinning one per node for a whole fill from DRAM is discouraged; pinning
+    // one only for the short fill from L2 is fine. L2 line-fill buffer entries
+    // are more numerous, so pinning those for a fill from L3 or DRAM is fine,
+    // and the parallel walk hides the residual L2 hit latency.
     Obj* heads[kNumShards];
     for (int s = 0; s < kNumShards; ++s) {
-      heads[s] = objs[s];
+      auto const head = objs[s];
+      FOLLY_BUILTIN_PREFETCH(head, 0, 2);
+      heads[s] = head;
     }
     for (bool more = true; more;) {
       more = false;
       for (int s = 0; s < kNumShards; ++s) {
         if (auto obj = heads[s]) {
           more = true;
-          heads[s] = obj->next();
+          auto const next = obj->next();
+          FOLLY_BUILTIN_PREFETCH(next, 0, 2);
+          heads[s] = next;
           body(s, obj);
         }
       }
