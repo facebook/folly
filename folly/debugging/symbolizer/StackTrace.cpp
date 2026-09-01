@@ -377,6 +377,18 @@ WalkAsyncStackResult walkAsyncStack(
     size_t maxAddresses,
     AsyncStackFrame* asyncStackFrame) {
   WalkAsyncStackResult result;
+  // Stop before reading the initial frame when no output slot remains.
+  if (maxAddresses == 0) {
+    return result;
+  }
+
+  const auto initialFrameAdvance =
+      folly::detail::advancePastMetadataFrame(asyncStackFrame);
+  asyncStackFrame = initialFrameAdvance.frame;
+  if (initialFrameAdvance.foundAdjacentMetadataFrame) {
+    return result;
+  }
+
   while (result.numFrames < maxAddresses && asyncStackFrame != nullptr) {
     addresses[result.numFrames++] =
         reinterpret_cast<std::uintptr_t>(asyncStackFrame->getReturnAddress());
@@ -386,7 +398,13 @@ WalkAsyncStackResult walkAsyncStack(
       break;
     }
 
-    auto* asyncStackFrameNext = asyncStackFrame->getParentFrame();
+    const auto parentFrameAdvance = folly::detail::advancePastMetadataFrame(
+        asyncStackFrame->getParentFrame());
+    if (parentFrameAdvance.foundAdjacentMetadataFrame) {
+      break;
+    }
+    auto* asyncStackFrameNext = parentFrameAdvance.frame;
+
     if (asyncStackFrameNext == nullptr) {
       // Reached end of async-stack.
       // Check if there is an AsyncStackRoot and if so, whether there

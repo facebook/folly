@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <new>
 
 #include <folly/ScopeGuard.h>
 #include <folly/coro/BlockingWait.h>
@@ -40,6 +41,52 @@
 namespace {
 
 using folly::test::MappedPage;
+
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+
+using folly::AsyncStackFrame;
+using folly::test::linkInactiveFrames;
+using folly::test::markAsMetadataFrame;
+using folly::test::ScopedAsyncStackRootWithFrame;
+
+struct CapturedAsyncStack {
+  std::array<std::uintptr_t, 100> addresses{};
+  // Includes the native frames leading to the test's async root.
+  ssize_t frameCount{};
+};
+
+// Keep this out of line so its stack frame remains visible to the walker.
+FOLLY_NOINLINE ssize_t
+captureCurrentAsyncStack(std::uintptr_t* addresses, size_t maxAddresses) {
+  auto count =
+      folly::symbolizer::getAsyncStackTraceSafe(addresses, maxAddresses);
+  folly::compiler_must_not_elide(count);
+  return count;
+}
+
+CapturedAsyncStack captureCurrentAsyncStack() {
+  CapturedAsyncStack capture;
+  capture.frameCount = captureCurrentAsyncStack(
+      capture.addresses.data(), capture.addresses.size());
+  return capture;
+}
+
+size_t countCapturedAddress(
+    const CapturedAsyncStack& capture, const void* address) {
+  size_t count = 0;
+  for (size_t i = 0; i < static_cast<size_t>(capture.frameCount); ++i) {
+    count += capture.addresses[i] == reinterpret_cast<std::uintptr_t>(address);
+  }
+  return count;
+}
+
+void expectNoMetadataMarkers(const CapturedAsyncStack& capture) {
+  for (size_t i = 0; i < static_cast<size_t>(capture.frameCount); ++i) {
+    EXPECT_NE(capture.addresses[i], folly_async_stack_metadata_frame_cookie);
+  }
+}
+
+#endif
 
 // Keep this out of line so its stack frame remains visible to the walker.
 FOLLY_NOINLINE ssize_t captureWithUnreadableCurrentRoot(
@@ -116,6 +163,218 @@ TEST(StackTraceTest, AsyncFrameAtCapacityDoesNotReadNextRoot) {
   EXPECT_EQ(
       addresses[1], reinterpret_cast<std::uintptr_t>(&capacityAddressSentinel));
 }
+#endif
+
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+
+TEST(StackTraceTest, AsyncStackTraceOmitsMetadataMarkers) {
+  // Parent links in the hand-built chains:
+  //   baseline: root -> wrapper -> parent
+  //   marked:   root -> [marker] -> wrapper -> [marker] -> parent
+  // The API does not start a root with a marker; that extra marker exercises
+  // the defensive entry path. Neither marker is a code frame.
+  AsyncStackFrame parent;
+  AsyncStackFrame wrapper;
+  parent.setReturnAddress(&parent);
+  wrapper.setReturnAddress(&wrapper);
+  linkInactiveFrames(wrapper, parent);
+
+  CapturedAsyncStack baseline;
+  {
+    ScopedAsyncStackRootWithFrame activeRoot{wrapper};
+    baseline = captureCurrentAsyncStack();
+  }
+
+  AsyncStackFrame parentMarker;
+  markAsMetadataFrame(parentMarker);
+  linkInactiveFrames(parentMarker, parent);
+  AsyncStackFrame initialMarker;
+  markAsMetadataFrame(initialMarker);
+  linkInactiveFrames(initialMarker, wrapper);
+  wrapper.setParentFrame(parentMarker);
+  CapturedAsyncStack marked;
+  {
+    ScopedAsyncStackRootWithFrame activeRoot{initialMarker};
+    marked = captureCurrentAsyncStack();
+  }
+
+  ASSERT_GE(baseline.frameCount, 2);
+  ASSERT_EQ(marked.frameCount, baseline.frameCount);
+  EXPECT_EQ(countCapturedAddress(baseline, &wrapper), 1);
+  EXPECT_EQ(countCapturedAddress(baseline, &parent), 1);
+  EXPECT_EQ(countCapturedAddress(marked, &wrapper), 1);
+  EXPECT_EQ(countCapturedAddress(marked, &parent), 1);
+  expectNoMetadataMarkers(marked);
+}
+
+TEST(StackTraceTest, AsyncStackTraceStopsBeforeParentAfterAdjacentMarkers) {
+  // Parent links: root -> wrapper -> [marker] -> [marker] -> parent.
+  // The API cannot create adjacent markers. The walker stops at any adjacent
+  // pair because a marker cycle would neither fill the output nor terminate.
+  AsyncStackFrame parent;
+  AsyncStackFrame outerMarker;
+  AsyncStackFrame innerMarker;
+  AsyncStackFrame wrapper;
+  parent.setReturnAddress(&parent);
+  markAsMetadataFrame(outerMarker);
+  markAsMetadataFrame(innerMarker);
+  wrapper.setReturnAddress(&wrapper);
+  linkInactiveFrames(wrapper, innerMarker, outerMarker, parent);
+  CapturedAsyncStack capture;
+  {
+    ScopedAsyncStackRootWithFrame activeRoot{wrapper};
+    capture = captureCurrentAsyncStack();
+  }
+
+  ASSERT_GE(capture.frameCount, 1);
+  EXPECT_EQ(countCapturedAddress(capture, &wrapper), 1);
+  EXPECT_EQ(countCapturedAddress(capture, &parent), 0);
+  expectNoMetadataMarkers(capture);
+}
+
+TEST(StackTraceTest, AsyncStackTraceStopsOnAdjacentInitialMarkers) {
+  // Parent links: root -> [marker] -> [marker] -> wrapper.
+  // The API cannot start a root with adjacent markers. The walker stops at any
+  // adjacent pair because a marker cycle would never terminate.
+  AsyncStackFrame outerMarker;
+  AsyncStackFrame innerMarker;
+  AsyncStackFrame wrapper;
+  markAsMetadataFrame(outerMarker);
+  markAsMetadataFrame(innerMarker);
+  wrapper.setReturnAddress(&wrapper);
+  linkInactiveFrames(innerMarker, outerMarker, wrapper);
+  CapturedAsyncStack capture;
+  {
+    ScopedAsyncStackRootWithFrame activeRoot{innerMarker};
+    capture = captureCurrentAsyncStack();
+  }
+
+  ASSERT_GE(capture.frameCount, 1);
+  EXPECT_EQ(countCapturedAddress(capture, &wrapper), 0);
+  expectNoMetadataMarkers(capture);
+}
+
+#if FOLLY_HAS_BUILTIN(__builtin_frame_address)
+
+TEST(StackTraceTest, AsyncStackTraceDoesNotReadInitialFrameAtCapacity) {
+  // Locate the async frame in a normal trace, then protect it and stop output
+  // immediately before it. Any attempted read of that frame faults.
+  MappedPage<AsyncStackFrame> frameMemory{PROT_READ | PROT_WRITE};
+  auto* frame = ::new (frameMemory.get()) AsyncStackFrame;
+  SCOPE_EXIT {
+    frame->~AsyncStackFrame();
+  };
+  frame->setReturnAddress(&capacityAddressSentinel);
+
+  {
+    ScopedAsyncStackRootWithFrame activeRoot{*frame};
+
+    std::array<std::uintptr_t, 100> fullTrace{};
+    const auto fullCount =
+        captureCurrentAsyncStack(fullTrace.data(), fullTrace.size());
+    const auto fullSize = static_cast<size_t>(fullCount);
+    size_t asyncFrameIndex = fullSize;
+    for (size_t i = 0; i < fullSize; ++i) {
+      if (fullTrace[i] ==
+          reinterpret_cast<std::uintptr_t>(&capacityAddressSentinel)) {
+        asyncFrameIndex = i;
+        break;
+      }
+    }
+    ASSERT_LT(asyncFrameIndex, fullSize);
+    ASSERT_GT(asyncFrameIndex, 1);
+
+    frameMemory.protectOrFatal(PROT_NONE);
+    SCOPE_EXIT {
+      frameMemory.protectOrFatal(PROT_READ | PROT_WRITE);
+    };
+
+    std::array<std::uintptr_t, 100> limitedTrace{};
+    const auto limitedCount =
+        captureCurrentAsyncStack(limitedTrace.data(), asyncFrameIndex);
+
+    EXPECT_EQ(limitedCount, static_cast<ssize_t>(asyncFrameIndex));
+  }
+}
+
+namespace {
+
+struct CapturedAsyncStackPair {
+  CapturedAsyncStack baseline;
+  CapturedAsyncStack marked;
+};
+
+// NOLINTNEXTLINE(facebook-avoid-non-const-global-variables): API takes void*
+char wrapperAddressSentinel;
+// NOLINTNEXTLINE(facebook-avoid-non-const-global-variables): API takes void*
+char outerAddressSentinel;
+
+// Captures one root before and after adding its terminal marker:
+//   baseline: root -> wrapper; marked: root -> wrapper -> [marker]
+// Keep this out of line so its stack frame remains visible to the walker.
+FOLLY_NOINLINE CapturedAsyncStackPair captureInnerAsyncStacks() {
+  AsyncStackFrame marker;
+  AsyncStackFrame wrapper;
+  markAsMetadataFrame(marker);
+  wrapper.setReturnAddress(&wrapperAddressSentinel);
+
+  CapturedAsyncStackPair captures;
+  {
+    ScopedAsyncStackRootWithFrame activeRoot{wrapper};
+    captures.baseline = captureCurrentAsyncStack();
+  }
+  wrapper.setParentFrame(marker);
+  {
+    ScopedAsyncStackRootWithFrame activeRoot{wrapper};
+    captures.marked = captureCurrentAsyncStack();
+  }
+  return captures;
+}
+
+// Adds an outer root around both captures (`=>` crosses the native stack):
+//   baseline: inner root -> wrapper => outer root -> outer
+//   marked: inner root -> wrapper -> [marker] => outer root -> outer
+// Keep this out of line so its stack frame remains visible to the walker.
+FOLLY_NOINLINE CapturedAsyncStackPair captureNestedAsyncStacks() {
+  AsyncStackFrame outer;
+  outer.setReturnAddress(&outerAddressSentinel);
+
+  ScopedAsyncStackRootWithFrame activeRoot{outer};
+  return captureInnerAsyncStacks();
+}
+
+} // namespace
+
+TEST(StackTraceTest, AsyncStackTraceOmitsMarkerAndContinuesToOuterRoot) {
+  const auto captures = captureNestedAsyncStacks();
+
+  ASSERT_GE(captures.baseline.frameCount, 2);
+  ASSERT_EQ(captures.marked.frameCount, captures.baseline.frameCount);
+  // Both traces enter through the same noinline helper. The active root stops
+  // the walk before these call sites, so every visible address should match.
+  for (size_t i = 0; i < static_cast<size_t>(captures.marked.frameCount); ++i) {
+    EXPECT_EQ(captures.marked.addresses[i], captures.baseline.addresses[i])
+        << "frame " << i;
+  }
+  size_t wrapperIndex = static_cast<size_t>(captures.marked.frameCount);
+  size_t outerIndex = static_cast<size_t>(captures.marked.frameCount);
+  for (size_t i = 0; i < static_cast<size_t>(captures.marked.frameCount); ++i) {
+    if (captures.marked.addresses[i] ==
+        reinterpret_cast<std::uintptr_t>(&wrapperAddressSentinel)) {
+      wrapperIndex = i;
+    }
+    if (captures.marked.addresses[i] ==
+        reinterpret_cast<std::uintptr_t>(&outerAddressSentinel)) {
+      outerIndex = i;
+    }
+  }
+  ASSERT_EQ(countCapturedAddress(captures.marked, &wrapperAddressSentinel), 1);
+  ASSERT_EQ(countCapturedAddress(captures.marked, &outerAddressSentinel), 1);
+  EXPECT_LT(wrapperIndex, outerIndex);
+  expectNoMetadataMarkers(captures.marked);
+}
+
+#endif
 #endif
 
 #if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

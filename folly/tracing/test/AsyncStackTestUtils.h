@@ -44,6 +44,10 @@ class MappedPage : private folly::NonCopyableNonMovable {
 
   T* get() const noexcept { return static_cast<T*>(memory_); }
 
+  void protectOrFatal(int protection) {
+    PCHECK(mprotect(memory_, sizeof(T), protection) == 0);
+  }
+
  private:
   void* memory_;
 };
@@ -58,6 +62,24 @@ inline void linkInactiveFrames(
     frames[i - 1]->setParentFrame(*frames[i]);
   }
 }
+
+class ScopedAsyncStackRootWithFrame {
+ public:
+  // Default arguments attach the root to the caller's native stack frame.
+  explicit ScopedAsyncStackRootWithFrame(
+      AsyncStackFrame& frame,
+      void* framePointer = FOLLY_ASYNC_STACK_FRAME_POINTER(),
+      void* returnAddress = FOLLY_ASYNC_STACK_RETURN_ADDRESS()) noexcept
+      : root_(framePointer, returnAddress), frame_(frame) {
+    root_.activateFrame(frame_);
+  }
+
+  ~ScopedAsyncStackRootWithFrame() { deactivateAsyncStackFrame(frame_); }
+
+ private:
+  folly::detail::ScopedAsyncStackRoot root_;
+  AsyncStackFrame& frame_;
+};
 
 #if FOLLY_HAS_ASYNC_STACK_METADATA
 inline void markAsMetadataFrame(AsyncStackFrame& frame) noexcept {
