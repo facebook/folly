@@ -838,12 +838,12 @@ class UnboundedQueue {
       return b_[index];
     }
 
-    template <typename S>
-    void push_links(bool m, S& s) {
+    template <typename F>
+    void for_each_link(bool m, F&& f) {
       if (m == false) { // next_ is immutable
         auto p = nextSegment();
         if (p) {
-          s.push(p);
+          f(p);
         }
       }
     }

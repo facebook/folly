@@ -204,14 +204,14 @@ class hazptr_obj_linked : public hazptr_obj<Atom> {
  *  A ref count greater than 0 does not delay retiring an object.]
  *
  *  Derived type T must define a member function template
- *    template <typename S>
- *    void push_links(bool m, S& s) {
+ *    template <typename F>
+ *    void for_each_link(bool m, F&& f) {
  *      if (m) { // m stands mutable links
  *        // for each outbound mutable pointer p call
- *        //   s.push(p);
+ *        //   f(p);
  *      } else {
  *        // for each outbound immutable pointer p call
- *        //   s.push(p);
+ *        //   f(p);
  *      }
  *   }
  *
@@ -266,12 +266,13 @@ class hazptr_obj_base_linked
 
   void downgrade_retire_immutable_descendants() {
     Stack s;
-    call_push_links(false, s);
+    auto push = [&](auto p) { s.push(p); };
+    call_for_each_link(false, push);
     while (!s.empty()) {
       auto p = s.top();
       s.pop();
       if (p && p->downgrade_link()) {
-        p->call_push_links(false, s);
+        p->call_for_each_link(false, push);
         p->retire();
       }
     }
@@ -279,12 +280,13 @@ class hazptr_obj_base_linked
 
   void release_delete_immutable_descendants() {
     Stack s;
-    call_push_links(false, s);
+    auto push = [&](auto p) { s.push(p); };
+    call_for_each_link(false, push);
     while (!s.empty()) {
       auto p = s.top();
       s.pop();
       if (p && p->release_ref()) {
-        p->call_push_links(false, s);
+        p->call_for_each_link(false, push);
         p->delete_self();
       }
     }
@@ -292,7 +294,8 @@ class hazptr_obj_base_linked
 
   void release_retire_mutable_children(hazptr_obj_list<Atom>& l) {
     Stack s;
-    call_push_links(true, s);
+    auto push = [&](auto p) { s.push(p); };
+    call_for_each_link(true, push);
     while (!s.empty()) {
       auto p = s.top();
       s.pop();
@@ -304,8 +307,9 @@ class hazptr_obj_base_linked
     }
   }
 
-  void call_push_links(bool m, Stack& s) {
-    static_cast<T*>(this)->push_links(m, s); // to be defined in T
+  template <typename F>
+  void call_for_each_link(bool m, F& f) {
+    static_cast<T*>(this)->for_each_link(m, f); // to be defined in T
   }
 
   void delete_self() {

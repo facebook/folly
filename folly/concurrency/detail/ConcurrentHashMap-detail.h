@@ -303,12 +303,12 @@ class NodeT
 
   value_type& getItem() { return item_.getItem(); }
 
-  template <typename S>
-  void push_links(bool m, S& s) {
+  template <typename F>
+  void for_each_link(bool m, F&& f) {
     if (m) {
       auto p = next_.load(std::memory_order_acquire);
       if (p) {
-        s.push(p);
+        f(p);
       }
     }
   }

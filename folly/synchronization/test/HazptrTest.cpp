@@ -147,12 +147,12 @@ class NodeRC : public hazptr_obj_base_linked<NodeRC<Mutable, Atom>, Atom> {
     return next_.load(std::memory_order_acquire);
   }
 
-  template <typename S>
-  void push_links(bool m, S& s) {
+  template <typename F>
+  void for_each_link(bool m, F&& f) {
     if (Mutable == m) {
       auto p = next();
       if (p) {
-        s.push(p);
+        f(p);
       }
     }
   }
@@ -250,13 +250,13 @@ class NodeAuto : public hazptr_obj_base_linked<NodeAuto<Atom>, Atom> {
     return link_[i].load(std::memory_order_acquire);
   }
 
-  template <typename S>
-  void push_links(bool m, S& s) {
+  template <typename F>
+  void for_each_link(bool m, F&& f) {
     if (m == false) { // Immutable
       for (int i = 0; i < 2; ++i) {
         auto p = link(i);
         if (p) {
-          s.push(p);
+          f(p);
         }
       }
     }
@@ -966,12 +966,12 @@ struct NodeA : hazptr_obj_base_linked<NodeA> {
   }
   ~NodeA() { sum_ += val_; }
   void set_next(NodeA* ptr) { next_.store(ptr); }
-  template <typename S>
-  void push_links(bool m, S& s) {
+  template <typename F>
+  void for_each_link(bool m, F&& f) {
     if (m) {
       auto p = next_.load();
       if (p) {
-        s.push(p);
+        f(p);
       }
     }
   }
