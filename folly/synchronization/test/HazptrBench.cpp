@@ -89,6 +89,52 @@ struct TestObj : public hazptr_obj_base<TestObj> {
   explicit TestObj(size_t v) noexcept : value(v) {}
 };
 
+template <bool Mutable, size_t LinkCount>
+class LinkedBenchObj
+    : public hazptr_obj_base_linked<
+          LinkedBenchObj<Mutable, LinkCount>,
+          std::atomic,
+          variadic_noop_fn> {
+  std::atomic<LinkedBenchObj*> links_[LinkCount]{};
+
+ public:
+  LinkedBenchObj() { this->set_deleter(); }
+
+  void setLink(size_t index, LinkedBenchObj* obj) {
+    links_[index].store(obj, std::memory_order_relaxed);
+    obj->acquire_link_safe();
+  }
+
+  template <typename F>
+  void for_each_link(bool mutableLinks, F&& f) {
+    if (mutableLinks != Mutable) {
+      return;
+    }
+    for (auto& link : links_) {
+      if (auto obj = link.load(std::memory_order_relaxed)) {
+        f(obj);
+      }
+    }
+  }
+};
+
+template <bool Mutable, size_t LinkCount>
+std::unique_ptr<LinkedBenchObj<Mutable, LinkCount>[]> makeLinkedBenchTree(
+    size_t count, hazptr_obj_cohort<>& cohort) {
+  using Obj = LinkedBenchObj<Mutable, LinkCount>;
+  auto objects = std::make_unique<Obj[]>(count);
+  for (size_t i = 0; i < count; ++i) {
+    objects[i].set_cohort_no_tag(&cohort);
+    for (size_t link = 0; link < LinkCount; ++link) {
+      const auto child = i * LinkCount + link + 1;
+      if (child < count) {
+        objects[i].setLink(link, &objects[child]);
+      }
+    }
+  }
+  return objects;
+}
+
 } // namespace
 
 /// benchmark copying a std::shared_ptr, including copy and dtor, plus any
@@ -397,6 +443,42 @@ BENCHMARK(hazptr_retire_default, iters) {
 
 BENCHMARK_DRAW_LINE();
 
+template <size_t LinkCount>
+static void do_hazptr_obj_linked_unlink(
+    size_t iters, size_t const objectCount) {
+  BenchmarkSuspender braces;
+  while (iters--) {
+    hazptr_obj_cohort<> cohort;
+    auto objects = makeLinkedBenchTree<false, LinkCount>(objectCount, cohort);
+    objects[0].acquire_link_safe();
+
+    braces.dismissing([&] { objects[0].unlink(); });
+
+    cohort.shutdown_and_reclaim();
+  }
+}
+
+static void hazptr_obj_linked_unlink_immutable_chain(
+    size_t iters, size_t const objectCount) {
+  do_hazptr_obj_linked_unlink<1>(iters, objectCount);
+}
+
+BENCHMARK_PARAM(hazptr_obj_linked_unlink_immutable_chain, 1)
+BENCHMARK_PARAM(hazptr_obj_linked_unlink_immutable_chain, 2)
+BENCHMARK_PARAM(hazptr_obj_linked_unlink_immutable_chain, 8)
+BENCHMARK_PARAM(hazptr_obj_linked_unlink_immutable_chain, 16)
+
+static void hazptr_obj_linked_unlink_immutable_tree(
+    size_t iters, size_t const objectCount) {
+  do_hazptr_obj_linked_unlink<2>(iters, objectCount);
+}
+
+BENCHMARK_PARAM(hazptr_obj_linked_unlink_immutable_tree, 3)
+BENCHMARK_PARAM(hazptr_obj_linked_unlink_immutable_tree, 7)
+BENCHMARK_PARAM(hazptr_obj_linked_unlink_immutable_tree, 15)
+
+BENCHMARK_DRAW_LINE();
+
 /// fragment the memory and scatter hprec allocations across cachelines with no
 /// consistent stride, if hprecs are allocated separately and linked together
 template <template <typename> class Atom>
@@ -510,6 +592,25 @@ BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 16384)
 BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 65536)
 BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 262144)
 BENCHMARK_PARAM(hazptr_cleanup_sqrt_with_hprec_seq, 1048576)
+
+BENCHMARK_DRAW_LINE();
+
+static void hazptr_obj_linked_reclaim_mutable_chain(
+    size_t iters, size_t const objectCount) {
+  BenchmarkSuspender braces;
+  while (iters--) {
+    hazptr_obj_cohort<> cohort;
+    auto objects = makeLinkedBenchTree<true, 1>(objectCount, cohort);
+    objects[0].retire();
+
+    braces.dismissing([&] { cohort.shutdown_and_reclaim(); });
+  }
+}
+
+BENCHMARK_PARAM(hazptr_obj_linked_reclaim_mutable_chain, 1)
+BENCHMARK_PARAM(hazptr_obj_linked_reclaim_mutable_chain, 2)
+BENCHMARK_PARAM(hazptr_obj_linked_reclaim_mutable_chain, 8)
+BENCHMARK_PARAM(hazptr_obj_linked_reclaim_mutable_chain, 16)
 
 BENCHMARK_DRAW_LINE();
 
