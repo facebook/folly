@@ -24,12 +24,19 @@ fbthrift
 fizz
 fmt
 folly
+googletest
 magic_enum
 openr = !default, !full, exported_libraries
 wangle
 re2
 zstd
 gcc12
+
+[cmake.defines.test=on]
+BUILD_TESTING=ON
+
+[cmake.defines.test=off]
+BUILD_TESTING=OFF
 
 [shipit.pathmap]
 fbcode/neteng/fboss/bgp/public_tld = .
@@ -54,7 +61,6 @@ fbcode/configerator/structs/neteng/fboss/thrift = configerator/structs/neteng/fb
 ^fbcode/neteng/fboss/bgp/\.llms/.*
 ^fbcode/neteng/fboss/bgp/tools/.*
 ^fbcode/neteng/fboss/bgp/cpp/tests/NetlinkWrapperTest\.cpp
-^fbcode/neteng/fboss/bgp/cpp/tests/PlatformConstantBbTest\.cpp
 ^fbcode/neteng/fboss/bgp/cpp/tests/FibEbbTest\.cpp
 # Only common.thrift is needed from configerator/structs/neteng/fboss/thrift;
 # strip the unrelated schemas the pathmap above would otherwise ship.
