@@ -63,6 +63,18 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
+    name = "sys_mman_test",
+    srcs = ["SysMmanTest.cpp"],
+    labels = ci.labels(
+        ci.windows(ci.mode("fbcode//mode/win")),
+    ),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "//folly/portability:sys_mman",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
     name = "time_test",
     srcs = ["TimeTest.cpp"],
     deps = [

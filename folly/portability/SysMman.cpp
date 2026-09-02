@@ -19,6 +19,7 @@
 #ifdef _WIN32
 
 #include <cassert>
+#include <cerrno>
 
 #include <folly/Portability.h>
 #include <folly/portability/Windows.h>
@@ -87,6 +88,13 @@ struct MemMapDebugTrailer {
   uint32_t magic;
 };
 
+// POSIX requires errno to be set on failure and callers rely on it (e.g.
+// folly::IndexedMemPool asserts errno == ENOMEM before throwing bad_alloc).
+void* mmapFailed(int err) {
+  errno = err;
+  return MAP_FAILED;
+}
+
 void* mmapWinArgs(
     void* addr,
     size_t length,
@@ -99,7 +107,7 @@ void* mmapWinArgs(
 
   // No Anon shared.
   if ((flags & (MAP_ANONYMOUS | MAP_SHARED)) == (MAP_ANONYMOUS | MAP_SHARED)) {
-    return MAP_FAILED;
+    return mmapFailed(EINVAL);
   }
   // No private copy on write.
   // If the map isn't writable, we can let it go through as
@@ -107,17 +115,17 @@ void* mmapWinArgs(
   // is defined to be unspecified by the standard.
   if ((flags & MAP_PRIVATE) == MAP_PRIVATE &&
       (prot & PROT_WRITE) == PROT_WRITE && fd != -1) {
-    return MAP_FAILED;
+    return mmapFailed(EINVAL);
   }
   // Map isn't anon, must be file backed.
   if (!(flags & MAP_ANONYMOUS) && fd == -1) {
-    return MAP_FAILED;
+    return mmapFailed(EBADF);
   }
 
   DWORD newProt;
   DWORD accessFlags;
   if (!mmap_to_page_protection(prot, newProt, accessFlags)) {
-    return MAP_FAILED;
+    return mmapFailed(EINVAL);
   }
 
   void* ret;
@@ -135,13 +143,15 @@ void* mmapWinArgs(
         (DWORD)(length & 0xFFFFFFFF),
         nullptr);
     if (fmh == nullptr) {
-      return MAP_FAILED;
+      return mmapFailed(ENOMEM);
     }
     ret = MapViewOfFileEx(fmh, accessFlags, offHigh, offLow, 0, addr);
-    if (ret == nullptr) {
-      ret = MAP_FAILED;
-    }
+    const bool mapViewFailed = ret == nullptr;
+    // CloseHandle is not documented to preserve errno, so set it afterwards.
     CloseHandle(fmh);
+    if (mapViewFailed) {
+      ret = mmapFailed(ENOMEM);
+    }
   } else {
     auto baseLength = length;
     if (folly::kIsDebug) {
@@ -156,7 +166,7 @@ void* mmapWinArgs(
     length = alignToAllocationGranularity(length);
     ret = VirtualAlloc(addr, length, MEM_COMMIT | MEM_RESERVE, newProt);
     if (ret == nullptr) {
-      return MAP_FAILED;
+      return mmapFailed(ENOMEM);
     }
 
     if (folly::kIsDebug) {
