@@ -412,6 +412,7 @@ class Optional : private detail::OptionalCopyAssignBase<Value> {
   }
 
   template <class Arg>
+    requires(!std::same_as<std::remove_cvref_t<Arg>, Optional>)
   Optional& operator=(Arg&& arg) {
     assign(std::forward<Arg>(arg));
     return *this;

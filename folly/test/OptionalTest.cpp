@@ -42,6 +42,13 @@ static_assert(
     !std::is_trivially_copy_constructible_v<folly::Optional<std::string>>);
 static_assert(
     !std::is_trivially_copy_assignable_v<folly::Optional<std::string>>);
+static_assert(
+    std::is_nothrow_assignable_v<
+        folly::Optional<int32_t>&,
+        folly::Optional<int32_t>&>,
+    "assigning from a non-const Optional lvalue must select the trivial "
+    "copy-assignment operator rather than the generic operator=(Arg&&), which "
+    "reads the destination's hasValue flag");
 // Move constructor is intentionally non-trivial (resets source), unlike
 // std::optional.
 static_assert(
