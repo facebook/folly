@@ -186,6 +186,7 @@ static bool getTracepointArguments(
   CHECK_GT(len, 0);
   // The loop to read tracepoints one by one.
   size_t pos = 0;
+  intptr_t firstBaseAddr = 0;
   while (pos < len) {
     // Check size information of the tracepoint.
     CHECK_LE(pos + 12, len);
@@ -212,8 +213,17 @@ static bool getTracepointArguments(
     CHECK_GT(probeAddr, 0);
     remaining -= kAddrWidth;
 
+    // Every note points at the same _.stapsdt.base symbol, which survives
+    // linker garbage collection because the notes are tied to their probe
+    // sites' sections. Consumers subtract this from the section's actual
+    // address to compensate for prelink, so it has to be a real address and
+    // the same one in every note.
     intptr_t baseAddr = getAddr(note, pos);
-    CHECK_EQ(0, baseAddr);
+    CHECK_GT(baseAddr, 0);
+    if (firstBaseAddr == 0) {
+      firstBaseAddr = baseAddr;
+    }
+    CHECK_EQ(firstBaseAddr, baseAddr);
     remaining -= kAddrWidth;
 
     intptr_t semaphoreAddr = getAddr(note, pos);

@@ -33,7 +33,15 @@
 #error "Unsupported architecture"
 #endif
 
-// Note section properties.
+// Note section properties. Each note is tied to the code section holding its
+// probe site ("o", SHF_LINK_ORDER, linked to a per-probe label) and to that
+// section's COMDAT group, if any ("?"), so that linker section garbage
+// collection (-Wl,--gc-sections) and COMDAT deduplication discard a note
+// together with the probe site it describes. Otherwise the note survives with
+// its location/base/semaphore relocations resolved against a discarded section
+// (i.e., to 0 + addend), and such dangling notes break probe parsing and
+// attachment: libbpf, for one, fails a probe outright when any one of its
+// notes has an unresolvable location, taking the probe's valid copies with it.
 #define FOLLY_SDT_NOTE_NAME           "stapsdt"
 #define FOLLY_SDT_NOTE_TYPE           3
 
@@ -145,7 +153,9 @@
 // Structure of note section for the probe.
 #define FOLLY_SDT_NOTE_CONTENT(provider, name, has_semaphore, arg_template)    \
   FOLLY_SDT_ASM_1(990: FOLLY_SDT_NOP)                                          \
-  FOLLY_SDT_ASM_3(     .pushsection .note.stapsdt,"?","note")                  \
+  FOLLY_SDT_ASM_1(.Lfolly_sdt_nop_%=:)                                         \
+  FOLLY_SDT_ASM_4(     .pushsection .note.stapsdt,"o?","note",                 \
+                       .Lfolly_sdt_nop_%=)                                     \
   FOLLY_SDT_ASM_1(     .balign 4)                                              \
   FOLLY_SDT_ASM_3(     .4byte 992f-991f, 994f-993f, FOLLY_SDT_NOTE_TYPE)       \
   FOLLY_SDT_ASM_1(991: .asciz FOLLY_SDT_NOTE_NAME)                             \
