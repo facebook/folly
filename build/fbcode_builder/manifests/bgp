@@ -25,6 +25,7 @@ fizz
 fmt
 folly
 magic_enum
+openr = !default, !full, exported_libraries
 wangle
 re2
 zstd
