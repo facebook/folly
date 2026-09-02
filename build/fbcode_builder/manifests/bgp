@@ -53,9 +53,6 @@ fbcode/configerator/structs/neteng/fboss/thrift = configerator/structs/neteng/fb
 ^fbcode/neteng/fboss/bgp/.*\.bzl
 ^fbcode/neteng/fboss/bgp/\.llms/.*
 ^fbcode/neteng/fboss/bgp/tools/.*
-^fbcode/neteng/fboss/bgp/cpp/rib/RibBB\..*
-^fbcode/neteng/fboss/bgp/cpp/nexthopTracker/NetlinkWrapper\..*
-^fbcode/neteng/fboss/bgp/cpp/common/platform/bb/.*
 ^fbcode/neteng/fboss/bgp/cpp/tests/NetlinkWrapperTest\.cpp
 ^fbcode/neteng/fboss/bgp/cpp/tests/PlatformConstantBbTest\.cpp
 ^fbcode/neteng/fboss/bgp/cpp/tests/FibEbbTest\.cpp
