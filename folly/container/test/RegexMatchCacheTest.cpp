@@ -384,6 +384,38 @@ struct RegexMatchCacheTest : testing::Test {
     EXPECT_THAT(matches, testing::UnorderedElementsAreArray(uncached));
     return matches;
   }
+
+  RegexMatchCache::PrepareHandle initBuild(
+      RegexMatchCache& cache,
+      RegexMatchCacheKeyAndView const& key,
+      time_point const now) {
+    keys.add(key);
+    auto matcher = RegexMatchCache::compile(key);
+    return cache.initPrepareToFindMatches(key, std::move(matcher), now);
+  }
+
+  RegexMatchCache::PrepareHandle initBuild(
+      RegexMatchCache& cache, RegexMatchCacheKeyAndView const& key) {
+    return initBuild(cache, key, clock::now());
+  }
+
+  void finishBuild(RegexMatchCache& cache, RegexMatchCache::PrepareHandle h) {
+    cache.finiPrepareToFindMatches(std::move(h).evaluate());
+  }
+
+  std::vector<std::string const*> lookupOffLock(
+      RegexMatchCache& cache, std::string_view regex, time_point now) {
+    auto const key = RegexMatchCacheKeyAndView(regex);
+    auto const uncached = std::as_const(cache).findMatchesUncached(regex);
+    if (std::as_const(cache).isReadyToFindMatches(key)) {
+      keys.add(key);
+    } else {
+      finishBuild(cache, initBuild(cache, key));
+    }
+    auto const matches = std::as_const(cache).findMatches(key, now);
+    EXPECT_THAT(matches, testing::UnorderedElementsAreArray(uncached));
+    return matches;
+  }
 };
 
 TEST_F(RegexMatchCacheTest, clean) {
@@ -636,4 +668,313 @@ TEST_F(RegexMatchCacheTest, combinatorics) {
           testing::UnorderedElementsAreArray(mlist));
     }
   }
+}
+
+TEST_F(RegexMatchCacheTest, matcher) {
+  auto matcher = RegexMatchCache::compile("foo|bar");
+  EXPECT_TRUE(matcher("foo"));
+  EXPECT_TRUE(matcher("bar"));
+  EXPECT_FALSE(matcher("baz"));
+
+  //  Matcher is move-only and stays usable after being moved-from-into
+  auto const moved = std::move(matcher);
+  EXPECT_TRUE(moved("foo"));
+  EXPECT_FALSE(moved("qux"));
+}
+
+TEST_F(RegexMatchCacheTest, init_rejects_matcher_from_another_pattern) {
+  constexpr auto xFoo = "foo"sv;
+  constexpr auto xBar = "bar"sv;
+  RegexMatchCache cache;
+
+  auto const key = RegexMatchCacheKeyAndView(xFoo);
+  EXPECT_DEATH(
+      cache.initPrepareToFindMatches(
+          key, RegexMatchCache::compile(xBar), clock::now()),
+      "matcher compiled from another pattern");
+}
+
+TEST_F(RegexMatchCacheTest, off_lock_build) {
+  auto const foo = "foo"s;
+  auto const bar = "bar"s;
+  RegexMatchCache cache;
+
+  cache.addString(&foo);
+  cache.addString(&bar);
+  checkConsistency(cache);
+
+  EXPECT_THAT(
+      lookupOffLock(cache, "foo|qux", time_point() + 5s), //
+      testing::UnorderedElementsAre(&foo))
+      << inspect(cache);
+  checkConsistency(cache);
+}
+
+TEST_F(RegexMatchCacheTest, off_lock_build_drains_queued_strings) {
+  auto const foo = "foo"s;
+  auto const bar = "bar"s;
+  auto const dog = "dog"s;
+  RegexMatchCache cache;
+
+  cache.addString(&foo);
+  cache.addString(&bar);
+  EXPECT_THAT(
+      lookupOffLock(cache, "foo|dog", time_point() + 5s), //
+      testing::UnorderedElementsAre(&foo))
+      << inspect(cache);
+
+  //  a string added after build is queued; the next build drains it
+  cache.addString(&dog);
+  checkConsistency(cache);
+  EXPECT_FALSE(cache.isReadyToFindMatches(RegexMatchCacheKey("foo|dog")));
+
+  EXPECT_THAT(
+      lookupOffLock(cache, "foo|dog", time_point() + 5s), //
+      testing::UnorderedElementsAre(&foo, &dog))
+      << inspect(cache);
+  checkConsistency(cache);
+}
+
+TEST_F(RegexMatchCacheTest, num_queued_strings_for) {
+  auto const foo = "foo"s;
+  auto const bar = "bar"s;
+  constexpr auto xFooOrBar = "foo|bar"sv;
+  RegexMatchCache cache;
+
+  cache.addString(&foo);
+  cache.addString(&bar);
+
+  EXPECT_EQ(0, cache.numQueuedStringsFor(RegexMatchCacheKey(xFooOrBar)));
+
+  keys.add(RegexMatchCacheKeyAndView(xFooOrBar));
+  cache.addRegex(RegexMatchCacheKey(xFooOrBar));
+  EXPECT_EQ(2, cache.numQueuedStringsFor(RegexMatchCacheKey(xFooOrBar)));
+
+  auto const key = RegexMatchCacheKeyAndView(xFooOrBar);
+  auto handle = initBuild(cache, key);
+  EXPECT_EQ(2, handle.queueSize());
+  finishBuild(cache, std::move(handle));
+  EXPECT_TRUE(cache.isReadyToFindMatches(RegexMatchCacheKey(xFooOrBar)));
+  EXPECT_EQ(0, cache.numQueuedStringsFor(RegexMatchCacheKey(xFooOrBar)));
+  checkConsistency(cache);
+}
+
+TEST_F(RegexMatchCacheTest, off_lock_build_erase_string_during) {
+  auto const foo = "foo"s;
+  auto const bar = "bar"s;
+  constexpr auto xFooOrBar = "foo|bar"sv;
+  RegexMatchCache cache;
+
+  cache.addString(&foo);
+  cache.addString(&bar);
+
+  auto const key = RegexMatchCacheKeyAndView(xFooOrBar);
+  auto handle = initBuild(cache, key);
+  ASSERT_EQ(2, handle.queueSize());
+
+  //  erase a snapshotted string before publish; caller holds it alive, skip it
+  cache.eraseString(&foo);
+  checkConsistency(cache);
+
+  cache.finiPrepareToFindMatches(std::move(handle).evaluate());
+  checkConsistency(cache);
+
+  EXPECT_THAT(
+      std::as_const(cache).findMatches(key, time_point() + 5s),
+      testing::UnorderedElementsAre(&bar))
+      << inspect(cache);
+  EXPECT_THAT(
+      std::as_const(cache).findMatchesUncached(xFooOrBar),
+      testing::UnorderedElementsAre(&bar));
+}
+
+TEST_F(RegexMatchCacheTest, off_lock_build_add_string_during) {
+  auto const foo = "foo"s;
+  auto const bar = "bar"s;
+  constexpr auto xFooOrBar = "foo|bar"sv;
+  RegexMatchCache cache;
+
+  cache.addString(&foo);
+
+  auto const key = RegexMatchCacheKeyAndView(xFooOrBar);
+  auto handle = initBuild(cache, key);
+  ASSERT_EQ(1, handle.queueSize());
+
+  //  a string added after the snapshot must stay queued for a later build
+  cache.addString(&bar);
+  checkConsistency(cache);
+
+  cache.finiPrepareToFindMatches(std::move(handle).evaluate());
+  checkConsistency(cache);
+  EXPECT_FALSE(cache.isReadyToFindMatches(key));
+  EXPECT_EQ(1, cache.numQueuedStringsFor(key));
+
+  //  a subsequent build drains the remaining queued string
+  finishBuild(cache, initBuild(cache, key));
+  checkConsistency(cache);
+  EXPECT_TRUE(cache.isReadyToFindMatches(key));
+  EXPECT_THAT(
+      std::as_const(cache).findMatches(key, time_point() + 5s),
+      testing::UnorderedElementsAre(&foo, &bar))
+      << inspect(cache);
+}
+
+TEST_F(RegexMatchCacheTest, off_lock_build_fini_is_idempotent) {
+  auto const foo = "foo"s;
+  auto const bar = "bar"s;
+  constexpr auto xFooOrBar = "foo|bar"sv;
+  RegexMatchCache cache;
+
+  cache.addString(&foo);
+  cache.addString(&bar);
+
+  auto const key = RegexMatchCacheKeyAndView(xFooOrBar);
+
+  //  publishing from two concurrent builds must not double-count
+  auto h1 = initBuild(cache, key);
+  auto h2 = initBuild(cache, key);
+  cache.finiPrepareToFindMatches(std::move(h1).evaluate());
+  checkConsistency(cache);
+  cache.finiPrepareToFindMatches(std::move(h2).evaluate());
+  checkConsistency(cache);
+
+  EXPECT_TRUE(cache.isReadyToFindMatches(key));
+  EXPECT_THAT(
+      std::as_const(cache).findMatches(key, time_point() + 5s),
+      testing::UnorderedElementsAre(&foo, &bar))
+      << inspect(cache);
+}
+
+TEST_F(RegexMatchCacheTest, off_lock_build_erase_regex_during) {
+  auto const foo = "foo"s;
+  constexpr auto xFooOrBar = "foo|bar"sv;
+  RegexMatchCache cache;
+
+  cache.addString(&foo);
+
+  auto const key = RegexMatchCacheKeyAndView(xFooOrBar);
+  auto handle = initBuild(cache, key);
+  ASSERT_EQ(1, handle.queueSize());
+
+  //  the regex is erased before results are published; fini must be a no-op
+  crcache.eraseRegex(RegexMatchCacheKey(xFooOrBar));
+  cache.eraseRegex(RegexMatchCacheKey(xFooOrBar));
+  checkConsistency(cache);
+
+  cache.finiPrepareToFindMatches(std::move(handle).evaluate());
+  checkConsistency(cache);
+
+  EXPECT_FALSE(cache.hasRegex(RegexMatchCacheKey(xFooOrBar)));
+}
+
+TEST_F(RegexMatchCacheTest, init_stamps_accessed_protects_from_purge) {
+  auto const foo = "foo"s;
+  constexpr auto xFoo = "foo"sv;
+  RegexMatchCache cache;
+
+  cache.addString(&foo);
+
+  //  a never-served regex sits at epoch accessed-at, so a purge treats it as
+  //  stale -- this is the state an in-flight build starts from, and what a
+  //  concurrent purge would evict
+  auto const key = RegexMatchCacheKeyAndView(xFoo);
+  keys.add(key);
+  cache.addRegex(key);
+  EXPECT_TRUE(cache.hasItemsToPurge(time_point() + 5s));
+
+  //  initPrepareToFindMatches stamps accessed_at with the caller's time point,
+  //  so only a purge at or past that point still treats the build as stale
+  auto handle = initBuild(cache, key, time_point() + 10s);
+  EXPECT_FALSE(cache.hasItemsToPurge(time_point() + 5s));
+  EXPECT_TRUE(cache.hasItemsToPurge(time_point() + 10s));
+  cache.purge(time_point() + 5s);
+  EXPECT_TRUE(cache.hasRegex(RegexMatchCacheKey(xFoo)));
+  checkConsistency(cache);
+
+  finishBuild(cache, std::move(handle));
+  checkConsistency(cache);
+}
+
+TEST_F(RegexMatchCacheTest, compile_bad_pattern_leaves_cache_intact) {
+  auto const foo = "foo"s;
+  constexpr auto xFoo = "foo"sv;
+  constexpr auto xBad = "foo["sv;
+  RegexMatchCache cache;
+
+  cache.addString(&foo);
+  auto const key = RegexMatchCacheKeyAndView(xFoo);
+  finishBuild(cache, initBuild(cache, key));
+  ASSERT_TRUE(cache.isReadyToFindMatches(key));
+
+  //  compile returns a standalone matcher, so an invalid pattern throws before
+  //  any cache state changes
+  EXPECT_THROW(RegexMatchCache::compile(xBad), std::runtime_error);
+  checkConsistency(cache);
+  EXPECT_TRUE(cache.isReadyToFindMatches(key));
+  EXPECT_THAT(
+      std::as_const(cache).findMatches(key, time_point() + 5s),
+      testing::UnorderedElementsAre(&foo))
+      << inspect(cache);
+
+  //  by contrast prepareToFindMatches purges every cached regex on failure,
+  //  leaving the strings
+  auto const bad = RegexMatchCacheKeyAndView(xBad);
+  keys.add(bad);
+  EXPECT_THROW(cache.prepareToFindMatches(bad), std::runtime_error);
+  crcache.eraseRegex(RegexMatchCacheKey(xFoo));
+  checkConsistency(cache);
+  EXPECT_FALSE(cache.hasRegex(RegexMatchCacheKey(xFoo)));
+  EXPECT_THAT(cache.getStringList(), testing::UnorderedElementsAre(&foo));
+}
+
+TEST_F(RegexMatchCacheTest, off_lock_build_erase_add_regex_during) {
+  auto const foo = "foo"s;
+  auto const bar = "bar"s;
+  constexpr auto xFooOrBar = "foo|bar"sv;
+  RegexMatchCache cache;
+
+  cache.addString(&foo);
+  cache.addString(&bar);
+
+  auto const key = RegexMatchCacheKeyAndView(xFooOrBar);
+  auto handle = initBuild(cache, key);
+  ASSERT_EQ(2, handle.queueSize());
+
+  //  the regex is erased and re-added under the same key while the scan runs.
+  //  the key is derived from the pattern, so the re-added regex is the same
+  //  pattern and publishing the in-flight result must not corrupt the cache
+  crcache.eraseRegex(RegexMatchCacheKey(xFooOrBar));
+  cache.eraseRegex(RegexMatchCacheKey(xFooOrBar));
+  cache.addRegex(key);
+  checkConsistency(cache);
+
+  cache.finiPrepareToFindMatches(std::move(handle).evaluate());
+  checkConsistency(cache);
+
+  //  the stale publish must land against the re-added regex; asserting through
+  //  a rebuilding lookup would pass even if fini had published nothing
+  ASSERT_TRUE(cache.isReadyToFindMatches(key));
+  EXPECT_THAT(
+      std::as_const(cache).findMatches(key, time_point() + 5s),
+      testing::UnorderedElementsAre(&foo, &bar))
+      << inspect(cache);
+}
+
+TEST_F(RegexMatchCacheTest, off_lock_build_handle_queue_size_after_evaluate) {
+  auto const foo = "foo"s;
+  constexpr auto xFoo = "foo"sv;
+  RegexMatchCache cache;
+
+  cache.addString(&foo);
+
+  auto const key = RegexMatchCacheKeyAndView(xFoo);
+  auto handle = initBuild(cache, key);
+  EXPECT_EQ(1, handle.queueSize());
+
+  //  evaluate() moves the queue out, so the moved-from handle reports zero
+  auto result = std::move(handle).evaluate();
+  EXPECT_EQ(0, handle.queueSize()); // NOLINT(bugprone-use-after-move)
+
+  cache.finiPrepareToFindMatches(std::move(result));
+  checkConsistency(cache);
 }

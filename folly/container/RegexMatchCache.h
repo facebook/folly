@@ -20,6 +20,7 @@
 #include <cassert>
 #include <chrono>
 #include <iosfwd>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -466,6 +467,22 @@ class RegexMatchCacheKeyAndView {
 /// This is to support concurrent lookups, where the cache is protected by a
 /// shared mutex.
 ///
+/// A large string-queue may instead be coalesced without holding the exclusive
+/// lock across the scan, at the cost of snapshotting the queue:
+///
+///    auto matcher = RegexMatchCache::compile(regex); // static
+///    auto handle = // non-const
+///        cache.initPrepareToFindMatches(regex, std::move(matcher), now);
+///    auto result = std::move(handle).evaluate(); // no lock held
+///    cache.finiPrepareToFindMatches(std::move(result)); // non-const
+///    if (!cache.isReadyToFindMatches(regex)) { // const
+///      cache.prepareToFindMatches(regex); // non-const
+///    }
+///    auto matches = cache.findMatches(regex); // const
+///
+/// The strings snapshotted into the handle must stay alive and unchanged until
+/// the result has been published.
+///
 /// The data structure is exception-safe in a sense. If an exception is thrown
 /// within any non-const member function and escapes, the data structure may
 /// purge all cached regexes while leaving all strings. In most such member
@@ -557,6 +574,9 @@ class RegexMatchCache {
 
   void repair() noexcept;
 
+  std::vector<string_pointer> getStringQueueFor(regex_key const& regex) const;
+  void markAccessed(regex_key const& regex, time_point now);
+
  public:
   class KeyMap {
    public:
@@ -623,6 +643,89 @@ class RegexMatchCache {
     auto end() const noexcept { return matches_.end(); }
   };
 
+  /// A compiled regex that evaluates strings with no lock held. Produced by
+  /// compile(); results publish back via finiPrepareToFindMatches(). Carries
+  /// the key of the pattern it was compiled from, which
+  /// initPrepareToFindMatches CHECKs against the regex being built -- a
+  /// matcher paired with the wrong regex aborts.
+  ///
+  /// Move-assignment is deleted here and on PrepareHandle and PrepareResult:
+  /// each holds a regex_key, whose underlying data member is const.
+  class Matcher {
+   private:
+    friend class RegexMatchCache;
+
+    regex_key key_;
+    std::unique_ptr<RegexObject> impl_;
+
+    Matcher(regex_key key, std::unique_ptr<RegexObject> impl) noexcept;
+
+   public:
+    Matcher(Matcher&&) noexcept;
+    Matcher& operator=(Matcher&&) = delete;
+    ~Matcher();
+
+    bool operator()(std::string_view string) const;
+  };
+
+  class PrepareResult;
+
+  /// PrepareHandle
+  ///
+  /// Holds the compiled matcher and a snapshot of a regex's string-queue for an
+  /// off-lock build; see initPrepareToFindMatches. The snapshotted string
+  /// pointers are non-owning: the caller must keep the backing strings alive
+  /// and unchanged until the PrepareResult from evaluate() has been consumed
+  /// by finiPrepareToFindMatches. Publication resolves strings by address and
+  /// never re-reads their contents, so mutating one in that window -- erase,
+  /// mutate in place, re-add at the same address -- publishes the match
+  /// computed for the old contents.
+  class PrepareHandle {
+   private:
+    friend class RegexMatchCache;
+
+    regex_key key_;
+    Matcher matcher_;
+    std::vector<string_pointer> queue_;
+
+    PrepareHandle(
+        regex_key key,
+        Matcher matcher,
+        std::vector<string_pointer> queue) noexcept;
+
+   public:
+    PrepareHandle(PrepareHandle&&) noexcept;
+    PrepareHandle& operator=(PrepareHandle&&) = delete;
+    ~PrepareHandle();
+
+    /// evaluate() consumes the handle, clearing the queue: a call afterward is
+    /// defined and returns zero.
+    size_t queueSize() const noexcept { return queue_.size(); }
+
+    /// Runs the match scan with no lock held, dereferencing the snapshotted
+    /// string pointers, which must still be alive. Consumes the handle.
+    PrepareResult evaluate() &&;
+  };
+
+  class PrepareResult {
+   private:
+    friend class RegexMatchCache;
+
+    regex_key key_;
+    std::vector<string_pointer> evaluated_;
+    std::vector<string_pointer> matched_;
+
+    PrepareResult(
+        regex_key key,
+        std::vector<string_pointer> evaluated,
+        std::vector<string_pointer> matched) noexcept;
+
+   public:
+    PrepareResult(PrepareResult&&) noexcept;
+    PrepareResult& operator=(PrepareResult&&) = delete;
+    ~PrepareResult();
+  };
+
   RegexMatchCache() noexcept;
   ~RegexMatchCache();
 
@@ -652,6 +755,31 @@ class RegexMatchCache {
       regex_key const& regex, time_point now) const;
   std::vector<string_pointer> findMatches(
       regex_key const& regex, time_point now) const;
+
+  static Matcher compile(std::string_view regex);
+
+  size_t numQueuedStringsFor(regex_key const& regex) const;
+
+  /// Begins an off-lock build. Under the caller's lock, registers the regex,
+  /// stamps it accessed-at now, and snapshots its string-queue into the
+  /// returned handle, which the caller then evaluates with no lock held.
+  ///
+  /// matcher must have been compiled from the same pattern as regex.
+  PrepareHandle initPrepareToFindMatches(
+      regex_key_and_view const& regex, Matcher matcher, time_point now);
+
+  /// Ends an off-lock build, publishing an evaluated result under the caller's
+  /// lock. Publishes only the snapshotted strings, and must be called on the
+  /// cache that produced the handle -- a caller precondition, unchecked. It is
+  /// a no-op if the regex is absent when publication begins; an erase followed
+  /// by a re-add mid-build publishes against the live registration.
+  ///
+  /// Either way the regex may still be unready afterwards, so the caller must
+  /// re-check isReadyToFindMatches under the lock and drain the residual via
+  /// prepareToFindMatches. Skipping that check fails silently:
+  /// findMatchesUnsafe throws on an unready regex only under kIsDebug, and
+  /// otherwise returns an incomplete match set.
+  void finiPrepareToFindMatches(PrepareResult result);
 
   bool hasItemsToPurge(time_point expiry) const noexcept;
 

@@ -18,7 +18,10 @@
 
 #include <folly/portability/Windows.h>
 
+#include <algorithm>
+#include <functional>
 #include <ostream>
+#include <utility>
 
 #include <boost/regex.hpp>
 #include <fmt/format.h>
@@ -47,6 +50,129 @@ class RegexMatchCache::RegexObject {
     return boost::regex_match(string.begin(), string.end(), object);
   }
 };
+
+RegexMatchCache::Matcher::Matcher(
+    regex_key key, std::unique_ptr<RegexObject> impl) noexcept
+    : key_{key}, impl_{std::move(impl)} {}
+
+RegexMatchCache::Matcher::Matcher(Matcher&&) noexcept = default;
+
+RegexMatchCache::Matcher::~Matcher() = default;
+
+bool RegexMatchCache::Matcher::operator()(std::string_view const string) const {
+  DCHECK(impl_);
+  return (*impl_)(string);
+}
+
+RegexMatchCache::Matcher RegexMatchCache::compile(
+    std::string_view const regex) {
+  return Matcher{regex_key{regex}, std::make_unique<RegexObject>(regex)};
+}
+
+RegexMatchCache::PrepareHandle::PrepareHandle(
+    regex_key key, Matcher matcher, std::vector<string_pointer> queue) noexcept
+    : key_{key}, matcher_{std::move(matcher)}, queue_{std::move(queue)} {}
+
+RegexMatchCache::PrepareHandle::PrepareHandle(PrepareHandle&&) noexcept =
+    default;
+
+RegexMatchCache::PrepareHandle::~PrepareHandle() = default;
+
+RegexMatchCache::PrepareResult RegexMatchCache::PrepareHandle::evaluate() && {
+  auto queue = std::exchange(queue_, {});
+  std::vector<string_pointer> matched;
+  matched.reserve(queue.size());
+  for (auto const string : queue) {
+    if (matcher_(*string)) {
+      matched.push_back(string);
+    }
+  }
+  std::sort(matched.begin(), matched.end(), std::less<>{});
+  return PrepareResult{key_, std::move(queue), std::move(matched)};
+}
+
+RegexMatchCache::PrepareResult::PrepareResult(
+    regex_key key,
+    std::vector<string_pointer> evaluated,
+    std::vector<string_pointer> matched) noexcept
+    : key_{key},
+      evaluated_{std::move(evaluated)},
+      matched_{std::move(matched)} {}
+
+RegexMatchCache::PrepareResult::PrepareResult(PrepareResult&&) noexcept =
+    default;
+
+RegexMatchCache::PrepareResult::~PrepareResult() = default;
+
+size_t RegexMatchCache::numQueuedStringsFor(regex_key const& regex) const {
+  auto const rtmiter = cacheRegexToMatch_.find(regex);
+  if (rtmiter == cacheRegexToMatch_.end()) {
+    return 0;
+  }
+  auto const sqriter = stringQueueReverse_.find(&rtmiter->first);
+  if (sqriter == stringQueueReverse_.end()) {
+    return 0;
+  }
+  return sqriter->second.strings.size();
+}
+
+RegexMatchCache::PrepareHandle RegexMatchCache::initPrepareToFindMatches(
+    regex_key_and_view const& regex, Matcher matcher, time_point const now) {
+  CHECK(matcher.key_ == regex.key) << "matcher compiled from another pattern";
+  addRegex(regex);
+  markAccessed(regex, now);
+  auto queue = getStringQueueFor(regex);
+  return PrepareHandle{regex.key, std::move(matcher), std::move(queue)};
+}
+
+void RegexMatchCache::finiPrepareToFindMatches(PrepareResult result) {
+  auto const rtmiter = cacheRegexToMatch_.find(result.key_);
+  if (rtmiter == cacheRegexToMatch_.end()) {
+    //  regex was erased after evaluation began; nothing to publish
+    return;
+  }
+  auto guard = makeGuard(std::bind(&RegexMatchCache::repair, this));
+  auto const regexp = &rtmiter->first;
+  auto& rtmentry = rtmiter->second;
+  auto const regexi = regexVector_.index_of_value(regexp);
+  auto const sqriter = stringQueueReverse_.find(regexp);
+
+  for (auto const string : result.evaluated_) {
+    auto const sqfiter = stringQueueForward_.find(string);
+    if (sqfiter == stringQueueForward_.end()) {
+      //  string was erased, or already fully coalesced, after evaluation began
+      continue;
+    }
+    if (!sqfiter->second.regexes.get_value(regexi)) {
+      //  coalesced for this regex since evaluation began, by an overlapping
+      //  build of the same regex or by a direct prepareToFindMatches
+      continue;
+    }
+    sqfiter->second.regexes.set_value(regexi, false);
+    if (sqfiter->second.regexes.as_index_set_view().empty()) {
+      stringQueueForward_.erase(sqfiter);
+    }
+    if (sqriter != stringQueueReverse_.end()) {
+      sqriter->second.strings.erase(string);
+    }
+
+    if (std::binary_search(
+            result.matched_.begin(),
+            result.matched_.end(),
+            string,
+            std::less<>{})) {
+      auto const mtriter = cacheMatchToRegex_.find(string);
+      CHECK(mtriter != cacheMatchToRegex_.end());
+      rtmentry.matches.insert(string);
+      mtriter->second.regexes.set_value(regexi, true);
+    }
+  }
+
+  if (sqriter != stringQueueReverse_.end() && sqriter->second.strings.empty()) {
+    stringQueueReverse_.erase(sqriter);
+  }
+  guard.dismiss();
+}
 
 void RegexMatchCache::repair() noexcept {
   stringQueueReverse_.clear();
@@ -468,6 +594,34 @@ void RegexMatchCache::prepareToFindMatches(regex_key_and_view const& regex) {
     }
   }
   guard.dismiss();
+}
+
+std::vector<RegexMatchCache::string_pointer> RegexMatchCache::getStringQueueFor(
+    regex_key const& regex) const {
+  std::vector<string_pointer> result;
+  auto const rtmiter = cacheRegexToMatch_.find(regex);
+  if (rtmiter == cacheRegexToMatch_.end()) {
+    return result;
+  }
+  auto const sqriter = stringQueueReverse_.find(&rtmiter->first);
+  if (sqriter == stringQueueReverse_.end()) {
+    return result;
+  }
+  auto const& strings = sqriter->second.strings;
+  result.assign(strings.begin(), strings.end());
+  return result;
+}
+
+void RegexMatchCache::markAccessed(
+    regex_key const& regex, time_point const now) {
+  auto const rtmiter = cacheRegexToMatch_.find(regex);
+  if (rtmiter == cacheRegexToMatch_.end()) {
+    return;
+  }
+  atomic_fetch_modify(
+      rtmiter->second.accessed_at,
+      [now](auto const val) { return std::max(now, val); },
+      std::memory_order_relaxed);
 }
 
 RegexMatchCache::FindMatchesUnsafeResult RegexMatchCache::findMatchesUnsafe(
