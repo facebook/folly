@@ -103,7 +103,7 @@ static void to_ascii_size_u64_10_compare(F _) {
   //  all powers of 10
   for (auto p = 0; p < 20; p++) {
     for (auto n : {-1, 0, 1}) {
-      auto const v = folly::constexpr_pow(uint64_t(2), p) + n;
+      auto const v = folly::constexpr_pow(uint64_t(10), p) + n;
       EXPECT_EQ(std::to_string(v).size(), _(v));
     }
   }
@@ -166,11 +166,38 @@ static void to_ascii_size_sweep(F _) {
   }
 }
 
-template <auto... Bases>
-static void to_ascii_size_clzll_bases(folly::vtag_t<Bases...>) {
-  (to_ascii_size_boundaries<Bases>(folly::detail::to_ascii_size_clzll<Bases>),
-   ...);
-  (to_ascii_size_sweep<Bases>(folly::detail::to_ascii_size_clzll<Bases>), ...);
+//  Each size implementation is a function template over the base, so it cannot
+//  be passed by value the way the two helpers above take theirs. Wrap each so
+//  that one applier serves all of them.
+struct to_ascii_size_via_route_ {
+  template <uint64_t Base>
+  static size_t call(uint64_t v) {
+    return folly::to_ascii_size<Base>(v);
+  }
+};
+struct to_ascii_size_via_array_ {
+  template <uint64_t Base>
+  static size_t call(uint64_t v) {
+    return folly::detail::to_ascii_size_array<Base>(v);
+  }
+};
+struct to_ascii_size_via_clzll_ {
+  template <uint64_t Base>
+  static size_t call(uint64_t v) {
+    return folly::detail::to_ascii_size_clzll<Base>(v);
+  }
+};
+struct to_ascii_size_via_imuls_ {
+  template <uint64_t Base>
+  static size_t call(uint64_t v) {
+    return folly::detail::to_ascii_size_imuls<Base>(v);
+  }
+};
+
+template <typename Impl, auto... Bases>
+static void to_ascii_size_every_base_(folly::vtag_t<Bases...>) {
+  (to_ascii_size_boundaries<Bases>(Impl::template call<Bases>), ...);
+  (to_ascii_size_sweep<Bases>(Impl::template call<Bases>), ...);
 }
 
 template <uint64_t Lo, uint64_t... I>
@@ -181,6 +208,25 @@ static folly::vtag_t<(Lo + I)...> to_ascii_bases_shifted_(
 template <uint64_t Lo, uint64_t Hi>
 using to_ascii_bases_range_ = decltype(to_ascii_bases_shifted_<Lo>(
     std::make_integer_sequence<uint64_t, Hi - Lo + 1>{}));
+
+//  Every base to_ascii_alphabet supports, then a few past it, where the
+//  change-of-base derivation answers to arithmetic and to no alphabet.
+using to_ascii_bases_ = folly::value_list_concat_t<
+    folly::vtag_t,
+    to_ascii_bases_range_<2, 36>,
+    folly::vtag_t<uint64_t(37), uint64_t(42), uint64_t(54), uint64_t(100)>>;
+
+//  a range computed wrong would still be a valid list of bases, and would
+//  still pass, so pin what it computed
+static_assert( //
+    std::is_same_v<
+        folly::value_list_element_type_t<0, to_ascii_bases_>,
+        uint64_t>);
+static_assert(folly::value_list_size_v<to_ascii_bases_> == 35 + 4);
+static_assert(folly::value_list_element_v<0, to_ascii_bases_> == 2);
+static_assert(folly::value_list_element_v<34, to_ascii_bases_> == 36);
+static_assert(folly::value_list_element_v<35, to_ascii_bases_> == 37);
+static_assert(folly::value_list_element_v<38, to_ascii_bases_> == 100);
 
 struct ToAsciiTest : testing::Test {};
 
@@ -293,25 +339,28 @@ TEST_F(ToAsciiTest, to_ascii_size_clzll_10_compare) {
 //  nothing about to_ascii_size_clzll itself is specific to the bases the router
 //  selects.
 TEST_F(ToAsciiTest, to_ascii_size_clzll_every_base) {
-  //  every base to_ascii_alphabet supports, then a few past it, where the
-  //  change-of-base derivation answers to arithmetic and to no alphabet
-  using bases_range = to_ascii_bases_range_<2, 36>;
-  using bases_extra =
-      folly::vtag_t<uint64_t(37), uint64_t(42), uint64_t(54), uint64_t(100)>;
-  using bases =
-      folly::value_list_concat_t<folly::vtag_t, bases_range, bases_extra>;
+  to_ascii_size_every_base_<to_ascii_size_via_clzll_>(to_ascii_bases_{});
+}
 
-  //  a range computed wrong would still be a valid list of bases, and would
-  //  still pass, so pin what it computed
-  static_assert(
-      std::is_same_v<folly::value_list_element_type_t<0, bases>, uint64_t>);
-  static_assert(folly::value_list_size_v<bases> == 35 + 4);
-  static_assert(folly::value_list_element_v<0, bases> == 2);
-  static_assert(folly::value_list_element_v<34, bases> == 36);
-  static_assert(folly::value_list_element_v<35, bases> == 37);
-  static_assert(folly::value_list_element_v<38, bases> == 100);
+//  The array implementation over every base, matching the clzll coverage
+//  above. The tests further up reach it only at bases 8, 10, and 16.
+TEST_F(ToAsciiTest, to_ascii_size_array_every_base) {
+  to_ascii_size_every_base_<to_ascii_size_via_array_>(to_ascii_bases_{});
+}
 
-  to_ascii_size_clzll_bases(bases{});
+//  The imuls implementation over every base, matching the array and clzll
+//  coverage above. Nothing outside this file calls it; it exists as a baseline
+//  for the benchmarks. So this completes the matrix rather than protecting a
+//  caller, and it is the last of the four to reach past bases 8, 10, and 16.
+TEST_F(ToAsciiTest, to_ascii_size_imuls_every_base) {
+  to_ascii_size_every_base_<to_ascii_size_via_imuls_>(to_ascii_bases_{});
+}
+
+//  The public entry point, whichever implementation to_ascii_size_route selects
+//  for this target and base. The implementations agree on every input, so this
+//  pins the router rather than any one of them.
+TEST_F(ToAsciiTest, to_ascii_size_route_every_base) {
+  to_ascii_size_every_base_<to_ascii_size_via_route_>(to_ascii_bases_{});
 }
 
 template <uint64_t Base>
