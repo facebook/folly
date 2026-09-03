@@ -20,6 +20,10 @@
 
 #include <cinttypes>
 
+#include <array>
+#include <cmath>
+#include <random>
+
 #include <fmt/format.h>
 
 #include <folly/Benchmark.h>
@@ -137,6 +141,87 @@ struct inputs<16> {
   };
 };
 
+//  The half-life of a digit-width distribution: the number of digits over
+//  which its probability mass halves, putting consecutive widths in the ratio
+//  2^-(1/HalfLife). Geometric in the width, which is to say power law in the
+//  value. Longer is flatter.
+//
+//  The uniform distribution is the limit as the half-life grows without bound.
+//  inf names that limit, and is the largest size_t rather than a value out of
+//  band so that ordering by half-life still orders by flatness.
+//
+//  The three that get benchmarked:
+//
+//    inf   flat, which is log-uniform in the value; the worst case for a
+//          per-digit loop, and the only one that samples the widest values in
+//          any quantity
+//    4     halving every fourth digit, gentle enough to cover the whole width
+//          range: of 4096 base-10 draws, 666 have one digit and 19 twenty
+//    1     halving every digit, as for counters and indices; too steep to
+//          reach the top of the range, leaving nothing at all beyond about
+//          twelve base-10 digits
+constexpr size_t inf = ~size_t(0);
+
+//  A digit width in [1, Max], drawn from the distribution with the given
+//  half-life.
+//
+//  Called only while filling mixed_inputs, so constructing a distribution per
+//  draw costs nothing that shows up in a measurement.
+template <size_t Max, size_t HalfLife>
+size_t mixed_width(std::mt19937_64& rng) {
+  if constexpr (HalfLife == inf) {
+    //  take the limit exactly rather than approaching it, which would leave
+    //  the rejection below discarding all but a vanishing fraction of draws
+    std::uniform_int_distribution<size_t> flat(1, Max);
+    return flat(rng);
+  } else {
+    std::geometric_distribution<size_t> decay(1. - std::pow(.5, 1. / HalfLife));
+    //  truncate by rejection rather than by clamping, which would pile every
+    //  overshoot onto the widest width as a spike; at a half-life of four that
+    //  overshoot is 3% of base-10 draws and 6% of base-16 draws
+    size_t width;
+    do {
+      width = 1 + decay(rng);
+    } while (width > Max);
+    return width;
+  }
+}
+
+//  A uniformly random value having exactly the given number of digits.
+template <uint64_t Base>
+uint64_t mixed_input_of_width(std::mt19937_64& rng, size_t width) {
+  using powers = folly::detail::to_ascii_powers<Base, uint64_t>;
+  auto const lo = powers::data.data[width - 1];
+  auto const hi = width < powers::size //
+      ? powers::data.data[width] - 1
+      : ~uint64_t(0);
+  return lo + rng() % (hi - lo + 1);
+}
+
+//  A fixed pseudorandom sequence of inputs whose digit widths are drawn from
+//  the given distribution.
+//
+//  The benchmarks above pin one width apiece, which trains the exit branch of
+//  to_ascii_size_array to near-perfect prediction and so hides the very cost
+//  that the branchless to_ascii_size_clzll exists to avoid. These sequences
+//  are what expose it. Cycling over the inputs table above would not do: a
+//  period-21 pattern is short enough for the predictor to learn.
+template <uint64_t Base, size_t HalfLife>
+std::array<uint64_t, 4096> const& mixed_inputs() {
+  static auto const data = [] {
+    constexpr auto const max = folly::to_ascii_size_max<Base, uint64_t>;
+    std::array<uint64_t, 4096> result{};
+    std::mt19937_64 rng(1729);
+    for (auto& v : result) {
+      //  the width first, so that the draws are ordered as they read
+      auto const width = mixed_width<max, HalfLife>(rng);
+      v = mixed_input_of_width<Base>(rng, width);
+    }
+    return result;
+  }();
+  return data;
+}
+
 } // namespace
 
 static void fill_zero(char* out, size_t size, size_t index) {
@@ -153,6 +238,16 @@ template <uint64_t Base, typename F>
 static void to_ascii_size_go(size_t iters, size_t index, F f) {
   while (iters--) {
     auto const v = inputs<Base>::data[index] + (iters % 8);
+    auto const size = [&]() FOLLY_NOINLINE { return f(v); }();
+    folly::doNotOptimizeAway(size);
+  }
+}
+
+template <uint64_t Base, size_t HalfLife, typename F>
+static void to_ascii_size_mixed_go(size_t iters, F f) {
+  auto const& data = mixed_inputs<Base, HalfLife>();
+  while (iters--) {
+    auto const v = data[iters % data.size()];
     auto const size = [&]() FOLLY_NOINLINE { return f(v); }();
     folly::doNotOptimizeAway(size);
   }
@@ -294,6 +389,40 @@ BENCHMARK_GROUP(16)
 #undef BENCHMARK_GROUP
 
 BENCHMARK_DRAW_LINE();
+
+//  to_ascii_size, mixed digit widths
+//
+//  Unlike the benchmarks above, these do not pin the digit width, so the exit
+//  branch of to_ascii_size_array is mispredicted at the rate the distribution
+//  implies. This is the comparison that to_ascii_size_route turns on.
+
+#define FOLLY_TO_ASCII_BENCH_MIXED_SIZE(impl, base, half)             \
+  BENCHMARK(to_ascii_size_##impl##_halflife_##half##_##base, iters) { \
+    to_ascii_size_mixed_go<base, half>(iters, [](auto v) {            \
+      return folly::detail::to_ascii_size_##impl<base>(v);            \
+    });                                                               \
+  }
+#define FOLLY_TO_ASCII_BENCH_MIXED(base, half, fmtspec)           \
+  BENCHMARK(fmt_formatted_size_halflife_##half##_##base, iters) { \
+    to_ascii_size_mixed_go<base, half>(iters, [](auto v) {        \
+      return fmt::formatted_size(FOLLY_FMT_COMPILE(fmtspec), v);  \
+    });                                                           \
+  }                                                               \
+  FOLLY_TO_ASCII_BENCH_MIXED_SIZE(imuls, base, half)              \
+  FOLLY_TO_ASCII_BENCH_MIXED_SIZE(idivs, base, half)              \
+  FOLLY_TO_ASCII_BENCH_MIXED_SIZE(array, base, half)              \
+  FOLLY_TO_ASCII_BENCH_MIXED_SIZE(clzll, base, half)              \
+  BENCHMARK_DRAW_LINE();
+
+FOLLY_TO_ASCII_BENCH_MIXED(10, inf, "{}")
+FOLLY_TO_ASCII_BENCH_MIXED(10, 4, "{}")
+FOLLY_TO_ASCII_BENCH_MIXED(10, 1, "{}")
+FOLLY_TO_ASCII_BENCH_MIXED(16, inf, "{:x}")
+FOLLY_TO_ASCII_BENCH_MIXED(16, 4, "{:x}")
+FOLLY_TO_ASCII_BENCH_MIXED(16, 1, "{:x}")
+
+#undef FOLLY_TO_ASCII_BENCH_MIXED
+#undef FOLLY_TO_ASCII_BENCH_MIXED_SIZE
 
 //  to_ascii<10>
 
