@@ -252,7 +252,7 @@ struct InlineTaskDetached {
     }
 
     promise_type() noexcept {
-      asyncFrame_.setParentFrame(folly::getDetachedRootAsyncStackFrame());
+      asyncFrame_.setParentFrameUnsafe(folly::getDetachedRootAsyncStackFrame());
     }
 
     InlineTaskDetached get_return_object() noexcept {

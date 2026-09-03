@@ -59,7 +59,7 @@ inline void linkInactiveFrames(
   std::array<AsyncStackFrame*, 2 + sizeof...(Rest)> frames{
       &first, &second, &rest...};
   for (std::size_t i = 1; i < frames.size(); ++i) {
-    frames[i - 1]->setParentFrame(*frames[i]);
+    frames[i - 1]->setParentFrameUnsafe(*frames[i]);
   }
 }
 

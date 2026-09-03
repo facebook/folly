@@ -36,7 +36,7 @@ FOLLY_NOINLINE std::invoke_result_t<F> executeWithNewRoot(
   AsyncStackFrame frame;
   frame.setReturnAddress();
   if (callerFrame) {
-    frame.setParentFrame(*callerFrame);
+    frame.setParentFrameUnsafe(*callerFrame);
   }
 
   auto* oldRoot = exchangeCurrentAsyncStackRoot(&newRoot);

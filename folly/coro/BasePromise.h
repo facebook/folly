@@ -77,7 +77,7 @@ class BasePromise {
       return ExtendedCoroutineHandle::ErrorHandle{
           finalAwaiter.await_suspend_promise(me),
           // finalAwaiter.await_suspend pops a frame
-          me.getAsyncFrame().getParentFrame()};
+          me.getAsyncFrame().getParentFrameUnsafe()};
     }
     return std::nullopt;
   }

@@ -506,7 +506,7 @@ class [[nodiscard]] TaskWithExecutor {
 
       if constexpr (detail::promiseHasAsyncFrame_v<Promise>) {
         auto& callerFrame = continuation.promise().getAsyncFrame();
-        calleeFrame.setParentFrame(callerFrame);
+        calleeFrame.setParentFrameUnsafe(callerFrame);
         folly::deactivateAsyncStackFrame(callerFrame);
       }
 

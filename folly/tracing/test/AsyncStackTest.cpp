@@ -225,16 +225,16 @@ TEST(AsyncStack, PushPop) {
   folly::pushAsyncStackFrameCallerCallee(frame1, frame2);
 
   CHECK_EQ(&frame2, root.getTopFrame());
-  CHECK_EQ(&frame1, frame2.getParentFrame());
+  CHECK_EQ(&frame1, frame2.getParentFrameUnsafe());
   CHECK_EQ(&root, frame2.getStackRoot());
   CHECK(frame1.getStackRoot() == nullptr);
 
   folly::pushAsyncStackFrameCallerCallee(frame2, frame3);
 
   CHECK_EQ(&frame3, root.getTopFrame());
-  CHECK_EQ(&frame2, frame3.getParentFrame());
-  CHECK_EQ(&frame1, frame2.getParentFrame());
-  CHECK(frame1.getParentFrame() == nullptr);
+  CHECK_EQ(&frame2, frame3.getParentFrameUnsafe());
+  CHECK_EQ(&frame1, frame2.getParentFrameUnsafe());
+  CHECK(frame1.getParentFrameUnsafe() == nullptr);
   CHECK(frame2.getStackRoot() == nullptr);
 
   folly::deactivateAsyncStackFrame(frame3);

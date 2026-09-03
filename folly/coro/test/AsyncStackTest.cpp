@@ -138,7 +138,7 @@ FOLLY_NOINLINE std::vector<std::uintptr_t> walk_stack() {
 
   CHECK(root.getTopFrame() != nullptr);
   for (auto* asyncFrame = root.getTopFrame(); asyncFrame != nullptr;
-       asyncFrame = asyncFrame->getParentFrame()) {
+       asyncFrame = asyncFrame->getParentFrameUnsafe()) {
     stack.push_back(
         reinterpret_cast<std::uintptr_t>(asyncFrame->getReturnAddress()));
   }

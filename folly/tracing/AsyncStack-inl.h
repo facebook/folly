@@ -43,7 +43,7 @@ inline void pushAsyncStackFrameCallerCallee(
     folly::AsyncStackFrame& calleeFrame) noexcept {
   checkAsyncStackFrameIsActive(callerFrame);
   calleeFrame.stackRoot = callerFrame.stackRoot;
-  calleeFrame.parentFrame = &callerFrame;
+  calleeFrame.setParentFrameUnsafe(callerFrame);
   calleeFrame.stackRoot->topFrame.store(
       &calleeFrame, std::memory_order_release);
 
@@ -55,7 +55,7 @@ inline void pushAsyncStackFrameCallerCallee(
 inline void popAsyncStackFrameCallee(
     folly::AsyncStackFrame& calleeFrame) noexcept {
   checkAsyncStackFrameIsActive(calleeFrame);
-  auto* callerFrame = calleeFrame.parentFrame;
+  auto* callerFrame = calleeFrame.getParentFrameUnsafe();
   auto* stackRoot = calleeFrame.stackRoot;
   if (callerFrame != nullptr) {
     callerFrame->stackRoot = stackRoot;
@@ -76,24 +76,6 @@ void resumeCoroutineWithNewAsyncStackRoot(
 }
 
 #endif
-
-inline AsyncStackFrame* AsyncStackFrame::getParentFrame() noexcept {
-  return parentFrame;
-}
-
-inline const AsyncStackFrame* AsyncStackFrame::getParentFrame() const noexcept {
-  return parentFrame;
-}
-
-inline void AsyncStackFrame::setParentFrame(AsyncStackFrame& frame) noexcept {
-  parentFrame = &frame;
-}
-
-inline void AsyncStackFrame::clear() noexcept {
-  parentFrame = nullptr;
-  instructionPointer = nullptr;
-  stackRoot = nullptr;
-}
 
 inline AsyncStackRoot* AsyncStackFrame::getStackRoot() noexcept {
   return stackRoot;

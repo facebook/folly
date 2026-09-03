@@ -277,7 +277,7 @@ void pushAsyncStackFrameCallerCallee(
 // you are about to call/resume the caller. e.g. performing a symmetric
 // transfer to the calling coroutine in final_suspend().
 //
-// If calleeFrame.getParentFrame() is null then this method is equivalent
+// If calleeFrame.getParentFrameUnsafe() is null then this method is equivalent
 // to deactivateAsyncStackFrame(), leaving no active AsyncStackFrame on
 // the current AsyncStackRoot.
 void popAsyncStackFrameCallee(folly::AsyncStackFrame& calleeFrame) noexcept;
@@ -363,13 +363,25 @@ struct AsyncStackFrame {
   AsyncStackFrame& operator=(const AsyncStackFrame&) = delete;
   AsyncStackFrame& operator=(AsyncStackFrame&&) = delete;
 
-  void clear() noexcept;
+  void clear() noexcept {
+    parentFrame = nullptr;
+    instructionPointer = nullptr;
+    stackRoot = nullptr;
+  }
 
   // The parent frame is the frame of the async operation that is logically
   // the caller of this frame.
-  AsyncStackFrame* getParentFrame() noexcept;
-  const AsyncStackFrame* getParentFrame() const noexcept;
-  void setParentFrame(AsyncStackFrame& frame) noexcept;
+
+  // These methods perform plain pointer accesses. A write requires that no
+  // asynchronous stack walker can reach this frame during the call; a read
+  // requires that no writer can change the link.
+  AsyncStackFrame* getParentFrameUnsafe() noexcept { return parentFrame; }
+  const AsyncStackFrame* getParentFrameUnsafe() const noexcept {
+    return parentFrame;
+  }
+  void setParentFrameUnsafe(AsyncStackFrame& frame) noexcept {
+    parentFrame = &frame;
+  }
 
   // Get access to the current stack-root.
   //
@@ -649,7 +661,7 @@ struct MetadataFrameAdvanceResult {
   if (frame == nullptr || !isAsyncStackMetadataFrame(*frame)) {
     return {frame, false};
   }
-  frame = frame->getParentFrame();
+  frame = frame->getParentFrameUnsafe();
   return {frame, frame != nullptr && isAsyncStackMetadataFrame(*frame)};
 }
 
@@ -689,7 +701,7 @@ inline size_t getAsyncStackTraceFromInitialFrame(
     if (numFrames == maxAddresses) {
       break;
     }
-    frame = frame->getParentFrame();
+    frame = frame->getParentFrameUnsafe();
   }
   return numFrames;
 }

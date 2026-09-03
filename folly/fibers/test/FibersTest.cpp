@@ -3514,7 +3514,7 @@ TEST(FiberManager, fibersPreserveAsyncStackRoots) {
         folly::AsyncStackFrame frame1;
 
         folly::AsyncStackFrame frame2;
-        frame2.setParentFrame(frame1);
+        frame2.setParentFrameUnsafe(frame1);
 
         scopedRoot2.activateFrame(frame2);
 

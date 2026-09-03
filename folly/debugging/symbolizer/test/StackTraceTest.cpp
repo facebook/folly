@@ -191,7 +191,7 @@ TEST(StackTraceTest, AsyncStackTraceOmitsMetadataMarkers) {
   AsyncStackFrame initialMarker;
   markAsMetadataFrame(initialMarker);
   linkInactiveFrames(initialMarker, wrapper);
-  wrapper.setParentFrame(parentMarker);
+  wrapper.setParentFrameUnsafe(parentMarker);
   CapturedAsyncStack marked;
   {
     ScopedAsyncStackRootWithFrame activeRoot{initialMarker};
@@ -323,7 +323,7 @@ FOLLY_NOINLINE CapturedAsyncStackPair captureInnerAsyncStacks() {
     ScopedAsyncStackRootWithFrame activeRoot{wrapper};
     captures.baseline = captureCurrentAsyncStack();
   }
-  wrapper.setParentFrame(marker);
+  wrapper.setParentFrameUnsafe(marker);
   {
     ScopedAsyncStackRootWithFrame activeRoot{wrapper};
     captures.marked = captureCurrentAsyncStack();

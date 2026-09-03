@@ -199,7 +199,7 @@ class BlockingWaitTask {
     promise.setTry(&result);
 
     auto& asyncFrame = promise.getAsyncFrame();
-    asyncFrame.setParentFrame(parentFrame);
+    asyncFrame.setParentFrameUnsafe(parentFrame);
     asyncFrame.setReturnAddress();
     {
       RequestContextScopeGuard guard{RequestContext::saveContext()};
@@ -218,7 +218,7 @@ class BlockingWaitTask {
 
     auto& asyncFrame = promise.getAsyncFrame();
     asyncFrame.setReturnAddress();
-    asyncFrame.setParentFrame(parentFrame);
+    asyncFrame.setParentFrameUnsafe(parentFrame);
 
     executor->add(
         [coro = coro_, rctx = RequestContext::saveContext()]() mutable {

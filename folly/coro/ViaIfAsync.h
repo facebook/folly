@@ -66,8 +66,8 @@ class ViaCoroutinePromiseBase {
     continuation_ = continuation;
   }
 
-  void setParentFrame(folly::AsyncStackFrame& parentFrame) noexcept {
-    leafFrame_.setParentFrame(parentFrame);
+  void setParentFrameUnsafe(folly::AsyncStackFrame& parentFrame) noexcept {
+    leafFrame_.setParentFrameUnsafe(parentFrame);
   }
 
   void setReturnAddress(void* returnAddress) noexcept {
@@ -92,9 +92,9 @@ class ViaCoroutinePromiseBase {
     if (folly::isSuspendedLeafActive(leafFrame_)) {
       folly::deactivateSuspendedLeaf(leafFrame_);
     }
-    if (leafFrame_.getParentFrame()) {
+    if (leafFrame_.getParentFrameUnsafe()) {
       folly::resumeCoroutineWithNewAsyncStackRoot(
-          continuation_.getHandle(), *leafFrame_.getParentFrame());
+          continuation_.getHandle(), *leafFrame_.getParentFrameUnsafe());
     } else {
       continuation_.resume();
     }
@@ -148,8 +148,8 @@ class ViaCoroutine {
     template <bool IsStackAware2 = IsStackAware>
       requires IsStackAware2
     folly::AsyncStackFrame& getAsyncFrame() noexcept {
-      DCHECK(this->leafFrame_.getParentFrame() != nullptr);
-      return *this->leafFrame_.getParentFrame();
+      DCHECK(this->leafFrame_.getParentFrameUnsafe() != nullptr);
+      return *this->leafFrame_.getParentFrameUnsafe();
     }
 
     folly::AsyncStackFrame& getLeafFrame() noexcept { return leafFrame_; }
@@ -159,7 +159,7 @@ class ViaCoroutine {
       auto [handle, frame] = me.continuation_.getErrorHandle(ex);
       me.setContinuation(handle);
       if (frame && IsStackAware) {
-        me.leafFrame_.setParentFrame(*frame);
+        me.leafFrame_.setParentFrameUnsafe(*frame);
       }
       return std::nullopt;
     }
@@ -188,8 +188,8 @@ class ViaCoroutine {
     coro_.promise().setContinuation(continuation);
   }
 
-  void setParentFrame(folly::AsyncStackFrame& frame) noexcept {
-    coro_.promise().setParentFrame(frame);
+  void setParentFrameUnsafe(folly::AsyncStackFrame& frame) noexcept {
+    coro_.promise().setParentFrameUnsafe(frame);
   }
 
   void setReturnAddress(void* returnAddress) noexcept {
@@ -258,7 +258,7 @@ class StackAwareViaIfAsyncAwaiter {
     auto& asyncFrame = promise.getAsyncFrame();
 
     viaCoroutine_.setContinuation(h);
-    viaCoroutine_.setParentFrame(asyncFrame);
+    viaCoroutine_.setParentFrameUnsafe(asyncFrame);
 
     if constexpr (!detail::is_coroutine_handle_v<await_suspend_result_t>) {
       viaCoroutine_.saveContext();
@@ -365,7 +365,7 @@ class ViaIfAsyncAwaiter {
       auto& asyncFrame = continuation.promise().getAsyncFrame();
       auto& stackRoot = *asyncFrame.getStackRoot();
 
-      viaCoroutine_.setParentFrame(asyncFrame);
+      viaCoroutine_.setParentFrameUnsafe(asyncFrame);
       viaCoroutine_.setReturnAddress(FOLLY_ASYNC_STACK_RETURN_ADDRESS());
 
       folly::deactivateAsyncStackFrame(asyncFrame);

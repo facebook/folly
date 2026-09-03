@@ -50,7 +50,8 @@ class WithAsyncStackCoroutine {
         auto& promise = h.promise();
         folly::deactivateSuspendedLeaf(promise.getLeafFrame());
         folly::resumeCoroutineWithNewAsyncStackRoot(
-            promise.continuation_, *promise.getLeafFrame().getParentFrame());
+            promise.continuation_,
+            *promise.getLeafFrame().getParentFrameUnsafe());
       }
 
       [[noreturn]] void await_resume() noexcept { folly::assume_unreachable(); }
@@ -96,7 +97,7 @@ class WithAsyncStackCoroutine {
       coroutine_handle<Promise> h, void* returnAddress) noexcept {
     auto& promise = coro_.promise();
     promise.continuation_ = h;
-    promise.getLeafFrame().setParentFrame(h.promise().getAsyncFrame());
+    promise.getLeafFrame().setParentFrameUnsafe(h.promise().getAsyncFrame());
     promise.getLeafFrame().setReturnAddress(returnAddress);
     return coro_;
   }
