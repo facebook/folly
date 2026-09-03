@@ -38,6 +38,29 @@ struct EbBackend {
   IoUringBackend* backend;
 };
 
+// Runs `setupStep` on `evb` and reports whether it succeeded.
+//
+// The catch is load-bearing, not defensive: IoUringZeroCopyBufferPool::create()
+// and ::importHandle() never return null, they throw on failure, so throwing is
+// the only way create/import can report a problem. Left uncaught it would
+// propagate on the EventBase worker and terminate the thread. `setupStep`
+// itself reports failure by returning false.
+bool runSetupStepOnEventBase(
+    folly::EventBase* evb, folly::FunctionRef<bool()> setupStep) {
+  bool succeeded = false;
+  evb->runInEventBaseThreadAndWait([&] {
+    try {
+      succeeded = setupStep();
+    } catch (const std::exception& ex) {
+      LOG(ERROR) << "Exception while setting up io_uring buffer pool: "
+                 << ex.what();
+    } catch (...) {
+      LOG(ERROR) << "Unknown exception while setting up io_uring buffer pool";
+    }
+  });
+  return succeeded;
+}
+
 bool compareByZcRxQueueId(const EbBackend& a, const EbBackend& b) {
   auto aq = a.backend->options().zcRxQueueId;
   auto bq = b.backend->options().zcRxQueueId;
@@ -85,13 +108,15 @@ bool setupIoUringBufferPoolSharingImpl(
   for (size_t i = 0; i < numOwners; ++i) {
     auto* evb = entries[i].evb;
     auto* backend = entries[i].backend;
-    evb->runInEventBaseThreadAndWait([backend, i] {
-      if (!backend->zcBufferPool()) {
-        CHECK(backend->createZcBufferPool())
-            << "Failed to create zero-copy buffer pool for EventBase at index "
-            << i;
-      }
-    });
+    if (!runSetupStepOnEventBase(evb, [backend] {
+          return backend->zcBufferPool() != nullptr ||
+              backend->createZcBufferPool();
+        })) {
+      LOG(ERROR)
+          << "Failed to create zero-copy buffer pool for EventBase at index "
+          << i;
+      return false;
+    }
   }
 
   if (numHwQueues >= entries.size()) {
@@ -102,16 +127,25 @@ bool setupIoUringBufferPoolSharingImpl(
   for (size_t i = numHwQueues; i < entries.size(); ++i) {
     size_t ownerIdx = (i - numHwQueues) % numOwners;
     std::optional<IoUringZeroCopyBufferPool::ExportHandle> handle;
-    entries[ownerIdx].evb->runInEventBaseThreadAndWait(
-        [&handle, backend = entries[ownerIdx].backend] {
-          handle.emplace(backend->exportZcBufferPool());
-        });
-    entries[i].evb->runInEventBaseThreadAndWait(
-        [&handle, backend = entries[i].backend, i, ownerIdx] {
-          CHECK(backend->importZcBufferPool(std::move(handle.value())))
-              << "Failed to import buffer pool handle into EventBase at index "
-              << i << " from owner at index " << ownerIdx;
-        });
+    if (!runSetupStepOnEventBase(
+            entries[ownerIdx].evb,
+            [&handle, backend = entries[ownerIdx].backend] {
+              handle.emplace(backend->exportZcBufferPool());
+              return true;
+            })) {
+      LOG(ERROR) << "Failed to export buffer pool from EventBase at index "
+                 << ownerIdx;
+      return false;
+    }
+    if (!runSetupStepOnEventBase(
+            entries[i].evb, [&handle, backend = entries[i].backend] {
+              return backend->importZcBufferPool(std::move(handle.value()));
+            })) {
+      LOG(ERROR)
+          << "Failed to import buffer pool handle into EventBase at index " << i
+          << " from owner at index " << ownerIdx;
+      return false;
+    }
   }
 
   return true;

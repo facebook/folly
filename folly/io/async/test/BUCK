@@ -1253,7 +1253,9 @@ fbcode_target(
     srcs = ["IoUringBackendSetupTest.cpp"],
     owner = "kvigor@xmail.facebook.com",
     deps = [
+        "//folly/io/async:async_base",
         "//folly/io/async:io_uring_backend",
+        "//folly/io/async:io_uring_buffer_pool_sharing",
         "//folly/portability:gtest",
     ],
 )

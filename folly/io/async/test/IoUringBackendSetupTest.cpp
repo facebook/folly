@@ -14,10 +14,115 @@
  * limitations under the License.
  */
 
+#include <thread>
+#include <vector>
+
+#include <folly/io/async/EventBase.h>
 #include <folly/io/async/IoUringBackend.h>
+#include <folly/io/async/IoUringBufferPoolSharing.h>
 #include <folly/portability/GTest.h>
 
 namespace folly::test {
+
+namespace {
+
+// An EventBase backed by IoUringBackend, looping on its own thread.
+// ScopedEventBaseThread cannot be used here: it offers no constructor taking
+// EventBase::Options, so it cannot install the io_uring backend factory.
+class IoUringEventBaseThread {
+ public:
+  IoUringEventBaseThread()
+      : evb_(
+            EventBase::Options{}.setBackendFactory(
+                []() -> std::unique_ptr<EventBaseBackendBase> {
+                  // Buffer geometry must be set explicitly: the defaults are
+                  // -1, and createZcBufferPool() casts them to size_t. No
+                  // interface is configured, so registering the pool fails
+                  // against the kernel, which is the failure this fixture
+                  // exercises.
+                  IoUringBackend::Options options;
+                  options.setZeroCopyRxNumBuffers(64)
+                      .setZeroCopyRxRefillEntries(32)
+                      .setZeroCopyRxBufferSizeHint(4096);
+                  return std::make_unique<IoUringBackend>(std::move(options));
+                })),
+        thread_([this] { evb_.loopForever(); }) {
+    evb_.waitUntilRunning();
+  }
+
+  ~IoUringEventBaseThread() {
+    evb_.terminateLoopSoon();
+    thread_.join();
+  }
+
+  EventBase* getEventBase() { return &evb_; }
+
+ private:
+  EventBase evb_;
+  std::thread thread_;
+};
+
+} // namespace
+
+class IoUringBufferPoolSharingTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    if (!IoUringBackend::isAvailable()) {
+      GTEST_SKIP() << "io_uring not available";
+    }
+  }
+};
+
+// These backends have no zero-copy RX options, so registering the pool fails.
+// IoUringZeroCopyBufferPool reports that by throwing on the EventBase thread;
+// setup must surface it as a return value and leave the worker usable rather
+// than letting the exception terminate it.
+TEST_F(IoUringBufferPoolSharingTest, ReportsFailureWhenPoolSetupThrows) {
+  IoUringEventBaseThread eventBaseThread;
+  std::vector<EventBase*> eventBases{eventBaseThread.getEventBase()};
+
+  EXPECT_FALSE(setupIoUringBufferPoolSharing(eventBases, 1));
+
+  bool followUpRan = false;
+  eventBaseThread.getEventBase()->runInEventBaseThreadAndWait([&] {
+    followUpRan = true;
+  });
+  EXPECT_TRUE(followUpRan);
+}
+
+// Repeated failed attempts must not leave an EventBase wedged or accumulate
+// partial pool state that changes the outcome of a later attempt.
+TEST_F(IoUringBufferPoolSharingTest, RecoversAfterRepeatedSetupFailures) {
+  IoUringEventBaseThread eventBaseThread;
+  std::vector<EventBase*> eventBases{eventBaseThread.getEventBase()};
+
+  for (size_t i = 0; i < 3; ++i) {
+    EXPECT_FALSE(setupIoUringBufferPoolSharing(eventBases, 1));
+  }
+
+  size_t invocationCount = 0;
+  eventBaseThread.getEventBase()->runInEventBaseThreadAndWait([&] {
+    ++invocationCount;
+  });
+  EXPECT_EQ(invocationCount, 1);
+}
+
+// The sharing loop runs after the owner loop, so a create failure must be
+// reported before any export/import is attempted, with every worker intact.
+TEST_F(IoUringBufferPoolSharingTest, ReportsFailureWithFewerQueuesThanThreads) {
+  IoUringEventBaseThread owner;
+  IoUringEventBaseThread importer;
+  std::vector<EventBase*> eventBases{
+      owner.getEventBase(), importer.getEventBase()};
+
+  EXPECT_FALSE(setupIoUringBufferPoolSharing(eventBases, 1));
+
+  for (auto* evb : eventBases) {
+    bool followUpRan = false;
+    evb->runInEventBaseThreadAndWait([&] { followUpRan = true; });
+    EXPECT_TRUE(followUpRan);
+  }
+}
 
 class IoUringBackendSetupTest : public ::testing::Test {
  protected:

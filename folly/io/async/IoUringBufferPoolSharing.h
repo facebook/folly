@@ -40,7 +40,7 @@ namespace folly {
  * @param eventBases The EventBases to set up for buffer pool sharing.
  *                   All must have IoUringBackend.
  * @param numHwQueues hw queues allocated for zcrx
- * @return true on success. CHECK-fails on any error.
+ * @return true on success, false if pool creation, export, or import fails.
  */
 bool setupIoUringBufferPoolSharing(
     std::vector<folly::EventBase*>& eventBases, size_t numHwQueues);
