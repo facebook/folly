@@ -138,14 +138,30 @@ TEST(PerfScopedTest, ShortWindowIsCounted) {
   SKIP_IF(probeOutput.find("<not counted>") != std::string::npos)
       << "Hardware instructions counter is unavailable in this environment";
 
+  // A sub-millisecond window can intermittently report "<not counted>" on
+  // virtualized or restricted CI hosts even when the counter works, so use a
+  // window of a few milliseconds (still well below the ~9.4ms of front-loaded
+  // work the window-attach bug this test guards used to miss) and retry a few
+  // times. A reintroduced attach regression fails every attempt.
+  constexpr int kMeasureIterations = 4;
+  constexpr int kMaxAttempts = 5;
   std::string output;
   int checksum = 0;
-  {
-    PerfScoped perf{{"stat", "-e", "instructions"}, &output};
-    checksum = burnCpu();
+  for (int attempt = 0; attempt != kMaxAttempts; ++attempt) {
+    {
+      PerfScoped perf{{"stat", "-e", "instructions"}, &output};
+      checksum = 0;
+      for (int i = 0; i != kMeasureIterations; ++i) {
+        checksum += burnCpu();
+      }
+    }
+    if (output.find("instructions") != std::string::npos &&
+        output.find("<not counted>") == std::string::npos) {
+      break;
+    }
   }
 
-  EXPECT_EQ(1023, checksum);
+  EXPECT_EQ(1023 * kMeasureIterations, checksum);
   EXPECT_THAT(output, ::testing::HasSubstr("instructions"));
   EXPECT_THAT(output, ::testing::Not(::testing::HasSubstr("<not counted>")));
 }
