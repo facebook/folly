@@ -1,0 +1,51 @@
+[manifest]
+name = socket-lb
+fbsource_path = fbcode/socket-lb
+shipit_project = facebookincubator/socket-lb
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebookincubator/socket-lb.git
+
+[build.not(os=linux)]
+builder = nop
+
+[build.os=linux]
+builder = cmake
+subdir = public_root
+
+[cmake.defines.test=on]
+BUILD_TESTING = ON
+
+[cmake.defines.test=off]
+BUILD_TESTING = OFF
+
+[dependencies]
+folly
+gflags
+glog
+katran
+libbpf
+libelf
+numa
+zlib
+
+[dependencies.test=on]
+googletest
+
+[debs]
+bpftool
+clang
+
+[rpms]
+bpftool
+clang
+llvm
+
+[shipit.pathmap]
+fbcode/socket-lb/public_root/.github = .github
+fbcode/socket-lb = .
+
+[shipit.strip]
+^fbcode/socket-lb/(.*/)?BUCK$
+^fbcode/socket-lb/PACKAGE$
