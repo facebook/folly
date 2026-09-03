@@ -246,11 +246,15 @@ using aligned_hazptr_holder = aligned_storage_for_t<hazptr_holder<Atom>>;
  *  WARNING: Do not move from or to individual hazptr_holder-s.
  *  Only move the whole hazptr_array.
  *
+ *  NOTE: hazptr_array holds hazard pointers of the default domain
+ *  only. Destruction returns them to the default domain without
+ *  consulting the domain of each hazard pointer.
+ *
  *  NOTE: It is allowed to swap an individual hazptr_holder that
  *  belongs to hazptr_array with (a) a hazptr_holder object, or (b) a
  *  hazptr_holder that is part of hazptr_array, under the conditions:
  *  (i) both hazptr_holder-s are either both empty or both nonempty
- *  and (ii) both belong to the same domain.
+ *  and (ii) both belong to the default domain.
  */
 template <uint8_t M, template <typename> class Atom>
 class hazptr_array {
