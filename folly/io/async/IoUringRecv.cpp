@@ -79,7 +79,9 @@ class IoUringRecvHandle::RecvRequest
         fd_(fd),
         handle_(handle),
         handleGuard_(handle) {
-    if (backend->zcBufferPool() && !addr.isLoopbackAddress()) {
+    bool zcRxUsable = backend->zcBufferPool() &&
+        (!addr.isLoopbackAddress() || backend->options().zcRxNoDev);
+    if (zcRxUsable) {
       bufferPool_ = backend->zcBufferPool();
     } else {
       bufferRing_ = backend->bufferProvider();

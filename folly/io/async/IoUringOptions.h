@@ -224,6 +224,12 @@ struct IoUringOptions {
     return *this;
   }
 
+  IoUringOptions& setZeroCopyRxNoDev(bool v) {
+    zcRxNoDev = v;
+
+    return *this;
+  }
+
   IoUringOptions& setZeroCopyRxInterface(std::string v) {
     zcRxIfname = std::move(v);
     zcRxIfindex = ::if_nametoindex(zcRxIfname.c_str());
@@ -335,6 +341,9 @@ struct IoUringOptions {
   // Zero copy receive
   bool zeroCopyRx{false};
   bool zcRxImport{false};
+  // Register zcrx without a netdev (ZCRX_REG_NODEV). All data is copied by the
+  // kernel, so no interface, queue or napi steering information is needed.
+  bool zcRxNoDev{false};
   std::string zcRxIfname;
   int zcRxQueueId{-1};
   int zcRxIfindex{-1};

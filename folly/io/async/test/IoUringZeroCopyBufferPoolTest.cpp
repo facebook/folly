@@ -490,3 +490,102 @@ TEST(IoUringZeroCopyBufferPoolTest, RefillMoreThanCapacity) {
   EXPECT_EQ(helper.getPendingBuffersSize(), 6);
   pool.reset();
 }
+
+// A noDev pool has no netdev driving the page pool, but from the pool's own
+// point of view buffers must still be dispensed and recycled exactly as they
+// are for a device-backed pool.
+TEST(IoUringZeroCopyBufferPoolTest, NoDevRefillRecyclesBuffers) {
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numBuffers = 8,
+      .bufferSizeHint = 4096,
+      .rqEntries = 2,
+      .ifindex = 0,
+      .queueId = 0,
+      .noDev = true,
+  };
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper helper(*pool);
+
+  io_uring_cqe cqe{};
+  io_uring_zcrx_cqe zcqe{};
+  cqe.res = 2048;
+  zcqe.off = 0;
+
+  auto buf1 = pool->getIoBuf(&cqe, &zcqe);
+  zcqe.off += 4096;
+  auto buf2 = pool->getIoBuf(&cqe, &zcqe);
+  zcqe.off += 4096;
+  auto buf3 = pool->getIoBuf(&cqe, &zcqe);
+
+  buf1.reset();
+  buf2.reset();
+  buf3.reset();
+
+  // Two entries fit the refill ring, the third overflows to the pending queue.
+  EXPECT_EQ(helper.getRingUsedCount(), 2);
+  EXPECT_EQ(helper.getRingFreeCount(), 0);
+  EXPECT_EQ(helper.getPendingBuffersSize(), 1);
+
+  helper.consumeRefillRingEntries(2);
+  zcqe.off += 4096;
+  auto buf4 = pool->getIoBuf(&cqe, &zcqe);
+  buf4.reset();
+
+  EXPECT_EQ(helper.getRingUsedCount(), 2);
+  EXPECT_EQ(helper.getPendingBuffersSize(), 0);
+}
+
+// The kernel rejects a noDev registration whose rx_buf_len is not exactly one
+// page (io_uring/zcrx.c: !ifq->dev && buf_size_shift != PAGE_SHIFT), so an
+// oversized hint has to be clamped even when the kernel reports that it
+// supports configurable rx page sizes.
+TEST(IoUringZeroCopyBufferPoolTest, NoDevClampsBufferSizeToPageSize) {
+  size_t pageSize = sysconf(_SC_PAGESIZE);
+  uint32_t largeHint = static_cast<uint32_t>(pageSize * 4);
+
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numBuffers = 8,
+      .bufferSizeHint = largeHint,
+      .rqEntries = 4,
+      .ifindex = 0,
+      .queueId = 0,
+      .noDev = false,
+  };
+
+  // With a device the oversized hint is honoured.
+  auto devPool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper devHelper(*devPool);
+  EXPECT_EQ(devHelper.getBufferSize(), largeHint);
+
+  // Without one it is clamped down to a single page.
+  params.noDev = true;
+  auto noDevPool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper noDevHelper(*noDevPool);
+  EXPECT_EQ(noDevHelper.getBufferSize(), pageSize);
+}
+
+// noDev must not change how a dispensed buffer maps onto the underlying area.
+TEST(IoUringZeroCopyBufferPoolTest, NoDevGetBuf) {
+  size_t pageSize = sysconf(_SC_PAGESIZE);
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numBuffers = 32,
+      .bufferSizeHint = static_cast<uint32_t>(pageSize),
+      .rqEntries = 8,
+      .ifindex = 0,
+      .queueId = 0,
+      .noDev = true,
+  };
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+
+  io_uring_cqe cqe{};
+  cqe.res = 2048;
+  io_uring_zcrx_cqe zcqe{};
+  zcqe.off = static_cast<uint64_t>(pageSize);
+
+  auto buf = pool->getIoBuf(&cqe, &zcqe);
+  EXPECT_EQ(buf->length(), 2048);
+  EXPECT_TRUE(buf->isSharedOne());
+}

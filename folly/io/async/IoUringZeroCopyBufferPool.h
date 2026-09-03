@@ -41,6 +41,7 @@ class IoUringZeroCopyBufferPool {
     uint32_t rqEntries;
     uint32_t ifindex;
     uint16_t queueId;
+    bool noDev;
   };
 
   struct ExportHandle {
