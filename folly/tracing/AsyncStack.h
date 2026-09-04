@@ -212,9 +212,12 @@ namespace folly {
 
 struct AsyncStackRoot;
 struct AsyncStackFrame;
+class AsyncStackMetadata;
 namespace detail {
 class ScopedAsyncStackRoot;
-}
+AsyncStackMetadata getAsyncStackTraceEntryMetadata(
+    const AsyncStackFrame& frame) noexcept;
+} // namespace detail
 
 // Get access to the current thread's top-most AsyncStackRoot.
 //
@@ -304,6 +307,17 @@ AsyncStackFrame& getDetachedRootAsyncStackFrame() noexcept;
 size_t getAsyncStackTraceFromInitialFrame(
     folly::AsyncStackFrame* initialFrame,
     std::uintptr_t* addresses,
+    size_t maxAddresses);
+
+// Run the same walk. If `metadata` is not null, write one metadata value beside
+// each address: `metadata[i]` describes `addresses[i]`, and unannotated frames
+// receive `std::nullopt`.
+// This assumes `addresses` and any non-null `metadata` each have
+// `maxAddresses` allocated space available.
+size_t getAsyncStackTraceFromInitialFrameWithMetadata(
+    folly::AsyncStackFrame* initialFrame,
+    std::uintptr_t* addresses,
+    AsyncStackMetadata* metadata,
     size_t maxAddresses);
 
 #if FOLLY_HAS_COROUTINES
@@ -749,6 +763,8 @@ class AsyncStackMetadataFrame : private NonCopyableNonMovable {
 
  private:
   static_assert(std::is_standard_layout_v<AsyncStackFrame>);
+  friend AsyncStackMetadata detail::getAsyncStackTraceEntryMetadata(
+      const AsyncStackFrame&) noexcept;
 
   // Readers recover this object from the marker pointer, so this frame must
   // remain the first data member.
@@ -784,6 +800,37 @@ struct MetadataFrameAdvanceResult {
   return {frame, frame != nullptr && isAsyncStackMetadataFrame(*frame)};
 }
 
+inline AsyncStackMetadata getAsyncStackTraceEntryMetadata(
+    const AsyncStackFrame& frame) noexcept {
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+  // A running child stores the return address of the wrapper that awaits it.
+  // For `child -> wrapper -> marker`, annotate that saved address.
+  auto* wrapperFrame = frame.getParentFrame();
+  // A `co_withMetadata` wrapper marks its children. If `frame` is also a
+  // wrapper, its metadata comes from the outer wrapper, not its own marker.
+  if (wrapperFrame != nullptr && isAsyncStackMetadataFrame(*wrapperFrame)) {
+    wrapperFrame = wrapperFrame->getParentFrame();
+  }
+  // No wrapper means no metadata; adjacent metadata frames are invalid.
+  if (wrapperFrame == nullptr || isAsyncStackMetadataFrame(*wrapperFrame)) {
+    return std::nullopt;
+  }
+
+  const auto* metadataFrame = wrapperFrame->getParentFrame();
+  if (metadataFrame == nullptr || !isAsyncStackMetadataFrame(*metadataFrame)) {
+    return std::nullopt;
+  }
+
+  // A marker in a supported frame chain is the embedded first member of a live
+  // `AsyncStackMetadataFrame`.
+  return reinterpret_cast<const AsyncStackMetadataFrame*>(metadataFrame)
+      ->metadata_;
+#else
+  (void)frame;
+  return std::nullopt;
+#endif
+}
+
 class ScopedAsyncStackRoot {
  public:
   explicit ScopedAsyncStackRoot(
@@ -801,9 +848,10 @@ class ScopedAsyncStackRoot {
 
 } // namespace detail
 
-inline size_t getAsyncStackTraceFromInitialFrame(
+inline size_t getAsyncStackTraceFromInitialFrameWithMetadata(
     folly::AsyncStackFrame* initialFrame,
     std::uintptr_t* addresses,
+    AsyncStackMetadata* metadata,
     size_t maxAddresses) {
   size_t numFrames = 0;
   auto* frame = initialFrame;
@@ -814,8 +862,12 @@ inline size_t getAsyncStackTraceFromInitialFrame(
       break;
     }
 
-    addresses[numFrames++] =
+    addresses[numFrames] =
         reinterpret_cast<std::uintptr_t>(frame->getReturnAddress());
+    if (metadata != nullptr) {
+      metadata[numFrames] = detail::getAsyncStackTraceEntryMetadata(*frame);
+    }
+    ++numFrames;
     // The output is full; reading the unused parent link may fault.
     if (numFrames == maxAddresses) {
       break;
@@ -823,6 +875,14 @@ inline size_t getAsyncStackTraceFromInitialFrame(
     frame = frame->getParentFrame();
   }
   return numFrames;
+}
+
+inline size_t getAsyncStackTraceFromInitialFrame(
+    folly::AsyncStackFrame* initialFrame,
+    std::uintptr_t* addresses,
+    size_t maxAddresses) {
+  return getAsyncStackTraceFromInitialFrameWithMetadata(
+      initialFrame, addresses, nullptr, maxAddresses);
 }
 
 } // namespace folly
