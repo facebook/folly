@@ -294,6 +294,7 @@ fb_dirsync_cpp_unittest(
     labels = [
         # Concurrent stress tests need CPU headroom under TSAN/ASAN
         "heavyweight8_experimental",
+        tpx_labels.long_running,
     ],
     deps = [
         "//folly:concurrent_b_skip_list",
