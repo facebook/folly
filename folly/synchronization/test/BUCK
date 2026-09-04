@@ -61,6 +61,7 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:gtest",
         "//folly/synchronization:atomic_ref",
         "//folly/synchronization:atomic_util",
+        "//folly/synchronization:relaxed_atomic",
     ],
 )
 

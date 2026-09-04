@@ -147,6 +147,10 @@ namespace detail {
 // Currently, at the time of writing it seems like gcc7 and greater can make
 // this optimization and clang cannot - https://gcc.godbolt.org/z/Q83rxX
 
+//  the overloads taking no memory order serve types, such as relaxed_atomic,
+//  which omit the parameter from their operations; such types never reach the
+//  native paths below, which are all specific to std::atomic and to atomic-ref
+
 struct atomic_fetch_set_fallback_fn {
   template <typename Atomic>
   bool operator()(
@@ -154,6 +158,12 @@ struct atomic_fetch_set_fallback_fn {
     using Integer = decltype(atomic.load());
     auto mask = Integer(Integer{0b1} << bit);
     return (atomic.fetch_or(mask, order) & mask);
+  }
+  template <typename Atomic>
+  bool operator()(Atomic& atomic, std::size_t bit) const {
+    using Integer = decltype(atomic.load());
+    auto mask = Integer(Integer{0b1} << bit);
+    return (atomic.fetch_or(mask) & mask);
   }
 };
 inline constexpr atomic_fetch_set_fallback_fn atomic_fetch_set_fallback{};
@@ -166,6 +176,12 @@ struct atomic_fetch_reset_fallback_fn {
     auto mask = Integer(Integer{0b1} << bit);
     return (atomic.fetch_and(Integer(~mask), order) & mask);
   }
+  template <typename Atomic>
+  bool operator()(Atomic& atomic, std::size_t bit) const {
+    using Integer = decltype(atomic.load());
+    auto mask = Integer(Integer{0b1} << bit);
+    return (atomic.fetch_and(Integer(~mask)) & mask);
+  }
 };
 inline constexpr atomic_fetch_reset_fallback_fn atomic_fetch_reset_fallback{};
 
@@ -176,6 +192,12 @@ struct atomic_fetch_flip_fallback_fn {
     using Integer = decltype(atomic.load());
     auto mask = Integer(Integer{0b1} << bit);
     return (atomic.fetch_xor(mask, order) & mask);
+  }
+  template <typename Atomic>
+  bool operator()(Atomic& atomic, std::size_t bit) const {
+    using Integer = decltype(atomic.load());
+    auto mask = Integer(Integer{0b1} << bit);
+    return (atomic.fetch_xor(mask) & mask);
   }
 };
 inline constexpr atomic_fetch_flip_fallback_fn atomic_fetch_flip_fallback{};
@@ -474,34 +496,117 @@ void atomic_fetch_bit_op_check_(Atomic& atomic, std::size_t bit) {
 } // namespace detail
 
 template <typename Atomic>
+bool atomic_fetch_set_fn::operator()(Atomic& atomic, std::size_t bit) const {
+  detail::atomic_fetch_bit_op_check_(atomic, bit);
+  if constexpr (atomic_accepts_memory_order_v<Atomic>) {
+    return detail::atomic_fetch_set_native(
+        atomic, bit, std::memory_order_seq_cst);
+  } else {
+    return detail::atomic_fetch_set_fallback(atomic, bit);
+  }
+}
+
+template <typename Atomic>
 bool atomic_fetch_set_fn::operator()(
-    Atomic& atomic, std::size_t bit, std::memory_order mo) const {
+    Atomic& atomic, std::size_t bit, std::memory_order mo) const
+  requires(atomic_accepts_memory_order_v<Atomic>)
+{
   detail::atomic_fetch_bit_op_check_(atomic, bit);
   return detail::atomic_fetch_set_native(atomic, bit, mo);
 }
 
 template <typename Atomic>
+bool atomic_fetch_reset_fn::operator()(Atomic& atomic, std::size_t bit) const {
+  detail::atomic_fetch_bit_op_check_(atomic, bit);
+  if constexpr (atomic_accepts_memory_order_v<Atomic>) {
+    return detail::atomic_fetch_reset_native(
+        atomic, bit, std::memory_order_seq_cst);
+  } else {
+    return detail::atomic_fetch_reset_fallback(atomic, bit);
+  }
+}
+
+template <typename Atomic>
 bool atomic_fetch_reset_fn::operator()(
-    Atomic& atomic, std::size_t bit, std::memory_order mo) const {
+    Atomic& atomic, std::size_t bit, std::memory_order mo) const
+  requires(atomic_accepts_memory_order_v<Atomic>)
+{
   detail::atomic_fetch_bit_op_check_(atomic, bit);
   return detail::atomic_fetch_reset_native(atomic, bit, mo);
 }
 
 template <typename Atomic>
+bool atomic_fetch_flip_fn::operator()(Atomic& atomic, std::size_t bit) const {
+  detail::atomic_fetch_bit_op_check_(atomic, bit);
+  if constexpr (atomic_accepts_memory_order_v<Atomic>) {
+    return detail::atomic_fetch_flip_native(
+        atomic, bit, std::memory_order_seq_cst);
+  } else {
+    return detail::atomic_fetch_flip_fallback(atomic, bit);
+  }
+}
+
+template <typename Atomic>
 bool atomic_fetch_flip_fn::operator()(
-    Atomic& atomic, std::size_t bit, std::memory_order mo) const {
+    Atomic& atomic, std::size_t bit, std::memory_order mo) const
+  requires(atomic_accepts_memory_order_v<Atomic>)
+{
   detail::atomic_fetch_bit_op_check_(atomic, bit);
   return detail::atomic_fetch_flip_native(atomic, bit, mo);
 }
 
+namespace detail {
+
+//  the mo arguments below are unused for types, such as relaxed_atomic, which
+//  omit the parameter from their operations
+
+template <typename Atomic>
+atomic_value_type_t<Atomic> atomic_load_relaxed_(Atomic& atomic) {
+  if constexpr (atomic_accepts_memory_order_v<Atomic>) {
+    return atomic.load(std::memory_order_relaxed);
+  } else {
+    return atomic.load();
+  }
+}
+
+template <typename Atomic>
+bool atomic_compare_exchange_weak_(
+    Atomic& atomic,
+    atomic_value_type_t<Atomic>& expected,
+    atomic_value_type_t<Atomic> const desired,
+    std::memory_order const mo) {
+  if constexpr (atomic_accepts_memory_order_v<Atomic>) {
+    return atomic.compare_exchange_weak(expected, desired, mo);
+  } else {
+    return atomic.compare_exchange_weak(expected, desired);
+  }
+}
+
+template <typename Atomic, typename Op>
+atomic_value_type_t<Atomic> atomic_fetch_modify_(
+    Atomic& atomic, Op op, std::memory_order const mo) {
+  auto curr = atomic_load_relaxed_(atomic);
+  auto const& cref = curr;
+  while (FOLLY_UNLIKELY(
+      !atomic_compare_exchange_weak_(atomic, curr, op(cref), mo))) {
+  }
+  return curr;
+}
+
+} // namespace detail
+
 template <typename Atomic, typename Op>
 atomic_value_type_t<Atomic> atomic_fetch_modify_fn::operator()(
-    Atomic& atomic, Op op, std::memory_order const mo) const {
-  auto curr = atomic.load(std::memory_order_relaxed);
-  auto const& cref = curr;
-  while (FOLLY_UNLIKELY(!atomic.compare_exchange_weak(curr, op(cref), mo)))
-    ;
-  return curr;
+    Atomic& atomic, Op op) const {
+  return detail::atomic_fetch_modify_(atomic, op, std::memory_order_seq_cst);
+}
+
+template <typename Atomic, typename Op>
+atomic_value_type_t<Atomic> atomic_fetch_modify_fn::operator()(
+    Atomic& atomic, Op op, std::memory_order const mo) const
+  requires(atomic_accepts_memory_order_v<Atomic>)
+{
+  return detail::atomic_fetch_modify_(atomic, op, mo);
 }
 
 namespace detail {
@@ -514,32 +619,76 @@ template <typename Atomic>
 using detect_atomic_fetch_max = decltype(std::declval<Atomic&>().fetch_max(
     atomic_value_type_t<Atomic>{}, std::memory_order_relaxed));
 
+template <typename Atomic>
+using detect_atomic_fetch_min_nomo =
+    decltype(std::declval<Atomic&>().fetch_min(atomic_value_type_t<Atomic>{}));
+
+template <typename Atomic>
+using detect_atomic_fetch_max_nomo =
+    decltype(std::declval<Atomic&>().fetch_max(atomic_value_type_t<Atomic>{}));
+
+template <typename Atomic>
+atomic_value_type_t<Atomic> atomic_fetch_min_(
+    Atomic& atomic,
+    atomic_value_type_t<Atomic> const value,
+    std::memory_order const mo) {
+  if constexpr (is_detected_v<detect_atomic_fetch_min, Atomic>) {
+    return atomic.fetch_min(value, mo);
+  } else if constexpr (is_detected_v<detect_atomic_fetch_min_nomo, Atomic>) {
+    return atomic.fetch_min(value);
+  } else {
+    auto const op = [=](auto const& v) { return value < v ? value : v; };
+    return atomic_fetch_modify_(atomic, op, mo);
+  }
+}
+
+template <typename Atomic>
+atomic_value_type_t<Atomic> atomic_fetch_max_(
+    Atomic& atomic,
+    atomic_value_type_t<Atomic> const value,
+    std::memory_order const mo) {
+  if constexpr (is_detected_v<detect_atomic_fetch_max, Atomic>) {
+    return atomic.fetch_max(value, mo);
+  } else if constexpr (is_detected_v<detect_atomic_fetch_max_nomo, Atomic>) {
+    return atomic.fetch_max(value);
+  } else {
+    auto const op = [=](auto const& v) { return v < value ? value : v; };
+    return atomic_fetch_modify_(atomic, op, mo);
+  }
+}
+
 } // namespace detail
+
+template <typename Atomic>
+atomic_value_type_t<Atomic> atomic_fetch_min_fn::operator()(
+    Atomic& atomic, atomic_value_type_t<Atomic> const value) const {
+  return detail::atomic_fetch_min_(atomic, value, std::memory_order_seq_cst);
+}
 
 template <typename Atomic>
 atomic_value_type_t<Atomic> atomic_fetch_min_fn::operator()(
     Atomic& atomic,
     atomic_value_type_t<Atomic> const value,
-    std::memory_order const mo) const {
-  if constexpr (is_detected_v<detail::detect_atomic_fetch_min, Atomic>) {
-    return atomic.fetch_min(value, mo);
-  } else {
-    auto const op = [=](auto const& v) { return value < v ? value : v; };
-    return atomic_fetch_modify(atomic, op, mo);
-  }
+    std::memory_order const mo) const
+  requires(atomic_accepts_memory_order_v<Atomic>)
+{
+  return detail::atomic_fetch_min_(atomic, value, mo);
+}
+
+template <typename Atomic>
+atomic_value_type_t<Atomic> atomic_fetch_max_fn::operator()(
+    Atomic& atomic, atomic_value_type_t<Atomic> const value) const {
+  return detail::atomic_fetch_max_(atomic, value, std::memory_order_seq_cst);
 }
 
 template <typename Atomic>
 atomic_value_type_t<Atomic> atomic_fetch_max_fn::operator()(
     Atomic& atomic,
     atomic_value_type_t<Atomic> const value,
-    std::memory_order const mo) const {
-  if constexpr (is_detected_v<detail::detect_atomic_fetch_max, Atomic>) {
-    return atomic.fetch_max(value, mo);
-  } else {
-    auto const op = [=](auto const& v) { return v < value ? value : v; };
-    return atomic_fetch_modify(atomic, op, mo);
-  }
+    std::memory_order const mo) const
+  requires(atomic_accepts_memory_order_v<Atomic>)
+{
+  return detail::atomic_fetch_max_(atomic, value, mo);
 }
 
 } // namespace folly

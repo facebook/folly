@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <utility>
 
 #include <folly/Portability.h>
 #include <folly/Traits.h>
@@ -50,6 +51,28 @@ template <typename Atomic>
 struct atomic_value_type {
   using type = atomic_value_type_t<Atomic>;
 };
+
+namespace detail {
+template <typename Atomic>
+using detect_atomic_load_mo =
+    decltype(std::declval<Atomic&>().load(std::memory_order_relaxed));
+} // namespace detail
+
+/// atomic_accepts_memory_order_v
+///
+/// A trait giving whether the operations of a type which is atomic-like accept
+/// a memory order. Types with a fixed memory order, such as relaxed_atomic,
+/// omit the parameter from their operations and so give false.
+///
+/// Detected via member load, under the convention that a type which is atomic-
+/// like accepts a memory order either on all of its operations or on none.
+///
+/// The operations in this header which accept a memory order do not
+/// participate in overload resolution for types which give false, since for
+/// such types there would be no memory order to apply.
+template <typename Atomic>
+inline constexpr bool atomic_accepts_memory_order_v =
+    is_detected_v<detail::detect_atomic_load_mo, Atomic>;
 
 /// memory_order_load
 ///
@@ -106,10 +129,12 @@ bool atomic_compare_exchange_strong_explicit(
 //  std::atomic on x86, using the bts instruction.
 struct atomic_fetch_set_fn {
   template <typename Atomic>
+  bool operator()(Atomic& atomic, std::size_t bit) const;
+
+  template <typename Atomic>
   bool operator()(
-      Atomic& atomic,
-      std::size_t bit,
-      std::memory_order order = std::memory_order_seq_cst) const;
+      Atomic& atomic, std::size_t bit, std::memory_order order) const
+    requires(atomic_accepts_memory_order_v<Atomic>);
 };
 inline constexpr atomic_fetch_set_fn atomic_fetch_set{};
 
@@ -128,10 +153,12 @@ inline constexpr atomic_fetch_set_fn atomic_fetch_set{};
 //  std::atomic on x86, using the btr instruction.
 struct atomic_fetch_reset_fn {
   template <typename Atomic>
+  bool operator()(Atomic& atomic, std::size_t bit) const;
+
+  template <typename Atomic>
   bool operator()(
-      Atomic& atomic,
-      std::size_t bit,
-      std::memory_order order = std::memory_order_seq_cst) const;
+      Atomic& atomic, std::size_t bit, std::memory_order order) const
+    requires(atomic_accepts_memory_order_v<Atomic>);
 };
 inline constexpr atomic_fetch_reset_fn atomic_fetch_reset{};
 
@@ -149,10 +176,12 @@ inline constexpr atomic_fetch_reset_fn atomic_fetch_reset{};
 //  std::atomic on x86, using the btc instruction.
 struct atomic_fetch_flip_fn {
   template <typename Atomic>
+  bool operator()(Atomic& atomic, std::size_t bit) const;
+
+  template <typename Atomic>
   bool operator()(
-      Atomic& atomic,
-      std::size_t bit,
-      std::memory_order order = std::memory_order_seq_cst) const;
+      Atomic& atomic, std::size_t bit, std::memory_order order) const
+    requires(atomic_accepts_memory_order_v<Atomic>);
 };
 inline constexpr atomic_fetch_flip_fn atomic_fetch_flip{};
 
@@ -177,12 +206,19 @@ inline constexpr atomic_fetch_flip_fn atomic_fetch_flip{};
 //  effect.
 //
 //  Does not attempt to handle ABA scenarios.
+//
+//  Works with any atomic-like type exposing load and compare_exchange_weak,
+//  including std::atomic, folly::atomic_ref, and folly::relaxed_atomic. Types
+//  which give false for atomic_accepts_memory_order_v, such as relaxed_atomic,
+//  have only the overload taking no memory order.
 struct atomic_fetch_modify_fn {
   template <typename Atomic, typename Op>
+  atomic_value_type_t<Atomic> operator()(Atomic& atomic, Op op) const;
+
+  template <typename Atomic, typename Op>
   atomic_value_type_t<Atomic> operator()(
-      Atomic& atomic,
-      Op op,
-      std::memory_order mo = std::memory_order_seq_cst) const;
+      Atomic& atomic, Op op, std::memory_order mo) const
+    requires(atomic_accepts_memory_order_v<Atomic>);
 };
 inline constexpr atomic_fetch_modify_fn atomic_fetch_modify{};
 
@@ -191,14 +227,20 @@ inline constexpr atomic_fetch_modify_fn atomic_fetch_modify{};
 //  Atomically replaces the value in the atomic with the lesser of the current
 //  value and the argument. Returns the previous value.
 //
-//  Uses Atomic::fetch_min when available, otherwise falling back to
-//  atomic_fetch_modify.
+//  Uses Atomic::fetch_min when available, in either its memory-order-taking or
+//  its memory-order-free form, otherwise falling back to atomic_fetch_modify,
+//  whose caveats then apply.
 struct atomic_fetch_min_fn {
+  template <typename Atomic>
+  atomic_value_type_t<Atomic> operator()(
+      Atomic& atomic, atomic_value_type_t<Atomic> value) const;
+
   template <typename Atomic>
   atomic_value_type_t<Atomic> operator()(
       Atomic& atomic,
       atomic_value_type_t<Atomic> value,
-      std::memory_order mo = std::memory_order_seq_cst) const;
+      std::memory_order mo) const
+    requires(atomic_accepts_memory_order_v<Atomic>);
 };
 inline constexpr atomic_fetch_min_fn atomic_fetch_min{};
 
@@ -207,14 +249,20 @@ inline constexpr atomic_fetch_min_fn atomic_fetch_min{};
 //  Atomically replaces the value in the atomic with the greater of the current
 //  value and the argument. Returns the previous value.
 //
-//  Uses Atomic::fetch_max when available, otherwise falling back to
-//  atomic_fetch_modify.
+//  Uses Atomic::fetch_max when available, in either its memory-order-taking or
+//  its memory-order-free form, otherwise falling back to atomic_fetch_modify,
+//  whose caveats then apply.
 struct atomic_fetch_max_fn {
+  template <typename Atomic>
+  atomic_value_type_t<Atomic> operator()(
+      Atomic& atomic, atomic_value_type_t<Atomic> value) const;
+
   template <typename Atomic>
   atomic_value_type_t<Atomic> operator()(
       Atomic& atomic,
       atomic_value_type_t<Atomic> value,
-      std::memory_order mo = std::memory_order_seq_cst) const;
+      std::memory_order mo) const
+    requires(atomic_accepts_memory_order_v<Atomic>);
 };
 inline constexpr atomic_fetch_max_fn atomic_fetch_max{};
 

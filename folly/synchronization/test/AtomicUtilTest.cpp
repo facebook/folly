@@ -24,6 +24,7 @@
 #include <folly/Utility.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/AtomicRef.h>
+#include <folly/synchronization/RelaxedAtomic.h>
 
 static constexpr auto relaxed = std::memory_order_relaxed;
 static constexpr auto consume = std::memory_order_consume;
@@ -602,6 +603,27 @@ INSTANTIATE_TYPED_TEST_SUITE_P(
     StdAtomicRef, AtomicFetchFlipTest, atomic_ref_of<std::atomic_ref>);
 #endif
 
+struct AtomicFetchBitOpRelaxedAtomicTest : testing::Test {};
+
+TEST_F(AtomicFetchBitOpRelaxedAtomicTest, setResetFlip) {
+  relaxed_atomic<unsigned> cell{0b0100};
+
+  EXPECT_FALSE(folly::atomic_fetch_set(cell, 1));
+  EXPECT_EQ(0b0110, cell.load());
+  EXPECT_TRUE(folly::atomic_fetch_set(cell, 1));
+  EXPECT_EQ(0b0110, cell.load());
+
+  EXPECT_TRUE(folly::atomic_fetch_reset(cell, 2));
+  EXPECT_EQ(0b0010, cell.load());
+  EXPECT_FALSE(folly::atomic_fetch_reset(cell, 2));
+  EXPECT_EQ(0b0010, cell.load());
+
+  EXPECT_FALSE(folly::atomic_fetch_flip(cell, 3));
+  EXPECT_EQ(0b1010, cell.load());
+  EXPECT_TRUE(folly::atomic_fetch_flip(cell, 3));
+  EXPECT_EQ(0b0010, cell.load());
+}
+
 struct AtomicFetchModifyTest : testing::Test {};
 
 TEST_F(AtomicFetchModifyTest, example) {
@@ -667,10 +689,55 @@ TEST_F(AtomicFetchModifyTest, contention) {
   EXPECT_EQ(iterate(2, iters.load(relaxed), op_), cell.load(relaxed));
 }
 
+//  pin which dispatch branch each atomic-like type takes, since the branches
+//  are otherwise indistinguishable from their results
+static_assert(atomic_accepts_memory_order_v<std::atomic<int>>);
+static_assert(atomic_accepts_memory_order_v<atomic_ref<int>>);
+static_assert(!atomic_accepts_memory_order_v<relaxed_atomic<int>>);
+static_assert(!atomic_accepts_memory_order_v<relaxed_atomic<double>>);
+
+//  and pin that the overloads taking a memory order drop out for the types
+//  which have no memory order to apply
+template <typename Fn, typename Atomic, typename Arg>
+inline constexpr bool invocable_both_ = false //
+    || !std::is_invocable_v<Fn, Atomic&, Arg> //
+    || !std::is_invocable_v<Fn, Atomic&, Arg, std::memory_order>;
+static_assert(
+    !invocable_both_<atomic_fetch_set_fn, std::atomic<unsigned>, int>);
+static_assert(
+    !invocable_both_<atomic_fetch_reset_fn, atomic_ref<unsigned>, int>);
+static_assert(!invocable_both_<atomic_fetch_max_fn, std::atomic<int>, int>);
+template <typename Fn, typename Atomic, typename Arg>
+inline constexpr bool invocable_nomo_only_ = true //
+    && std::is_invocable_v<Fn, Atomic&, Arg> //
+    && !std::is_invocable_v<Fn, Atomic&, Arg, std::memory_order>;
+static_assert(
+    invocable_nomo_only_<atomic_fetch_set_fn, relaxed_atomic<unsigned>, int>);
+static_assert(
+    invocable_nomo_only_<atomic_fetch_reset_fn, relaxed_atomic<unsigned>, int>);
+static_assert(
+    invocable_nomo_only_<atomic_fetch_flip_fn, relaxed_atomic<unsigned>, int>);
+static_assert(
+    invocable_nomo_only_<atomic_fetch_min_fn, relaxed_atomic<int>, int>);
+static_assert(
+    invocable_nomo_only_<atomic_fetch_max_fn, relaxed_atomic<int>, int>);
+
+TEST_F(AtomicFetchModifyTest, relaxedAtomic) {
+  relaxed_atomic<int> cell{2};
+  constexpr auto op = [](auto _) { return _ + 3; };
+
+  EXPECT_EQ(2, folly::atomic_fetch_modify(cell, op));
+  EXPECT_EQ(5, cell.load());
+  EXPECT_EQ(5, folly::atomic_fetch_modify(cell, op));
+  EXPECT_EQ(8, cell.load());
+}
+
 struct AtomicFetchMinMaxTest : testing::Test {};
 
 struct AtomicFetchMinMaxMember {
   using value_type = int;
+
+  int load(std::memory_order = seq_cst) const { return value; }
 
   int fetch_min(int arg, std::memory_order order) {
     ++fetchMinCalls;
@@ -688,6 +755,27 @@ struct AtomicFetchMinMaxMember {
   int fetchMinCalls{0};
   int fetchMaxCalls{0};
   std::memory_order lastOrder{seq_cst};
+};
+
+//  as relaxed_atomic does under c++26: members which take no memory order
+struct AtomicFetchMinMaxMemberNoOrder {
+  using value_type = int;
+
+  int load() const { return value; }
+
+  int fetch_min(int arg) {
+    ++fetchMinCalls;
+    return std::exchange(value, arg < value ? arg : value);
+  }
+
+  int fetch_max(int arg) {
+    ++fetchMaxCalls;
+    return std::exchange(value, value < arg ? arg : value);
+  }
+
+  int value{5};
+  int fetchMinCalls{0};
+  int fetchMaxCalls{0};
 };
 
 TEST_F(AtomicFetchMinMaxTest, min) {
@@ -736,6 +824,18 @@ TEST_F(AtomicFetchMinMaxTest, member) {
   EXPECT_EQ(acquire, cell.lastOrder);
 }
 
+TEST_F(AtomicFetchMinMaxTest, memberNoOrder) {
+  AtomicFetchMinMaxMemberNoOrder cell;
+
+  EXPECT_EQ(5, folly::atomic_fetch_min(cell, 3));
+  EXPECT_EQ(3, cell.value);
+  EXPECT_EQ(1, cell.fetchMinCalls);
+
+  EXPECT_EQ(3, folly::atomic_fetch_max(cell, 7));
+  EXPECT_EQ(7, cell.value);
+  EXPECT_EQ(1, cell.fetchMaxCalls);
+}
+
 TEST_F(AtomicFetchMinMaxTest, fallback) {
   std::atomic<double> cell{5};
 
@@ -743,6 +843,29 @@ TEST_F(AtomicFetchMinMaxTest, fallback) {
   EXPECT_EQ(3, cell.load(relaxed));
   EXPECT_EQ(3, folly::atomic_fetch_max(cell, 7, relaxed));
   EXPECT_EQ(7, cell.load(relaxed));
+}
+
+//  the integral specializations of relaxed_atomic reach relaxed_atomic_base by
+//  private inheritance and re-export its members
+TEST_F(AtomicFetchMinMaxTest, relaxedAtomicIntegral) {
+  relaxed_atomic<std::int64_t> cell{5};
+
+  EXPECT_EQ(5, folly::atomic_fetch_min(cell, 3));
+  EXPECT_EQ(3, cell.load());
+  EXPECT_EQ(3, folly::atomic_fetch_min(cell, 7));
+  EXPECT_EQ(3, cell.load());
+  EXPECT_EQ(3, folly::atomic_fetch_max(cell, 7));
+  EXPECT_EQ(7, cell.load());
+}
+
+//  the primary template of relaxed_atomic inherits relaxed_atomic_base publicly
+TEST_F(AtomicFetchMinMaxTest, relaxedAtomicNonIntegral) {
+  relaxed_atomic<double> cell{5};
+
+  EXPECT_EQ(5, folly::atomic_fetch_min(cell, 3));
+  EXPECT_EQ(3, cell.load());
+  EXPECT_EQ(3, folly::atomic_fetch_max(cell, 7));
+  EXPECT_EQ(7, cell.load());
 }
 
 } // namespace folly
