@@ -237,7 +237,7 @@ class ObserverManager {
 
   static ObserverManager& getInstance();
   static std::shared_ptr<UpdatesManager> getUpdatesManager();
-  static thread_local constinit bool inManagerThread_;
+  static thread_local bool inManagerThread_;
 
   /**
    * Version mutex is used to make sure all updates are processed from the

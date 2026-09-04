@@ -30,7 +30,7 @@
 namespace folly {
 namespace observer_detail {
 
-thread_local constinit bool ObserverManager::inManagerThread_{false};
+thread_local bool ObserverManager::inManagerThread_{false};
 thread_local ObserverManager::DependencyRecorder::Dependencies*
     ObserverManager::DependencyRecorder::currentDependencies_{nullptr};
 
