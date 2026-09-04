@@ -147,6 +147,31 @@ extern "C" FOLLY_KEEP int check_folly_atomic_fetch_modify_int_call_relaxed(
   return folly::atomic_fetch_modify(cell, op, std::memory_order_relaxed);
 }
 
+extern "C" FOLLY_KEEP int check_folly_atomic_fetch_max_int_relaxed(
+    std::atomic<int>& cell, int value) {
+  return folly::atomic_fetch_max(cell, value, std::memory_order_relaxed);
+}
+
+extern "C" FOLLY_KEEP int check_folly_atomic_fetch_max_cond_int_relaxed(
+    std::atomic<int>& cell, int value) {
+  return folly::atomic_fetch_max_cond(cell, value, std::memory_order_relaxed);
+}
+
+extern "C" FOLLY_KEEP int check_folly_atomic_fetch_min_int_relaxed(
+    std::atomic<int>& cell, int value) {
+  return folly::atomic_fetch_min(cell, value, std::memory_order_relaxed);
+}
+
+extern "C" FOLLY_KEEP int check_folly_atomic_fetch_min_cond_int_relaxed(
+    std::atomic<int>& cell, int value) {
+  return folly::atomic_fetch_min_cond(cell, value, std::memory_order_relaxed);
+}
+
+extern "C" FOLLY_KEEP bool check_folly_atomic_fetch_set_cond_u64_relaxed(
+    std::atomic<uint64_t>& cell, size_t bit) {
+  return folly::atomic_fetch_set_cond(cell, bit, std::memory_order_relaxed);
+}
+
 namespace {
 
 enum class what { drop, keep, cond };
@@ -448,6 +473,52 @@ BENCHMARK(atomic_fetch_set_u16_fix_cond_fallback, iters) {
 BENCHMARK(atomic_fetch_set_u16_fix_cond_native, iters) {
   auto op = folly::atomic_fetch_set;
   atomic_fetch_op_fix_(uint16_t(0), op, what_constant<what::cond>{}, iters);
+}
+
+namespace {
+
+//  arg_ maps the iteration index to the argument, so that a benchmark can hold
+//  the cell converged or force it to advance on every iteration
+template <typename Op, typename Arg>
+void atomic_fetch_minmax_(size_t iters, int start, Op op, Arg arg_) {
+  folly::BenchmarkSuspender braces;
+  std::atomic<int> cell{start};
+  braces.dismissing([&] {
+    size_t sum = 0;
+    for (size_t i = 0; i < iters; ++i) {
+      auto a = arg_(i);
+      folly::makeUnpredictable(a);
+      sum += size_t(op(cell, a, std::memory_order_relaxed));
+    }
+    folly::doNotOptimizeAway(sum);
+    folly::doNotOptimizeAway(cell);
+  });
+}
+
+constexpr auto arg_fixed_ = [](size_t) { return 0; };
+//  the increment is done in the unsigned domain, since int(i) + 1 would be
+//  signed overflow once the iteration count reaches int's maximum
+constexpr auto arg_rising_ = [](size_t i) { return int(i + 1); };
+
+} // namespace
+
+//  converged: the cond form elides the store, the plain form does not - this
+//  pair is the reason the cond form exists
+BENCHMARK(atomic_fetch_max_int_converged, iters) {
+  atomic_fetch_minmax_(iters, 1, folly::atomic_fetch_max, arg_fixed_);
+}
+
+BENCHMARK_RELATIVE(atomic_fetch_max_cond_int_converged, iters) {
+  atomic_fetch_minmax_(iters, 1, folly::atomic_fetch_max_cond, arg_fixed_);
+}
+
+//  advancing: both forms store, so the cond form pays for the extra load
+BENCHMARK(atomic_fetch_max_int_rising, iters) {
+  atomic_fetch_minmax_(iters, 0, folly::atomic_fetch_max, arg_rising_);
+}
+
+BENCHMARK_RELATIVE(atomic_fetch_max_cond_int_rising, iters) {
+  atomic_fetch_minmax_(iters, 0, folly::atomic_fetch_max_cond, arg_rising_);
 }
 
 int main(int argc, char** argv) {

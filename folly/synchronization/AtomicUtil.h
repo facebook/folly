@@ -127,6 +127,10 @@ bool atomic_compare_exchange_strong_explicit(
 //  Uses an optimized implementation when available, otherwise falling back to
 //  Atomic::fetch_or with mask. The optimization is currently available for
 //  std::atomic on x86, using the bts instruction.
+//
+//  Is a read-modify-write: stores unconditionally, even when the bit is already
+//  set. Compare atomic_fetch_set_cond, which elides the store in that case but
+//  which is correspondingly not always a read-modify-write.
 struct atomic_fetch_set_fn {
   template <typename Atomic>
   bool operator()(Atomic& atomic, std::size_t bit) const;
@@ -151,6 +155,10 @@ inline constexpr atomic_fetch_set_fn atomic_fetch_set{};
 //  Uses an optimized implementation when available, otherwise falling back to
 //  Atomic::fetch_and with mask. The optimization is currently available for
 //  std::atomic on x86, using the btr instruction.
+//
+//  Is a read-modify-write: stores unconditionally, even when the bit is already
+//  reset. Compare atomic_fetch_reset_cond, which elides the store in that case
+//  but which is correspondingly not always a read-modify-write.
 struct atomic_fetch_reset_fn {
   template <typename Atomic>
   bool operator()(Atomic& atomic, std::size_t bit) const;
@@ -184,6 +192,59 @@ struct atomic_fetch_flip_fn {
     requires(atomic_accepts_memory_order_v<Atomic>);
 };
 inline constexpr atomic_fetch_flip_fn atomic_fetch_flip{};
+
+//  There is deliberately no atomic_fetch_flip_cond. A flip always changes the
+//  bit, so there is no converged state against which to elide the store.
+
+/// atomic_fetch_set_cond
+///
+/// As atomic_fetch_set, but elides the store when the bit is already set.
+///
+/// Is not necessarily a read-modify-write. When the bit is already set, the
+/// operation is a plain load and no store takes place, so it may not be relied
+/// on to carry a release edge or to act as a seq_cst synchronization point.
+///
+/// The memory order is applied as for atomic_fetch_max_cond: the trial load
+/// takes only the load part, per memory_order_load, and the store, when it
+/// happens, takes the memory order in full.
+///
+/// The elision is best-effort: the bit may be set concurrently between the load
+/// and the store, in which case the store takes place anyway.
+struct atomic_fetch_set_cond_fn {
+  template <typename Atomic>
+  bool operator()(Atomic& atomic, std::size_t bit) const;
+
+  template <typename Atomic>
+  bool operator()(
+      Atomic& atomic, std::size_t bit, std::memory_order order) const
+    requires(atomic_accepts_memory_order_v<Atomic>);
+};
+inline constexpr atomic_fetch_set_cond_fn atomic_fetch_set_cond{};
+
+/// atomic_fetch_reset_cond
+///
+/// As atomic_fetch_reset, but elides the store when the bit is already reset.
+///
+/// Is not necessarily a read-modify-write. When the bit is already reset, the
+/// operation is a plain load and no store takes place, so it may not be relied
+/// on to carry a release edge or to act as a seq_cst synchronization point.
+///
+/// The memory order is applied as for atomic_fetch_min_cond: the trial load
+/// takes only the load part, per memory_order_load, and the store, when it
+/// happens, takes the memory order in full.
+///
+/// The elision is best-effort: the bit may be reset concurrently between the
+/// load and the store, in which case the store takes place anyway.
+struct atomic_fetch_reset_cond_fn {
+  template <typename Atomic>
+  bool operator()(Atomic& atomic, std::size_t bit) const;
+
+  template <typename Atomic>
+  bool operator()(
+      Atomic& atomic, std::size_t bit, std::memory_order order) const
+    requires(atomic_accepts_memory_order_v<Atomic>);
+};
+inline constexpr atomic_fetch_reset_cond_fn atomic_fetch_reset_cond{};
 
 //  atomic_fetch_modify
 //
@@ -230,6 +291,12 @@ inline constexpr atomic_fetch_modify_fn atomic_fetch_modify{};
 //  Uses Atomic::fetch_min when available, in either its memory-order-taking or
 //  its memory-order-free form, otherwise falling back to atomic_fetch_modify,
 //  whose caveats then apply.
+//
+//  Is a read-modify-write: stores unconditionally, even when the value is
+//  unchanged, so it always participates in the modification order and may carry
+//  a release edge. Compare atomic_fetch_min_cond, which elides the store when
+//  the value is unchanged but which is correspondingly not always a
+//  read-modify-write.
 struct atomic_fetch_min_fn {
   template <typename Atomic>
   atomic_value_type_t<Atomic> operator()(
@@ -252,6 +319,12 @@ inline constexpr atomic_fetch_min_fn atomic_fetch_min{};
 //  Uses Atomic::fetch_max when available, in either its memory-order-taking or
 //  its memory-order-free form, otherwise falling back to atomic_fetch_modify,
 //  whose caveats then apply.
+//
+//  Is a read-modify-write: stores unconditionally, even when the value is
+//  unchanged, so it always participates in the modification order and may carry
+//  a release edge. Compare atomic_fetch_max_cond, which elides the store when
+//  the value is unchanged but which is correspondingly not always a
+//  read-modify-write.
 struct atomic_fetch_max_fn {
   template <typename Atomic>
   atomic_value_type_t<Atomic> operator()(
@@ -265,6 +338,68 @@ struct atomic_fetch_max_fn {
     requires(atomic_accepts_memory_order_v<Atomic>);
 };
 inline constexpr atomic_fetch_max_fn atomic_fetch_max{};
+
+/// atomic_fetch_min_cond
+///
+/// As atomic_fetch_min, but elides the store when the value is unchanged, so
+/// that a converged value is not repeatedly written. Returns the previous
+/// value.
+///
+/// Is not necessarily a read-modify-write. When the value is unchanged, the
+/// operation is a plain load and no store takes place, so it may not be relied
+/// on to carry a release edge or to act as a seq_cst synchronization point.
+///
+/// The trial load takes only the load part of the memory order, per
+/// memory_order_load, since it never stores. The store, when it happens, takes
+/// the memory order in full: it is itself a read-modify-write, and its own load
+/// component, which yields the returned value, requires the load part.
+///
+/// The elision is best-effort: the value may be lowered concurrently between
+/// the load and the store, in which case the store takes place anyway.
+struct atomic_fetch_min_cond_fn {
+  template <typename Atomic>
+  atomic_value_type_t<Atomic> operator()(
+      Atomic& atomic, atomic_value_type_t<Atomic> value) const;
+
+  template <typename Atomic>
+  atomic_value_type_t<Atomic> operator()(
+      Atomic& atomic,
+      atomic_value_type_t<Atomic> value,
+      std::memory_order mo) const
+    requires(atomic_accepts_memory_order_v<Atomic>);
+};
+inline constexpr atomic_fetch_min_cond_fn atomic_fetch_min_cond{};
+
+/// atomic_fetch_max_cond
+///
+/// As atomic_fetch_max, but elides the store when the value is unchanged, so
+/// that a converged value is not repeatedly written. Returns the previous
+/// value.
+///
+/// Is not necessarily a read-modify-write. When the value is unchanged, the
+/// operation is a plain load and no store takes place, so it may not be relied
+/// on to carry a release edge or to act as a seq_cst synchronization point.
+///
+/// The trial load takes only the load part of the memory order, per
+/// memory_order_load, since it never stores. The store, when it happens, takes
+/// the memory order in full: it is itself a read-modify-write, and its own load
+/// component, which yields the returned value, requires the load part.
+///
+/// The elision is best-effort: the value may be raised concurrently between the
+/// load and the store, in which case the store takes place anyway.
+struct atomic_fetch_max_cond_fn {
+  template <typename Atomic>
+  atomic_value_type_t<Atomic> operator()(
+      Atomic& atomic, atomic_value_type_t<Atomic> value) const;
+
+  template <typename Atomic>
+  atomic_value_type_t<Atomic> operator()(
+      Atomic& atomic,
+      atomic_value_type_t<Atomic> value,
+      std::memory_order mo) const
+    requires(atomic_accepts_memory_order_v<Atomic>);
+};
+inline constexpr atomic_fetch_max_cond_fn atomic_fetch_max_cond{};
 
 template <template <typename> class Atom>
 struct atomic_thread_fence_traits;

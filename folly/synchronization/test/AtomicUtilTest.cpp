@@ -845,6 +845,196 @@ TEST_F(AtomicFetchMinMaxTest, fallback) {
   EXPECT_EQ(7, cell.load(relaxed));
 }
 
+struct AtomicFetchMinMaxCondTest : testing::Test {};
+
+//  counts stores; the elision of the store is the whole point of the cond
+//  operations and is otherwise unobservable
+struct AtomicFetchCondProbe {
+  using value_type = int;
+
+  int load(std::memory_order order) const {
+    lastLoadOrder = order;
+    return value;
+  }
+
+  bool compare_exchange_weak(int&, int desired, std::memory_order) {
+    ++stores;
+    value = desired;
+    return true;
+  }
+
+  int value{5};
+  int stores{0};
+  mutable std::memory_order lastLoadOrder{seq_cst};
+};
+
+//  models a competing writer: the first compare-exchange fails and reports a
+//  value already raised past the one being proposed, so a loop which re-tests
+//  its guard on retry elides the store, while one which does not stores a value
+//  it has just been told is stale
+struct AtomicFetchCondRaceProbe {
+  using value_type = int;
+
+  int load(std::memory_order) const { return value; }
+
+  bool compare_exchange_weak(int& expected, int desired, std::memory_order) {
+    ++attempts;
+    if (attempts == 1) {
+      value = raised;
+      expected = raised;
+      return false;
+    }
+    ++stores;
+    value = desired;
+    return true;
+  }
+
+  int value{0};
+  int raised{100};
+  int attempts{0};
+  int stores{0};
+};
+
+TEST_F(AtomicFetchMinMaxCondTest, elidesStoreWhenConverged) {
+  AtomicFetchCondProbe cell;
+
+  //  already converged: no store, and the previous value is returned
+  EXPECT_EQ(5, folly::atomic_fetch_max_cond(cell, 3, relaxed));
+  EXPECT_EQ(0, cell.stores);
+  EXPECT_EQ(5, folly::atomic_fetch_min_cond(cell, 7, relaxed));
+  EXPECT_EQ(0, cell.stores);
+  //  equal is converged too, for both directions
+  EXPECT_EQ(5, folly::atomic_fetch_max_cond(cell, 5, relaxed));
+  EXPECT_EQ(5, folly::atomic_fetch_min_cond(cell, 5, relaxed));
+  EXPECT_EQ(0, cell.stores);
+  EXPECT_EQ(5, cell.value);
+
+  //  not converged: stores, and still returns the previous value
+  EXPECT_EQ(5, folly::atomic_fetch_max_cond(cell, 7, relaxed));
+  EXPECT_EQ(1, cell.stores);
+  EXPECT_EQ(7, cell.value);
+  EXPECT_EQ(7, folly::atomic_fetch_min_cond(cell, 3, relaxed));
+  EXPECT_EQ(2, cell.stores);
+  EXPECT_EQ(3, cell.value);
+}
+
+//  on the elided path the load part of the memory order is still applied, so
+//  that a caller passing an acquire order is served even when nothing is stored
+TEST_F(AtomicFetchMinMaxCondTest, appliesLoadOrderWhenConverged) {
+  AtomicFetchCondProbe cell; // value 5; every call below is converged
+
+  folly::atomic_fetch_max_cond(cell, 3, acquire);
+  EXPECT_EQ(acquire, cell.lastLoadOrder);
+  folly::atomic_fetch_max_cond(cell, 3, acq_rel);
+  EXPECT_EQ(acquire, cell.lastLoadOrder);
+  folly::atomic_fetch_max_cond(cell, 3, release);
+  EXPECT_EQ(relaxed, cell.lastLoadOrder);
+  folly::atomic_fetch_max_cond(cell, 3, seq_cst);
+  EXPECT_EQ(seq_cst, cell.lastLoadOrder);
+
+  EXPECT_EQ(0, cell.stores);
+}
+
+//  the guard is re-tested after a failed c/x, so convergence reached during the
+//  loop elides the store just as convergence seen by the trial load does
+TEST_F(AtomicFetchMinMaxCondTest, elidesStoreWhenConvergedOnRetry) {
+  AtomicFetchCondRaceProbe cell; // value 0, raised to 100 by the failed c/x
+
+  //  0 < 7 warrants a store, but the c/x fails reporting 100, and 100 is not
+  //  below 7, so the retry must elide rather than store either value
+  EXPECT_EQ(100, folly::atomic_fetch_max_cond(cell, 7, relaxed));
+  EXPECT_EQ(1, cell.attempts);
+  EXPECT_EQ(0, cell.stores);
+  EXPECT_EQ(100, cell.value);
+}
+
+//  the mirror case: when the retry is still not converged, the store proceeds
+TEST_F(AtomicFetchMinMaxCondTest, storesWhenStillUnconvergedOnRetry) {
+  AtomicFetchCondRaceProbe cell;
+  cell.raised = 3; // below the proposed value, so the retry still stores
+
+  EXPECT_EQ(3, folly::atomic_fetch_max_cond(cell, 7, relaxed));
+  EXPECT_EQ(2, cell.attempts);
+  EXPECT_EQ(1, cell.stores);
+  EXPECT_EQ(7, cell.value);
+}
+
+//  delegates to the member fast path only when it actually stores
+TEST_F(AtomicFetchMinMaxCondTest, member) {
+  AtomicFetchMinMaxMember cell;
+
+  EXPECT_EQ(5, folly::atomic_fetch_max_cond(cell, 3, relaxed));
+  EXPECT_EQ(0, cell.fetchMaxCalls);
+  EXPECT_EQ(5, cell.value);
+
+  EXPECT_EQ(5, folly::atomic_fetch_max_cond(cell, 7, acquire));
+  EXPECT_EQ(1, cell.fetchMaxCalls);
+  EXPECT_EQ(7, cell.value);
+}
+
+//  the store takes the order in full, not merely the store part: it is itself a
+//  read-modify-write, and its own load component yields the returned value, so
+//  weakening it to memory_order_store would drop the load part from that value
+TEST_F(AtomicFetchMinMaxCondTest, appliesFullOrderWhenStoring) {
+  auto const store_order_of = [](std::memory_order order) {
+    AtomicFetchMinMaxMember cell; // value 5; every call below stores
+    folly::atomic_fetch_max_cond(cell, 7, order);
+    EXPECT_EQ(1, cell.fetchMaxCalls);
+    return cell.lastOrder;
+  };
+
+  for (auto const order : {relaxed, acquire, release, acq_rel, seq_cst}) {
+    SCOPED_TRACE(static_cast<int>(order));
+    EXPECT_EQ(order, store_order_of(order));
+  }
+}
+
+TEST_F(AtomicFetchMinMaxCondTest, stdAtomic) {
+  std::atomic<int> cell{5};
+
+  EXPECT_EQ(5, folly::atomic_fetch_max_cond(cell, 7, relaxed));
+  EXPECT_EQ(7, cell.load(relaxed));
+  EXPECT_EQ(7, folly::atomic_fetch_max_cond(cell, 3));
+  EXPECT_EQ(7, cell.load());
+  EXPECT_EQ(7, folly::atomic_fetch_min_cond(cell, 3, relaxed));
+  EXPECT_EQ(3, cell.load(relaxed));
+}
+
+TEST_F(AtomicFetchMinMaxCondTest, relaxedAtomic) {
+  relaxed_atomic<std::int64_t> cell{5};
+
+  EXPECT_EQ(5, folly::atomic_fetch_max_cond(cell, 7));
+  EXPECT_EQ(7, cell.load());
+  EXPECT_EQ(7, folly::atomic_fetch_min_cond(cell, 3));
+  EXPECT_EQ(3, cell.load());
+}
+
+struct AtomicFetchBitOpCondTest : testing::Test {};
+
+TEST_F(AtomicFetchBitOpCondTest, setReset) {
+  std::atomic<unsigned> cell{0b0100};
+
+  EXPECT_TRUE(folly::atomic_fetch_set_cond(cell, 2, relaxed));
+  EXPECT_EQ(0b0100, cell.load(relaxed));
+  EXPECT_FALSE(folly::atomic_fetch_set_cond(cell, 1, relaxed));
+  EXPECT_EQ(0b0110, cell.load(relaxed));
+
+  EXPECT_FALSE(folly::atomic_fetch_reset_cond(cell, 3, relaxed));
+  EXPECT_EQ(0b0110, cell.load(relaxed));
+  EXPECT_TRUE(folly::atomic_fetch_reset_cond(cell, 2, relaxed));
+  EXPECT_EQ(0b0010, cell.load(relaxed));
+}
+
+TEST_F(AtomicFetchBitOpCondTest, relaxedAtomic) {
+  relaxed_atomic<unsigned> cell{0b0100};
+
+  EXPECT_TRUE(folly::atomic_fetch_set_cond(cell, 2));
+  EXPECT_FALSE(folly::atomic_fetch_set_cond(cell, 1));
+  EXPECT_EQ(0b0110, cell.load());
+  EXPECT_TRUE(folly::atomic_fetch_reset_cond(cell, 1));
+  EXPECT_EQ(0b0100, cell.load());
+}
+
 //  the integral specializations of relaxed_atomic reach relaxed_atomic_base by
 //  private inheritance and re-export its members
 TEST_F(AtomicFetchMinMaxTest, relaxedAtomicIntegral) {
