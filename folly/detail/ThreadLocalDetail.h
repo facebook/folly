@@ -613,7 +613,7 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
 
     ThreadEntry* te = getThreadEntry(ent);
     uint32_t id = ent->getOrInvalid();
-    // Only valid index into the the elements array
+    // Only valid index into the elements array
     DCHECK_NE(id, kEntryIDInvalid);
     DCHECK(te->cachedInSetMatchesElementsArray(id));
     return te->elements[id];
