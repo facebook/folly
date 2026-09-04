@@ -76,7 +76,12 @@ class IoUringZeroCopyBufferPool {
 
   ~IoUringZeroCopyBufferPool();
 
-  std::unique_ptr<IOBuf> getIoBuf(
+  struct Result {
+    std::unique_ptr<IOBuf> buffer;
+    bool isScarce;
+  };
+
+  Result getIoBuf(
       const struct io_uring_cqe* cqe,
       const struct io_uring_zcrx_cqe* rcqe) noexcept;
 

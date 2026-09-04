@@ -168,7 +168,7 @@ class IoUringRecvHandle::RecvRequest
   std::unique_ptr<IOBuf> getData(const struct io_uring_cqe* cqe) {
     if (bufferPool_) {
       const auto* rcqe = (struct io_uring_zcrx_cqe*)(cqe + 1);
-      return bufferPool_->getIoBuf(cqe, rcqe);
+      return bufferPool_->getIoBuf(cqe, rcqe).buffer;
     }
 
     if (fallbackBuffer_) {

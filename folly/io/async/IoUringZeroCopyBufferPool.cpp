@@ -76,6 +76,12 @@ struct io_uring_zcrx_notif_stats {
 
 namespace folly {
 
+namespace {
+
+constexpr size_t kScarcityReserveDivisor = 8;
+
+} // namespace
+
 class IoUringZeroCopyBufferPoolImpl {
  public:
   friend class IoUringZeroCopyBufferPool;
@@ -112,7 +118,7 @@ class IoUringZeroCopyBufferPoolImpl {
 
   void destroy() noexcept;
 
-  std::unique_ptr<IOBuf> getIoBuf(
+  IoUringZeroCopyBufferPool::Result getIoBuf(
       const struct io_uring_cqe* cqe,
       const struct io_uring_zcrx_cqe* rcqe) noexcept;
   void returnBuffer(Buffer* buf) noexcept;
@@ -367,7 +373,7 @@ void IoUringZeroCopyBufferPoolImpl::destroy() noexcept {
   delayedDestroy(remaining);
 }
 
-std::unique_ptr<IOBuf> IoUringZeroCopyBufferPoolImpl::getIoBuf(
+IoUringZeroCopyBufferPool::Result IoUringZeroCopyBufferPoolImpl::getIoBuf(
     const struct io_uring_cqe* cqe,
     const struct io_uring_zcrx_cqe* rcqe) noexcept {
   // By the time the pool is being destroyed, IoUringBackend has already drained
@@ -394,8 +400,16 @@ std::unique_ptr<IOBuf> IoUringZeroCopyBufferPoolImpl::getIoBuf(
   // only 'wrap' the data and is read-only. Mark as shared such that downstream
   // users of this IOBuf do not try to destructively modify the data.
   ret->markExternallySharedOne();
-  bufDispensed_.fetch_add(1, std::memory_order_relaxed);
-  return ret;
+  const auto returned = io_uring_smp_load_acquire(rqRing_.ktail);
+  const auto dispensed =
+      bufDispensed_.fetch_add(1, std::memory_order_relaxed) + 1;
+  const auto numBuffers = buffers_.size();
+  const auto reserveBuffers =
+      (numBuffers + kScarcityReserveDivisor - 1) / kScarcityReserveDivisor;
+  return {
+      .buffer = std::move(ret),
+      .isScarce = dispensed - returned >= numBuffers - reserveBuffers,
+  };
 }
 
 void IoUringZeroCopyBufferPoolImpl::mapMemory() {
@@ -665,7 +679,7 @@ IoUringZeroCopyBufferPool::exportHandle() const {
   return ExportHandle(zcrxFd, impl_);
 }
 
-std::unique_ptr<IOBuf> IoUringZeroCopyBufferPool::getIoBuf(
+IoUringZeroCopyBufferPool::Result IoUringZeroCopyBufferPool::getIoBuf(
     const struct io_uring_cqe* cqe,
     const struct io_uring_zcrx_cqe* rcqe) noexcept {
   return impl_->getIoBuf(cqe, rcqe);

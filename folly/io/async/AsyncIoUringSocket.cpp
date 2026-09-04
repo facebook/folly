@@ -721,7 +721,8 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
       if (supportsZeroCopyRx_ && useZeroCopyRx_) {
         const io_uring_zcrx_cqe* rcqe = (io_uring_zcrx_cqe*)(cqe + 1);
         auto pool = parent_->backend_->zcBufferPool();
-        sendReadBuf(pool->getIoBuf(cqe, rcqe), queuedReceivedData_);
+        auto result = pool->getIoBuf(cqe, rcqe);
+        sendReadBuf(std::move(result.buffer), queuedReceivedData_);
         buffer_guard.dismiss();
       } else if (lastUsedBufferProvider_) {
         auto bufId = flags >> 16;

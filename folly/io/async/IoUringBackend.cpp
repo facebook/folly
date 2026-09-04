@@ -1946,11 +1946,11 @@ void IoUringBackend::processRecvZc(
     return;
   }
 
-  auto buf = zcBufferPool_->getIoBuf(cqe, rcqe);
+  auto result = zcBufferPool_->getIoBuf(cqe, rcqe);
   ::memcpy(
       reinterpret_cast<char*>(iov->iov_base) + ioSqe->offset_,
-      buf->data(),
-      buf->length());
+      result.buffer->data(),
+      result.buffer->length());
   ioSqe->offset_ += cqe->res;
 }
 
