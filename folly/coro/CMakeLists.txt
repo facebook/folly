@@ -799,5 +799,15 @@ folly_add_library(
     folly_lang_must_use_immediately
 )
 
+folly_add_library(
+  NAME with_metadata
+  HEADERS
+    WithMetadata.h
+  EXPORTED_DEPS
+    folly_coro_detail_current_async_frame
+    folly_coro_task
+    folly_tracing_async_stack
+)
+
 add_subdirectory(detail)
 add_subdirectory(safe)

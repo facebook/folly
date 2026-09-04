@@ -989,3 +989,16 @@ fb_dirsync_cpp_library(
         "//folly/lang:must_use_immediately",
     ],
 )
+
+### this line is a hint for source control merge
+
+fb_dirsync_cpp_library(
+    name = "with_metadata",
+    headers = ["WithMetadata.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        ":detail_current_async_frame",
+        ":task",
+        "//folly/tracing:async_stack",
+    ],
+)
