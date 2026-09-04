@@ -41,9 +41,6 @@ jobs:
     - name: Fetch boost
       if: ${{ steps.paths.outputs.boost_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests boost
-    - name: Fetch gcc12
-      if: ${{ steps.paths.outputs.gcc12_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests gcc12
     - name: Fetch ninja
       if: ${{ steps.paths.outputs.ninja_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests ninja
