@@ -60,6 +60,8 @@ fbcode/configerator/structs/neteng/fboss/thrift = configerator/structs/neteng/fb
 ^fbcode/neteng/fboss/bgp/.*\.bzl
 ^fbcode/neteng/fboss/bgp/\.llms/.*
 ^fbcode/neteng/fboss/bgp/tools/.*
+# Export only the BB platform constant required by the OSS build.
+^fbcode/neteng/fboss/bgp/cpp/common/platform/bb/(?!PlatformConstant\.h$).*
 ^fbcode/neteng/fboss/bgp/cpp/tests/NetlinkWrapperTest\.cpp
 ^fbcode/neteng/fboss/bgp/cpp/tests/FibEbbTest\.cpp
 # Only common.thrift is needed from configerator/structs/neteng/fboss/thrift;
