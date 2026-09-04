@@ -205,7 +205,7 @@ class ArgsTest : public ::testing::Test {
   void write_file(const std::string& filename, const std::string& content) {
     auto path = tempDir_.path() / filename;
 
-    std::ofstream file(path.string());
+    std::ofstream file(path.string(), std::ios::binary);
     file << folly::stripLeftMargin(content);
     file.close();
   }
@@ -2067,8 +2067,15 @@ TEST_F(ArgsTest, QuotedAtThenUnquoted) {
 }
 
 TEST_F(ArgsTest, BareAtInArgsFileTriggersFileError) {
-  // Test that bare @ in an args-file is treated as args-file with empty name
-  // This should trigger on_file_found and on_file_error (empty filename)
+// Test that bare @ in an args-file is treated as args-file with empty name
+// This should trigger on_file_found and on_file_error (empty filename)
+#ifdef _WIN32
+  auto const directory_read_error =
+      std::make_error_code(std::errc::no_such_file_or_directory);
+#else
+  auto const directory_read_error =
+      std::make_error_code(std::errc::is_a_directory);
+#endif
   write_file("bare_at.args", R"(
       --before
       @
@@ -2107,8 +2114,11 @@ TEST_F(ArgsTest, BareAtInArgsFileTriggersFileError) {
               {.idx = 0, .off = 0, .len = 8, .b = {1, 1}, .e = {1, 8}}),
           entry_file_found(
               1, "", {.idx = 1, .off = 9, .len = 1, .b = {2, 1}, .e = {2, 1}}),
-          entry_file_error_is_a_directory(
-              1, "", {.idx = 1, .off = 9, .len = 1, .b = {2, 1}, .e = {2, 1}}),
+          entry_file_error(
+              1,
+              "",
+              {.idx = 1, .off = 9, .len = 1, .b = {2, 1}, .e = {2, 1}},
+              directory_read_error),
           entry_term(
               1,
               "--after",
