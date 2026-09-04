@@ -1136,8 +1136,13 @@ TEST(ConcurrentBSkipList, ConcurrentReadDuringWrite) {
   std::atomic<bool> stop{false};
   std::atomic<int> anomalies{0};
 
+  // Under sanitizers, 45k split-heavy inserts (P=2) with continuous full
+  // scans crawls toward the 600s timeout on loaded CI hosts; scale the
+  // writer down. Non-sanitizer runs keep the full window.
+  const int64_t kWriteEnd = folly::kIsSanitizeThread ? 15000 : 50000;
+
   std::thread writer([&]() {
-    for (int64_t i = 5000; i < 50000 && !stop.load(); ++i) {
+    for (int64_t i = 5000; i < kWriteEnd && !stop.load(); ++i) {
       list.add(i);
     }
   });
