@@ -18,6 +18,7 @@
 
 #include <folly/Demangle.h>
 #include <folly/GLog.h>
+#include <folly/Indestructible.h>
 #include <folly/concurrency/container/SingleWriterFixedHashMap.h>
 #include <folly/tracing/StaticTracepoint.h>
 
@@ -766,8 +767,11 @@ RequestContext::setShallowCopyContext() {
     }
   }
 
-  static RequestContext defaultContext(0);
-  return std::addressof(defaultContext);
+  // Immortal: threads that are still running once static destruction has begun
+  // can reach the default context, either directly or from an atexit handler.
+  // Destroying it would leave them reading freed memory.
+  static Indestructible<RequestContext> defaultContext(0);
+  return std::addressof(*defaultContext);
 }
 
 /* static */ RequestContext* RequestContext::try_get() {
