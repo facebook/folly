@@ -20,7 +20,9 @@
 #include <folly/coro/Baton.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Collect.h>
+#include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Task.h>
+#include <folly/coro/WithMetadata.h>
 #include <folly/tracing/AsyncStack.h>
 
 #include <cstdint>
@@ -49,6 +51,56 @@ TEST_F(AsyncStackTest, SimpleStackTrace) {
     CHECK(trace[3] != 0);
   }());
 }
+
+CO_TEST(AsyncStackMetadataTest, MetadataTraceHasNoAnnotationsWithoutScope) {
+  const auto trace = co_await co_current_async_stack_trace_with_metadata;
+  CO_ASSERT_FALSE(trace.empty());
+  for (const auto& entry : trace) {
+    EXPECT_EQ(entry.metadata, std::nullopt);
+  }
+}
+
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+
+CO_TEST(AsyncStackMetadataTest, MetadataAssociatesWithVisibleWrappers) {
+  struct CapturedNestedMetadataTrace {
+    std::uintptr_t innerWrapperContinuation;
+    std::vector<AsyncStackTraceEntry> trace;
+  };
+
+  struct NestedMetadataTrace {
+    // Prevent inlining so the trace prefix is:
+    // current instruction -> capture [metadata 222] -> wrapper ->
+    // addInnerMetadata [metadata 111]
+    // `capture()` is the inner wrapper's child, so its saved return address is
+    // the entry that carries 222.
+    FOLLY_NOINLINE static auto capture() -> Task<CapturedNestedMetadataTrace> {
+      auto& childFrame =
+          co_await folly::coro::detail::co_current_async_stack_frame;
+      co_return CapturedNestedMetadataTrace{
+          .innerWrapperContinuation =
+              reinterpret_cast<std::uintptr_t>(childFrame.getReturnAddress()),
+          .trace = co_await co_current_async_stack_trace_with_metadata};
+    }
+
+    FOLLY_NOINLINE static auto addInnerMetadata()
+        -> Task<CapturedNestedMetadataTrace> {
+      co_return co_await co_withMetadata(222, capture());
+    }
+  };
+
+  const auto captured =
+      co_await co_withMetadata(111, NestedMetadataTrace::addInnerMetadata());
+  const auto& trace = captured.trace;
+  CO_ASSERT_GE(trace.size(), 4);
+  EXPECT_EQ(trace[0].metadata, std::nullopt);
+  EXPECT_EQ(trace[1].address, captured.innerWrapperContinuation);
+  EXPECT_EQ(trace[1].metadata, 222);
+  EXPECT_EQ(trace[2].metadata, std::nullopt);
+  EXPECT_EQ(trace[3].metadata, 111);
+}
+
+#endif // FOLLY_HAS_ASYNC_STACK_METADATA
 
 TEST_F(AsyncStackTest, NestedStackTrace) {
   blockingWait([]() -> Task<void> { // Coroutine 1
