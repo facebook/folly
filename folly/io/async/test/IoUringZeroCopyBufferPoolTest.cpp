@@ -577,11 +577,11 @@ TEST(IoUringZeroCopyBufferPoolTest, NoDevRefillRecyclesBuffers) {
   cqe.res = 2048;
   zcqe.off = 0;
 
-  auto buf1 = pool->getIoBuf(&cqe, &zcqe);
+  auto buf1 = pool->getIoBuf(&cqe, &zcqe).buffer;
   zcqe.off += 4096;
-  auto buf2 = pool->getIoBuf(&cqe, &zcqe);
+  auto buf2 = pool->getIoBuf(&cqe, &zcqe).buffer;
   zcqe.off += 4096;
-  auto buf3 = pool->getIoBuf(&cqe, &zcqe);
+  auto buf3 = pool->getIoBuf(&cqe, &zcqe).buffer;
 
   buf1.reset();
   buf2.reset();
@@ -594,7 +594,7 @@ TEST(IoUringZeroCopyBufferPoolTest, NoDevRefillRecyclesBuffers) {
 
   helper.consumeRefillRingEntries(2);
   zcqe.off += 4096;
-  auto buf4 = pool->getIoBuf(&cqe, &zcqe);
+  auto buf4 = pool->getIoBuf(&cqe, &zcqe).buffer;
   buf4.reset();
 
   EXPECT_EQ(helper.getRingUsedCount(), 2);
@@ -650,7 +650,7 @@ TEST(IoUringZeroCopyBufferPoolTest, NoDevGetBuf) {
   io_uring_zcrx_cqe zcqe{};
   zcqe.off = static_cast<uint64_t>(pageSize);
 
-  auto buf = pool->getIoBuf(&cqe, &zcqe);
+  auto buf = pool->getIoBuf(&cqe, &zcqe).buffer;
   EXPECT_EQ(buf->length(), 2048);
   EXPECT_TRUE(buf->isSharedOne());
 }
