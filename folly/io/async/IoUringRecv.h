@@ -39,6 +39,7 @@ class IoUringRecvCallback {
   virtual void recvErr(
       int err,
       std::unique_ptr<const AsyncSocketException> exception) noexcept = 0;
+  virtual void recvBuffersScarce(bool /*scarce*/) noexcept {}
 };
 
 class IoUringRecvHandle : public DelayedDestruction {
@@ -92,6 +93,7 @@ class IoUringRecvHandle : public DelayedDestruction {
   void onEnobufs();
   void onRecvEOF();
   void onRecvErr(int err);
+  void onBuffersScarce(bool scarce) noexcept;
 
   IoUringBackend* backend_;
   IoUringRecvCallback* recvCallback_;
