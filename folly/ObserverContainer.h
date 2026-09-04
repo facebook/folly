@@ -112,10 +112,11 @@ class ObserverContainerStoreBase {
   virtual void invokeForEachObserver(
       folly::Function<void(Observer*)>&& fn,
       const InvokeWhileIteratingPolicy policy) {
+    // A by-value capture is 64 bytes, over the 48-byte in-situ buffer, and
+    // would heap-allocate per call; the callee never retains the wrapper.
+    auto fnL = std::move(fn);
     invokeForEachObserver(
-        [fnL = std::move(fn)](MaybeManagedObserverPointer& observer) mutable {
-          fnL(observer.get());
-        },
+        [&fnL](MaybeManagedObserverPointer& observer) { fnL(observer.get()); },
         policy);
   }
 };
