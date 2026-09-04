@@ -24,6 +24,9 @@
 #include <folly/portability/SysTypes.h>
 
 namespace folly {
+
+class AsyncStackMetadata;
+
 namespace symbolizer {
 
 /**
@@ -80,6 +83,23 @@ ssize_t getStackTraceHeap(uintptr_t* addresses, size_t maxAddresses);
  */
 FOLLY_NOINLINE ssize_t
 getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses);
+
+/**
+ * Get the current async stack trace and the metadata attached to each returned
+ * frame. When `maxAddresses` is nonzero, both pointers must be non-null and
+ * each array must have room for at least `maxAddresses` entries.
+ *
+ * A `co_withMetadata()` scope adds a visible wrapper frame. The corresponding
+ * entry in `metadata` contains the scope's value; all other entries are empty.
+ * Metadata markers are omitted from `addresses` and do not consume output
+ * slots.
+ *
+ * Returns the number of entries written to both arrays.
+ *
+ * Async-signal-safe, but likely slower.
+ */
+FOLLY_NOINLINE ssize_t getAsyncStackTraceSafeWithMetadata(
+    uintptr_t* addresses, AsyncStackMetadata* metadata, size_t maxAddresses);
 
 } // namespace symbolizer
 } // namespace folly

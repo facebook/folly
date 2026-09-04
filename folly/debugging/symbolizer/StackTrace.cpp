@@ -321,6 +321,7 @@ struct StackFrame {
 
 FOLLY_DISABLE_THREAD_SANITIZER size_t walkNormalStack(
     uintptr_t* addresses,
+    AsyncStackMetadata* metadata,
     size_t maxAddresses,
     StackFrame* normalStackFrame,
     StackFrame* normalStackFrameStop) {
@@ -354,8 +355,12 @@ FOLLY_DISABLE_THREAD_SANITIZER size_t walkNormalStack(
       // that invoked the callback.
       break;
     }
-    addresses[numFrames++] =
+    addresses[numFrames] =
         reinterpret_cast<std::uintptr_t>(normalStackFrame->returnAddress);
+    if (metadata != nullptr) {
+      metadata[numFrames] = std::nullopt;
+    }
+    ++numFrames;
     normalStackFrame = normalStackFrameNext;
   }
   return numFrames;
@@ -374,6 +379,7 @@ struct WalkAsyncStackResult {
 
 WalkAsyncStackResult walkAsyncStack(
     uintptr_t* addresses,
+    AsyncStackMetadata* metadata,
     size_t maxAddresses,
     AsyncStackFrame* asyncStackFrame) {
   WalkAsyncStackResult result;
@@ -390,10 +396,16 @@ WalkAsyncStackResult walkAsyncStack(
   }
 
   while (result.numFrames < maxAddresses && asyncStackFrame != nullptr) {
-    addresses[result.numFrames++] =
+    addresses[result.numFrames] =
         reinterpret_cast<std::uintptr_t>(asyncStackFrame->getReturnAddress());
+    if (metadata != nullptr) {
+      metadata[result.numFrames] =
+          folly::detail::getAsyncStackTraceEntryMetadata(*asyncStackFrame);
+    }
+    ++result.numFrames;
 
-    // More stack reads cannot add output and may fault after the buffer fills.
+    // Metadata lookup may read this frame's wrapper and its marker. Once the
+    // entry is complete, do not follow the chain to another address or root.
     if (result.numFrames == maxAddresses) {
       break;
     }
@@ -455,9 +467,16 @@ FOLLY_ALWAYS_INLINE ssize_t getAsyncStackTrace(
     void* framePointer,
     void* returnAddress,
     uintptr_t* addresses,
+    AsyncStackMetadata* metadata,
     size_t maxAddresses) {
   size_t numFrames = 0;
-  addresses[numFrames++] = reinterpret_cast<std::uintptr_t>(returnAddress);
+  addresses[numFrames] = reinterpret_cast<std::uintptr_t>(returnAddress);
+  if (metadata != nullptr) {
+    // This address comes from the native stack, not an `AsyncStackFrame`, so it
+    // cannot have an adjacent metadata marker.
+    metadata[numFrames] = std::nullopt;
+  }
+  ++numFrames;
   // More stack reads cannot add output and may fault after the buffer fills.
   if (numFrames == maxAddresses) {
     return numFrames;
@@ -474,12 +493,16 @@ FOLLY_ALWAYS_INLINE ssize_t getAsyncStackTrace(
          (normalStackFrame != nullptr || asyncStackFrame != nullptr)) {
     numFrames += walkNormalStack(
         addresses + numFrames,
+        metadata != nullptr ? metadata + numFrames : nullptr,
         maxAddresses - numFrames,
         normalStackFrame,
         normalStackFrameStop);
 
     auto walkAsyncStackResult = walkAsyncStack(
-        addresses + numFrames, maxAddresses - numFrames, asyncStackFrame);
+        addresses + numFrames,
+        metadata != nullptr ? metadata + numFrames : nullptr,
+        maxAddresses - numFrames,
+        asyncStackFrame);
     numFrames += walkAsyncStackResult.numFrames;
     normalStackFrame = walkAsyncStackResult.normalStackFrame;
     normalStackFrameStop = walkAsyncStackResult.normalStackFrameStop;
@@ -506,6 +529,27 @@ getAsyncStackTraceSafe(uintptr_t* addresses, size_t maxAddresses) {
       FOLLY_ASYNC_STACK_FRAME_POINTER(),
       FOLLY_ASYNC_STACK_RETURN_ADDRESS(),
       addresses,
+      nullptr,
+      maxAddresses);
+}
+
+FOLLY_NOINLINE ssize_t getAsyncStackTraceSafeWithMetadata(
+    uintptr_t* addresses, AsyncStackMetadata* metadata, size_t maxAddresses) {
+  if (maxAddresses == 0) {
+    return 0;
+  }
+
+  const auto* asyncStackRoot = tryGetCurrentAsyncStackRoot();
+  if (asyncStackRoot == nullptr) {
+    return 0;
+  }
+
+  return getAsyncStackTrace(
+      *asyncStackRoot,
+      FOLLY_ASYNC_STACK_FRAME_POINTER(),
+      FOLLY_ASYNC_STACK_RETURN_ADDRESS(),
+      addresses,
+      metadata,
       maxAddresses);
 }
 

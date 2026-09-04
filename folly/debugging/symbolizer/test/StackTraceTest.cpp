@@ -40,14 +40,28 @@
 
 namespace {
 
+using folly::AsyncStackFrame;
+using folly::AsyncStackMetadata;
+using folly::AsyncStackRoot;
 using folly::test::MappedPage;
+using folly::test::ScopedAsyncStackRootWithFrame;
+namespace symbolizer = folly::symbolizer;
+
+// Keep this out of line so its stack frame remains visible to the walker.
+FOLLY_NOINLINE ssize_t captureCurrentAsyncStack(
+    std::uintptr_t* addresses,
+    AsyncStackMetadata* metadata,
+    size_t maxAddresses) {
+  auto count = symbolizer::getAsyncStackTraceSafeWithMetadata(
+      addresses, metadata, maxAddresses);
+  folly::compiler_must_not_elide(count);
+  return count;
+}
 
 #if FOLLY_HAS_ASYNC_STACK_METADATA
 
-using folly::AsyncStackFrame;
 using folly::test::linkInactiveFrames;
 using folly::test::markAsMetadataFrame;
-using folly::test::ScopedAsyncStackRootWithFrame;
 
 struct CapturedAsyncStack {
   std::array<std::uintptr_t, 100> addresses{};
@@ -90,35 +104,105 @@ void expectNoMetadataMarkers(const CapturedAsyncStack& capture) {
 
 // Keep this out of line so its stack frame remains visible to the walker.
 FOLLY_NOINLINE ssize_t captureWithUnreadableCurrentRoot(
-    folly::AsyncStackRoot* unreadableRoot,
+    AsyncStackRoot* unreadableRoot,
     std::uintptr_t* addresses,
     size_t maxAddresses) {
   auto* previousRoot = folly::exchangeCurrentAsyncStackRoot(unreadableRoot);
-  auto count =
-      folly::symbolizer::getAsyncStackTraceSafe(addresses, maxAddresses);
+  auto count = symbolizer::getAsyncStackTraceSafe(addresses, maxAddresses);
+  CHECK_EQ(folly::exchangeCurrentAsyncStackRoot(previousRoot), unreadableRoot);
+  return count;
+}
+
+// Keep this out of line so its stack frame remains visible to the walker.
+FOLLY_NOINLINE ssize_t captureWithUnreadableCurrentRoot(
+    AsyncStackRoot* unreadableRoot,
+    std::uintptr_t* addresses,
+    AsyncStackMetadata* metadata,
+    size_t maxAddresses) {
+  auto* previousRoot = folly::exchangeCurrentAsyncStackRoot(unreadableRoot);
+  auto count = symbolizer::getAsyncStackTraceSafeWithMetadata(
+      addresses, metadata, maxAddresses);
   CHECK_EQ(folly::exchangeCurrentAsyncStackRoot(previousRoot), unreadableRoot);
   return count;
 }
 
 } // namespace
 
+TEST(StackTraceTest, NoActiveAsyncRootLeavesMetadataBuffersUntouched) {
+  std::uintptr_t address = 123;
+  AsyncStackMetadata metadata{456};
+  EXPECT_EQ(captureCurrentAsyncStack(&address, &metadata, 1), 0);
+  EXPECT_EQ(address, 123);
+  EXPECT_EQ(metadata, 456);
+}
+
+TEST(StackTraceTest, AsyncStackTraceWritesAbsentMetadataForOrdinaryFrames) {
+  // The caller may reuse this buffer. Ordinary frames must overwrite stale
+  // metadata with `std::nullopt`.
+  char asyncAddress;
+  AsyncStackFrame frame;
+  frame.setReturnAddress(&asyncAddress);
+
+  std::array<std::uintptr_t, 100> addresses{};
+  std::array<AsyncStackMetadata, 100> metadata{};
+  metadata.fill(123);
+  ssize_t count;
+  {
+    ScopedAsyncStackRootWithFrame activeRoot{frame};
+    count = captureCurrentAsyncStack(
+        addresses.data(), metadata.data(), addresses.size());
+  }
+
+  ASSERT_GT(count, 0);
+  size_t asyncEntries = 0;
+  for (size_t i = 0; i < static_cast<size_t>(count); ++i) {
+    asyncEntries +=
+        addresses[i] == reinterpret_cast<std::uintptr_t>(&asyncAddress);
+    EXPECT_EQ(metadata[i], std::nullopt);
+  }
+  EXPECT_EQ(asyncEntries, 1);
+}
+
 TEST(StackTraceTest, ZeroCapacityDoesNotReadCurrentRoot) {
   // Crash-time state can be unreadable. Zero capacity must return before
   // touching the current root.
-  MappedPage<folly::AsyncStackRoot> unreadableRoot{PROT_NONE};
+  MappedPage<AsyncStackRoot> unreadableRoot{PROT_NONE};
   EXPECT_EQ(
       captureWithUnreadableCurrentRoot(unreadableRoot.get(), nullptr, 0), 0);
+  EXPECT_EQ(
+      captureWithUnreadableCurrentRoot(
+          unreadableRoot.get(), nullptr, nullptr, 0),
+      0);
 }
 
 TEST(StackTraceTest, CurrentAddressAtCapacityDoesNotReadCurrentRoot) {
   // The current return address fills the only output slot. The walker must not
   // then dereference the unreadable current async root.
-  MappedPage<folly::AsyncStackRoot> unreadableRoot{PROT_NONE};
+  MappedPage<AsyncStackRoot> unreadableRoot{PROT_NONE};
   constexpr auto kCanary = std::numeric_limits<std::uintptr_t>::max();
-  std::uintptr_t address = kCanary;
+  std::array<std::uintptr_t, 2> addresses{};
+  addresses.fill(kCanary);
   EXPECT_EQ(
-      captureWithUnreadableCurrentRoot(unreadableRoot.get(), &address, 1), 1);
-  EXPECT_NE(address, kCanary);
+      captureWithUnreadableCurrentRoot(
+          unreadableRoot.get(), addresses.data(), /*maxAddresses=*/1),
+      1);
+  EXPECT_NE(addresses[0], kCanary);
+  EXPECT_EQ(addresses[1], kCanary);
+
+  addresses.fill(kCanary);
+  std::array<AsyncStackMetadata, 2> metadata{};
+  metadata.fill(kCanary);
+  EXPECT_EQ(
+      captureWithUnreadableCurrentRoot(
+          unreadableRoot.get(),
+          addresses.data(),
+          metadata.data(),
+          /*maxAddresses=*/1),
+      1);
+  EXPECT_NE(addresses[0], kCanary);
+  EXPECT_EQ(addresses[1], kCanary);
+  EXPECT_EQ(metadata[0], std::nullopt);
+  EXPECT_EQ(metadata[1], kCanary);
 }
 
 #if FOLLY_HAS_BUILTIN(__builtin_frame_address)
@@ -130,8 +214,10 @@ char capacityAddressSentinel;
 
 // Keep this out of line so its stack frame remains visible to the walker.
 FOLLY_NOINLINE ssize_t captureAsyncStackAtCapacity(
-    folly::AsyncStackRoot* unreadableRoot,
-    std::array<std::uintptr_t, 2>& addresses) {
+    AsyncStackRoot* unreadableRoot,
+    std::uintptr_t* addresses,
+    AsyncStackMetadata* metadata,
+    size_t maxAddresses) {
   using namespace folly;
 
   auto* previousRoot = tryGetCurrentAsyncStackRoot();
@@ -149,7 +235,10 @@ FOLLY_NOINLINE ssize_t captureAsyncStackAtCapacity(
     root.setNextRoot(previousRoot);
     deactivateAsyncStackFrame(frame);
   };
-  return symbolizer::getAsyncStackTraceSafe(addresses.data(), addresses.size());
+  return metadata == nullptr
+      ? symbolizer::getAsyncStackTraceSafe(addresses, maxAddresses)
+      : symbolizer::getAsyncStackTraceSafeWithMetadata(
+            addresses, metadata, maxAddresses);
 }
 
 } // namespace
@@ -157,15 +246,141 @@ FOLLY_NOINLINE ssize_t captureAsyncStackAtCapacity(
 TEST(StackTraceTest, AsyncFrameAtCapacityDoesNotReadNextRoot) {
   // The async frame fills the second output slot. The walker must not then
   // follow it into the unreadable next root.
-  MappedPage<folly::AsyncStackRoot> unreadableRoot{PROT_NONE};
-  std::array<std::uintptr_t, 2> addresses{};
-  EXPECT_EQ(captureAsyncStackAtCapacity(unreadableRoot.get(), addresses), 2);
+  MappedPage<AsyncStackRoot> unreadableRoot{PROT_NONE};
+  constexpr auto kCanary = std::numeric_limits<std::uintptr_t>::max();
+  std::array<std::uintptr_t, 3> addresses{};
+  addresses.fill(kCanary);
+  EXPECT_EQ(
+      captureAsyncStackAtCapacity(
+          unreadableRoot.get(),
+          addresses.data(),
+          /*metadata=*/nullptr,
+          /*maxAddresses=*/2),
+      2);
   EXPECT_EQ(
       addresses[1], reinterpret_cast<std::uintptr_t>(&capacityAddressSentinel));
+  EXPECT_EQ(addresses[2], kCanary);
+
+  std::array<std::uintptr_t, 3> metadataAddresses{};
+  metadataAddresses.fill(kCanary);
+  std::array<AsyncStackMetadata, 3> metadataAtCapacity{};
+  metadataAtCapacity.fill(kCanary);
+  EXPECT_EQ(
+      captureAsyncStackAtCapacity(
+          unreadableRoot.get(),
+          metadataAddresses.data(),
+          metadataAtCapacity.data(),
+          /*maxAddresses=*/2),
+      2);
+  EXPECT_EQ(
+      metadataAddresses[1],
+      reinterpret_cast<std::uintptr_t>(&capacityAddressSentinel));
+  EXPECT_EQ(metadataAddresses[2], kCanary);
+  EXPECT_EQ(metadataAtCapacity[0], std::nullopt);
+  EXPECT_EQ(metadataAtCapacity[1], std::nullopt);
+  EXPECT_EQ(metadataAtCapacity[2], kCanary);
 }
+
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+
+namespace {
+
+// Prevent inlining so the native return address uses slot 0 and the annotated
+// async frame uses the final slot.
+FOLLY_NOINLINE ssize_t captureAnnotatedAsyncFrameAtCapacity(
+    std::uintptr_t* addresses,
+    AsyncStackMetadata* metadata,
+    size_t maxAddresses) {
+  AsyncStackFrame wrapper;
+  folly::AsyncStackMetadataFrame marker{wrapper, 42};
+  AsyncStackFrame child;
+  child.setReturnAddress(&capacityAddressSentinel);
+  linkInactiveFrames(child, wrapper);
+  ScopedAsyncStackRootWithFrame activeRoot{child};
+  return symbolizer::getAsyncStackTraceSafeWithMetadata(
+      addresses, metadata, maxAddresses);
+}
+
+} // namespace
+
+TEST(StackTraceTest, AnnotatedAsyncFrameAtCapacityWritesMetadata) {
+  // The annotated async frame fills the last output slot. Write both its
+  // address and metadata without touching the canary after it.
+  constexpr auto kCanary = std::numeric_limits<std::uintptr_t>::max();
+  std::array<std::uintptr_t, 3> addresses{};
+  addresses.fill(kCanary);
+  std::array<AsyncStackMetadata, 3> metadata{};
+  metadata.fill(kCanary);
+
+  EXPECT_EQ(
+      captureAnnotatedAsyncFrameAtCapacity(
+          addresses.data(), metadata.data(), /*maxAddresses=*/2),
+      2);
+  EXPECT_EQ(
+      addresses[1], reinterpret_cast<std::uintptr_t>(&capacityAddressSentinel));
+  EXPECT_EQ(addresses[2], kCanary);
+  EXPECT_EQ(metadata[0], std::nullopt);
+  EXPECT_EQ(metadata[1], 42);
+  EXPECT_EQ(metadata[2], kCanary);
+}
+
+#endif
 #endif
 
 #if FOLLY_HAS_ASYNC_STACK_METADATA
+
+TEST(StackTraceTest, AsyncStackTraceReportsMetadataOnWrapperContinuation) {
+  char wrapperContinuation;
+  char parentContinuation;
+  char callerContinuation;
+  AsyncStackFrame parent;
+  AsyncStackFrame wrapper;
+  AsyncStackFrame child;
+  parent.setReturnAddress(&callerContinuation);
+  wrapper.setReturnAddress(&parentContinuation);
+  linkInactiveFrames(wrapper, parent);
+  folly::AsyncStackMetadataFrame marker(wrapper, 42);
+  child.setReturnAddress(&wrapperContinuation);
+  linkInactiveFrames(child, wrapper);
+
+  // `child` stores `wrapperContinuation`, where `wrapper` resumes:
+  //   child -> wrapper -> [metadata 42] -> parent
+  // The marker therefore annotates `wrapperContinuation`.
+  std::array<std::uintptr_t, 100> addresses{};
+  std::array<AsyncStackMetadata, 100> metadata{};
+  metadata.fill(123);
+  ssize_t count;
+  {
+    ScopedAsyncStackRootWithFrame activeRoot{child};
+    count = captureCurrentAsyncStack(
+        addresses.data(), metadata.data(), addresses.size());
+  }
+
+  ASSERT_GT(count, 0);
+  size_t annotatedEntries = 0;
+  size_t wrapperIndex = static_cast<size_t>(count);
+  size_t parentIndex = static_cast<size_t>(count);
+  for (size_t i = 0; i < static_cast<size_t>(count); ++i) {
+    EXPECT_NE(addresses[i], folly_async_stack_metadata_frame_cookie);
+    if (metadata[i]) {
+      ++annotatedEntries;
+      EXPECT_EQ(
+          addresses[i], reinterpret_cast<std::uintptr_t>(&wrapperContinuation));
+      EXPECT_EQ(metadata[i], 42);
+    }
+    if (addresses[i] ==
+        reinterpret_cast<std::uintptr_t>(&wrapperContinuation)) {
+      wrapperIndex = i;
+    }
+    if (addresses[i] == reinterpret_cast<std::uintptr_t>(&callerContinuation)) {
+      parentIndex = i;
+    }
+  }
+  EXPECT_EQ(annotatedEntries, 1);
+  ASSERT_LT(wrapperIndex, static_cast<size_t>(count));
+  ASSERT_LT(parentIndex, static_cast<size_t>(count));
+  EXPECT_LT(wrapperIndex, parentIndex);
+}
 
 TEST(StackTraceTest, AsyncStackTraceOmitsMetadataMarkers) {
   // Parent links in the hand-built chains:
