@@ -251,6 +251,8 @@ class AsyncReader {
     virtual void readBufferAvailable(
         std::unique_ptr<IOBuf> /*readBuf*/) noexcept {}
 
+    virtual void readBuffersScarce(bool /*scarce*/) noexcept {}
+
     /**
      * readEOF() will be invoked when the transport is closed.
      *

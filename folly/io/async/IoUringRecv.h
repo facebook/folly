@@ -39,7 +39,7 @@ class IoUringRecvCallback {
   virtual void recvErr(
       int err,
       std::unique_ptr<const AsyncSocketException> exception) noexcept = 0;
-  virtual void recvBuffersScarce(bool /*scarce*/) noexcept {}
+  virtual void recvBuffersScarce(bool scarce) noexcept = 0;
 };
 
 class IoUringRecvHandle : public DelayedDestruction {

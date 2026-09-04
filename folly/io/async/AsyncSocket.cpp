@@ -4986,6 +4986,13 @@ void AsyncSocket::recvErr(
   failRead(__func__, ex);
 }
 
+void AsyncSocket::recvBuffersScarce(bool scarce) noexcept {
+  DestructorGuard dg(this);
+  if (readCallback_) {
+    readCallback_->readBuffersScarce(scarce);
+  }
+}
+
 std::ostream& operator<<(
     std::ostream& os, const folly::AsyncSocket::WriteRequestTag& tag) {
   os << tag.buf_;

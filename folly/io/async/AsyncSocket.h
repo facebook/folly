@@ -1939,6 +1939,7 @@ class AsyncSocket
   void recvErr(
       int err,
       std::unique_ptr<const AsyncSocketException> exception) noexcept override;
+  void recvBuffersScarce(bool scarce) noexcept override;
 
   using ZeroCopyEnablePolicy =
       std::variant<std::monostate, AsyncWriter::ZeroCopyEnableFunc, size_t>;

@@ -47,6 +47,7 @@ class DetachedReadCallback : public IoUringRecvCallback {
       override {
     done();
   }
+  void recvBuffersScarce(bool /*scarce*/) noexcept override {}
 
   void done() {
     promise.setValue(std::move(data_));
