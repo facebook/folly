@@ -9674,11 +9674,17 @@ TEST(AsyncSocket, LifecycleCtorCallback) {
   // is done below and this simplifies the test
   auto lifecycleCB =
       std::make_shared<NiceMock<MockAsyncSocketLifecycleObserver>>();
-  auto lifecycleRawPtr = lifecycleCB.get();
+  // NB: ConstructorCallbackList has no removal API, so this callback stays
+  // registered process-wide after this test finishes. Capture a weak_ptr and
+  // skip once the observer is destroyed; a raw pointer here would dangle and
+  // corrupt every AsyncSocket constructed by later tests in the process.
+  auto lifecycleWeak = std::weak_ptr{lifecycleCB};
   // verify the first part of the lifecycle was processed
   ConstructorCallbackList<AsyncSocket>::addCallback(
-      [lifecycleRawPtr](AsyncSocket* s) {
-        s->addLifecycleObserver(lifecycleRawPtr);
+      [lifecycleWeak](AsyncSocket* s) {
+        if (auto cb = lifecycleWeak.lock()) {
+          s->addLifecycleObserver(cb.get());
+        }
       });
   auto socket2 = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
   EXPECT_EQ(socket2->getLifecycleObservers().size(), 1);
