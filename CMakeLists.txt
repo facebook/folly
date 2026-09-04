@@ -61,11 +61,11 @@ set(folly_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
 
 set(INCLUDE_INSTALL_DIR include CACHE STRING
     "The subdirectory where header files should be installed")
-set(LIB_INSTALL_DIR lib CACHE STRING
+set(LIB_INSTALL_DIR ${CMAKE_INSTALL_LIBDIR} CACHE STRING
     "The subdirectory where libraries should be installed")
 set(BIN_INSTALL_DIR bin CACHE STRING
     "The subdirectory where binaries should be installed")
-set(CMAKE_INSTALL_DIR lib/cmake/folly CACHE STRING
+set(CMAKE_INSTALL_DIR ${CMAKE_INSTALL_LIBDIR}/cmake/folly CACHE STRING
     "The subdirectory where CMake package config files should be installed")
 
 option(BUILD_SHARED_LIBS
