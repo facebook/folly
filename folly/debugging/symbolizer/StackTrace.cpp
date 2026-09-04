@@ -399,7 +399,7 @@ WalkAsyncStackResult walkAsyncStack(
     }
 
     const auto parentFrameAdvance = folly::detail::advancePastMetadataFrame(
-        asyncStackFrame->getParentFrameUnsafe());
+        asyncStackFrame->getParentFrame());
     if (parentFrameAdvance.foundAdjacentMetadataFrame) {
       break;
     }

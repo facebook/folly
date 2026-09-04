@@ -34,6 +34,7 @@ folly_add_library(
     folly_cpp_attributes
     folly_function
     folly_portability
+    folly_synchronization_atomic_ref
 )
 
 folly_add_library(

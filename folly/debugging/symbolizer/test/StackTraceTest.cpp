@@ -323,7 +323,7 @@ FOLLY_NOINLINE CapturedAsyncStackPair captureInnerAsyncStacks() {
     ScopedAsyncStackRootWithFrame activeRoot{wrapper};
     captures.baseline = captureCurrentAsyncStack();
   }
-  wrapper.setParentFrameUnsafe(marker);
+  wrapper.setParentFrame(marker);
   {
     ScopedAsyncStackRootWithFrame activeRoot{wrapper};
     captures.marked = captureCurrentAsyncStack();

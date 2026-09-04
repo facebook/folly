@@ -55,5 +55,6 @@ fb_dirsync_cpp_library(
         "//folly:function",
         "//folly:portability",
         "//folly/coro:coroutine",
+        "//folly/synchronization:atomic_ref",
     ],
 )

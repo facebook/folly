@@ -56,6 +56,27 @@ TEST(AsyncStack, ScopedAsyncStackRoot) {
   CHECK(folly::tryGetCurrentAsyncStackRoot() == nullptr);
 }
 
+TEST(AsyncStack, SetAndClearParentFrame) {
+  // Scoped metadata teardown clears a live frame's parent link; its return
+  // address and active root must remain intact.
+  char returnAddress;
+  folly::AsyncStackFrame parentFrame;
+  folly::AsyncStackFrame frame;
+  frame.setReturnAddress(&returnAddress);
+
+  folly::detail::ScopedAsyncStackRoot scopedRoot;
+  scopedRoot.activateFrame(frame);
+  auto* const stackRoot = frame.getStackRoot();
+
+  frame.setParentFrame(parentFrame);
+  EXPECT_EQ(&parentFrame, frame.getParentFrame());
+  frame.clearParentFrame();
+  EXPECT_EQ(nullptr, frame.getParentFrame());
+  EXPECT_EQ(&returnAddress, frame.getReturnAddress());
+  EXPECT_EQ(stackRoot, frame.getStackRoot());
+  folly::deactivateAsyncStackFrame(frame);
+}
+
 TEST(AsyncStack, MetadataValueSemantics) {
   // This type replaces `std::optional` in profiler output buffers, so it keeps
   // optional semantics, including zero as a present value.
@@ -109,6 +130,35 @@ TEST(AsyncStack, MetadataFrameRecognition) {
 }
 
 #if FOLLY_HAS_ASYNC_STACK_METADATA
+TEST(AsyncStack, MetadataFramePreservesRootAndRestoresNullParent) {
+  using namespace folly;
+
+  // The metadata scope rewires only the parent chain:
+  //   root -> annotatedFrame -> [metadata marker]
+  // It must preserve the active root and restore the null parent.
+  detail::ScopedAsyncStackRoot scopedRoot{nullptr};
+  auto& root = getCurrentAsyncStackRoot();
+  AsyncStackFrame annotatedFrame;
+  scopedRoot.activateFrame(annotatedFrame);
+
+  EXPECT_EQ(annotatedFrame.getParentFrame(), nullptr);
+  {
+    AsyncStackMetadataFrame metadataFrame{annotatedFrame, 1337};
+    auto* marker = annotatedFrame.getParentFrame();
+    ASSERT_NE(marker, nullptr);
+    EXPECT_TRUE(detail::isAsyncStackMetadataFrame(*marker));
+    EXPECT_EQ(marker->getParentFrame(), nullptr);
+    EXPECT_EQ(marker->getStackRoot(), nullptr);
+    EXPECT_EQ(root.getTopFrame(), &annotatedFrame);
+    EXPECT_EQ(annotatedFrame.getStackRoot(), &root);
+  }
+
+  EXPECT_EQ(annotatedFrame.getParentFrame(), nullptr);
+  EXPECT_EQ(root.getTopFrame(), &annotatedFrame);
+  EXPECT_EQ(annotatedFrame.getStackRoot(), &root);
+  deactivateAsyncStackFrame(annotatedFrame);
+}
+
 TEST(AsyncStack, InitialFrameWalkOmitsMarkerButKeepsWrapper) {
   using namespace folly;
   using test::linkInactiveFrames;
@@ -194,6 +244,24 @@ TEST(AsyncStack, InitialFrameWalkStopsOnAdjacentMetadataFrames) {
   std::uintptr_t address = 0;
   EXPECT_EQ(getAsyncStackTraceFromInitialFrame(&firstMarker, &address, 1), 0);
   EXPECT_EQ(address, 0);
+}
+
+TEST(AsyncStack, MetadataFrameRestoresExistingParent) {
+  // Before: annotatedFrame -> originalParent
+  // Inside: annotatedFrame -> [metadata marker] -> originalParent
+  // After:  annotatedFrame -> originalParent
+  folly::AsyncStackFrame originalParent;
+  folly::AsyncStackFrame annotatedFrame;
+  annotatedFrame.setParentFrameUnsafe(originalParent);
+
+  {
+    folly::AsyncStackMetadataFrame metadataScope{annotatedFrame, 1337};
+    auto* marker = annotatedFrame.getParentFrame();
+    ASSERT_NE(marker, nullptr);
+    EXPECT_TRUE(folly::detail::isAsyncStackMetadataFrame(*marker));
+    EXPECT_EQ(marker->getParentFrame(), &originalParent);
+  }
+  EXPECT_EQ(annotatedFrame.getParentFrame(), &originalParent);
 }
 #endif
 

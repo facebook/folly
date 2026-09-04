@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <type_traits>
@@ -26,8 +27,10 @@
 #include <folly/CppAttributes.h>
 #include <folly/Function.h>
 #include <folly/Portability.h>
+#include <folly/Utility.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/lang/Exception.h>
+#include <folly/synchronization/AtomicRef.h>
 
 // `AsyncStackMetadataFrame` stores a reserved value as an `AsyncStackFrame`
 // return address. Its high bits do not match the sign-extension pattern
@@ -354,6 +357,13 @@ void deactivateSuspendedLeaf(AsyncStackFrame& leafFrame) noexcept;
 // For example, asynchronous operations implemented using coroutines
 // would have each coroutine-frame contain an instance of AsyncStackFrame
 // to record async-stack trace information for that coroutine invocation.
+//
+// Reader lifetime contract: async-stack readers do not keep frames alive. A
+// signal handler may walk the thread it interrupted because that thread cannot
+// change or destroy frames until the handler returns. An external reader must
+// stop the owning thread before walking it. A separately running thread must
+// not unlink or destroy a reachable frame during a walk; supporting that would
+// require a way to keep frames alive.
 struct AsyncStackFrame {
  public:
   AsyncStackFrame() = default;
@@ -363,6 +373,7 @@ struct AsyncStackFrame {
   AsyncStackFrame& operator=(const AsyncStackFrame&) = delete;
   AsyncStackFrame& operator=(AsyncStackFrame&&) = delete;
 
+  // Call only after this frame is no longer reachable from an AsyncStackRoot.
   void clear() noexcept {
     parentFrame = nullptr;
     instructionPointer = nullptr;
@@ -370,7 +381,23 @@ struct AsyncStackFrame {
   }
 
   // The parent frame is the frame of the async operation that is logically
-  // the caller of this frame.
+  // the caller of this frame. It is null when this frame has no logical async
+  // caller.
+  //
+  // Ordinary frames set this link before a walker can see the frame and leave
+  // it unchanged while visible. Metadata is different: it temporarily rewires
+  // an active frame, so a signal handler can read the link during the update.
+  // On metadata-capable targets, the unsuffixed methods use atomic accesses
+  // so a signal handler on the same thread sees either the old or new link.
+  // The reader lifetime contract above still applies.
+  AsyncStackFrame* getParentFrame() noexcept { return loadParentFrame(); }
+  const AsyncStackFrame* getParentFrame() const noexcept {
+    return loadParentFrame();
+  }
+  void setParentFrame(AsyncStackFrame& frame) noexcept {
+    storeParentFrame(&frame);
+  }
+  void clearParentFrame() noexcept { storeParentFrame(nullptr); }
 
   // These methods perform plain pointer accesses. A write requires that no
   // asynchronous stack walker can reach this frame during the call; a read
@@ -428,7 +455,46 @@ struct AsyncStackFrame {
   // the top of the async stack - either because the operation
   // is detached or because the next frame is a thread that is
   // blocked waiting for the async stack to complete.
-  AsyncStackFrame* parentFrame = nullptr;
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+  // folly::atomic_ref delegates its operations to std::atomic<T>.
+  static_assert(std::atomic<AsyncStackFrame*>::is_always_lock_free);
+  static_assert(
+      alignof(AsyncStackFrame*) >=
+      folly::atomic_ref<AsyncStackFrame*>::required_alignment);
+#endif
+  // `mutable` lets the const synchronized getter form an `atomic_ref` without
+  // changing the pointer's debugger-visible representation.
+  mutable AsyncStackFrame* parentFrame = nullptr;
+
+  AsyncStackFrame* loadParentFrame() const noexcept {
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+    auto* frame = folly::atomic_ref<AsyncStackFrame*>{parentFrame}.load(
+        std::memory_order_relaxed);
+    // For a same-thread signal walk, keep reads through `frame` after this
+    // relaxed load. This fence only constrains compiler reordering.
+    std::atomic_signal_fence(std::memory_order_acquire);
+    return frame;
+#else
+    return parentFrame;
+#endif
+  }
+
+  void storeParentFrame(AsyncStackFrame* frame) noexcept {
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+    // For a same-thread signal walk, keep earlier parent initialization before
+    // the relaxed store. This fence only constrains compiler reordering.
+    std::atomic_signal_fence(std::memory_order_release);
+    folly::atomic_ref<AsyncStackFrame*>{parentFrame}.store(
+        frame, std::memory_order_relaxed);
+    // The lifetime contract above excludes concurrent destruction. In
+    // `~AsyncStackMetadataFrame()`, this only keeps the compiler from moving
+    // the unlinked frame's destruction or storage reuse before the relaxed
+    // store.
+    std::atomic_signal_fence(std::memory_order_acquire);
+#else
+    parentFrame = frame;
+#endif
+  }
 
   // Instruction pointer of the caller of this frame.
   // This will typically be either the address of the continuation
@@ -519,9 +585,8 @@ struct AsyncStackRoot {
   // loop or callback invocation. May be null if this event loop is
   // not currently executing any async operations.
   //
-  // This is atomic to publish this pointer to profilers and debuggers. It does
-  // not make the non-owning frame chain safe for a concurrent reader; the
-  // owning thread must not mutate or destroy reachable frames during a walk.
+  // Atomic access does not keep the frame alive. See the reader lifetime
+  // contract above `AsyncStackFrame`.
   std::atomic<AsyncStackFrame*> topFrame{nullptr};
 
   // Pointer to the next event loop context lower on the current
@@ -647,6 +712,60 @@ inline bool isAsyncStackMetadataFrame(const AsyncStackFrame& frame) noexcept {
 #endif
 }
 
+} // namespace detail
+
+#if FOLLY_HAS_ASYNC_STACK_METADATA
+// An async-stack marker that carries metadata rather than a code address. It is
+// temporarily spliced into the parent chain after an ordinary frame. Readers
+// identify it by `folly_async_stack_metadata_frame_cookie` and omit it from
+// address traces. Only one such scope may annotate a frame at a time; overlap
+// would put two markers next to each other, which readers reject as invalid.
+// Do not otherwise change the annotated frame's parent while this object lives.
+class AsyncStackMetadataFrame : private NonCopyableNonMovable {
+ public:
+  AsyncStackMetadataFrame(
+      AsyncStackFrame& frame, std::uintptr_t metadata) noexcept
+      : metadataFrame_{}, metadata_{metadata}, frame_{&frame} {
+    metadataFrame_.setReturnAddress(
+        // NOLINTNEXTLINE(performance-no-int-to-ptr): reserved marker value
+        reinterpret_cast<void*>(folly_async_stack_metadata_frame_cookie));
+    auto* parent = frame.getParentFrame();
+    assert(parent == nullptr || !detail::isAsyncStackMetadataFrame(*parent));
+    if (parent != nullptr) {
+      metadataFrame_.setParentFrameUnsafe(*parent);
+    }
+
+    frame.setParentFrame(metadataFrame_);
+  }
+
+  ~AsyncStackMetadataFrame() {
+    assert(frame_->getParentFrame() == &metadataFrame_);
+    if (auto* parent = metadataFrame_.getParentFrame()) {
+      frame_->setParentFrame(*parent);
+    } else {
+      frame_->clearParentFrame();
+    }
+  }
+
+ private:
+  static_assert(std::is_standard_layout_v<AsyncStackFrame>);
+
+  // Readers recover this object from the marker pointer, so this frame must
+  // remain the first data member.
+  AsyncStackFrame metadataFrame_;
+  // A published marker's payload is immutable because an interrupted reader
+  // has no protocol for observing an in-place update consistently.
+  AsyncStackMetadata metadata_;
+  AsyncStackFrame* frame_;
+};
+
+// A standard-layout object has the same address as its first data member.
+static_assert(std::is_standard_layout_v<AsyncStackMetadataFrame>);
+
+#endif
+
+namespace detail {
+
 struct MetadataFrameAdvanceResult {
   AsyncStackFrame* frame;
   bool foundAdjacentMetadataFrame;
@@ -661,7 +780,7 @@ struct MetadataFrameAdvanceResult {
   if (frame == nullptr || !isAsyncStackMetadataFrame(*frame)) {
     return {frame, false};
   }
-  frame = frame->getParentFrameUnsafe();
+  frame = frame->getParentFrame();
   return {frame, frame != nullptr && isAsyncStackMetadataFrame(*frame)};
 }
 
@@ -701,7 +820,7 @@ inline size_t getAsyncStackTraceFromInitialFrame(
     if (numFrames == maxAddresses) {
       break;
     }
-    frame = frame->getParentFrameUnsafe();
+    frame = frame->getParentFrame();
   }
   return numFrames;
 }
