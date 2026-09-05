@@ -393,6 +393,23 @@ class ProbeLifecycleObserver
   int destroys{0};
 };
 
+class ProbeErrMessageCallback : public folly::AsyncSocket::ErrMessageCallback {
+ public:
+  void errMessage(const cmsghdr&) noexcept override {}
+  void errMessageError(const AsyncSocketException&) noexcept override {}
+};
+
+class ErrMessageCallbackClearedObserver
+    : public folly::AsyncSocket::LegacyLifecycleObserver {
+ public:
+  void observerAttach(folly::AsyncSocket*) noexcept override {}
+  void observerDetach(folly::AsyncSocket*) noexcept override {}
+  void destroy(folly::AsyncSocket* socket) noexcept override {
+    callbackCleared = socket->getErrMessageCallback() == nullptr;
+  }
+  bool callbackCleared{false};
+};
+
 // The post-close zero-copy drain holds a DestructorGuard and may outlive the
 // lifecycle observers' owners. Observers must therefore be destroyed before
 // the first drain round, while still alive, and detached so neither the
@@ -436,6 +453,43 @@ TEST(ZeroCopyLifetimeTest, DrainDestroysObserversBeforeOwnerDies) {
   EXPECT_EQ(release.count, 1);
   socket.reset();
   ::close(fds[1]);
+}
+
+TEST(ZeroCopyLifetimeTest, DrainClearsErrMessageCallbackBeforeOwnerDies) {
+  EventBase evb;
+  const auto fd = netops::socket(AF_INET, SOCK_STREAM, 0);
+  ASSERT_NE(fd, NetworkSocket());
+  DelayedZeroCopySocket::UniquePtr socket(new DelayedZeroCopySocket(&evb, fd));
+  socket->enableZeroCopyForTest();
+  socket->setZeroCopyDrainConfig(
+      AsyncSocket::ZeroCopyDrainConfig{
+          .drainDelay = std::chrono::milliseconds(1), .linger = std::nullopt});
+  socket->setWriteResults({1});
+
+  CountingReleaseCb release;
+  CountingWriteCb write(&release);
+  socket->writeChain(
+      &write, IOBuf::copyBuffer("submitted"), WriteFlags::WRITE_MSG_ZEROCOPY);
+  ASSERT_TRUE(socket->isZeroCopyWriteInProgress());
+
+  auto errMessageCallback = std::make_unique<ProbeErrMessageCallback>();
+  socket->setErrMessageCB(errMessageCallback.get());
+  ASSERT_EQ(errMessageCallback.get(), socket->getErrMessageCallback());
+  ErrMessageCallbackClearedObserver observer;
+  socket->addLifecycleObserver(&observer);
+
+  socket->closeNow();
+
+  EXPECT_EQ(socket->getErrMessageCallback(), nullptr);
+  EXPECT_TRUE(observer.callbackCleared);
+  errMessageCallback.reset();
+
+  socket->completeOnNextPoll();
+  evb.loop();
+
+  EXPECT_EQ(socket->getNetworkSocket(), NetworkSocket());
+  EXPECT_EQ(release.count, 1);
+  socket.reset();
 }
 
 // Repro of the D105586778 crash: a StopTLS fd handoff that does NOT transfer
