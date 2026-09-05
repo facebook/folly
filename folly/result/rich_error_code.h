@@ -17,7 +17,7 @@
 #pragma once
 
 #include <optional>
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <folly/lang/Pretty.h>
 #include <folly/result/rich_error_base.h>

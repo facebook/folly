@@ -20,7 +20,7 @@
 
 /**
  * folly::format has been superseded by
- * [fmt](https://fmt.dev/latest/index.html). `#include <fmt/core.h>`
+ * [fmt](https://fmt.dev/latest/index.html). `#include <fmt/format.h>`
  *
  * format() performs text-formatting, similar to Python's str.format. The full
  * specification is on github:
