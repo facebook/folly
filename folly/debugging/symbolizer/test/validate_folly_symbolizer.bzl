@@ -115,7 +115,7 @@ def validate_folly_symbolizer(name, binary):
         command = [
             "$(exe //folly/debugging/symbolizer/test:compare-addr2line.sh)",
             "$(location //folly/debugging/symbolizer/tool:folly-addr2line)",
-            "$(location //third-party-buck/platform010/build/llvm-fb/15:bin/llvm-addr2line)",
+            "$(location fbsource//third-party/llvm-project:llvm-addr2line-binary)",
             "$(location {})".format(binary),
         ],
         type = "simple",
