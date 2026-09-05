@@ -4732,6 +4732,10 @@ void AsyncSocket::doClose() {
   if (!idZeroCopyBufPtrMap_.empty()) {
     zeroCopyDrainDeadline_ = std::chrono::steady_clock::now() +
         zeroCopyDrainConfig_.maxDrainDuration;
+    auto lifecycleObservers = std::exchange(lifecycleObservers_, {});
+    for (const auto& cb : lifecycleObservers) {
+      cb->destroy(this);
+    }
     scheduleZeroCopyDrain();
     return;
   }

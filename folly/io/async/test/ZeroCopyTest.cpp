@@ -381,6 +381,63 @@ TEST(ZeroCopyLifetimeTest, DrainGivesUpAfterMaxDuration) {
   ::close(fds[1]);
 }
 
+// Probe observer with owner-controlled lifetime, mimicking e.g.
+// HTTPUniplexTransportSession's by-value AsyncSocketByteEventObserver: the
+// owner (and thus the observer) may die before the post-close drain ends.
+class ProbeLifecycleObserver
+    : public folly::AsyncSocket::LegacyLifecycleObserver {
+ public:
+  void observerAttach(folly::AsyncSocket*) noexcept override {}
+  void observerDetach(folly::AsyncSocket*) noexcept override {}
+  void destroy(folly::AsyncSocket*) noexcept override { ++destroys; }
+  int destroys{0};
+};
+
+// The post-close zero-copy drain holds a DestructorGuard and may outlive the
+// lifecycle observers' owners. Observers must therefore be destroyed before
+// the first drain round, while still alive, and detached so neither the
+// drain's dispatches nor the destructor touch them again. Fails pre-fix:
+// destroy() only ran from the destructor (destroys == 0 here) and the list
+// stayed populated until then.
+TEST(ZeroCopyLifetimeTest, DrainDestroysObserversBeforeOwnerDies) {
+  EventBase evb;
+  int fds[2];
+  ASSERT_EQ(0, ::socketpair(AF_UNIX, SOCK_STREAM, 0, fds));
+  DelayedZeroCopySocket::UniquePtr socket(
+      new DelayedZeroCopySocket(&evb, NetworkSocket::fromFd(fds[0])));
+  socket->enableZeroCopyForTest();
+  socket->setZeroCopyDrainConfig(
+      AsyncSocket::ZeroCopyDrainConfig{
+          .drainDelay = std::chrono::milliseconds(1), .linger = std::nullopt});
+  socket->setWriteResults({1});
+
+  CountingReleaseCb release;
+  CountingWriteCb write(&release);
+  socket->writeChain(
+      &write, IOBuf::copyBuffer("submitted"), WriteFlags::WRITE_MSG_ZEROCOPY);
+
+  auto observer = std::make_unique<ProbeLifecycleObserver>();
+  socket->addLifecycleObserver(observer.get());
+
+  socket->closeNow();
+
+  // destroy() fires synchronously at logical close, before any drain round,
+  // and the observer is detached.
+  EXPECT_EQ(observer->destroys, 1);
+  EXPECT_TRUE(socket->getLifecycleObservers().empty());
+
+  // The owner dies while the drain is still pending.
+  observer.reset();
+
+  socket->completeOnNextPoll();
+  evb.loop();
+
+  EXPECT_EQ(socket->getNetworkSocket(), NetworkSocket());
+  EXPECT_EQ(release.count, 1);
+  socket.reset();
+  ::close(fds[1]);
+}
+
 // Repro of the D105586778 crash: a StopTLS fd handoff that does NOT transfer
 // the outstanding zero-copy completion maps leaves the new socket unable to
 // reconcile a kernel completion for an in-flight send, aborting in
