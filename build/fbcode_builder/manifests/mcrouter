@@ -42,3 +42,6 @@ BUILD_TESTS=ON
 
 [cmake.defines.test=off]
 BUILD_TESTS=OFF
+
+[shipit.pathmap]
+fbcode/mcrouter = mcrouter
