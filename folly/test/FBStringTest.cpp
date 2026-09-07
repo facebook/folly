@@ -34,6 +34,8 @@
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 
+#include <fmt/core.h>
+
 using namespace std;
 using namespace folly;
 
