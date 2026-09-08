@@ -207,6 +207,12 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "reverse_iterator",
+    headers = ["reverse_iterator.h"],
+    use_raw_headers = True,
+)
+
+fb_dirsync_cpp_library(
     name = "bit_iterator",
     headers = ["BitIterator.h"],
     use_raw_headers = True,

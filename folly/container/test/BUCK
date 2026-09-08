@@ -422,6 +422,15 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
+    name = "reverse_iterator_test",
+    srcs = ["reverse_iterator_test.cpp"],
+    deps = [
+        "//folly/container:reverse_iterator",
+        "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
     name = "range_traits_test",
     srcs = ["range_traits_test.cpp"],
     headers = [],
