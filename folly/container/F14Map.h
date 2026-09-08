@@ -1693,8 +1693,8 @@ class F14VectorMap
   //
   // No erase is provided for reverse_iterator or const_reverse_iterator
   // to make it harder to shoot yourself in the foot by erasing while
-  // reverse-iterating.  You can write that as map.erase(map.iter(riter))
-  // if you really need it.
+  // reverse-iterating.  You can write that as map.erase(riter->first)
+  // if you really need it; erase(iter) hashes the key too.
 
   /// @methodset Iterators
   reverse_iterator rbegin() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
@@ -1720,19 +1720,6 @@ class F14VectorMap
   /// @methodset Iterators
   const_reverse_iterator crend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return this->table_.values_ + this->table_.size();
-  }
-
-  /// Explicit conversions between iterator and reverse_iterator
-  /// @methodset Iterators
-  iterator iter(reverse_iterator riter) { return this->table_.iter(riter); }
-  const_iterator iter(const_reverse_iterator riter) const {
-    return this->table_.iter(riter);
-  }
-
-  /// @copydoc iter
-  reverse_iterator riter(iterator it) { return this->table_.riter(it); }
-  const_reverse_iterator riter(const_iterator it) const {
-    return this->table_.riter(it);
   }
 
   friend Range<const_reverse_iterator> tag_invoke(

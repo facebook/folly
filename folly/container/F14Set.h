@@ -1275,8 +1275,8 @@ class F14VectorSet
   //
   // No erase is provided for reverse_iterator (AKA const_reverse_iterator)
   // to make it harder to shoot yourself in the foot by erasing while
-  // reverse-iterating.  You can write that as set.erase(set.iter(riter))
-  // if you need it.
+  // reverse-iterating.  You can write that as set.erase(*riter)
+  // if you need it; erase(iter) hashes the key too.
 
   reverse_iterator rbegin() { return this->table_.values_; }
   const_reverse_iterator rbegin() const { return crbegin(); }
@@ -1286,17 +1286,6 @@ class F14VectorSet
   const_reverse_iterator rend() const { return crend(); }
   const_reverse_iterator crend() const {
     return this->table_.values_ + this->table_.size();
-  }
-
-  // explicit conversions between iterator and reverse_iterator
-  iterator iter(reverse_iterator riter) { return this->table_.iter(riter); }
-  const_iterator iter(const_reverse_iterator riter) const {
-    return this->table_.iter(riter);
-  }
-
-  reverse_iterator riter(iterator it) { return this->table_.riter(it); }
-  const_reverse_iterator riter(const_iterator it) const {
-    return this->table_.riter(it);
   }
 
   friend Range<const_reverse_iterator> tag_invoke(

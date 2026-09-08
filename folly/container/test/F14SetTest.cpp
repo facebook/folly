@@ -778,13 +778,10 @@ TEST(F14VectorMap, reverseIterator) {
     }
   };
   auto verify = [](TSet const& h, uint64_t lo, uint64_t hi) {
-    auto loIt = h.find(lo);
-    EXPECT_NE(h.end(), loIt);
+    EXPECT_NE(h.end(), h.find(lo));
     uint64_t val = lo;
-    for (auto rit = h.riter(loIt); rit != h.rend(); ++rit) {
+    for (auto rit = h.rbegin() + lo; rit != h.rend(); ++rit) {
       EXPECT_EQ(val, *rit);
-      TSet::const_iterator it = h.iter(rit);
-      EXPECT_EQ(val, *it);
       val++;
     }
     EXPECT_EQ(hi, val);
