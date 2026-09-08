@@ -1185,7 +1185,8 @@ class F14VectorSetImpl
   template <typename BeforeDestroy>
   FOLLY_ALWAYS_INLINE iterator
   eraseInto(const_iterator pos, BeforeDestroy&& beforeDestroy) {
-    FOLLY_SAFE_CHECK(pos != cend(), "erase() of a past-the-end iterator");
+    FOLLY_SAFE_DCHECK(
+        cbegin() <= pos && pos < cend(), "erase() of an invalid iterator");
     auto underlying = this->table_.find(
         VectorContainerIndexSearch{this->table_.iterToIndex(pos)});
     eraseUnderlying(underlying, beforeDestroy);
@@ -1291,21 +1292,29 @@ class F14VectorSet
 
   // explicit conversions between iterator and reverse_iterator
   iterator iter(reverse_iterator riter) {
-    FOLLY_SAFE_CHECK(riter != rend(), "iter() of rend()");
-    return this->table_.iter(riter);
+    FOLLY_SAFE_DCHECK(
+        rbegin() <= riter && riter < rend(),
+        "iter() of an invalid reverse_iterator");
+    return iterator{riter + 1};
   }
   const_iterator iter(const_reverse_iterator riter) const {
-    FOLLY_SAFE_CHECK(riter != crend(), "iter() of rend()");
-    return this->table_.iter(riter);
+    FOLLY_SAFE_DCHECK(
+        crbegin() <= riter && riter < crend(),
+        "iter() of an invalid reverse_iterator");
+    return const_iterator{riter + 1};
   }
 
   reverse_iterator riter(iterator it) {
-    FOLLY_SAFE_CHECK(it != this->end(), "riter() of end()");
-    return this->table_.riter(it);
+    FOLLY_SAFE_DCHECK(
+        this->begin() <= it && it < this->end(),
+        "riter() of an invalid iterator");
+    return it.base() - 1;
   }
   const_reverse_iterator riter(const_iterator it) const {
-    FOLLY_SAFE_CHECK(it != this->cend(), "riter() of end()");
-    return this->table_.riter(it);
+    FOLLY_SAFE_DCHECK(
+        this->cbegin() <= it && it < this->cend(),
+        "riter() of an invalid iterator");
+    return it.base() - 1;
   }
 
   friend Range<const_reverse_iterator> tag_invoke(

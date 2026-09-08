@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <iterator>
 #include <memory>
 #include <new>
 #include <type_traits>
@@ -27,6 +28,7 @@
 #include <folly/Unit.h>
 #include <folly/container/HeterogeneousAccess.h>
 #include <folly/container/detail/F14Table.h>
+#include <folly/container/reverse_iterator.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
@@ -923,76 +925,9 @@ template <
     typename EligibleForPerturbedInsertionOrder>
 class VectorContainerPolicy;
 
+// Iteration is LIFO: the last value in values_ is the first one visited.
 template <typename ValuePtr>
-class VectorContainerIterator : public BaseIter<ValuePtr, uint32_t> {
-  using Super = BaseIter<ValuePtr, uint32_t>;
-  using ValueConstPtr = typename Super::ValueConstPtr;
-
- public:
-  using pointer = typename Super::pointer;
-  using reference = typename Super::reference;
-  using value_type = typename Super::value_type;
-
-  VectorContainerIterator() = default;
-  VectorContainerIterator(VectorContainerIterator const&) = default;
-  VectorContainerIterator(VectorContainerIterator&&) = default;
-  VectorContainerIterator& operator=(VectorContainerIterator const&) = default;
-  VectorContainerIterator& operator=(VectorContainerIterator&&) = default;
-  ~VectorContainerIterator() = default;
-
-  /*implicit*/ operator VectorContainerIterator<ValueConstPtr>() const {
-    return VectorContainerIterator<ValueConstPtr>{current_, lowest_};
-  }
-
-  reference operator*() const { return *current_; }
-
-  pointer operator->() const { return current_; }
-
-  VectorContainerIterator& operator++() {
-    if (FOLLY_UNLIKELY(current_ == lowest_)) {
-      current_ = nullptr;
-    } else {
-      --current_;
-    }
-    return *this;
-  }
-
-  VectorContainerIterator operator++(int) {
-    auto cur = *this;
-    ++*this;
-    return cur;
-  }
-
-  friend bool operator==(
-      VectorContainerIterator const& lhs, VectorContainerIterator const& rhs) {
-    return lhs.current_ == rhs.current_;
-  }
-  friend bool operator!=(
-      VectorContainerIterator const& lhs, VectorContainerIterator const& rhs) {
-    return !(lhs == rhs);
-  }
-
- private:
-  ValuePtr current_;
-  ValuePtr lowest_;
-
-  explicit VectorContainerIterator(ValuePtr current, ValuePtr lowest)
-      : current_(current), lowest_(lowest) {}
-
-  std::size_t index() const { return current_ - lowest_; }
-
-  template <
-      typename K,
-      typename M,
-      typename H,
-      typename E,
-      typename A,
-      typename P>
-  friend class VectorContainerPolicy;
-
-  template <typename P>
-  friend class VectorContainerIterator;
-};
+using VectorContainerIterator = folly::reverse_iterator<ValuePtr>;
 
 struct VectorContainerIndexSearch {
   uint32_t index_;
@@ -1455,13 +1390,10 @@ class VectorContainerPolicy
 
   // Iterator stuff
 
-  Iter linearBegin(std::size_t size) const {
-    return size > 0
-        ? Iter{values_ + size - 1, values_}
-        : Iter{nullptr, nullptr};
-  }
+  // Iter is a reverse_iterator.
+  Iter linearBegin(std::size_t size) const { return Iter{values_ + size}; }
 
-  Iter linearEnd() const { return Iter{nullptr, nullptr}; }
+  Iter linearEnd() const { return Iter{values_}; }
 
   //////// F14BasicMap/Set policy
 
@@ -1469,9 +1401,8 @@ class VectorContainerPolicy
     if (underlying.atEnd()) {
       return linearEnd();
     } else {
-      assume(values_ + underlying.item() != nullptr);
       assume(values_ != nullptr);
-      return Iter{values_ + underlying.item(), values_};
+      return indexToIter(underlying.item());
     }
   }
 
@@ -1479,21 +1410,17 @@ class VectorContainerPolicy
     return makeIter(underlying);
   }
 
+  // Conversions between Iter (a reverse_iterator) and an index into values_.
+  // Item is used directly as values_[index] and base() is one past the
+  // element, hence the -1. So end() maps to Item(-1) == max(), never a live
+  // subscript, and indexToIter wraps it back to end().
   Item iterToIndex(ConstIter const& iter) const {
-    auto n = iter.index();
-    assume(n <= std::numeric_limits<Item>::max());
-    return static_cast<Item>(n);
+    return static_cast<Item>(iter.base() - values_ - 1);
   }
 
-  Iter indexToIter(Item index) const { return Iter{values_ + index, values_}; }
-
-  Iter iter(ReverseIter it) { return Iter{it, values_}; }
-
-  ConstIter iter(ConstReverseIter it) const { return ConstIter{it, values_}; }
-
-  ReverseIter riter(Iter it) { return it.current_; }
-
-  ConstReverseIter riter(ConstIter it) const { return it.current_; }
+  Iter indexToIter(Item index) const {
+    return Iter{values_ + static_cast<Item>(index + 1)};
+  }
 
   ValuePtr values_{nullptr};
 };

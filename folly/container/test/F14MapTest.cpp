@@ -799,6 +799,7 @@ TEST(F14VectorMap, reverseIterator) {
   auto verify = [](TMap const& h, uint64_t lo, uint64_t hi) {
     auto loIt = h.find(lo);
     EXPECT_NE(h.end(), loIt);
+    EXPECT_EQ(lo, loIt->first);
     uint64_t val = lo;
     for (auto rit = h.riter(loIt); rit != h.rend(); ++rit) {
       EXPECT_EQ(val, rit->first);
