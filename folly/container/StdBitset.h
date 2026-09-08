@@ -50,7 +50,9 @@ size_t* get_underlying_data_region(const std::bitset<N>& bitset) {
 
 template <size_t N>
 size_t std_bitset_find_next(const std::bitset<N>& bitset, size_t start) {
-  constexpr size_t max_words = N / kWordSize + 1;
+  // libc++ stores ceil(N / kWordSize) words, so N / kWordSize + 1 reads one
+  // word past the end whenever N is an exact multiple of kWordSize.
+  constexpr size_t max_words = (N + kWordSize - 1) / kWordSize;
   if constexpr (N == 0) {
     return 1;
   }

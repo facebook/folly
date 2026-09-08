@@ -75,3 +75,34 @@ TEST(BitSetTest, FindNext) {
     ASSERT_EQ(expected, actual);
   }
 }
+
+// Sizes that are exact multiples of the 64-bit word size leave no spare bits in
+// the last word, so scanning past it reads out of bounds (caught by ASAN under
+// libc++). Walk every bitset to its end to exercise the final word.
+template <size_t N>
+void testWordMultipleSize() {
+  {
+    std::bitset<N> objectUnderTest; // all zeroes
+
+    ASSERT_EQ(N, folly::std_bitset_find_first(objectUnderTest));
+    ASSERT_EQ(N, folly::std_bitset_find_next(objectUnderTest, 0));
+    ASSERT_EQ(N, folly::std_bitset_find_next(objectUnderTest, N - 1));
+  }
+
+  {
+    std::bitset<N> objectUnderTest;
+    objectUnderTest.set(N - 1);
+
+    ASSERT_EQ(N - 1, folly::std_bitset_find_first(objectUnderTest));
+    ASSERT_EQ(N - 1, folly::std_bitset_find_next(objectUnderTest, 0));
+    ASSERT_EQ(N, folly::std_bitset_find_next(objectUnderTest, N - 1));
+  }
+}
+
+TEST(BitSetTest, WordMultipleSizes) {
+  testWordMultipleSize<64>();
+  testWordMultipleSize<128>();
+  testWordMultipleSize<256>();
+  testWordMultipleSize<512>();
+  testWordMultipleSize<1536>();
+}
