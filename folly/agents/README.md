@@ -42,6 +42,8 @@ The main rules target those gaps:
   not activate them or make them package roots. During a task, load one only
   when the user rule file or another operational rule names it.
 - `<name>/` holds more focused files used by that package.
+- `backtest/` contains fixed tasks for measuring how rule changes affect an
+  artifact. It is development tooling and is never loaded as task policy.
 - `CONTRIB.md` explains a directory's purpose and maintenance rules.
 - `<name>.contrib.md` records one current or proposed rule's purpose and
   context.

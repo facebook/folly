@@ -1,0 +1,8 @@
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+python_library(
+    name = "run_scenario_lib",
+    srcs = ["run_scenario.py"],
+)
