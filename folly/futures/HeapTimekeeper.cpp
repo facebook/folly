@@ -299,7 +299,12 @@ void HeapTimekeeper::State::worker() {
   }
 }
 
-HeapTimekeeper::HeapTimekeeper() : state_(std::make_shared<State>()) {
+HeapTimekeeper::HeapTimekeeper()
+    : HeapTimekeeper(WorkerWrapper{[](FunctionRef<void()> run) { run(); }}) {}
+
+HeapTimekeeper::HeapTimekeeper(WorkerWrapper workerWrapper)
+    : workerWrapper_(std::move(workerWrapper)),
+      state_(std::make_shared<State>()) {
   thread_ = std::thread{[this] { worker(); }};
 }
 
@@ -315,7 +320,7 @@ SemiFuture<Unit> HeapTimekeeper::after(HighResDuration dur) {
 }
 
 void HeapTimekeeper::worker() const {
-  state_->worker();
+  workerWrapper_([this] { state_->worker(); });
 }
 
 } // namespace folly

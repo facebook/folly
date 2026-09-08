@@ -19,6 +19,7 @@
 #include <chrono>
 #include <thread>
 
+#include <folly/Function.h>
 #include <folly/futures/Future.h>
 
 namespace folly {
@@ -37,7 +38,14 @@ class HeapTimekeeper : public Timekeeper {
   SemiFuture<Unit> after(HighResDuration) override;
 
  protected:
-  virtual void worker() const;
+  // Invoked on the worker thread with the worker loop as its argument, so a
+  // subclass can establish thread-local state (for example a JNI attachment)
+  // that stays in place for the whole life of the thread.
+  using WorkerWrapper = Function<void(FunctionRef<void()>) const>;
+
+  // Subclasses can wrap the worker in a lambda. The worker must be called once,
+  // on the same thread and should never throw.
+  explicit HeapTimekeeper(WorkerWrapper workerWrapper);
 
  private:
   using Clock = std::chrono::steady_clock;
@@ -45,6 +53,9 @@ class HeapTimekeeper : public Timekeeper {
   class Timeout;
   class State;
 
+  void worker() const;
+
+  WorkerWrapper workerWrapper_;
   // Shared with the futures, so that they can survive the timekeeper.
   std::shared_ptr<State> state_;
   std::thread thread_;
