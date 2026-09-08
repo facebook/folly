@@ -193,7 +193,7 @@ void setCipherSuites(SSLContext& ctx) {
   try {
     std::string ciphersuites;
     folly::join(':', TSSLOptions::ciphersuites(), ciphersuites);
-    ctx.setCiphersuitesOrThrow(std::move(ciphersuites));
+    ctx.setCiphersuitesOrThrow(ciphersuites);
     ctx.setCipherList(TSSLOptions::ciphers());
   } catch (std::runtime_error const& e) {
     ssl_options_detail::logDfatal(e);
