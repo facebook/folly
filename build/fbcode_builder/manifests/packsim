@@ -1,0 +1,52 @@
+[manifest]
+name = packsim
+fbsource_path = fbcode/ai_simulation/packsim
+
+# Deliberately no `shipit_project` / `shipit.pathmap` / `shipit.strip`.
+#
+# Those three would let `getdeps build packsim` transform fbsource in place,
+# but only by restating what the export contains -- and the packsim export is
+# defined solely by
+# opensource/shipit_config/facebook/ai_simulation.cconf in Configerator. A
+# second copy of the strip rules here would drift from it silently, and the
+# symptom would be getdeps reporting a green build of a tree that is not the
+# one ShipIt publishes. That is worse than no answer.
+#
+# The internal way to build the export is instead
+#
+#     buck2 run fbcode//ai_simulation/packsim/scripts:oss_check -- \
+#         materialize /tmp/packsim-export
+#
+# which reads the live config on every run, followed by cmake against that
+# directory. See fbcode/ai_simulation/CMakeLists.txt.
+#
+# Once github.com/facebook/ai_simulation is public, `[git] repo_url` below is
+# enough for external consumers and for OSS CI.
+
+[git]
+repo_url = https://github.com/facebook/ai_simulation.git
+
+[build]
+builder = cmake
+
+[cmake.defines.test=on]
+BUILD_TESTS=ON
+
+[cmake.defines.test=off]
+BUILD_TESTS=OFF
+
+# packsim's dependency set is exhaustive: every angled include in the export
+# resolves to one of these, to the C++ standard library, or to
+# <fcntl.h>/<unistd.h>/<sys/resource.h>.
+#
+# fbthrift is used for codegen and (de)serialization only -- packsim declares
+# no thrift services -- so the RPC transport stack (fizz, wangle, mvfst,
+# libsodium) and the benchmark executables are skipped.
+[dependencies]
+boost
+fbthrift = !rpc, !benchmark
+fmt
+folly
+gflags
+googletest
+magic_enum
