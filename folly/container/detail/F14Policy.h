@@ -1487,14 +1487,6 @@ class VectorContainerPolicy
 
   Iter indexToIter(Item index) const { return Iter{values_ + index, values_}; }
 
-  Iter iter(ReverseIter it) { return Iter{it, values_}; }
-
-  ConstIter iter(ConstReverseIter it) const { return ConstIter{it, values_}; }
-
-  ReverseIter riter(Iter it) { return it.current_; }
-
-  ConstReverseIter riter(ConstIter it) const { return it.current_; }
-
   ValuePtr values_{nullptr};
 };
 
