@@ -171,18 +171,21 @@ class F14BasicSet
       std::is_empty<KeyEqual>::value,
       BottomKeyEqualEmpty,
       BottomKeyEqualNonEmpty<sizeof(KeyEqual), alignof(KeyEqual)>>;
-  template <bool IsFinal, typename K>
-  struct BottomKeyEqualCond : BottomKeyEqualBase {
+  // Two named class templates instead of a partial specialization: nvcc's
+  // EDG front-end rejects the specialized form ("expected class-name").
+  template <typename K>
+  struct BottomKeyEqualNonFinal : BottomKeyEqualBase {
     [[noreturn]] bool operator()(K const&, K const&) const {
       assume_unreachable();
     }
   };
   template <typename K>
-  struct BottomKeyEqualCond<true, K> final : BottomKeyEqualCond<false, K> {};
+  struct BottomKeyEqualFinal final : BottomKeyEqualNonFinal<K> {};
   template <typename K>
-  using BottomKeyEqual = BottomKeyEqualCond<
+  using BottomKeyEqual = conditional_t<
       std::is_final<KeyEqual>::value || std::is_union<KeyEqual>::value,
-      K>;
+      BottomKeyEqualFinal<K>,
+      BottomKeyEqualNonFinal<K>>;
   using BottomTest = BottomKeyEqual<char>;
   static_assert(sizeof(BottomTest) == sizeof(KeyEqual), "mismatch size");
   static_assert(alignof(BottomTest) == alignof(KeyEqual), "mismatch align");
