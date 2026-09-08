@@ -295,6 +295,12 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME reverse_iterator
+  HEADERS
+    reverse_iterator.h
+)
+
+folly_add_library(
   NAME small_vector
   HEADERS
     small_vector.h
