@@ -16,5 +16,9 @@ omissions that could lead a reader to misuse the API, misread captured metadata,
 or integrate it incorrectly. Report the specific wrong action each problem could
 cause; omit minor detail that would not change reader action.
 
+Human comparison is the default. The [optional contract check](eval/SETUP.md)
+reports factual conflicts and omissions when the public API and an ordinary read
+do not settle accuracy.
+
 Run this scenario with the [parent runner instructions](../README.md), using
 this directory in place of `SCENARIO`.
