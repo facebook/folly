@@ -1569,6 +1569,7 @@ class F14VectorMapImpl
   template <typename BeforeDestroy>
   FOLLY_ALWAYS_INLINE iterator
   eraseInto(const_iterator pos, BeforeDestroy&& beforeDestroy) {
+    FOLLY_SAFE_CHECK(pos != cend(), "erase() of a past-the-end iterator");
     auto index = this->table_.iterToIndex(pos);
     auto underlying = this->table_.find(VectorContainerIndexSearch{index});
     eraseUnderlying(underlying, beforeDestroy);
@@ -1724,14 +1725,22 @@ class F14VectorMap
 
   /// Explicit conversions between iterator and reverse_iterator
   /// @methodset Iterators
-  iterator iter(reverse_iterator riter) { return this->table_.iter(riter); }
+  iterator iter(reverse_iterator riter) {
+    FOLLY_SAFE_CHECK(riter != rend(), "iter() of rend()");
+    return this->table_.iter(riter);
+  }
   const_iterator iter(const_reverse_iterator riter) const {
+    FOLLY_SAFE_CHECK(riter != crend(), "iter() of rend()");
     return this->table_.iter(riter);
   }
 
   /// @copydoc iter
-  reverse_iterator riter(iterator it) { return this->table_.riter(it); }
+  reverse_iterator riter(iterator it) {
+    FOLLY_SAFE_CHECK(it != this->end(), "riter() of end()");
+    return this->table_.riter(it);
+  }
   const_reverse_iterator riter(const_iterator it) const {
+    FOLLY_SAFE_CHECK(it != this->cend(), "riter() of end()");
     return this->table_.riter(it);
   }
 
