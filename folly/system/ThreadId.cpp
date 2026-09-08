@@ -14,6 +14,16 @@
  * limitations under the License.
  */
 
+// On Emscripten/musl, the `gettid()` declaration in <unistd.h> is gated on
+// _GNU_SOURCE. Define it before any header is included so the declaration is
+// visible to the `__EMSCRIPTEN__` branch in `getOSThreadIDSlow()` below.
+// Scoped to `__EMSCRIPTEN__` to avoid cascading GNU extensions into the file
+// on other platforms (Linux uses `syscall(FOLLY_SYS_gettid)` and does not
+// need _GNU_SOURCE here).
+#if defined(__EMSCRIPTEN__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE 1
+#endif
+
 #include <folly/system/ThreadId.h>
 
 #include <folly/Likely.h>
@@ -50,7 +60,7 @@ uint64_t getOSThreadIDSlow() {
   thr_self(&tid);
   return uint64_t(tid);
 #elif defined(__EMSCRIPTEN__)
-  return 0;
+  return uint64_t(gettid());
 #else
   return uint64_t(syscall(FOLLY_SYS_gettid));
 #endif

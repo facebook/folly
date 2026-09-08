@@ -31,6 +31,12 @@
 #if defined(__APPLE__)
 #define FOLLY_SYS_gettid SYS_thread_selfid
 #elif defined(__EMSCRIPTEN__)
+// Emscripten's public sysroot does not expose SYS_gettid via <sys/syscall.h>.
+// `folly::getOSThreadID()` on Emscripten calls musl's `gettid()` from
+// <unistd.h> directly and never references this macro. Other consumers that
+// name FOLLY_SYS_gettid must still compile, so a sentinel is defined; the
+// linux_syscall() path below returns -1 on Emscripten without invoking it,
+// so the sentinel value is inert at runtime.
 #define FOLLY_SYS_gettid 0
 #elif defined(SYS_gettid)
 #define FOLLY_SYS_gettid SYS_gettid
