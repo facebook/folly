@@ -1,0 +1,72 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
+#include <atomic>
+#include <cstdint>
+#include <optional>
+#include <utility>
+
+#include <folly/ScopeGuard.h>
+#include <folly/coro/Task.h>
+#include <folly/coro/detail/CurrentAsyncFrame.h>
+#include <folly/tracing/AsyncStack.h>
+
+#if FOLLY_HAS_COROUTINES
+
+namespace folly::coro {
+
+template <typename T>
+Task<T> co_withMetadata(uint64_t metadata, Task<T> task) {
+  auto& frame = co_await detail::co_current_async_stack_frame;
+
+  // Splice a metadata frame into the chain directly below `frame`, so that
+  // `frame` is attributed to `metadata`. The frame lives here, in the
+  // coroutine frame, so that it survives every suspension of the scope it
+  // tags.
+  AsyncStackMetadataFrame metadataFrame;
+  metadataFrame.getFrame().setParentFrame(frame.getParentFrame());
+  metadataFrame.getFrame().setReturnAddress(
+      reinterpret_cast<void*>(AsyncStackMetadataFrame::kReturnAddressCookie));
+  metadataFrame.setMetadata(metadata);
+
+  // Only the thread that owns `frame` ever writes this chain.
+  // Readers are either that same thread, interrupted by a signal handler or a
+  // sampling profiler, or an external observer with the thread stopped.
+  // Neither runs concurrently with the writes, so no inter-thread ordering is
+  // required. What is required is that a reader interrupting the thread
+  // mid-splice never sees a frame linked into the chain before its contents
+  // are initialised. std::atomic_signal_fence gives exactly that - it stops
+  // the compiler from sinking the initialisation past the store that publishes
+  // the link - and nothing stronger is needed, since a thread observes its
+  // own stores in program order. A reader running concurrently on another
+  // thread is outside this contract.
+  std::atomic_signal_fence(std::memory_order_release);
+  frame.setParentFrame(&metadataFrame.getFrame());
+  std::optional guard{makeGuard([&]() noexcept {
+    frame.setParentFrame(metadataFrame.getFrame().getParentFrame());
+    std::atomic_signal_fence(std::memory_order_release);
+  })};
+
+  auto res = co_await co_awaitTry(std::move(task));
+  guard.reset();
+  co_yield co_result(std::move(res));
+}
+
+} // namespace folly::coro
+
+#endif // FOLLY_HAS_COROUTINES

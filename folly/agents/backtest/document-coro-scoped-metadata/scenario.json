@@ -1,0 +1,37 @@
+{
+  "prompt": "input/author-prompt.md",
+  "inputs": [
+    {
+      "source": "input/input-map.md",
+      "destination": "input-map.md"
+    },
+    {
+      "source": "input/conversation.md",
+      "destination": "conversation.md"
+    },
+    {
+      "source": "input/working-review.md",
+      "destination": "working-review.md"
+    },
+    {
+      "source": "input/request.md",
+      "destination": "request.md"
+    },
+    {
+      "source": "input/later-design-clarifications.md",
+      "destination": "later-design-clarifications.md"
+    },
+    {
+      "source": "input/source",
+      "destination": "source"
+    }
+  ],
+  "rules": [
+    "core.md",
+    "core/breadcrumbs.md",
+    "core/conflicts.md",
+    "design-vetting.md",
+    "writing.md",
+    "critic-iterate.md"
+  ]
+}

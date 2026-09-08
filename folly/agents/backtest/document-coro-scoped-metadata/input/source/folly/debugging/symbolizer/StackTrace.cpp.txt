@@ -1,0 +1,531 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <folly/debugging/symbolizer/StackTrace.h>
+#include <folly/tracing/AsyncStack.h>
+
+#include <algorithm>
+#include <cstdlib>
+#include <cstring>
+#include <limits>
+#include <memory>
+#include <optional>
+
+#include <folly/Portability.h>
+#include <folly/portability/Config.h>
+
+#if defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
+// Must be first to ensure that UNW_LOCAL_ONLY is defined
+#define UNW_LOCAL_ONLY 1
+#include <folly/portability/Libunwind.h>
+#endif
+
+#if defined(FOLLY_HAVE_BACKTRACE) && FOLLY_HAVE_BACKTRACE
+#include <execinfo.h> // @donotremove
+#endif
+
+// Weak symbols for optional frame-pointer unwinder integration.
+// If no provider is linked, these remain nullptr and the code falls back to
+// libunwind/DWARF.
+#if FOLLY_HAVE_WEAK_SYMBOLS
+extern "C" FOLLY_ATTR_WEAK bool folly_debugging_have_proc_map_query();
+extern "C" FOLLY_ATTR_WEAK void folly_debugging_backtrace_raw(
+    void** vec, unsigned* len, unsigned max_len);
+#else
+static bool (*folly_debugging_have_proc_map_query)() = nullptr;
+static void (*folly_debugging_backtrace_raw)(
+    void** vec, unsigned* len, unsigned max_len) = nullptr;
+#endif
+
+namespace folly {
+namespace symbolizer {
+
+namespace {
+// force a getStackTrace to work around a race condition in the
+// libunwind tdep_init
+static uintptr_t sAddr = 0;
+static ssize_t sInit = getStackTrace(&sAddr, 0);
+
+// Uses the C++11 "magic static" pattern: `available` is initialized once on
+// first call, with thread-safety guaranteed by the C++ standard.
+static bool isProcMapQueryAvailable() noexcept {
+  static const bool available =
+      folly_debugging_have_proc_map_query != nullptr &&
+      folly_debugging_have_proc_map_query();
+  return available;
+}
+
+// Eagerly run this TU's magic-static during the static-init phase (before
+// main) so have_proc_map_query()'s pthread_once is completed ahead of normal
+// first use in signal handlers. This ordering is only guaranteed within this
+// translation unit; cross-TU dynamic-init order is unspecified.
+static const bool sProcMapQueryInit = isProcMapQueryAvailable();
+
+// Runtime opt-in check via environment variable.
+// The frame-pointer unwinder is enabled only when FOLLY_FB_UNWINDER_ENABLED is
+// set to exactly "1"; any other value (or unset) leaves it disabled.
+static bool isFramePointerUnwinderEnabled() noexcept {
+  static const bool enabled = []() {
+    const char* env = std::getenv("FOLLY_FB_UNWINDER_ENABLED");
+    return env != nullptr && std::strcmp(env, "1") == 0;
+  }();
+  return enabled;
+}
+
+// Force initialization of enable flag during static init phase.
+static const bool sFramePointerUnwinderEnabledInit =
+    isFramePointerUnwinderEnabled();
+
+// Returns frame count (>= 0) when the frame-pointer unwinder is enabled,
+// available, and produced at least one frame; returns -1 otherwise (caller
+// should fall through to the next unwinder). Mirrors the ssize_t/-1
+// convention used by getStackTraceInPlace and the public stack-trace APIs.
+FOLLY_ALWAYS_INLINE ssize_t
+tryFramePointerUnwind(uintptr_t* addresses, size_t maxAddresses) noexcept {
+  // Prevent LTO from optimizing away static initialization that pre-runs
+  // pthread_once before any signal handlers are installed.
+  std::ignore = sProcMapQueryInit;
+
+  if (folly_debugging_backtrace_raw == nullptr ||
+      !isFramePointerUnwinderEnabled() || !isProcMapQueryAvailable()) {
+    return -1;
+  }
+  unsigned len = 0;
+  folly_debugging_backtrace_raw(
+      reinterpret_cast<void**>(addresses),
+      &len,
+      static_cast<unsigned>(std::min(
+          maxAddresses,
+          static_cast<size_t>(std::numeric_limits<unsigned>::max()))));
+  return len > 0 ? static_cast<ssize_t>(len) : -1;
+}
+} // namespace
+
+ssize_t getStackTrace(
+    [[maybe_unused]] uintptr_t* addresses,
+    [[maybe_unused]] size_t maxAddresses) {
+  static_assert(
+      sizeof(uintptr_t) == sizeof(void*), "uintptr_t / pointer size mismatch");
+  std::ignore = sInit;
+
+  if (ssize_t n = tryFramePointerUnwind(addresses, maxAddresses); n >= 0) {
+    return n;
+  }
+
+  // The libunwind documentation says that unw_backtrace is
+  // async-signal-safe but, as of libunwind 1.0.1, it isn't
+  // (tdep_trace allocates memory on x86_64)
+  //
+  // There are two major variants of libunwind. libunwind on Linux
+  // (https://www.nongnu.org/libunwind/) provides unw_backtrace, and
+  // Apache/LLVM libunwind (notably used on Apple platforms)
+  // doesn't. They can be distinguished with the UNW_VERSION #define.
+  //
+  // When unw_backtrace is not available, fall back on the standard
+  // `backtrace` function from execinfo.h.
+#if defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND && \
+    defined(UNW_VERSION)
+  int r = unw_backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
+  return r < 0 ? -1 : r;
+#elif defined(FOLLY_HAVE_BACKTRACE) && FOLLY_HAVE_BACKTRACE
+  int r = backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
+  return r < 0 ? -1 : r;
+#elif defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
+  return getStackTraceSafe(addresses, maxAddresses);
+#else
+  return -1;
+#endif
+}
+
+namespace {
+
+// Heuristic for guessing the maximum stack frame size. This is needed to ensure
+// we do not have stack corruption while walking the stack.
+constexpr size_t kMaxExpectedStackFrameSizeLg2 = sizeof(size_t) == 8
+    ? 36 // 64GB
+    : 28 // 256MB
+    ;
+constexpr size_t kMaxExpectedStackFrameSize //
+    = size_t(1) << kMaxExpectedStackFrameSizeLg2;
+
+#if defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
+
+struct FrameInfo {
+  /// The instruction pointer (ip) of the frame.
+  uintptr_t uip;
+  bool isSignalFrame;
+
+  inline uintptr_t getAdjustedInstructionPointer(
+      std::optional<FrameInfo> frameInfoPrev) const {
+    bool adjustment;
+
+    if constexpr (folly::kIsArchAArch64) {
+      // This ip adjustment logic matches `unw_backtrace`.
+      // https://github.com/libunwind/libunwind/blob/v1.8.2/src/aarch64/Gtrace.c#L554-L555
+      // The ip is adjusted if there wasn't a previous frame,
+      // or if the previous frame was NOT a signal frame.
+      adjustment = !frameInfoPrev || !frameInfoPrev->isSignalFrame;
+    } else {
+      // Use previous instruction in normal (call) frames (because the
+      // return address might not be in the same function for noreturn
+      // functions) but not in signal frames.
+      adjustment = !this->isSignalFrame;
+    }
+
+    return this->uip - adjustment;
+  }
+};
+
+/// Gets the `FrameInfo` from libunwind and stores it in the out ref parameter.
+///
+/// @return true on success and false on error.
+inline bool getFrameInfo(unw_cursor_t* cursor, FrameInfo& frameInfo) {
+  unw_word_t uip;
+  if (unw_get_reg(cursor, UNW_REG_IP, &uip) < 0) {
+    return false;
+  }
+  int r = unw_is_signal_frame(cursor);
+  if (r < 0) {
+    return false;
+  }
+  bool isSignalFrame = r > 0;
+
+  frameInfo = FrameInfo{uip, isSignalFrame};
+
+  return true;
+}
+
+// on ppc64le, fails with
+// function can never be inlined because it uses setjmp
+#if FOLLY_PPC64 == 0
+FOLLY_ALWAYS_INLINE
+#endif
+ssize_t getStackTraceInPlace(
+    unw_context_t& context,
+    unw_cursor_t& cursor,
+    uintptr_t* addresses,
+    size_t maxAddresses) {
+  if (maxAddresses == 0) {
+    return 0;
+  }
+  if (unw_getcontext(&context) < 0) {
+    return -1;
+  }
+  if (unw_init_local(&cursor, &context) < 0) {
+    return -1;
+  }
+  FrameInfo frameInfo;
+  if (!getFrameInfo(&cursor, frameInfo)) {
+    return -1;
+  }
+
+  std::optional<FrameInfo> frameInfoPrev; // no previous frame, yet.
+  *addresses = frameInfo.getAdjustedInstructionPointer(frameInfoPrev);
+  ++addresses;
+  size_t count = 1;
+  for (; count != maxAddresses; ++count, ++addresses) {
+    int r = unw_step(&cursor);
+    if (r < 0) {
+      return -1;
+    }
+    if (r == 0) {
+      break;
+    }
+    frameInfoPrev = frameInfo;
+    if (!getFrameInfo(&cursor, frameInfo)) {
+      return -1;
+    }
+    *addresses = frameInfo.getAdjustedInstructionPointer(frameInfoPrev);
+  }
+  return count;
+}
+
+#endif // FOLLY_HAVE_LIBUNWIND
+} // namespace
+
+ssize_t getStackTraceSafe(
+    [[maybe_unused]] uintptr_t* addresses,
+    [[maybe_unused]] size_t maxAddresses) {
+  std::ignore = sInit;
+#if defined(__APPLE__)
+  // While Apple platforms support libunwind, the unw_init_local,
+  // unw_step step loop does not cross the boundary from async signal
+  // handlers to the aborting code, while `backtrace` from execinfo.h
+  // does. `backtrace` is not explicitly documented on either macOS or
+  // Linux to be async-signal-safe, but the implementation in
+  // https://opensource.apple.com/source/Libc/Libc-1353.60.8/, and it is
+  // widely used in signal handlers in practice.
+  return backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
+#else
+  if (ssize_t n = tryFramePointerUnwind(addresses, maxAddresses); n >= 0) {
+    return n;
+  }
+#if defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
+  unw_context_t context;
+  unw_cursor_t cursor;
+  return getStackTraceInPlace(context, cursor, addresses, maxAddresses);
+#else
+  return -1;
+#endif
+#endif
+}
+
+ssize_t getStackTraceHeap(
+    [[maybe_unused]] uintptr_t* addresses,
+    [[maybe_unused]] size_t maxAddresses) {
+  std::ignore = sInit;
+
+  // Frame-pointer unwinding needs no large context, so no heap alloc.
+  if (ssize_t n = tryFramePointerUnwind(addresses, maxAddresses); n >= 0) {
+    return n;
+  }
+
+#if defined(FOLLY_HAVE_LIBUNWIND) && FOLLY_HAVE_LIBUNWIND
+  struct Ctx {
+    unw_context_t context;
+    unw_cursor_t cursor;
+  };
+  auto ctx_ptr = std::make_unique<Ctx>();
+  if (!ctx_ptr) {
+    return -1;
+  }
+  return getStackTraceInPlace(
+      ctx_ptr->context, ctx_ptr->cursor, addresses, maxAddresses);
+#else
+  return -1;
+#endif
+}
+
+namespace {
+// Helper struct for manually walking the stack using stack frame pointers
+struct StackFrame {
+  StackFrame* parentFrame;
+  void* returnAddress;
+};
+
+FOLLY_DISABLE_THREAD_SANITIZER size_t walkNormalStack(
+    uintptr_t* addrArr,
+    uint64_t* metadataArr,
+    size_t size,
+    StackFrame* normalStackFrame,
+    StackFrame* normalStackFrameStop) {
+  size_t numFrames = 0;
+  while (numFrames < size && normalStackFrame != nullptr &&
+#if defined(__linux__)
+         reinterpret_cast<uintptr_t>(normalStackFrame) >= kMinValidAddress
+#else
+         true
+#endif
+  ) {
+    auto* normalStackFrameNext = normalStackFrame->parentFrame;
+    if (!(normalStackFrameNext > normalStackFrame &&
+          normalStackFrameNext <
+              normalStackFrame + kMaxExpectedStackFrameSize)) {
+      // Stack frame addresses should increase as we traverse the stack.
+      // If it doesn't, it means we have stack corruption, or an unusual calling
+      // convention. Ensure that each subsequent frame's address is within a
+      // valid range. If it does not, stop walking the stack early to avoid
+      // incorrect stack walking.
+      break;
+    }
+    if (normalStackFrameStop != nullptr &&
+        normalStackFrameNext == normalStackFrameStop) {
+      // Reached end of normal stack, need to transition to the async stack.
+      // Do not include the return address in the stack trace that points
+      // to the frame that registered the AsyncStackRoot.
+      // Use the return address from the AsyncStackFrame as the current frame's
+      // return address rather than the return address from the normal
+      // stack frame, which would be the address of the executor function
+      // that invoked the callback.
+      break;
+    }
+    if (metadataArr) {
+      metadataArr[numFrames] = 0;
+    }
+    addrArr[numFrames++] =
+        reinterpret_cast<std::uintptr_t>(normalStackFrame->returnAddress);
+    normalStackFrame = normalStackFrameNext;
+  }
+  return numFrames;
+}
+
+bool isAsyncMetadataFrame(const AsyncStackFrame* frame) {
+  return frame &&
+      frame->getReturnAddress() ==
+      reinterpret_cast<void*>(AsyncStackMetadataFrame::kReturnAddressCookie);
+}
+
+struct WalkAsyncStackResult {
+  // Number of frames added in this walk
+  size_t numFrames{0};
+  // Normal stack frame to start the next normal stack walk
+  StackFrame* normalStackFrame{nullptr};
+  StackFrame* normalStackFrameStop{nullptr};
+  // Async stack frame to start the next async stack walk after the next
+  // normal stack walk
+  AsyncStackFrame* asyncStackFrame{nullptr};
+};
+
+WalkAsyncStackResult walkAsyncStack(
+    uintptr_t* addrArr,
+    uint64_t* metadataArr,
+    size_t size,
+    AsyncStackFrame* asyncStackFrame) {
+  WalkAsyncStackResult result;
+  while (result.numFrames < size && asyncStackFrame != nullptr) {
+    // A metadata frame carries a payload for readers that walk the chain
+    // directly. It is not an async operation, so leave it out of the trace.
+    // Only reachable here if the frame it was spliced below is not part of
+    // this chain.
+    if (isAsyncMetadataFrame(asyncStackFrame)) {
+      asyncStackFrame = asyncStackFrame->getParentFrame();
+      continue;
+    }
+
+    // Metadata frames sit directly below the frame they tag, so report their
+    // payload against that frame. The innermost one wins.
+    auto* asyncStackFrameNext = asyncStackFrame->getParentFrame();
+    uint64_t metadata = 0;
+    if (isAsyncMetadataFrame(asyncStackFrameNext)) {
+      metadata =
+          reinterpret_cast<const AsyncStackMetadataFrame*>(asyncStackFrameNext)
+              ->getMetadata();
+      do {
+        asyncStackFrameNext = asyncStackFrameNext->getParentFrame();
+      } while (isAsyncMetadataFrame(asyncStackFrameNext));
+    }
+
+    if (metadataArr) {
+      metadataArr[result.numFrames] = metadata;
+    }
+    addrArr[result.numFrames++] =
+        reinterpret_cast<std::uintptr_t>(asyncStackFrame->getReturnAddress());
+
+    if (asyncStackFrameNext == nullptr) {
+      // Reached end of async-stack.
+      // Check if there is an AsyncStackRoot and if so, whether there
+      // is an associated stack frame that indicates the normal stack
+      // frame we should continue walking at.
+      const auto* asyncStackRoot = asyncStackFrame->getStackRoot();
+      if (asyncStackRoot == nullptr) {
+        // This is a detached async stack. We are done
+        break;
+      }
+
+      // Get the normal stack frame holding this async root.
+      result.normalStackFrame =
+          reinterpret_cast<StackFrame*>(asyncStackRoot->getStackFramePointer());
+      if (result.normalStackFrame == nullptr) {
+        // No associated normal stack frame for this async stack root.
+        // This means we should treat this as a top-level/detached
+        // stack and not try to walk any further.
+        break;
+      }
+      // Skip to the parent stack-frame pointer
+      result.normalStackFrame = result.normalStackFrame->parentFrame;
+
+      // Check if there is a higher-level AsyncStackRoot that defines
+      // the stop point we should stop walking normal stack frames at.
+      // If there is no higher stack root then we will walk to the
+      // top of the normal stack (normalStackFrameStop == nullptr).
+      // Otherwise we record the frame pointer that we should stop
+      // at and walk normal stack frames until we hit that frame.
+      // Also get the async stack frame where the next async stack walk
+      // should begin after the next normal stack walk finishes.
+      asyncStackRoot = asyncStackRoot->getNextRoot();
+      if (asyncStackRoot != nullptr) {
+        result.normalStackFrameStop = reinterpret_cast<StackFrame*>(
+            asyncStackRoot->getStackFramePointer());
+        result.asyncStackFrame = asyncStackRoot->getTopFrame();
+      }
+    }
+    asyncStackFrame = asyncStackFrameNext;
+  }
+  return result;
+}
+} // namespace
+
+namespace {
+ssize_t getAsyncStackTrace(
+    void* framePointer,
+    void* returnAddress,
+    uintptr_t* addrArr,
+    uint64_t* metadataArr,
+    size_t size) {
+  size_t numFrames = 0;
+  const auto* asyncStackRoot = tryGetCurrentAsyncStackRoot();
+  if (asyncStackRoot == nullptr) {
+    // No async operation in progress. Return empty stack
+    return numFrames;
+  }
+
+  // Start by walking the normal stack until we get to the frame right before
+  // the frame that holds the async root.
+  auto* normalStackFrame = reinterpret_cast<StackFrame*>(framePointer);
+  auto* normalStackFrameStop =
+      reinterpret_cast<StackFrame*>(asyncStackRoot->getStackFramePointer());
+  if (numFrames < size) {
+    if (metadataArr) {
+      metadataArr[numFrames] = 0;
+    }
+    addrArr[numFrames++] = reinterpret_cast<std::uintptr_t>(returnAddress);
+  }
+  auto* asyncStackFrame = asyncStackRoot->getTopFrame();
+
+  while (numFrames < size &&
+         (normalStackFrame != nullptr || asyncStackFrame != nullptr)) {
+    numFrames += walkNormalStack(
+        addrArr + numFrames,
+        metadataArr ? metadataArr + numFrames : nullptr,
+        size - numFrames,
+        normalStackFrame,
+        normalStackFrameStop);
+
+    auto walkAsyncStackResult = walkAsyncStack(
+        addrArr + numFrames,
+        metadataArr ? metadataArr + numFrames : nullptr,
+        size - numFrames,
+        asyncStackFrame);
+    numFrames += walkAsyncStackResult.numFrames;
+    normalStackFrame = walkAsyncStackResult.normalStackFrame;
+    normalStackFrameStop = walkAsyncStackResult.normalStackFrameStop;
+    asyncStackFrame = walkAsyncStackResult.asyncStackFrame;
+  }
+  return numFrames;
+}
+} // namespace
+
+FOLLY_NOINLINE ssize_t getAsyncStackTraceSafe(uintptr_t* addrArr, size_t size) {
+  return getAsyncStackTrace(
+      FOLLY_ASYNC_STACK_FRAME_POINTER(),
+      FOLLY_ASYNC_STACK_RETURN_ADDRESS(),
+      addrArr,
+      nullptr,
+      size);
+}
+
+FOLLY_NOINLINE ssize_t
+getAsyncStackTraceSafe(uintptr_t* addrArr, uint64_t* metadataArr, size_t size) {
+  return getAsyncStackTrace(
+      FOLLY_ASYNC_STACK_FRAME_POINTER(),
+      FOLLY_ASYNC_STACK_RETURN_ADDRESS(),
+      addrArr,
+      metadataArr,
+      size);
+}
+
+} // namespace symbolizer
+} // namespace folly

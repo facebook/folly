@@ -1,0 +1,276 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <folly/coro/WithMetadata.h>
+
+#include <cstdint>
+#include <utility>
+#include <vector>
+
+#include <folly/coro/BlockingWait.h>
+#include <folly/coro/CurrentExecutor.h>
+#include <folly/coro/Task.h>
+#include <folly/debugging/symbolizer/StackTrace.h>
+#include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/portability/GTest.h>
+
+#if FOLLY_HAS_COROUTINES
+
+using namespace folly;
+using namespace folly::coro;
+
+namespace {
+FOLLY_NOINLINE std::vector<std::uint64_t> getMetadata() {
+  constexpr size_t kMaxSize = 100;
+  uintptr_t addrArr[kMaxSize] = {};
+  std::uint64_t metadataArr[kMaxSize] = {};
+  auto size =
+      symbolizer::getAsyncStackTraceSafe(addrArr, metadataArr, kMaxSize);
+
+  std::vector<std::uint64_t> res;
+  for (ssize_t i = 0; i < size; ++i) {
+    if (metadataArr[i] != 0) {
+      res.push_back(metadataArr[i]);
+    }
+  }
+  return res;
+}
+
+template <typename... Args>
+std::vector<std::uint64_t> makeMetadata(Args&&... args) {
+  return {static_cast<std::uint64_t>(std::forward<Args>(args))...};
+}
+} // namespace
+
+TEST(WithMetadata, OneExecutorNoMetadata) {
+  CPUThreadPoolExecutor exec{1};
+
+  std::vector<std::uint64_t> metadata;
+
+  auto func3 = [&]() -> Task<void> {
+    metadata = getMetadata();
+    co_return;
+  };
+  auto func2 = [&]() -> Task<void> { co_await func3(); };
+  auto func1 = [&]() -> Task<void> { co_await func2(); };
+
+  blockingWait(co_withExecutor(&exec, func1()));
+
+  EXPECT_EQ(metadata, makeMetadata());
+}
+
+TEST(WithMetadata, OneExecutorOneMetadata) {
+  CPUThreadPoolExecutor exec{1};
+
+  std::vector<std::uint64_t> metadata;
+
+  auto func3 = [&]() -> Task<void> {
+    metadata = getMetadata();
+    co_return;
+  };
+  auto func2 = [&]() -> Task<void> { co_await func3(); };
+  auto func1 = [&]() -> Task<void> { co_await func2(); };
+
+  blockingWait(co_withExecutor(&exec, co_withMetadata(0xdeadbee1, func1())));
+
+  EXPECT_EQ(metadata, makeMetadata(0xdeadbee1));
+}
+
+TEST(WithMetadata, OneExecutorTwoMetadata) {
+  CPUThreadPoolExecutor exec{1};
+
+  std::vector<std::uint64_t> metadata;
+
+  auto func3 = [&]() -> Task<void> {
+    metadata = getMetadata();
+    co_return;
+  };
+  auto func2 = [&]() -> Task<void> { co_await func3(); };
+  auto func1 = [&]() -> Task<void> {
+    co_await co_withMetadata(0xdeadbee2, func2());
+  };
+
+  blockingWait(co_withExecutor(&exec, co_withMetadata(0xdeadbee1, func1())));
+
+  EXPECT_EQ(metadata, makeMetadata(0xdeadbee2, 0xdeadbee1));
+}
+
+TEST(WithMetadata, OneExecutorThreeMetadata) {
+  CPUThreadPoolExecutor exec{1};
+
+  std::vector<std::uint64_t> metadata;
+
+  auto func3 = [&]() -> Task<void> {
+    metadata = getMetadata();
+    co_return;
+  };
+  auto func2 = [&]() -> Task<void> {
+    co_await co_withMetadata(0xdeadbee3, func3());
+  };
+  auto func1 = [&]() -> Task<void> {
+    co_await co_withMetadata(0xdeadbee2, func2());
+  };
+
+  blockingWait(co_withExecutor(&exec, co_withMetadata(0xdeadbee1, func1())));
+
+  EXPECT_EQ(metadata, makeMetadata(0xdeadbee3, 0xdeadbee2, 0xdeadbee1));
+}
+
+TEST(WithMetadata, OneExecutorSiblings) {
+  CPUThreadPoolExecutor exec{1};
+
+  std::vector<std::uint64_t> metadata2;
+  std::vector<std::uint64_t> metadata3;
+
+  auto func3 = [&]() -> Task<void> {
+    metadata3 = getMetadata();
+    co_return;
+  };
+  auto func2 = [&]() -> Task<void> {
+    metadata2 = getMetadata();
+    co_return;
+  };
+  auto func1 = [&]() -> Task<void> {
+    co_await co_withMetadata(0xdeadbee2, func2());
+    co_await co_withMetadata(0xdeadbee3, func3());
+  };
+
+  blockingWait(co_withExecutor(&exec, co_withMetadata(0xdeadbee1, func1())));
+
+  EXPECT_EQ(metadata2, makeMetadata(0xdeadbee2, 0xdeadbee1));
+  EXPECT_EQ(metadata3, makeMetadata(0xdeadbee3, 0xdeadbee1));
+}
+
+TEST(WithMetadata, ThreeExecutorsNoMetadata) {
+  CPUThreadPoolExecutor exec1{1};
+  CPUThreadPoolExecutor exec2{1};
+  CPUThreadPoolExecutor exec3{1};
+
+  std::vector<std::uint64_t> metadata;
+
+  auto func3 = [&]() -> Task<void> {
+    metadata = getMetadata();
+    co_return;
+  };
+  auto func2 = [&]() -> Task<void> {
+    co_await co_withExecutor(&exec3, func3());
+  };
+  auto func1 = [&]() -> Task<void> {
+    co_await co_withExecutor(&exec2, func2());
+  };
+
+  blockingWait(co_withExecutor(&exec1, func1()));
+
+  EXPECT_EQ(metadata, makeMetadata());
+}
+
+TEST(WithMetadata, ThreeExecutorsOneMetadata) {
+  CPUThreadPoolExecutor exec1{1};
+  CPUThreadPoolExecutor exec2{1};
+  CPUThreadPoolExecutor exec3{1};
+
+  std::vector<std::uint64_t> metadata;
+
+  auto func3 = [&]() -> Task<void> {
+    metadata = getMetadata();
+    co_return;
+  };
+  auto func2 = [&]() -> Task<void> {
+    co_await co_withExecutor(&exec3, func3());
+  };
+  auto func1 = [&]() -> Task<void> {
+    co_await co_withExecutor(&exec2, func2());
+  };
+
+  blockingWait(co_withExecutor(&exec1, co_withMetadata(0xdeadbee1, func1())));
+
+  EXPECT_EQ(metadata, makeMetadata(0xdeadbee1));
+}
+
+TEST(WithMetadata, ThreeExecutorsTwoMetadata) {
+  CPUThreadPoolExecutor exec1{1};
+  CPUThreadPoolExecutor exec2{1};
+  CPUThreadPoolExecutor exec3{1};
+
+  std::vector<std::uint64_t> metadata;
+
+  auto func3 = [&]() -> Task<void> {
+    metadata = getMetadata();
+    co_return;
+  };
+  auto func2 = [&]() -> Task<void> {
+    co_await co_withExecutor(&exec3, func3());
+  };
+  auto func1 = [&]() -> Task<void> {
+    co_await co_withExecutor(&exec2, co_withMetadata(0xdeadbee2, func2()));
+  };
+
+  blockingWait(co_withExecutor(&exec1, co_withMetadata(0xdeadbee1, func1())));
+
+  EXPECT_EQ(metadata, makeMetadata(0xdeadbee2, 0xdeadbee1));
+}
+
+TEST(WithMetadata, ThreeExecutorsThreeMetadata) {
+  CPUThreadPoolExecutor exec1{1};
+  CPUThreadPoolExecutor exec2{1};
+  CPUThreadPoolExecutor exec3{1};
+
+  std::vector<std::uint64_t> metadata;
+
+  auto func3 = [&]() -> Task<void> {
+    metadata = getMetadata();
+    co_return;
+  };
+  auto func2 = [&]() -> Task<void> {
+    co_await co_withExecutor(&exec3, co_withMetadata(0xdeadbee3, func3()));
+  };
+  auto func1 = [&]() -> Task<void> {
+    co_await co_withExecutor(&exec2, co_withMetadata(0xdeadbee2, func2()));
+  };
+
+  blockingWait(co_withExecutor(&exec1, co_withMetadata(0xdeadbee1, func1())));
+
+  EXPECT_EQ(metadata, makeMetadata(0xdeadbee3, 0xdeadbee2, 0xdeadbee1));
+}
+
+TEST(WithMetadata, ThreeExecutorsSiblings) {
+  CPUThreadPoolExecutor exec1{1};
+  CPUThreadPoolExecutor exec2{1};
+  CPUThreadPoolExecutor exec3{1};
+
+  std::vector<std::uint64_t> metadata2;
+  std::vector<std::uint64_t> metadata3;
+
+  auto func3 = [&]() -> Task<void> {
+    metadata3 = getMetadata();
+    co_return;
+  };
+  auto func2 = [&]() -> Task<void> {
+    metadata2 = getMetadata();
+    co_return;
+  };
+  auto func1 = [&]() -> Task<void> {
+    co_await co_withExecutor(&exec2, co_withMetadata(0xdeadbee2, func2()));
+    co_await co_withExecutor(&exec3, co_withMetadata(0xdeadbee3, func3()));
+  };
+
+  blockingWait(co_withExecutor(&exec1, co_withMetadata(0xdeadbee1, func1())));
+
+  EXPECT_EQ(metadata2, makeMetadata(0xdeadbee2, 0xdeadbee1));
+  EXPECT_EQ(metadata3, makeMetadata(0xdeadbee3, 0xdeadbee1));
+}
+
+#endif // FOLLY_HAS_COROUTINES
