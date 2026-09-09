@@ -54,8 +54,8 @@ The author must adopt a persona free from cognitive biases like rationalization
 & sunk-cost. Channel these traits as you revise:
 
 - **Reader-first.** Every unnecessary word taxes every reader.
-- **Essentialist.** Hates stamp-collecting completionism. Keep only facts whose
-  absence changes reader action.
+- **Essentialist.** Keep only facts the target reader needs; truth or relevance
+  alone is not enough.
 - **No ego, no attachment to prior words.**
 - **Rationalization-hostile.** "Load-bearing," "critical," and "archaeologist
   needs it" must name the concrete failure caused by cutting.
@@ -65,11 +65,11 @@ The author must adopt a persona free from cognitive biases like rationalization
 ## Substance
 
 **Select facts, then compress wording.** Use sources to get the facts right, not
-to decide that every fact belongs. Being non-obvious is not enough. Keep a fact
-only when leaving it out would prevent the primary reader from understanding the
-point or completing the task the writing is meant to support. For a fact that
-stays, keep the concrete detail that makes it useful to that reader. Replacing
-that detail with a broad label is not concision.
+to decide that every fact belongs. Keep only the facts the primary reader needs
+to do the job the artifact exists to support. Being true, related, or
+non-obvious is not enough. For a fact that stays, keep the concrete detail that
+makes it useful to that reader. Replacing that detail with a broad label is not
+concision.
 
 - Assume the intended reader's normal background, but not this artifact or its
   drafting history. State the question or problem and enough framing and
@@ -262,8 +262,8 @@ like `Drive-by: drop some dead code.` is enough.
 
 ## What evergreen context means
 
-Each include below is a default-keep candidate, but each is subject to the Cut
-test in "## Iterate" — defaults don't override the local test.
+These are common kinds of useful context, not a checklist. Keep one only when
+the artifact's audience and purpose require it.
 
 - The situation that made the change necessary, named as reviewer-facing pain
   ("untenable to review", "can't ship without manual diff inspection"), not the
@@ -301,7 +301,7 @@ the wrong container are wasted motion.
    noun chain ("the X's Y whose Z affects W") or reach for the dictionary, split
    or rewrite. Jargon stacks fail even when each term is correct.
 
-### Cut test — per sentence (Iceberg in operation)
+### Cut test — per sentence
 
 Ask: **"Which required part of this audience's mental model or task becomes
 wrong, missing, or materially harder if I cut this sentence?"** A fact does not
@@ -310,18 +310,13 @@ part is lost, cut it.
 
 Cut on (locality first, style second):
 
-- **Nothing material lost** — the message reads cleanly without it.
-- **Detail or evidence lives elsewhere.** Do not repeat it, but keep the framing
-  needed here. A passing mention that just gestures at a construct defined
-  elsewhere is still bloat — cut entirely or move the load-bearing fact in, no
-  half-include.
+- **Nothing material lost** — the artifact reads cleanly without it.
 - **Restates the title or an earlier sentence.** (Includes wrap-ups, especially
   invariant restatements after a goal-led lead.)
-- **Names the mechanism when stating the outcome would be tighter.** E.g., "X is
-  keyed by res_id, so any shared res_id must merge into one unit" → "Every X now
-  lives inside a single Y."
-- **Causal chain spelled out where one claim would carry it.** "X has Y, so Z"
-  with each step elaborated → state Z.
+- **Unneeded intermediate detail.** State the result the reader needs. Keep
+  mechanics or causal steps only when the result would otherwise be hard to
+  understand: “Requests are keyed by account ID, so requests with the same ID
+  enter one batch” → “Requests from one account now share a batch.”
 - **Opaque-identifier enumeration.** Lists of hex hashes / auto-generated IDs
   the reader can't act on — name the SET or the COUNT instead. "Three res_ids
   (`5f6bcc932c826`, `6196aa3142bcf`, `67056151d29d2`)" → "the three res_ids".
@@ -329,14 +324,15 @@ Cut on (locality first, style second):
   gotcha.
 - **Structure is not motivation.** Phrases like "co-locating the two", "instead
   of repeating X", or "the goal is to group..." are bloat when they re-label the
-  diff's mechanics as a why. If the structure changes reviewer action, name the
-  consequence or invariant; otherwise cut the sentence.
+  diff's mechanics as a why. If cutting the sentence would make the reviewer
+  misunderstand the change or do something wrong, name the concrete consequence
+  or invariant; otherwise cut it.
 - **Reflexive reassurance** — preempting an objection the reader didn't raise.
   Surface forms: "Fine because…", "no risk of…", "to keep this focused on…",
-  "you don't need to worry that…". Test: if you cut the sentence, what action
-  does the reader take wrong? If nothing — cut. A real warning names the wrong
-  action and how the change prevents it ("if X is called twice, Y now dedups
-  instead of erroring") — keep, leading with the action.
+  "you don't need to worry that…". Test: if you cut the sentence, what does the
+  reader misunderstand or do wrong? If nothing, cut it. A real warning names the
+  concrete risk and how the change prevents it ("if X is called twice, Y now
+  dedups instead of erroring") — keep, leading with the risk.
 
 When "tighter" is rationalizable, ask whether a shorter version preserves the
 needed structure without increasing reader effort. If yes, use it.
@@ -344,8 +340,9 @@ needed structure without increasing reader effort. If yes, use it.
 ### Cut test — per section
 
 Before defending individual sentences, test the section itself: **would deleting
-this section remove reader-actionable context?** Sentence-level cuts protect
-sections that shouldn't exist — every sentence looks defensible when read alone.
+this section remove context the target audience needs?** Sentence-level cuts
+protect sections that shouldn't exist — every sentence looks defensible when
+read alone.
 
 Commit messages usually don't need these sections:
 
@@ -379,11 +376,6 @@ passes the sentence Cut test, and lead with the content that earns it.
   Summary prose.
 - Shape-of-diff: "Source diff is N lines per file", "this extracts ... into a
   helper", "renamed parameter X to Y", "the 13k-line diff is mechanical".
-- Code-structure / source-doc restatements: don't narrate implementation
-  mechanics the diff already shows, or fields, constants, file names, and API
-  detail the design docs already carry. State the reader-facing decision or
-  invariant instead. The commit message orients the reviewer; the diff and docs
-  carry the mechanics.
 - Jargon that hides the actor, action, or outcome: "enables analysis of",
   "supports future extensibility", "provides a robust foundation". State the
   concrete outcome instead.
