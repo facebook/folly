@@ -36,9 +36,6 @@ Before adding tracking state, check whether an existing accumulator or result
 already encodes the fact. Reuse it unless that hides the invariant or changes
 cost or lifetime.
 
-Prefer the expression at the call site when a local name, helper, wrapper,
-predicate, or alias only renames one operation.
-
 Default to inline code first; extract only after the real call sites or boundary
 are visible.
 

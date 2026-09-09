@@ -21,15 +21,21 @@ convergence" below. The maxims here apply to all prose (docs, posts, comments).
   is intended before drafting. Name a secondary audience only when it has a
   distinct required task.
 
+- **Optimize for the needed understanding, then length.** Give the target
+  audience exactly the facts and relationships it needs for the artifact's
+  purpose — no more and no less. First minimize the effort needed to understand
+  them correctly. If two versions do that equally well, choose the shorter one.
+
 - **Re-read cold before shipping prose.** After substantive edits, re-read the
   changed section and fix any friction. Before closing the pass, read the whole
   artifact; `critic-iterate.md` governs this default-on prose cycle.
 - **Rework, don't append.** When fixing prose, default to rewriting the line
   rather than adding to it. Append-style patches ("See X for Y", "Note: Z") are
   almost always barnacles.
-- **Do not edit for motion.** In review mode, leave text alone unless the edit
-  makes it clearer, more accurate, or materially shorter. Plain language beats
-  abstract process labels.
+- **Do not edit for motion.** In review mode, change text only to improve
+  clarity or accuracy, or to make it materially shorter without losing needed
+  content or increasing reader effort. Replace an abstract process label when
+  the target audience would have to unpack it.
 - **Pick the right shape.** Lifecycle/procedure → numbered list. Parallel states
   / parallel facts (N≥2) / inline enumeration (3+ items) → bullets, with lead
   labels where they aid scanning. Reserve semicolon/em-dash glue for tight
@@ -50,14 +56,14 @@ convergence" below. The maxims here apply to all prose (docs, posts, comments).
 The author must adopt a persona free from cognitive biases like rationalization
 & sunk-cost. Channel these traits as you revise:
 
-- **Reader-first.** Every extra word taxes every reader.
+- **Reader-first.** Every unnecessary word taxes every reader.
 - **Essentialist.** Hates stamp-collecting completionism. Keep only facts whose
   absence changes reader action.
 - **No ego, no attachment to prior words.**
 - **Rationalization-hostile.** "Load-bearing," "critical," and "archaeologist
   needs it" must name the concrete failure caused by cutting.
-- **Subtractive.** A shorter shape is the default winner; add back only what
-  changes reader action.
+- **Subtractive.** After selecting the necessary facts, remove excess wording.
+  Among versions that are equally easy to understand, the shorter one wins.
 
 ## Substance
 
@@ -219,16 +225,15 @@ Match the message shape to the change:
 In either mode, state framing in the prose; rely on external links only for
 detail or evidence.
 
-**Trivial change → brief.** A typo, version bump, small bug fix, config tweak.
-Default to one sentence — the fix or invariant. Add a second sentence only when
-a non-obvious WHY or rejected alternative would change reviewer action.
+**Simple explanation → brief.** Use one or two sentences when they carry the
+complete mental model the audience needs. A large diff of self-explanatory test
+cases may need only the reason they were added.
 
-**When in doubt, prefer brief.** Essay mode is justified only when the change
-touches multiple independent reader concerns (motivation + privacy + rollback,
-or parser-spec + alternatives + killswitch strategy) — each one a different
-question the reader would otherwise have to ask. Complexity alone is not enough.
-A single design choice plus an implementation note is brief, with the note
-appended.
+**Use the shortest form that carries the needed model.** Essay mode is justified
+by several independent reader concerns or by one causal chain that cannot be
+understood correctly in one or two sentences. Diff size does not decide message
+length: a one-line race fix may need how the bug was detected, what caused it,
+why the fix works, and how that was checked.
 
 Example (D104870443, ~70 words):
 
@@ -241,10 +246,10 @@ Example (D104870443, ~70 words):
 > `InternWikiTransclusion::genRenderTransclusion`, not through any React
 > component on this path.
 
-**Substantial change → structured essay.** A new data flow, a privacy-class
-change, a killswitch rollout, a design with rejected alternatives, a performance
-change. Use `#`/`##` to chunk distinct concerns; each section short. Sections
-that typically earn their keep:
+**Substantial explanation → structured essay.** A new data flow, a privacy-class
+change, a killswitch rollout, a design with rejected alternatives, or a
+non-obvious failure chain may need sections. Use `#`/`##` to chunk distinct
+concerns; keep each section short. Sections that typically earn their keep:
 
 - Motivation / situation / problem.
 - Mechanism — only when the choice is non-obvious.
@@ -300,8 +305,10 @@ the wrong container are wasted motion.
 
 ### Cut test — per sentence (Iceberg in operation)
 
-Ask: **"what is IRREPLACEABLY lost if I cut this sentence?"** Not "what was my
-reason." Not "what does the rubric allow." What does the future reader lose.
+Ask: **"Which required part of this audience's mental model or task becomes
+wrong, missing, or materially harder if I cut this sentence?"** A fact does not
+earn its place merely by being true, related, or mildly helpful. If no required
+part is lost, cut it.
 
 Cut on (locality first, style second):
 
@@ -333,8 +340,8 @@ Cut on (locality first, style second):
   action and how the change prevents it ("if X is called twice, Y now dedups
   instead of erroring") — keep, leading with the action.
 
-When "tighter" is rationalizable, ask: can you rewrite shorter without losing
-reader-actionable content? If yes, it wasn't earning its length.
+When "tighter" is rationalizable, ask whether a shorter version preserves the
+needed structure without increasing reader effort. If yes, use it.
 
 ### Cut test — per section
 
@@ -455,9 +462,11 @@ mind. Capture ✅ (clean) or ❌ (offending — quote + location).
    sentence earn its slot? If not, cut. If yes, restructure.
 4. **Any 2+ parallel facts in prose that should be bullets?**
 5. **Any 3+ inline items in prose that should be bullets?**
-6. **Can a cold member of the intended audience understand the framing without
-   reconstructing it from supporting material?** Flag private jargon or missing
-   bridges; do not require repeated mechanics or evidence.
+6. **Does the draft give the intended audience exactly the facts and
+   relationships needed for its purpose?** Flag true but unnecessary detail,
+   abstractions the reader must unpack, and missing relationships the reader
+   must guess. When two versions require the same effort and convey the same
+   needed structure, prefer the shorter one.
 
 Cut-test patterns (mechanism narration, scope defense, predecessor
 re-explanation, verb-as-label, wrap-ups) are NOT in the rubric — the inner loop

@@ -154,10 +154,10 @@ Quoted findings, not narrative paraphrases, are the anti-Goodhart guard: they
 cannot be produced without actually reading the artifact.
 
 For writing passes, the artifact must show cut-test evidence. Quote at least one
-sentence considered for cutting or compression, answer what is irreplaceably
-lost if it is cut, and state the action taken. On a zero-flag pass, quote the
-hardest sentence to justify and why it stays. A pass that only says "cut test
-applied" is invalid.
+sentence considered for cutting or compression, state whether it is necessary to
+the artifact's goal, and name the reader task or required relationship lost if
+it is cut. Otherwise cut it. On a zero-flag pass, quote the hardest sentence to
+justify and why it stays. A pass that only says "cut test applied" is invalid.
 
 **Prompt emission gate.** Emit the artifact for each pass immediately after that
 pass's author / cold-read step. Do this before starting the next substantive
@@ -270,8 +270,10 @@ returns an alternative or findings.
 
 Mark each source path as required to read or merely permitted.
 
-For non-exhaustive prose, a requested addition must name what the primary reader
-could not understand or do without it.
+For prose, a requested addition must name the reader task or required
+relationship it serves. A requested cut must show that the artifact's purpose
+does not need that fact. Truth, relatedness, or hypothetical usefulness is not
+enough to keep it; "shorter" alone is not enough to cut it.
 
 **Integration and closure.** The General Cycle's no-edit rule governs
 author-side passes. For external prose review, classify every fresh-reviewer
@@ -430,9 +432,11 @@ closure rules.
 
 **Structural best-of-both.** Treat the regenerated draft as a diagnostic and
 idea source, not a second draft to blend. Borrow changes that reduce reader
-cost: shorter structure, clearer ordering, or plainer language. Reject changes
-that mainly add coverage, copy the reviewer wholesale, or make the message feel
-more complete.
+effort: clearer ordering, plainer language, or less unnecessary text. First
+preserve exactly the structure the target audience needs; when two versions do
+that with equal effort, prefer the shorter one. Reject changes that mainly add
+coverage, copy the reviewer wholesale, or replace a concrete relationship with
+an abstraction the reader must unpack.
 
 **Context packet discipline (commit messages).** The author or orchestrator
 still builds a context packet for commit messages. For fresh review, pass only
