@@ -1,0 +1,686 @@
+diff --git a/folly/agents/CONTRIB.md b/folly/agents/CONTRIB.md
+--- a/folly/agents/CONTRIB.md
++++ b/folly/agents/CONTRIB.md
+@@ -25,6 +25,16 @@
+   agent tool, or filesystem. Put Meta-only rules under `facebook/`; Folly's
+   open-source export omits that directory.
+ 
++## Reader-effort objective
++
++Changes to the writing, code, or critic-iteration rule families must preserve
++one shared objective: give the target audience exactly the facts and
++relationships needed for the artifact's purpose, correctly and with the least
++reading effort. If two forms do that equally well, the shorter one wins.
++
++Do not turn the objective into a word-count target or a blanket preference for
++or against abstraction.
++
+ ## Before you edit
+ 
+ Read the nearest `CONTRIB.md` first. When editing `<name>.md`, also read
+diff --git a/folly/agents/code.md b/folly/agents/code.md
+--- a/folly/agents/code.md
++++ b/folly/agents/code.md
+@@ -11,21 +11,26 @@
+ 
+ ## Compression and locality
+ 
+-Minimize reader effort, not edit size. Read as the next person who must answer
+-questions from the code: what it does, whether it is safe, how to change it, and
+-which invariants hold. Choose the shape that minimizes that work, even when the
+-shorter version satisfies every named rule — the rubric is a search tool, not
+-proof that the code is good enough. Make the larger edit when it leaves clearer
+-code within the requested scope. Keep longer structure when it names a domain
+-concept, enforces a boundary, preserves correctness, controls lifetime, side
+-effects, or cost, or makes tangled logic readable.
++Read as the next person who must answer what the code does, whether it is safe,
++how to change it, and which invariants hold. Among correct designs within the
++requested scope, choose the shape that makes those answers easiest. Code is read
++far more often than it is changed. If two forms are equally easy to read, the
++shorter one wins. Change cost is secondary; do not make common reads harder
++merely to simplify rare edits.
++
++Abstraction can lower reading effort when it exposes real symmetry, keeps one
++rule in one place, or names an existing boundary. It can raise reading effort by
++adding indirection, API surface, and another concept to learn. Compare both
++effects; neither the concrete nor abstract form wins by default.
+ 
+ Minimize hidden state, not just lexical scope. Closure capture is implicit
+ state; prefer explicit arguments or inlining when a helper depends on a few
+ loop-local or mutable values. If explicit args would repeat long argument lists,
+-package the shared state in a small local object with named fields, or suppress
+-closure-capture lint like B023 when captured values are low-risk and the closure
+-remains clearest.
++package them in a small local object when its named fields make the dependencies
++easier to understand. An independently meaningful concept or boundary
++strengthens that case; a long argument list alone does not justify an object.
++Otherwise suppress closure-capture lint like B023 when captured values are
++low-risk and the closure remains clearest.
+ 
+ During the compression pass, look for unnecessary structure: one-use names;
+ staging containers or builders that only feed the next expression, loop, return,
+@@ -33,14 +38,15 @@
+ earlier checks. Inline, delete, or collapse it when the result stays clearer.
+ 
+ Before adding tracking state, check whether an existing accumulator or result
+-already encodes the fact. Reuse it unless that hides the invariant or changes
+-cost or lifetime.
++already represents the same fact with compatible cost and lifetime. Reuse it
++only when the shared representation keeps the invariant easy to understand and
++verify; otherwise keep the states separate.
+ 
+-Prefer the expression at the call site when a local name, helper, wrapper,
+-predicate, or alias only renames one operation.
+-
+-Default to inline code first; extract only after the real call sites or boundary
+-are visible.
++For a single-use local, helper, wrapper, predicate, or alias, compare the
++reading aid of naming the step with the indirection introduced. Keep it when it
++exposes a meaningful domain step, boundary, or invariant, controls correctness
++or lifetime, or breaks genuinely unreadable nesting. Inline it when it merely
++renames the expression. Single use is evidence, not a verdict.
+ 
+ When a helper earns extraction, keep it as local as the implementation still
+ reads clearly. Prefer a nested/local helper when one function needs it and its
+@@ -55,29 +61,23 @@
+ Introduce a helper, wrapper, predicate, or alias only when it does at least one
+ of these:
+ 
+-- Removes real duplication: 2+ guaranteed call sites for complicated logic, 3+
+-  for trivial one-liners.
++- Removes real duplication whose copies implement one rule that must evolve
++  together. Call count is evidence, not a sufficient reason to extract.
+ - Encapsulates a meaningful boundary: policy, ownership, volatility, lifetime,
+   side effects, or cost.
+ - Names a non-obvious domain concept that remains clearer when read away from
+   its implementation.
++- Makes a real symmetry easier to see and verify, even when the parallel cases
++  do not implement one shared rule.
+ - Makes otherwise tangled branching or nesting materially clearer despite the
+   non-locality.
+ 
+ Do not add helpers, wrappers, predicates, or aliases for anticipated reuse,
+-symmetry, or tidiness.
+-
+-Inline single-use locals when the expression is clearer at the use site. Keep a
+-single-use local only when it names a non-obvious domain concept, preserves
+-correctness, avoids repeated side effects or expensive recomputation, controls
+-lifetime, or breaks genuinely unreadable nesting.
+-
+-Inline single-use helpers, wrappers, predicates, and aliases unless they satisfy
+-one of the extraction reasons above.
++visual symmetry, or tidiness. Symmetry counts when the shared shape makes
++corresponding behavior easier to compare or verify.
+ 
+-Do not extract a helper merely to name a direct equality, membership, null, or
+-enum-state check. Inline the check unless the predicate is reused or names
+-domain policy.
++Do not extract a helper merely to restate a direct equality, membership, null,
++or enum-state check. Keep a named predicate when it represents domain policy.
+ 
+ ## Error handling
+ 
+diff --git a/folly/agents/critic-iterate.md b/folly/agents/critic-iterate.md
+--- a/folly/agents/critic-iterate.md
++++ b/folly/agents/critic-iterate.md
+@@ -72,10 +72,11 @@
+ A **pass** = critique → fix every in-scope flag → cold re-read. Adversarial
+ throughout: critic is the skeptic, not the cheerleader.
+ 
+-Before calling a pass clean, record in its accountability artifact the strongest
+-nearby alternative for the most suspect sentence, line, or decision. If it is
+-materially clearer or better satisfies the active critic dimension, take it.
+-"Accurate" or "defensible" is not convergence.
++Before calling a pass clean, look for a genuine nearby alternative to the most
++suspect sentence, line, or decision. If one exists, record it in the
++accountability artifact and take it when it is materially clearer or better
++satisfies the active critic dimension. Do not invent an alternative merely to
++satisfy the artifact. "Accurate" or "defensible" is not convergence.
+ 
+ Every pass includes a new-reader dimension. For prose, use the primary reader
+ established before drafting and verify that choice against the artifact's final
+@@ -101,7 +102,8 @@
+      Near-copy structure is compressed without hiding differences? Failures
+      still localize the cause?
+    - Code changes: invariants preserved? Reader can still trace the control
+-     flow? Unnecessary structure collapsed or deliberately kept per `code.md`?
++     flow? Does the chosen structure expose the needed boundaries without
++     unnecessary or premature abstraction per `code.md`?
+ 2. **Apply each dimension.** Flag what fails.
+ 3. **Author pass.** Fix every in-scope flag immediately.
+ 4. **Cold re-read.** Read the whole artifact as if written by someone else. Fix
+@@ -154,10 +156,10 @@
+ cannot be produced without actually reading the artifact.
+ 
+ For writing passes, the artifact must show cut-test evidence. Quote at least one
+-sentence considered for cutting or compression, answer what is irreplaceably
+-lost if it is cut, and state the action taken. On a zero-flag pass, quote the
+-hardest sentence to justify and why it stays. A pass that only says "cut test
+-applied" is invalid.
++sentence considered for cutting or compression, state whether it is necessary to
++the artifact's goal, and name the reader task or required relationship lost if
++it is cut. Otherwise cut it. On a zero-flag pass, quote the hardest sentence to
++justify and why it stays. A pass that only says "cut test applied" is invalid.
+ 
+ **Prompt emission gate.** Emit the artifact for each pass immediately after that
+ pass's author / cold-read step. Do this before starting the next substantive
+@@ -270,8 +272,10 @@
+ 
+ Mark each source path as required to read or merely permitted.
+ 
+-For non-exhaustive prose, a requested addition must name what the primary reader
+-could not understand or do without it.
++For prose, a requested addition must name the reader task or required
++relationship it serves. A requested cut must show that the artifact's purpose
++does not need that fact. Truth, relatedness, or hypothetical usefulness is not
++enough to keep it; "shorter" alone is not enough to cut it.
+ 
+ **Integration and closure.** The General Cycle's no-edit rule governs
+ author-side passes. For external prose review, classify every fresh-reviewer
+@@ -430,9 +434,11 @@
+ 
+ **Structural best-of-both.** Treat the regenerated draft as a diagnostic and
+ idea source, not a second draft to blend. Borrow changes that reduce reader
+-cost: shorter structure, clearer ordering, or plainer language. Reject changes
+-that mainly add coverage, copy the reviewer wholesale, or make the message feel
+-more complete.
++effort: clearer ordering, plainer language, or less unnecessary text. First
++preserve exactly the structure the target audience needs; when two versions do
++that with equal effort, prefer the shorter one. Reject changes that mainly add
++coverage, copy the reviewer wholesale, or replace a concrete relationship with
++an abstraction the reader must unpack.
+ 
+ **Context packet discipline (commit messages).** The author or orchestrator
+ still builds a context packet for commit messages. For fresh review, pass only
+@@ -447,7 +453,7 @@
+ Before the author uses or dispatches the packet, treat every input as a claim or
+ requirement, not approved wording. Apply "Evidence" when a false claim could
+ change the message, then check each input against the intended reader's starting
+-knowledge. Keep only code identifiers that help verify a fact or find the
++knowledge. Keep code identifiers when they anchor a fact or help find the
+ relevant code. Explain the concrete actor, condition, action, or outcome hidden
+ by unfamiliar shorthand, and define unavoidable technical terms on first use.
+ Raw input may be overcomplete, but not opaque.
+@@ -456,34 +462,28 @@
+ 
+ - **Stack context** — for diffs in a stack: what predecessors covered and what
+   follow-ons will do. Include review-affecting predecessor framing or follow-on
+-  plans in the task note; omit mechanics visible in the current code.
++  plans in the task note; omit mechanics the reader does not need to understand
++  the current diff.
+ - **Reader must know** — the few facts whose absence would make a reader act
+-  wrongly, plus the artifact goal and intended readers. Past three or four
+-  facts, consolidate — keep each one only if its absence predicts a distinct
+-  wrong action. The final message may compress its detail and wording unless
+-  that changes reader action. Put a fact in the fresh-review task note only when
+-  the reviewer needs it to verify correctness and cannot derive it from the
+-  sources it may read.
+-- **Decision trail** — required when the change embodies any design choice not
+-  mechanically forced by the spec or bug (typo, version bump, mechanical rename,
+-  and pure-config-value tweaks are exempt regardless of line count). The raw
+-  development-process surface the chat went through:
+-  - Alternatives considered and why rejected (named, not "we discussed
+-    options").
+-  - Decisions that changed mid-design and the trigger for the change.
+-  - Constraints that pinned the final shape (compat, privacy, perf, deadline,
+-    invariant being preserved).
+-  - Recursive realizations — moments where the problem reframed itself.
+-  - For commits that are themselves checkpoints in a named iterative design
+-    (meta-project, RFC series, sequenced refactor): the iteration trail (what
+-    iter-N exposed, what iter-N+1 added, why).
+-
+-The Decision trail is RAW input — the inner loop compresses aggressively from
+-it, keeping whichever items survive the cut test (typically the load-bearing
++  wrongly or misunderstand the change, plus the artifact goal and intended
++  readers. Past three or four facts, retest whether each belongs; do not merge
++  distinct causal facts into an abstract label. The final message may compress
++  detail and wording only while preserving the reader's needed model. Put a fact
++  in the fresh-review task note only when the reviewer needs it to verify
++  correctness and cannot derive it from the sources it may read.
++- **Decision trail** — for a design choice not mechanically forced by the spec
++  or bug, collect only the choices or reversals needed to explain the final
++  shape. Typical candidates are a rejected alternative whose trade-off is not
++  clear from the diff, a constraint that pinned the choice, or a mid-design
++  change that explains an otherwise surprising result. Do not inventory every
++  option, discussion, or iteration.
++
++The Decision trail is RAW input — the inner loop selects only the facts needed
++for the reader's task, then applies the cut test (typically the load-bearing
+ constraint or rejected alternative; see `writing.md` "## What evergreen context
+ means"). The packet-vs-final-message split is input-vs-keep, not a different
+-taxonomy. Omitting Decision trail on a non-trivial change starves the loop;
+-forcing it on a trivial change manufactures motivation — per `writing.md` "##
++taxonomy. Omitting a decision the reader needs starves the loop; forcing process
++history the reader does not need manufactures motivation — per `writing.md` "##
+ General maxims", the same bloat reversed.
+ 
+ **Debrief tail.** End multi-step debriefs with
+@@ -574,11 +574,11 @@
+ compression decisions. This `Code Specialization` section defines when the pass
+ runs and what evidence it must leave.
+ 
+-The code-pass artifact must include correctness and compression evidence: quote
+-at least one correctness candidate taken or rejected; quote at least one
+-simplification taken, or quote a concrete candidate rejected with the reason.
+-"No correctness or compression opportunities" without quoted candidates is
+-invalid.
++The code-pass artifact must include correctness and structural-choice evidence:
++quote at least one correctness candidate taken or rejected. Quote both choices
++when a genuine concrete-versus-abstract or inline-versus-extracted trade-off
++exists, and explain why the selected one is easier to understand and verify. Do
++not manufacture a rewrite merely to produce review evidence.
+ 
+ ## Writing Specialization
+ 
+@@ -590,10 +590,10 @@
+ Identify these critic dimensions before inspecting the current draft:
+ 
+ - **Explanation critic** — For durable explanatory prose, apply `writing.md`
+-  "Substance". For a durable document, also apply "Document". Flag a missing
+-  question or problem, the facts and reasoning needed to follow the conclusion,
+-  or any applicable proposal or investigation requirement before narrower style
+-  issues.
++  "Substance". For a durable document, also apply "Document". Identify the facts
++  and relationships the target audience needs for the artifact's purpose. Flag
++  both missing relationships and true but unnecessary facts before narrower
++  style issues.
+ - **Shape critic** — For prose with multiple sections or that answers more than
+   one independent question, set the draft's structure aside and sketch the
+   simplest outline that serves its primary reader and purpose. Compare it with
+@@ -604,7 +604,8 @@
+   canonical.
+ - **Plain-language critic** — per `writing.md` "## Substance". A necessary
+   sentence can still be jargon-heavy. Replace noun chains and abstract process
+-  labels with concrete actors, actions, conditions, or outcomes. Remove
++  labels when the target audience would have to unpack them. Restore a missing
++  concrete relationship when compression made the reader guess. Remove
+   qualifiers that do not change the instruction.
+ 
+ Then cold re-read per the general cycle.
+diff --git a/folly/agents/writing.contrib.md b/folly/agents/writing.contrib.md
+--- a/folly/agents/writing.contrib.md
++++ b/folly/agents/writing.contrib.md
+@@ -6,3 +6,8 @@
+ It covers audience, explanation, structure, sentence-level editing, commit
+ messages, and self-revision. General critic iteration and code quality belong
+ elsewhere.
++
++`writing.md` "Two modes — brief or essay" deliberately pairs a large,
++self-explanatory test diff with a one-line race fix. Preserve that pair — or
++equally concrete opposing cases — so future revisions do not tie explanation
++length to diff size.
+diff --git a/folly/agents/writing.md b/folly/agents/writing.md
+--- a/folly/agents/writing.md
++++ b/folly/agents/writing.md
+@@ -21,52 +21,59 @@
+   is intended before drafting. Name a secondary audience only when it has a
+   distinct required task.
+ 
++- **Optimize for the needed understanding, then length.** Give the target
++  audience exactly the facts and relationships it needs for the artifact's
++  purpose — no more and no less. First minimize the effort needed to understand
++  them correctly. If two versions do that equally well, choose the shorter one.
++
+ - **Re-read cold before shipping prose.** After substantive edits, re-read the
+   changed section and fix any friction. Before closing the pass, read the whole
+   artifact; `critic-iterate.md` governs this default-on prose cycle.
+ - **Rework, don't append.** When fixing prose, default to rewriting the line
+   rather than adding to it. Append-style patches ("See X for Y", "Note: Z") are
+   almost always barnacles.
+-- **Do not edit for motion.** In review mode, leave text alone unless the edit
+-  makes it clearer, more accurate, or materially shorter. Plain language beats
+-  abstract process labels.
+-- **Pick the right shape.** Lifecycle/procedure → numbered list. Parallel states
+-  / parallel facts (N≥2) / inline enumeration (3+ items) → bullets, with lead
+-  labels where they aid scanning. Reserve semicolon/em-dash glue for tight
+-  causal pairs ("keep X — stripping breaks Y"). The shape rule fires regardless
+-  of punctuation. An enumeration or parallel-states comparison hiding in prose
+-  is a shape miss — rewrite the container, not just the sentences. (The Iterate
+-  loop's Shape pass applies this for commit messages specifically.)
+-- **Lead with the why; the artifact carries the what.** Prose about code (commit
++- **Do not edit for motion.** In review mode, change text only to improve
++  clarity or accuracy, or to make it materially shorter without losing needed
++  content or increasing reader effort. Replace an abstract process label when
++  the target audience would have to unpack it.
++- **Pick the right shape.** Use numbered lists when readers need to scan a
++  lifecycle or procedure in order. Use bullets when separating parallel states,
++  facts, or several inline items makes them easier to compare. Keep a short
++  causal sequence in prose when splitting it would obscure the relationship.
++  Choose the container by reading effort, not punctuation or item count. (The
++  Iterate loop's Shape pass applies this for commit messages specifically.)
++- **Lead with the why; include the necessary what.** Prose about code (commit
+   message, docblock, inline comment, design doc) earns its slot by giving its
+   reader needed framing: situation, constraint, rejected alternative, preserved
+-  invariant. Lead with whichever most moves the reader, within the genre's
+-  opening rules. Narrating mechanism the code already shows is bloat; padding
+-  thin code with manufactured motivation is the same bloat reversed. Trivial
+-  cases take brief mode (one sentence or nothing) and stop.
++  invariant. Keep the concrete relationships or sequence needed for that
++  framing. Once it is clear, omit mechanics the reader does not need for the
++  artifact's purpose; do not replace them with a shorter abstraction the reader
++  must unpack. When the needed framing fits one sentence, use brief mode and
++  stop.
+ 
+ ## Author disposition
+ 
+ The author must adopt a persona free from cognitive biases like rationalization
+ & sunk-cost. Channel these traits as you revise:
+ 
+-- **Reader-first.** Every extra word taxes every reader.
+-- **Essentialist.** Hates stamp-collecting completionism. Keep only facts whose
+-  absence changes reader action.
++- **Reader-first.** Every unnecessary word taxes every reader.
++- **Essentialist.** Hates stamp-collecting completionism. A fact stays only when
++  it serves the artifact's purpose for its target audience; being true or
++  related is not enough.
+ - **No ego, no attachment to prior words.**
+ - **Rationalization-hostile.** "Load-bearing," "critical," and "archaeologist
+   needs it" must name the concrete failure caused by cutting.
+-- **Subtractive.** A shorter shape is the default winner; add back only what
+-  changes reader action.
++- **Subtractive.** After selecting the necessary facts, remove excess wording.
++  Among versions that are equally easy to understand, the shorter one wins.
+ 
+ ## Substance
+ 
+ **Select facts, then compress wording.** Use sources to get the facts right, not
+-to decide that every fact belongs. Being non-obvious is not enough. Keep a fact
+-only when leaving it out would prevent the primary reader from understanding the
+-point or completing the task the writing is meant to support. For a fact that
+-stays, keep the concrete detail that makes it useful to that reader. Replacing
+-that detail with a broad label is not concision.
++to decide that every fact belongs. Keep a fact only when it helps the primary
++reader do the job the artifact exists to support. Being true, related, or
++non-obvious is not enough. For a fact that stays, keep the concrete detail that
++makes it useful to that reader. Replacing that detail with a broad label is not
++concision.
+ 
+ - Assume the intended reader's normal background, but not this artifact or its
+   drafting history. State the question or problem and enough framing and
+@@ -76,11 +83,16 @@
+   naturally.
+ - Avoid wordiness: cut filler, hedging, and restatement (don't say the same
+   thing twice in different words — merge sentences that make the same point).
+-- State simple points simply — don't explain the how/why when the what suffices.
++- State simple points simply. Omit the how or why only when the target audience
++  does not need it for the artifact's purpose.
+ - Prefer common words and concrete verbs when they are equally precise. If a
+   sentence says a change "enables," "supports," or "provides" something vague,
+   rewrite it around the concrete outcome.
+-- Prefer concrete examples over abstract explanation.
++- Use a concrete example when it explains a needed relationship more directly
++  than an abstract description.
++- Identifiers may anchor an explanation to the artifact. Keep one when it helps
++  the reader find a concept after the prose explains its role; do not list
++  identifiers for completeness or use them in place of the explanation.
+ - When shortening rules/guidelines, preserve the decision function: enough
+   detail to apply the rule, not just know it exists.
+ 
+@@ -128,15 +140,14 @@
+   - what was observed; and
+   - only conclusions the observations support, with the reasoning that connects
+     them.
+-- Keep godbolt links — critical for human readers even if useless to agents.
++- Keep a godbolt link when the target reader needs it to inspect compiler
++  behavior or reproduce a claim.
+ 
+ ## Code comments
+ 
+-The general maxim "Lead with the why; the artifact carries the what." applies:
+-give future readers needed framing without narrating the code.
++Code comments are read beside the code. Explain the outside fact, invariant, or
++reason that the code alone does not show; do not narrate the local operation.
+ 
+-- Edit comments for clear, efficient communication — but never discard
+-  meaningful content.
+ - State the condition the reader should rely on, not the mechanism that checks
+   or produces it. For a side-effecting call or ignored return, "Check that every
+   X resolves" beats "Fetch every X"; name the mechanism only when the mechanism
+@@ -163,19 +174,22 @@
+ | Design proposals       | Design reviewers first; future implementers after the decision |
+ | Code-review comments   | The author of the diff being reviewed                          |
+ 
+-Every rule below reduces that audience's work. The general maxim "Lead with the
+-why; the artifact carries the what." applies here: the future reader sees only
+-the message and the code. As few words as reasonable for the change; the author
+-iterates.
++**Commit messages are read before the code.** The reviewer first forms a mental
++model from the message, then reads the code through that framing. The message
++must make sense before the diff is opened and include the facts and
++relationships needed to review the change. Once that model is clear, leave the
++remaining implementation detail to the diff. A fact's presence in the diff
++neither earns nor disqualifies it; keep it here only when the reviewer needs it
++before reading the code.
+ 
+ **State the goal early.** Commit / diff messages and design docs must say what
+ the artifact is trying to accomplish for intended readers. Lead with the goal,
+ or with a concise account of the concrete problem it solves followed immediately
+-by the goal. A self-explanatory invariant that changes review behavior may
+-instead precede the goal. Put context-dependent invariants after the goal. Omit
+-invariants that do not change review behavior. Stack context may briefly
+-cross-reference a prior `D<num>` for detail or evidence; include all framing the
+-current reader needs inline.
++by the goal. A self-explanatory invariant the reviewer needs to interpret the
++goal may instead precede it. Put context-dependent invariants after the goal.
++Omit invariants the reviewer does not need to understand or verify the change.
++Stack context may briefly cross-reference a prior `D<num>` for detail or
++evidence; include all framing the current reader needs inline.
+ 
+ ## Titles
+ 
+@@ -191,22 +205,8 @@
+ body is suspect — "paired" in the bad title above fails this test (paired how,
+ with what?). Swap context-dependent jargon for plainer language.
+ 
+-## Craft principles (Hemingway-flavored)
+-
+-- **Iceberg.** "If a writer of prose knows enough of what he is writing about he
+-  may omit things that he knows and the reader, if the writer is writing truly
+-  enough, will have a feeling of those things..." (Death in the Afternoon) →
+-  keep the framing and evergreen context the intended reader needs (see "## What
+-  evergreen context means"); omit detail or evidence already in the diff, code,
+-  or comments.
+-- **One true sentence.** "Write the truest sentence that you know." → The
+-  general maxim "Lead with the why; the artifact carries the what." is the
+-  Hemingway distillation: pick the load-bearing fact and let the rest fall away.
+-  Concrete contrast: "I want refactors that don't touch the JSON" before "this
+-  commit reorders the JSON."
+-- **First draft is shit.** → Read it critically before trusting it.
+-- **Built-in shock-proof shit detector.** (Paris Review) → develop the critic
+-  reflex below. Read your draft cold. Cut what doesn't belong.
++## Craft principles
++
+ - **Prose is architecture, not interior decoration.** → For substantial
+   messages, structure with `#`/`##` sections beats long paragraphs.
+ - **Short first paragraphs. Vigorous English. Positive not negative.** (Star
+@@ -219,16 +219,15 @@
+ In either mode, state framing in the prose; rely on external links only for
+ detail or evidence.
+ 
+-**Trivial change → brief.** A typo, version bump, small bug fix, config tweak.
+-Default to one sentence — the fix or invariant. Add a second sentence only when
+-a non-obvious WHY or rejected alternative would change reviewer action.
++**Simple explanation → brief.** Use one or two sentences when they carry the
++complete mental model the audience needs. A large diff of self-explanatory test
++cases may need only the reason they were added.
+ 
+-**When in doubt, prefer brief.** Essay mode is justified only when the change
+-touches multiple independent reader concerns (motivation + privacy + rollback,
+-or parser-spec + alternatives + killswitch strategy) — each one a different
+-question the reader would otherwise have to ask. Complexity alone is not enough.
+-A single design choice plus an implementation note is brief, with the note
+-appended.
++**Use the shortest form that carries the needed model.** Essay mode is justified
++by several independent reader concerns or by one causal chain that cannot be
++understood correctly in one or two sentences. Diff size does not decide message
++length: a one-line race fix may need how the bug was detected, what caused it,
++why the fix works, and how that was checked.
+ 
+ Example (D104870443, ~70 words):
+ 
+@@ -241,10 +240,10 @@
+ > `InternWikiTransclusion::genRenderTransclusion`, not through any React
+ > component on this path.
+ 
+-**Substantial change → structured essay.** A new data flow, a privacy-class
+-change, a killswitch rollout, a design with rejected alternatives, a performance
+-change. Use `#`/`##` to chunk distinct concerns; each section short. Sections
+-that typically earn their keep:
++**Substantial explanation → structured essay.** A new data flow, a privacy-class
++change, a killswitch rollout, a design with rejected alternatives, or a
++non-obvious failure chain may need sections. Use `#`/`##` to chunk distinct
++concerns; keep each section short. Sections that typically earn their keep:
+ 
+ - Motivation / situation / problem.
+ - Mechanism — only when the choice is non-obvious.
+@@ -259,8 +258,8 @@
+ 
+ ## What evergreen context means
+ 
+-Each include below is a default-keep candidate, but each is subject to the Cut
+-test in "## Iterate" — defaults don't override the local test.
++These are common kinds of useful context, not a checklist. Keep one only when
++the artifact's audience and purpose require it.
+ 
+ - The situation that made the change necessary, named as reviewer-facing pain
+   ("untenable to review", "can't ship without manual diff inspection"), not the
+@@ -289,34 +288,36 @@
+ If a paragraph has a shape problem, fix the container FIRST — sentence cuts on
+ the wrong container are wasted motion.
+ 
+-1. **Prose hiding an enumeration?** "A, B, and C" → bullets.
+-2. **Parallel-states comparison?** A vs. B vs. C → bullets, lead labels where
+-   they aid scanning.
++1. **Enumeration hard to scan?** Move it to bullets when separation helps the
++   reader compare or retain the items.
++2. **Parallel states easier to compare separately?** Use bullets or a table;
++   keep them in prose when their relationship is clearer there.
+ 3. **One dense paragraph doing two reader jobs?** Split: claim sentence first,
+    consequence sentence next.
+ 4. **Dense paragraph with jargon pile-up?** If a cold-read makes you re-parse a
+    noun chain ("the X's Y whose Z affects W") or reach for the dictionary, split
+    or rewrite. Jargon stacks fail even when each term is correct.
+ 
+-### Cut test — per sentence (Iceberg in operation)
++### Cut test — per sentence
+ 
+-Ask: **"what is IRREPLACEABLY lost if I cut this sentence?"** Not "what was my
+-reason." Not "what does the rubric allow." What does the future reader lose.
++Ask: **"Which required part of this audience's mental model or task becomes
++wrong, missing, or materially harder if I cut this sentence?"** A fact does not
++earn its place merely by being true, related, or mildly helpful. If no required
++part is lost, cut it.
+ 
+ Cut on (locality first, style second):
+ 
+-- **Nothing material lost** — the message reads cleanly without it.
+-- **Detail or evidence lives elsewhere.** Do not repeat it, but keep the framing
+-  needed here. A passing mention that just gestures at a construct defined
+-  elsewhere is still bloat — cut entirely or move the load-bearing fact in, no
+-  half-include.
++- **Nothing material lost** — the artifact reads cleanly without it.
+ - **Restates the title or an earlier sentence.** (Includes wrap-ups, especially
+   invariant restatements after a goal-led lead.)
+-- **Names the mechanism when stating the outcome would be tighter.** E.g., "X is
+-  keyed by res_id, so any shared res_id must merge into one unit" → "Every X now
+-  lives inside a single Y."
+-- **Causal chain spelled out where one claim would carry it.** "X has Y, so Z"
+-  with each step elaborated → state Z.
++- **Mechanics with no framing value.** Cut mechanics that do not help the
++  intended reader form the needed mental model. Keep concrete data or control
++  flow when it explains why the change exists or how failure and retry work. Do
++  not replace that flow with an abstraction the reader must expand.
++- **Causal detail beyond the goal.** Cut links the intended reader does not need
++  to reach the needed understanding. Keep the shortest concrete sequence that
++  they do need. When two versions require the same reader effort, the shorter
++  one wins.
+ - **Opaque-identifier enumeration.** Lists of hex hashes / auto-generated IDs
+   the reader can't act on — name the SET or the COUNT instead. "Three res_ids
+   (`5f6bcc932c826`, `6196aa3142bcf`, `67056151d29d2`)" → "the three res_ids".
+@@ -324,23 +325,25 @@
+   gotcha.
+ - **Structure is not motivation.** Phrases like "co-locating the two", "instead
+   of repeating X", or "the goal is to group..." are bloat when they re-label the
+-  diff's mechanics as a why. If the structure changes reviewer action, name the
+-  consequence or invariant; otherwise cut the sentence.
++  diff's mechanics as a why. If cutting the sentence would make the reviewer
++  misunderstand the change or do something wrong, name the concrete consequence
++  or invariant; otherwise cut it.
+ - **Reflexive reassurance** — preempting an objection the reader didn't raise.
+   Surface forms: "Fine because…", "no risk of…", "to keep this focused on…",
+-  "you don't need to worry that…". Test: if you cut the sentence, what action
+-  does the reader take wrong? If nothing — cut. A real warning names the wrong
+-  action and how the change prevents it ("if X is called twice, Y now dedups
+-  instead of erroring") — keep, leading with the action.
++  "you don't need to worry that…". Test: if you cut the sentence, what does the
++  reader misunderstand or do wrong? If nothing, cut it. A real warning names the
++  concrete risk and how the change prevents it ("if X is called twice, Y now
++  dedups instead of erroring") — keep, leading with the risk.
+ 
+-When "tighter" is rationalizable, ask: can you rewrite shorter without losing
+-reader-actionable content? If yes, it wasn't earning its length.
++When "tighter" is rationalizable, ask whether a shorter version preserves the
++needed structure without increasing reader effort. If yes, use it.
+ 
+ ### Cut test — per section
+ 
+ Before defending individual sentences, test the section itself: **would deleting
+-this section remove reader-actionable context?** Sentence-level cuts protect
+-sections that shouldn't exist — every sentence looks defensible when read alone.
++this section remove context the target audience needs?** Sentence-level cuts
++protect sections that shouldn't exist — every sentence looks defensible when
++read alone.
+ 
+ Commit messages usually don't need these sections:
+ 
+@@ -351,9 +354,10 @@
+ 
+ ### Test plan — cut tests
+ 
+-Per item: coverage over a cheaper check above? Rigor matches the verb? Readable
+-from `sl status` / `sl diff`? Over-explaining CI? Cut on any yes — see "## Test
+-plans" below for the full rules. Test-plan theatre is bloat.
++Cut a test-plan item when a cheaper check already provides the same coverage,
++its verb overstates the rigor, it merely restates diff shape without saying what
++was verified, or it over-explains CI. See "## Test plans" below for the full
++rules. Test-plan theatre is bloat.
+ 
+ ### Cold re-read and loop
+ 
+@@ -369,18 +373,13 @@
+ **Cut on sight.** These patterns are bloat by default. Keep one only when it
+ passes the sentence Cut test, and lead with the content that earns it.
+ 
+-- Empirical checks in Summary prose: "we verified that …", "tested that …", "no
+-  production caller actually depends on …". These are Test Plan bullets, not
+-  Summary prose.
++- Routine verification in Summary prose: "tests pass", "CI is green". Put it in
++  the Test Plan. Keep evidence in the Summary only when the reader needs it to
++  understand the diagnosis or why the fix is correct.
+ - Labels the example already shows: "this is a latent bug fix", "this is a
+   refactor", "this is a no-op".
+ - Shape-of-diff: "Source diff is N lines per file", "this extracts ... into a
+   helper", "renamed parameter X to Y", "the 13k-line diff is mechanical".
+-- Code-structure / source-doc restatements: don't narrate implementation
+-  mechanics the diff already shows, or fields, constants, file names, and API
+-  detail the design docs already carry. State the reader-facing decision or
+-  invariant instead. The commit message orients the reviewer; the diff and docs
+-  carry the mechanics.
+ - Jargon that hides the actor, action, or outcome: "enables analysis of",
+   "supports future extensibility", "provides a robust foundation". State the
+   concrete outcome instead.
+@@ -455,9 +454,11 @@
+    sentence earn its slot? If not, cut. If yes, restructure.
+ 4. **Any 2+ parallel facts in prose that should be bullets?**
+ 5. **Any 3+ inline items in prose that should be bullets?**
+-6. **Can a cold member of the intended audience understand the framing without
+-   reconstructing it from supporting material?** Flag private jargon or missing
+-   bridges; do not require repeated mechanics or evidence.
++6. **Does the draft give the intended audience exactly the facts and
++   relationships needed for its purpose?** Flag true but unnecessary detail,
++   abstractions the reader must unpack, and missing relationships the reader
++   must guess. When two versions require the same effort and convey the same
++   needed structure, prefer the shorter one.
+ 
+ Cut-test patterns (mechanism narration, scope defense, predecessor
+ re-explanation, verb-as-label, wrap-ups) are NOT in the rubric — the inner loop

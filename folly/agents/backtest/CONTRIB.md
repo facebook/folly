@@ -50,3 +50,6 @@ Freeze source needed by the task inside `input/`; never point an author at a
 live checkout. Store C++ fixtures as `.h.txt` and `.cpp.txt`. The runner removes
 the final `.txt` in its temporary workdir, while the inert suffix keeps fixture
 headers out of Folly's install and build discovery.
+
+Before exporting a scenario, internal maintainers must follow
+`facebook/CONTRIB.md`.

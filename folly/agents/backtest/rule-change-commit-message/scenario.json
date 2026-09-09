@@ -1,0 +1,32 @@
+{
+  "prompt": "input/author-prompt.md",
+  "inputs": [
+    {
+      "source": "input/request.md",
+      "destination": "request.md"
+    },
+    {
+      "source": "input/requirements.md",
+      "destination": "requirements.md"
+    },
+    {
+      "source": "input/conversation.md",
+      "destination": "conversation.md"
+    },
+    {
+      "source": "input/commit-state.md",
+      "destination": "commit-state.md"
+    },
+    {
+      "source": "input/change.patch",
+      "destination": "change.patch"
+    }
+  ],
+  "rules": [
+    "core.md",
+    "core/breadcrumbs.md",
+    "core/conflicts.md",
+    "writing.md",
+    "critic-iterate.md"
+  ]
+}
