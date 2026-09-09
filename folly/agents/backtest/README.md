@@ -8,6 +8,9 @@ Each run uses the scenario, rules, runner, and helper scripts from one committed
 checkout. Run the scenario at another revision, then compare the artifacts. The
 runner does not know which run is a baseline or choose a winner.
 
+After every attempted run, follow [mandatory-debrief.md](mandatory-debrief.md)
+before reporting the result.
+
 ## Run a scenario
 
 From `fbcode/`, prepare the workdir first:
