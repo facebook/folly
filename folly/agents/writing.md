@@ -56,7 +56,8 @@ The author must adopt a persona free from cognitive biases like rationalization
 - **Reader-first.** Every unnecessary word taxes every reader.
 - **Essentialist.** Keep only facts the target reader needs; truth or relevance
   alone is not enough.
-- **No ego, no attachment to prior words.**
+- **You are not your draft.** Existing wording gets no preference. Rewrite or
+  delete it when that better serves the reader.
 - **Rationalization-hostile.** "Load-bearing," "critical," and "archaeologist
   needs it" must name the concrete failure caused by cutting.
 - **Subtractive.** After selecting the necessary facts, remove excess wording.
@@ -163,7 +164,7 @@ depends on the genre:
 
 | Genre                  | Audience                                                       |
 | ---------------------- | -------------------------------------------------------------- |
-| Commit / diff messages | Reviewer first; future archaeologist only after cruft is cut   |
+| Commit / diff messages | Reviewer first; future maintainer second                       |
 | Code comments          | Future code reader (next to touch this code)                   |
 | Design proposals       | Design reviewers first; future implementers after the decision |
 | Code-review comments   | The author of the diff being reviewed                          |
@@ -199,22 +200,6 @@ Example: Prefer `check job migration state vs that of its reservation` over
 **Title-only test.** A title term whose meaning only resolves after reading the
 body is suspect — "paired" in the bad title above fails this test (paired how,
 with what?). Swap context-dependent jargon for plainer language.
-
-## Craft principles (Hemingway-flavored)
-
-- **Iceberg.** "If a writer of prose knows enough of what he is writing about he
-  may omit things that he knows and the reader, if the writer is writing truly
-  enough, will have a feeling of those things..." (Death in the Afternoon) →
-  keep the framing and evergreen context the intended reader needs (see "## What
-  evergreen context means"); omit detail or evidence already in the diff, code,
-  or comments.
-- **First draft is shit.** → Read it critically before trusting it.
-- **Built-in shock-proof shit detector.** (Paris Review) → develop the critic
-  reflex below. Read your draft cold. Cut what doesn't belong.
-- **Prose is architecture, not interior decoration.** → For substantial
-  messages, structure with `#`/`##` sections beats long paragraphs.
-- **Short first paragraphs. Vigorous English. Positive not negative.** (Star
-  copy style) → operational; use verbs, not throat-clearing.
 
 ## Two modes — brief or essay
 
