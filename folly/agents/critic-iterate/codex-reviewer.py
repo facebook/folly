@@ -23,7 +23,6 @@ import os
 import subprocess
 import sys
 import tempfile
-from datetime import date
 from pathlib import Path
 from typing import BinaryIO, Optional, Sequence, TextIO
 
@@ -193,18 +192,11 @@ def run(args: argparse.Namespace, wrapper_executable: Path) -> int:
         print(f"could not read preamble {preamble}: {error}", file=sys.stderr)
         return 2
 
-    output_root = Path.home() / ".codex" / "tmp"
-    output_root.mkdir(mode=0o700, parents=True, exist_ok=True)
-
     # Prompts and traces may contain source text. Keep new files private to the
     # current user, including files that Codex itself creates.
     previous_umask = os.umask(0o077)
     try:
-        output_dir = Path(
-            tempfile.mkdtemp(
-                prefix=f"{date.today():%Y%m%d}-codex-reviewer.", dir=output_root
-            )
-        )
+        output_dir = Path(tempfile.mkdtemp(prefix="codex-reviewer."))
         print(f"REVIEW_OUTPUT_DIR={output_dir}", flush=True)
 
         with (output_dir / "err.txt").open("x", encoding="utf-8") as errors:
