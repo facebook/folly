@@ -485,6 +485,7 @@ TEST_F(CapturesTest, customDereference) {
 
   EXPECT_EQ(111, (*std::as_const(rc)).y_);
   EXPECT_EQ(122, std::as_const(rc)->y_);
+  // NOLINTNEXTLINE(performance-move-const-arg)
   EXPECT_EQ(133, (*std::move(std::as_const(rc))).y_);
 }
 

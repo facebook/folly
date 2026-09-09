@@ -224,8 +224,10 @@ TEST_F(ExceptionTest, throw_exception_fmt_format_string) {
     const non_copyable nc;
     const int i = 42;
     const auto& foo = "foo";
+    // NOLINTBEGIN(performance-move-const-arg)
     folly::throw_exception_fmt_format<std::runtime_error>(
         "{}, {}, {}", std::move(nc), std::move(i), std::move(foo));
+    // NOLINTEND(performance-move-const-arg)
   } catch (std::runtime_error const& ex) {
     EXPECT_STREQ("hello world, 42, foo", ex.what());
   }

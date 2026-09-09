@@ -45,12 +45,14 @@ TEST(RvalueReferenceWrapper, MoveAndConvert) {
 
   // Destructive unwrap to const T&.
   const int i3 = 0;
+  // NOLINTNEXTLINE(performance-move-const-arg)
   rvalue_reference_wrapper<const int> rref3(std::move(i3));
   const int& r3 = std::move(rref3);
   ASSERT_EQ(&r3, &i3);
 
   // Destructive unwrap to const T&&.
   const int i4 = 0;
+  // NOLINTNEXTLINE(performance-move-const-arg)
   rvalue_reference_wrapper<const int> rref4(std::move(i4));
   const int&& r4 = std::move(rref4);
   ASSERT_EQ(&r4, &i4);

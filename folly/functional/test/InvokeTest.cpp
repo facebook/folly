@@ -529,6 +529,7 @@ TEST_F(InvokeTest, member_accessor_forwarding) {
   }
 
   {
+    // NOLINTNEXTLINE(performance-move-const-arg)
     decltype(auto) ref = accessor::value(std::move(std::as_const(obj)));
     static_assert(std::is_same<decltype(ref), int const&&>::value);
     EXPECT_EQ(&obj.value, &ref);

@@ -524,11 +524,13 @@ TEST(ForwardTuple, Basic) {
 #endif
   EXPECT_TRUE(
       (std::is_same<
+          // NOLINTNEXTLINE(performance-move-const-arg)
           decltype(folly::forward_tuple(std::move(std::as_const(tuple)))),
           std::conditional_t<
               before_lwg2485,
               std::tuple<const int&, const double&>,
               std::tuple<const int&&, const double&&>>>::value));
+  // NOLINTNEXTLINE(performance-move-const-arg)
   EXPECT_EQ(folly::forward_tuple(std::move(std::as_const(tuple))), tuple);
 
   auto integer = 1;

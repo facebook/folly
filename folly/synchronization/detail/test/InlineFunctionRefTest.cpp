@@ -209,6 +209,7 @@ TEST_F(InlineFunctionRefTest, CallConstQualifiedMethod) {
   }
   {
     const auto small = ConstQualifiedFunctor<std::uint8_t>{};
+    // NOLINTNEXTLINE(performance-move-const-arg)
     auto fref = InlineFunctionRef<int(), 24>{std::move(small)};
     EXPECT_EQ(fref(), 1);
   }
@@ -219,6 +220,7 @@ TEST_F(InlineFunctionRefTest, CallConstQualifiedMethod) {
   }
   {
     const auto big = ConstQualifiedFunctor<std::array<std::uint8_t, 128>>{};
+    // NOLINTNEXTLINE(performance-move-const-arg)
     auto fref = InlineFunctionRef<int(), 24>{std::move(big)};
     EXPECT_EQ(fref(), 1);
   }

@@ -101,11 +101,12 @@ static_assert(testMutableRefMember() == 8);
 
 static_assert(overloadSet(HasRefQualifiedMemberFunctions(), 1) == 9);
 
-constexpr auto testMutableRefRefMember() {
+constexpr auto testConstRefRefMember() {
   const HasRefQualifiedMemberFunctions c;
+  // NOLINTNEXTLINE(performance-move-const-arg)
   return overloadSet(std::move(c), 1);
 }
-static_assert(testMutableRefRefMember() == 10);
+static_assert(testConstRefRefMember() == 10);
 
 static_assert(overloadSet(HasNullaryMemberFunction()) == -1);
 static_assert(overloadSet(HasMemberData()) == -2);
