@@ -18,5 +18,9 @@ require.
 After the run, confirm that `output.md` is nonempty and that the trace contains
 no undeclared reads.
 
+The [optional evaluator checks](eval/SETUP.md) record what a fresh reader can
+recover from the message, then compare its rationale with the source packet.
+Never expose them to the author.
+
 Run this scenario with the [parent runner instructions](../README.md), using
 this directory in place of `SCENARIO`.
