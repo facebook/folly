@@ -353,9 +353,9 @@ Commit messages usually don't need these sections:
 
 ### Test plan — cut tests
 
-Per item: coverage over a cheaper check above? Rigor matches the verb? Readable
-from `sl status` / `sl diff`? Over-explaining CI? Cut on any yes — see "## Test
-plans" below for the full rules. Test-plan theatre is bloat.
+Cut an item if a cheaper check provides the same coverage or it only narrates
+the diff without saying what was checked. Match each verb to the rigor used, and
+reduce routine checks to `CI`. See "## Test plans" below.
 
 ### Cold re-read and loop
 
