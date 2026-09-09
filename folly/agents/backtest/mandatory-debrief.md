@@ -9,6 +9,9 @@ After every attempted run, use the shape below. Omit optional sections and
 inapplicable fields. A failed run still includes any findings and cost it
 produced.
 
+For a saved sample, follow [tracking-samples.md](tracking-samples.md). Store the
+same debrief after its metadata header without repeating those fields.
+
 ## Template
 
 ```markdown

@@ -55,4 +55,6 @@ completed-artifact scenario must also complete every review required by its
 rules; a diagnostic may deliberately stop earlier. Authentication, launcher, or
 write failures are inconclusive; preserve their run directories for diagnosis.
 
-See [CONTRIB.md](CONTRIB.md) to add or change a scenario.
+See [CONTRIB.md](CONTRIB.md) to add or change a scenario. If the scenario has a
+`samples/` directory, or the user asks to preserve a run, follow
+[tracking-samples.md](tracking-samples.md).
