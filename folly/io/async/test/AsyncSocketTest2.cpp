@@ -2262,9 +2262,6 @@ TEST_P(AsyncSocketTest, GetAddressesAfterConnectGetonlyafterclose) {
  * Test getting local and peer addresses after connecting.
  */
 TEST_P(AsyncSocketTest, GetAddressesAfterInitFromFdGetoninitandonclose) {
-  if (GetParam() == BackendType::IO_URING) {
-    GTEST_SKIP() << "io_uring does not support detachNetworkSocket()";
-  }
   EventBase& evb = getEventBase();
 
   // Start listening on a local port
@@ -9942,9 +9939,6 @@ TEST_P(AsyncSocketTest, LifecycleObserverMultipleAttachThenRemove) {
 }
 
 TEST_P(AsyncSocketTest, LifecycleObserverDetach) {
-  if (GetParam() == BackendType::IO_URING) {
-    GTEST_SKIP() << "io_uring does not support detachNetworkSocket()";
-  }
   auto cb = std::make_unique<StrictMock<MockAsyncSocketLifecycleObserver>>();
   TestServer server;
 
