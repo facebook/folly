@@ -429,11 +429,12 @@ TEST(Try, ValueOverloads) {
 
   {
     auto obj = Try<int>{make_exception_wrapper<std::range_error>("oops")};
-    EXPECT_THROW(obj.value(), std::range_error);
-    EXPECT_THROW(std::ignore = std::move(obj.value()), std::range_error);
-    EXPECT_THROW(std::ignore = std::as_const(obj.value()), std::range_error);
+    EXPECT_THROW(std::ignore = obj.value(), std::range_error);
+    EXPECT_THROW(std::ignore = std::move(obj).value(), std::range_error);
+    EXPECT_THROW(std::ignore = std::as_const(obj).value(), std::range_error);
+    // NOLINTNEXTLINE(performance-move-const-arg)
     EXPECT_THROW(
-        std::ignore = std::move(std::as_const(obj.value())), std::range_error);
+        std::ignore = std::move(std::as_const(obj)).value(), std::range_error);
   }
 }
 
