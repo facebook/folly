@@ -487,8 +487,7 @@ it, keeping whichever items survive the cut test (typically the load-bearing
 constraint or rejected alternative; see `writing.md` "## What evergreen context
 means"). The packet-vs-final-message split is input-vs-keep, not a different
 taxonomy. Omitting Decision trail on a non-trivial change starves the loop;
-forcing it on a trivial change manufactures motivation — per `writing.md` "##
-General maxims", the same bloat reversed.
+forcing it on a trivial change invents motivation and adds noise.
 
 **Debrief tail.** End multi-step debriefs with
 `Delegated checks: T required, A attempts, F failed`; count each required
@@ -595,9 +594,9 @@ Identify these critic dimensions before inspecting the current draft:
 
 - **Explanation critic** — For durable explanatory prose, apply `writing.md`
   "Substance". For a durable document, also apply "Document". Flag a missing
-  question or problem, the facts and reasoning needed to follow the conclusion,
-  or any applicable proposal or investigation requirement before narrower style
-  issues.
+  question or problem, missing facts or reasoning needed to follow the
+  conclusion, and facts the reader does not need. Check applicable proposal and
+  investigation requirements before narrower style issues.
 - **Shape critic** — For prose with multiple sections or that answers more than
   one independent question, set the draft's structure aside and sketch the
   simplest outline that serves its primary reader and purpose. Compare it with
@@ -608,7 +607,8 @@ Identify these critic dimensions before inspecting the current draft:
   canonical.
 - **Plain-language critic** — per `writing.md` "## Substance". A necessary
   sentence can still be jargon-heavy. Replace noun chains and abstract process
-  labels with concrete actors, actions, conditions, or outcomes. Remove
+  labels with concrete actors, actions, conditions, or outcomes. Restore any
+  needed cause, condition, or sequence, and state how the parts connect. Remove
   qualifiers that do not change the instruction.
 
 Then cold re-read per the general cycle.

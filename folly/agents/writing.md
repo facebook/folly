@@ -43,13 +43,10 @@ convergence" below. The maxims here apply to all prose (docs, posts, comments).
   of punctuation. An enumeration or parallel-states comparison hiding in prose
   is a shape miss — rewrite the container, not just the sentences. (The Iterate
   loop's Shape pass applies this for commit messages specifically.)
-- **Lead with the why; the artifact carries the what.** Prose about code (commit
-  message, docblock, inline comment, design doc) earns its slot by giving its
-  reader needed framing: situation, constraint, rejected alternative, preserved
-  invariant. Lead with whichever most moves the reader, within the genre's
-  opening rules. Narrating mechanism the code already shows is bloat; padding
-  thin code with manufactured motivation is the same bloat reversed. Trivial
-  cases take brief mode (one sentence or nothing) and stop.
+- **Lead with why.** For prose about code, start with the problem or goal. Add a
+  constraint, rejected alternative, or invariant when it explains the choice.
+  Include enough of what the code does to make that reason clear, then leave
+  routine mechanics to the code. If one sentence is enough, stop.
 
 ## Author disposition
 
@@ -82,11 +79,14 @@ that detail with a broad label is not concision.
   naturally.
 - Avoid wordiness: cut filler, hedging, and restatement (don't say the same
   thing twice in different words — merge sentences that make the same point).
-- State simple points simply — don't explain the how/why when the what suffices.
+- State simple points simply. Add how or why only when the reader needs it.
 - Prefer common words and concrete verbs when they are equally precise. If a
   sentence says a change "enables," "supports," or "provides" something vague,
   rewrite it around the concrete outcome.
-- Prefer concrete examples over abstract explanation.
+- Prefer a concrete example when it makes a needed point clearer than abstract
+  prose.
+- Use identifiers to point readers to relevant code, not in place of a plain
+  explanation.
 - When shortening rules/guidelines, preserve the decision function: enough
   detail to apply the rule, not just know it exists.
 
@@ -138,11 +138,10 @@ that detail with a broad label is not concision.
 
 ## Code comments
 
-The general maxim "Lead with the why; the artifact carries the what." applies:
-give future readers needed framing without narrating the code.
+Code comments are read beside the code. Explain the outside fact, invariant, or
+reason that the code alone does not show; do not narrate what the code already
+shows.
 
-- Edit comments for clear, efficient communication — but never discard
-  meaningful content.
 - State the condition the reader should rely on, not the mechanism that checks
   or produces it. For a side-effecting call or ignored return, "Check that every
   X resolves" beats "Fetch every X"; name the mechanism only when the mechanism
@@ -168,11 +167,6 @@ depends on the genre:
 | Code comments          | Future code reader (next to touch this code)                   |
 | Design proposals       | Design reviewers first; future implementers after the decision |
 | Code-review comments   | The author of the diff being reviewed                          |
-
-Every rule below reduces that audience's work. The general maxim "Lead with the
-why; the artifact carries the what." applies here: the future reader sees only
-the message and the code. As few words as reasonable for the change; the author
-iterates.
 
 **State the goal early.** Commit / diff messages and design docs must say what
 the artifact is trying to accomplish for intended readers. Lead with the goal,
@@ -205,11 +199,6 @@ with what?). Swap context-dependent jargon for plainer language.
   keep the framing and evergreen context the intended reader needs (see "## What
   evergreen context means"); omit detail or evidence already in the diff, code,
   or comments.
-- **One true sentence.** "Write the truest sentence that you know." → The
-  general maxim "Lead with the why; the artifact carries the what." is the
-  Hemingway distillation: pick the load-bearing fact and let the rest fall away.
-  Concrete contrast: "I want refactors that don't touch the JSON" before "this
-  commit reorders the JSON."
 - **First draft is shit.** → Read it critically before trusting it.
 - **Built-in shock-proof shit detector.** (Paris Review) → develop the critic
   reflex below. Read your draft cold. Cut what doesn't belong.
