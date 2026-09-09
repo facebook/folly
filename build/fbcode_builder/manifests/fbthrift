@@ -17,6 +17,11 @@ fbthrift = thrift/lib/rust
 builder = cmake
 job_weight_mib = 2048
 
+[cmake.defines]
+# Each dependency has its own prefix here, so record their lib dirs too;
+# fbthrift's CMake only adds relative entries for its own libraries.
+CMAKE_INSTALL_RPATH_USE_LINK_PATH=ON
+
 [cmake.defines.all(not(os=windows),test=on)]
 enable_tests=ON
 
