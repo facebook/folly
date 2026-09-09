@@ -451,7 +451,7 @@ trail, including the recovered goal and unsuperseded requirements or decisions.
 Before the author uses or dispatches the packet, treat every input as a claim or
 requirement, not approved wording. Apply "Evidence" when a false claim could
 change the message, then check each input against the intended reader's starting
-knowledge. Keep only code identifiers that help verify a fact or find the
+knowledge. Keep code identifiers when they anchor a fact or help find the
 relevant code. Explain the concrete actor, condition, action, or outcome hidden
 by unfamiliar shorthand, and define unavoidable technical terms on first use.
 Raw input may be overcomplete, but not opaque.
@@ -460,14 +460,15 @@ Never pass breadcrumb paths or raw history to the fresh-review task note.
 
 - **Stack context** — for diffs in a stack: what predecessors covered and what
   follow-ons will do. Include review-affecting predecessor framing or follow-on
-  plans in the task note; omit mechanics visible in the current code.
+  plans in the task note; omit mechanics not needed to understand the current
+  diff.
 - **Reader must know** — the few facts whose absence would make a reader act
-  wrongly, plus the artifact goal and intended readers. Past three or four
-  facts, consolidate — keep each one only if its absence predicts a distinct
-  wrong action. The final message may compress its detail and wording unless
-  that changes reader action. Put a fact in the fresh-review task note only when
-  the reviewer needs it to verify correctness and cannot derive it from the
-  sources it may read.
+  wrongly or misunderstand the change, plus the artifact goal and intended
+  readers. Past three or four facts, reapply that test to each; do not merge
+  distinct causal facts into an abstract label. The final message may compress
+  detail and wording only while preserving the reader's needed model. Put a fact
+  in the fresh-review task note only when the reviewer needs it to verify
+  correctness and cannot derive it from the sources it may read.
 - **Decision trail** — required when the change embodies any design choice not
   mechanically forced by the spec or bug (typo, version bump, mechanical rename,
   and pure-config-value tweaks are exempt regardless of line count). The raw

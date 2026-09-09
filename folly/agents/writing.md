@@ -168,12 +168,21 @@ depends on the genre:
 | Design proposals       | Design reviewers first; future implementers after the decision |
 | Code-review comments   | The author of the diff being reviewed                          |
 
+**Commit messages are read before the code.** The reviewer first forms a mental
+model from the message, then reads the code through that framing. The message
+must make sense before the diff is opened and include the facts and
+relationships needed to review the change. Once that model is clear, leave the
+remaining implementation detail to the diff. A fact's presence in the diff
+neither earns nor disqualifies it; keep it here only when the reviewer needs it
+before reading the code.
+
 **State the goal early.** Commit / diff messages and design docs must say what
 the artifact is trying to accomplish for intended readers. Lead with the goal,
 or with a concise account of the concrete problem it solves followed immediately
-by the goal. A self-explanatory invariant that changes review behavior may
-instead precede the goal. Put context-dependent invariants after the goal. Omit
-invariants that do not change review behavior. Stack context may briefly
+by the goal. A self-explanatory invariant (for example, that a refactor is a
+no-op) may come first when the reviewer needs it to interpret the goal. Put
+context-dependent invariants after the goal. Omit invariants the reviewer does
+not need to understand or verify the change. Stack context may briefly
 cross-reference a prior `D<num>` for detail or evidence; include all framing the
 current reader needs inline.
 
@@ -368,8 +377,6 @@ passes the sentence Cut test, and lead with the content that earns it.
 - Empirical checks in Summary prose: "we verified that …", "tested that …", "no
   production caller actually depends on …". These are Test Plan bullets, not
   Summary prose.
-- Labels the example already shows: "this is a latent bug fix", "this is a
-  refactor", "this is a no-op".
 - Shape-of-diff: "Source diff is N lines per file", "this extracts ... into a
   helper", "renamed parameter X to Y", "the 13k-line diff is mechanical".
 - Code-structure / source-doc restatements: don't narrate implementation
