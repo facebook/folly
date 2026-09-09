@@ -100,8 +100,8 @@ Per pass:
    - Test refactoring: apply `code/testing.md`. Distinct material risks survive?
      Near-copy structure is compressed without hiding differences? Failures
      still localize the cause?
-   - Code changes: invariants preserved? Reader can still trace the control
-     flow? Unnecessary structure collapsed or deliberately kept per `code.md`?
+   - Code: preserved invariants, traceable control flow, and `code.md`
+     "Compression and locality".
 2. **Apply each dimension.** Flag what fails.
 3. **Author pass.** Fix every in-scope flag immediately.
 4. **Cold re-read.** Read the whole artifact as if written by someone else. Fix

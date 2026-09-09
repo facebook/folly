@@ -11,14 +11,13 @@ project test rules.
 
 ## Compression and locality
 
-Minimize reader effort, not edit size. Read as the next person who must answer
-questions from the code: what it does, whether it is safe, how to change it, and
-which invariants hold. Choose the shape that minimizes that work, even when the
-shorter version satisfies every named rule — the rubric is a search tool, not
-proof that the code is good enough. Make the larger edit when it leaves clearer
-code within the requested scope. Keep longer structure when it names a domain
-concept, enforces a boundary, preserves correctness, controls lifetime, side
-effects, or cost, or makes tangled logic readable.
+Reading and correctly understanding code matters far more than the cost or size
+of the edit. Read as the next person who must answer what the code does, whether
+it is safe, how to change it, and which invariants hold. Among correct designs,
+choose the form that makes those answers easiest. Within the requested scope,
+improve code you are already changing when doing so lowers that effort; do not
+preserve avoidable complexity merely to keep the diff small. If two forms
+require equal reader effort, prefer the shorter one.
 
 Minimize hidden state, not just lexical scope. Closure capture is implicit
 state; prefer explicit arguments or inlining when a helper depends on a few
