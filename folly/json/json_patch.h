@@ -90,7 +90,6 @@ class json_patch {
   };
 
   json_patch() = default;
-  ~json_patch() = default;
 
   static Expected<json_patch, parse_error> try_parse(
       dynamic const& obj) noexcept;

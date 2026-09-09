@@ -22,6 +22,10 @@
 
 namespace folly {
 
+// Movability relies on there being no user-declared destructor; keep this
+// pinned so `try_parse()`'s implicit-move `return patch;` stays a real move.
+static_assert(std::is_nothrow_move_constructible_v<json_patch>);
+
 // JSON patch operation names
 constexpr StringPiece kOperationTest = "test";
 constexpr StringPiece kOperationRemove = "remove";
@@ -70,7 +74,7 @@ Expected<json_patch, json_patch::parse_error> json_patch::try_parse(
           return makeUnexpected(
               parse_error{err_code::malformed_from_attr, &elem});
         }
-        op.from = json_ptr.value();
+        op.from = std::move(json_ptr).value();
       }
     }
 
@@ -84,12 +88,12 @@ Expected<json_patch, json_patch::parse_error> json_patch::try_parse(
         return makeUnexpected(
             parse_error{err_code::malformed_path_attr, &elem});
       }
-      auto const json_ptr = json_pointer::try_parse(path_ptr->asString());
+      auto json_ptr = json_pointer::try_parse(path_ptr->asString());
       if (!json_ptr.hasValue()) {
         return makeUnexpected(
             parse_error{err_code::malformed_path_attr, &elem});
       }
-      op.path = json_ptr.value();
+      op.path = std::move(json_ptr).value();
     }
 
     // extract 'value' attribute
