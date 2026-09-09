@@ -72,10 +72,15 @@ Run until a full pass makes no edit.
 A **pass** = critique → fix every in-scope flag → cold re-read. Adversarial
 throughout: critic is the skeptic, not the cheerleader.
 
-Before calling a pass clean, record in its accountability artifact the strongest
-nearby alternative for the most suspect sentence, line, or decision. If it is
-materially clearer or better satisfies the active critic dimension, take it.
-"Accurate" or "defensible" is not convergence.
+Before calling a pass clean, record in its accountability artifact the most
+suspect sentence, line, or decision and its strongest credible alternative. If
+no alternative is credible, record the concrete fact, check, or constraint that
+settles the choice. Take the better choice. Do not invent a weak option merely
+to fill the artifact. One comparison may satisfy a specialization's evidence
+requirement when it covers the same choice. "Accurate" or "defensible" is not
+convergence. For prose, apply this comparison to the needed sentence that is
+hardest to read. Try one plainer version without changing its meaning or the
+surrounding argument, then keep the clearer version.
 
 Every pass includes a new-reader dimension. For prose, use the primary reader
 established before drafting and verify that choice against the artifact's final
@@ -287,7 +292,8 @@ finding before editing; its response already integrates the cold report:
 
 A material error, missed requirement, wrong action, or reader blocker is
 `MUST_TAKE`. Escalate if the allowed evidence cannot repair a material finding.
-Treat the independent reviews as evidence, not a vote.
+Before applying a reviewer finding that would change the artifact, verify its
+factual claims.
 
 If a `MUST_TAKE` finding changes a proposed fix's behavior, invalidates a
 fallback, or exposes a deciding correctness assumption, reapply
@@ -393,9 +399,9 @@ Before accepting a prose review, confirm that its only cold-review launch
 precedes any source read or statement about the artifact, that `REVIEW FRAME:`
 appears before any embargoed input is read, and that `ARTIFACT CHECK:` appears
 before the cold-result file is read. Confirm that the cold trace reads no
-undeclared source and launches no reviewer. If either check fails, discard the
-round, fix its prompt if needed, and start a new outer fresh-review command
-before editing.
+undeclared source and launches no reviewer. If a check fails, discard the round,
+fix its prompt if needed, and start a new outer fresh-review command before
+editing.
 
 Missing `codex`, auth / sandbox failure, non-zero exit, or timeout means the CLI
 path cannot run; stop and report the infra/setup failure. For a Guardian
@@ -469,26 +475,19 @@ Never pass breadcrumb paths or raw history to the fresh-review task note.
   detail and wording only while preserving the reader's needed model. Put a fact
   in the fresh-review task note only when the reviewer needs it to verify
   correctness and cannot derive it from the sources it may read.
-- **Decision trail** — required when the change embodies any design choice not
-  mechanically forced by the spec or bug (typo, version bump, mechanical rename,
-  and pure-config-value tweaks are exempt regardless of line count). The raw
-  development-process surface the chat went through:
-  - Alternatives considered and why rejected (named, not "we discussed
-    options").
-  - Decisions that changed mid-design and the trigger for the change.
-  - Constraints that pinned the final shape (compat, privacy, perf, deadline,
-    invariant being preserved).
-  - Recursive realizations — moments where the problem reframed itself.
-  - For commits that are themselves checkpoints in a named iterative design
-    (meta-project, RFC series, sequenced refactor): the iteration trail (what
-    iter-N exposed, what iter-N+1 added, why).
+- **Decision trail** — for a design choice not mechanically forced by the spec
+  or bug, collect only the choices, constraints, or reversals needed to explain
+  the final shape. Typical candidates are a rejected alternative whose trade-off
+  is not clear from the diff, a constraint that pinned the choice, or a reversal
+  that explains a surprising result. Do not inventory the rest of the
+  discussion.
 
-The Decision trail is RAW input — the inner loop compresses aggressively from
-it, keeping whichever items survive the cut test (typically the load-bearing
+The Decision trail is RAW input — the inner loop selects only the facts needed
+for the reader's task, then applies the cut test (typically the load-bearing
 constraint or rejected alternative; see `writing.md` "## What evergreen context
 means"). The packet-vs-final-message split is input-vs-keep, not a different
-taxonomy. Omitting Decision trail on a non-trivial change starves the loop;
-forcing it on a trivial change invents motivation and adds noise.
+taxonomy. Omitting a decision the reader needs starves the loop; forcing process
+history the reader does not need invents motivation and adds noise.
 
 **Debrief tail.** End multi-step debriefs with
 `Delegated checks: T required, A attempts, F failed`; count each required
@@ -578,11 +577,10 @@ Use `code.md`'s "Compression and locality" section when the pass reaches
 compression decisions. This `Code Specialization` section defines when the pass
 runs and what evidence it must leave.
 
-The code-pass artifact must include correctness and compression evidence: quote
-at least one correctness candidate taken or rejected; quote at least one
-simplification taken, or quote a concrete candidate rejected with the reason.
-"No correctness or compression opportunities" without quoted candidates is
-invalid.
+The code-pass artifact must quote one correctness candidate taken or rejected
+and the changed structure most likely to simplify. Record the simplification
+taken, or why the relevant options in `code.md` "Compression and locality" would
+not improve it. Do not change code merely to produce evidence.
 
 ## Writing Specialization
 
