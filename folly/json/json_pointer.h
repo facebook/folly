@@ -45,7 +45,6 @@ class json_pointer {
   };
 
   json_pointer() = default;
-  ~json_pointer() = default;
 
   /*
    * Parse string into vector of unescaped tokens.

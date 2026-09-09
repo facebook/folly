@@ -20,6 +20,10 @@
 
 namespace folly {
 
+// Movability relies on there being no user-declared destructor; keep this
+// pinned so `parse()`'s `std::move(res).value()` stays a real move.
+static_assert(std::is_nothrow_move_constructible_v<json_pointer>);
+
 // static, public
 Expected<json_pointer, json_pointer::parse_error> json_pointer::try_parse(
     StringPiece const str) {
@@ -49,7 +53,7 @@ Expected<json_pointer, json_pointer::parse_error> json_pointer::try_parse(
 json_pointer json_pointer::parse(StringPiece const str) {
   auto res = try_parse(str);
   if (res.hasValue()) {
-    return std::move(res.value());
+    return std::move(res).value();
   }
   switch (res.error()) {
     case parse_error::invalid_first_character:
