@@ -320,7 +320,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   virtual void writePing(std::unique_ptr<folly::IOBuf> buf, int gso) {
     socket_->writeGSO(
         server_,
-        std::move(buf),
+        buf,
         folly::AsyncUDPSocket::WriteOptions(
             gso /*gsoVal*/, false /* zerocopyVal*/));
   }

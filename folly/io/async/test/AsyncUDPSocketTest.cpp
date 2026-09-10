@@ -258,7 +258,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   }
 
   virtual void writePing(std::unique_ptr<folly::IOBuf> buf) {
-    auto ret = socket_->write(server_, std::move(buf));
+    auto ret = socket_->write(server_, buf);
     if (ret == -1) {
       error_ = true;
     }

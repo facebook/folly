@@ -71,7 +71,7 @@ class ObserverManager {
     std::shared_lock rh(instance.versionMutex_);
 
     instance.scheduleCurrent(
-        [coreWeak = folly::to_weak_ptr(std::move(core)),
+        [coreWeak = folly::to_weak_ptr(core),
          &instance,
          rh_2 = std::move(rh)]() {
           if (auto coreShared = coreWeak.lock()) {
