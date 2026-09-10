@@ -1,5 +1,6 @@
 {
   "prompt": "input/author-prompt.md",
+  "no_rules_prompt": "input/author-prompt.no-rules.md",
   "inputs": [
     {
       "source": "input/input-map.md",

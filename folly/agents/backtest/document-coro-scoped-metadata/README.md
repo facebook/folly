@@ -11,10 +11,11 @@ captured an intermediate design, and the frozen source predates later decisions.
 `input/input-map.md` defines which evidence wins. The author must recover the
 current contract without turning implementation history into user documentation.
 
-The run ends with the reviewed `output.md`. Inspect it for factual errors or
-omissions that could lead a reader to misuse the API, misread captured metadata,
-or integrate it incorrectly. Report the specific wrong action each problem could
-cause; omit minor detail that would not change reader action.
+The run ends with the reviewed `output.md` (unless in no-rules mode). Inspect it
+for factual errors or omissions that could lead a reader to misuse the API,
+misread captured metadata, or integrate it incorrectly. Report the specific
+wrong action each problem could cause; omit minor detail that would not change
+reader action.
 
 Human comparison is the default. The [optional contract check](eval/SETUP.md)
 reports factual conflicts and omissions when the public API and an ordinary read

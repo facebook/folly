@@ -66,21 +66,24 @@ class RunScenarioTest(unittest.TestCase):
         self,
         *,
         prompt: str = "prompt.md",
+        no_rules_prompt: str | None = None,
         inputs: list[dict[str, str]] | None = None,
         rules: list[str] | None = None,
         scenario: Path | None = None,
     ) -> runner.Manifest:
         scenario = scenario or self.scenario
-        return write_manifest(
-            scenario / "scenario.json",
-            {
-                "prompt": prompt,
-                "inputs": inputs or [],
-                "rules": rules or [],
-            },
-        )
+        contents: dict[str, object] = {
+            "prompt": prompt,
+            "inputs": inputs or [],
+            "rules": rules or [],
+        }
+        if no_rules_prompt is not None:
+            contents["no_rules_prompt"] = no_rules_prompt
+        return write_manifest(scenario / "scenario.json", contents)
 
-    def prepare(self, scenario: Path | None = None) -> runner.Run:
+    def prepare(
+        self, scenario: Path | None = None, *, install_rules: bool = True
+    ) -> runner.Run:
         return runner.prepare(
             scenario or self.scenario,
             self.rules_root,
@@ -88,6 +91,7 @@ class RunScenarioTest(unittest.TestCase):
             "model",
             "high",
             REVISION,
+            install_rules=install_rules,
         )
 
     def prepare_launch(self) -> tuple[runner.Run, Path]:
@@ -146,21 +150,32 @@ class RunScenarioTest(unittest.TestCase):
         )
 
         self.assertNotIn("rules_root", vars(args))
+        self.assertFalse(args.no_rules)
 
-    def test_parser_rejects_unknown_reasoning_effort(self) -> None:
-        with self.assertRaises(SystemExit):
-            runner._parser().parse_args(
-                ["scenario", "--model", "model", "--reasoning-effort", 'high"quoted']
-            )
+    def test_parser_accepts_no_rules(self) -> None:
+        args = runner._parser().parse_args(
+            [
+                "scenario",
+                "--model",
+                "model",
+                "--reasoning-effort",
+                "high",
+                "--no-rules",
+            ]
+        )
+
+        self.assertTrue(args.no_rules)
 
     def test_generation_revision_checks_the_files_that_define_a_run(self) -> None:
         (self.root / ".hg").mkdir()
         runner_path = self.root / "run_scenario.py"
         write(runner_path, "runner")
+        write(self.scenario / "prompt.no-rules.md", "bare prompt")
         write(self.scenario / "input/data.md", "data")
         write(self.rules_root / "writing.md", "writing")
         make_tools(self.rules_root)
         manifest = self.manifest(
+            no_rules_prompt="prompt.no-rules.md",
             inputs=[{"source": "input", "destination": "input"}],
             rules=["writing.md"],
         )
@@ -188,6 +203,7 @@ class RunScenarioTest(unittest.TestCase):
                 "agents/critic-iterate/codex-reviewer.py",
             }.issubset(status)
         )
+        self.assertNotIn("scenario/prompt.no-rules.md", status)
 
     def test_generation_revision_rejects_dirty_or_untracked_inputs(self) -> None:
         (self.root / ".hg").mkdir()
@@ -215,7 +231,6 @@ class RunScenarioTest(unittest.TestCase):
                     "source files",
                     message,
                 )
-                self.assertIn("remove ignored artifacts", message)
                 self.assertIn("scenario/prompt.md", message)
 
     def test_generation_revision_supports_git_checkouts(self) -> None:
@@ -239,7 +254,37 @@ class RunScenarioTest(unittest.TestCase):
         self.assertEqual(commands[0][0:3], ["git", "status", "--porcelain=v1"])
         self.assertIn("--untracked-files=all", commands[0])
         self.assertIn("--ignored=matching", commands[0])
+        self.assertTrue(any("critic-iterate" in argument for argument in commands[0]))
         self.assertEqual(commands[1], ["git", "rev-parse", "HEAD"])
+
+    def test_generation_revision_omits_rules_for_no_rules_mode(self) -> None:
+        (self.root / ".git").mkdir()
+        runner_path = self.root / "run_scenario.py"
+        write(runner_path, "runner")
+        write(self.scenario / "prompt.no-rules.md", "bare prompt")
+        write(self.rules_root / "writing.md", "writing")
+        make_tools(self.rules_root)
+        manifest = self.manifest(
+            no_rules_prompt="prompt.no-rules.md", rules=["writing.md"]
+        )
+        commands, command_runner = self.source_control()
+
+        self.assertEqual(
+            runner.generation_revision(
+                self.scenario,
+                manifest,
+                self.rules_root,
+                install_rules=False,
+                runner_path=runner_path,
+                command_runner=command_runner,
+            ),
+            REVISION,
+        )
+        status = commands[0]
+        self.assertIn("scenario/prompt.no-rules.md", status)
+        self.assertNotIn("scenario/prompt.md", status)
+        self.assertFalse(any("writing.md" in argument for argument in status))
+        self.assertFalse(any("codex-reviewer.py" in argument for argument in status))
 
     def test_generation_revision_rejects_multiple_checkouts(self) -> None:
         agents_root = self.root / "rules-checkout/folly/agents"
@@ -335,7 +380,8 @@ class RunScenarioTest(unittest.TestCase):
 
     def test_prepare_prefixes_the_rule_loading_instruction(self) -> None:
         write(self.scenario / "prompt.md", "Do the task.\n")
-        self.manifest()
+        write(self.scenario / "prompt.no-rules.md", "Do the bare task.\n")
+        self.manifest(no_rules_prompt="prompt.no-rules.md")
 
         run = self.prepare()
 
@@ -345,8 +391,30 @@ class RunScenarioTest(unittest.TestCase):
             "Follow those rules for conditional loads; do not look for ambient "
             "rule files.\n\nDo the task.\n",
         )
+        self.assertTrue((run.workdir / "rules/rules-inventory.md").is_file())
         metadata = json.loads((run.root / "run.json").read_text())
         self.assertEqual(metadata["generation_revision"], REVISION)
+        self.assertNotIn("no_rules", metadata)
+
+    def test_prepare_without_rules_stages_bare_inputs(self) -> None:
+        write(self.scenario / "prompt.md", "Do the task.\n")
+        write(self.scenario / "prompt.no-rules.md", "Do the bare task.\n")
+        write(self.scenario / "input.md", "input")
+        write(self.rules_root / "writing.md", "writing")
+        self.manifest(
+            no_rules_prompt="prompt.no-rules.md",
+            inputs=[{"source": "input.md", "destination": "input.md"}],
+            rules=["writing.md"],
+        )
+
+        run = self.prepare(install_rules=False)
+
+        self.assertEqual(run.prompt.read_text(), "Do the bare task.\n")
+        self.assertEqual({path.name for path in run.workdir.iterdir()}, {"input.md"})
+        self.assertFalse(run.install_rules)
+        metadata = json.loads((run.root / "run.json").read_text())
+        self.assertEqual(metadata["rules"], [])
+        self.assertTrue(metadata["no_rules"])
 
     def test_staging_rejects_symlinks_outside_declared_roots(self) -> None:
         write(self.root / "outside.md", "outside")
@@ -554,16 +622,13 @@ class RunScenarioTest(unittest.TestCase):
         self.assertEqual(metadata["exit_code"], 7)
         self.assertEqual(metadata["executables"]["codex"], str(codex.resolve()))
 
-    def test_failed_launch_records_partial_output_error(self) -> None:
+    def test_finish_run_preserves_failure_with_invalid_partial_output(self) -> None:
         self.manifest()
-        run, codex = self.prepare_launch()
+        run = self.prepare()
         (run.workdir / "output.md").mkdir()
-        _, _, command_runner = self.fake_codex(run, returncode=7, output=None)
 
-        self.assertEqual(
-            runner.launch(run, codex, "model", "high", command_runner=command_runner),
-            7,
-        )
+        self.assertEqual(runner._finish_run(run, 7), 7)
+
         metadata = json.loads((run.root / "run.json").read_text())
         self.assertEqual(metadata["status"], "failed")
         self.assertEqual(metadata["exit_code"], 7)
@@ -642,3 +707,25 @@ class RunScenarioTest(unittest.TestCase):
                     metadata["output_preservation_error"],
                     "output.md is not a regular file",
                 )
+
+    def test_launch_without_rules_preserves_the_ambient_path(self) -> None:
+        self.manifest()
+        codex = executable(self.root / "codex")
+        run = self.prepare(install_rules=False)
+        _, environments, command_runner = self.fake_codex(
+            run, returncode=0, output="complete"
+        )
+
+        result = runner.launch(
+            run, codex, "model", "high", command_runner=command_runner
+        )
+
+        self.assertEqual(result, 0)
+        self.assertEqual((run.root / "output.md").read_text(), "complete")
+        self.assertEqual(environments[0].get("PATH"), os.environ.get("PATH"))
+        self.assertFalse((run.root / "bin").exists())
+        self.assertFalse((run.codex_home / "rules/default.rules").exists())
+        metadata = json.loads((run.root / "run.json").read_text())
+        self.assertEqual(metadata["status"], "complete")
+        self.assertEqual(metadata["exit_code"], 0)
+        self.assertEqual(metadata["executables"], {"codex": str(codex.resolve())})

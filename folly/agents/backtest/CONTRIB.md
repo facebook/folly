@@ -11,9 +11,9 @@ Each scenario has:
 - `README.md`: the behavior being isolated, why it matters in real use, the
   artifact and reader, the deliberate stop point, and concrete observations to
   report;
-- `scenario.json`: the author prompt (`prompt`), staged file mappings
-  (`inputs`), and exact operational rules (`rules`); copy the shape from a
-  nearby scenario;
+- `scenario.json`: the normal author prompt (`prompt`), optional bare prompt
+  (`no_rules_prompt`), staged file mappings (`inputs`), and exact operational
+  rules (`rules`); copy the shape from a nearby scenario;
 - `input/`: frozen material visible to the author; and
 - optional `eval/`: a narrow check used only after `output.md` is frozen.
 
@@ -28,16 +28,32 @@ rule; the runner does not discover files or load a profile. It stages
 critic-iterate's reviewer preambles and authorization procedure when
 `critic-iterate.md` is selected. Development documents such as `README.md`,
 `CONTRIB.md`, `*.contrib.md`, and `*.entrypoint.md` are rejected as rules. The
-runner adds the rule-loading instruction; keep the scenario prompt focused on
-the task.
+runner adds the rule-loading instruction for a normal run; keep the scenario
+prompt focused on the task.
+
+No-rules support is secondary and must not change the prompt or input behavior
+of normal runs. If a scenario's normal prompt assumes staged rules, set
+`no_rules_prompt` to a separate bare prompt; do not generalize the normal
+prompt. The two prompts must describe the same task; the bare copy may remove
+only rule-dependent process instructions. With `--no-rules`, the runner ignores
+the manifest's rule list and uses that bare prompt when present. Rule-workflow
+diagnostics that cannot stand alone without their rules do not have a meaningful
+no-rules baseline.
 
 ## Keep comparisons honest
 
 Run `--prepare-only` and inspect the staged workdir before spending model time.
-Across compared runs, keep the author-visible prompt, inputs, model, reasoning
-effort, and executable versions fixed. Run each side from its committed checkout
-revision. If any of these inputs changes, treat it as another intervention
-instead of attributing the result only to rules.
+Across compared runs, keep fixed:
+
+- the task and staged inputs;
+- the model and reasoning effort; and
+- shared executable versions.
+
+Generate a regular/no-rules pair from the same committed revision. Remove only
+the injected rules and rule-only helpers. If the regular prompt refers to those
+rules, isolate only that wording in `no_rules_prompt`. When comparing against an
+older stored sample, treat every other revision difference as another
+intervention instead of attributing it to the rules.
 
 Human reading is the default evaluation. Add an evaluator only when it can make
 a narrow, repeatable observation that ordinary artifact comparison cannot make

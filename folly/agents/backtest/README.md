@@ -2,11 +2,14 @@
 
 A backtest holds a task and its evidence fixed while changing the rules an agent
 receives. It helps answer whether a rule change improves the artifact and what
-the improvement costs.
+the improvement costs. A no-rules run provides an honest bare-model baseline for
+judging whether any quality lift from the rules justifies the extra time,
+tokens, and context they consume.
 
-Each run uses the scenario, rules, runner, and helper scripts from one committed
-checkout. Run the scenario at another revision, then compare the artifacts. The
-runner does not know which run is a baseline or choose a winner.
+Each run uses the scenario and runner from one committed checkout. Regular
+rule-backed runs use their rules and helper scripts from that checkout too. Run
+the scenario at another revision to compare rule revisions. The runner does not
+know which run is a baseline or choose a winner.
 
 After every attempted run, follow [mandatory-debrief.md](mandatory-debrief.md)
 before reporting the result.
@@ -29,6 +32,12 @@ workdir and start the author. The runner refuses to start when a scenario
 manifest, prompt, declared input, selected rule, helper, or the runner itself
 has an uncommitted change.
 
+Add `--no-rules` to measure the model without the selected Folly agent rules. In
+this mode, the runner uses `no_rules_prompt` from `scenario.json` when present;
+otherwise it sends the normal scenario prompt unchanged. It stages only the
+declared inputs and does not add its private rule-helper directory to `PATH`.
+Inspect the prepared prompt and workdir before starting the author.
+
 If it refuses, show the listed files to the user and stop. Retry after the user
 commits or amends them, or explicitly authorizes a commit containing only those
 files. Never create that commit silently.
@@ -37,12 +46,23 @@ Before starting, explain to the user what behavior the scenario isolates, why
 that behavior matters in real use, and where the run deliberately stops. The
 scenario README supplies this framing.
 
-The run directory contains the staged workdir, selected rules, author prompt,
-run metadata, trace, stderr, and any `output.md`. Runs live under the system
-temporary directory by default; pass `--run-root` when one must survive normal
-temporary cleanup.
+The run directory contains the staged workdir, author prompt, run metadata,
+trace, stderr, and any `output.md`. A regular rule-backed workdir also contains
+its selected rules. Runs live under the system temporary directory by default;
+pass `--run-root` when one must survive normal temporary cleanup.
 
 ## Compare runs
+
+For a regular/no-rules pair, use the same committed revision and:
+
+- keep the task, staged inputs, model, reasoning effort, and shared executable
+  versions fixed; and
+- change only the injected rules, rule-only helpers, and rule-dependent wording
+  isolated in `no_rules_prompt`.
+
+When only an older stored sample is available, follow
+[tracking-samples.md](tracking-samples.md) to identify and report any additional
+differences.
 
 Read the artifacts first. Report concrete differences in correctness and reader
 effort. Use traces, reviewer reports, time, and token use to explain those

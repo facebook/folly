@@ -13,7 +13,7 @@ hunk or assume the reader has the source packet.
 
 The run ends after the author follows the staged rules, writes the complete
 replacement commit message to `output.md`, and completes any review those rules
-require.
+require (unless in no-rules mode).
 
 After the run, confirm that `output.md` is nonempty and that the trace contains
 no undeclared reads.

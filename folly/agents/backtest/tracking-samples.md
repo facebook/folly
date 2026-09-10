@@ -9,15 +9,18 @@ user asks to add one.
 
 ## Store a sample
 
-Store each run under `SCENARIO/samples/<number>-at-<revision>/`. Start at 1 for
-each generation revision. Use the first 10 characters of the
+Store a regular rule-backed run under `SCENARIO/samples/<number>-at-<revision>/`
+and a `--no-rules` run under
+`SCENARIO/samples/<number>-no-rules-at-<revision>/`. Start at 1 for each
+generation revision and run style. Use the first 10 characters of the
 `generation_revision` recorded in `run.json`.
 
 - `output.md` is the exact user-facing artifact.
 - `README.md` is a short metadata header followed by the same debrief shown to
   the user. Do not regenerate or restyle the debrief for storage.
 
-The header records the full generation revision and the source revision of each
+The header records the full generation revision, model, reasoning effort,
+versions of shared executables when known, and the source revision of each
 evaluator. Evaluators may run from a later revision without changing the
 generation revision. Record unknown metadata as unknown rather than
 reconstructing it. Keep traces, reviewer reports, and other process files out of

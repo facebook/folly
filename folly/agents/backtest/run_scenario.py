@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Run one fixed agent-rules backtest scenario."""
+"""Run one fixed agent backtest scenario."""
 
 from __future__ import annotations
 
@@ -68,6 +68,7 @@ class Manifest:
     prompt: PurePosixPath
     inputs: tuple[Mapping, ...]
     rules: tuple[PurePosixPath, ...]
+    no_rules_prompt: PurePosixPath | None = None
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,7 @@ class Run:
     codex_home: Path
     prompt: Path
     rules_root: Path
+    install_rules: bool
 
 
 @dataclass(frozen=True)
@@ -110,8 +112,16 @@ def _validate_input_destination(path: PurePosixPath) -> None:
 def load_manifest(path: Path) -> Manifest:
     raw = json.loads(path.read_text())
     assert type(raw) is dict
-    assert set(raw) == {"prompt", "inputs", "rules"}
+    manifest_keys = {"prompt", "inputs", "rules"}
+    if "no_rules_prompt" in raw:
+        manifest_keys.add("no_rules_prompt")
+    assert set(raw) == manifest_keys
     prompt = _relative_path(raw["prompt"], "prompt")
+    no_rules_prompt = (
+        _relative_path(raw["no_rules_prompt"], "no_rules_prompt")
+        if "no_rules_prompt" in raw
+        else None
+    )
     raw_inputs = raw["inputs"]
     raw_rules = raw["rules"]
     assert type(raw_inputs) is list
@@ -137,7 +147,13 @@ def load_manifest(path: Path) -> Manifest:
     for rule in rules:
         if _is_development_doc(rule):
             raise RunnerError(f"rules may not include development material: {rule}")
-    return Manifest(prompt, tuple(inputs), rules)
+    return Manifest(prompt, tuple(inputs), rules, no_rules_prompt)
+
+
+def _prompt_for_run(manifest: Manifest, install_rules: bool) -> PurePosixPath:
+    if not install_rules and manifest.no_rules_prompt is not None:
+        return manifest.no_rules_prompt
+    return manifest.prompt
 
 
 def _resolve_below(root: Path, relative: PurePosixPath, field: str) -> Path:
@@ -212,22 +228,25 @@ def _generation_sources(
     manifest: Manifest,
     rules_root: Path,
     runner_path: Path,
+    install_rules: bool,
 ) -> tuple[Path, ...]:
     sources = [
         runner_path.resolve(),
         (scenario / "scenario.json").resolve(),
-        _resolve_below(scenario, manifest.prompt, "prompt"),
+        _resolve_below(scenario, _prompt_for_run(manifest, install_rules), "prompt"),
     ]
     sources.extend(
         _resolve_below(scenario, mapping.source, "input source")
         for mapping in manifest.inputs
     )
+    selected_rules = manifest.rules if install_rules else ()
     support_files = (
-        CRITIC_ITERATE_SUPPORT_FILES if CRITIC_ITERATE_RULE in manifest.rules else ()
+        CRITIC_ITERATE_SUPPORT_FILES if CRITIC_ITERATE_RULE in selected_rules else ()
     )
+    tool_files = TOOL_FILES.values() if install_rules else ()
     sources.extend(
         _resolve_below(rules_root, path, "rule")
-        for path in (*manifest.rules, *support_files, *TOOL_FILES.values())
+        for path in (*selected_rules, *support_files, *tool_files)
     )
     return tuple(dict.fromkeys(sources))
 
@@ -237,12 +256,15 @@ def generation_revision(
     manifest: Manifest,
     rules_root: Path,
     *,
+    install_rules: bool = True,
     runner_path: Path | None = None,
     command_runner: CommandRunner = subprocess.run,
 ) -> str:
     if runner_path is None:
         runner_path = Path(__file__)
-    sources = _generation_sources(scenario, manifest, rules_root, runner_path)
+    sources = _generation_sources(
+        scenario, manifest, rules_root, runner_path, install_rules
+    )
     checkout = _find_checkout(sources[0])
     relative_sources = []
     for source in sources:
@@ -310,7 +332,14 @@ def _rules_inventory(rules: tuple[PurePosixPath, ...]) -> bytes:
     ).encode()
 
 
-def stage(scenario: Path, manifest: Manifest, rules_root: Path, workdir: Path) -> None:
+def stage(
+    scenario: Path,
+    manifest: Manifest,
+    rules_root: Path,
+    workdir: Path,
+    *,
+    install_rules: bool = True,
+) -> None:
     rules_root = rules_root.resolve()
     if not rules_root.is_dir():
         raise RunnerError(f"rules root is not a directory: {rules_root}")
@@ -322,19 +351,22 @@ def stage(scenario: Path, manifest: Manifest, rules_root: Path, workdir: Path) -
             _claim(destinations, destination)
             plan.append((destination, contents))
 
-    inventory = PurePosixPath("rules/rules-inventory.md")
-    _claim(destinations, inventory)
-    plan.append((inventory, _rules_inventory(manifest.rules)))
-    support_files = (
-        CRITIC_ITERATE_SUPPORT_FILES if CRITIC_ITERATE_RULE in manifest.rules else ()
-    )
-    for rule in (*manifest.rules, *support_files):
-        destination = PurePosixPath("rules") / rule
-        _claim(destinations, destination)
-        source = _resolve_below(rules_root, rule, "rule")
-        if not source.is_file():
-            raise RunnerError(f"rule file does not exist: {rule}")
-        plan.append((destination, source.read_bytes()))
+    if install_rules:
+        inventory = PurePosixPath("rules/rules-inventory.md")
+        _claim(destinations, inventory)
+        plan.append((inventory, _rules_inventory(manifest.rules)))
+        support_files = (
+            CRITIC_ITERATE_SUPPORT_FILES
+            if CRITIC_ITERATE_RULE in manifest.rules
+            else ()
+        )
+        for rule in (*manifest.rules, *support_files):
+            destination = PurePosixPath("rules") / rule
+            _claim(destinations, destination)
+            source = _resolve_below(rules_root, rule, "rule")
+            if not source.is_file():
+                raise RunnerError(f"rule file does not exist: {rule}")
+            plan.append((destination, source.read_bytes()))
 
     for destination, contents in plan:
         path = workdir / destination
@@ -350,6 +382,8 @@ def prepare(
     model: str,
     effort: str,
     generation_revision: str,
+    *,
+    install_rules: bool = True,
 ) -> Run:
     scenario = scenario.resolve()
     if not scenario.is_dir():
@@ -362,9 +396,10 @@ def prepare(
         raise RunnerError("run root may not be inside the rules tree")
     manifest_path = scenario / "scenario.json"
     manifest = load_manifest(manifest_path)
-    prompt = _resolve_below(scenario, manifest.prompt, "prompt")
+    prompt_source = _prompt_for_run(manifest, install_rules)
+    prompt = _resolve_below(scenario, prompt_source, "prompt")
     if not prompt.is_file():
-        raise RunnerError(f"prompt does not exist: {manifest.prompt}")
+        raise RunnerError(f"prompt does not exist: {prompt_source}")
 
     run_root.mkdir(parents=True, exist_ok=True)
     root = Path(
@@ -377,26 +412,35 @@ def prepare(
             root / "codex-home",
             root / "author-prompt.md",
             rules_root,
+            install_rules,
         )
         run.workdir.mkdir()
-        run.prompt.write_text(RULE_LOADING_INSTRUCTION + prompt.read_text())
+        run.prompt.write_text(
+            (RULE_LOADING_INSTRUCTION if install_rules else "") + prompt.read_text()
+        )
         run.prompt.chmod(0o444)
         shutil.copyfile(manifest_path, root / "scenario.json")
-        stage(scenario, manifest, run.rules_root, run.workdir)
+        stage(
+            scenario,
+            manifest,
+            run.rules_root,
+            run.workdir,
+            install_rules=install_rules,
+        )
+        metadata: dict[str, object] = {
+            "model": model,
+            "reasoning_effort": effort,
+            "generation_revision": generation_revision,
+            "rules": (
+                [rule.as_posix() for rule in manifest.rules] if install_rules else []
+            ),
+            "scenario": str(scenario),
+            "status": "prepared",
+        }
+        if not install_rules:
+            metadata["no_rules"] = True
         (root / "run.json").write_text(
-            json.dumps(
-                {
-                    "model": model,
-                    "reasoning_effort": effort,
-                    "generation_revision": generation_revision,
-                    "rules": [rule.as_posix() for rule in manifest.rules],
-                    "scenario": str(scenario),
-                    "status": "prepared",
-                },
-                indent=2,
-                sort_keys=True,
-            )
-            + "\n"
+            json.dumps(metadata, indent=2, sort_keys=True) + "\n"
         )
     except (OSError, RunnerError):
         shutil.rmtree(root, ignore_errors=True)
@@ -457,7 +501,7 @@ def _preserve_output(run: Run) -> bool:
     return output_stat.st_size > 0
 
 
-def _author_environment(run: Run, tool_bin: Path) -> dict[str, str]:
+def _author_environment(run: Run, tool_bin: Path | None) -> dict[str, str]:
     environment = os.environ.copy()
     for name in tuple(environment):
         if name.startswith(("CODEX_", "PYTHON")) or name in {
@@ -467,13 +511,14 @@ def _author_environment(run: Run, tool_bin: Path) -> dict[str, str]:
             "ZDOTDIR",
         }:
             environment.pop(name)
-    inherited_path = environment.get("PATH")
     environment["CODEX_HOME"] = str(run.codex_home)
-    environment["PATH"] = (
-        os.pathsep.join([str(tool_bin), inherited_path])
-        if inherited_path
-        else str(tool_bin)
-    )
+    if tool_bin is not None:
+        inherited_path = environment.get("PATH")
+        environment["PATH"] = (
+            os.pathsep.join([str(tool_bin), inherited_path])
+            if inherited_path
+            else str(tool_bin)
+        )
     return environment
 
 
@@ -529,8 +574,13 @@ def launch(
 ) -> int:
     try:
         codex_path = _resolve_executable(codex, "codex")
-        tool_bin, tools = _install_tools(run)
-        executables = {"codex": codex_path, **tools}
+        tool_bin = None
+        executables = {"codex": codex_path}
+        if run.install_rules:
+            tool_bin, tools = _install_tools(run)
+            executables.update(tools)
+        else:
+            run.codex_home.mkdir()
         _update_metadata(
             run,
             executables={
@@ -586,6 +636,11 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="stage inputs without starting Codex",
     )
+    parser.add_argument(
+        "--no-rules",
+        action="store_true",
+        help="run with the scenario prompt and inputs but no staged rules",
+    )
     return parser
 
 
@@ -595,7 +650,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         agents_root = Path(__file__).resolve().parent.parent
         scenario = args.scenario.resolve()
         manifest = load_manifest(scenario / "scenario.json")
-        revision = generation_revision(scenario, manifest, agents_root)
+        revision = generation_revision(
+            scenario, manifest, agents_root, install_rules=not args.no_rules
+        )
         run = prepare(
             scenario,
             agents_root,
@@ -603,6 +660,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.model,
             args.reasoning_effort,
             revision,
+            install_rules=not args.no_rules,
         )
         print(run.root)
         if args.prepare_only:
