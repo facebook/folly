@@ -33,21 +33,24 @@ Resolve these once from `PATH`; use the fallback if absent:
 
 Default-on for:
 
-- Durable prose — see "Writing specialization" for full scope, including commit
-  messages, docs, guidelines, posts, code comments, edits to the rules package
-  containing this file, and other personal or project rule documents.
+- Prose meant for human use outside the current conversation: commit messages,
+  docs, guidelines, posts, code comments, and personal or project rule
+  documents.
 - Code changes intended to persist. Draft first if useful, but run the critic
   loop, apply fixes, and emit each pass's accountability artifact promptly
   before continuing with material work.
-- Investigations and recommendations where a false claim could change the
-  answer.
-- Substantive design or correctness choices.
+- Investigations or recommendations where the answer is not a direct lookup and
+  will guide a costly, risky, or hard-to-reverse decision.
+- Other artifacts kept for later human use that record substantive design or
+  correctness choices.
 - Code reviews.
 
-Do not trigger on disposable working scaffolds: dumps, evidence ledgers, scratch
-plans, and similar intermediate notes. If the user is expected to read the
-material or it is intended for future reuse, the material is durable and the
-loop applies.
+Routine conversation, status updates, debriefs, working notes, and context dumps
+trigger only through another condition above.
+
+Purely mechanical changes do not trigger by default, regardless of line count.
+Examples are typos, broken links, formatting, and repeating an already-approved
+rename or rephrase.
 
 Accountability artifacts and delegated-review reports produced by this workflow
 do not themselves trigger another critic-iterate cycle.
@@ -555,9 +558,8 @@ model is Opus 5+ or GPT-5.5+ (resolve it with
   covers the final revision; follow "Integration and closure" to choose another
   pair or close after author review.
 - Critic-iterate runs the full process on every trigger. Do not label material
-  as scratch when the user is expected to read it or it is intended for future
-  reuse. Beyond the explicit exemptions in this file, the sole process exemption
-  is an explicit user ask for "one inner loop".
+  intended for future reuse as scratch. Beyond the explicit exemptions in this
+  file, the sole process exemption is an explicit user ask for "one inner loop".
 - Do NOT invoke "context bottleneck" to skip the Codex CLI reviewer. Real
   exhaustion means token count within the window limit's warning band or tools
   returning truncation errors — otherwise, run it.
@@ -565,8 +567,9 @@ model is Opus 5+ or GPT-5.5+ (resolve it with
 ## Code Specialization
 
 For every nontrivial code change, run a code critic pass before lint, format,
-tests, or commit. Nontrivial means more than an isolated typo, rename, literal
-or config value, formatter-only change, or generated-output update.
+tests, or commit. Skip this code-specific pass for a typo, mechanical rename,
+formatter-only change, generated-output update, or isolated literal or config
+value.
 
 For code critic passes and fresh-context reviewers, user nits are inputs, not
 scope. Reconstruct the changed artifact's intended contract, then review the
@@ -612,21 +615,9 @@ Identify these critic dimensions before inspecting the current draft:
 
 Then cold re-read per the general cycle.
 
-### Scope and Exemptions
+### Scope
 
-The accountability artifact is required for:
-
-- Prose blocks ≥3 sentences.
-- Any edit to the rules package containing this file or to another personal or
-  project rule document, including additions made during the turn that encodes a
-  new rule. The writing exemptions below do not apply.
-
-Writing exemptions:
-
-- Typo fixes: single-character corrections, no semantic shift.
-- Single-line edits with no semantic shift: variable rename, comment rephrase.
-- Disposable working scaffolds as defined under "Trigger".
-- If unsure: artifact required.
+Every prose edit that triggers this rule requires an accountability artifact.
 
 ### Dual-Revision Thresholds
 
@@ -634,16 +625,14 @@ The general "high-stakes" definition applies to all writing. Concrete thresholds
 for cases that need them:
 
 - **Commit messages:** dual revision required when the change affects ≥1
-  sentence of substantive content. Typo, broken-link, and format fixes are
-  exempt. So are mechanically forced version bumps, renames, and pure
-  config-value changes when one sentence says everything the reader needs, the
-  context packet adds no other `Reader must know` fact, and the author checks
-  the message against the diff. A design choice or known comprehension failure
-  restores dual revision.
+  sentence of substantive content. Mechanically forced version bumps, renames,
+  and pure config-value changes are exempt when one sentence says everything the
+  reader needs, the context packet adds no other `Reader must know` fact, and
+  the author checks the message against the diff. A design choice or known
+  comprehension failure restores dual revision.
 - **Rule-doc edits** in the rules package containing this file or another
   personal or project rule document: dual revision required for every semantic
-  or readability change. Pure typo, broken-link, and format fixes are exempt;
-  there is no size threshold otherwise.
+  or readability change; there is no size threshold.
 - **Posts seeking input:** dual revision required by default, with no threshold.
 
 ### Self-Dog-Fooding Gate

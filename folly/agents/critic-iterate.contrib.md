@@ -3,6 +3,10 @@
 Purpose: improve durable work through repeated self-critique and independent
 review, with visible evidence that each pass was completed.
 
+Review costs time and context. Spend it on lasting prose and consequential
+judgment, where another pass can change the result. Direct lookups and repeated
+mechanical edits do not justify the loop.
+
 Authors tend to accept their first workable answer.
 
 Trying different wording that preserves the meaning can expose weaknesses.

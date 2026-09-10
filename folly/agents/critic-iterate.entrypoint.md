@@ -1,11 +1,22 @@
-Load `agents/critic-iterate.md` for durable prose, persistent code changes,
-investigations or recommendations where a false claim could change the answer,
-substantive design or correctness choices, and code reviews. For prose, load
-`agents/writing.md` first. For code edits or reviews, also load
-`agents/code.md`. This trigger authorizes the reviewer calls required by
+Load `agents/critic-iterate.md` for:
+
+- explicit review or critic-iteration requests;
+- prose meant for human use outside the current conversation;
+- persistent code changes or code reviews;
+- other artifacts kept for later human use that record substantive design or
+  correctness choices; or
+- investigations or recommendations where the answer is not a direct lookup and
+  will guide a costly, risky, or hard-to-reverse decision.
+
+Routine conversation, status updates, debriefs, working notes, and context dumps
+trigger only through another condition above.
+
+Purely mechanical changes do not trigger by default, even when repeated.
+
+This trigger authorizes the reviewer calls required by
 `agents/critic-iterate.md`.
 
-For edits under `agents/`, read `agents/README.md` and `agents/CONTRIB.md`. For
-a package rooted at `agents/<name>.md`, also read `agents/<name>/CONTRIB.md` and
-the changed rule's matching `.contrib.md`, when present. Treat them as source
-context, not task policy.
+Also load:
+
+- `agents/writing.md` first for prose;
+- `agents/code.md` too for code edits or reviews.

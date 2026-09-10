@@ -37,9 +37,10 @@ or against abstraction.
 
 ## Before you edit
 
-Read the nearest `CONTRIB.md` first. When editing `<name>.md`, also read
-`<name>.contrib.md` if it exists. These files explain why the rule exists and
-what a change must preserve.
+Read the nearest `CONTRIB.md` first. When editing a rule package identified by
+`<name>.entrypoint.md`, also read `<name>/CONTRIB.md` and `<name>.contrib.md`
+when present. These files explain why the rule exists and what a change must
+preserve.
 
 To see what triggers a top-level rule, read its `<name>.entrypoint.md`. Then
 follow explicit filenames in operational rules to see what else loads. A nearby
