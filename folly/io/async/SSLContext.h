@@ -32,6 +32,7 @@
 #include <folly/String.h>
 #include <folly/container/Access.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
+#include <folly/lang/cstring_view.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
@@ -156,14 +157,16 @@ class SSLContext {
    *
    * @param ciphers A list of ciphers to use for TLSv1.0
    */
-  virtual void ciphers(const std::string& ciphers);
+  virtual void ciphers(const char* ciphers);
+  void ciphers(folly::cstring_view ciphers);
 
   /**
    * Low-level method that attempts to set the provided TLS 1.2
    * and below ciphers on the SSL_CTX object,
    * and throws if something goes wrong.
    */
-  virtual void setCiphersOrThrow(const std::string& ciphers);
+  virtual void setCiphersOrThrow(const char* ciphers);
+  void setCiphersOrThrow(folly::cstring_view ciphers);
 
   /**
    * Set default TLS 1.2 and below ciphers to be used in SSL handshake process.
@@ -193,7 +196,8 @@ class SSLContext {
    * algorithms on the SSL_CTX object for TLS1.2+,
    * and throws if something goes wrong.
    */
-  virtual void setSigAlgsOrThrow(const std::string& sigAlgs);
+  virtual void setSigAlgsOrThrow(const char* sigAlgs);
+  void setSigAlgsOrThrow(folly::cstring_view sigAlgs);
 
   template <typename Iterator>
   void setSignatureAlgorithms(Iterator ibegin, Iterator iend) {
@@ -229,7 +233,8 @@ class SSLContext {
    *
    * @param curveName: The name of the ec curve to support, eg: prime256v1.
    */
-  void setServerECCurve(const std::string& curveName);
+  void setServerECCurve(const char* curveName);
+  void setServerECCurve(folly::cstring_view curveName);
 
   /**
    * Sets an x509 verification param on the context.
@@ -649,7 +654,8 @@ class SSLContext {
    * order of preference.
    * Throws if unsuccessful.
    */
-  void setCiphersuitesOrThrow(const std::string& ciphersuites);
+  void setCiphersuitesOrThrow(const char* ciphersuites);
+  void setCiphersuitesOrThrow(folly::cstring_view ciphersuites);
 
   /**
    * Enables/disables non-DHE (Ephemeral Diffie-Hellman) PSK key

@@ -18,6 +18,7 @@
 
 #include <folly/FileUtil.h>
 #include <folly/io/async/test/SSLUtil.h>
+#include <folly/lang/cstring_view.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLCertUtils.h>
@@ -299,6 +300,37 @@ TEST_F(SSLContextTest, TestSetInvalidCiphersuite) {
   EXPECT_THROW(
       ctx.setCiphersuitesOrThrow("ECDHE-ECDSA-AES256-GCM-SHA384"),
       std::runtime_error);
+}
+
+TEST_F(SSLContextTest, TestSetCipherStringViewOverload) {
+  const folly::cstring_view ciphers = "AES128-SHA:ECDHE-RSA-AES256-SHA384";
+  ctx.ciphers(ciphers);
+  verifySSLCipherList({"AES128-SHA", "ECDHE-RSA-AES256-SHA384"});
+}
+
+TEST_F(SSLContextTest, TestSetCiphersOrThrowStringViewOverload) {
+  const folly::cstring_view ciphers = "AES128-SHA:ECDHE-RSA-AES256-SHA384";
+  ctx.setCiphersOrThrow(ciphers);
+  verifySSLCipherList({"AES128-SHA", "ECDHE-RSA-AES256-SHA384"});
+}
+
+TEST_F(SSLContextTest, TestSetCiphersuitesStringViewOverload) {
+  const std::vector<std::string> ciphersuitesList{
+      "TLS_AES_128_CCM_SHA256",
+      "TLS_AES_128_GCM_SHA256",
+  };
+  std::string joined;
+  folly::join(":", ciphersuitesList, joined);
+  const folly::cstring_view ciphersuites = joined;
+  ctx.setCiphersuitesOrThrow(ciphersuites);
+
+  verifySSLCiphersuites(ciphersuitesList);
+}
+
+TEST_F(SSLContextTest, TestInvalidSigAlgStringViewOverloadThrows) {
+  const folly::cstring_view sigAlgs =
+      "rsa_pss_rsae_sha512:ECDSA+SHA256:RSA+HA256";
+  EXPECT_THROW(ctx.setSigAlgsOrThrow(sigAlgs), std::runtime_error);
 }
 
 TEST_F(SSLContextTest, TestTLS13MinVersion) {

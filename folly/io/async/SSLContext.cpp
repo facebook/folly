@@ -128,8 +128,12 @@ SSLContext::~SSLContext() {
   deleteNextProtocolsStrings();
 }
 
-void SSLContext::ciphers(const std::string& ciphers) {
+void SSLContext::ciphers(const char* ciphers) {
   setCiphersOrThrow(ciphers);
+}
+
+void SSLContext::ciphers(folly::cstring_view ciphers) {
+  this->ciphers(ciphers.c_str());
 }
 
 void SSLContext::setClientECCurvesList(
@@ -157,7 +161,15 @@ void SSLContext::setSupportedGroups(const std::vector<std::string>& groups) {
   }
 }
 
-void SSLContext::setServerECCurve(const std::string& curveName) {
+void SSLContext::setServerECCurve(folly::cstring_view curveName) {
+  setServerECCurve(curveName.c_str());
+}
+
+void SSLContext::setServerECCurve(const char* curveName) {
+  if (curveName == nullptr) {
+    throw std::runtime_error("setServerECCurve: curveName must not be null");
+  }
+
   EC_KEY* ecdh = nullptr;
   int nid;
 
@@ -168,13 +180,13 @@ void SSLContext::setServerECCurve(const std::string& curveName) {
    * maximum interoperability.
    */
 
-  nid = OBJ_sn2nid(curveName.c_str());
+  nid = OBJ_sn2nid(curveName);
   if (nid == 0) {
-    LOG(FATAL) << "Unknown curve name:" << curveName.c_str();
+    LOG(FATAL) << "Unknown curve name:" << curveName;
   }
   ecdh = EC_KEY_new_by_curve_name(nid);
   if (ecdh == nullptr) {
-    LOG(FATAL) << "Unable to create curve:" << curveName.c_str();
+    LOG(FATAL) << "Unable to create curve:" << curveName;
   }
 
   SSL_CTX_set_tmp_ecdh(ctx_, ecdh);
@@ -198,16 +210,32 @@ void SSLContext::setX509VerifyParam(
   }
 }
 
-void SSLContext::setCiphersOrThrow(const std::string& ciphers) {
-  const auto rc = SSL_CTX_set_cipher_list(ctx_, ciphers.c_str());
+void SSLContext::setCiphersOrThrow(folly::cstring_view ciphers) {
+  setCiphersOrThrow(ciphers.c_str());
+}
+
+void SSLContext::setCiphersOrThrow(const char* ciphers) {
+  if (ciphers == nullptr) {
+    throw std::runtime_error(
+        "SSL_CTX_set_cipher_list: ciphers must not be null");
+  }
+  const auto rc = SSL_CTX_set_cipher_list(ctx_, ciphers);
   if (rc == 0) {
     throw std::runtime_error("SSL_CTX_set_cipher_list: " + getErrors());
   }
   providedCiphersString_ = ciphers;
 }
 
-void SSLContext::setSigAlgsOrThrow(const std::string& sigalgs) {
-  const auto rc = SSL_CTX_set1_sigalgs_list(ctx_, sigalgs.c_str());
+void SSLContext::setSigAlgsOrThrow(folly::cstring_view sigAlgs) {
+  setSigAlgsOrThrow(sigAlgs.c_str());
+}
+
+void SSLContext::setSigAlgsOrThrow(const char* sigAlgs) {
+  if (sigAlgs == nullptr) {
+    throw std::runtime_error(
+        "SSL_CTX_set1_sigalgs_list: sigAlgs must not be null");
+  }
+  const auto rc = SSL_CTX_set1_sigalgs_list(ctx_, sigAlgs);
   if (rc == 0) {
     throw std::runtime_error("SSL_CTX_set1_sigalgs_list " + getErrors());
   }
@@ -859,8 +887,16 @@ void SSLContext::setSessionLifecycleCallbacks(
   sessionLifecycleCallbacks_ = std::move(cb);
 }
 
-void SSLContext::setCiphersuitesOrThrow(const std::string& ciphersuites) {
-  auto rc = SSL_CTX_set_ciphersuites(ctx_, ciphersuites.c_str());
+void SSLContext::setCiphersuitesOrThrow(folly::cstring_view ciphersuites) {
+  setCiphersuitesOrThrow(ciphersuites.c_str());
+}
+
+void SSLContext::setCiphersuitesOrThrow(const char* ciphersuites) {
+  if (ciphersuites == nullptr) {
+    throw std::runtime_error(
+        "SSL_CTX_set_ciphersuites: ciphersuites must not be null");
+  }
+  auto rc = SSL_CTX_set_ciphersuites(ctx_, ciphersuites);
   if (rc == 0) {
     throw std::runtime_error("SSL_CTX_set_ciphersuites: " + getErrors());
   }
