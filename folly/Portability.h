@@ -133,6 +133,13 @@ constexpr bool kHasUnalignedAccess = false;
 #define FOLLY_RISCV64 0
 #endif
 
+//  The riscv Zbb (basic bit-manipulation) extension.
+#if defined(__riscv) && defined(__riscv_zbb)
+#define FOLLY_RISCV_ZBB 1
+#else
+#define FOLLY_RISCV_ZBB 0
+#endif
+
 #if defined(__wasm__)
 #define FOLLY_WASM 1
 #else
@@ -159,6 +166,7 @@ constexpr bool kIsArchAArch64 = FOLLY_AARCH64 == 1;
 constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
 constexpr bool kIsArchS390X = FOLLY_S390X == 1;
 constexpr bool kIsArchRISCV64 = FOLLY_RISCV64 == 1;
+constexpr bool kIsArchRISCVZbb = FOLLY_RISCV_ZBB == 1;
 constexpr bool kIsArchWasm = FOLLY_WASM == 1;
 constexpr bool kIsArchWasm32 = FOLLY_WASM32 == 1;
 constexpr bool kIsArchWasm64 = FOLLY_WASM64 == 1;

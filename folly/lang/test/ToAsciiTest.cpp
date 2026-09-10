@@ -333,11 +333,10 @@ TEST_F(ToAsciiTest, to_ascii_size_clzll_10_compare) {
   to_ascii_size_u64_10_compare(folly::detail::to_ascii_size_clzll<10>);
 }
 
-//  to_ascii_size_route sends only power-of-two bases and base 10 to the clzll
-//  implementation, so the bases below are reachable only by calling it
-//  directly. They are covered because the restriction lives in the caller:
-//  nothing about to_ascii_size_clzll itself is specific to the bases the router
-//  selects.
+//  to_ascii_size_route sends every base to the clzll implementation wherever
+//  the hardware backs clzll, so these bases are reachable through the router
+//  and not only by calling the implementation directly. Cover them here
+//  regardless: nothing about to_ascii_size_clzll is specific to any base.
 TEST_F(ToAsciiTest, to_ascii_size_clzll_every_base) {
   to_ascii_size_every_base_<to_ascii_size_via_clzll_>(to_ascii_bases_{});
 }

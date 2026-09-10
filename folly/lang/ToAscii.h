@@ -280,12 +280,21 @@ FOLLY_ALWAYS_INLINE size_t to_ascii_size_clzll(uint64_t v) {
   return vlogb + size_t(vlogb < powers::size && v >= powers::data.data[vlogb]);
 }
 
+//  Whether __builtin_clzll is cheap enough to beat the array loop. It is
+//  wherever the target has a count-leading-zeros instruction - amd64 bsr or
+//  lzcnt, aarch64 and arm clz, ppc64 cntlzd, s390x flogr, wasm i64.clz -
+//  including the 32-bit ones, which take two 32-bit scans and a select. Not
+//  so on riscv without the Zbb extension, where it expands to a longer inline
+//  sequence or calls __clzdi2.
+constexpr bool to_ascii_clzll_native = !kIsArchRISCV64 || kIsArchRISCVZbb;
+
 template <uint64_t Base>
 FOLLY_ALWAYS_INLINE size_t to_ascii_size_route(uint64_t v) {
-  //  clzll sizing is constant-time; use it for power-of-two bases and base 10.
-  //  It is exact for every base, so widening this condition is a performance
-  //  question rather than a correctness one.
-  return kIsArchAmd64 && (!(Base & (Base - 1)) || Base == 10) //
+  //  clzll sizing is branchless and constant-time, and is exact for every
+  //  base. The array loop is no faster for narrow values and degrades with
+  //  width, and its exit branch mispredicts whenever the width varies, so
+  //  prefer clzll wherever the hardware backs it.
+  return to_ascii_clzll_native //
       ? to_ascii_size_clzll<Base>(v)
       : to_ascii_size_array<Base>(v);
 }
