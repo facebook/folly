@@ -20,6 +20,10 @@ Each scenario has:
 Keep references, evaluator instructions, sibling outputs, and comparison labels
 out of the author workdir. Store generated runs outside this directory.
 
+Related scenarios may reuse the same frozen input with an explicit `../` source
+in `scenario.json`. Keep task- or scope-specific instructions in each scenario's
+prompt instead of copying and editing the shared evidence.
+
 Read-only staging is not a filesystem sandbox. Check the trace after each run;
 an undeclared read makes that run unusable for comparison.
 

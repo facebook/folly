@@ -93,11 +93,15 @@ class Checkout:
     command: str
 
 
-def _relative_path(value: Any, field: str) -> PurePosixPath:
+def _relative_path(
+    value: Any, field: str, *, allow_parent: bool = False
+) -> PurePosixPath:
     assert type(value) is str
     assert value
     path = PurePosixPath(value)
-    if not path.parts or path.is_absolute() or ".." in path.parts:
+    if not path.parts or path.is_absolute():
+        raise RunnerError(f"{field} must be a relative path: {value}")
+    if not allow_parent and ".." in path.parts:
         raise RunnerError(f"{field} must be a relative path without '..': {value}")
     return path
 
@@ -139,7 +143,11 @@ def load_manifest(path: Path) -> Manifest:
         assert set(raw_input) == {"source", "destination"}
         inputs.append(
             Mapping(
-                _relative_path(raw_input["source"], f"inputs[{index}].source"),
+                _relative_path(
+                    raw_input["source"],
+                    f"inputs[{index}].source",
+                    allow_parent=True,
+                ),
                 _relative_path(
                     raw_input["destination"], f"inputs[{index}].destination"
                 ),
@@ -220,7 +228,7 @@ def _normalize_cpp_snapshot(path: PurePosixPath) -> PurePosixPath:
 def _mapped_files(
     scenario: Path, mapping: Mapping
 ) -> Iterable[tuple[PurePosixPath, bytes]]:
-    source = _resolve_below(scenario, mapping.source, "input source")
+    source = (scenario / mapping.source).resolve()
     if source.is_file():
         yield _normalize_cpp_snapshot(mapping.destination), source.read_bytes()
         return
@@ -280,10 +288,7 @@ def _generation_sources(
         (scenario / "scenario.json").resolve(),
         _resolve_below(scenario, _prompt_for_run(manifest, install_rules), "prompt"),
     ]
-    sources.extend(
-        _resolve_below(scenario, mapping.source, "input source")
-        for mapping in manifest.inputs
-    )
+    sources.extend((scenario / mapping.source).resolve() for mapping in manifest.inputs)
     selected_rules = manifest.rules if install_rules else ()
     support_files = (
         CRITIC_ITERATE_SUPPORT_FILES if CRITIC_ITERATE_RULE in selected_rules else ()

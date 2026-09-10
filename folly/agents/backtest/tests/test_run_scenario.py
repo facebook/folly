@@ -225,12 +225,16 @@ class RunScenarioTest(unittest.TestCase):
         write(runner_path, "runner")
         write(self.scenario / "prompt.no-rules.md", "bare prompt")
         write(self.scenario / "input/data.md", "data")
+        write(self.root / "shared.md", "shared")
         write(self.root / "checkpoint_accounting.py", "accounting")
         write(self.rules_root / "writing.md", "writing")
         make_tools(self.rules_root)
         manifest = self.manifest(
             no_rules_prompt="prompt.no-rules.md",
-            inputs=[{"source": "input", "destination": "input"}],
+            inputs=[
+                {"source": "input", "destination": "input"},
+                {"source": "../shared.md", "destination": "shared.md"},
+            ],
             rules=["writing.md"],
         )
         commands, command_runner = self.source_control()
@@ -253,6 +257,7 @@ class RunScenarioTest(unittest.TestCase):
                 "scenario/prompt.md",
                 "scenario/scenario.json",
                 "scenario/input",
+                "shared.md",
                 "agents/writing.md",
                 "agents/critic-iterate/codex-reviewer.py",
             }.issubset(status)
@@ -390,10 +395,10 @@ class RunScenarioTest(unittest.TestCase):
     def test_manifest_rejects_unsafe_paths_and_development_rules(self) -> None:
         cases: tuple[tuple[str, dict[str, object], str], ...] = (
             (
-                "input escape",
+                "input destination escape",
                 {
                     "prompt": "prompt.md",
-                    "inputs": [{"source": "../secret", "destination": "secret"}],
+                    "inputs": [{"source": "evidence.md", "destination": "../secret"}],
                     "rules": [],
                 },
                 "without '..'",
@@ -603,22 +608,6 @@ class RunScenarioTest(unittest.TestCase):
         with self.assertRaisesRegex(runner.RunnerError, "resolves outside"):
             self.prepare()
 
-        input_scenario = self.root / "input-scenario"
-        input_scenario.mkdir()
-        write(input_scenario / "prompt.md", "prompt")
-        (input_scenario / "input.md").symlink_to(self.root / "outside.md")
-        input_manifest = self.manifest(
-            inputs=[{"source": "input.md", "destination": "input.md"}],
-            scenario=input_scenario,
-        )
-        with self.assertRaisesRegex(runner.RunnerError, "resolves outside"):
-            runner.stage(
-                input_scenario,
-                input_manifest,
-                self.rules_root,
-                self.root / "input-workdir",
-            )
-
         tree_scenario = self.root / "tree-scenario"
         tree_scenario.mkdir()
         write(tree_scenario / "prompt.md", "prompt")
@@ -637,10 +626,10 @@ class RunScenarioTest(unittest.TestCase):
             )
 
         (self.rules_root / "writing.md").symlink_to(self.root / "outside.md")
-        rule_manifest = self.manifest(rules=["writing.md"], scenario=input_scenario)
+        rule_manifest = self.manifest(rules=["writing.md"])
         with self.assertRaisesRegex(runner.RunnerError, "resolves outside"):
             runner.stage(
-                input_scenario,
+                self.scenario,
                 rule_manifest,
                 self.rules_root,
                 self.root / "rule-workdir",
@@ -651,6 +640,7 @@ class RunScenarioTest(unittest.TestCase):
         workdir.mkdir()
         write(self.scenario / "draft.md", "draft")
         write(self.scenario / "source/Api.h.txt", "header")
+        write(self.root / "shared.md", "shared")
         write(self.scenario / "samples/1/output.md", "prior output")
         write(self.rules_root / "writing.md", "writing")
         write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
@@ -661,6 +651,7 @@ class RunScenarioTest(unittest.TestCase):
             inputs=[
                 {"source": "draft.md", "destination": "output.md"},
                 {"source": "source", "destination": "source"},
+                {"source": "../shared.md", "destination": "shared.md"},
             ],
             rules=["writing.md", "critic-iterate.md"],
         )
@@ -668,6 +659,7 @@ class RunScenarioTest(unittest.TestCase):
         runner.stage(self.scenario, manifest, self.rules_root, workdir)
 
         self.assertEqual((workdir / "source/Api.h").read_text(), "header")
+        self.assertEqual((workdir / "shared.md").read_text(), "shared")
         self.assertTrue((workdir / "output.md").stat().st_mode & 0o200)
         self.assertFalse((workdir / "source/Api.h").stat().st_mode & 0o200)
         self.assertFalse((workdir / "rules/writing.contrib.md").exists())
