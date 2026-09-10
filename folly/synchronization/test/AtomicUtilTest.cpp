@@ -16,6 +16,9 @@
 
 #include <folly/synchronization/AtomicUtil.h>
 
+#include <chrono>
+#include <cmath>
+#include <limits>
 #include <thread>
 #include <utility>
 
@@ -1056,6 +1059,235 @@ TEST_F(AtomicFetchMinMaxTest, relaxedAtomicNonIntegral) {
   EXPECT_EQ(3, cell.load());
   EXPECT_EQ(3, folly::atomic_fetch_max(cell, 7));
   EXPECT_EQ(7, cell.load());
+}
+
+//  the value types below are the non-integral ones which appear at the call
+//  sites these operations are meant to replace: floating point, chrono
+//  durations and time-points, scoped enums, and strong typedefs. none reaches
+//  the native member path, so all exercise the c/x-loop fallback.
+
+namespace {
+
+enum class AtomicFetchMinMaxEnum : int { lo = 1, mid = 2, hi = 3 };
+
+//  a strong typedef which is trivially copyable and ordered but deliberately
+//  NOT default-constructible, since the member-detection traits spell the
+//  value type as atomic_value_type_t<Atomic>{}
+struct AtomicFetchMinMaxStrong {
+  int value;
+
+  explicit constexpr AtomicFetchMinMaxStrong(int v) noexcept : value{v} {}
+
+  friend constexpr bool operator<(
+      AtomicFetchMinMaxStrong a, AtomicFetchMinMaxStrong b) noexcept {
+    return a.value < b.value;
+  }
+  friend constexpr bool operator==(
+      AtomicFetchMinMaxStrong a, AtomicFetchMinMaxStrong b) noexcept {
+    return a.value == b.value;
+  }
+};
+static_assert(!std::is_default_constructible_v<AtomicFetchMinMaxStrong>);
+
+static_assert( //
+    !is_detected_v< //
+        detail::detect_atomic_fetch_max,
+        std::atomic<AtomicFetchMinMaxStrong>>);
+static_assert( //
+    !is_detected_v< //
+        detail::detect_atomic_fetch_max_nomo,
+        std::atomic<AtomicFetchMinMaxStrong>>);
+
+//  unlike std::atomic<AtomicFetchMinMaxStrong>, this one does have the members,
+//  so value-initialization of the value type is the only thing left which can
+//  defeat detection
+struct AtomicFetchMinMaxMemberStrong {
+  using value_type = AtomicFetchMinMaxStrong;
+
+  value_type load(std::memory_order = seq_cst) const { return value; }
+
+  bool compare_exchange_weak(
+      value_type& expected, value_type desired, std::memory_order = seq_cst) {
+    if (!(value == expected)) {
+      expected = value;
+      return false;
+    }
+    value = desired;
+    return true;
+  }
+
+  value_type fetch_min(value_type arg, std::memory_order) {
+    ++fetchMinCalls;
+    return std::exchange(value, arg < value ? arg : value);
+  }
+
+  value_type fetch_max(value_type arg, std::memory_order) {
+    ++fetchMaxCalls;
+    return std::exchange(value, value < arg ? arg : value);
+  }
+
+  value_type value{5};
+  int fetchMinCalls{0};
+  int fetchMaxCalls{0};
+};
+
+//  value-initialization of a non-default-constructible value type must be a
+//  substitution failure, not a hard error, so that such a type simply falls
+//  back to the c/x loop
+static_assert( //
+    !is_detected_v< //
+        detail::detect_atomic_fetch_min,
+        AtomicFetchMinMaxMemberStrong>);
+static_assert( //
+    !is_detected_v< //
+        detail::detect_atomic_fetch_max,
+        AtomicFetchMinMaxMemberStrong>);
+
+} // namespace
+
+TEST_F(AtomicFetchMinMaxCondTest, floatingPoint) {
+  std::atomic<double> cell{5.};
+
+  EXPECT_EQ(5., folly::atomic_fetch_max_cond(cell, 3., relaxed));
+  EXPECT_EQ(5., cell.load(relaxed));
+  EXPECT_EQ(5., folly::atomic_fetch_max_cond(cell, 7.5, relaxed));
+  EXPECT_EQ(7.5, cell.load(relaxed));
+  EXPECT_EQ(7.5, folly::atomic_fetch_min_cond(cell, 2.5, relaxed));
+  EXPECT_EQ(2.5, cell.load(relaxed));
+}
+
+//  floating point is the one value type here which operator< does not totally
+//  order. with nan every comparison is false, so the guard never fires: a nan
+//  argument never stores, and a nan already in the atomic is never displaced.
+//  that is std::min / std::max behavior rather than fmin / fmax, which quiet
+//  nan instead. it is total and deterministic, never undefined
+//
+//  but it is a property of the c/x-loop fallback, not of the interface, since
+//  a native fetch_min / fetch_max member is free to quiet nan instead, so pin
+//  it only where the fallback is what actually runs
+TEST_F(AtomicFetchMinMaxCondTest, floatingPointNotANumber) {
+  if constexpr (!detail::has_atomic_fetch_max_member_v<std::atomic<double>>) {
+    constexpr auto nan = std::numeric_limits<double>::quiet_NaN();
+    std::atomic<double> cell{5.};
+
+    EXPECT_EQ(5., folly::atomic_fetch_max_cond(cell, nan, relaxed));
+    EXPECT_EQ(5., cell.load(relaxed));
+    EXPECT_EQ(5., folly::atomic_fetch_min_cond(cell, nan, relaxed));
+    EXPECT_EQ(5., cell.load(relaxed));
+
+    cell.store(nan, relaxed);
+
+    EXPECT_TRUE(std::isnan(folly::atomic_fetch_max_cond(cell, 7.5, relaxed)));
+    EXPECT_TRUE(std::isnan(cell.load(relaxed)));
+    EXPECT_TRUE(std::isnan(folly::atomic_fetch_min_cond(cell, 2.5, relaxed)));
+    EXPECT_TRUE(std::isnan(cell.load(relaxed)));
+  }
+}
+
+TEST_F(AtomicFetchMinMaxCondTest, chronoDuration) {
+  using namespace std::chrono_literals;
+  std::atomic<std::chrono::microseconds> cell{5us};
+
+  EXPECT_EQ(5us, folly::atomic_fetch_max_cond(cell, 3us, relaxed));
+  EXPECT_EQ(5us, cell.load(relaxed));
+  EXPECT_EQ(5us, folly::atomic_fetch_max_cond(cell, 7us, relaxed));
+  EXPECT_EQ(7us, cell.load(relaxed));
+  EXPECT_EQ(7us, folly::atomic_fetch_min_cond(cell, 2us, relaxed));
+  EXPECT_EQ(2us, cell.load(relaxed));
+}
+
+TEST_F(AtomicFetchMinMaxCondTest, chronoTimePoint) {
+  using namespace std::chrono_literals;
+  using time_point = std::chrono::steady_clock::time_point;
+  std::atomic<time_point> cell{time_point{5us}};
+
+  EXPECT_EQ(
+      time_point{5us}, folly::atomic_fetch_max_cond(cell, time_point{3us}));
+  EXPECT_EQ(time_point{5us}, cell.load());
+  EXPECT_EQ(
+      time_point{5us}, folly::atomic_fetch_max_cond(cell, time_point{7us}));
+  EXPECT_EQ(time_point{7us}, cell.load());
+  EXPECT_EQ(
+      time_point{7us}, folly::atomic_fetch_min_cond(cell, time_point{2us}));
+  EXPECT_EQ(time_point{2us}, cell.load());
+}
+
+TEST_F(AtomicFetchMinMaxCondTest, scopedEnum) {
+  using enum_type = AtomicFetchMinMaxEnum;
+  std::atomic<enum_type> cell{enum_type::mid};
+
+  EXPECT_EQ(enum_type::mid, folly::atomic_fetch_max_cond(cell, enum_type::lo));
+  EXPECT_EQ(enum_type::mid, cell.load());
+  EXPECT_EQ(enum_type::mid, folly::atomic_fetch_max_cond(cell, enum_type::hi));
+  EXPECT_EQ(enum_type::hi, cell.load());
+  EXPECT_EQ(enum_type::hi, folly::atomic_fetch_min_cond(cell, enum_type::lo));
+  EXPECT_EQ(enum_type::lo, cell.load());
+}
+
+TEST_F(AtomicFetchMinMaxCondTest, strongTypedef) {
+  using strong = AtomicFetchMinMaxStrong;
+  std::atomic<strong> cell{strong{5}};
+
+  EXPECT_EQ(strong{5}, folly::atomic_fetch_max_cond(cell, strong{3}));
+  EXPECT_EQ(strong{5}, cell.load());
+  EXPECT_EQ(strong{5}, folly::atomic_fetch_max_cond(cell, strong{7}));
+  EXPECT_EQ(strong{7}, cell.load());
+  EXPECT_EQ(strong{7}, folly::atomic_fetch_min_cond(cell, strong{2}));
+  EXPECT_EQ(strong{2}, cell.load());
+}
+
+//  the members are present but undetectable, so the c/x loop must run instead
+TEST_F(
+    AtomicFetchMinMaxCondTest,
+    memberElidedWhenValueTypeNotDefaultConstructible) {
+  using strong = AtomicFetchMinMaxStrong;
+  AtomicFetchMinMaxMemberStrong cell;
+
+  EXPECT_EQ(strong{5}, folly::atomic_fetch_max_cond(cell, strong{7}, relaxed));
+  EXPECT_EQ(strong{7}, cell.load());
+  EXPECT_EQ(0, cell.fetchMaxCalls);
+
+  EXPECT_EQ(strong{7}, folly::atomic_fetch_min_cond(cell, strong{2}, relaxed));
+  EXPECT_EQ(strong{2}, cell.load());
+  EXPECT_EQ(0, cell.fetchMinCalls);
+
+  //  the counters are live, so the zero-checks above are not vacuous: calling
+  //  the members directly does reach them and does increment
+  EXPECT_EQ(strong{2}, cell.fetch_max(strong{9}, relaxed));
+  EXPECT_EQ(strong{9}, cell.load());
+  EXPECT_EQ(1, cell.fetchMaxCalls);
+
+  EXPECT_EQ(strong{9}, cell.fetch_min(strong{1}, relaxed));
+  EXPECT_EQ(strong{1}, cell.load());
+  EXPECT_EQ(1, cell.fetchMinCalls);
+}
+
+//  the unconditional forms take the same value types
+TEST_F(AtomicFetchMinMaxTest, nonIntegralValueTypes) {
+  using namespace std::chrono_literals;
+  using enum_type = AtomicFetchMinMaxEnum;
+
+  std::atomic<std::chrono::microseconds> duration{5us};
+  EXPECT_EQ(5us, folly::atomic_fetch_max(duration, 7us, relaxed));
+  EXPECT_EQ(7us, duration.load(relaxed));
+  EXPECT_EQ(7us, folly::atomic_fetch_min(duration, 2us, relaxed));
+  EXPECT_EQ(2us, duration.load(relaxed));
+
+  std::atomic<enum_type> value{enum_type::mid};
+  EXPECT_EQ(enum_type::mid, folly::atomic_fetch_max(value, enum_type::hi));
+  EXPECT_EQ(enum_type::hi, value.load());
+  EXPECT_EQ(enum_type::hi, folly::atomic_fetch_min(value, enum_type::lo));
+  EXPECT_EQ(enum_type::lo, value.load());
+
+  std::atomic<AtomicFetchMinMaxStrong> strong{AtomicFetchMinMaxStrong{5}};
+  EXPECT_EQ(
+      AtomicFetchMinMaxStrong{5},
+      folly::atomic_fetch_max(strong, AtomicFetchMinMaxStrong{7}));
+  EXPECT_EQ(AtomicFetchMinMaxStrong{7}, strong.load());
+  EXPECT_EQ(
+      AtomicFetchMinMaxStrong{7},
+      folly::atomic_fetch_min(strong, AtomicFetchMinMaxStrong{2}));
+  EXPECT_EQ(AtomicFetchMinMaxStrong{2}, strong.load());
 }
 
 } // namespace folly

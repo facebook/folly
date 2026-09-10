@@ -288,6 +288,13 @@ inline constexpr atomic_fetch_modify_fn atomic_fetch_modify{};
 //  Atomically replaces the value in the atomic with the lesser of the current
 //  value and the argument. Returns the previous value.
 //
+//  Expects a value type which operator< totally orders. Floating point with
+//  NaN is not such a type: every comparison against NaN is false, so the
+//  fallback keeps the current value, giving std::min behavior rather than fmin
+//  behavior, while a native Atomic::fetch_min is free to quiet NaN instead.
+//  Which of the two values is retained is therefore unspecified for unordered
+//  inputs - but never undefined, and the operation always terminates.
+//
 //  Uses Atomic::fetch_min when available, in either its memory-order-taking or
 //  its memory-order-free form, otherwise falling back to atomic_fetch_modify,
 //  whose caveats then apply.
@@ -315,6 +322,13 @@ inline constexpr atomic_fetch_min_fn atomic_fetch_min{};
 //
 //  Atomically replaces the value in the atomic with the greater of the current
 //  value and the argument. Returns the previous value.
+//
+//  Expects a value type which operator< totally orders. Floating point with
+//  NaN is not such a type: every comparison against NaN is false, so the
+//  fallback keeps the current value, giving std::max behavior rather than fmax
+//  behavior, while a native Atomic::fetch_max is free to quiet NaN instead.
+//  Which of the two values is retained is therefore unspecified for unordered
+//  inputs - but never undefined, and the operation always terminates.
 //
 //  Uses Atomic::fetch_max when available, in either its memory-order-taking or
 //  its memory-order-free form, otherwise falling back to atomic_fetch_modify,
