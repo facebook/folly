@@ -7,6 +7,9 @@ Review costs time and context. Spend it on lasting prose and consequential
 judgment, where another pass can change the result. Direct lookups and repeated
 mechanical edits do not justify the loop.
 
+Exhausting a positive budget does not allow a materially misleading late edit to
+ship unreviewed. `c-i-0` explicitly opts out of external review.
+
 Authors tend to accept their first workable answer.
 
 Trying different wording that preserves the meaning can expose weaknesses.

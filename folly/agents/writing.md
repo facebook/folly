@@ -26,9 +26,6 @@ convergence" below. The maxims here apply to all prose (docs, posts, comments).
   purpose — no more and no less. First minimize the effort needed to understand
   them correctly. If two versions do that equally well, choose the shorter one.
 
-- **Re-read cold before shipping prose.** After substantive edits, re-read the
-  changed section and fix any friction. Before closing the pass, read the whole
-  artifact; `critic-iterate.md` governs this default-on prose cycle.
 - **Rework, don't append.** When fixing prose, default to rewriting the line
   rather than adding to it. Append-style patches ("See X for Y", "Note: Z") are
   almost always barnacles.

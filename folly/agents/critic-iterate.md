@@ -55,6 +55,19 @@ rename or rephrase.
 Accountability artifacts and delegated-review reports produced by this workflow
 do not themselves trigger another critic-iterate cycle.
 
+## Explicit user controls
+
+Apply these only when the user explicitly requests them:
+
+- `no c-i`: skip critic-iterate without stopping the task.
+- `draft-only` or `initial draft`: stop after the first complete artifact,
+  before author critique.
+- `c-i-0`: run the General Cycle to convergence, with no external review.
+- `c-i-K` or `critic-iterate-K` (`K > 0`): set the task's external-review budget
+  to `K` rounds.
+- `c-i+K` (`K > 0`): if the previous turn ended because the review budget was
+  exhausted, extend review by `K` rounds.
+
 ## Evidence
 
 Verify only claims that could change the answer.
@@ -305,8 +318,7 @@ trigger this.
 
 A successful fresh review and its cold read count as 1 review round. The review
 budget defaults to 1 round. A personal rule can set a different default with
-`critic-iterate-N`; a task can set its budget with that form or `c-i-N`. After
-the budget is exhausted, each `c-i+N` adds N rounds.
+`critic-iterate-K`.
 
 After each review round:
 
@@ -543,7 +555,8 @@ model is Opus 5+ or GPT-5.5+ (resolve it with
 
 - Do NOT skim on later passes. Each pass must be as careful as the first.
 - Avoid confirmation bias — critic is adversary, not cheerleader.
-- Do NOT defer an in-scope issue as "pre-existing."
+- Do NOT defer an in-scope issue to a later pass or reviewer.
+- Do NOT dismiss an in-scope issue as "pre-existing."
 - Do NOT narrate completion before pasting the accountability artifact.
 - Do NOT pick critic dimensions after inspecting the draft.
 - Do NOT use reviewer failure as an escape hatch. Codex CLI infra failure
