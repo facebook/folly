@@ -196,7 +196,15 @@ def run(args: argparse.Namespace, wrapper_executable: Path) -> int:
     # current user, including files that Codex itself creates.
     previous_umask = os.umask(0o077)
     try:
-        output_dir = Path(tempfile.mkdtemp(prefix="codex-reviewer."))
+        # Codex drops TMPDIR. Backtests use their run root so fresh and nested
+        # reviewers become sibling attempts that accounting can order.
+        run_root = os.environ.get("FOLLY_BACKTEST_RUN_DIR")
+        output_dir = Path(
+            tempfile.mkdtemp(
+                prefix="codex-reviewer.",
+                dir=Path(run_root) / "reviews" if run_root else None,
+            )
+        )
         print(f"REVIEW_OUTPUT_DIR={output_dir}", flush=True)
 
         with (output_dir / "err.txt").open("x", encoding="utf-8") as errors:

@@ -4,8 +4,22 @@ load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_
 oncall("fbcode_entropy_wardens_folly")
 
 python_unittest(
+    name = "checkpoint_test",
+    srcs = ["test_checkpoint.py"],
+    network_access = network_access_utils.none(),
+    deps = ["fbcode//folly/agents/backtest:run_scenario_lib"],
+)
+
+python_unittest(
+    name = "checkpoint_accounting_test",
+    srcs = ["test_checkpoint_accounting.py"],
+    network_access = network_access_utils.none(),
+    deps = ["fbcode//folly/agents/backtest:run_scenario_lib"],
+)
+
+python_unittest(
     name = "run_scenario_test",
     srcs = ["test_run_scenario.py"],
     network_access = network_access_utils.none(),
-    deps = ["//folly/agents/backtest:run_scenario_lib"],
+    deps = ["fbcode//folly/agents/backtest:run_scenario_lib"],
 )

@@ -18,6 +18,8 @@ generation revision and run style; each explicit `K` is a separate run style.
 Use the first 10 characters of the `generation_revision` recorded in `run.json`.
 
 - `output.md` is the exact user-facing artifact.
+- For a checkpointed run, also store `checkpoints.json` and every output file it
+  names.
 - `README.md` is a short metadata header followed by the same debrief shown to
   the user. Do not regenerate or restyle the debrief for storage.
 

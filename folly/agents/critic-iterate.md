@@ -343,12 +343,13 @@ After each review round:
      Tell the user before re-reviewing. When the round finishes, return to step
      1. Mention any extra rounds in the final debrief.
 
-     Otherwise, finish with this notice:
+     Otherwise, finish with a notice that starts with the exact text
+     `OutOfBudget:`:
 
-     > This output may have easy-to-spot gaps because I ran out of review
-     > budget. Reply `c-i+K` to allow up to K more review rounds; later rounds
-     > usually yield smaller gains. The default is 1 round; personal rules may
-     > override it with `critic-iterate-N`.
+     > OutOfBudget: This output may have easy-to-spot gaps because I ran out of
+     > review budget. Reply `c-i+K` to allow up to K more review rounds; later
+     > rounds usually yield smaller gains. The default is 1 round; personal
+     > rules may override it with `critic-iterate-N`.
 
 Record the dispositions only in the accountability artifact. For other
 artifacts, take the better version, merge, or apply its findings.

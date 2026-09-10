@@ -4,5 +4,9 @@ oncall("fbcode_entropy_wardens_folly")
 
 python_library(
     name = "run_scenario_lib",
-    srcs = ["run_scenario.py"],
+    srcs = [
+        "checkpoint.py",
+        "checkpoint_accounting.py",
+        "run_scenario.py",
+    ],
 )

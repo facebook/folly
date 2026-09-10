@@ -3,8 +3,8 @@
 A regular backtest holds a task and its evidence fixed while using the selected
 rules. Controlled comparisons show whether those rules improve the artifact and
 what the improvement costs. A no-rules run provides an honest bare-model
-baseline. A c-i-K run instead keeps the rules and sets the maximum number of
-external review rounds.
+baseline. A c-i-K run instead keeps the rules and sets the external-review
+budget.
 
 Each run uses the scenario and runner from one committed checkout. Regular
 rule-backed runs use their rules and helper scripts from that checkout too. Run
@@ -19,7 +19,7 @@ before reporting the result.
 From `fbcode/`, prepare the workdir first:
 
 ```bash
-python3 folly/agents/backtest/run_scenario.py \
+python3 -m folly.agents.backtest.run_scenario \
   folly/agents/backtest/SCENARIO \
   --model gpt-5.6-sol \
   --reasoning-effort high \
@@ -32,15 +32,26 @@ workdir and start the author. The runner refuses to start when a scenario
 manifest, prompt, declared input, selected rule, helper, or the runner itself
 has an uncommitted change.
 
-Add `--no-rules` to measure the model without the selected Folly agent rules. In
-this mode, the runner uses `no_rules_prompt` from `scenario.json` when present;
-otherwise it sends the normal scenario prompt unchanged. It stages only the
-declared inputs and does not add its private rule-helper directory to `PATH`.
-Inspect the prepared prompt and workdir before starting the author.
+Add `--no-rules` to measure the model without the selected Folly agent rules.
+The scenario must declare `no_rules_prompt` in `scenario.json`; the runner
+refuses otherwise. It stages only the declared inputs and does not add its
+private rule-helper directory to `PATH`. Inspect the prepared prompt and workdir
+before starting the author.
 
-For the secondary c-i-K mode, add `--critic-iterate-rounds K`, where `K` is the
-maximum number of external review rounds. In particular, `K=0` removes external
-review rounds.
+Rule-backed scenarios that start before the initial draft record these
+checkpoints by default:
+
+- the initial draft before the first author critique;
+- the draft after author review converges, before external review; and
+- the draft after each external review is integrated and author checks finish.
+
+The run directory stores them as `output-initial.md`, `output-author.md`, and
+`output-reviewN.md`. `checkpoints.json` records each phase's time, author and
+reviewer token use, context window, and outcome. This mode does not apply to
+review-only scenarios that stage an existing `output.md`.
+
+Add `--critic-iterate-rounds K` to override the rules' normal external-review
+budget. `K=0` removes external review rounds.
 
 If it refuses, show the listed files to the user and stop. Retry after the user
 commits or amends them, or explicitly authorizes a commit containing only those
@@ -57,9 +68,9 @@ pass `--run-root` when one must survive normal temporary cleanup.
 
 ## Compare runs
 
-Compare each secondary mode with a regular run from the same committed revision.
-Keep the task, staged inputs, model, reasoning effort, and shared executable
-versions fixed. Change only:
+Compare no-rules and c-i-K variations with a regular run from the same committed
+revision. Keep the task, staged inputs, model, reasoning effort, and shared
+executable versions fixed. Change only:
 
 - **No-rules:** the injected rules, rule-only helpers, and rule-dependent
   wording isolated in `no_rules_prompt`.

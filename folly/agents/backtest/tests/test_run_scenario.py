@@ -46,7 +46,10 @@ def write_manifest(path: Path, contents: dict[str, object]) -> runner.Manifest:
 
 
 def make_tools(rules_root: Path) -> None:
-    for relative in runner.TOOL_FILES.values():
+    for relative in (
+        *runner.TOOL_FILES.values(),
+        *runner.CHECKPOINT_TOOL_FILES.values(),
+    ):
         executable(rules_root / relative)
 
 
@@ -222,6 +225,7 @@ class RunScenarioTest(unittest.TestCase):
         write(runner_path, "runner")
         write(self.scenario / "prompt.no-rules.md", "bare prompt")
         write(self.scenario / "input/data.md", "data")
+        write(self.root / "checkpoint_accounting.py", "accounting")
         write(self.rules_root / "writing.md", "writing")
         make_tools(self.rules_root)
         manifest = self.manifest(
@@ -254,6 +258,31 @@ class RunScenarioTest(unittest.TestCase):
             }.issubset(status)
         )
         self.assertNotIn("scenario/prompt.no-rules.md", status)
+        self.assertNotIn("agents/backtest/checkpoint.py", status)
+        self.assertNotIn("checkpoint_accounting.py", status)
+
+        write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
+        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
+            write(self.rules_root / support, support.name)
+        critic_manifest = runner.Manifest(
+            manifest.prompt,
+            manifest.inputs,
+            (*manifest.rules, runner.CRITIC_ITERATE_RULE),
+            manifest.no_rules_prompt,
+        )
+        commands.clear()
+        self.assertEqual(
+            runner.generation_revision(
+                self.scenario,
+                critic_manifest,
+                self.rules_root,
+                runner_path=runner_path,
+                command_runner=command_runner,
+            ),
+            REVISION,
+        )
+        self.assertIn("agents/backtest/checkpoint.py", commands[0])
+        self.assertIn("checkpoint_accounting.py", commands[0])
 
     def test_generation_revision_rejects_dirty_or_untracked_inputs(self) -> None:
         (self.root / ".hg").mkdir()
@@ -456,12 +485,25 @@ class RunScenarioTest(unittest.TestCase):
 
         run = self.prepare(critic_iterate_rounds=0)
 
+        self.assertTrue(run.checkpoint)
         self.assertEqual(
             run.prompt.read_text(),
-            runner.RULE_LOADING_INSTRUCTION + "c-i-0\n\nDo the task.\n",
+            runner.RULE_LOADING_INSTRUCTION
+            + "c-i-0\n\n"
+            + runner._checkpoint_instruction()
+            + "Do the task.\n",
         )
         metadata = json.loads((run.root / "run.json").read_text())
         self.assertEqual(metadata["critic_iterate_rounds"], 0)
+
+        default_run = self.prepare()
+        self.assertTrue(default_run.checkpoint)
+        self.assertEqual(
+            default_run.prompt.read_text(),
+            runner.RULE_LOADING_INSTRUCTION
+            + runner._checkpoint_instruction()
+            + "Do the task.\n",
+        )
 
     def test_prepare_rejects_inapplicable_critic_iterate_rounds(self) -> None:
         cases = (
@@ -500,6 +542,28 @@ class RunScenarioTest(unittest.TestCase):
 
                 self.assertFalse(run_root.exists())
 
+    def test_prepare_leaves_review_only_scenarios_uncheckpointed(self) -> None:
+        write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
+        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
+            write(self.rules_root / support, support.name)
+        self.manifest(
+            inputs=[{"source": "prompt.md", "destination": "output.md"}],
+            rules=[runner.CRITIC_ITERATE_RULE.as_posix()],
+        )
+
+        run = self.prepare(critic_iterate_rounds=1)
+
+        self.assertFalse(run.checkpoint)
+        self.assertIn("c-i-1\n\n", run.prompt.read_text())
+        self.assertNotIn("backtest-checkpoint", run.prompt.read_text())
+
+    def test_checkpoint_instruction_names_only_the_first_command(self) -> None:
+        instruction = runner._checkpoint_instruction()
+
+        self.assertIn("`backtest-checkpoint 0`", instruction)
+        self.assertNotIn("backtest-checkpoint 1", instruction)
+        self.assertNotIn("external review", instruction)
+
     def test_prepare_without_rules_stages_bare_inputs(self) -> None:
         write(self.scenario / "prompt.md", "Do the task.\n")
         write(self.scenario / "prompt.no-rules.md", "Do the bare task.\n")
@@ -519,6 +583,14 @@ class RunScenarioTest(unittest.TestCase):
         metadata = json.loads((run.root / "run.json").read_text())
         self.assertEqual(metadata["rules"], [])
         self.assertTrue(metadata["no_rules"])
+
+    def test_prepare_without_rules_requires_bare_prompt(self) -> None:
+        self.manifest()
+
+        with self.assertRaisesRegex(runner.RunnerError, "requires no_rules_prompt"):
+            self.prepare(install_rules=False)
+
+        self.assertFalse(self.run_root.exists())
 
     def test_staging_rejects_symlinks_outside_declared_roots(self) -> None:
         write(self.root / "outside.md", "outside")
@@ -649,6 +721,8 @@ class RunScenarioTest(unittest.TestCase):
             "PYTHONWARNINGS",
             "BASH_ENV",
             "ENV",
+            "FOLLY_BACKTEST_RUN_DIR",
+            "FOLLY_BACKTEST_WORKDIR",
             "ZDOTDIR",
         }
 
@@ -689,6 +763,7 @@ class RunScenarioTest(unittest.TestCase):
             self.assertEqual(
                 (tool_bin / name).resolve(), (self.rules_root / relative).resolve()
             )
+        self.assertFalse((tool_bin / "backtest-checkpoint").exists())
         policy = (run.codex_home / "rules/default.rules").read_text()
         for name in runner.TOOL_FILES:
             self.assertIn(f'host_executable(name="{name}"', policy)
@@ -700,6 +775,33 @@ class RunScenarioTest(unittest.TestCase):
         self.assertEqual(metadata["status"], "complete")
         self.assertEqual(metadata["exit_code"], 0)
         self.assertEqual(metadata["executables"]["codex"], str(codex.resolve()))
+
+    def test_checkpoint_mode_installs_runtime_and_marks_bad_accounting(self) -> None:
+        write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
+        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
+            write(self.rules_root / support, support.name)
+        self.manifest(rules=[runner.CRITIC_ITERATE_RULE.as_posix()])
+        make_tools(self.rules_root)
+        run = self.prepare(critic_iterate_rounds=0)
+
+        tool_bin, tools = runner._install_tools(run)
+        environment = runner._author_environment(run, tool_bin)
+
+        self.assertIn("backtest-checkpoint", tools)
+        installed = tool_bin / "backtest-checkpoint"
+        self.assertTrue(os.access(installed, os.X_OK))
+        policy = (run.codex_home / "rules/default.rules").read_text()
+        self.assertIn(f'paths=["{installed}"]', policy)
+        self.assertEqual(environment["FOLLY_BACKTEST_RUN_DIR"], str(run.root))
+        self.assertEqual(environment["FOLLY_BACKTEST_WORKDIR"], str(run.workdir))
+        self.assertTrue((run.root / "reviews").is_dir())
+
+        (run.workdir / "output.md").write_text("complete")
+        with self.assertRaisesRegex(ValueError, "gap-free sequence"):
+            runner._finish_run(run, 0)
+        metadata = json.loads((run.root / "run.json").read_text())
+        self.assertEqual(metadata["status"], "invalid-checkpoints")
+        self.assertNotIn("exit_code", metadata)
 
     def test_failed_launch_preserves_partial_output_and_diagnostics(self) -> None:
         write(self.scenario / "draft.md", "draft")
@@ -813,7 +915,7 @@ class RunScenarioTest(unittest.TestCase):
                 )
 
     def test_launch_without_rules_preserves_the_ambient_path(self) -> None:
-        self.manifest()
+        self.manifest(no_rules_prompt="prompt.md")
         codex = executable(self.root / "codex")
         run = self.prepare(install_rules=False)
         _, environments, command_runner = self.fake_codex(

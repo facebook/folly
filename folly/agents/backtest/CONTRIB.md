@@ -32,13 +32,16 @@ runner adds the rule-loading instruction for a normal run; keep the scenario
 prompt focused on the task.
 
 No-rules support is secondary and must not change the prompt or input behavior
-of normal runs. If a scenario's normal prompt assumes staged rules, set
-`no_rules_prompt` to a separate bare prompt; do not generalize the normal
-prompt. The two prompts must describe the same task; the bare copy may remove
-only rule-dependent process instructions. With `--no-rules`, the runner ignores
-the manifest's rule list and uses that bare prompt when present. Rule-workflow
-diagnostics that cannot stand alone without their rules do not have a meaningful
-no-rules baseline.
+of normal runs. To support `--no-rules`, set `no_rules_prompt` to a prompt path
+relative to the scenario directory. If the normal prompt assumes staged rules,
+use a separate bare prompt; otherwise it may name the same file. The two prompts
+must describe the same task; the bare copy may remove only rule-dependent
+process instructions. Rule-workflow diagnostics that cannot stand alone without
+their rules do not have a meaningful no-rules baseline.
+
+Before adding a scenario whose final response may mention `OutOfBudget`, discuss
+the collision with the user; accounting may misclassify the run as a budget
+stop. The marker's trailing colon is deliberately omitted here.
 
 ## Keep comparisons honest
 

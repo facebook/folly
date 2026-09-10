@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +29,8 @@ from datetime import date
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Iterable, Sequence
 
+from . import checkpoint_accounting
+
 
 CommandRunner = Callable[..., subprocess.CompletedProcess[bytes]]
 
@@ -45,6 +46,9 @@ TOOL_FILES = {
     "session_current_model_id.py": PurePosixPath(
         "critic-iterate/session_current_model_id.py"
     ),
+}
+CHECKPOINT_TOOL_FILES = {
+    "backtest-checkpoint": PurePosixPath("backtest/checkpoint.py"),
 }
 RESERVED_INPUT_NAMES = {"AGENTS.md", "AGENTS.override.md"}
 RULE_LOADING_INSTRUCTION = (
@@ -79,6 +83,8 @@ class Run:
     prompt: Path
     rules_root: Path
     install_rules: bool
+    critic_iterate_rounds: int | None
+    checkpoint: bool
 
 
 @dataclass(frozen=True)
@@ -151,9 +157,18 @@ def load_manifest(path: Path) -> Manifest:
 
 
 def _prompt_for_run(manifest: Manifest, install_rules: bool) -> PurePosixPath:
-    if not install_rules and manifest.no_rules_prompt is not None:
-        return manifest.no_rules_prompt
-    return manifest.prompt
+    if install_rules:
+        return manifest.prompt
+    if manifest.no_rules_prompt is None:
+        raise RunnerError("--no-rules requires no_rules_prompt in scenario.json")
+    return manifest.no_rules_prompt
+
+
+def _checkpoint_instruction() -> str:
+    return (
+        "After writing the initial draft, immediately run "
+        "`backtest-checkpoint 0` and follow its stdout.\n\n"
+    )
 
 
 def _validate_critic_iterate_rounds(
@@ -171,6 +186,19 @@ def _validate_critic_iterate_rounds(
         raise RunnerError(
             "critic-iterate rounds require critic-iterate.md in the scenario rules"
         )
+
+
+def _uses_checkpoints(manifest: Manifest, install_rules: bool) -> bool:
+    """Enable phased checkpoints for scenarios that author a new draft."""
+    return (
+        install_rules
+        and CRITIC_ITERATE_RULE in manifest.rules
+        # For now, review-only scenarios compare their staged draft with the output.
+        and not any(
+            mapping.destination == PurePosixPath("output.md")
+            for mapping in manifest.inputs
+        )
+    )
 
 
 def _resolve_below(root: Path, relative: PurePosixPath, field: str) -> Path:
@@ -261,6 +289,9 @@ def _generation_sources(
         CRITIC_ITERATE_SUPPORT_FILES if CRITIC_ITERATE_RULE in selected_rules else ()
     )
     tool_files = TOOL_FILES.values() if install_rules else ()
+    if _uses_checkpoints(manifest, install_rules):
+        tool_files = (*tool_files, *CHECKPOINT_TOOL_FILES.values())
+        sources.append((runner_path.parent / "checkpoint_accounting.py").resolve())
     sources.extend(
         _resolve_below(rules_root, path, "rule")
         for path in (*selected_rules, *support_files, *tool_files)
@@ -280,7 +311,11 @@ def generation_revision(
     if runner_path is None:
         runner_path = Path(__file__)
     sources = _generation_sources(
-        scenario, manifest, rules_root, runner_path, install_rules
+        scenario,
+        manifest,
+        rules_root,
+        runner_path,
+        install_rules,
     )
     checkout = _find_checkout(sources[0])
     relative_sources = []
@@ -415,6 +450,7 @@ def prepare(
     manifest_path = scenario / "scenario.json"
     manifest = load_manifest(manifest_path)
     _validate_critic_iterate_rounds(manifest, install_rules, critic_iterate_rounds)
+    checkpoint_run = _uses_checkpoints(manifest, install_rules)
     prompt_source = _prompt_for_run(manifest, install_rules)
     prompt = _resolve_below(scenario, prompt_source, "prompt")
     if not prompt.is_file():
@@ -432,11 +468,15 @@ def prepare(
             root / "author-prompt.md",
             rules_root,
             install_rules,
+            critic_iterate_rounds,
+            checkpoint_run,
         )
         run.workdir.mkdir()
         prompt_prefix = RULE_LOADING_INSTRUCTION if install_rules else ""
         if critic_iterate_rounds is not None:
             prompt_prefix += f"c-i-{critic_iterate_rounds}\n\n"
+        if checkpoint_run:
+            prompt_prefix += _checkpoint_instruction()
         run.prompt.write_text(prompt_prefix + prompt.read_text())
         run.prompt.chmod(0o444)
         shutil.copyfile(manifest_path, root / "scenario.json")
@@ -481,23 +521,35 @@ def _install_tools(run: Run) -> tuple[Path, dict[str, Path]]:
     tool_bin = run.root / "bin"
     tool_bin.mkdir()
     lines = []
+    selected_tools = TOOL_FILES
+    if run.checkpoint:
+        selected_tools = {**selected_tools, **CHECKPOINT_TOOL_FILES}
     tools = {
         name: _resolve_executable(
             _resolve_below(run.rules_root, relative, f"{name} tool"), name
         )
-        for name, relative in TOOL_FILES.items()
+        for name, relative in selected_tools.items()
     }
     for name, executable in tools.items():
         shim = tool_bin / name
-        shim.symlink_to(executable)
+        if executable.name == name:
+            shim.symlink_to(executable)
+            executable_paths = [str(shim), str(executable)]
+        else:
+            shutil.copyfile(executable, shim)
+            shim.chmod(0o755)
+            executable_paths = [str(shim)]
         lines.extend(
             [
                 f"host_executable(name={json.dumps(name)}, "
-                f"paths={json.dumps([str(shim), str(executable)])})",
+                f"paths={json.dumps(executable_paths)})",
                 f'prefix_rule(pattern=[{json.dumps(name)}], decision="allow", '
                 'justification="Tool required by the staged rules.")',
             ]
         )
+    if run.checkpoint:
+        # The installed reviewer wrapper writes its attempts here for accounting.
+        (run.root / "reviews").mkdir(mode=0o700)
     policy = run.codex_home / "rules" / "default.rules"
     policy.parent.mkdir(parents=True)
     policy.write_text("\n".join(lines) + "\n")
@@ -530,6 +582,8 @@ def _author_environment(run: Run, tool_bin: Path | None) -> dict[str, str]:
             "BASH_ENV",
             "CRITIC_ITERATE_RULES_DIR",
             "ENV",
+            "FOLLY_BACKTEST_RUN_DIR",
+            "FOLLY_BACKTEST_WORKDIR",
             "ZDOTDIR",
         }:
             environment.pop(name)
@@ -541,6 +595,11 @@ def _author_environment(run: Run, tool_bin: Path | None) -> dict[str, str]:
             if inherited_path
             else str(tool_bin)
         )
+    if run.checkpoint:
+        # Checkpoints use both paths. Reviewers inherit the run root so their
+        # nested calls remain attributable to this run.
+        environment["FOLLY_BACKTEST_RUN_DIR"] = str(run.root)
+        environment["FOLLY_BACKTEST_WORKDIR"] = str(run.workdir)
     return environment
 
 
@@ -583,6 +642,18 @@ def _finish_run(run: Run, returncode: int) -> int:
     if not has_output:
         _update_metadata(run, status="missing-output", exit_code=2)
         return 2
+    if run.checkpoint:
+        try:
+            records = checkpoint_accounting.collect(
+                run.root,
+                run.critic_iterate_rounds,
+            )
+        except Exception:
+            # The author succeeded; preserve the accounting traceback instead of
+            # reporting it as an author-process exit code.
+            _update_metadata(run, status="invalid-checkpoints")
+            raise
+        _update_metadata(run, checkpoint_count=len(records))
     _update_metadata(run, status="complete", exit_code=0)
     return 0
 
@@ -661,13 +732,13 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--no-rules",
         action="store_true",
-        help="run with the scenario prompt and inputs but no staged rules",
+        help="run with no_rules_prompt and inputs but no staged rules",
     )
     parser.add_argument(
         "--critic-iterate-rounds",
         metavar="K",
         type=int,
-        help="set the maximum number of external critic-iterate review rounds",
+        help="set the external critic-iterate review budget",
     )
     return parser
 
@@ -683,7 +754,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             manifest, install_rules, args.critic_iterate_rounds
         )
         revision = generation_revision(
-            scenario, manifest, agents_root, install_rules=install_rules
+            scenario,
+            manifest,
+            agents_root,
+            install_rules=install_rules,
         )
         run = prepare(
             scenario,
