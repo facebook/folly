@@ -573,6 +573,42 @@ not_null_shared_ptr<T, TNullHandlerT> reinterpret_pointer_cast(
       std::move(p), detail::secret_guaranteed_not_null::get());
 }
 
+/**
+ * to_not_null_shared_ptr_aliasing
+ */
+template <typename T, typename U, typename NullHandlerT>
+not_null_shared_ptr<U, NullHandlerT> to_not_null_shared_ptr_aliasing(
+    const std::shared_ptr<T>& r, U* ptr) {
+  return not_null_shared_ptr<U, NullHandlerT>(
+      r, not_null<U*, NullHandlerT>(ptr));
+}
+template <typename T, typename U, typename NullHandlerT>
+not_null_shared_ptr<U, NullHandlerT> to_not_null_shared_ptr_aliasing(
+    std::shared_ptr<T>&& r, U* ptr) {
+  return not_null_shared_ptr<U, NullHandlerT>(
+      std::move(r), not_null<U*, NullHandlerT>(ptr));
+}
+template <
+    typename T,
+    typename U,
+    typename NullHandlerT,
+    typename OwnerNullHandlerT>
+not_null_shared_ptr<U, NullHandlerT> to_not_null_shared_ptr_aliasing(
+    const not_null_shared_ptr<T, OwnerNullHandlerT>& r, U* ptr) {
+  return not_null_shared_ptr<U, NullHandlerT>(
+      r, not_null<U*, NullHandlerT>(ptr));
+}
+template <
+    typename T,
+    typename U,
+    typename NullHandlerT,
+    typename OwnerNullHandlerT>
+not_null_shared_ptr<U, NullHandlerT> to_not_null_shared_ptr_aliasing(
+    not_null_shared_ptr<T, OwnerNullHandlerT>&& r, U* ptr) {
+  return not_null_shared_ptr<U, NullHandlerT>(
+      std::move(r), not_null<U*, NullHandlerT>(ptr));
+}
+
 static_assert(
     std::is_same_v<decltype(not_null(std::declval<int*>())), not_null<int*>>);
 

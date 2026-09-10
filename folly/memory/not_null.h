@@ -511,6 +511,35 @@ template <
 not_null_shared_ptr<T, TNullHandlerT> reinterpret_pointer_cast(
     not_null_shared_ptr<U, UNullHandlerT>&& r);
 
+/**
+ * to_not_null_shared_ptr_aliasing
+ *
+ * Like folly::to_shared_ptr_aliasing, but returns a not_null_shared_ptr.
+ * Shares ownership with @r (which itself may be null) while pointing at @ptr.
+ * The aliased type is deduced from @ptr. @ptr is null-checked and throws
+ * on null.
+ */
+template <typename T, typename U, typename NullHandlerT = default_null_handler>
+not_null_shared_ptr<U, NullHandlerT> to_not_null_shared_ptr_aliasing(
+    const std::shared_ptr<T>& r, U* ptr);
+template <typename T, typename U, typename NullHandlerT = default_null_handler>
+not_null_shared_ptr<U, NullHandlerT> to_not_null_shared_ptr_aliasing(
+    std::shared_ptr<T>&& r, U* ptr);
+template <
+    typename T,
+    typename U,
+    typename NullHandlerT = default_null_handler,
+    typename OwnerNullHandlerT = default_null_handler>
+not_null_shared_ptr<U, NullHandlerT> to_not_null_shared_ptr_aliasing(
+    const not_null_shared_ptr<T, OwnerNullHandlerT>& r, U* ptr);
+template <
+    typename T,
+    typename U,
+    typename NullHandlerT = default_null_handler,
+    typename OwnerNullHandlerT = default_null_handler>
+not_null_shared_ptr<U, NullHandlerT> to_not_null_shared_ptr_aliasing(
+    not_null_shared_ptr<T, OwnerNullHandlerT>&& r, U* ptr);
+
 template <typename PtrT>
 not_null(PtrT&&) -> not_null<std::remove_cv_t<std::remove_reference_t<PtrT>>>;
 

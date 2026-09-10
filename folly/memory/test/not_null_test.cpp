@@ -647,6 +647,56 @@ TYPED_TEST_P(NotNullHelperTest, casting) {
       "wrong cast");
 }
 
+TYPED_TEST_P(NotNullHelperTest, aliasing) {
+  struct Owner {
+    int member = 7;
+  };
+
+  auto sp = std::make_shared<Owner>();
+  auto aliased = to_not_null_shared_ptr_aliasing(sp, &sp->member);
+  static_assert(
+      std::is_same_v<decltype(aliased), not_null_shared_ptr<int>>,
+      "wrong return type");
+  EXPECT_EQ(aliased.get().unwrap(), &sp->member);
+  EXPECT_EQ(*aliased, 7);
+  EXPECT_EQ(aliased.use_count(), 2);
+  EXPECT_EQ(sp.use_count(), 2);
+
+  auto spMove = std::make_shared<Owner>();
+  int* moveMember = &spMove->member;
+  auto aliasedMove =
+      to_not_null_shared_ptr_aliasing(std::move(spMove), moveMember);
+  EXPECT_EQ(aliasedMove.get().unwrap(), moveMember);
+  EXPECT_EQ(*aliasedMove, 7);
+  EXPECT_EQ(aliasedMove.use_count(), 1);
+
+  typename TypeParam::template not_null_shared_ptr<Owner> nnSp(
+      std::make_shared<Owner>());
+  auto aliasedNn = to_not_null_shared_ptr_aliasing(nnSp, &nnSp->member);
+  EXPECT_EQ(aliasedNn.get().unwrap(), &nnSp->member);
+  EXPECT_EQ(*aliasedNn, 7);
+  EXPECT_EQ(aliasedNn.use_count(), 2);
+
+  typename TypeParam::template not_null_shared_ptr<Owner> nnSpMove(
+      std::make_shared<Owner>());
+  int* nnMoveMember = &nnSpMove->member;
+  auto aliasedNnMove =
+      to_not_null_shared_ptr_aliasing(std::move(nnSpMove), nnMoveMember);
+  EXPECT_EQ(aliasedNnMove.get().unwrap(), nnMoveMember);
+  EXPECT_EQ(*aliasedNnMove, 7);
+
+  int* nullMember = nullptr;
+  EXPECT_THROW(
+      to_not_null_shared_ptr_aliasing(sp, nullMember),
+      typename TypeParam::exception_type);
+
+  int value = 42;
+  const std::shared_ptr<Owner> nullSp;
+  auto aliasedNullOwner = to_not_null_shared_ptr_aliasing(nullSp, &value);
+  EXPECT_EQ(*aliasedNullOwner, 42);
+  EXPECT_EQ(aliasedNullOwner.use_count(), 0);
+}
+
 TYPED_TEST_P(NotNullTest, hash) {
   int* i = new int(5);
   {
@@ -903,7 +953,8 @@ REGISTER_TYPED_TEST_SUITE_P(
     conversion_from_default_handler);
 
 // Register parameterized tests for NotNullHelperTest
-REGISTER_TYPED_TEST_SUITE_P(NotNullHelperTest, maker, output, casting);
+REGISTER_TYPED_TEST_SUITE_P(
+    NotNullHelperTest, maker, output, casting, aliasing);
 
 // Instantiate tests with both handler types
 using NullHandlerTypes =
