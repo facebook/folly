@@ -1,10 +1,10 @@
 # Backtesting agent rules
 
-A backtest holds a task and its evidence fixed while changing the rules an agent
-receives. It helps answer whether a rule change improves the artifact and what
-the improvement costs. A no-rules run provides an honest bare-model baseline for
-judging whether any quality lift from the rules justifies the extra time,
-tokens, and context they consume.
+A regular backtest holds a task and its evidence fixed while using the selected
+rules. Controlled comparisons show whether those rules improve the artifact and
+what the improvement costs. A no-rules run provides an honest bare-model
+baseline. A c-i-K run instead keeps the rules and sets the maximum number of
+external review rounds.
 
 Each run uses the scenario and runner from one committed checkout. Regular
 rule-backed runs use their rules and helper scripts from that checkout too. Run
@@ -38,6 +38,10 @@ otherwise it sends the normal scenario prompt unchanged. It stages only the
 declared inputs and does not add its private rule-helper directory to `PATH`.
 Inspect the prepared prompt and workdir before starting the author.
 
+For the secondary c-i-K mode, add `--critic-iterate-rounds K`, where `K` is the
+maximum number of external review rounds. In particular, `K=0` removes external
+review rounds.
+
 If it refuses, show the listed files to the user and stop. Retry after the user
 commits or amends them, or explicitly authorizes a commit containing only those
 files. Never create that commit silently.
@@ -53,12 +57,13 @@ pass `--run-root` when one must survive normal temporary cleanup.
 
 ## Compare runs
 
-For a regular/no-rules pair, use the same committed revision and:
+Compare each secondary mode with a regular run from the same committed revision.
+Keep the task, staged inputs, model, reasoning effort, and shared executable
+versions fixed. Change only:
 
-- keep the task, staged inputs, model, reasoning effort, and shared executable
-  versions fixed; and
-- change only the injected rules, rule-only helpers, and rule-dependent wording
-  isolated in `no_rules_prompt`.
+- **No-rules:** the injected rules, rule-only helpers, and rule-dependent
+  wording isolated in `no_rules_prompt`.
+- **c-i-K:** the external review budget.
 
 When only an older stored sample is available, follow
 [tracking-samples.md](tracking-samples.md) to identify and report any additional

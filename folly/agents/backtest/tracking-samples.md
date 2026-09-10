@@ -11,20 +11,22 @@ user asks to add one.
 
 Store a regular rule-backed run under `SCENARIO/samples/<number>-at-<revision>/`
 and a `--no-rules` run under
-`SCENARIO/samples/<number>-no-rules-at-<revision>/`. Start at 1 for each
-generation revision and run style. Use the first 10 characters of the
-`generation_revision` recorded in `run.json`.
+`SCENARIO/samples/<number>-no-rules-at-<revision>/`. Store a run with an
+explicit critic-iterate budget under
+`SCENARIO/samples/<number>-c-i-<K>-at-<revision>/`. Start at 1 for each
+generation revision and run style; each explicit `K` is a separate run style.
+Use the first 10 characters of the `generation_revision` recorded in `run.json`.
 
 - `output.md` is the exact user-facing artifact.
 - `README.md` is a short metadata header followed by the same debrief shown to
   the user. Do not regenerate or restyle the debrief for storage.
 
 The header records the full generation revision, model, reasoning effort,
-versions of shared executables when known, and the source revision of each
-evaluator. Evaluators may run from a later revision without changing the
-generation revision. Record unknown metadata as unknown rather than
-reconstructing it. Keep traces, reviewer reports, and other process files out of
-the tree.
+versions of shared executables when known, any explicit `c-i-K` budget, and the
+source revision of each evaluator. Evaluators may run from a later revision
+without changing the generation revision. Record unknown metadata as unknown
+rather than reconstructing it. Keep traces, reviewer reports, and other process
+files out of the tree.
 
 An older sample without a generation revision may list known component revisions
 and mark the rest unknown. New runs still require one clean generation revision.

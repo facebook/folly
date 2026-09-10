@@ -82,7 +82,11 @@ class RunScenarioTest(unittest.TestCase):
         return write_manifest(scenario / "scenario.json", contents)
 
     def prepare(
-        self, scenario: Path | None = None, *, install_rules: bool = True
+        self,
+        scenario: Path | None = None,
+        *,
+        install_rules: bool = True,
+        critic_iterate_rounds: int | None = None,
     ) -> runner.Run:
         return runner.prepare(
             scenario or self.scenario,
@@ -92,6 +96,7 @@ class RunScenarioTest(unittest.TestCase):
             "high",
             REVISION,
             install_rules=install_rules,
+            critic_iterate_rounds=critic_iterate_rounds,
         )
 
     def prepare_launch(self) -> tuple[runner.Run, Path]:
@@ -151,6 +156,7 @@ class RunScenarioTest(unittest.TestCase):
 
         self.assertNotIn("rules_root", vars(args))
         self.assertFalse(args.no_rules)
+        self.assertIsNone(args.critic_iterate_rounds)
 
     def test_parser_accepts_no_rules(self) -> None:
         args = runner._parser().parse_args(
@@ -165,6 +171,50 @@ class RunScenarioTest(unittest.TestCase):
         )
 
         self.assertTrue(args.no_rules)
+
+    def test_parser_accepts_critic_iterate_rounds(self) -> None:
+        args = runner._parser().parse_args(
+            [
+                "scenario",
+                "--model",
+                "model",
+                "--reasoning-effort",
+                "high",
+                "--critic-iterate-rounds",
+                "0",
+            ]
+        )
+
+        self.assertEqual(args.critic_iterate_rounds, 0)
+
+    def test_main_passes_critic_iterate_rounds_to_prepare(self) -> None:
+        manifest = runner.Manifest(
+            runner.PurePosixPath("prompt.md"),
+            (),
+            (runner.CRITIC_ITERATE_RULE,),
+        )
+        run = mock.Mock(root=Path("/run"))
+        with (
+            mock.patch.object(runner, "load_manifest", return_value=manifest),
+            mock.patch.object(runner, "generation_revision", return_value=REVISION),
+            mock.patch.object(runner, "prepare", return_value=run) as prepare,
+            mock.patch("builtins.print"),
+        ):
+            result = runner.main(
+                [
+                    "scenario",
+                    "--model",
+                    "model",
+                    "--reasoning-effort",
+                    "high",
+                    "--critic-iterate-rounds",
+                    "0",
+                    "--prepare-only",
+                ]
+            )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(prepare.call_args.kwargs["critic_iterate_rounds"], 0)
 
     def test_generation_revision_checks_the_files_that_define_a_run(self) -> None:
         (self.root / ".hg").mkdir()
@@ -394,7 +444,61 @@ class RunScenarioTest(unittest.TestCase):
         self.assertTrue((run.workdir / "rules/rules-inventory.md").is_file())
         metadata = json.loads((run.root / "run.json").read_text())
         self.assertEqual(metadata["generation_revision"], REVISION)
+        self.assertNotIn("critic_iterate_rounds", metadata)
         self.assertNotIn("no_rules", metadata)
+
+    def test_prepare_injects_and_records_critic_iterate_rounds(self) -> None:
+        write(self.scenario / "prompt.md", "Do the task.\n")
+        write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
+        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
+            write(self.rules_root / support, support.name)
+        self.manifest(rules=[runner.CRITIC_ITERATE_RULE.as_posix()])
+
+        run = self.prepare(critic_iterate_rounds=0)
+
+        self.assertEqual(
+            run.prompt.read_text(),
+            runner.RULE_LOADING_INSTRUCTION + "c-i-0\n\nDo the task.\n",
+        )
+        metadata = json.loads((run.root / "run.json").read_text())
+        self.assertEqual(metadata["critic_iterate_rounds"], 0)
+
+    def test_prepare_rejects_inapplicable_critic_iterate_rounds(self) -> None:
+        cases = (
+            (
+                "negative",
+                [runner.CRITIC_ITERATE_RULE.as_posix()],
+                True,
+                -1,
+                "nonnegative",
+            ),
+            (
+                "no rules",
+                [runner.CRITIC_ITERATE_RULE.as_posix()],
+                False,
+                0,
+                "--no-rules",
+            ),
+            ("critic rule absent", [], True, 0, "scenario rules"),
+        )
+        for name, rules, install_rules, rounds, message in cases:
+            with self.subTest(name):
+                self.manifest(rules=rules)
+                run_root = self.root / f"runs-{rounds}-{install_rules}-{len(rules)}"
+
+                with self.assertRaisesRegex(runner.RunnerError, message):
+                    runner.prepare(
+                        self.scenario,
+                        self.rules_root,
+                        run_root,
+                        "model",
+                        "high",
+                        REVISION,
+                        install_rules=install_rules,
+                        critic_iterate_rounds=rounds,
+                    )
+
+                self.assertFalse(run_root.exists())
 
     def test_prepare_without_rules_stages_bare_inputs(self) -> None:
         write(self.scenario / "prompt.md", "Do the task.\n")

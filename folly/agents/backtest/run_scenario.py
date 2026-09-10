@@ -156,6 +156,23 @@ def _prompt_for_run(manifest: Manifest, install_rules: bool) -> PurePosixPath:
     return manifest.prompt
 
 
+def _validate_critic_iterate_rounds(
+    manifest: Manifest,
+    install_rules: bool,
+    critic_iterate_rounds: int | None,
+) -> None:
+    if critic_iterate_rounds is None:
+        return
+    if critic_iterate_rounds < 0:
+        raise RunnerError("critic-iterate rounds must be nonnegative")
+    if not install_rules:
+        raise RunnerError("critic-iterate rounds cannot be set with --no-rules")
+    if CRITIC_ITERATE_RULE not in manifest.rules:
+        raise RunnerError(
+            "critic-iterate rounds require critic-iterate.md in the scenario rules"
+        )
+
+
 def _resolve_below(root: Path, relative: PurePosixPath, field: str) -> Path:
     root = root.resolve()
     path = (root / relative).resolve()
@@ -384,6 +401,7 @@ def prepare(
     generation_revision: str,
     *,
     install_rules: bool = True,
+    critic_iterate_rounds: int | None = None,
 ) -> Run:
     scenario = scenario.resolve()
     if not scenario.is_dir():
@@ -396,6 +414,7 @@ def prepare(
         raise RunnerError("run root may not be inside the rules tree")
     manifest_path = scenario / "scenario.json"
     manifest = load_manifest(manifest_path)
+    _validate_critic_iterate_rounds(manifest, install_rules, critic_iterate_rounds)
     prompt_source = _prompt_for_run(manifest, install_rules)
     prompt = _resolve_below(scenario, prompt_source, "prompt")
     if not prompt.is_file():
@@ -415,9 +434,10 @@ def prepare(
             install_rules,
         )
         run.workdir.mkdir()
-        run.prompt.write_text(
-            (RULE_LOADING_INSTRUCTION if install_rules else "") + prompt.read_text()
-        )
+        prompt_prefix = RULE_LOADING_INSTRUCTION if install_rules else ""
+        if critic_iterate_rounds is not None:
+            prompt_prefix += f"c-i-{critic_iterate_rounds}\n\n"
+        run.prompt.write_text(prompt_prefix + prompt.read_text())
         run.prompt.chmod(0o444)
         shutil.copyfile(manifest_path, root / "scenario.json")
         stage(
@@ -439,6 +459,8 @@ def prepare(
         }
         if not install_rules:
             metadata["no_rules"] = True
+        if critic_iterate_rounds is not None:
+            metadata["critic_iterate_rounds"] = critic_iterate_rounds
         (root / "run.json").write_text(
             json.dumps(metadata, indent=2, sort_keys=True) + "\n"
         )
@@ -641,6 +663,12 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="run with the scenario prompt and inputs but no staged rules",
     )
+    parser.add_argument(
+        "--critic-iterate-rounds",
+        metavar="K",
+        type=int,
+        help="set the maximum number of external critic-iterate review rounds",
+    )
     return parser
 
 
@@ -650,8 +678,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         agents_root = Path(__file__).resolve().parent.parent
         scenario = args.scenario.resolve()
         manifest = load_manifest(scenario / "scenario.json")
+        install_rules = not args.no_rules
+        _validate_critic_iterate_rounds(
+            manifest, install_rules, args.critic_iterate_rounds
+        )
         revision = generation_revision(
-            scenario, manifest, agents_root, install_rules=not args.no_rules
+            scenario, manifest, agents_root, install_rules=install_rules
         )
         run = prepare(
             scenario,
@@ -660,7 +692,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.model,
             args.reasoning_effort,
             revision,
-            install_rules=not args.no_rules,
+            install_rules=install_rules,
+            critic_iterate_rounds=args.critic_iterate_rounds,
         )
         print(run.root)
         if args.prepare_only:
