@@ -18,6 +18,13 @@ python_unittest(
 )
 
 python_unittest(
+    name = "compress_checkpoint_outputs_test",
+    srcs = ["test_compress_checkpoint_outputs.py"],
+    network_access = network_access_utils.none(),
+    deps = ["fbcode//folly/agents/backtest:run_scenario_lib"],
+)
+
+python_unittest(
     name = "debrief_tables_test",
     srcs = ["test_debrief_tables.py"],
     network_access = network_access_utils.none(),

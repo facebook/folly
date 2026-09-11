@@ -1,0 +1,9 @@
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+
+oncall("fbcode_entropy_wardens_folly")
+
+export_file(
+    name = "apply_diffs",
+    src = "apply_diffs",
+    visibility = ["PUBLIC"],
+)

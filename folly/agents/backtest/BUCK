@@ -7,7 +7,11 @@ python_library(
     srcs = [
         "checkpoint.py",
         "checkpoint_accounting.py",
+        "compress_checkpoint_outputs.py",
         "debrief_tables.py",
         "run_scenario.py",
     ],
+    resources = {
+        "fbcode//folly/agents/scripts:apply_diffs": "folly/agents/scripts/apply_diffs",
+    },
 )

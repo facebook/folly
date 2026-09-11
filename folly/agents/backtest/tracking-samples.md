@@ -18,8 +18,8 @@ generation revision and run style; each explicit `K` is a separate run style.
 Use the first 10 characters of the `generation_revision` recorded in `run.json`.
 
 - `output.md` is the exact user-facing artifact.
-- For a checkpointed run, also store `checkpoints.json` and every output file it
-  names.
+- For a checkpointed run, first copy `checkpoints.json` and every output file it
+  names. Compress only the saved copy, as described below.
 - `README.md` starts as a copy of the completed
   [run debrief](mandatory-debrief.md). Do not write a second account.
 
@@ -45,6 +45,26 @@ Keep traces, reviewer reports, and other process files out of the tree.
 
 The runner does not stage samples. Keep them outside the author and reviewer
 context, and read them only after the new output is frozen.
+
+## Compress checkpoint outputs
+
+After copying an uncompressed checkpointed run, save the generated README
+section outside the sample. From `fbcode/`, run:
+
+```bash
+checkpoint_map=$(mktemp)
+python3 -m folly.agents.backtest.compress_checkpoint_outputs \
+  SAMPLE_DIRECTORY >"$checkpoint_map"
+```
+
+The command stores byte-identical outputs once. For each remaining change, it
+uses a verified ordinary reverse diff only when that diff is less than 60% of
+the full phase. It also removes stale `artifact` fields from `checkpoints.json`.
+Insert the contents of `$checkpoint_map` before the debrief in `README.md`, then
+remove the temporary file. Each short phase bullet links a full file or says how
+far to run a displayed `apply_diffs` command. Shared command prefixes appear
+once. The command starts with a later state, applies reverse diffs from left to
+right, and writes the reconstructed output to stdout.
 
 ## Refresh stale samples
 

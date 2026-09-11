@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Print BASE after applying compressor-generated normal DIFF files.
+
+Usage: apply_diffs BASE DIFF...
+"""
+
+import re
+import sys
+from pathlib import Path
+
+
+_COMMAND = re.compile(rb"(\d+)(?:,(\d+))?([acd])\d+(?:,\d+)?\n")
+
+
+def _lines(contents: bytes) -> list[bytes]:
+    """Split on the newline byte counted by `diff`, preserving each delimiter."""
+    parts = contents.split(b"\n")
+    return [line + b"\n" for line in parts[:-1]] + ([parts[-1]] if parts[-1] else [])
+
+
+def _apply(contents: list[bytes], patch_path: Path) -> None:
+    """Apply one normal diff from bottom to top so its line numbers stay valid."""
+    patch = _lines(patch_path.read_bytes())
+    hunks: list[tuple[int, int, list[bytes], list[bytes]]] = []
+    index = 0
+    while index < len(patch):
+        match = _COMMAND.fullmatch(patch[index])
+        assert match is not None, f"invalid diff command: {patch[index]!r}"
+        first = int(match[1])
+        last = int(match[2] or match[1])
+        operation = match[3]
+        index += 1
+
+        old = []
+        while index < len(patch) and patch[index].startswith(b"< "):
+            old.append(patch[index][2:])
+            index += 1
+        if operation == b"c":
+            assert patch[index] == b"---\n"
+            index += 1
+        new = []
+        while index < len(patch) and patch[index].startswith(b"> "):
+            new.append(patch[index][2:])
+            index += 1
+
+        start = last if operation == b"a" else first - 1
+        end = start if operation == b"a" else last
+        hunks.append((start, end, old, new))
+
+    for start, end, old, new in reversed(hunks):
+        if start < 0 or end > len(contents) or contents[start:end] != old:
+            raise ValueError("diff does not match its base")
+        contents[start:end] = new
+
+
+if len(sys.argv) < 3:
+    raise SystemExit(f"Usage: {Path(sys.argv[0]).name} BASE DIFF...")
+
+output = _lines(Path(sys.argv[1]).read_bytes())
+for diff_path in map(Path, sys.argv[2:]):
+    _apply(output, diff_path)
+sys.stdout.buffer.write(b"".join(output))
