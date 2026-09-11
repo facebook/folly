@@ -233,7 +233,7 @@ struct RadixSortOptions {
   size_t HistogramStackThresholdBytes = 16U * 1024U;
 };
 
-namespace detail {
+namespace stable_radix_sort_detail {
 
 // Allocator concepts and RAII
 template <typename Alloc>
@@ -262,7 +262,7 @@ class AllocatorHolder {
   using pointer = typename Traits::pointer;
   using size_type = typename Traits::size_type;
 
-  explicit AllocatorHolder(size_type size, Alloc const& alloc)
+  constexpr explicit AllocatorHolder(size_type size, Alloc const& alloc)
       : alloc_(alloc),
         size_(size),
         buffer_(size == 0 ? nullptr : Traits::allocate(alloc_, size)) {
@@ -272,12 +272,12 @@ class AllocatorHolder {
   AllocatorHolder(AllocatorHolder const&) = delete;
   AllocatorHolder& operator=(AllocatorHolder const&) = delete;
 
-  ~AllocatorHolder() { destroy(); }
+  constexpr ~AllocatorHolder() { destroy(); }
 
-  pointer data() noexcept { return buffer_; }
+  constexpr pointer data() noexcept { return buffer_; }
 
  private:
-  void construct() {
+  constexpr void construct() {
     if constexpr (
         !std::is_trivially_default_constructible_v<value_type> ||
         !std::is_trivially_destructible_v<value_type>) {
@@ -296,7 +296,7 @@ class AllocatorHolder {
     }
   }
 
-  void destroy() noexcept {
+  constexpr void destroy() noexcept {
     if (buffer_ == nullptr) {
       return;
     }
@@ -313,47 +313,78 @@ class AllocatorHolder {
   pointer buffer_{nullptr};
 };
 
+struct hybrid_alloc_tag {};
+
 /// RAII wrapper around FOLLY_HYBRID_ALIGNED_ALLOC_THRESHOLD / hybridFree.
 template <class T>
-class HybridAllocHolder {
+class HistogramHeapMemHolder {
   static_assert(
-      std::is_object_v<T>, "HybridAllocHolder requires an object type");
+      std::is_object_v<T>, "HistogramHeapMemHolder requires an object type");
+  static_assert(
+      !std::is_array_v<T>,
+      "HistogramHeapMemHolder does not support array value_type");
 
  public:
   using value_type = T;
   using pointer = T*;
   using size_type = std::size_t;
 
-  HybridAllocHolder(void* ptr, size_type size)
-      : data_(static_cast<pointer>(ptr)), size_(size) {}
+  constexpr HistogramHeapMemHolder(hybrid_alloc_tag, void* ptr, size_type size)
+      : data_(static_cast<pointer>(ptr)), size_(size), is_hybrid_alloc_{true} {}
 
-  HybridAllocHolder(HybridAllocHolder const&) = delete;
-  HybridAllocHolder& operator=(HybridAllocHolder const&) = delete;
-  HybridAllocHolder(HybridAllocHolder&&) = delete;
-  HybridAllocHolder& operator=(HybridAllocHolder&&) = delete;
+  constexpr HistogramHeapMemHolder(pointer ptr, size_type size)
+      : data_(ptr), size_(size) {}
 
-  ~HybridAllocHolder() {
+  constexpr HistogramHeapMemHolder(std::nullptr_t, size_type) = delete;
+
+  HistogramHeapMemHolder(HistogramHeapMemHolder const&) = delete;
+  HistogramHeapMemHolder& operator=(HistogramHeapMemHolder const&) = delete;
+  HistogramHeapMemHolder(HistogramHeapMemHolder&&) = delete;
+  HistogramHeapMemHolder& operator=(HistogramHeapMemHolder&&) = delete;
+
+  constexpr ~HistogramHeapMemHolder() {
     if (data_ == nullptr) {
       return;
     }
-    if constexpr (!std::is_trivially_destructible_v<value_type>) {
-      for (size_type i = 0; i < size_; ++i) {
-        std::destroy_at(data_ + i);
-      }
-    }
-    hybridFree(data_);
+
+    reset();
   }
 
-  pointer data() noexcept { return data_; }
-  const pointer data() const noexcept { return data_; }
-  size_type size() const noexcept { return size_; }
+  constexpr void reset() noexcept {
+    if (std::is_constant_evaluated()) {
+      delete data_;
+    } else {
+      if (!is_hybrid_alloc_) {
+        delete data_;
+      } else {
+        if constexpr (!std::is_trivially_destructible_v<value_type>) {
+          for (size_type i = 0; i < size_; ++i) {
+            std::destroy_at(data_ + i);
+          }
+        }
+        hybridFree(data_); // FOLLY_HYBRID_ALIGNED_ALLOC_THRESHOLD
+      }
+    }
+    data_ = nullptr;
+  }
 
-  T& operator[](size_type i) noexcept { return data_[i]; }
-  const T& operator[](size_type i) const noexcept { return data_[i]; }
+  constexpr pointer release() noexcept {
+    pointer p = data_;
+    data_ = nullptr;
+    return p;
+  }
+
+  constexpr pointer data() noexcept { return data_; }
+  constexpr const pointer data() const noexcept { return data_; }
+  constexpr size_type size() const noexcept { return size_; }
+
+  constexpr T& operator[](size_type i) noexcept { return data_[i]; }
+  constexpr const T& operator[](size_type i) const noexcept { return data_[i]; }
 
  private:
   pointer data_{nullptr};
   size_type size_{0};
+  bool is_hybrid_alloc_{false};
 };
 
 // User key maps must return arithmetic keys.
@@ -410,7 +441,7 @@ struct SignBitTraits {
 template <
     RadixSortOptions RadixOptions,
     typename T,
-    detail::arithmetic_key_map<T> KeyMap>
+    stable_radix_sort_detail::arithmetic_key_map<T> KeyMap>
 struct RadixSortTraits : SignBitTraits<std::invoke_result_t<KeyMap, T>> {
   // Re-export user options
   static constexpr auto kSortStrategy = RadixOptions.SortStrategy;
@@ -453,6 +484,12 @@ struct RadixSortTraits : SignBitTraits<std::invoke_result_t<KeyMap, T>> {
 
   // Compile-time sequence of all pass indices
   static constexpr auto kPassIndices = std::make_index_sequence<kNumPasses>{};
+
+  struct alignas(std::hardware_constructive_interference_size)
+      SeqRadixHistogram2D {
+    hist_t storage[kNumPasses][kNumBuckets];
+  };
+  using aligned_hist2d_t = SeqRadixHistogram2D;
 };
 
 ///< Unsigned integer projection
@@ -665,7 +702,7 @@ template <
     typename RadixTraits,
     typename Projection,
     bool IsSignBitHandling = false>
-void integerRadixSort(
+constexpr void integerRadixSort(
     typename RadixTraits::value_t* FOLLY_RESTRICT data,
     const size_t n,
     typename RadixTraits::value_t* FOLLY_RESTRICT buffer,
@@ -679,7 +716,11 @@ void integerRadixSort(
 
   for (size_t pass = 0; pass < passes; ++pass) {
     using hist_t = typename RadixTraits::hist_t;
-    __folly_memset(hist1d, 0, RadixTraits::kNumBuckets * sizeof(hist_t));
+    if (std::is_constant_evaluated()) {
+      std::fill_n(hist1d, RadixTraits::kNumBuckets, hist_t{0});
+    } else {
+      __folly_memset(hist1d, 0, RadixTraits::kNumBuckets * sizeof(hist_t));
+    }
 
     for (size_t i = 0; i < n; i++) {
       auto x = proj.template operator()<IsSignBitHandling>(data[i]);
@@ -732,6 +773,7 @@ struct RadixSortImplDispatcher<RadixTraits, RandIter, Allocator, Projection>
   using Base::kNumPasses;
   using Base::kPassIndices;
   using Base::kSortOrder;
+  using typename Base::aligned_hist2d_t;
   using typename Base::hist_t;
   using typename Base::key_t;
   using typename Base::value_t;
@@ -773,9 +815,10 @@ struct RadixSortImplDispatcher<RadixTraits, RandIter, Allocator, Projection>
   /// Converts per-pass bucket counts to prefix-sum offsets.
   /// Returns non-empty bucket count per pass (used to skip trivial passes).
   template <size_t... Is>
-  static auto prefixSum(hist2d_t hist2d, std::index_sequence<Is...>)
-      -> std::array<size_t, sizeof...(Is)> {
-    std::array<size_t, sizeof...(Is)> nonEmptyCounts;
+  static constexpr void prefixSum(
+      hist2d_t hist2d,
+      std::index_sequence<Is...>,
+      size_t (&nonEmptyCounts)[sizeof...(Is)]) {
     auto process = [&](size_t index) -> void {
       nonEmptyCounts[index] = (hist2d[index][0] != 0);
       for (size_t i = 1; i < kNumBuckets; ++i) {
@@ -784,7 +827,6 @@ struct RadixSortImplDispatcher<RadixTraits, RandIter, Allocator, Projection>
       }
     };
     (process(Is), ...);
-    return nonEmptyCounts;
   }
 
   /// Scatters all passes. Sign-bit correction deferred to the last pass.
@@ -794,7 +836,7 @@ struct RadixSortImplDispatcher<RadixTraits, RandIter, Allocator, Projection>
       value_t* FOLLY_RESTRICT data,
       const size_t n,
       value_t* FOLLY_RESTRICT buffer,
-      const std::array<size_t, kNumPasses>& nonEmptyCounts,
+      const size_t (&nonEmptyCounts)[kNumPasses],
       hist2d_t hist2d,
       Projection proj) -> value_t* {
     // All passes except the last one: sign-bit correction is not needed.
@@ -834,35 +876,35 @@ struct RadixSortImplDispatcher<RadixTraits, RandIter, Allocator, Projection>
     AllocatorHolder<Allocator> holder(n, allocator);
     auto* FOLLY_RESTRICT buffer = holder.data();
 
-    const size_t histSize = kNumPasses * kNumBuckets;
-    const size_t histBytes = histSize * sizeof(hist_t);
+    auto runSort = [&](auto& hist2d) constexpr {
+      // Step 1: build histograms and check sortedness.
+      if (bool sorted = buildHistogram(data, n, hist2d, proj)) {
+        return; // Already sorted; nothing to do.
+      }
 
-    // Allocate histogram storage, preferring stack if size is small.
-    HybridAllocHolder<hist_t> histStorage{
-        FOLLY_HYBRID_ALIGNED_ALLOC_THRESHOLD(
-            histBytes,
-            hardware_constructive_interference_size,
-            kHistogramStackThresholdBytes),
-        histSize};
-    __folly_memset(histStorage.data(), 0, histBytes);
-    auto hist2d = reinterpret_cast<hist2d_t>(histStorage.data());
+      // Step 2: convert counts to offsets and get non-empty bucket counts.
+      size_t nonEmptyCounts[kNumPasses];
+      prefixSum(hist2d, kPassIndices, nonEmptyCounts);
 
-    // Step 1: build histograms and check sortedness.
-    if (bool sorted = buildHistogram(data, n, hist2d, proj)) {
-      return; // Already sorted; nothing to do.
-    }
+      // Step 3: scatter all passes.
+      // The result may end up in the temporary buffer if the number of passes
+      // executed is odd.
+      auto* result = doScatter(data, n, buffer, nonEmptyCounts, hist2d, proj);
 
-    // Step 2: convert counts to offsets and get non-empty bucket counts.
-    std::array nonEmptyCounts = prefixSum(hist2d, kPassIndices);
+      // Step 4: if the sorted data is not in the original array, move it back.
+      if (result != original) {
+        std::move(result, result + n, original);
+      }
+    };
 
-    // Step 3: scatter all passes.
-    // The result may end up in the temporary buffer if the number of passes
-    // executed is odd.
-    auto* result = doScatter(data, n, buffer, nonEmptyCounts, hist2d, proj);
-
-    // Step 4: if the sorted data is not in the original array, move it back.
-    if (result != original) {
-      std::move(result, result + n, original);
+    const size_t histBytes = kNumPasses * kNumBuckets * sizeof(hist_t);
+    if constexpr (histBytes <= kHistogramStackThresholdBytes) {
+      aligned_hist2d_t hist2d{}; // init
+      runSort(hist2d.storage);
+    } else {
+      HistogramHeapMemHolder<aligned_hist2d_t> hist2d{
+          new aligned_hist2d_t(), kNumPasses}; // init
+      runSort(hist2d.data()->storage);
     }
   }
 };
@@ -890,6 +932,7 @@ struct RadixSortImplDispatcher<RadixTraits, RandIter, Allocator, Projection>
   using Base::kNumBuckets;
   using Base::kNumPasses;
   using Base::kSortOrder;
+  using typename Base::aligned_hist2d_t;
   using typename Base::hist_t;
   using typename Base::key_t;
   using typename Base::uint_t;
@@ -1016,7 +1059,11 @@ struct RadixSortImplDispatcher<RadixTraits, RandIter, Allocator, Projection>
     }
 
     // Step 1 : Clear the histogram for the current pass.
-    __folly_memset(hist1d, 0, kNumBuckets * sizeof(hist_t));
+    if (std::is_constant_evaluated()) {
+      std::fill_n(hist1d, kNumBuckets, hist_t{0});
+    } else {
+      __folly_memset(hist1d, 0, kNumBuckets * sizeof(hist_t));
+    }
 
     // Step 2 : build histogram for the current pass.
     buildHistogram(data, n, hist2d, pass, proj);
@@ -1044,42 +1091,48 @@ struct RadixSortImplDispatcher<RadixTraits, RandIter, Allocator, Projection>
     AllocatorHolder<Allocator> holder(n, allocator);
     auto* FOLLY_RESTRICT buffer = holder.data();
 
-    const size_t histSize = kNumPasses * kNumBuckets;
-    const size_t histBytes = histSize * sizeof(hist_t);
+    auto runSort = [&](auto& hist2d) constexpr {
+      // Only the first pass histogram needs to be cleared; other passes will be
+      // cleared individually in `doMsdRecursion`.
+      if (std::is_constant_evaluated()) {
+        std::fill_n(hist2d[kFirstPass], kNumBuckets, hist_t{0});
+      } else {
+        __folly_memset(hist2d[kFirstPass], 0, kNumBuckets * sizeof(hist_t));
+      }
 
+      // First pass scan: builds MSB histogram, checks sortedness, computes msb.
+      const auto [msb, sorted] = firstPassScan(data, n, hist2d, proj);
+      if (sorted) {
+        return;
+      }
+
+      // Compute the actual number of passes needed based on the highest set
+      // bit. Example: for 32-bit with 8-bit chunks, msb=24 ->
+      // passes=(24+8)/8=4.
+      const auto passes = (msb + kBitsPerPass) / kBitsPerPass;
+
+      // If the full number of passes is needed, the first pass histogram is
+      // ready.
+      if (passes == kNumPasses && prefixSum(hist2d, kFirstPass) > 1) {
+        // Scatter using the first pass (with sign-bit handling if needed).
+        doScatter(data, n, buffer, kFirstPass, hist2d, proj);
+        recurseBuckets(data, n, buffer, kFirstPass, hist2d, proj);
+      } else {
+        // Start recursion from the highest pass that actually contains data.
+        doMsdRecursion(data, n, buffer, passes - 1, hist2d, proj);
+      }
+    };
+
+    const size_t histBytes = kNumPasses * kNumBuckets * sizeof(hist_t);
     // Pre-allocate histogram memory for all passes at once,
     // prevent memory allocation overhead in every recursion.
-    HybridAllocHolder<hist_t> histStorage{
-        FOLLY_HYBRID_ALIGNED_ALLOC_THRESHOLD(
-            histBytes,
-            hardware_constructive_interference_size,
-            kHistogramStackThresholdBytes),
-        histSize};
-    auto hist2d = reinterpret_cast<hist2d_t>(histStorage.data());
-
-    // Only the first pass histogram needs to be cleared; other passes will be
-    // cleared individually in `doMsdRecursion`.
-    __folly_memset(hist2d[kFirstPass], 0, kNumBuckets * sizeof(hist_t));
-
-    // First pass scan: builds MSB histogram, checks sortedness, computes msb.
-    const auto [msb, sorted] = firstPassScan(data, n, hist2d, proj);
-    if (sorted) {
-      return;
-    }
-
-    // Compute the actual number of passes needed based on the highest set bit.
-    // Example: for 32-bit with 8-bit chunks, msb=24 -> passes=(24+8)/8=4.
-    const auto passes = (msb + kBitsPerPass) / kBitsPerPass;
-
-    // If the full number of passes is needed, the first pass histogram is
-    // ready.
-    if (passes == kNumPasses && prefixSum(hist2d, kFirstPass) > 1) {
-      // Scatter using the first pass (with sign-bit handling if needed).
-      doScatter(data, n, buffer, kFirstPass, hist2d, proj);
-      recurseBuckets(data, n, buffer, kFirstPass, hist2d, proj);
+    if constexpr (histBytes <= kHistogramStackThresholdBytes) {
+      aligned_hist2d_t hist2d; // not init
+      runSort(hist2d.storage);
     } else {
-      // Start recursion from the highest pass that actually contains data.
-      doMsdRecursion(data, n, buffer, passes - 1, hist2d, proj);
+      HistogramHeapMemHolder<aligned_hist2d_t> hist2d{
+          new aligned_hist2d_t, kNumPasses}; // not init
+      runSort(hist2d.data()->storage);
     }
   }
 };
@@ -1119,7 +1172,8 @@ struct RadixSortParHelpers : RadixTraits {
     const size_t step = info.step;
     using ThreadChunkStatsWrapped = ThreadChunkStats<key_t>;
     const auto threadBytes = threads * sizeof(ThreadChunkStatsWrapped);
-    HybridAllocHolder<ThreadChunkStatsWrapped> statsArray{
+    HistogramHeapMemHolder<ThreadChunkStatsWrapped> statsArray{
+        hybrid_alloc_tag{},
         FOLLY_HYBRID_ALIGNED_ALLOC_THRESHOLD(
             threadBytes,
             hardware_constructive_interference_size,
@@ -1297,7 +1351,8 @@ struct RadixSortImplDispatcher<RadixTraits, RandIter, Allocator, Projection>
     const size_t histBytes = histSize * sizeof(hist_t);
     const ThreadChunkInfo chunkInfo(threads, n % threads, n / threads);
 
-    HybridAllocHolder<hist_t> histStorage{
+    HistogramHeapMemHolder<hist_t> histStorage{
+        hybrid_alloc_tag{},
         FOLLY_HYBRID_ALIGNED_ALLOC_THRESHOLD(
             histBytes,
             hardware_constructive_interference_size,
@@ -1432,7 +1487,8 @@ struct RadixSortImplDispatcher<RadixTraits, RandIter, Allocator, Projection>
     const size_t histSize = size_t{threads} * kNumBuckets;
     const size_t histBytes = histSize * sizeof(hist_t);
 
-    HybridAllocHolder<hist_t> histStorage{
+    HistogramHeapMemHolder<hist_t> histStorage{
+        hybrid_alloc_tag{},
         FOLLY_HYBRID_ALIGNED_ALLOC_THRESHOLD(
             histBytes,
             hardware_constructive_interference_size,
@@ -1475,7 +1531,8 @@ struct RadixSortImplDispatcher<RadixTraits, RandIter, Allocator, Projection>
     const size_t histBytes = histSize * sizeof(hist_t);
     const ThreadChunkInfo chunkInfo(threads, n % threads, n / threads);
 
-    HybridAllocHolder<hist_t> histStorage{
+    HistogramHeapMemHolder<hist_t> histStorage{
+        hybrid_alloc_tag{},
         FOLLY_HYBRID_ALIGNED_ALLOC_THRESHOLD(
             histBytes,
             hardware_constructive_interference_size,
@@ -1505,7 +1562,7 @@ struct RadixSortImplDispatcher<RadixTraits, RandIter, Allocator, Projection>
 template <
     typename RadixTraits,
     std::random_access_iterator RandIter,
-    detail::standard_allocator Allocator,
+    stable_radix_sort_detail::standard_allocator Allocator,
     unsigned_integral_projection<std::iter_value_t<RandIter>> Projection>
 constexpr void stable_radix_sort_impl(
     RandIter first,
@@ -1565,12 +1622,12 @@ constexpr void stable_radix_sort_impl(
   }
 }
 
-} // namespace detail
+} // namespace stable_radix_sort_detail
 
 template <
     std::random_access_iterator RandIter,
-    detail::arithmetic_key_map<std::iter_value_t<RandIter>> KeyMap =
-        detail::radix_key_map_fn>
+    stable_radix_sort_detail::arithmetic_key_map<std::iter_value_t<RandIter>>
+        KeyMap = stable_radix_sort_detail::radix_key_map_fn>
 [[deprecated(
     "use folly::stable_radix_sort with RadixSortOrder::Descending instead")]]
 void stable_radix_sort_descending(
@@ -1618,9 +1675,9 @@ void stable_radix_sort_descending(
 template <
     RadixSortOptions RadixOptions,
     std::random_access_iterator RandIter,
-    detail::standard_allocator Allocator,
-    detail::arithmetic_key_map<std::iter_value_t<RandIter>> KeyMap =
-        detail::radix_key_map_fn>
+    stable_radix_sort_detail::standard_allocator Allocator,
+    stable_radix_sort_detail::arithmetic_key_map<std::iter_value_t<RandIter>>
+        KeyMap = stable_radix_sort_detail::radix_key_map_fn>
 constexpr void stable_radix_sort(
     RandIter first,
     RandIter last,
@@ -1630,7 +1687,7 @@ constexpr void stable_radix_sort(
 
   // Construct the projection functor that maps value -> unsigned key.
   auto projection =
-      detail::radix_uint_projection.template
+      stable_radix_sort_detail::radix_uint_projection.template
       operator()<RadixOptions.NaNsPosHandling>(
           std::in_place_type<value_t>, std::move(keyMap));
 
@@ -1638,19 +1695,20 @@ constexpr void stable_radix_sort(
   // passing the underlying base iterators to the implementation.
   constexpr auto adjustedOptions = [] {
     RadixSortOptions opts = RadixOptions;
-    opts.SortOrder =
-        detail::RadixRealSortOrder<RandIter, RadixOptions.SortOrder>::value;
+    opts.SortOrder = stable_radix_sort_detail::
+        RadixRealSortOrder<RandIter, RadixOptions.SortOrder>::value;
     return opts;
   }();
 
-  using RadixTraits = detail::RadixSortTraits<adjustedOptions, value_t, KeyMap>;
+  using RadixTraits = stable_radix_sort_detail::
+      RadixSortTraits<adjustedOptions, value_t, KeyMap>;
 
   // If the iterator is a reverse_iterator, unwrap to base and swap first/last.
   if constexpr (is_reverse_iterator_v<RandIter>) {
-    detail::stable_radix_sort_impl<RadixTraits>(
+    stable_radix_sort_detail::stable_radix_sort_impl<RadixTraits>(
         last.base(), first.base(), allocator, std::move(projection));
   } else {
-    detail::stable_radix_sort_impl<RadixTraits>(
+    stable_radix_sort_detail::stable_radix_sort_impl<RadixTraits>(
         first, last, allocator, std::move(projection));
   }
 }
@@ -1672,8 +1730,8 @@ constexpr void stable_radix_sort(
 template <
     RadixSortOptions RadixOptions,
     std::random_access_iterator RandIter,
-    detail::arithmetic_key_map<std::iter_value_t<RandIter>> KeyMap =
-        detail::radix_key_map_fn>
+    stable_radix_sort_detail::arithmetic_key_map<std::iter_value_t<RandIter>>
+        KeyMap = stable_radix_sort_detail::radix_key_map_fn>
 constexpr void stable_radix_sort(
     RandIter first, RandIter last, KeyMap keyMap = {}) {
   using value_t = typename std::iter_value_t<RandIter>;
@@ -1697,8 +1755,8 @@ constexpr void stable_radix_sort(
  */
 template <
     std::random_access_iterator RandIter,
-    detail::arithmetic_key_map<std::iter_value_t<RandIter>> KeyMap =
-        detail::radix_key_map_fn>
+    stable_radix_sort_detail::arithmetic_key_map<std::iter_value_t<RandIter>>
+        KeyMap = stable_radix_sort_detail::radix_key_map_fn>
 constexpr void stable_radix_sort(
     RandIter first, RandIter last, KeyMap keyMap = {}) {
   using value_t = typename std::iter_value_t<RandIter>;
