@@ -1,0 +1,11 @@
+6,9c6,8
+< application-defined scope. On builds where Folly enables coroutines,
+< `co_withMetadata()` can attach the value today. OSS code cannot retrieve it
+< through a supported C++ API; a presence-aware in-process reader is still being
+< finalized.
+---
+> application-defined scope. Attaching is available. A public reader that can
+> distinguish an absent value from a present zero is not yet finalized, so OSS
+> code cannot read the metadata through a supported C++ API today.
+163a163
+> Attachment is available wherever Folly enables coroutines and the header builds.

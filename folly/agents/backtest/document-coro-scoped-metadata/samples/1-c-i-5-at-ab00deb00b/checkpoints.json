@@ -1,0 +1,182 @@
+[
+  {
+    "author_tokens": {
+      "cache_write_input_tokens": 0,
+      "cached_input_tokens": 931840,
+      "input_tokens": 1010697,
+      "output_tokens": 9234,
+      "reasoning_output_tokens": 4050
+    },
+    "changed_word_percent": null,
+    "context_window": 353400,
+    "outcome": "continued",
+    "phase": "initial",
+    "reviewer_tokens": [],
+    "wall_seconds": 138.462
+  },
+  {
+    "author_tokens": {
+      "cache_write_input_tokens": 0,
+      "cached_input_tokens": 405760,
+      "input_tokens": 413077,
+      "output_tokens": 3676,
+      "reasoning_output_tokens": 2127
+    },
+    "changed_word_percent": 9.3,
+    "context_window": 353400,
+    "outcome": "continued",
+    "phase": "author",
+    "reviewer_tokens": [],
+    "wall_seconds": 44.418
+  },
+  {
+    "author_tokens": {
+      "cache_write_input_tokens": 0,
+      "cached_input_tokens": 2012416,
+      "input_tokens": 2048467,
+      "output_tokens": 9499,
+      "reasoning_output_tokens": 3841
+    },
+    "changed_word_percent": 17.5,
+    "context_window": 353400,
+    "outcome": "continued",
+    "phase": "review1",
+    "reviewer_tokens": [
+      {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 7424,
+        "input_tokens": 10872,
+        "output_tokens": 619,
+        "reasoning_output_tokens": 270
+      },
+      {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 737536,
+        "input_tokens": 812476,
+        "output_tokens": 10643,
+        "reasoning_output_tokens": 6353
+      }
+    ],
+    "wall_seconds": 267.974
+  },
+  {
+    "author_tokens": {
+      "cache_write_input_tokens": 0,
+      "cached_input_tokens": 1424384,
+      "input_tokens": 1445125,
+      "output_tokens": 5392,
+      "reasoning_output_tokens": 1288
+    },
+    "changed_word_percent": 10.4,
+    "context_window": 353400,
+    "outcome": "continued",
+    "phase": "review2",
+    "reviewer_tokens": [
+      {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 7424,
+        "input_tokens": 10902,
+        "output_tokens": 730,
+        "reasoning_output_tokens": 371
+      },
+      {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 637696,
+        "input_tokens": 711468,
+        "output_tokens": 9830,
+        "reasoning_output_tokens": 5809
+      }
+    ],
+    "wall_seconds": 195.767
+  },
+  {
+    "author_tokens": {
+      "cache_write_input_tokens": 0,
+      "cached_input_tokens": 1618944,
+      "input_tokens": 1642105,
+      "output_tokens": 5061,
+      "reasoning_output_tokens": 1076
+    },
+    "changed_word_percent": 19.3,
+    "context_window": 353400,
+    "outcome": "continued",
+    "phase": "review3",
+    "reviewer_tokens": [
+      {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 7424,
+        "input_tokens": 10959,
+        "output_tokens": 1275,
+        "reasoning_output_tokens": 1001
+      },
+      {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 658944,
+        "input_tokens": 742421,
+        "output_tokens": 11482,
+        "reasoning_output_tokens": 6300
+      }
+    ],
+    "wall_seconds": 203.999
+  },
+  {
+    "author_tokens": {
+      "cache_write_input_tokens": 0,
+      "cached_input_tokens": 1828864,
+      "input_tokens": 1849117,
+      "output_tokens": 4143,
+      "reasoning_output_tokens": 520
+    },
+    "changed_word_percent": 5.6,
+    "context_window": 353400,
+    "outcome": "continued",
+    "phase": "review4",
+    "reviewer_tokens": [
+      {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 7424,
+        "input_tokens": 10956,
+        "output_tokens": 911,
+        "reasoning_output_tokens": 515
+      },
+      {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 1307136,
+        "input_tokens": 1389873,
+        "output_tokens": 10851,
+        "reasoning_output_tokens": 6136
+      }
+    ],
+    "wall_seconds": 210.029
+  },
+  {
+    "author_tokens": {
+      "cache_write_input_tokens": 0,
+      "cached_input_tokens": 2559232,
+      "input_tokens": 2580941,
+      "output_tokens": 4807,
+      "reasoning_output_tokens": 949
+    },
+    "changed_word_percent": 3.3,
+    "context_window": 353400,
+    "outcome": "converged",
+    "phase": "review5",
+    "reviewer_tokens": [
+      {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 7424,
+        "input_tokens": 10947,
+        "output_tokens": 930,
+        "reasoning_output_tokens": 516
+      },
+      {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 869888,
+        "input_tokens": 952601,
+        "output_tokens": 8845,
+        "reasoning_output_tokens": 4744
+      }
+    ],
+    "wall_seconds": 236.256
+  }
+]

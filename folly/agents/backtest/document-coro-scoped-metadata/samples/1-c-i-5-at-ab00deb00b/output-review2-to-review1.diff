@@ -1,0 +1,51 @@
+6,8c6,7
+< application-defined scope. Attaching is available. A public reader that can
+< distinguish an absent value from a present zero is not yet finalized, so OSS
+< code cannot read the metadata through a supported C++ API today.
+---
+> application-defined scope. Attaching is available, but no finalized public C++
+> reader currently exposes presence-preserving values.
+11,18c10,13
+< across suspension and executor changes. `AsyncScope::add()` starts its child on
+< a new async-stack chain, so the child does not inherit the caller's value unless
+< it is wrapped explicitly. Heap and sampling profilers do not currently transport
+< the value.
+< 
+< This contract defines attachment and propagation, plus the semantics that a
+< future metadata reader must provide. It does not define that reader's C++
+< spelling.
+---
+> across suspension and executor changes. Work started with detached ancestry,
+> such as an `AsyncScope::add()` child, does not inherit it unless the child is
+> wrapped explicitly. Heap and sampling profilers do not currently transport the
+> value.
+123c118
+< ## Reader contract
+---
+> ## Reading metadata
+125,127c120,123
+< The pending public reader must return a presence-preserving, per-frame result
+< with the semantics below. Its type name, include, and callable signature remain
+< unresolved.
+---
+> No finalized public C++ interface currently exposes the required
+> presence-preserving, per-frame result. This is a blocking gap for OSS code that
+> needs to read the value. The result must have the semantics below, but its type
+> name, include, and callable signature remain unresolved.
+137,138c133
+< It is not a supported metadata reader, and its output is not guaranteed to be a
+< symbolizable trace when coroutine metadata is present.
+---
+> Callers of that API must filter metadata nodes before symbolizing the trace.
+166,170c161,165
+< The value passed to `co_withMetadata()` has type `uintptr_t`, including on
+< 32-bit builds; it is not a fixed 64-bit wire value. The intended 64-bit reader
+< slot exposes a presence-aware accessor. That accessor is deliberately omitted on
+< 32-bit builds, so consuming coroutine metadata there is unsupported. This does
+< not globally reject a 32-bit build.
+---
+> The value width follows `uintptr_t`; it is not a fixed 64-bit wire format. The
+> intended 64-bit metadata slot exposes a presence-aware accessor. On 32-bit
+> builds, that accessor is intentionally omitted. A 32-bit build is not globally
+> rejected, but consuming coroutine metadata there is unsupported and has no
+> public value-width contract.

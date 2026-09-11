@@ -1,0 +1,18 @@
+11,14c11,14
+< including across suspension and executor changes. A child passed to
+< `AsyncScope::add()` does not inherit the caller's value unless that child is
+< wrapped explicitly. Heap and sampling profilers do not currently transport the
+< value.
+---
+> including across suspension and executor changes. `AsyncScope::add()` starts its
+> child on a new async-stack chain, so the child does not inherit the caller's
+> value unless it is wrapped explicitly. Heap and sampling profilers do not
+> currently transport the value.
+135,139d134
+< The underlying async-stack chain may be read by the thread that owns it,
+< including when a signal interrupts that thread. An external observer may read it
+< while the target thread is stopped. Concurrent inspection from another running
+< thread is unsupported.
+< 
+163d157
+< Attachment is available wherever Folly enables coroutines and the header builds.
