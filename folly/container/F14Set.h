@@ -32,7 +32,9 @@
 #include <cstddef>
 #include <initializer_list>
 #include <iterator>
+#include <memory>
 #include <ranges>
+#include <span>
 #include <tuple>
 
 #include <folly/CppAttributes.h>
@@ -1286,6 +1288,25 @@ class F14VectorSet
   const_reverse_iterator rend() const { return crend(); }
   const_reverse_iterator crend() const {
     return this->table_.values_ + this->table_.size();
+  }
+
+  /**
+   * Contiguous view of all elements in storage order.
+   * @methodset Iterators
+   *
+   * Storage order is the reverse of iteration order (the [rbegin, rend)
+   * range) and is otherwise unspecified; erase() moves the last element
+   * into the erased slot. Invalidated by any mutation, like iterators.
+   * Elements are const even through a non-const set, like set iterators.
+   */
+  std::span<value_type const> as_span() noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return {std::to_address(this->table_.values_), this->table_.size()};
+  }
+  /// @methodset Iterators
+  std::span<value_type const> as_span() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return {std::to_address(this->table_.values_), this->table_.size()};
   }
 
   friend Range<const_reverse_iterator> tag_invoke(

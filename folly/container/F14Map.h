@@ -28,7 +28,9 @@
 #include <cstddef>
 #include <initializer_list>
 #include <iterator>
+#include <memory>
 #include <ranges>
+#include <span>
 #include <stdexcept>
 #include <tuple>
 
@@ -1720,6 +1722,23 @@ class F14VectorMap
   /// @methodset Iterators
   const_reverse_iterator crend() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     return this->table_.values_ + this->table_.size();
+  }
+
+  /**
+   * Contiguous view of all elements in storage order.
+   * @methodset Iterators
+   *
+   * Storage order is the reverse of iteration order (the [rbegin, rend)
+   * range) and is otherwise unspecified; erase() moves the last element
+   * into the erased slot. Invalidated by any mutation, like iterators.
+   */
+  std::span<value_type> as_span() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return {std::to_address(this->table_.values_), this->table_.size()};
+  }
+  /// @methodset Iterators
+  std::span<value_type const> as_span() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return {std::to_address(this->table_.values_), this->table_.size()};
   }
 
   friend Range<const_reverse_iterator> tag_invoke(

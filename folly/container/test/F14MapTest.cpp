@@ -838,6 +838,52 @@ TEST(F14VectorMap, OrderPreservingReinsertionView) {
 
   EXPECT_EQ(asVector(m1), asVector(m2));
 }
+
+template <typename T>
+inline constexpr bool has_as_span_v = requires(T& v) { v.as_span(); };
+
+TEST(F14VectorMap, AsSpan) {
+  using TMap = F14VectorMap<int, int>;
+  TMap m;
+  for (int i = 0; i < 5; ++i) {
+    m.emplace(i, 10 * i);
+  }
+
+  // Storage order matches [rbegin, rend), the raw values_ range.
+  auto s = m.as_span();
+  static_assert(std::is_same_v<decltype(s), std::span<TMap::value_type>>);
+  EXPECT_EQ(s.size(), m.size());
+  EXPECT_EQ(s.data(), m.rbegin());
+  for (int i = 0; i < 5; ++i) {
+    EXPECT_EQ(i, s[i].first);
+    EXPECT_EQ(10 * i, s[i].second);
+  }
+
+  // Mapped values are mutable through the span.
+  s[2].second = 42;
+  EXPECT_EQ(42, m.find(2)->second);
+
+  // Const overload.
+  TMap const& cm = m;
+  auto cs = cm.as_span();
+  static_assert(
+      std::is_same_v<decltype(cs), std::span<TMap::value_type const>>);
+  EXPECT_EQ(cs.size(), 5);
+  EXPECT_EQ(42, cs[2].second);
+
+  // Empty.
+  TMap e;
+  EXPECT_TRUE(e.as_span().empty());
+  EXPECT_EQ(0, e.as_span().size());
+
+  // Only the vector map exposes storage; value, node, and fast maps do not,
+  // including fast maps that happen to be vector-backed (large value type).
+  static_assert(!has_as_span_v<F14ValueMap<int, int>>);
+  static_assert(!has_as_span_v<F14NodeMap<int, int>>);
+  static_assert(!has_as_span_v<F14FastMap<int, int>>);
+  static_assert(!has_as_span_v<F14FastMap<int, std::string>>);
+  static_assert(has_as_span_v<pmr::F14VectorMap<int, int>>);
+}
 #endif
 
 TEST(F14ValueMap, eraseWhileIterating) {

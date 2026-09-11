@@ -820,6 +820,39 @@ TEST(F14VectorSet, OrderPreservingReinsertionView) {
   EXPECT_EQ(asVector(s1), asVector(s2));
 }
 
+template <typename T>
+inline constexpr bool has_as_span_v = requires(T& v) { v.as_span(); };
+
+TEST(F14VectorSet, AsSpan) {
+  using TSet = F14VectorSet<int>;
+  TSet s;
+  for (int i = 0; i < 5; ++i) {
+    s.emplace(i);
+  }
+
+  // Storage order matches [rbegin, rend), the raw values_ range. Elements
+  // are const even through a non-const set, like set iterators.
+  auto sp = s.as_span();
+  static_assert(std::is_same_v<decltype(sp), std::span<int const>>);
+  EXPECT_EQ(sp.size(), s.size());
+  EXPECT_EQ(sp.data(), s.rbegin());
+  for (int i = 0; i < 5; ++i) {
+    EXPECT_EQ(i, sp[i]);
+  }
+
+  TSet const& cs = s;
+  EXPECT_EQ(cs.as_span().size(), 5);
+
+  TSet e;
+  EXPECT_TRUE(e.as_span().empty());
+
+  static_assert(!has_as_span_v<F14ValueSet<int>>);
+  static_assert(!has_as_span_v<F14NodeSet<int>>);
+  static_assert(!has_as_span_v<F14FastSet<int>>);
+  static_assert(!has_as_span_v<F14FastSet<std::string>>);
+  static_assert(has_as_span_v<pmr::F14VectorSet<int>>);
+}
+
 #endif
 
 TEST(F14ValueSet, eraseWhileIterating) {
