@@ -440,7 +440,7 @@ constexpr auto in_place_with(
 // meant to be passed only by-value, as a prvalue.  They can all take unary,
 // or plural `like_args` as inputs.  Their only difference from
 // `bind::args{values...}` is that these modifiers override some aspect of
-// `bind_info_t`s on on all the bindings they contain.
+// `bind_info_t`s on all the bindings they contain.
 //
 // Unlike standard C++, the "constant" and "ref" modifiers commute, avoiding
 // that common footgun.

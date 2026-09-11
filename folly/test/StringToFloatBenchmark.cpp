@@ -251,7 +251,7 @@ int main(int argc, char** argv) {
   std::random_device rd; // a seed source for the random number engine
   std::mt19937 gen(rd()); // mersenne_twister_engine seeded with rd()
   constexpr int kNumValues =
-      10'000'000; // enough values for the the benchmark iterations
+      10'000'000; // enough values for the benchmark iterations
 
   {
     // this block generates random values by separately sampling values

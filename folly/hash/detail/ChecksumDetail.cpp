@@ -99,7 +99,7 @@
  * When <= 512 bits remain in the message, we finish up by folding
  * across smaller distances.  This works similarly; the distance D is
  * just different, so different constant multipliers must be used.
- * Finally, once the remaining message is just 64 bits, it is is
+ * Finally, once the remaining message is just 64 bits, it is
  * reduced to the CRC-32 using Barrett reduction (explained later).
  *
  * For more information see the original paper from Intel: "Fast CRC
