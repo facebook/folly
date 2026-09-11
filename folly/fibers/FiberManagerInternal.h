@@ -611,6 +611,14 @@ class FiberManager : public ::folly::Executor {
    */
   std::type_index localType_;
 
+  /**
+   * Monotonic per-instance id, part of the thread-local cache key in
+   * `local<T>()` so a reused FiberManager address does not produce a stale hit.
+   */
+  const uint64_t creationId_{nextCreationId()};
+
+  static uint64_t nextCreationId();
+
   void runReadyFiber(Fiber* fiber);
   void remoteReadyInsert(Fiber* fiber);
 

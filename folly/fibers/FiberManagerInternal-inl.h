@@ -589,7 +589,26 @@ inline void FiberManager::yield() {
 
 template <typename T>
 T& FiberManager::local() {
-  if (std::type_index(typeid(T)) == localType_ && currentFiber_) {
+  // typeid(T) == localType_ is invariant per FiberManager instance, but the
+  // comparison is an expensive cross-DSO strcmp. Cache it in a per-T
+  // thread_local keyed on (this, creationId_); creationId_ guards against a
+  // FiberManager address being reused after destruction.
+  struct TypeMatchCache {
+    const FiberManager* fm{nullptr};
+    uint64_t creationId{0};
+    bool match{false};
+  };
+  static thread_local TypeMatchCache cache;
+  bool match;
+  if (cache.fm == this && cache.creationId == creationId_) {
+    match = cache.match;
+  } else {
+    match = std::type_index(typeid(T)) == localType_;
+    cache.fm = this;
+    cache.creationId = creationId_;
+    cache.match = match;
+  }
+  if (match && currentFiber_) {
     return currentFiber_->localData_.get<T>();
   }
   return localThread<T>();

@@ -51,6 +51,11 @@ void FiberManager::defaultExceptionCallback(
               << "': " << exceptionStr(eptr);
 }
 
+uint64_t FiberManager::nextCreationId() {
+  static std::atomic<uint64_t> counter{0};
+  return counter.fetch_add(1, std::memory_order_relaxed) + 1;
+}
+
 auto FiberManager::FrozenOptions::create(const Options& options) -> ssize_t {
   return std::hash<Options>()(options);
 }
