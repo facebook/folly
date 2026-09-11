@@ -28,6 +28,9 @@ from typing import BinaryIO, Optional, Sequence, TextIO
 
 
 CODEX = "codex"
+REVIEW_MODEL_ENV = "CODEX_REVIEW_MODEL"
+REVIEW_EFFORT = "high"
+UNKNOWN_MODEL = "UNKNOWN-NOTIFY-USER"
 
 
 REVIEW_PROFILES = {
@@ -123,7 +126,30 @@ def _create_codex_home(
     return codex_home
 
 
-def _review_command(sandbox: Optional[str], review_path: Path) -> list[str]:
+def _review_model(wrapper_executable: Path) -> Optional[str]:
+    """Return the invoking model; None lets Codex choose its default."""
+    session_id = os.environ.get("CODEX_THREAD_ID") or os.environ.get("CODEX_SESSION_ID")
+    if session_id:
+        helper = wrapper_executable.with_name("session_current_model_id.py")
+        result = subprocess.run(
+            [str(helper), session_id],
+            check=False,
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        model = result.stdout.strip()
+        if result.returncode == 0 and model and model != UNKNOWN_MODEL:
+            return model
+    inherited_model = os.environ.get(REVIEW_MODEL_ENV)
+    if inherited_model:
+        return inherited_model
+    return None
+
+
+def _review_command(
+    sandbox: Optional[str], review_path: Path, model: Optional[str]
+) -> list[str]:
     command = [CODEX]
     if sandbox is not None:
         command.extend(("-s", sandbox))
@@ -139,10 +165,18 @@ def _review_command(sandbox: Optional[str], review_path: Path) -> list[str]:
             "--skip-git-repo-check",
             "--ephemeral",
             "--json",
+        ]
+    )
+    if model is not None:
+        command.extend(("--model", model))
+    command.extend(
+        (
+            "--config",
+            f'model_reasoning_effort="{REVIEW_EFFORT}"',
             "--output-last-message",
             str(review_path),
             "-",
-        ]
+        )
     )
     return command
 
@@ -151,18 +185,20 @@ def _execute_review(
     command: list[str],
     workdir: Path,
     codex_home: Path,
+    model: Optional[str],
     prompt: BinaryIO,
     trace: BinaryIO,
     errors: TextIO,
 ) -> int:
+    environment = os.environ.copy()
+    environment["CODEX_HOME"] = str(codex_home)
+    if model is not None:
+        environment[REVIEW_MODEL_ENV] = model
     try:
         result = subprocess.run(
             command,
             cwd=workdir,
-            env={
-                **os.environ.copy(),
-                "CODEX_HOME": str(codex_home),
-            },
+            env=environment,
             stdin=prompt,
             stdout=trace,
             stderr=errors,
@@ -208,6 +244,25 @@ def run(args: argparse.Namespace, wrapper_executable: Path) -> int:
         print(f"REVIEW_OUTPUT_DIR={output_dir}", flush=True)
 
         with (output_dir / "err.txt").open("x", encoding="utf-8") as errors:
+            model = _review_model(wrapper_executable)
+            if model is None:
+                print(
+                    "IMPORTANT FALLBACK: report in the final debrief that the "
+                    "caller model was unavailable and Codex used its default.",
+                    file=sys.stderr,
+                )
+            (output_dir / "metadata.json").write_text(
+                json.dumps(
+                    {
+                        "model": model or "Codex default",
+                        "reasoning_effort": REVIEW_EFFORT,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
             effective_prompt = output_dir / "effective-prompt.md"
             effective_prompt.write_bytes(preamble_contents + b"\n\n" + prompt_contents)
 
@@ -224,7 +279,7 @@ def run(args: argparse.Namespace, wrapper_executable: Path) -> int:
             # blocks the nested cold review's private output. Cold review stays
             # explicitly read-only.
             review_path = output_dir / "review.md"
-            command = _review_command(sandbox, review_path)
+            command = _review_command(sandbox, review_path, model)
             # The wrapper fixes Codex's command and configuration but
             # deliberately inherits the caller's ordinary process environment.
             with (
@@ -232,7 +287,7 @@ def run(args: argparse.Namespace, wrapper_executable: Path) -> int:
                 (output_dir / "run.jsonl").open("xb") as trace,
             ):
                 result = _execute_review(
-                    command, workdir, codex_home, prompt, trace, errors
+                    command, workdir, codex_home, model, prompt, trace, errors
                 )
             if result != 0:
                 return result

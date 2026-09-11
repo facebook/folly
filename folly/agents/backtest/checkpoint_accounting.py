@@ -19,10 +19,11 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from .checkpoint import CHECKPOINT_MARKER_PREFIX, CHECKPOINT_MARKER_SUFFIX
 
@@ -34,6 +35,18 @@ TOKEN_FIELDS = (
     "output_tokens",
     "reasoning_output_tokens",
 )
+
+
+class ReviewSettings(NamedTuple):
+    model: str
+    reasoning_effort: str
+
+
+@dataclass(frozen=True)
+class ReviewRun:
+    completed_at: datetime
+    tokens: dict[str, int]
+    settings: ReviewSettings | None
 
 
 # Decode Codex traces here so phase accounting below does not depend on their
@@ -157,12 +170,21 @@ def _author_checkpoints(
     return started_at, checkpoints, final_usage
 
 
-def _review_attempts(root: Path) -> list[tuple[datetime, dict[str, int]]]:
+def _review_attempts(root: Path) -> list[ReviewRun]:
     """Keep failed attempts visible; a completed retry can still finish the phase."""
     attempts = []
     for directory in root.iterdir():
         trace = directory / "run.jsonl"
         if trace.is_file():
+            metadata = json.loads((directory / "metadata.json").read_text())
+            assert isinstance(metadata, dict)
+            model = metadata.get("model")
+            effort = metadata.get("reasoning_effort")
+            assert isinstance(model, str)
+            assert model
+            assert isinstance(effort, str)
+            assert effort
+            settings = ReviewSettings(model, effort)
             completed = [
                 event
                 for event in _read_jsonl(trace)
@@ -170,17 +192,28 @@ def _review_attempts(root: Path) -> list[tuple[datetime, dict[str, int]]]:
             ]
             completed_at = trace.stat().st_mtime
         else:
+            settings = None
             completed = []
             completed_at = directory.stat().st_mtime
         # One Codex invocation can complete at most one review turn.
         assert len(completed) <= 1
         attempts.append(
-            (
-                datetime.fromtimestamp(completed_at, timezone.utc),
-                _tokens(completed[0]["usage"]) if completed else {},
+            ReviewRun(
+                completed_at=datetime.fromtimestamp(completed_at, timezone.utc),
+                tokens=_tokens(completed[0]["usage"]) if completed else {},
+                settings=settings,
             )
         )
-    return sorted(attempts, key=lambda attempt: attempt[0])
+    return sorted(attempts, key=lambda attempt: attempt.completed_at)
+
+
+def _review_settings(reviews: list[ReviewRun]) -> ReviewSettings | None:
+    """Require one reviewer setting across completed reviews."""
+    settings = {review.settings for review in reviews if review.tokens}
+    assert None not in settings
+    if len(settings) > 1:
+        raise ValueError("review model or reasoning effort changed during the run")
+    return next(iter(settings)) if settings else None
 
 
 def _outcome(
@@ -218,7 +251,7 @@ def _checkpoint_paths(
 
 
 def _review_usage_by_checkpoint(
-    attempts: list[tuple[datetime, dict[str, int]]],
+    attempts: list[ReviewRun],
     captured_at: list[datetime],
 ) -> list[list[dict[str, int]]]:
     """Charge every attempt to the checkpoint its retry sequence produced."""
@@ -228,9 +261,9 @@ def _review_usage_by_checkpoint(
         checkpoint_attempts = []
         while (
             attempt_index < len(attempts)
-            and attempts[attempt_index][0] <= checkpoint_time
+            and attempts[attempt_index].completed_at <= checkpoint_time
         ):
-            checkpoint_attempts.append(attempts[attempt_index][1])
+            checkpoint_attempts.append(attempts[attempt_index].tokens)
             attempt_index += 1
         # `{}` records an unfinished attempt, not a completed review.
         if (checkpoint_index < 2 and checkpoint_attempts) or (
@@ -329,9 +362,9 @@ def collect(
     captured_at = [
         datetime.fromtimestamp(path.stat().st_mtime, timezone.utc) for path in paths
     ]
-    review_usage = _review_usage_by_checkpoint(
-        _review_attempts(run_root / "reviews"), captured_at
-    )
+    reviews = _review_attempts(run_root / "reviews")
+    reviewer_settings = _review_settings(reviews)
+    review_usage = _review_usage_by_checkpoint(reviews, captured_at)
     final_tokens, final_context_window, finished_at = final_usage
     if finished_at < captured_at[-1]:
         raise ValueError("final token event precedes the final checkpoint")
@@ -353,4 +386,12 @@ def collect(
     (run_root / "checkpoints.json").write_text(
         json.dumps(records, indent=2, sort_keys=True) + "\n"
     )
+    if reviewer_settings is not None:
+        metadata_path = run_root / "run.json"
+        metadata = json.loads(metadata_path.read_text())
+        if not isinstance(metadata, dict):
+            raise ValueError("run.json is not an object")
+        metadata["reviewer_model"] = reviewer_settings.model
+        metadata["reviewer_reasoning_effort"] = reviewer_settings.reasoning_effort
+        metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n")
     return records

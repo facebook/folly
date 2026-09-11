@@ -85,6 +85,7 @@ class AccountingFixture:
         self.workdir.mkdir()
         self.checkpoints.mkdir()
         self.reviews.mkdir()
+        (root / "run.json").write_text("{}")
         self.author_events: list[dict[str, object]] = [
             {
                 "timestamp": "2026-09-04T00:00:00Z",
@@ -113,12 +114,21 @@ class AccountingFixture:
         )
         self.checkpoint_count += 1
 
-    def review(self, tokens: dict[str, int] | None, second: int) -> None:
+    def review(
+        self,
+        tokens: dict[str, int] | None,
+        second: int,
+        model: str = "review-model",
+        effort: str = "high",
+    ) -> None:
         directory = self.reviews / str(self.review_count)
         directory.mkdir()
         if tokens is None:
             self._set_time(directory, second)
         else:
+            (directory / "metadata.json").write_text(
+                json.dumps({"model": model, "reasoning_effort": effort})
+            )
             trace = directory / "run.jsonl"
             write_jsonl(trace, [{"type": "turn.completed", "usage": tokens}])
             self._set_time(trace, second)
@@ -215,6 +225,26 @@ class CheckpointAccountingTest(unittest.TestCase):
             self.assertEqual(
                 json.loads((run.root / "checkpoints.json").read_text()), records
             )
+            self.assertEqual(
+                json.loads((run.root / "run.json").read_text()),
+                {
+                    "reviewer_model": "review-model",
+                    "reviewer_reasoning_effort": "high",
+                },
+            )
+
+    def test_rejects_mixed_reviewer_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            run = AccountingFixture(Path(temporary))
+            run.checkpoint("initial", usage(100, 10), 10)
+            run.checkpoint("author", usage(200, 20), 20)
+            run.review(usage(30, 3), 24)
+            run.review(usage(30, 3), 25, model="other-model")
+            run.checkpoint("reviewed", usage(300, 30), 30)
+            run.author_events.append(token_event(usage(350, 35), 35))
+
+            with self.assertRaisesRegex(ValueError, "changed during the run"):
+                run.collect(review_budget=1)
 
     def test_counts_distinguish_initial_only_from_ci_zero(self) -> None:
         for budget, contents in (

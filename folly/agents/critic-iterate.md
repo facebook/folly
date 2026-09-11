@@ -395,8 +395,9 @@ Otherwise, treat the round as failed; never scan temporary directories or infer
 a result from partial output.
 
 On success it prints `REVIEW_OUTPUT_DIR=<path>` followed by the review. The
-private directory holds the same review in `review.md`, plus
-`effective-prompt.md`, `run.jsonl`, and `err.txt` for audit.
+private directory holds the same review in `review.md`, the model setting and
+reasoning effort in `metadata.json`, plus `effective-prompt.md`, `run.jsonl`,
+and `err.txt` for audit.
 
 The outer marker names the fresh-review directory. The fresh response includes
 the child marker; the author records both.
@@ -408,8 +409,9 @@ fresh reviewer, pass an absolute repository or relative-path base only when it
 needs caller-relative sources or a repository diff. Otherwise use a fresh
 temporary directory as shown above.
 
-`run.jsonl` and `err.txt` are process evidence, not material to use when
-revising the artifact. On failure, inspect the smallest relevant log excerpt.
+The author revises from the outer fresh review's `review.md`; it already
+incorporates the cold report. Every other file in either private directory is
+process evidence. On failure, inspect the smallest relevant log excerpt.
 
 Before accepting a prose review, confirm that its only cold-review launch
 precedes any source read or statement about the artifact, that `REVIEW FRAME:`
