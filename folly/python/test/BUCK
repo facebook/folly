@@ -207,7 +207,6 @@ fb_dirsync_cpp_unittest(
     supports_static_listing = False,
     target_compatible_with = [
         "fbcode//opensource/macros:broken-in-oss",
-        "ovr_config//os:linux",
     ],
     versions = {
         "python": "3.14.free-threading",
