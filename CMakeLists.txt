@@ -180,7 +180,7 @@ set_property(
   APPEND
   PROPERTY
   COMPILE_DEFINITIONS
-  "FOLLY_XLOG_STRIP_PREFIXES=\"${CMAKE_SOURCE_DIR}:${CMAKE_BINARY_DIR}\""
+  "FOLLY_XLOG_STRIP_PREFIXES=\"${CMAKE_CURRENT_SOURCE_DIR}:${CMAKE_CURRENT_BINARY_DIR}\""
 )
 
 # Collect headers for installation (still needed for install step)
