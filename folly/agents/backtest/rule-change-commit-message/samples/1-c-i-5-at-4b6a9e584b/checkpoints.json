@@ -1,0 +1,62 @@
+[
+  {
+    "author_tokens": {
+      "cache_write_input_tokens": 0,
+      "cached_input_tokens": 457472,
+      "input_tokens": 509696,
+      "output_tokens": 2859,
+      "reasoning_output_tokens": 1124
+    },
+    "changed_word_percent": null,
+    "context_window": 353400,
+    "outcome": "continued",
+    "phase": "initial",
+    "reviewer_tokens": [],
+    "wall_seconds": 62.668
+  },
+  {
+    "author_tokens": {
+      "cache_write_input_tokens": 0,
+      "cached_input_tokens": 337408,
+      "input_tokens": 343766,
+      "output_tokens": 3852,
+      "reasoning_output_tokens": 2513
+    },
+    "changed_word_percent": 63.1,
+    "context_window": 353400,
+    "outcome": "continued",
+    "phase": "author",
+    "reviewer_tokens": [],
+    "wall_seconds": 48.514
+  },
+  {
+    "author_tokens": {
+      "cache_write_input_tokens": 0,
+      "cached_input_tokens": 833792,
+      "input_tokens": 856062,
+      "output_tokens": 4866,
+      "reasoning_output_tokens": 2497
+    },
+    "changed_word_percent": 0.0,
+    "context_window": 353400,
+    "outcome": "converged",
+    "phase": "review1",
+    "reviewer_tokens": [
+      {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 17920,
+        "input_tokens": 21868,
+        "output_tokens": 1533,
+        "reasoning_output_tokens": 1034
+      },
+      {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 253696,
+        "input_tokens": 298459,
+        "output_tokens": 5492,
+        "reasoning_output_tokens": 3485
+      }
+    ],
+    "wall_seconds": 166.991
+  }
+]
