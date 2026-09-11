@@ -74,6 +74,10 @@ option(BUILD_SHARED_LIBS
   a stable ABI."
   OFF
 )
+option(FOLLY_BUILD_MONOLITHIC
+  "Build the monolithic folly library. When OFF, an INTERFACE target named folly will aggregate component targets."
+  ON
+)
 option(PYTHON_EXTENSIONS
   "Build Python Bindings for Folly, requires Cython and (BUILD_SHARED_LIBS=ON)"
   OFF
