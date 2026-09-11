@@ -2,26 +2,18 @@
 name = packsim
 fbsource_path = fbcode/ai_simulation/packsim
 
+# This manifest builds packsim from its published repository, cloned from the
+# `[git] repo_url` below and configured with the CMakeLists.txt at its root.
+#
 # Deliberately no `shipit_project` / `shipit.pathmap` / `shipit.strip`.
-#
-# Those three would let `getdeps build packsim` transform fbsource in place,
-# but only by restating what the export contains -- and the packsim export is
-# defined solely by
-# opensource/shipit_config/facebook/ai_simulation.cconf in Configerator. A
-# second copy of the strip rules here would drift from it silently, and the
-# symptom would be getdeps reporting a green build of a tree that is not the
-# one ShipIt publishes. That is worse than no answer.
-#
-# The internal way to build the export is instead
-#
-#     buck2 run fbcode//ai_simulation/packsim/scripts:oss_check -- \
-#         materialize /tmp/packsim-export
-#
-# which reads the live config on every run, followed by cmake against that
-# directory. See fbcode/ai_simulation/CMakeLists.txt.
-#
-# Once github.com/facebook/ai_simulation is public, `[git] repo_url` below is
-# enough for external consumers and for OSS CI.
+# Those three exist to build a project out of a Meta-internal checkout by
+# restating which of its files are public -- but packsim's published contents
+# are defined in exactly one place, and a second copy of those rules here would
+# drift from it silently. The symptom would be a green build of a tree that is
+# not the one that gets published, which is worse than no answer. Meta engineers
+# who need to build the published tree from an internal checkout should use
+# packsim's own export tool rather than getdeps; it reads those rules live on
+# every run.
 
 [git]
 repo_url = https://github.com/facebook/ai_simulation.git
