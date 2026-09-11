@@ -5,6 +5,7 @@ load("@fbsource//tools/build_defs:fb_xplat_rust_library.bzl", "fb_xplat_rust_lib
 load("@fbsource//tools/build_defs:fb_xplat_suffixed_aliases.bzl", "create_forwarding_aliases")
 load("@fbsource//tools/build_defs:fbsource_utils.bzl", "is_fbcode_compatible", "is_fbcode_mode_mac", "is_fbcode_mode_win", "is_xplat")
 load("@fbsource//tools/build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
+load("@fbsource//tools/build_defs/dirsync:dirsync_redirect.bzl", "dirsync_redirect")
 
 oncall("rust_libraries")
 
@@ -151,6 +152,13 @@ fb_xplat_rust_library(
         "fbsource//xplat/thrift/lib/rust:fbthrift",
         ":iobuf-sys",
     ],
+)
+
+dirsync_redirect.create_alias(
+    "iobuf_dirsync",
+    dirsync_redirect.read(),
+    actual = ":_iobuf",
+    skip_suffixed_aliases = True,
 )
 
 fb_native.alias(
