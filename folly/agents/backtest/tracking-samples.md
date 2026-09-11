@@ -20,18 +20,28 @@ Use the first 10 characters of the `generation_revision` recorded in `run.json`.
 - `output.md` is the exact user-facing artifact.
 - For a checkpointed run, also store `checkpoints.json` and every output file it
   names.
-- `README.md` is a short metadata header followed by the same debrief shown to
-  the user. Do not regenerate or restyle the debrief for storage.
+- `README.md` starts as a copy of the completed
+  [run debrief](mandatory-debrief.md). Do not write a second account.
 
-The header records the full generation revision, model, reasoning effort,
-versions of shared executables when known, any explicit `c-i-K` budget, and the
-source revision of each evaluator. Evaluators may run from a later revision
-without changing the generation revision. Record unknown metadata as unknown
-rather than reconstructing it. Keep traces, reviewer reports, and other process
-files out of the tree.
+For the saved README:
 
-An older sample without a generation revision may list known component revisions
-and mark the rest unknown. New runs still require one clean generation revision.
+- Replace `Result` with a title, a sentence that links the scenario and states
+  the outcome, and a reproducibility header. Link the final output from the
+  opening or phase list.
+- Keep the applicable `Review`, `Evaluation`, `Cost vs impact`, and `Problems`
+  sections unchanged.
+- Omit `Comparisons`, live artifact quotes, and critic-iterate's
+  `Delegated checks` tail.
+
+The header preserves the `Generation`, `Review`, and `Evaluation` details from
+`Result`, using full generation and evaluator source revisions. Also record
+shared executable versions when known and any explicit `c-i-K` budget.
+Evaluators may run from a later revision without changing the generation
+revision. Record unknown metadata as unknown rather than reconstructing it. An
+older sample without a generation revision may list known component revisions
+and mark the rest unknown; new runs require one clean generation revision.
+
+Keep traces, reviewer reports, and other process files out of the tree.
 
 The runner does not stage samples. Keep them outside the author and reviewer
 context, and read them only after the new output is frozen.

@@ -14,11 +14,13 @@ Each scenario has:
 - `scenario.json`: the normal author prompt (`prompt`), optional bare prompt
   (`no_rules_prompt`), staged file mappings (`inputs`), and exact operational
   rules (`rules`); copy the shape from a nearby scenario;
-- `input/`: frozen material visible to the author; and
-- optional `eval/`: a narrow check used only after `output.md` is frozen.
+- `input/`: frozen material visible to the author;
+- optional `eval/`: a narrow check used only after `output.md` is frozen; and
+- optional `samples/`: selected prior outputs.
 
 Keep references, evaluator instructions, sibling outputs, and comparison labels
-out of the author workdir. Store generated runs outside this directory.
+out of the author workdir. Store runner-created directories outside the scenario
+directory.
 
 Related scenarios may reuse the same frozen input with an explicit `../` source
 in `scenario.json`. Keep task- or scope-specific instructions in each scenario's
