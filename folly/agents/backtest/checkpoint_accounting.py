@@ -17,8 +17,10 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
@@ -243,6 +245,19 @@ def _review_usage_by_checkpoint(
     return usage
 
 
+def _changed_word_percent(before: Path | None, after: Path) -> float | None:
+    """Measure changed words without counting Markdown reflow as a change."""
+    if before is None:
+        return None
+    pattern = r"\w+(?:[-'./:]+\w+)*"
+    old_words = re.findall(pattern, before.read_text())
+    new_words = re.findall(pattern, after.read_text())
+    matcher = SequenceMatcher(None, old_words, new_words, autojunk=False)
+    unchanged = sum(block.size for block in matcher.get_matching_blocks())
+    changed = max(len(old_words), len(new_words)) - unchanged
+    return round(100 * changed / max(len(old_words), len(new_words), 1), 1)
+
+
 def _write_phase_records(
     run_root: Path,
     paths: list[Path],
@@ -256,6 +271,7 @@ def _write_phase_records(
     """Write named phase drafts while keeping time and token cost incremental."""
     records: list[dict[str, object]] = []
     previous_author = dict.fromkeys(TOKEN_FIELDS, 0)
+    previous_path: Path | None = None
     previous_time = started_at
     for index, (
         path,
@@ -281,6 +297,7 @@ def _write_phase_records(
             {
                 "artifact": artifact,
                 "author_tokens": author_tokens,
+                "changed_word_percent": _changed_word_percent(previous_path, path),
                 "context_window": context_window,
                 "outcome": _outcome(
                     index, len(paths) - 1, review_budget, final_message
@@ -291,6 +308,7 @@ def _write_phase_records(
             }
         )
         previous_author = author_cumulative
+        previous_path = path
         previous_time = completed
     return records
 

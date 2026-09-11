@@ -145,6 +145,30 @@ class AccountingFixture:
 
 
 class CheckpointAccountingTest(unittest.TestCase):
+    def test_word_change_ignores_markdown_reflow(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            before = root / "before.md"
+            after = root / "after.md"
+            before.write_text("> one two\n> three\n")
+            after.write_text("> one\n> two three\n")
+
+            self.assertEqual(
+                checkpoint_accounting._changed_word_percent(before, after), 0.0
+            )
+
+    def test_word_change_is_bounded_for_reordering(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            before = root / "before.md"
+            after = root / "after.md"
+            before.write_text("one two three\n")
+            after.write_text("three two one\n")
+
+            self.assertEqual(
+                checkpoint_accounting._changed_word_percent(before, after), 66.7
+            )
+
     def test_tracks_two_review_rounds(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             run = AccountingFixture(Path(temporary))
@@ -167,6 +191,10 @@ class CheckpointAccountingTest(unittest.TestCase):
             self.assertEqual(
                 [record["outcome"] for record in records],
                 ["continued", "continued", "continued", "converged"],
+            )
+            self.assertEqual(
+                [record["changed_word_percent"] for record in records],
+                [None, 100.0, 100.0, 50.0],
             )
             self.assertEqual(records[2]["author_tokens"], usage(200, 10))
             self.assertEqual(records[3]["author_tokens"], usage(200, 15))
