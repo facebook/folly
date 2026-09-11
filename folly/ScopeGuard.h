@@ -181,6 +181,7 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
   }
 
   void* operator new(std::size_t) = delete;
+  void operator delete(void*) = delete;
 
   FOLLY_CXX20_CONSTEXPR void execute() noexcept(InvokeNoexcept) {
 #if FOLLY_CPLUSPLUS >= 202002L
