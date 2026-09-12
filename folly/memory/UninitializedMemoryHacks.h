@@ -357,6 +357,14 @@ struct std_vector_layout {
 #endif
 };
 
+// Precompute the offset in a variable-template initializer. The clang-21
+// parser crashes (SIGSEGV) when offsetof is applied to a template-dependent
+// type inside a function-template body; std_vector_layout<T> is still
+// dependent here, but evaluating offsetof in this context sidesteps the crash.
+template <typename T>
+inline constexpr std::size_t kVectorEndOffset =
+    offsetof(std_vector_layout<T>, __end_);
+
 template <typename T>
 void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
   using real = std::vector<T>;
@@ -369,7 +377,7 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
 
   auto const s = v.size();
 
-  auto& e = *reinterpret_cast<pointer*>(l + offsetof(fake, __end_));
+  auto& e = *reinterpret_cast<pointer*>(l + kVectorEndOffset<T>);
   e += (n - s);
 
   // libc++ contiguous containers use special annotation functions that help
@@ -421,6 +429,14 @@ struct std_vector_layout : std_vector_layout_impl<T, Alloc>::impl_type {
   using pointer = typename std_vector_layout_impl<T, Alloc>::pointer;
 };
 
+// Precompute the offset in a variable-template initializer. The clang-21
+// parser crashes (SIGSEGV) when offsetof is applied to a template-dependent
+// type inside a function-template body; std_vector_layout<T> is still
+// dependent here, but evaluating offsetof in this context sidesteps the crash.
+template <typename T>
+inline constexpr std::size_t kVectorFinishOffset =
+    offsetof(std_vector_layout<T>, _M_finish);
+
 template <typename T>
 void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
   using real = std::vector<T>;
@@ -431,7 +447,7 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
 
   auto const l = reinterpret_cast<unsigned char*>(&v);
 
-  auto& e = *reinterpret_cast<pointer*>(l + offsetof(fake, _M_finish));
+  auto& e = *reinterpret_cast<pointer*>(l + kVectorFinishOffset<T>);
   e += (n - v.size());
 }
 
