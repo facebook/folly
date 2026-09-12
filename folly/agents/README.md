@@ -22,6 +22,7 @@ Meta, see `scripts/facebook/`). Then, add this to your user rule file:
 Immediately batch-load these from `{FA}/`:
 
 - `core.loader.md`
+- `task-ledger.loader.md`
 - `critic-iterate.loader.md`
 - `design-vetting.loader.md`
 - `writing.loader.md`
@@ -46,6 +47,8 @@ the context they just consumed rather than the context their readers have.
 
 The main rules target those gaps:
 
+- `task-ledger.md` keeps current goals, requirements, and unfinished work
+  recoverable across long or interleaved workstreams.
 - `critic-iterate.md` improves quality by spending more model time and tokens on
   repeated drafting and independent review across design, code, and writing.
 - `design-vetting.md` surfaces requirements, constraints, failure modes, and the

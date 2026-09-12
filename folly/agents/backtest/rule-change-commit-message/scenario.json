@@ -24,7 +24,7 @@
     }
   ],
   "rules": [
-    "core/breadcrumbs.md",
+    "task-ledger.md",
     "core/conflicts.md",
     "writing.md",
     "critic-iterate.md"

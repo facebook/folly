@@ -10,8 +10,8 @@ Resolve package paths relative to this file's directory.
 
 Author and orchestrator sessions load these package files:
 
-- `core/breadcrumbs.md`: always. Before drafting a durable explanation, recover
-  applicable breadcrumbs as specified there.
+- `task-ledger.md`: when `task-ledger.loader.md` applies. Before drafting a
+  durable explanation, reread the active workstream ledger.
 - `core/conflicts.md`: before deciding whether a broader rule or skill applies.
 - `writing.md`: before drafting or revising prose.
 - `writing/concise-rules.md`: before editing a rule document.
@@ -57,8 +57,8 @@ do not themselves trigger another critic-iterate cycle.
 
 ## Explicit user controls
 
-Apply these only to the current task, and only when the user explicitly
-requests them:
+Apply these only to the current task, and only when the user explicitly requests
+them:
 
 - `no c-i`: skip critic-iterate without stopping the task.
 - `draft-only` or `initial draft`: stop after the first complete artifact,
@@ -469,19 +469,19 @@ the short task note described above, not the whole packet. Structure the
 author-side packet into three named sections so the author can scan it
 predictably:
 
-Before constructing the author packet or reviewer task note, recover applicable
-breadcrumbs as specified in `core/breadcrumbs.md`. Build the author packet from
-current task inputs relevant to Stack context, Reader must know, or Decision
-trail, including the recovered goal and unsuperseded requirements or decisions.
-Before the author uses or dispatches the packet, treat every input as a claim or
-requirement, not approved wording. Apply "Evidence" when a false claim could
-change the message, then check each input against the intended reader's starting
-knowledge. Keep code identifiers when they anchor a fact or help find the
-relevant code. Explain the concrete actor, condition, action, or outcome hidden
-by unfamiliar shorthand, and define unavoidable technical terms on first use.
-Raw input may be overcomplete, but not opaque.
+Before constructing the author packet or reviewer task note, reread the active
+workstream ledger when one exists. Build the author packet from current task
+inputs relevant to Stack context, Reader must know, or Decision trail, including
+any ledger goal and unsuperseded requirements or rationale. Before the author
+uses or dispatches the packet, treat every input as a claim or requirement, not
+approved wording. Apply "Evidence" when a false claim could change the message,
+then check each input against the intended reader's starting knowledge. Keep
+code identifiers when they anchor a fact or help find the relevant code. Explain
+the concrete actor, condition, action, or outcome hidden by unfamiliar
+shorthand, and define unavoidable technical terms on first use. Raw input may be
+overcomplete, but not opaque.
 
-Never pass breadcrumb paths or raw history to the fresh-review task note.
+Never pass ledger paths or raw ledger contents to the fresh-review task note.
 
 - **Stack context** — for diffs in a stack: what predecessors covered and what
   follow-ons will do. Include review-affecting predecessor framing or follow-on
