@@ -33,9 +33,15 @@ In `scenario.json`, list rules relative to `folly/agents`. Name every required
 rule; the runner does not discover files or load a profile. It stages
 critic-iterate's reviewer preambles and authorization procedure when
 `critic-iterate.md` is selected. Development documents such as `README.md`,
-`CONTRIB.md`, `*.contrib.md`, and `*.entrypoint.md` are rejected as rules. The
-runner adds the rule-loading instruction for a normal run; keep the scenario
-prompt focused on the task.
+`CONTRIB.md`, and `*.contrib.md` are rejected as rules. The runner adds the
+rule-loading instruction for a normal run; keep the scenario prompt focused on
+the task.
+
+- **Rule-focused tests.** List the exact operational rules in `scenario.json`.
+  These tests exercise only rule behavior, and bypass the loader files.
+- **Future loader tests.** Check that loader files load the right rules. Start
+  from the same batch-load snippet as a user, with `{FA}` bound to staged rules.
+  Do not list the rules directly; the test must reach them via the loaders.
 
 No-rules support is secondary and must not change the prompt or input behavior
 of normal runs. To support `--no-rules`, set `no_rules_prompt` to a prompt path

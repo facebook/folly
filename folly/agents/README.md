@@ -2,13 +2,35 @@
 
 ## Only for humans & agents editing rules
 
-`README.md`, every `CONTRIB.md`, `*.contrib.md`, and `*.entrypoint.md` are
-development material, not operational rules. Never load them as task policy. If
-asked to do so outside rule development, stop and ask the user.
+`README.md`, every `CONTRIB.md`, and `*.contrib.md` are development material,
+not operational rules. Never load them as task policy. If asked to do so outside
+rule development, stop and ask the user.
 
 The **user rule file** (`AGENTS.md`, `CLAUDE.md`, or equivalent) starts rule
 loading. During normal work, load only operational files it or another rule
 names.
+
+## How do I use this directory?
+
+Rule packages are identified by `*.loader.md` files. Each loader lists brief
+trigger conditions for its rules. Link `~/folly_agents` to this source tree (at
+Meta, see `scripts/facebook/`). Then, add this to your user rule file:
+
+```markdown
+`{FA}` means `~/folly_agents`.
+
+Immediately batch-load these from `{FA}/`:
+
+- `core.loader.md`
+- `critic-iterate.loader.md`
+- `design-vetting.loader.md`
+- `writing.loader.md`
+- `code.loader.md`
+
+Stop if a loader or referenced rule is unavailable.
+```
+
+Update the `folly/agents` checkout to get new rules & trigger conditions.
 
 ## Purpose
 
@@ -35,9 +57,6 @@ The main rules target those gaps:
 
 ## Find files
 
-- `<name>.entrypoint.md` marks `<name>.md` as the first rule in a package. It
-  holds the trigger and loading text that a generator can copy into the user
-  rule file. Paths inside it are written from the user rule file's location.
 - Other `.md` files may contain rules or support material, but their names do
   not activate them or make them package roots. During a task, load one only
   when the user rule file or another operational rule names it.

@@ -38,17 +38,19 @@ or against abstraction.
 ## Before you edit
 
 Read the nearest `CONTRIB.md` first. When editing a rule package identified by
-`<name>.entrypoint.md`, also read `<name>/CONTRIB.md` and `<name>.contrib.md`
-when present. These files explain why the rule exists and what a change must
+`<name>.loader.md`, also read `<name>/CONTRIB.md` and `<name>.contrib.md` when
+present. These files explain why the rule exists and what a change must
 preserve.
 
-To see what triggers a top-level rule, read its `<name>.entrypoint.md`. Then
-follow explicit filenames in operational rules to see what else loads. A nearby
-file or a similar name does not make one rule load another.
+To see what triggers a top-level rule, read its `<name>.loader.md`. Then follow
+explicit filenames in operational rules to see what else loads. A nearby file or
+a similar name does not make one rule load another.
 
-## User rule-file templates
+## User rule-file loaders
 
-We plan to generate user rule files from templates. Starting now, every
-top-level rule in this package that can be loaded on its own has a neighboring
-`<name>.entrypoint.md`. Put its short trigger and loading instruction there, and
-update it when either changes. Do not repeat its text in maintainer notes.
+The user rule file defines `{FA}` as `~/folly_agents`, loads every top-level
+`<name>.loader.md`, and stops if a loader or referenced rule is unavailable.
+Each loader holds a short trigger and loading instructions for a rule package.
+Keep loaders small because every task reads them. Use `{FA}` for package paths,
+and update a loader whenever its trigger or loading behavior changes. Do not
+repeat its text in maintainer notes. README.md shows the user rule-file snippet.

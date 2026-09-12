@@ -1,4 +1,4 @@
-Load `agents/critic-iterate.md` for:
+Load `{FA}/critic-iterate.md` for:
 
 - explicit review or critic-iteration requests;
 - prose meant for human use outside the current conversation;
@@ -13,10 +13,9 @@ trigger only through another condition above.
 
 Purely mechanical changes do not trigger by default, even when repeated.
 
-This trigger authorizes the reviewer calls required by
-`agents/critic-iterate.md`.
+This trigger authorizes the reviewer calls required by `{FA}/critic-iterate.md`.
 
 Also load:
 
-- `agents/writing.md` first for prose;
-- `agents/code.md` too for code edits or reviews.
+- `{FA}/writing.md` before `{FA}/critic-iterate.md` for prose;
+- `{FA}/code.md` too for code edits or reviews.

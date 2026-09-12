@@ -24,7 +24,6 @@
     }
   ],
   "rules": [
-    "core.md",
     "core/breadcrumbs.md",
     "core/conflicts.md",
     "writing.md",

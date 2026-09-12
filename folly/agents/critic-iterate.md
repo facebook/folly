@@ -57,7 +57,8 @@ do not themselves trigger another critic-iterate cycle.
 
 ## Explicit user controls
 
-Apply these only when the user explicitly requests them:
+Apply these only to the current task, and only when the user explicitly
+requests them:
 
 - `no c-i`: skip critic-iterate without stopping the task.
 - `draft-only` or `initial draft`: stop after the first complete artifact,
@@ -331,7 +332,7 @@ After each review round:
    - If neither the last fresh review nor later checks found a `MUST_TAKE`
      issue, finish.
    - If every `MUST_TAKE` fix since the last fresh review was mechanical, verify
-     each one directly and finish. Rewriting prose is not mechanical.
+     each one directly and finish. Rewording prose is not mechanical.
    - If review budget remains, start another review round and return to step 1.
    - Otherwise, reread the finished draft.
 
