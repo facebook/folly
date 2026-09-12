@@ -290,7 +290,6 @@ fb_dirsync_cpp_benchmark(
 fb_dirsync_cpp_unittest(
     name = "concurrent_b_skip_list_test",
     srcs = ["ConcurrentBSkipListTest.cpp"],
-    headers = ["ConcurrentBSkipListTestKeys.h"],
     labels = [
         # Concurrent stress tests need CPU headroom under TSAN/ASAN
         "heavyweight8_experimental",

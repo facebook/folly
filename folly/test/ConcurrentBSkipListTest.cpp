@@ -33,7 +33,6 @@
 #include <folly/Conv.h>
 #include <folly/Random.h>
 #include <folly/portability/GTest.h>
-#include <folly/test/ConcurrentBSkipListTestKeys.h>
 
 // LargeKey: 16-byte key type for testing KeyReadPolicy::Locked path.
 struct LargeKey {
