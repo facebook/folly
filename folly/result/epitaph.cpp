@@ -16,6 +16,8 @@
 
 #include <folly/result/epitaph.h>
 
+#include <vector>
+
 #include <folly/Portability.h> // FOLLY_HAS_RESULT
 
 // Enabled by default on platforms with ELF+DWARF; BUCK sets this to 0 on

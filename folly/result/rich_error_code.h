@@ -16,7 +16,12 @@
 
 #pragma once
 
+#include <concepts>
+#include <cstdint>
+#include <exception>
 #include <optional>
+#include <type_traits>
+
 #include <fmt/core.h>
 
 #include <folly/lang/Pretty.h>
