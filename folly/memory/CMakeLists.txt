@@ -129,6 +129,17 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME hybrid_alloc
+  HEADERS
+    HybridAlloc.h
+  EXPORTED_DEPS
+    folly_lang_safe_assert
+    folly_memory
+    folly_memory_malloc
+    folly_portability
+)
+
+folly_add_library(
   NAME memory_resource
   HEADERS
     MemoryResource.h
