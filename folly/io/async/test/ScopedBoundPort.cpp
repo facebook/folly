@@ -16,7 +16,6 @@
 
 #include <folly/io/async/test/ScopedBoundPort.h>
 
-#include <folly/Memory.h>
 #include <folly/io/async/AsyncServerSocket.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 
