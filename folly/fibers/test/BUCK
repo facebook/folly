@@ -29,7 +29,6 @@ fb_dirsync_cpp_unittest(
     labels = [tpx_labels.heavyweight],
     deps = [
         "//folly:conv",
-        "//folly:memory",
         "//folly:random",
         "//folly/coro:blocking_wait",
         "//folly/coro:gtest_helpers",

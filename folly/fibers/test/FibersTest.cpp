@@ -21,7 +21,6 @@
 #include <vector>
 
 #include <folly/Conv.h>
-#include <folly/Memory.h>
 #include <folly/Random.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/GtestHelpers.h>
