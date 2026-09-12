@@ -9182,6 +9182,88 @@ TEST_F(AsyncSocketByteEventHelperTest, TsThenByteOffset) {
   EXPECT_TRUE(helper.processCmsg(scmTs, 1 /* rawBytesWritten */));
 }
 
+TEST_F(AsyncSocketByteEventHelperTest, RejectInvalidFutureByteOffset) {
+  constexpr size_t kBytesWrittenSinceEnable = 4'325'057;
+  constexpr uint32_t kInvalidKernelByteOffset = 0x93e01b40;
+  constexpr size_t kBytesPerOffsetWrap =
+      static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) + 1;
+
+  auto timestampCmsg = cmsgForSockExtendedErrTimestamping();
+  auto invalidOffsetCmsg = cmsgForScmTimestamping(
+      folly::netops::SCM_TSTAMP_SND, kInvalidKernelByteOffset);
+
+  for (const auto rawBytesWrittenWhenByteEventsEnabled :
+       std::array<size_t, 2>{0, 2 * kBytesPerOffsetWrap}) {
+    const auto rawBytesWritten =
+        rawBytesWrittenWhenByteEventsEnabled + kBytesWrittenSinceEnable;
+    AsyncSocket::ByteEventHelper helper = {};
+    helper.byteEventsEnabled = true;
+    helper.rawBytesWrittenWhenByteEventsEnabled =
+        rawBytesWrittenWhenByteEventsEnabled;
+
+    EXPECT_FALSE(helper.processCmsg(timestampCmsg, rawBytesWritten));
+    EXPECT_FALSE(helper.processCmsg(invalidOffsetCmsg, rawBytesWritten));
+
+    // Rejecting a corrupt event must not prevent later valid events.
+    auto validOffsetCmsg = cmsgForScmTimestamping(
+        folly::netops::SCM_TSTAMP_SND,
+        static_cast<uint32_t>(kBytesWrittenSinceEnable - 1));
+    EXPECT_FALSE(helper.processCmsg(timestampCmsg, rawBytesWritten));
+    const auto validEvent =
+        helper.processCmsg(validOffsetCmsg, rawBytesWritten);
+    ASSERT_TRUE(validEvent.has_value());
+    EXPECT_EQ(rawBytesWritten - 1, validEvent->offset);
+  }
+}
+
+TEST_F(AsyncSocketByteEventHelperTest, NegativeEnableOffset) {
+  constexpr size_t kRawBytesWritten = 30;
+
+  auto timestampCmsg = cmsgForSockExtendedErrTimestamping();
+  auto beforeAsyncSocketOffsetCmsg =
+      cmsgForScmTimestamping(folly::netops::SCM_TSTAMP_SND, 50);
+  auto validOffsetCmsg =
+      cmsgForScmTimestamping(folly::netops::SCM_TSTAMP_SND, 125);
+
+  AsyncSocket::ByteEventHelper helper = {};
+  helper.byteEventsEnabled = true;
+  helper.rawBytesWrittenWhenByteEventsEnabled = -100;
+
+  EXPECT_FALSE(helper.processCmsg(timestampCmsg, kRawBytesWritten));
+  EXPECT_FALSE(
+      helper.processCmsg(beforeAsyncSocketOffsetCmsg, kRawBytesWritten));
+
+  EXPECT_FALSE(helper.processCmsg(timestampCmsg, kRawBytesWritten));
+  const auto validEvent = helper.processCmsg(validOffsetCmsg, kRawBytesWritten);
+  ASSERT_TRUE(validEvent.has_value());
+  EXPECT_EQ(25, validEvent->offset);
+}
+
+TEST_F(AsyncSocketByteEventHelperTest, LateEnableOffsetPreviousEpoch) {
+  constexpr size_t kBytesPerOffsetWrap =
+      static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) + 1;
+  constexpr size_t kRawBytesWrittenWhenByteEventsEnabled =
+      2 * kBytesPerOffsetWrap + 100;
+  constexpr size_t kByteTimestamped = 3 * kBytesPerOffsetWrap - 5;
+  constexpr size_t kRawBytesWritten = 3 * kBytesPerOffsetWrap + 10;
+  constexpr uint32_t kKernelByteOffset =
+      kByteTimestamped - kRawBytesWrittenWhenByteEventsEnabled;
+
+  auto timestampCmsg = cmsgForSockExtendedErrTimestamping();
+  auto offsetCmsg =
+      cmsgForScmTimestamping(folly::netops::SCM_TSTAMP_SND, kKernelByteOffset);
+
+  AsyncSocket::ByteEventHelper helper = {};
+  helper.byteEventsEnabled = true;
+  helper.rawBytesWrittenWhenByteEventsEnabled =
+      kRawBytesWrittenWhenByteEventsEnabled;
+
+  EXPECT_FALSE(helper.processCmsg(timestampCmsg, kRawBytesWritten));
+  const auto event = helper.processCmsg(offsetCmsg, kRawBytesWritten);
+  ASSERT_TRUE(event.has_value());
+  EXPECT_EQ(kByteTimestamped, event->offset);
+}
+
 TEST_F(AsyncSocketByteEventHelperTest, ByteEventsDisabled) {
   auto scmTs = cmsgForScmTimestamping(folly::netops::SCM_TSTAMP_SND, 0);
   const auto softwareTsSec = std::chrono::seconds(59);
@@ -9397,8 +9479,16 @@ class AsyncSocketByteEventHelperOffsetTest
   static std::vector<AsyncSocketByteEventHelperOffsetTestParams>
   getTestingValues() {
     std::vector<AsyncSocketByteEventHelperOffsetTestParams> vals;
-    const std::array<uint64_t, 5> rawBytesWrittenWhenByteEventsEnabledVals{
-        0, 1, 100, 4294967295, 4294967296};
+    constexpr uint64_t kBytesPerOffsetWrap =
+        static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) + 1;
+    const std::array<uint64_t, 7> rawBytesWrittenWhenByteEventsEnabledVals{
+        0,
+        1,
+        100,
+        kBytesPerOffsetWrap - 1,
+        kBytesPerOffsetWrap,
+        2 * kBytesPerOffsetWrap,
+        2 * kBytesPerOffsetWrap + 100};
     for (const auto& rawBytesWrittenWhenByteEventsEnabled :
          rawBytesWrittenWhenByteEventsEnabledVals) {
       auto addParams = [&](auto params) {
@@ -9407,6 +9497,17 @@ class AsyncSocketByteEventHelperOffsetTest
           vals.push_back(params);
         }
       };
+
+      // first byte timestamped after byte events are enabled
+      {
+        AsyncSocketByteEventHelperOffsetTestParams params;
+        params.rawBytesWrittenWhenByteEventsEnabled =
+            rawBytesWrittenWhenByteEventsEnabled;
+        params.byteTimestamped = rawBytesWrittenWhenByteEventsEnabled;
+        params.rawBytesWrittenWhenTimestampReceived =
+            rawBytesWrittenWhenByteEventsEnabled + 1;
+        addParams(params);
+      }
 
       // case 1
       // bytes sent on receipt of timestamp == byte timestamped

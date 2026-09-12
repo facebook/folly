@@ -613,28 +613,31 @@ AsyncSocket::ByteEventHelper::processCmsg(
     const uint64_t bytesPerOffsetWrap =
         static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) + 1;
 
-    // We adjust the byte stream offset by
-    // `rawBytesWrittenWhenByteEventsEnabled` to align it with the raw byte
-    // offset maintained by AsyncSocket. If the aligned bytes stream offset is
-    // negative, it means that the byte event is for a byte sent before we
-    // enabled byte events and we can discard the event.
-    if (completeState.byteOffsetKernel + rawBytesWrittenWhenByteEventsEnabled <
-        0) {
-      return folly::none;
-    }
+    // Normalize the aligned kernel offset before placing it in the epoch
+    // containing `rawBytesWritten`.
+    const auto signedBytesPerOffsetWrap =
+        static_cast<int64_t>(bytesPerOffsetWrap);
+    const auto offsetWithinWrap = static_cast<uint64_t>(
+        (rawBytesWrittenWhenByteEventsEnabled % signedBytesPerOffsetWrap +
+         static_cast<int64_t>(completeState.byteOffsetKernel) +
+         signedBytesPerOffsetWrap) %
+        signedBytesPerOffsetWrap);
     size_t byteOffset = rawBytesWritten -
-        (rawBytesWritten % bytesPerOffsetWrap) +
-        completeState.byteOffsetKernel +
-        (size_t)rawBytesWrittenWhenByteEventsEnabled;
+        (rawBytesWritten % bytesPerOffsetWrap) + offsetWithinWrap;
+    // Kernel 7.1 can rarely give a corrupt offset for retransmitted packets.
+    // Reject offsets that cannot be placed in a valid epoch.
     if (byteOffset > rawBytesWritten) {
-      // kernel's uint32_t var wrapped around; go back one wrap
-      CHECK_GE(byteOffset, bytesPerOffsetWrap)
-          << "rawBytesWritten=" << rawBytesWritten
-          << " completeState.byteOffsetKernel="
-          << completeState.byteOffsetKernel
-          << " rawBytesWrittenWhenByteEventsEnabled="
-          << rawBytesWrittenWhenByteEventsEnabled;
-      byteOffset = byteOffset - bytesPerOffsetWrap;
+      if (static_cast<uint64_t>(rawBytesWritten) < bytesPerOffsetWrap) {
+        return folly::none;
+      }
+      byteOffset -= bytesPerOffsetWrap;
+    }
+    // Kernel offset zero corresponds to this baseline, so no valid timestamp
+    // can resolve to an earlier nonnegative offset.
+    if (rawBytesWrittenWhenByteEventsEnabled > 0 &&
+        byteOffset <
+            static_cast<size_t>(rawBytesWrittenWhenByteEventsEnabled)) {
+      return folly::none;
     }
 
     ByteEvent event = {};
