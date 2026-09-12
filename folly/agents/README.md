@@ -13,11 +13,20 @@ names.
 ## How do I use this directory?
 
 Rule packages are identified by `*.loader.md` files. Each loader lists brief
-trigger conditions for its rules. Link `~/folly_agents` to this source tree (at
-Meta, see `facebook/scripts/`). Then, add this to your user rule file:
+trigger conditions for its rules. You'll need to add these to your rule file.
+
+### Meta-internal installation
+
+Tell your agent to "follow fbcode/folly/agents/facebook/INSTALL.md".
+
+### OSS installation
+
+Symlink this dir to `~/folly_agents`, and add this to your user rule file:
 
 ```markdown
-`{FA}` means `~/folly_agents`.
+# `folly/agents` rules
+
+`{FA}` means `~/folly_agents`; spell file reads with ~.
 
 Immediately batch-load these from `{FA}/`:
 
@@ -28,10 +37,8 @@ Immediately batch-load these from `{FA}/`:
 - `writing.loader.md`
 - `code.loader.md`
 
-Stop if a loader or referenced rule is unavailable.
+If a loader or rule is missing, stop and notify the user.
 ```
-
-Update the `folly/agents` checkout to get new rules & trigger conditions.
 
 ## Purpose
 
