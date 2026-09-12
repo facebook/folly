@@ -21,7 +21,7 @@ Meta, see `scripts/facebook/`). Then, add this to your user rule file:
 
 Immediately batch-load these from `{FA}/`:
 
-- `core.loader.md`
+- `rule-conflicts.loader.md`
 - `task-ledger.loader.md`
 - `critic-iterate.loader.md`
 - `design-vetting.loader.md`

@@ -3,6 +3,6 @@
 Purpose: decide what to do when loaded rules disagree without treating read
 order as priority.
 
-- Loaded for every task through `../core.loader.md`.
+- Loaded for every task through `rule-conflicts.loader.md`.
 - Owns scope and specificity rules for conflicts.
 - Does not own package loading.

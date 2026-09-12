@@ -12,7 +12,7 @@ Author and orchestrator sessions load these package files:
 
 - `task-ledger.md`: when `task-ledger.loader.md` applies. Before drafting a
   durable explanation, reread the active workstream ledger.
-- `core/conflicts.md`: before deciding whether a broader rule or skill applies.
+- `rule-conflicts.md`: before deciding whether a broader rule or skill applies.
 - `writing.md`: before drafting or revising prose.
 - `writing/concise-rules.md`: before editing a rule document.
 - `design-vetting.md`: before choosing a substantive design or correctness fix.
@@ -137,7 +137,7 @@ the whole artifact with that input in scope. Do not limit the pass to the local
 edit unless the change is an isolated typo or formatting fix.
 
 When critic findings, reviewer findings, or loaded rules appear to conflict,
-apply `core/conflicts.md` before triage.
+apply `rule-conflicts.md` before triage.
 
 Before drafting durable prose, apply `writing.md` "Set the reader before the
 outline".

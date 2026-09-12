@@ -29,7 +29,7 @@
   ],
   "rules": [
     "task-ledger.md",
-    "core/conflicts.md",
+    "rule-conflicts.md",
     "design-vetting.md",
     "writing.md",
     "critic-iterate.md"
