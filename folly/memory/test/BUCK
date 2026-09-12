@@ -120,7 +120,6 @@ fb_dirsync_cpp_unittest(
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",
-        "//folly:memory",
         "//folly:range",
         "//folly/lang:align",
         "//folly/memory:thread_cached_arena",

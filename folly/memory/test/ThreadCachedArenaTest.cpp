@@ -27,7 +27,6 @@
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
-#include <folly/Memory.h>
 #include <folly/Range.h>
 #include <folly/lang/Align.h>
 #include <folly/portability/GTest.h>
