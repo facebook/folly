@@ -14,7 +14,7 @@ names.
 
 Rule packages are identified by `*.loader.md` files. Each loader lists brief
 trigger conditions for its rules. Link `~/folly_agents` to this source tree (at
-Meta, see `scripts/facebook/`). Then, add this to your user rule file:
+Meta, see `facebook/scripts/`). Then, add this to your user rule file:
 
 ```markdown
 `{FA}` means `~/folly_agents`.
