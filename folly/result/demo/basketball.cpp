@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <folly/Portability.h> // FOLLY_HAS_RESULT
 #include <folly/result/coro.h>
 #include <folly/result/epitaph.h>

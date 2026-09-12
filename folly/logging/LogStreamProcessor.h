@@ -18,7 +18,7 @@
 
 #include <cstdlib>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <folly/CPortability.h>
 #include <folly/Conv.h>
 #include <folly/ExceptionString.h>

@@ -19,7 +19,7 @@
 #include <cstdint>
 #include <type_traits>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <fmt/format.h>
 #include <folly/Traits.h>
 #include <folly/result/rich_error.h>

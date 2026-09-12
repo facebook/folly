@@ -20,7 +20,7 @@
 
 #include <folly/algorithm/simd/FindFixed.h>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <fmt/ranges.h>
 
 #include <folly/portability/GTest.h>
