@@ -68,6 +68,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <memory>
+#include <span>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -77,6 +78,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/container/range_traits.h>
 #include <folly/lang/Access.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/MemoryResource.h>
@@ -405,6 +407,35 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   Allocator get_allocator() const { return m_.cont_.get_allocator(); }
 
   const Container& get_container() const noexcept { return m_.cont_; }
+
+  /**
+   * Contiguous view of all elements in sorted order.
+   *
+   * Invalidated by any mutation, like iterators. Elements are const even
+   * through a non-const set.
+   *
+   * Only available when the underlying container exposes data() and size().
+   */
+  std::span<value_type const> as_span() noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]
+    requires requires(Container& c) {
+      c.data();
+      c.size();
+    }
+  {
+    static_assert(is_contiguous_range_v<Container>);
+    return {std::to_address(m_.cont_.data()), m_.cont_.size()};
+  }
+  std::span<value_type const> as_span() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]
+    requires requires(Container const& c) {
+      c.data();
+      c.size();
+    }
+  {
+    static_assert(is_contiguous_range_v<Container>);
+    return {std::to_address(m_.cont_.data()), m_.cont_.size()};
+  }
 
   /**
    * Directly mutate the container.
@@ -1126,6 +1157,34 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   Allocator get_allocator() const { return m_.cont_.get_allocator(); }
 
   const Container& get_container() const noexcept { return m_.cont_; }
+
+  /**
+   * Contiguous view of all elements in sorted order.
+   *
+   * Invalidated by any mutation, like iterators. Do not mutate keys or
+   * otherwise break the sorted order through the span.
+   *
+   * Only available when the underlying container exposes data() and size().
+   */
+  std::span<value_type> as_span() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]
+    requires requires(Container& c) {
+      c.data();
+      c.size();
+    }
+  {
+    static_assert(is_contiguous_range_v<Container>);
+    return {std::to_address(m_.cont_.data()), m_.cont_.size()};
+  }
+  std::span<value_type const> as_span() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]
+    requires requires(Container const& c) {
+      c.data();
+      c.size();
+    }
+  {
+    static_assert(is_contiguous_range_v<Container>);
+    return {std::to_address(m_.cont_.data()), m_.cont_.size()};
+  }
 
   /**
    * Directly mutate the container.

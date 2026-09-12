@@ -90,6 +90,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <memory>
+#include <span>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -101,6 +102,7 @@
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/container/Iterator.h>
+#include <folly/container/range_traits.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/MemoryResource.h>
@@ -1343,6 +1345,21 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
         m_.cont_.begin(), m_.cont_.end());
   }
 
+  // Contiguous view of all elements in heap (storage) order, as with
+  // iterate(). Invalidated by any mutation, like iterators.
+  //
+  // Only available when the underlying container exposes data() and size().
+  std::span<value_type const> as_span() const noexcept
+      [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]
+    requires requires(Container const& c) {
+      c.data();
+      c.size();
+    }
+  {
+    static_assert(is_contiguous_range_v<Container>);
+    return {std::to_address(m_.cont_.data()), m_.cont_.size()};
+  }
+
  protected:
   // This is to get the empty base optimization
   struct EBO : value_compare {
@@ -1446,7 +1463,19 @@ class heap_vector_set
           detail::heap_vector_detail::value_compare_set<Compare>>;
 
  public:
+  using heap_vector_container::as_span;
   using heap_vector_container::heap_vector_container;
+
+  // Non-const overload; elements stay const, like set iterators.
+  std::span<T const> as_span() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]
+    requires requires(Container& c) {
+      c.data();
+      c.size();
+    }
+  {
+    static_assert(is_contiguous_range_v<Container>);
+    return {std::to_address(this->m_.cont_.data()), this->m_.cont_.size()};
+  }
 };
 
 // Swap function that can be found using ADL.
@@ -1548,11 +1577,23 @@ class heap_vector_map
 
   // Since heap_vector_container methods are publicly available through
   // inheritance, just expose method used within this class.
+  using heap_vector_container::as_span;
   using heap_vector_container::end;
   using heap_vector_container::find;
   using heap_vector_container::heap_vector_container;
   using heap_vector_container::key_comp;
   using heap_vector_container::lower_bound;
+
+  // Mutable overload; do not mutate keys through the span.
+  std::span<value_type> as_span() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]
+    requires requires(Container& c) {
+      c.data();
+      c.size();
+    }
+  {
+    static_assert(is_contiguous_range_v<Container>);
+    return {std::to_address(m_.cont_.data()), m_.cont_.size()};
+  }
 
   mapped_type& at(const key_type& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     iterator it = find(key);

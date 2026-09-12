@@ -1849,3 +1849,47 @@ TEST(HeapVectorTypes, TestSwapContainer) {
       map.get_container(),
       (std::vector<std::pair<int, int>>{{3, 3}, {1, 1}, {5, 5}}));
 }
+
+TEST(HeapVectorTypes, AsSpan) {
+  // Map: storage order is eytzinger heap order, matching iterate().
+  heap_vector_map<int, int> m;
+  for (int i = 0; i < 10; ++i) {
+    m[i] = i;
+  }
+  auto ms = m.as_span();
+  static_assert(std::is_same_v<decltype(ms), std::span<std::pair<int, int>>>);
+  EXPECT_EQ(ms.size(), 10);
+  int heap_order[10] = {6, 3, 8, 1, 5, 7, 9, 0, 2, 4};
+  for (int i = 0; i < 10; ++i) {
+    EXPECT_EQ(ms[i].first, heap_order[i]);
+  }
+  EXPECT_EQ(ms.data(), std::to_address(m.iterate().begin()));
+
+  // Mapped values are mutable through the span.
+  ms[0].second = 42;
+  EXPECT_EQ(m.find(6)->second, 42);
+
+  heap_vector_map<int, int> const& cm = m;
+  auto cms = cm.as_span();
+  static_assert(
+      std::is_same_v<decltype(cms), std::span<std::pair<int, int> const>>);
+  EXPECT_EQ(cms[0].second, 42);
+
+  heap_vector_map<int, int> e;
+  EXPECT_TRUE(e.as_span().empty());
+
+  // Set: elements are const even through a non-const set.
+  heap_vector_set<int> s{3, 1, 2};
+  auto sp = s.as_span();
+  static_assert(std::is_same_v<decltype(sp), std::span<int const>>);
+  EXPECT_EQ(sp.size(), 3);
+  EXPECT_EQ(sp.data(), std::to_address(s.iterate().begin()));
+
+  heap_vector_set<int> const& cs = s;
+  EXPECT_EQ(cs.as_span().size(), 3);
+
+  // The small map inherits as_span too.
+  small_heap_vector_map<int, int> sm;
+  sm[1] = 1;
+  EXPECT_EQ(sm.as_span().size(), 1);
+}

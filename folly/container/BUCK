@@ -237,6 +237,7 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     exported_deps = [
         ":iterator",
+        ":range_traits",
         "//folly:cpp_attributes",
         "//folly:range",
         "//folly:scope_guard",
@@ -358,6 +359,7 @@ fb_dirsync_cpp_library(
     compiler_flags = ["-fno-omit-frame-pointer"],
     use_raw_headers = True,
     exported_deps = [
+        ":range_traits",
         "//folly:cpp_attributes",
         "//folly:scope_guard",
         "//folly:small_vector",

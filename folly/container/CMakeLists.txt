@@ -165,6 +165,7 @@ folly_add_library(
     heap_vector_types.h
   EXPORTED_DEPS
     folly_container_iterator
+    folly_container_range_traits
     folly_cpp_attributes
     folly_functional_invoke
     folly_lang_exception
@@ -322,6 +323,7 @@ folly_add_library(
   HEADERS
     sorted_vector_types.h
   EXPORTED_DEPS
+    folly_container_range_traits
     folly_cpp_attributes
     folly_lang_access
     folly_lang_exception
