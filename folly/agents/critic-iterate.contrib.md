@@ -11,6 +11,10 @@ Review budgets guard cost; they are ceilings, not quotas. Exhausting a positive
 budget does not allow a materially misleading late edit to ship unreviewed.
 `c-i-0` explicitly opts out of external review.
 
+External review can become completionist when plausible improvements become
+required work. It should enforce the user's contract, not expand it. Preserve
+useful expansions for the user without adding them to the artifact.
+
 Authors tend to accept their first workable answer.
 
 Trying different wording that preserves the meaning can expose weaknesses.

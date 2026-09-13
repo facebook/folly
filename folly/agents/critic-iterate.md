@@ -167,6 +167,8 @@ For prose dual review, use the `MUST_TAKE` / `MINOR` / `REJECTED` classes under
 text and state the applied change or why it was rejected. For `MINOR`, also say
 why the candidate was acceptable without it.
 
+In either format, list each `SCOPE_EXPANSION` separately.
+
 What "text/element (with location)" means by artifact type:
 
 - Writing: the sentence verbatim + line/section ref.
@@ -300,14 +302,17 @@ does not need that fact. Truth, relatedness, or hypothetical usefulness is not
 enough to keep it; "shorter" alone is not enough to cut it.
 
 **Integration and closure.** The General Cycle's no-edit rule governs
-author-side passes. For external prose review, classify every fresh-reviewer
-finding before editing; its response already integrates the cold report:
+author-side passes. Before acting on review, mark any useful proposal outside
+the user's agreed task as `SCOPE_EXPANSION`. Without user approval, do not apply
+it or let it block completion.
+
+For external prose review, classify every remaining fresh-reviewer finding
+before editing; its response already integrates the cold report:
 
 - `MUST_TAKE`: must be fixed; leaving it would materially harm correctness or
   the reader's task.
 - `MINOR`: worth fixing, but the artifact still works without it.
-- `REJECTED`: wrong, already addressed, outside the reader's task, or
-  net-negative.
+- `REJECTED`: wrong, already addressed, or net-negative.
 
 A material error, missed requirement, wrong action, or reader blocker is
 `MUST_TAKE`. Escalate if the allowed evidence cannot repair a material finding.
@@ -353,8 +358,9 @@ After each review round:
        > later rounds usually yield smaller gains. The default is 1 round;
        > personal rules may override it with `critic-iterate-N`.
 
-Record the dispositions only in the accountability artifact. For other
-artifacts, take the better version, merge, or apply its findings.
+Record dispositions only in the accountability artifact; summarize
+`SCOPE_EXPANSION` items in the final debrief. For other artifacts, take the
+better version, merge, or apply its findings.
 
 Do not edit the candidate while either reviewer runs. If it changes after a
 round starts, that round no longer covers the revision. After the reviewers
