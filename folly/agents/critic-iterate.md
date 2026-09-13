@@ -366,8 +366,7 @@ Do not edit the candidate while either reviewer runs. If it changes after a
 round starts, that round no longer covers the revision. After the reviewers
 finish, resume above at step 2.
 
-**Codex reviewer mechanism.** Every required reviewer call uses this fixed
-command surface and private output path.
+**Codex reviewer mechanism.** Use this fixed command:
 
 ```bash
 package_dir="$(dirname "$(readlink -f "/path/to/critic-iterate.md")")"
@@ -376,7 +375,6 @@ review_tmp=$(mktemp -d)
 .../codex-reviewer.py \
   --preamble-dir="$package_dir/critic-iterate" \
   --preamble=fresh-review-preamble \
-  --workdir="$(mktemp -d)" \
   "$review_tmp/fresh-prompt.md"
 ```
 
@@ -387,7 +385,6 @@ absolute value; the child shell will not inherit them:
 .../codex-reviewer.py \
   --preamble-dir="$package_dir/critic-iterate" \
   --preamble=cold-review-preamble \
-  --workdir="$(mktemp -d)" \
   "$review_tmp/cold-prompt.md" >"$review_tmp/cold-result.txt"
 ```
 
@@ -410,12 +407,9 @@ and `err.txt` for audit.
 The outer marker names the fresh-review directory. The fresh response includes
 the child marker; the author records both.
 
-Each prompt must name every input its reviewer may read. Do not include raw chat
-or the full context packet. For commit / diff-message review, follow the
-specialization below. The cold reader uses a fresh temporary directory. For the
-fresh reviewer, pass an absolute repository or relative-path base only when it
-needs caller-relative sources or a repository diff. Otherwise use a fresh
-temporary directory as shown above.
+Each prompt must name every input its reviewer may read. Start repo-relative
+commands with `cd <repo> &&`. Do not include raw chat or the full context
+packet. For commit / diff-message review, follow the specialization below.
 
 The author revises from the outer fresh review's `review.md`; it already
 incorporates the cold report. Every other file in either private directory is

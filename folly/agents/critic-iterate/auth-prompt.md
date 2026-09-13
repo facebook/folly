@@ -60,7 +60,6 @@ codex execpolicy check \
   .../codex-reviewer.py \
   --preamble-dir="$(dirname "$(readlink -f "/path/to/critic-iterate.md")")/critic-iterate" \
   --preamble=cold-review-preamble \
-  --workdir="$(mktemp -d)" \
   "$(mktemp)"
 ```
 

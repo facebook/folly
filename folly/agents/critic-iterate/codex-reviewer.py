@@ -42,21 +42,18 @@ REVIEW_PROFILES = {
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         allow_abbrev=False,
-        usage=("%(prog)s --preamble-dir=PATH --preamble=NAME --workdir=PATH PROMPT"),
+        usage="%(prog)s --preamble-dir=PATH --preamble=NAME PROMPT",
     )
     parser.add_argument("--preamble", required=True, choices=REVIEW_PROFILES)
     parser.add_argument("--preamble-dir", required=True, type=Path)
-    parser.add_argument("--workdir", required=True, type=Path)
     parser.add_argument("prompt", type=Path)
     if len(argv) == 1 and argv[0] in ("-h", "--help"):
         parser.parse_args(argv)
-    fixed_options = ("--preamble-dir=", "--preamble=", "--workdir=")
-    if len(argv) != 4 or any(
+    fixed_options = ("--preamble-dir=", "--preamble=")
+    if len(argv) != 3 or any(
         not argument.startswith(prefix) for argument, prefix in zip(argv, fixed_options)
     ):
-        parser.error(
-            "expected --preamble-dir=PATH --preamble=NAME --workdir=PATH PROMPT"
-        )
+        parser.error("expected --preamble-dir=PATH --preamble=NAME PROMPT")
     args = parser.parse_args(argv)
     if not args.preamble_dir.is_absolute():
         parser.error(f"preamble directory is not absolute: {args.preamble_dir}")
@@ -69,10 +66,6 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         parser.error(f"prompt is not absolute: {args.prompt}")
     if not args.prompt.is_file():
         parser.error(f"prompt is not a regular file: {args.prompt}")
-    if not args.workdir.is_absolute():
-        parser.error(f"workdir is not absolute: {args.workdir}")
-    if not args.workdir.is_dir():
-        parser.error(f"workdir is not a directory: {args.workdir}")
     return args
 
 
@@ -104,7 +97,7 @@ def _install_cold_review_policy(
     rules_dir = codex_home / "rules"
     rules_dir.mkdir(mode=0o700)
     # Exec-policy prefixes cannot restrict trailing arguments. parse_args()
-    # fixes their order and accepts only an absolute workdir and prompt path.
+    # fixes their order and accepts only an absolute prompt path.
     (rules_dir / "default.rules").write_text(
         "host_executable("
         f"name={json.dumps(executable_name)}, "
@@ -162,7 +155,6 @@ def _review_command(
             "never",
             "exec",
             "--ignore-user-config",
-            "--skip-git-repo-check",
             "--ephemeral",
             "--json",
         ]
@@ -181,6 +173,38 @@ def _review_command(
     return command
 
 
+def _environment_without_git_overrides() -> dict[str, str]:
+    # Git variables can redirect initialization and Codex's repository view.
+    environment = os.environ.copy()
+    for name in tuple(environment):
+        if name.startswith("GIT_"):
+            environment.pop(name)
+    return environment
+
+
+def _create_isolated_codex_cwd(root: Path, errors: TextIO) -> Optional[Path]:
+    # Codex discovers project rules and skills from its Git root through its
+    # CWD. Other CLIs need an equivalent clean-start mode; Claude has
+    # --safe-mode. Do not generalize this Git boundary to other agents.
+    try:
+        result = subprocess.run(
+            ["git", "init", "--quiet", str(root)],
+            check=False,
+            env=_environment_without_git_overrides(),
+            stderr=errors,
+            stdout=subprocess.DEVNULL,
+        )
+        if result.returncode != 0:
+            print("could not create private Codex Git root", file=errors)
+            return None
+        workdir = root / "cwd"
+        workdir.mkdir()
+        return workdir
+    except OSError as error:
+        print(f"could not create private Codex workdir: {error}", file=errors)
+        return None
+
+
 def _execute_review(
     command: list[str],
     workdir: Path,
@@ -190,7 +214,7 @@ def _execute_review(
     trace: BinaryIO,
     errors: TextIO,
 ) -> int:
-    environment = os.environ.copy()
+    environment = _environment_without_git_overrides()
     environment["CODEX_HOME"] = str(codex_home)
     if model is not None:
         environment[REVIEW_MODEL_ENV] = model
@@ -212,10 +236,6 @@ def _execute_review(
 
 def run(args: argparse.Namespace, wrapper_executable: Path) -> int:
     sandbox = REVIEW_PROFILES[args.preamble]
-    workdir = args.workdir
-    if not workdir.is_dir():
-        print(f"workdir is not a directory: {workdir}", file=sys.stderr)
-        return 2
     try:
         prompt_contents = args.prompt.read_bytes()
     except OSError as error:
@@ -243,7 +263,13 @@ def run(args: argparse.Namespace, wrapper_executable: Path) -> int:
         )
         print(f"REVIEW_OUTPUT_DIR={output_dir}", flush=True)
 
-        with (output_dir / "err.txt").open("x", encoding="utf-8") as errors:
+        with (
+            (output_dir / "err.txt").open("x", encoding="utf-8") as errors,
+            tempfile.TemporaryDirectory(prefix="codex-review.") as workspace_root,
+        ):
+            workdir = _create_isolated_codex_cwd(Path(workspace_root), errors)
+            if workdir is None:
+                return 2
             model = _review_model(wrapper_executable)
             if model is None:
                 print(
@@ -266,9 +292,8 @@ def run(args: argparse.Namespace, wrapper_executable: Path) -> int:
             effective_prompt = output_dir / "effective-prompt.md"
             effective_prompt.write_bytes(preamble_contents + b"\n\n" + prompt_contents)
 
-            # A private Codex home excludes user rules and executable config.
-            # The selected workdir supplies repository instructions and the
-            # base for relative paths.
+            # A private Codex home and empty working directory exclude ambient
+            # user and repository rules.
             try:
                 codex_home = _create_codex_home(output_dir, args, wrapper_executable)
             except OSError as error:
@@ -280,8 +305,6 @@ def run(args: argparse.Namespace, wrapper_executable: Path) -> int:
             # explicitly read-only.
             review_path = output_dir / "review.md"
             command = _review_command(sandbox, review_path, model)
-            # The wrapper fixes Codex's command and configuration but
-            # deliberately inherits the caller's ordinary process environment.
             with (
                 effective_prompt.open("rb") as prompt,
                 (output_dir / "run.jsonl").open("xb") as trace,
