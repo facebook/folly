@@ -246,12 +246,9 @@ class Histogram {
   /* Add multiple same data points to the histogram */
   void addRepeatedValue(ValueType value, uint64_t nSamples) {
     Bucket& bucket = buckets_.getByValue(value);
-    // Use a loop with overflow-safe addition to avoid overflow in the
-    // product (value * nSamples) that a single clamped multiply-and-add
-    // would require.
-    for (uint64_t i = 0; i < nSamples; ++i) {
-      addToAccum(bucket.sum, value);
-    }
+    // Saturating arithmetic: clamps at the type's limits instead of
+    // overflowing, and runs in O(1) even for huge nSamples.
+    detail::repeatedValueHelper(bucket.sum, value, nSamples);
     bucket.count += nSamples;
   }
 
@@ -277,12 +274,9 @@ class Histogram {
   void removeRepeatedValue(ValueType value, uint64_t nSamples) {
     Bucket& bucket = buckets_.getByValue(value);
     if (bucket.count >= nSamples) {
-      // Use a loop with overflow-safe subtraction to avoid overflow in the
-      // product (value * nSamples) that a single multiply-and-subtract
-      // would require.
-      for (uint64_t i = 0; i < nSamples; ++i) {
-        subFromAccum(bucket.sum, value);
-      }
+      // Saturating arithmetic: clamps at the type's limits instead of
+      // overflowing, and runs in O(1) even for huge nSamples.
+      detail::subtractRepeatedHelper(bucket.sum, value, nSamples);
       bucket.count -= nSamples;
     } else {
       bucket.sum = ValueType();
