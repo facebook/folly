@@ -16,7 +16,9 @@
 
 #pragma once
 
+#include <limits>
 #include <stdexcept>
+#include <type_traits>
 
 #include <glog/logging.h>
 
@@ -202,7 +204,18 @@ T HistogramBuckets<T, BucketType>::getPercentileEstimate(
     // For the below-min bucket, just assume the lowest value ever seen is
     // twice as far away from min_ as avg.
     high = min_;
-    low = high - (2 * (high - avg));
+    if constexpr (std::is_integral<ValueType>::value) {
+      // With saturating bucket sums, avg can be exactly the most negative
+      // value, making the signed expression below overflow (undefined
+      // behavior). Compute the same two's-complement wrapping arithmetic in
+      // unsigned space instead; the clamp below discards wrapped results.
+      using UType = typename std::make_unsigned<ValueType>::type;
+      const auto uhigh = static_cast<UType>(high);
+      const auto uavg = static_cast<UType>(avg);
+      low = static_cast<ValueType>(uhigh - UType(2) * (uhigh - uavg));
+    } else {
+      low = high - (2 * (high - avg));
+    }
     // Adjust low in case it wrapped
     if (low > avg) {
       low = std::numeric_limits<ValueType>::min();
@@ -218,7 +231,17 @@ T HistogramBuckets<T, BucketType>::getPercentileEstimate(
     // Similarly for the above-max bucket, assume the highest value ever seen
     // is twice as far away from max_ as avg.
     low = max_;
-    high = low + (2 * (avg - low));
+    if constexpr (std::is_integral<ValueType>::value) {
+      // See the minimum-bucket comment above: compute the extrapolation in
+      // unsigned space to avoid signed overflow when avg is the most
+      // positive value.
+      using UType = typename std::make_unsigned<ValueType>::type;
+      const auto ulow = static_cast<UType>(low);
+      const auto uavg = static_cast<UType>(avg);
+      high = static_cast<ValueType>(ulow + UType(2) * (uavg - ulow));
+    } else {
+      high = low + (2 * (avg - low));
+    }
     // Adjust high in case it wrapped
     if (high < avg) {
       high = std::numeric_limits<ValueType>::max();
