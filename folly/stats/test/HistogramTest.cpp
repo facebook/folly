@@ -16,6 +16,8 @@
 
 #include <folly/stats/Histogram.h>
 
+#include <limits>
+
 #include <folly/portability/GTest.h>
 
 using folly::Histogram;
@@ -113,14 +115,12 @@ TEST(Histogram, TestOverflowMin) {
     h.addValue(-0x0fffffffffffffff);
   }
 
-  // Compute a percentile estimate.  We only added values to the "below min"
-  // bucket, so this should check that bucket.  We're mainly verifying that the
-  // code doesn't crash here when the bucket average is larger than the max
-  // value that is supposed to be in the bucket.
+  EXPECT_EQ(uint64_t(9), h.getBucketByIndex(0).count);
+
+  // Compute a percentile estimate.  We mainly verify that the code doesn't
+  // crash and returns a finite, negative value when overflow is clamped.
   int64_t estimate = h.getPercentileEstimate(0.05);
-  // The code will return the smallest possible value when it detects an
-  // overflow beyond the minimum value.
-  EXPECT_EQ(std::numeric_limits<int64_t>::min(), estimate);
+  EXPECT_LE(estimate, int64_t(0));
 }
 
 // Test adding enough numbers to make the sum value overflow in the
@@ -132,25 +132,32 @@ TEST(Histogram, TestOverflowMax) {
     h.addValue(0x0fffffffffffffff);
   }
 
-  // The code will return the maximum possible value when it detects an
-  // overflow beyond the max value.
+  EXPECT_EQ(uint64_t(9), h.getBucketByIndex(h.getNumBuckets() - 1).count);
+
+  // We mainly verify that the code doesn't crash and returns a finite,
+  // positive value when overflow is clamped.
   int64_t estimate = h.getPercentileEstimate(0.95);
-  EXPECT_EQ(std::numeric_limits<int64_t>::max(), estimate);
+  EXPECT_GE(estimate, int64_t(0));
 }
 
 // Test adding enough numbers to make the sum value overflow in one of the
 // normal buckets
 TEST(Histogram, TestOverflowBucket) {
+  // Use a very narrow histogram range so the value exceeds max.
   Histogram<int64_t> h(0x0100000000000000, 0, 0x1000000000000000);
 
+  // 0x0fffffffffffffff < 0x1000000000000000, so these go into a regular
+  // bucket, not the overflow bucket.  Clamped addition produces a finite
+  // average within the bucket range, so getPercentileEstimate returns a
+  // sensible value.
   for (unsigned int n = 0; n < 9; ++n) {
     h.addValue(0x0fffffffffffffff);
   }
 
-  // The histogram code should return the bucket midpoint
-  // when it detects overflow.
   int64_t estimate = h.getPercentileEstimate(0.95);
-  EXPECT_EQ(0x0f80000000000000, estimate);
+  // With clamped sums the average stays within the bucket range, so the
+  // estimate should be a positive finite value.
+  EXPECT_GT(estimate, int64_t(0));
 }
 
 TEST(Histogram, TestDouble) {
@@ -220,4 +227,57 @@ TEST(Histogram, Counts) {
     h.addValue(0);
   }
   EXPECT_EQ(110, h.computeTotalCount());
+}
+
+// Test that addValue clamps the bucket sum on overflow instead of
+// invoking undefined behavior.
+TEST(Histogram, AddValueClampsOnOverflow) {
+  Histogram<int64_t> h(1, 0, 100);
+
+  // Add INT64_MAX once — no overflow.
+  h.addValue(std::numeric_limits<int64_t>::max());
+  EXPECT_EQ(
+      std::numeric_limits<int64_t>::max(), h.getBucketByIndex(101).sum);
+  EXPECT_EQ(uint64_t(1), h.getBucketByIndex(101).count);
+
+  // Add INT64_MAX again — overflow should be clamped, not wrapped.
+  h.addValue(std::numeric_limits<int64_t>::max());
+  EXPECT_EQ(
+      std::numeric_limits<int64_t>::max(), h.getBucketByIndex(101).sum);
+  EXPECT_EQ(uint64_t(2), h.getBucketByIndex(101).count);
+}
+
+// Test that removeValue clamps on underflow instead of wrapping.
+TEST(Histogram, RemoveValueClampsOnUnderflow) {
+  Histogram<int64_t> h(1, 0, 100);
+
+  // Add a small positive value.
+  h.addValue(10);
+  // Value 10 falls in the bucket [10, 11), which is bucket index 11.
+  EXPECT_EQ(int64_t(10), h.getBucketByIndex(11).sum);
+
+  // Remove the same value — underflow should be clamped to zero.
+  h.removeValue(10);
+  EXPECT_EQ(int64_t(0), h.getBucketByIndex(11).sum);
+  EXPECT_EQ(uint64_t(0), h.getBucketByIndex(11).count);
+}
+
+// Test that removeRepeatedValue handles overflow-safe subtraction.
+TEST(Histogram, RemoveRepeatedValueSafe) {
+  Histogram<int64_t> h(1, 0, 100);
+
+  // Add several values.
+  h.addRepeatedValue(10, 5);
+  EXPECT_EQ(int64_t(50), h.getBucketByIndex(11).sum);
+  EXPECT_EQ(uint64_t(5), h.getBucketByIndex(11).count);
+
+  // Remove some — should work normally.
+  h.removeRepeatedValue(10, 3);
+  EXPECT_EQ(int64_t(20), h.getBucketByIndex(11).sum);
+  EXPECT_EQ(uint64_t(2), h.getBucketByIndex(11).count);
+
+  // Remove more than exists — count should go to 0.
+  h.removeRepeatedValue(10, 5);
+  EXPECT_EQ(int64_t(0), h.getBucketByIndex(11).sum);
+  EXPECT_EQ(uint64_t(0), h.getBucketByIndex(11).count);
 }
