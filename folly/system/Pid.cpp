@@ -55,6 +55,11 @@ class PidCache {
   pid_t pid_;
 
  public:
+  static PidCache& instance() {
+    static PidCache cache;
+    return cache;
+  }
+
   FOLLY_ALWAYS_INLINE pid_t get() {
     DCHECK(!valid() || pid_ == getpid());
     return valid() ? pid_ : init();
@@ -76,12 +81,10 @@ class PidCache {
   }
 }; // PidCache
 
-static PidCache cache_;
-
 } // namespace
 
 pid_t get_cached_pid() {
-  return cache_.get();
+  return PidCache::instance().get();
 }
 
 } // namespace folly
