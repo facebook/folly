@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.14)
 # We use the GoogleTest module if it is available (only in CMake 3.9+)
 # It requires CMP0054 and CMP0057 to be enabled.
 if (POLICY CMP0054)
@@ -25,6 +25,11 @@ endif()
 # CMP0075 Include file check macros honor CMAKE_REQUIRED_LIBRARIES
 if(POLICY CMP0075)
   cmake_policy(SET CMP0075 NEW)
+endif()
+
+# CMP0135: URL downloads timestamp extracted files at extraction time.
+if(POLICY CMP0135)
+  cmake_policy(SET CMP0135 NEW)
 endif()
 
 # CMP0167 The FindBoost module is removed

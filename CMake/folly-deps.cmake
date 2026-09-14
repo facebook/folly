@@ -322,8 +322,39 @@ add_library(folly_deps INTERFACE)
 
 find_package(fmt CONFIG)
 if (NOT DEFINED fmt_CONFIG)
-    # Fallback on a normal search on the current system
-    find_package(Fmt MODULE REQUIRED)
+  # Fallback on a normal search on the current system.
+  find_package(Fmt MODULE)
+endif()
+if (NOT TARGET fmt::fmt)
+  # Take the archive `manifests/fmt` pins rather than a second copy of the
+  # version, so a fetched fmt cannot drift from the one getdeps builds.
+  # Always the .tar.gz entry, since CMake untars everywhere.
+  set(folly_fmt_manifest
+    # for in-fbsource builds
+    "${CMAKE_CURRENT_SOURCE_DIR}/../opensource/fbcode_builder/manifests/fmt")
+  if (NOT EXISTS "${folly_fmt_manifest}")
+    # For shipit-transformed builds
+    set(folly_fmt_manifest
+      "${CMAKE_CURRENT_SOURCE_DIR}/build/fbcode_builder/manifests/fmt")
+  endif()
+  file(READ "${folly_fmt_manifest}" folly_fmt_manifest_text)
+  if (NOT folly_fmt_manifest_text MATCHES
+      "url = (https://[^\r\n]+\\.tar\\.gz)[\r\n]+sha256 = ([0-9a-f]+)")
+    message(FATAL_ERROR "no archive in ${folly_fmt_manifest}")
+  endif()
+  set(folly_fmt_url "${CMAKE_MATCH_1}")
+  set(folly_fmt_sha256 "${CMAKE_MATCH_2}")
+  message(STATUS "fmt not found, fetching ${folly_fmt_url}")
+  include(FetchContent)
+  # fmt defaults this off for a subproject, which would leave it out of every
+  # export set and make install(EXPORT folly) fail.
+  set(FMT_INSTALL ON)
+  FetchContent_Declare(
+    fmt
+    URL "${folly_fmt_url}"
+    URL_HASH SHA256=${folly_fmt_sha256}
+  )
+  FetchContent_MakeAvailable(fmt)
 endif()
 target_link_libraries(folly_deps INTERFACE fmt::fmt)
 
