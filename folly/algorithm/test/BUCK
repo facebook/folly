@@ -23,6 +23,15 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
+fb_dirsync_cpp_unittest(
+    name = "stable_radix_sort_constexpr_test",
+    srcs = ["StableRadixSortConstexprTest.cpp"],
+    headers = [],
+    deps = [
+        "//folly/algorithm:stable_radix_sort",
+    ],
+)
+
 fb_dirsync_cpp_benchmark(
     name = "stable_radix_sort_benchmark",
     srcs = ["StableRadixSortBenchmark.cpp"],
