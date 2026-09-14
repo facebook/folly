@@ -78,11 +78,11 @@ class AccountingFixture:
 
     def __init__(self, root: Path) -> None:
         self.root = root
-        self.workdir = root / "workdir"
-        self.codex_home = root / "codex-home"
+        self.workdir = root / "workspace/task"
+        self.agent_home = root / "agent-home"
         self.checkpoints = root / "checkpoints"
         self.reviews = root / "reviews"
-        self.workdir.mkdir()
+        self.workdir.mkdir(parents=True)
         self.checkpoints.mkdir()
         self.reviews.mkdir()
         (root / "run.json").write_text("{}")
@@ -148,10 +148,15 @@ class AccountingFixture:
             ],
         )
         write_jsonl(
-            self.codex_home / "sessions/2026/09/04" / f"rollout-test-{THREAD_ID}.jsonl",
+            self.agent_home / "sessions/2026/09/04" / f"rollout-test-{THREAD_ID}.jsonl",
             self.author_events,
         )
-        return checkpoint_accounting.collect(self.root, review_budget)
+        return checkpoint_accounting.collect(
+            self.root,
+            review_budget,
+            output=self.workdir / "output.md",
+            agent_home=self.agent_home,
+        )
 
 
 class CheckpointAccountingTest(unittest.TestCase):
@@ -262,7 +267,9 @@ class CheckpointAccountingTest(unittest.TestCase):
                     (root / f"checkpoints/{index}.md").write_text(content)
                 (root / "workdir/output.md").write_text(contents[-1])
 
-                paths = checkpoint_accounting._checkpoint_paths(root, budget)
+                paths = checkpoint_accounting._checkpoint_paths(
+                    root, budget, output=root / "workdir/output.md"
+                )
 
                 self.assertEqual([path.read_text() for path in paths], list(contents))
 

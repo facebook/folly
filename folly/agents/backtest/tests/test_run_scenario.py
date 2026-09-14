@@ -145,17 +145,27 @@ class RunScenarioTest(unittest.TestCase):
             **unused: object,
         ) -> subprocess.CompletedProcess[bytes]:
             if command[0] == "git":
-                self.assertEqual(command, ["git", "init", "--quiet", str(run.root)])
-                (run.root / ".git").mkdir()
+                self.assertEqual(
+                    command,
+                    [
+                        "git",
+                        "init",
+                        "--quiet",
+                        str(run.agent_workspace.workspace_root),
+                    ],
+                )
+                (run.agent_workspace.workspace_root / ".git").mkdir()
                 return subprocess.CompletedProcess(command, 0, b"", b"")
             assert cwd is not None
             assert not isinstance(stdout, int)
             assert not isinstance(stderr, int)
-            workdir = Path(cwd)
-            self.assertEqual(workdir.parent, run.root)
-            self.assertEqual(list(workdir.iterdir()), [])
-            self.assertTrue((run.root / ".git").is_dir())
-            self.assertEqual(command[command.index("--cd") + 1], str(workdir))
+            codex_cwd = Path(cwd)
+            self.assertEqual(codex_cwd, run.agent_workspace.workspace_root)
+            self.assertTrue((run.agent_workspace.workspace_root / ".git").is_dir())
+            self.assertFalse(
+                run.agent_home.is_relative_to(run.agent_workspace.workspace_root)
+            )
+            self.assertEqual(command[command.index("-C") + 1], str(codex_cwd))
             commands.append(command)
             environments.append(env)
             if output is not None:
@@ -384,7 +394,7 @@ class RunScenarioTest(unittest.TestCase):
         self.assertNotIn("scenario/prompt.md", status)
         self.assertFalse(any("writing.md" in argument for argument in status))
         self.assertFalse(any("codex-reviewer.py" in argument for argument in status))
-        self.assertFalse(any("isolated_agent.py" in argument for argument in status))
+        self.assertTrue(any("isolated_agent.py" in argument for argument in status))
 
     def test_generation_revision_rejects_multiple_checkouts(self) -> None:
         agents_root = self.root / "rules-checkout/folly/agents"
@@ -755,25 +765,28 @@ class RunScenarioTest(unittest.TestCase):
 
         self.assertEqual(result, 0)
         (command,) = commands
-        codex_cwd = Path(command[command.index("--cd") + 1])
+        codex_cwd = Path(command[command.index("-C") + 1])
         self.assertEqual(
             command,
             [
                 str(codex.resolve()),
                 "-a",
                 "never",
+                "-s",
+                "workspace-write",
+                "-C",
+                str(codex_cwd),
                 "exec",
+                "--ignore-user-config",
                 "--json",
                 "--model",
                 "model",
                 "--config",
                 'model_reasoning_effort="high"',
-                "--cd",
-                str(codex_cwd),
                 "-",
             ],
         )
-        self.assertFalse(codex_cwd.exists())
+        self.assertTrue(codex_cwd.is_dir())
         (environment,) = environments
         self.assertTrue(
             forbidden_environment.isdisjoint(environment),
@@ -781,14 +794,15 @@ class RunScenarioTest(unittest.TestCase):
         )
         tool_bin = run.root / "bin"
         self.assertEqual(environment["PATH"].split(os.pathsep, 1)[0], str(tool_bin))
-        self.assertEqual(environment["TMPDIR"], str(self.scenario))
+        self.assertEqual(environment["HOME"], str(run.agent_home))
+        self.assertEqual(environment["TMPDIR"], str(run.agent_workspace.temporary))
         self.assertEqual(environment["W"], str(run.workdir))
         for name, relative in runner.TOOL_FILES.items():
             self.assertEqual(
                 (tool_bin / name).resolve(), (self.rules_root / relative).resolve()
             )
         self.assertFalse((tool_bin / "backtest-checkpoint").exists())
-        policy = (run.codex_home / "rules/default.rules").read_text()
+        policy = (run.agent_home / "rules/default.rules").read_text()
         for name in runner.TOOL_FILES:
             self.assertIn(f'host_executable(name="{name}"', policy)
             self.assertIn(f'prefix_rule(pattern=["{name}"]', policy)
@@ -800,24 +814,6 @@ class RunScenarioTest(unittest.TestCase):
         self.assertEqual(metadata["exit_code"], 0)
         self.assertEqual(metadata["executables"]["codex"], str(codex.resolve()))
 
-    def test_launch_preserves_result_when_cwd_cleanup_fails(self) -> None:
-        write(self.scenario / "draft.md", "draft")
-        self.manifest(inputs=[{"source": "draft.md", "destination": "output.md"}])
-        run, codex = self.prepare_launch()
-        _, _, command_runner = self.fake_codex(run, returncode=0, output="complete")
-
-        with mock.patch.object(
-            runner.shutil, "rmtree", side_effect=OSError("cleanup failed")
-        ):
-            result = runner.launch(
-                run, codex, "model", "high", command_runner=command_runner
-            )
-
-        self.assertEqual(result, 0)
-        metadata = json.loads((run.root / "run.json").read_text())
-        self.assertEqual(metadata["status"], "complete")
-        self.assertEqual(metadata["codex_cwd_cleanup_error"], "cleanup failed")
-
     def test_checkpoint_mode_installs_runtime_and_marks_bad_accounting(self) -> None:
         write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
         for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
@@ -827,16 +823,15 @@ class RunScenarioTest(unittest.TestCase):
         run = self.prepare(critic_iterate_rounds=0)
 
         tool_bin, tools = runner._install_tools(run)
-        environment = runner._author_environment(run, tool_bin)
+        environment = runner._author_environment_additions(run, tool_bin)
 
         self.assertIn("backtest-checkpoint", tools)
         installed = tool_bin / "backtest-checkpoint"
         self.assertTrue(os.access(installed, os.X_OK))
-        policy = (run.codex_home / "rules/default.rules").read_text()
+        policy = (run.agent_home / "rules/default.rules").read_text()
         self.assertIn(f'paths=["{installed}"]', policy)
         self.assertEqual(environment["FOLLY_BACKTEST_RUN_DIR"], str(run.root))
         self.assertEqual(environment["FOLLY_BACKTEST_WORKDIR"], str(run.workdir))
-        self.assertEqual(environment["W"], str(run.workdir))
         self.assertTrue((run.root / "reviews").is_dir())
 
         (run.workdir / "output.md").write_text("complete")
@@ -863,8 +858,8 @@ class RunScenarioTest(unittest.TestCase):
         )
 
         self.assertEqual(result, 7)
-        codex_cwd = Path(commands[0][commands[0].index("--cd") + 1])
-        self.assertFalse(codex_cwd.exists())
+        codex_cwd = Path(commands[0][commands[0].index("-C") + 1])
+        self.assertTrue(codex_cwd.is_dir())
         self.assertEqual((run.root / "output.md").read_text(), "partial")
         self.assertEqual((run.root / "trace.jsonl").read_text(), "trace\n")
         self.assertEqual((run.root / "err.txt").read_text(), "failure\n")
@@ -934,7 +929,7 @@ class RunScenarioTest(unittest.TestCase):
                     **unused: object,
                 ) -> subprocess.CompletedProcess[bytes]:
                     if command[0] == "git":
-                        (active_run.root / ".git").mkdir()
+                        (active_run.agent_workspace.workspace_root / ".git").mkdir()
                         return subprocess.CompletedProcess(command, 0, b"", b"")
                     output = active_run.workdir / "output.md"
                     if output_kind == "directory":
@@ -978,7 +973,7 @@ class RunScenarioTest(unittest.TestCase):
         self.assertEqual((run.root / "output.md").read_text(), "complete")
         self.assertEqual(environments[0].get("PATH"), os.environ.get("PATH"))
         self.assertFalse((run.root / "bin").exists())
-        self.assertFalse((run.codex_home / "rules/default.rules").exists())
+        self.assertFalse((run.agent_home / "rules/default.rules").exists())
         metadata = json.loads((run.root / "run.json").read_text())
         self.assertEqual(metadata["status"], "complete")
         self.assertEqual(metadata["exit_code"], 0)

@@ -14,4 +14,5 @@ python_library(
     resources = {
         "fbcode//folly/agents/scripts:apply_diffs": "folly/agents/scripts/apply_diffs",
     },
+    deps = ["fbcode//folly/agents/scripts:isolated_agent_lib"],
 )

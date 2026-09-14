@@ -232,6 +232,8 @@ def _outcome(
 def _checkpoint_paths(
     run_root: Path,
     review_budget: int | None,
+    *,
+    output: Path,
 ) -> list[Path]:
     """Establish one gap-free snapshot sequence ending at the delivered output."""
     paths = sorted(
@@ -245,7 +247,7 @@ def _checkpoint_paths(
         raise ValueError("checkpoint count does not match the review mode")
     if review_budget is not None and review_budget > 0 and len(paths) < 3:
         raise ValueError("checkpoint count does not match the review mode")
-    if (run_root / "workdir/output.md").read_bytes() != paths[-1].read_bytes():
+    if output.read_bytes() != paths[-1].read_bytes():
         raise ValueError("output.md changed after the final checkpoint")
     return paths
 
@@ -349,13 +351,16 @@ def _write_phase_records(
 def collect(
     run_root: Path,
     review_budget: int | None,
+    *,
+    output: Path,
+    agent_home: Path,
 ) -> list[dict[str, object]]:
     """Materialize accounting only when snapshots, author, and reviews agree."""
-    paths = _checkpoint_paths(run_root, review_budget)
+    paths = _checkpoint_paths(run_root, review_budget, output=output)
 
     thread_id, final_message = _public_run(run_root / "trace.jsonl")
     started_at, author_checkpoints, final_usage = _author_checkpoints(
-        run_root / "codex-home", thread_id
+        agent_home, thread_id
     )
     if len(author_checkpoints) != len(paths):
         raise ValueError("rollout checkpoints do not match saved snapshots")

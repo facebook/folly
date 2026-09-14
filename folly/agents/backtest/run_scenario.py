@@ -29,6 +29,8 @@ from datetime import date
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Iterable, Sequence
 
+from folly.agents.scripts import isolated_agent
+
 from . import checkpoint_accounting
 
 
@@ -83,13 +85,20 @@ class Manifest:
 @dataclass(frozen=True)
 class Run:
     root: Path
-    workdir: Path
-    codex_home: Path
+    agent_workspace: isolated_agent.Workspace
     prompt: Path
     rules_root: Path
     install_rules: bool
     critic_iterate_rounds: int | None
     checkpoint: bool
+
+    @property
+    def workdir(self) -> Path:
+        return self.agent_workspace.task
+
+    @property
+    def agent_home(self) -> Path:
+        return self.agent_workspace.home
 
 
 @dataclass(frozen=True)
@@ -299,14 +308,13 @@ def _generation_sources(
         CRITIC_ITERATE_SUPPORT_FILES if CRITIC_ITERATE_RULE in selected_rules else ()
     )
     tool_files = TOOL_FILES.values() if install_rules else ()
-    agent_runtime_files = AGENT_RUNTIME_FILES if install_rules else ()
     if _uses_checkpoints(manifest, install_rules):
         tool_files = (*tool_files, *CHECKPOINT_TOOL_FILES.values())
         sources.append((runner_path.parent / "checkpoint_accounting.py").resolve())
     sources.extend(
         _resolve_below(rules_root, path, "rule")
         for path in (
-            *agent_runtime_files,
+            *AGENT_RUNTIME_FILES,
             *selected_rules,
             *support_files,
             *tool_files,
@@ -477,17 +485,16 @@ def prepare(
         tempfile.mkdtemp(prefix=f"{date.today():%Y%m%d}-{scenario.name}-", dir=run_root)
     )
     try:
+        agent_workspace = isolated_agent.CODEX.prepare(root, initialize_engine=False)
         run = Run(
             root,
-            root / "workdir",
-            root / "codex-home",
+            agent_workspace,
             root / "author-prompt.md",
             rules_root,
             install_rules,
             critic_iterate_rounds,
             checkpoint_run,
         )
-        run.workdir.mkdir()
         prompt_prefix = TASK_ROOT_INSTRUCTION
         if install_rules:
             prompt_prefix += RULE_LOADING_INSTRUCTION
@@ -522,7 +529,7 @@ def prepare(
         (root / "run.json").write_text(
             json.dumps(metadata, indent=2, sort_keys=True) + "\n"
         )
-    except (OSError, RunnerError):
+    except (OSError, RunnerError, isolated_agent.IsolationError):
         shutil.rmtree(root, ignore_errors=True)
         raise
     return run
@@ -568,7 +575,7 @@ def _install_tools(run: Run) -> tuple[Path, dict[str, Path]]:
     if run.checkpoint:
         # The installed reviewer wrapper writes its attempts here for accounting.
         (run.root / "reviews").mkdir(mode=0o700)
-    policy = run.codex_home / "rules" / "default.rules"
+    policy = run.agent_home / "rules" / "default.rules"
     policy.parent.mkdir(parents=True)
     policy.write_text("\n".join(lines) + "\n")
     return tool_bin, tools
@@ -593,22 +600,10 @@ def _preserve_output(run: Run) -> bool:
     return output_stat.st_size > 0
 
 
-def _author_environment(run: Run, tool_bin: Path | None) -> dict[str, str]:
-    environment = os.environ.copy()
-    for name in tuple(environment):
-        if name.startswith(("CODEX_", "GIT_", "PYTHON")) or name in {
-            "BASH_ENV",
-            "CRITIC_ITERATE_RULES_DIR",
-            "ENV",
-            "FOLLY_BACKTEST_RUN_DIR",
-            "FOLLY_BACKTEST_WORKDIR",
-            "ZDOTDIR",
-        }:
-            environment.pop(name)
-    environment["CODEX_HOME"] = str(run.codex_home)
-    environment["W"] = str(run.workdir)
+def _author_environment_additions(run: Run, tool_bin: Path | None) -> dict[str, str]:
+    environment = {}
     if tool_bin is not None:
-        inherited_path = environment.get("PATH")
+        inherited_path = os.environ.get("PATH")
         environment["PATH"] = (
             os.pathsep.join([str(tool_bin), inherited_path])
             if inherited_path
@@ -620,47 +615,6 @@ def _author_environment(run: Run, tool_bin: Path | None) -> dict[str, str]:
         environment["FOLLY_BACKTEST_RUN_DIR"] = str(run.root)
         environment["FOLLY_BACKTEST_WORKDIR"] = str(run.workdir)
     return environment
-
-
-def _initialize_isolated_codex_root(
-    root: Path,
-    environment: dict[str, str],
-    command_runner: CommandRunner,
-) -> None:
-    # Codex discovers project rules and skills from its Git root through its
-    # CWD. Other CLIs need an equivalent clean-start mode; Claude has
-    # --safe-mode. Do not generalize this Git boundary to other agents.
-    result = command_runner(
-        ["git", "init", "--quiet", str(root)],
-        check=False,
-        env=environment,
-        stderr=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-    )
-    if result.returncode:
-        error = result.stderr.decode(errors="replace").strip()
-        raise RunnerError(
-            "could not create private Codex Git root" + (f": {error}" if error else "")
-        )
-
-
-def _author_command(
-    run: Run, codex: Path, codex_cwd: Path, model: str, effort: str
-) -> list[str]:
-    return [
-        str(codex),
-        "-a",
-        "never",
-        "exec",
-        "--json",
-        "--model",
-        model,
-        "--config",
-        f"model_reasoning_effort={json.dumps(effort)}",
-        "--cd",
-        str(codex_cwd),
-        "-",
-    ]
 
 
 def _finish_run(run: Run, returncode: int) -> int:
@@ -689,6 +643,8 @@ def _finish_run(run: Run, returncode: int) -> int:
             records = checkpoint_accounting.collect(
                 run.root,
                 run.critic_iterate_rounds,
+                output=run.workdir / "output.md",
+                agent_home=run.agent_home,
             )
         except Exception:
             # The author succeeded; preserve the accounting traceback instead of
@@ -698,13 +654,6 @@ def _finish_run(run: Run, returncode: int) -> int:
         _update_metadata(run, checkpoint_count=len(records))
     _update_metadata(run, status="complete", exit_code=0)
     return 0
-
-
-def _cleanup_codex_cwd(run: Run, codex_cwd: Path) -> None:
-    try:
-        shutil.rmtree(codex_cwd)
-    except OSError as error:
-        _update_metadata(run, codex_cwd_cleanup_error=str(error))
 
 
 def launch(
@@ -721,8 +670,6 @@ def launch(
         if run.install_rules:
             tool_bin, tools = _install_tools(run)
             executables.update(tools)
-        else:
-            run.codex_home.mkdir()
         _update_metadata(
             run,
             executables={
@@ -733,32 +680,32 @@ def launch(
         _update_metadata(run, status="launch-error")
         raise
 
-    environment = _author_environment(run, tool_bin)
-    codex_cwd: Path | None = None
     try:
-        _initialize_isolated_codex_root(run.root, environment, command_runner)
-        codex_cwd = Path(tempfile.mkdtemp(prefix="codex-cwd.", dir=run.root))
+        isolated_agent.CODEX.initialize(
+            run.agent_workspace, command_runner=command_runner
+        )
         with (
             run.prompt.open("rb") as stdin,
             (run.root / "trace.jsonl").open("wb") as stdout,
             (run.root / "err.txt").open("wb") as stderr,
         ):
-            command = _author_command(run, codex_path, codex_cwd, model, effort)
-            result = command_runner(
-                command,
-                cwd=codex_cwd,
+            result = isolated_agent.CODEX.run(
+                run.agent_workspace,
+                isolated_agent.Request(
+                    model=model,
+                    effort=effort,
+                    access="workspace-write",
+                ),
                 stdin=stdin,
                 stdout=stdout,
                 stderr=stderr,
-                env=environment,
-                check=False,
+                additions=_author_environment_additions(run, tool_bin),
+                executable=codex_path,
+                command_runner=command_runner,
             )
-    except (OSError, RunnerError):
+    except (OSError, RunnerError, isolated_agent.IsolationError):
         _update_metadata(run, status="launch-error")
         raise
-    finally:
-        if codex_cwd is not None:
-            _cleanup_codex_cwd(run, codex_cwd)
     return _finish_run(run, result.returncode)
 
 
@@ -834,7 +781,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.model,
             args.reasoning_effort,
         )
-    except (RunnerError, json.JSONDecodeError, OSError) as error:
+    except (
+        RunnerError,
+        isolated_agent.IsolationError,
+        json.JSONDecodeError,
+        OSError,
+    ) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
 
