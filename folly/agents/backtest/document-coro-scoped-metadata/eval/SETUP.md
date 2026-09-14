@@ -1,13 +1,12 @@
 # Run the contract check
 
-Use this optional check after `output.md` is frozen. Give every candidate the
-same evaluator model and effort. A failed evaluator run says nothing about the
-candidate.
+Use the [shared evaluator runner](../../README.md#run-an-evaluator) for this
+optional check after `output.md` is frozen.
 
-In a fresh workdir, stage:
+In a fresh evaluator run, stage:
 
 - the frozen output as `candidate.md`;
-- `prompt.md` at the workdir root;
+- `prompt.md` at the task root;
 - `input-map.md`, `conversation.md`, `working-review.md`, `request.md`, and
   `later-design-clarifications.md` under `evidence/packet/`;
 - `input/source/folly/coro/{AsyncScope,WithMetadata}.h.txt` as

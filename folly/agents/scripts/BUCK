@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 
 oncall("fbcode_entropy_wardens_folly")
@@ -13,4 +14,16 @@ python_library(
     name = "isolated_agent_lib",
     srcs = ["isolated_agent.py"],
     visibility = ["PUBLIC"],
+)
+
+python_library(
+    name = "isolated_codex_cli_lib",
+    srcs = ["isolated_codex.py"],
+    deps = [":isolated_agent_lib"],
+)
+
+python_binary(
+    name = "isolated_codex",
+    main_function = ".isolated_codex.main",
+    deps = [":isolated_codex_cli_lib"],
 )

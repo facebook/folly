@@ -44,3 +44,10 @@ python_unittest(
     network_access = network_access_utils.none(),
     deps = ["fbcode//folly/agents/scripts:isolated_agent_lib"],
 )
+
+python_unittest(
+    name = "isolated_codex_test",
+    srcs = ["test_isolated_codex.py"],
+    network_access = network_access_utils.none(),
+    deps = ["fbcode//folly/agents/scripts:isolated_codex_cli_lib"],
+)

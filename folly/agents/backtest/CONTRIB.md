@@ -75,6 +75,9 @@ a narrow, repeatable observation that ordinary artifact comparison cannot make
 reliably. Evaluators report evidence; the user judges the artifact and rule
 change.
 
+Run evaluator sessions through the shared runner in `README.md`. Keep only the
+declared inputs and turn sequence in each evaluator's `SETUP.md`.
+
 ## Source snapshots
 
 Freeze source needed by the task inside `input/`; never point an author at a

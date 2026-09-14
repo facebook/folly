@@ -66,6 +66,48 @@ trace, stderr, and any `output.md`. A regular rule-backed workdir also contains
 its selected rules. Runs live under the system temporary directory by default;
 pass `--run-root` when one must survive normal temporary cleanup.
 
+## Run an evaluator
+
+From `fbcode/`, create an isolated evaluator run:
+
+```bash
+evaluator=folly/agents/scripts/isolated_codex.py
+run=$(mktemp -d)
+"$evaluator" prepare "$run"
+```
+
+Copy only the evaluator's declared inputs into `$run/workspace/task`, then run
+its prompt:
+
+```bash
+"$evaluator" run "$run" \
+  --prompt PATH \
+  --name NAME \
+  --model MODEL \
+  --effort EFFORT
+```
+
+`PATH` is the evaluator prompt. `NAME` is a unique label for that turn.
+
+For a later turn in the same session, add only its declared inputs and use a new
+turn name:
+
+```bash
+"$evaluator" resume "$run" --prompt PATH --name NAME
+```
+
+The runner prepends the `$W` task-root instruction. Each attempt directory
+contains the effective prompt, response, event trace, and diagnostics. The run
+metadata fixes the engine, Codex executable, model, effort, and session ID
+across turns.
+
+Use separate runs for independent checks. For a stored run, stage evaluator
+inputs from the `generation_revision` in `run.json`. Do not evaluate uncommitted
+prompts or inputs. Keep the evaluator model, effort, and Codex executable fixed
+across comparisons, and do not expose evaluator prompts or results to the
+scenario author. Record the evaluator source revision and token use with the run
+artifacts. A failed evaluator run says nothing about the candidate.
+
 ## Compare runs
 
 Compare no-rules and c-i-K variations with a regular run from the same committed
