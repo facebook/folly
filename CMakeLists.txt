@@ -759,6 +759,7 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
       TEST io_async_hh_wheel_timer_test SOURCES HHWheelTimerTest.cpp
       TEST io_async_hh_wheel_timer_slow_tests SLOW
         SOURCES HHWheelTimerSlowTests.cpp
+      TEST io_async_time_util_test SOURCES TimeUtilTest.cpp
       TEST io_async_notification_queue_test WINDOWS_DISABLED
         SOURCES NotificationQueueTest.cpp
       BENCHMARK io_async_request_context_benchmark WINDOWS_DISABLED
