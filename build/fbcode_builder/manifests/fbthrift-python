@@ -32,7 +32,7 @@ enable_tests=ON
 enable_tests=OFF
 
 [cmake.defines.os=linux]
-thrift_python=ON
+THRIFT_PYTHON=ON
 
 [dependencies]
 benchmark
