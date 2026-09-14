@@ -19,8 +19,8 @@ Usage: python3 -m folly.agents.backtest.compress_checkpoint_outputs SAMPLE
 SAMPLE must contain uncompressed `output.md`, `checkpoints.json`, and every
 artifact named by that JSON. The tool deduplicates exact content, preferring
 `output.md` and otherwise the earliest phase file. For each remaining adjacent
-change, it stores a later-to-earlier normal diff when the diff is less than 60%
-of the earlier file. It verifies every reconstruction before deleting redundant
+change, it stores an earlier-to-later normal diff when the diff is less than 60%
+of the later file. It verifies every reconstruction before deleting redundant
 full files, removes stale `artifact` fields from `checkpoints.json`, and prints
 the `## Checkpoints` README section.
 """
@@ -104,7 +104,7 @@ def _use_diff(diff_size: int, full_size: int) -> bool:
     return diff_size * 5 < full_size * 3
 
 
-def _reverse_diff(sample: Path, later: Phase, earlier: Phase) -> bytes | None:
+def _forward_diff(sample: Path, earlier: Phase, later: Phase) -> bytes | None:
     """Describe one text transition, or retain non-text input as a full file."""
     if (
         b"\0" in later.contents
@@ -119,7 +119,7 @@ def _reverse_diff(sample: Path, later: Phase, earlier: Phase) -> bytes | None:
     except UnicodeDecodeError:
         return None
     result = subprocess.run(
-        ["diff", "--", later.artifact, earlier.artifact],
+        ["diff", "--", earlier.artifact, later.artifact],
         cwd=sample,
         stdout=subprocess.PIPE,
     )
@@ -137,30 +137,28 @@ def _representations(sample: Path, phases: list[Phase]) -> list[Representation]:
 
     counts = Counter(phase.contents for phase in phases)
     by_contents = {output: Representation("output.md")}
-    reverse_result = []
-    for index in range(len(phases) - 1, -1, -1):
-        phase = phases[index]
+    result = []
+    for index, phase in enumerate(phases):
         representation = by_contents.get(phase.contents)
         if representation is None and counts[phase.contents] > 1:
             representation = Representation(canonical[phase.contents])
-        if representation is None:
-            later = phases[index + 1]
-            later_representation = reverse_result[-1]
-            diff = _reverse_diff(sample, later, phase)
-            diff_name = f"output-{later.name}-to-{phase.name}.diff"
+        if representation is None and index:
+            earlier = phases[index - 1]
+            diff = _forward_diff(sample, earlier, phase)
+            diff_name = f"output-{earlier.name}-to-{phase.name}.diff"
             if diff is not None and _use_diff(len(diff), len(phase.contents)):
                 diff_path = sample / diff_name
                 diff_path.unlink(missing_ok=True)
                 diff_path.write_bytes(diff)
                 representation = Representation(
-                    later_representation.base,
-                    (*later_representation.diffs, diff_name),
+                    result[-1].base,
+                    (*result[-1].diffs, diff_name),
                 )
-            else:
-                representation = Representation(canonical[phase.contents])
-            by_contents[phase.contents] = representation
-        reverse_result.append(representation)
-    return list(reversed(reverse_result))
+        if representation is None:
+            representation = Representation(canonical[phase.contents])
+        by_contents[phase.contents] = representation
+        result.append(representation)
+    return result
 
 
 def _reconstruct(sample: Path, representation: Representation) -> bytes:
@@ -182,27 +180,21 @@ def _mapping(sample: Path, phases: list[Phase], stored: list[Representation]) ->
     lines = ["## Checkpoints", ""]
     if any(representation.diffs for representation in stored):
         lines.extend([f"Below, `apply_diffs` is short for `{helper}`.", ""])
-    command_label_by_base = {}
     for phase, representation in zip(phases, stored):
         label = (
             "Initial draft"
             if phase.name == "initial"
-            else "Author review"
-            if phase.name == "author"
-            else f"Review {phase.name.removeprefix('review')}"
+            else (
+                "Author review"
+                if phase.name == "author"
+                else f"Review {phase.name.removeprefix('review')}"
+            )
         )
         if not representation.diffs:
             target = f"[{representation.base}]({representation.base})"
-        elif representation.base not in command_label_by_base:
-            command_label_by_base[representation.base] = label
+        else:
             target = (
                 f"`apply_diffs {representation.base} {' '.join(representation.diffs)}`"
-            )
-        else:
-            command_label = command_label_by_base[representation.base]
-            target = (
-                f"truncate the {command_label} command after "
-                f"`{representation.diffs[-1]}`"
             )
         lines.append(f"- **{label}:** {target}")
     return "\n".join(lines) + "\n"
@@ -238,8 +230,9 @@ def compress(sample: Path, mapping_output: TextIO) -> None:
         if phase.artifact not in retained:
             (sample / phase.artifact).unlink()
     known_diffs = {
-        f"output-{later.name}-to-{earlier.name}.diff"
+        f"output-{source.name}-to-{target.name}.diff"
         for earlier, later in zip(phases, phases[1:])
+        for source, target in ((earlier, later), (later, earlier))
     }
     for diff in known_diffs - retained:
         (sample / diff).unlink(missing_ok=True)

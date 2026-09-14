@@ -22,6 +22,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from folly.agents.backtest import compress_checkpoint_outputs as compressor
 
@@ -34,6 +35,15 @@ def make_sample(root: Path, phases: list[tuple[str, str]]) -> None:
         records.append({"artifact": artifact, "phase": name})
     (root / "output.md").write_text(phases[-1][1])
     (root / "checkpoints.json").write_text(json.dumps(records))
+
+
+def make_diff_sample(root: Path) -> None:
+    initial = "".join(f"line {index}\n" for index in range(100))
+    author = initial.replace("line 50\n", "author edit\n")
+    make_sample(
+        root,
+        [("initial", initial), ("author", author), ("review1", "final\n")],
+    )
 
 
 def compress(sample: Path) -> str:
@@ -60,6 +70,7 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
                 ],
             )
             (sample / "output-author-to-initial.diff").write_text("stale")
+            (sample / "output-author-to-review1.diff").write_text("stale")
             (sample / "output-unrelated.diff").write_text("unrelated")
 
             mapping = compress(sample)
@@ -70,6 +81,7 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
             self.assertFalse((sample / "output-review2.md").exists())
             self.assertFalse((sample / "output-review3.md").exists())
             self.assertFalse((sample / "output-author-to-initial.diff").exists())
+            self.assertFalse((sample / "output-author-to-review1.diff").exists())
             self.assertTrue((sample / "output-unrelated.diff").is_file())
             self.assertEqual(
                 json.loads((sample / "checkpoints.json").read_text()),
@@ -89,77 +101,86 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
 Below, `apply_diffs` is short for `{helper}`.
 
 - **Initial draft:** [output-initial.md](output-initial.md)
-- **Author review:** `apply_diffs output-initial.md output-review1-to-author.diff`
+- **Author review:** `apply_diffs output-initial.md output-initial-to-author.diff`
 - **Review 1:** [output-initial.md](output-initial.md)
 - **Review 2:** [output.md](output.md)
 - **Review 3:** [output.md](output.md)
 """,
             )
 
-    def test_reverse_diffs_reconstruct_each_phase(self) -> None:
+    def test_forward_diffs_reconstruct_each_phase(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             sample = Path(temporary)
             initial = "".join(f"line {index}\n" for index in range(100)).replace(
                 "line 40\n", "line 40\rsegment\n"
             )
             author = initial.replace("line 20\n", "").replace("line 80\n", "")
-            final = author.replace("line 90\n", "review edit\n")
+            review1 = author.replace("line 90\n", "review edit\n")
+            final = review1.replace("line 70\n", "final edit\n")
             make_sample(
                 sample,
-                [("initial", initial), ("author", author), ("review1", final)],
+                [
+                    ("initial", initial),
+                    ("author", author),
+                    ("review1", review1),
+                    ("review2", final),
+                ],
             )
 
             mapping = compress(sample)
 
-            author_diff = "output-review1-to-author.diff"
-            initial_diff = "output-author-to-initial.diff"
-            reconstructed = subprocess.run(
-                [
-                    str(compressor._APPLY_DIFFS),
-                    "output.md",
-                    author_diff,
-                    initial_diff,
-                ],
-                cwd=sample,
-                check=True,
-                stdout=subprocess.PIPE,
-            ).stdout
-            self.assertEqual(reconstructed, initial.encode())
-            self.assertFalse((sample / "output-initial.md").exists())
+            author_diff = "output-initial-to-author.diff"
+            review_diff = "output-author-to-review1.diff"
+            self.assertTrue((sample / "output-initial.md").is_file())
             self.assertFalse((sample / "output-author.md").exists())
-            self.assertEqual(
-                (sample / author_diff).read_text(),
-                "89c89\n< review edit\n---\n> line 90\n",
-            )
-            self.assertEqual(
-                (sample / initial_diff).read_text(),
-                "20a21\n> line 20\n79a81\n> line 80\n",
-            )
+            self.assertFalse((sample / "output-review1.md").exists())
             self.assertIn(
-                f"`apply_diffs output.md {author_diff} {initial_diff}`", mapping
-            )
-            self.assertIn(
-                f"- **Author review:** truncate the Initial draft command after "
-                f"`{author_diff}`",
+                f"`apply_diffs output-initial.md {author_diff} {review_diff}`",
                 mapping,
             )
-            self.assertEqual(mapping.count("`apply_diffs "), 1)
+            self.assertEqual(mapping.count("`apply_diffs "), 2)
 
     def test_diff_threshold_is_strict(self) -> None:
         self.assertTrue(compressor._use_diff(179, 300))
         self.assertFalse(compressor._use_diff(180, 300))
 
+    def test_diff_threshold_uses_later_phase_size(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            sample = Path(temporary)
+            make_sample(
+                sample,
+                [
+                    ("initial", "i" * 199 + "\n"),
+                    ("author", "a" * 299 + "\n"),
+                    ("review1", "final\n"),
+                ],
+            )
+            _, phases = compressor._load(sample)
+            with mock.patch.object(
+                compressor, "_forward_diff", return_value=b"x" * 179
+            ):
+                stored = compressor._representations(sample, phases)
+
+            self.assertEqual(stored[1].diffs, ("output-initial-to-author.diff",))
+
     def test_keeps_output_that_cannot_be_diffed(self) -> None:
         for initial in ("missing newline", "binary\0value\n"):
             with self.subTest(initial=initial), tempfile.TemporaryDirectory() as temp:
                 sample = Path(temp)
-                make_sample(sample, [("initial", initial), ("author", "complete\n")])
+                make_sample(
+                    sample,
+                    [
+                        ("initial", initial),
+                        ("author", "complete\n"),
+                        ("review1", "final\n"),
+                    ],
+                )
 
                 mapping = compress(sample)
 
                 self.assertTrue((sample / "output-initial.md").is_file())
-                self.assertFalse((sample / "output-author.md").exists())
-                self.assertFalse((sample / "output-author-to-initial.diff").exists())
+                self.assertTrue((sample / "output-author.md").is_file())
+                self.assertFalse((sample / "output-initial-to-author.diff").exists())
                 self.assertNotIn("apply_diffs", mapping)
 
     def test_rejects_invalid_phase_sequence(self) -> None:
@@ -173,9 +194,7 @@ Below, `apply_diffs` is short for `{helper}`.
     def test_reconstruction_failure_keeps_sources_and_accounting(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             sample = Path(temporary)
-            initial = "".join(f"line {index}\n" for index in range(100))
-            final = initial.replace("line 50\n", "review edit\n")
-            make_sample(sample, [("initial", initial), ("author", final)])
+            make_diff_sample(sample)
             accounting = (sample / "checkpoints.json").read_bytes()
             executable = shutil.which("diff")
             self.assertIsNotNone(executable)
@@ -200,9 +219,7 @@ Below, `apply_diffs` is short for `{helper}`.
     def test_mapping_write_failure_keeps_sources_and_accounting(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             sample = Path(temporary)
-            initial = "".join(f"line {index}\n" for index in range(100))
-            final = initial.replace("line 50\n", "review edit\n")
-            make_sample(sample, [("initial", initial), ("author", final)])
+            make_diff_sample(sample)
             accounting = (sample / "checkpoints.json").read_bytes()
             mapping = io.StringIO()
             mapping.close()
@@ -213,7 +230,7 @@ Below, `apply_diffs` is short for `{helper}`.
             self.assertTrue((sample / "output-initial.md").is_file())
             self.assertTrue((sample / "output-author.md").is_file())
             self.assertEqual((sample / "checkpoints.json").read_bytes(), accounting)
-            self.assertTrue((sample / "output-author-to-initial.diff").is_file())
+            self.assertTrue((sample / "output-initial-to-author.diff").is_file())
 
             compress(sample)
 

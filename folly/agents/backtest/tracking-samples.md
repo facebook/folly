@@ -57,14 +57,18 @@ python3 -m folly.agents.backtest.compress_checkpoint_outputs \
   SAMPLE_DIRECTORY >"$checkpoint_map"
 ```
 
-The command stores byte-identical outputs once. For each remaining change, it
-uses a verified ordinary reverse diff only when that diff is less than 60% of
-the full phase. It also removes stale `artifact` fields from `checkpoints.json`.
-Insert the contents of `$checkpoint_map` before the debrief in `README.md`, then
-remove the temporary file. Each short phase bullet links a full file or says how
-far to run a displayed `apply_diffs` command. Shared command prefixes appear
-once. The command starts with a later state, applies reverse diffs from left to
-right, and writes the reconstructed output to stdout.
+The compressor stores byte-identical outputs once:
+
+1. For each remaining change, it uses a verified ordinary forward diff only when
+   that diff is less than 60% of the later phase.
+2. It removes stale `artifact` fields from `checkpoints.json` and prints the
+   `## Checkpoints` section.
+3. Insert that section before the debrief in `README.md`, then remove the
+   temporary file.
+
+Each phase bullet links a full file or says how to reconstruct it. `apply_diffs`
+starts with an earlier state, applies forward diffs from left to right, and
+writes the reconstructed output to stdout.
 
 ## Refresh stale samples
 
