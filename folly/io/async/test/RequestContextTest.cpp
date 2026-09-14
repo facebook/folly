@@ -875,3 +875,75 @@ TEST_F(RequestContextTest, AddSetContextWatcher) {
   EXPECT_EQ(ctx2, g_lastPrev);
   EXPECT_EQ(nullptr, g_lastCurrent);
 }
+
+namespace {
+
+// Records the current context when the RequestData is destroyed.
+class DestructionObserver : public RequestData {
+ public:
+  explicit DestructionObserver(RequestContext** out) : out_(out) {}
+  ~DestructionObserver() override { *out_ = RequestContext::try_get(); }
+  bool hasCallback() override { return false; }
+
+ private:
+  RequestContext** out_;
+};
+
+} // namespace
+
+TEST_F(RequestContextTest, SaverScopeGuardSetContext) {
+  auto prev = RequestContext::saveContext();
+  {
+    RequestContextSaverScopeGuard guard;
+    auto ctx = std::make_shared<RequestContext>();
+    auto* raw = ctx.get();
+    guard.setContext(std::move(ctx));
+    EXPECT_EQ(ctx, nullptr);
+    EXPECT_EQ(RequestContext::try_get(), raw);
+  }
+  EXPECT_EQ(RequestContext::try_get(), prev.get());
+}
+
+TEST_F(RequestContextTest, SaverScopeGuardSetContextSameContext) {
+  auto ctx = std::make_shared<RequestContext>();
+  RequestContext::setContext(ctx);
+  RequestContextSaverScopeGuard guard;
+  auto same = ctx;
+  guard.setContext(std::move(same));
+  // The argument is consumed even when there is nothing to replace.
+  EXPECT_EQ(same, nullptr);
+  EXPECT_EQ(RequestContext::try_get(), ctx.get());
+}
+
+TEST_F(RequestContextTest, SaverScopeGuardDestroysReplacedContextUnderPrev) {
+  auto prev = std::make_shared<RequestContext>();
+  RequestContext::setContext(prev);
+  RequestContext* destroyedUnder = nullptr;
+  auto victim = std::make_shared<RequestContext>();
+  victim->setContextData(
+      "victim", std::make_unique<DestructionObserver>(&destroyedUnder));
+  {
+    RequestContextSaverScopeGuard guard;
+    guard.setContext(std::move(victim));
+    EXPECT_EQ(victim, nullptr);
+    auto next = std::make_shared<RequestContext>();
+    guard.setContext(std::move(next));
+    EXPECT_EQ(next, nullptr);
+    EXPECT_EQ(destroyedUnder, prev.get());
+  }
+  EXPECT_EQ(RequestContext::try_get(), prev.get());
+}
+
+TEST_F(RequestContextTest, SaverScopeGuardRestoreContext) {
+  auto prev = std::make_shared<RequestContext>();
+  RequestContext::setContext(prev);
+  {
+    RequestContextSaverScopeGuard guard;
+    auto other = std::make_shared<RequestContext>();
+    RequestContext::setContext(other);
+    EXPECT_EQ(RequestContext::try_get(), other.get());
+    guard.restoreContext();
+    EXPECT_EQ(RequestContext::try_get(), prev.get());
+  }
+  EXPECT_EQ(RequestContext::try_get(), prev.get());
+}
