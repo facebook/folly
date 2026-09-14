@@ -19,6 +19,7 @@ import os
 import subprocess
 import tempfile
 import unittest
+from collections.abc import Mapping
 from pathlib import Path
 from typing import BinaryIO
 from unittest import mock
@@ -40,7 +41,7 @@ def executable(path: Path, contents: str = "tool") -> Path:
     return path
 
 
-def write_manifest(path: Path, contents: dict[str, object]) -> runner.Manifest:
+def write_manifest(path: Path, contents: Mapping[str, object]) -> runner.Manifest:
     path.write_text(json.dumps(contents))
     return runner.load_manifest(path)
 
@@ -160,7 +161,7 @@ class RunScenarioTest(unittest.TestCase):
             assert not isinstance(stdout, int)
             assert not isinstance(stderr, int)
             codex_cwd = Path(cwd)
-            self.assertEqual(codex_cwd, run.agent_workspace.workspace_root)
+            self.assertEqual(codex_cwd, run.workdir)
             self.assertTrue((run.agent_workspace.workspace_root / ".git").is_dir())
             self.assertFalse(
                 run.agent_home.is_relative_to(run.agent_workspace.workspace_root)
@@ -169,7 +170,7 @@ class RunScenarioTest(unittest.TestCase):
             commands.append(command)
             environments.append(env)
             if output is not None:
-                (run.workdir / "output.md").write_text(output)
+                (codex_cwd / "output.md").write_text(output)
             stdout.write(trace)
             stderr.write(errors)
             return subprocess.CompletedProcess(command, returncode)
@@ -419,7 +420,7 @@ class RunScenarioTest(unittest.TestCase):
             )
 
     def test_manifest_rejects_unsafe_paths_and_development_rules(self) -> None:
-        cases: tuple[tuple[str, dict[str, object], str], ...] = (
+        cases = (
             (
                 "input destination escape",
                 {
@@ -459,6 +460,23 @@ class RunScenarioTest(unittest.TestCase):
                 },
                 "hidden policy",
             ),
+            *(
+                (
+                    f"reserved {root} destination",
+                    {
+                        "prompt": "prompt.md",
+                        "inputs": [
+                            {
+                                "source": "evidence.md",
+                                "destination": f"{root}/injected",
+                            }
+                        ],
+                        "rules": [],
+                    },
+                    "reserved policy root",
+                )
+                for root in (".codex", ".git", ".llms")
+            ),
         )
         for name, contents, error in cases:
             with self.subTest(name), self.assertRaisesRegex(runner.RunnerError, error):
@@ -497,9 +515,7 @@ class RunScenarioTest(unittest.TestCase):
 
         self.assertEqual(
             run.prompt.read_text(),
-            runner.TASK_ROOT_INSTRUCTION
-            + runner.RULE_LOADING_INSTRUCTION
-            + "Do the task.\n",
+            runner.RULE_LOADING_INSTRUCTION + "Do the task.\n",
         )
         self.assertTrue((run.workdir / "rules/rules-inventory.md").is_file())
         metadata = json.loads((run.root / "run.json").read_text())
@@ -519,8 +535,7 @@ class RunScenarioTest(unittest.TestCase):
         self.assertTrue(run.checkpoint)
         self.assertEqual(
             run.prompt.read_text(),
-            runner.TASK_ROOT_INSTRUCTION
-            + runner.RULE_LOADING_INSTRUCTION
+            runner.RULE_LOADING_INSTRUCTION
             + "c-i-0\n\n"
             + runner._checkpoint_instruction()
             + "Do the task.\n",
@@ -532,8 +547,7 @@ class RunScenarioTest(unittest.TestCase):
         self.assertTrue(default_run.checkpoint)
         self.assertEqual(
             default_run.prompt.read_text(),
-            runner.TASK_ROOT_INSTRUCTION
-            + runner.RULE_LOADING_INSTRUCTION
+            runner.RULE_LOADING_INSTRUCTION
             + runner._checkpoint_instruction()
             + "Do the task.\n",
         )
@@ -610,10 +624,7 @@ class RunScenarioTest(unittest.TestCase):
 
         run = self.prepare(install_rules=False)
 
-        self.assertEqual(
-            run.prompt.read_text(),
-            runner.TASK_ROOT_INSTRUCTION + "Do the bare task.\n",
-        )
+        self.assertEqual(run.prompt.read_text(), "Do the bare task.\n")
         self.assertEqual({path.name for path in run.workdir.iterdir()}, {"input.md"})
         self.assertFalse(run.install_rules)
         metadata = json.loads((run.root / "run.json").read_text())
@@ -796,7 +807,7 @@ class RunScenarioTest(unittest.TestCase):
         self.assertEqual(environment["PATH"].split(os.pathsep, 1)[0], str(tool_bin))
         self.assertEqual(environment["HOME"], str(run.agent_home))
         self.assertEqual(environment["TMPDIR"], str(run.agent_workspace.temporary))
-        self.assertEqual(environment["W"], str(run.workdir))
+        self.assertNotIn("W", environment)
         for name, relative in runner.TOOL_FILES.items():
             self.assertEqual(
                 (tool_bin / name).resolve(), (self.rules_root / relative).resolve()

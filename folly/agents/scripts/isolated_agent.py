@@ -72,6 +72,7 @@ class Request:
 
     `resume_session_id` is extracted from a prior turn's event trace.
     `response_path` is separate from artifacts an agent writes in the task.
+    `working_directory` selects the private workspace root or its staged task.
     """
 
     model: str | None
@@ -80,6 +81,7 @@ class Request:
     resume_session_id: str | None = None
     ephemeral: bool = False
     response_path: Path | None = None
+    working_directory: str = "workspace"
 
 
 class AgentImpl(Protocol):
@@ -143,7 +145,7 @@ class CodexImpl:
         command = [str(executable), "-a", "never"]
         if request.access != "default":
             command.extend(("-s", request.access))
-        command.extend(("-C", str(workspace.workspace_root), "exec"))
+        command.extend(("-C", str(_working_directory(workspace, request)), "exec"))
         if request.resume_session_id is not None:
             command.append("resume")
         command.extend(("--ignore-user-config", "--json"))
@@ -242,6 +244,13 @@ def _require_directory(path: Path, parent: Path) -> None:
         raise IsolationError(f"isolated workspace escapes {parent}: {path}") from error
 
 
+def _working_directory(workspace: Workspace, request: Request) -> Path:
+    if request.working_directory == "task":
+        return workspace.task
+    # Task-local rules are below this CWD, outside Codex's ancestor scan.
+    return workspace.workspace_root
+
+
 @dataclass(frozen=True)
 class Agent:
     """An engine-bound launcher with a shared isolation and workspace contract."""
@@ -262,7 +271,11 @@ class Agent:
         result = _base_environment(additions)
         result["HOME"] = str(workspace.home)
         result["TMPDIR"] = str(workspace.temporary)
-        result["W"] = str(workspace.task)
+        if (
+            request is None
+            or _working_directory(workspace, request) == workspace.workspace_root
+        ):
+            result["W"] = str(workspace.task)
         # Inherited XDG roots are removed above, so their standard fallbacks
         # remain under the private HOME without separate directories or state.
         self.impl.configure_environment(result, workspace, request)
@@ -329,11 +342,11 @@ class Agent:
         command_runner: CommandRunner = subprocess.run,
     ) -> subprocess.CompletedProcess[bytes]:
         executable = executable or self.resolve_executable()
+        working_directory = _working_directory(workspace, request)
         return command_runner(
             self.impl.command(workspace, executable, request),
             check=False,
-            # Task-local rules are below this CWD, outside Codex's ancestor scan.
-            cwd=workspace.workspace_root,
+            cwd=working_directory,
             env=self.environment(workspace, request, additions=additions),
             stderr=stderr,
             stdin=stdin,

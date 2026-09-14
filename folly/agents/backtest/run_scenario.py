@@ -54,12 +54,9 @@ CHECKPOINT_TOOL_FILES = {
 }
 AGENT_RUNTIME_FILES = (PurePosixPath("scripts/isolated_agent.py"),)
 RESERVED_INPUT_NAMES = {"AGENTS.md", "AGENTS.override.md"}
-TASK_ROOT_INSTRUCTION = (
-    "`$W` is the task root. Resolve every task-relative path from `$W`. Start "
-    'shell commands with `cd "$W" &&`.\n\n'
-)
+RESERVED_INPUT_ROOTS = {".codex", ".git", ".llms"}
 RULE_LOADING_INSTRUCTION = (
-    "Read every rule listed in `$W/rules/rules-inventory.md`, in order. Follow "
+    "Read every rule listed in `rules/rules-inventory.md`, in order. Follow "
     "those rules for conditional loads; do not look for ambient rule files.\n\n"
 )
 
@@ -131,6 +128,8 @@ def _validate_input_destination(path: PurePosixPath) -> None:
         raise RunnerError("input destinations may not use the reserved rules/")
     if path.name in RESERVED_INPUT_NAMES:
         raise RunnerError(f"input destination would be loaded as hidden policy: {path}")
+    if path.parts[0] in RESERVED_INPUT_ROOTS:
+        raise RunnerError(f"input destination uses a reserved policy root: {path}")
 
 
 def load_manifest(path: Path) -> Manifest:
@@ -495,9 +494,7 @@ def prepare(
             critic_iterate_rounds,
             checkpoint_run,
         )
-        prompt_prefix = TASK_ROOT_INSTRUCTION
-        if install_rules:
-            prompt_prefix += RULE_LOADING_INSTRUCTION
+        prompt_prefix = RULE_LOADING_INSTRUCTION if install_rules else ""
         if critic_iterate_rounds is not None:
             prompt_prefix += f"c-i-{critic_iterate_rounds}\n\n"
         if checkpoint_run:
@@ -695,6 +692,7 @@ def launch(
                     model=model,
                     effort=effort,
                     access="workspace-write",
+                    working_directory="task",
                 ),
                 stdin=stdin,
                 stdout=stdout,
