@@ -1,3 +1,4 @@
+load("@fbsource//tools/build_defs:testpilot_defs.bzl", "tpx_labels")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
@@ -20,7 +21,7 @@ fb_dirsync_cpp_unittest(
     srcs = ["BaseTest.cpp"],
     headers = [],
     labels = [
-        "serialize_test_cases",
+        tpx_labels.serialize_test_cases,
     ],
     deps = [
         "fbsource//third-party/glog:glog",
@@ -96,7 +97,7 @@ fb_dirsync_cpp_unittest(
     srcs = ["ParallelTest.cpp"],
     headers = [],
     labels = [
-        "serialize",
+        tpx_labels.serialize,
     ],
     deps = [
         "fbsource//third-party/glog:glog",
