@@ -318,7 +318,7 @@ fb_dirsync_cpp_unittest(
 fb_dirsync_cpp_unittest(
     name = "async_udp_socket_test",
     srcs = ["AsyncUDPSocketTest.cpp"],
-    labels = ["heavyweight"],
+    labels = [tpx_labels.heavyweight],
     oncall = "thrift",
     supports_static_listing = False,
     deps = [
@@ -488,7 +488,7 @@ fb_dirsync_cpp_unittest(
     srcs = ["EventBaseTest.cpp"],
     allocator = "malloc",
     labels = [
-        "heavyweight",
+        tpx_labels.heavyweight,
         "load-sensitive-timing-test",
     ],
     oncall = "thrift",
@@ -1153,7 +1153,7 @@ fbcode_target(
     _kind = cpp_unittest,
     name = "async_io_uring_socket_test",
     srcs = ["AsyncIoUringSocketTest.cpp"],
-    labels = ["heavyweight"],
+    labels = [tpx_labels.heavyweight],
     supports_static_listing = False,
     deps = [
         ":async_socket_test_lib",
@@ -1178,7 +1178,7 @@ fbcode_target(
     name = "epoll_backend_test",
     srcs = ["EpollBackendTest.cpp"],
     labels = [
-        "heavyweight",
+        tpx_labels.heavyweight,
         "load-sensitive-timing-test",
     ],
     owner = "dmm@xmail.facebook.com",
@@ -1266,7 +1266,7 @@ fbcode_target(
     srcs = ["IoUringBackendTest.cpp"],
     headers = [],
     labels = [
-        "heavyweight",
+        tpx_labels.heavyweight,
         "load-sensitive-timing-test",
         "slow",
     ],
