@@ -110,6 +110,8 @@
  *    fast-crc-computation-generic-polynomials-pclmulqdq-paper.pdf
  */
 
+#include <folly/CpuId.h>
+#include <folly/Portability.h>
 #include <folly/hash/detail/ChecksumDetail.h>
 
 namespace folly {
@@ -128,6 +130,139 @@ static __m128i crc32MulAdd(__m128i x, __m128i a, __m128i multiplier) {
   const __m128i t = _mm_xor_si128(a, _mm_clmulepi64_si128(x, multiplier, 0x00));
   return _mm_xor_si128(t, _mm_clmulepi64_si128(x, multiplier, 0x11));
 }
+
+#if FOLLY_HAS_CRC32_VPCLMUL
+
+FOLLY_TARGET_ATTRIBUTE("avx2,vpclmulqdq")
+static __m256i crc32MulAdd256(__m256i x, __m256i a, __m256i multiplier) {
+  const __m256i t =
+      _mm256_xor_si256(a, _mm256_clmulepi64_epi128(x, multiplier, 0x00));
+  return _mm256_xor_si256(t, _mm256_clmulepi64_epi128(x, multiplier, 0x11));
+}
+
+bool crc32_vpclmul_usable() {
+  static const bool value = [] {
+    CpuId id;
+    return id.avx2() && id.vpclmulqdq();
+  }();
+  return value;
+}
+
+/*
+ * The 1024-bit-at-a-time loop below folds eight 128-bit accumulators against
+ * one multiplier. VPCLMULQDQ applies the carryless multiply independently
+ * within each 128-bit lane and the XORs are lane-wise, so pairing those eight
+ * accumulators into four 256-bit registers -- with the multiplier broadcast to
+ * both lanes -- computes bit-identical values with half the instructions. The
+ * folding constants are unchanged; none are re-derived for the wider form.
+ *
+ * Only the main loop widens. Everything after it, and every buffer too short
+ * to enter it, runs the original code.
+ */
+FOLLY_TARGET_ATTRIBUTE("avx2,vpclmulqdq")
+uint32_t crc32_hw_aligned_vpclmul(
+    uint32_t remainder, const __m128i* p, size_t vec_count) {
+  if (vec_count < 8) {
+    return crc32_hw_aligned(remainder, p, vec_count);
+  }
+
+  /* Constants precomputed by gen_crc32_multipliers.c.  Do not edit! */
+  const __m128i multipliers_8 = _mm_set_epi32(0, 0x910EEEC1, 0, 0x33FFF533);
+  const __m128i multipliers_4 = _mm_set_epi32(0, 0x1D9513D7, 0, 0x8F352D95);
+  const __m128i multipliers_2 = _mm_set_epi32(0, 0x81256527, 0, 0xF1DA05AA);
+  const __m128i multipliers_1 = _mm_set_epi32(0, 0xCCAA009E, 0, 0xAE689191);
+  const __m128i final_multiplier = _mm_set_epi32(0, 0, 0, 0xB8BC6765);
+  const __m128i mask32 = _mm_set_epi32(0, 0, 0, 0xFFFFFFFF);
+  const __m128i barrett_reduction_constants =
+      _mm_set_epi32(0x1, 0xDB710641, 0x1, 0xF7011641);
+  const __m256i multipliers_8_x2 = _mm256_broadcastsi128_si256(multipliers_8);
+
+  const __m128i* const end = p + vec_count;
+  const __m128i* const end512 = p + (vec_count & ~3);
+  const __m128i* const end1024 = p + (vec_count & ~7);
+  __m128i x0, x1, x2, x3, x4, x5, x6, x7;
+
+  /* y0 carries accumulators 0 and 1, y1 carries 2 and 3, and so on, so a
+   * 256-bit load of p[2i], p[2i+1] lands each in the lane that owns it. */
+  __m256i y0 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p + 0));
+  __m256i y1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p + 2));
+  __m256i y2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p + 4));
+  __m256i y3 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p + 6));
+  y0 = _mm256_xor_si256(
+      y0,
+      _mm256_inserti128_si256(
+          _mm256_setzero_si256(),
+          _mm_set_epi32(0, 0, 0, static_cast<int>(remainder)),
+          0));
+  p += 8;
+
+  for (; p != end1024; p += 8) {
+    y0 = crc32MulAdd256(
+        y0,
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p + 0)),
+        multipliers_8_x2);
+    y1 = crc32MulAdd256(
+        y1,
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p + 2)),
+        multipliers_8_x2);
+    y2 = crc32MulAdd256(
+        y2,
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p + 4)),
+        multipliers_8_x2);
+    y3 = crc32MulAdd256(
+        y3,
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p + 6)),
+        multipliers_8_x2);
+  }
+
+  x0 = _mm256_castsi256_si128(y0);
+  x1 = _mm256_extracti128_si256(y0, 1);
+  x2 = _mm256_castsi256_si128(y1);
+  x3 = _mm256_extracti128_si256(y1, 1);
+  x4 = _mm256_castsi256_si128(y2);
+  x5 = _mm256_extracti128_si256(y2, 1);
+  x6 = _mm256_castsi256_si128(y3);
+  x7 = _mm256_extracti128_si256(y3, 1);
+
+  /* Fold 1024 bits => 512 bits */
+  x0 = crc32MulAdd(x0, x4, multipliers_4);
+  x1 = crc32MulAdd(x1, x5, multipliers_4);
+  x2 = crc32MulAdd(x2, x6, multipliers_4);
+  x3 = crc32MulAdd(x3, x7, multipliers_4);
+
+  /* Fold 512 bits at a time */
+  for (; p != end512; p += 4) {
+    x0 = crc32MulAdd(x0, p[0], multipliers_4);
+    x1 = crc32MulAdd(x1, p[1], multipliers_4);
+    x2 = crc32MulAdd(x2, p[2], multipliers_4);
+    x3 = crc32MulAdd(x3, p[3], multipliers_4);
+  }
+
+  /* Fold 512 bits => 128 bits */
+  x2 = crc32MulAdd(x0, x2, multipliers_2);
+  x3 = crc32MulAdd(x1, x3, multipliers_2);
+  x0 = crc32MulAdd(x2, x3, multipliers_1);
+
+  while (p != end) {
+    x1 = *p++;
+    x0 = crc32MulAdd(x0, x1, multipliers_1);
+  }
+
+  x0 = _mm_xor_si128(
+      _mm_srli_si128(x0, 8), _mm_clmulepi64_si128(x0, multipliers_1, 0x10));
+  x0 = _mm_xor_si128(
+      _mm_srli_si128(x0, 4),
+      _mm_clmulepi64_si128(_mm_and_si128(x0, mask32), final_multiplier, 0x00));
+  x1 = x0;
+  x0 = _mm_clmulepi64_si128(
+      _mm_and_si128(x0, mask32), barrett_reduction_constants, 0x00);
+  x0 = _mm_clmulepi64_si128(
+      _mm_and_si128(x0, mask32), barrett_reduction_constants, 0x10);
+  return static_cast<uint32_t>(
+      _mm_cvtsi128_si32(_mm_srli_si128(_mm_xor_si128(x0, x1), 4)));
+}
+
+#endif // FOLLY_HAS_CRC32_VPCLMUL
 
 uint32_t crc32_hw_aligned(
     uint32_t remainder, const __m128i* p, size_t vec_count) {

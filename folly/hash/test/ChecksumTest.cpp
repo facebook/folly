@@ -342,6 +342,18 @@ TEST(Checksum, crc32clargeBuffers) {
         folly::detail::neon_eor3_crc32c_v8s2x4e_s2x1(bufp, kLargeBufSz, ~0);
     ASSERT_EQ(kCrc, crcHw);
   }
+#if FOLLY_HAS_CRC32_VPCLMUL
+  // The generic CRC-32 folds take a vector count rather than a byte count, so
+  // they overflow somewhere else again; this buffer is 2^38 bits.
+  if (folly::detail::crc32_vpclmul_usable()) {
+    const size_t head = -reinterpret_cast<uintptr_t>(bufp) & 15;
+    const size_t vecCount = (kLargeBufSz - head) / 16;
+    const auto* p = reinterpret_cast<const __m128i*>(bufp + head);
+    ASSERT_EQ(
+        folly::detail::crc32_hw_aligned(~0U, p, vecCount),
+        folly::detail::crc32_hw_aligned_vpclmul(~0U, p, vecCount));
+  }
+#endif
 }
 #endif
 
@@ -427,6 +439,104 @@ TEST(Checksum, crc32Continuation) {
   } else {
     LOG(WARNING) << "skipping hardware-accelerated CRC-32 tests"
                  << " (not supported on this CPU)";
+  }
+}
+
+// crc32_hw() checksums the unaligned head in software, then hands the rest to
+// whichever fold the runtime guard selects. Neither the head nor the guard is
+// reached by calling a fold directly, and expectedResults has only two entries
+// long enough to reach the 128-byte-at-a-time loop at all.
+TEST(Checksum, crc32HardwareEq) {
+  if (!folly::detail::crc32_hw_supported()) {
+    LOG(WARNING) << "skipping hardware-accelerated CRC-32 tests"
+                 << " (not supported on this CPU)";
+    return;
+  }
+  constexpr size_t kLargeLengths[] = {1024, 65536, BUFFER_SIZE / 2};
+  for (uint32_t startingChecksum : {0U, ~0U, 0x89abcdefU}) {
+    // Past 16 so the aligned body starts on a 32-byte boundary for half of
+    // these and straddles one for the other half: the 256-bit fold loads
+    // 32 bytes at a time from a pointer only guaranteed 16-byte aligned.
+    for (size_t offset = 0; offset < 32; offset++) {
+      auto check = [&](size_t length) {
+        SCOPED_TRACE(
+            testing::Message()
+            << "startingChecksum=" << startingChecksum << " offset=" << offset
+            << " length=" << length);
+        ASSERT_EQ(
+            folly::detail::crc32_sw(buffer + offset, length, startingChecksum),
+            folly::detail::crc32_hw(buffer + offset, length, startingChecksum));
+      };
+      for (size_t length = 0; length <= 400; length++) {
+        check(length);
+      }
+      for (size_t length : kLargeLengths) {
+        check(length);
+      }
+    }
+  }
+}
+
+#if FOLLY_HAS_CRC32_VPCLMUL
+// The 256-bit fold has to be bit-identical to the 128-bit one it replaces.
+// vec_count picks between delegating back to it, the 1024-bit loop, and the
+// 512- and 128-bit tails; the remainder is folded into the first vector, so a
+// non-zero one is what distinguishes that from dropping it.
+TEST(Checksum, crc32HardwareAlignedVpclmulEq) {
+  if (!folly::detail::crc32_vpclmul_usable()) {
+    LOG(WARNING) << "skipping VPCLMULQDQ CRC-32 tests"
+                 << " (not supported on this CPU)";
+    return;
+  }
+  // The fold's callers promise 16-byte alignment and nothing more, so run it
+  // both on and off a 32-byte boundary.
+  const auto* aligned32 = reinterpret_cast<const __m128i*>(
+      buffer + (-reinterpret_cast<uintptr_t>(buffer) & 31));
+  // Straddling a multiple of 8 so the tails run at scale as well.
+  constexpr size_t kLongVecCounts[] = {
+      BUFFER_SIZE / 32 - 1, BUFFER_SIZE / 32, BUFFER_SIZE / 32 + 1};
+  for (const __m128i* p : {aligned32, aligned32 + 1}) {
+    for (uint32_t remainder : {0U, ~0U, 0x89abcdefU}) {
+      auto check = [&](size_t vecCount) {
+        SCOPED_TRACE(
+            testing::Message()
+            << "aligned32=" << (p == aligned32) << " remainder=" << remainder
+            << " vecCount=" << vecCount);
+        ASSERT_EQ(
+            folly::detail::crc32_hw_aligned(remainder, p, vecCount),
+            folly::detail::crc32_hw_aligned_vpclmul(remainder, p, vecCount));
+      };
+      for (size_t vecCount = 0; vecCount <= 40; vecCount++) {
+        check(vecCount);
+      }
+      for (size_t vecCount : kLongVecCounts) {
+        check(vecCount);
+      }
+    }
+  }
+}
+#endif
+
+// The static buffer above is far too large for a read past the end of the
+// input to land anywhere it would be noticed. These are sized exactly, so
+// under ASAN a fold that over-reads faults instead of returning the right
+// answer by accident. Lengths straddle the 16-byte vector boundary and the
+// 128-byte point where the 256-bit fold takes over from the 128-bit one.
+TEST(Checksum, crc32HardwareExactSizedBuffer) {
+  if (!folly::detail::crc32_hw_supported()) {
+    LOG(WARNING) << "skipping hardware-accelerated CRC-32 tests"
+                 << " (not supported on this CPU)";
+    return;
+  }
+  constexpr size_t kLengths[] = {
+      1, 15, 16, 17, 31, 32, 127, 128, 129, 143, 144, 145, 255, 256, 257, 4097};
+  for (size_t length : kLengths) {
+    SCOPED_TRACE(testing::Message() << "length=" << length);
+    auto data = std::make_unique<uint8_t[]>(length);
+    memcpy(data.get(), buffer, length);
+    EXPECT_EQ(
+        folly::detail::crc32_sw(data.get(), length, ~0U),
+        folly::detail::crc32_hw(data.get(), length, ~0U));
   }
 }
 

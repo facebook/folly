@@ -58,7 +58,14 @@ uint32_t crc32_hw(
   }
 
   if (nbytes >= 16) {
-    sum = crc32_hw_aligned(sum, (const __m128i*)(data + offset), nbytes / 16);
+    const __m128i* vec = (const __m128i*)(data + offset);
+#if FOLLY_HAS_CRC32_VPCLMUL
+    sum = crc32_vpclmul_usable()
+        ? crc32_hw_aligned_vpclmul(sum, vec, nbytes / 16)
+        : crc32_hw_aligned(sum, vec, nbytes / 16);
+#else
+    sum = crc32_hw_aligned(sum, vec, nbytes / 16);
+#endif
     offset += nbytes & ~15;
     nbytes &= 15;
   }

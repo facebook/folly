@@ -102,6 +102,32 @@ uint32_t crc32_hw(
 #if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 uint32_t crc32_hw_aligned(
     uint32_t remainder, const __m128i* p, size_t vec_count);
+
+// MSVC cannot apply a target attribute to a function, so
+// FOLLY_TARGET_ATTRIBUTE expands to nothing and the VPCLMULQDQ intrinsics fail
+// to compile rather than being gated. Compile the fold out there.
+#if defined(_MSC_VER)
+#define FOLLY_HAS_CRC32_VPCLMUL 0
+#else
+#define FOLLY_HAS_CRC32_VPCLMUL 1
+#endif
+
+#if FOLLY_HAS_CRC32_VPCLMUL
+/**
+ * Whether the 256-bit VPCLMULQDQ fold below can be used on this CPU.
+ *
+ * Deliberately a function rather than a preprocessor test: the kernel carries
+ * its own target attribute, so whether it is usable depends on the CPU, never
+ * on the ISA flags of whichever translation unit happens to include this.
+ */
+bool crc32_vpclmul_usable();
+
+/** crc32_hw_aligned, folding 256 bits at a time. Bit-identical output. */
+uint32_t crc32_hw_aligned_vpclmul(
+    uint32_t remainder, const __m128i* p, size_t vec_count);
+#endif
+#else
+#define FOLLY_HAS_CRC32_VPCLMUL 0
 #endif
 
 /**

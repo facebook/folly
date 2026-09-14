@@ -19,6 +19,7 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/boost:boost_preprocessor",
         "//folly:bits",
         "//folly:cpp_attributes",
+        "//folly:cpu_id",
     ],
     exported_deps = [
         "//folly:portability",

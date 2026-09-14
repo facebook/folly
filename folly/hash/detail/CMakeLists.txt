@@ -26,6 +26,7 @@ folly_add_library(
   DEPS
     folly_bits
     folly_cpp_attributes
+    folly_cpu_id
     folly_external_nvidia_hash_detail_crc32c_detail
   EXPORTED_DEPS
     folly_external_nvidia_hash_checksum
