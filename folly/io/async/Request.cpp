@@ -422,13 +422,13 @@ RequestContext::State::insertNewData(
     RequestContext::State::Combined* cur,
     const RequestToken& token,
     std::unique_ptr<RequestData>& data,
-    bool found) {
+    bool tokenWasPresent) {
   Combined* newCombined = nullptr;
-  // Update value to point to the new data.
-  const bool willInsertCallbackData =
-      data && data->hasCallback() && !cur->callbackData_.contains(data.get());
-  if ((!found || willInsertCallbackData) && cur->needExpand()) {
-    // Replace the current Combined with an expanded one
+  const bool willInsertCallbackData = data && data->hasCallback();
+  // We can skip the needExpand() check if the token insertion does
+  // not need expansion since it was just erased, so it can take the
+  // same slot, and we're not inserting into callbackData.
+  if ((!tokenWasPresent || willInsertCallbackData) && cur->needExpand()) {
     newCombined = expand(cur);
     cur = newCombined;
     cur->acquireDataRefs();

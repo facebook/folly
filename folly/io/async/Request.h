@@ -543,7 +543,7 @@ class RequestContext {
         Combined* cur,
         const RequestToken& token,
         std::unique_ptr<RequestData>& data,
-        bool found);
+        bool tokenWasPresent);
   }; // State
   State state_;
   // Shallow copies keep a note of the root context
