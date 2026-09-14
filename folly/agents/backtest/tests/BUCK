@@ -37,3 +37,10 @@ python_unittest(
     network_access = network_access_utils.none(),
     deps = ["fbcode//folly/agents/backtest:run_scenario_lib"],
 )
+
+python_unittest(
+    name = "isolated_agent_test",
+    srcs = ["test_isolated_agent.py"],
+    network_access = network_access_utils.none(),
+    deps = ["fbcode//folly/agents/scripts:isolated_agent_lib"],
+)

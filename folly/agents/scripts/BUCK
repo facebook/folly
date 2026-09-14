@@ -1,9 +1,16 @@
 load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 
 oncall("fbcode_entropy_wardens_folly")
 
 export_file(
     name = "apply_diffs",
     src = "apply_diffs",
+    visibility = ["PUBLIC"],
+)
+
+python_library(
+    name = "isolated_agent_lib",
+    srcs = ["isolated_agent.py"],
     visibility = ["PUBLIC"],
 )
