@@ -517,6 +517,9 @@ class DynamicBoundedQueue {
     Weight capacity = getCapacity();
     Weight before = fetchAddDebit(weight);
     if (FOLLY_LIKELY(before + weight <= capacity)) {
+      if (FOLLY_UNLIKELY(before + weight > capacity / 2)) {
+        tryReduceDebit();
+      }
       return true;
     } else {
       subDebit(weight);
