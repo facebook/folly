@@ -27,37 +27,12 @@
 #include <utility>
 
 #include <folly/CppAttributes.h>
+#include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 
 namespace folly {
 
 namespace detail {
-
-/// indirect_rollback
-///
-/// A scope-guard for the allocate-then-construct sequences in indirect, which
-/// undoes the allocation unless dismissed. folly::makeGuard would be the
-/// natural choice but is not usable during constant evaluation, which
-/// indirect supports.
-template <typename Fn>
-class indirect_rollback {
- public:
-  constexpr explicit indirect_rollback(Fn fn) noexcept
-      : fn_{static_cast<Fn&&>(fn)} {}
-  indirect_rollback(indirect_rollback const&) = delete;
-  indirect_rollback& operator=(indirect_rollback const&) = delete;
-  constexpr ~indirect_rollback() {
-    if (live_) {
-      fn_();
-    }
-  }
-
-  constexpr void dismiss() noexcept { live_ = false; }
-
- private:
-  Fn fn_;
-  bool live_{true};
-};
 
 /// indirect_synth_three_way
 ///
@@ -152,7 +127,7 @@ class indirect {
   template <typename... Args>
   static constexpr pointer allocate_construct(Alloc& a, Args&&... args) {
     pointer p = traits::allocate(a, 1);
-    detail::indirect_rollback rollback{[&] { traits::deallocate(a, p, 1); }};
+    auto rollback = makeGuard([&] { traits::deallocate(a, p, 1); });
     traits::construct(a, std::to_address(p), std::forward<Args>(args)...);
     rollback.dismiss();
     return p;

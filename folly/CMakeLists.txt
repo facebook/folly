@@ -720,6 +720,7 @@ folly_add_library(
     Indirect.h
   EXPORTED_DEPS
     folly_cpp_attributes
+    folly_scope_guard
     folly_traits
 )
 
