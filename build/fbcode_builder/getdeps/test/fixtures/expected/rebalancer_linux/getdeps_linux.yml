@@ -56,9 +56,6 @@ jobs:
       name: Query paths
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages query-paths --recursive --src-dir=. rebalancer  >> "$GITHUB_OUTPUT"
 
-    - name: Fetch boost
-      if: ${{ steps.paths.outputs.boost_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests boost
     - name: Fetch clang19
       if: ${{ steps.paths.outputs.clang19_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests clang19
@@ -68,6 +65,9 @@ jobs:
     - name: Fetch cmake
       if: ${{ steps.paths.outputs.cmake_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests cmake
+    - name: Fetch boost
+      if: ${{ steps.paths.outputs.boost_SOURCE }}
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests boost
     - name: Fetch fmt
       if: ${{ steps.paths.outputs.fmt_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests fmt

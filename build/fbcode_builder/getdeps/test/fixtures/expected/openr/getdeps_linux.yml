@@ -38,15 +38,15 @@ jobs:
       name: Query paths
       run: python3 build/fbcode_builder/getdeps.py query-paths --recursive --src-dir=. openr  >> "$GITHUB_OUTPUT"
 
-    - name: Fetch boost
-      if: ${{ steps.paths.outputs.boost_SOURCE }}
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests boost
     - name: Fetch ninja
       if: ${{ steps.paths.outputs.ninja_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests ninja
     - name: Fetch cmake
       if: ${{ steps.paths.outputs.cmake_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests cmake
+    - name: Fetch boost
+      if: ${{ steps.paths.outputs.boost_SOURCE }}
+      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests boost
     - name: Fetch gflags
       if: ${{ steps.paths.outputs.gflags_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests gflags
