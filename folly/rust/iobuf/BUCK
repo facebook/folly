@@ -20,13 +20,15 @@ create_forwarding_aliases(
         "ovr_config//os:macos": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_mac() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
         "ovr_config//os:windows": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_win() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
     }),
-    platforms = [
-        CXX,
-        APPLE,
-        FBCODE,
-        WINDOWS,
-    ]
-    + ([ANDROID] if is_xplat() else []),
+    platforms = (CXX, FBCODE, WINDOWS),
+    visibility = ["PUBLIC"],
+) if is_xplat() else None
+
+# buildifier: disable=duplicated-name
+create_forwarding_aliases(
+    name = "iobuf",
+    actual_name = "fbsource//xplat/folly/rust/iobuf:_iobuf",
+    platforms = (ANDROID, APPLE),
     sdks = (IOS, MACOSX),
     visibility = ["PUBLIC"],
 ) if is_xplat() else None
@@ -39,13 +41,15 @@ create_forwarding_aliases(
         "ovr_config//os:macos": "fbcode//folly/rust/iobuf:_iobuf-ffi" if is_fbcode_mode_mac() else "fbsource//xplat/folly/rust/iobuf:_iobuf-ffi",
         "ovr_config//os:windows": "fbcode//folly/rust/iobuf:_iobuf-ffi" if is_fbcode_mode_win() else "fbsource//xplat/folly/rust/iobuf:_iobuf-ffi",
     }),
-    platforms = [
-        CXX,
-        APPLE,
-        FBCODE,
-        WINDOWS,
-    ]
-    + ([ANDROID] if is_xplat() else []),
+    platforms = (CXX, FBCODE, WINDOWS),
+    visibility = ["PUBLIC"],
+) if is_xplat() else None
+
+# buildifier: disable=duplicated-name
+create_forwarding_aliases(
+    name = "iobuf-ffi",
+    actual_name = "fbsource//xplat/folly/rust/iobuf:_iobuf-ffi",
+    platforms = (ANDROID, APPLE),
     sdks = (IOS, MACOSX),
     visibility = ["PUBLIC"],
 ) if is_xplat() else None
