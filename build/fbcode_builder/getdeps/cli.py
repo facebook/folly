@@ -529,7 +529,6 @@ class BuildCmd(ProjectCmdBase):
                         extra_cmake_defines, loader.build_opts
                     )
 
-                extra_b2_args = args.extra_b2_args or []
                 cmake_targets = args.cmake_target or ["install"]
 
                 if sources_changed or reconfigure or not os.path.exists(built_marker):
@@ -560,7 +559,6 @@ class BuildCmd(ProjectCmdBase):
                         final_install_prefix=loader.get_project_install_prefix(m),
                         extra_cmake_defines=extra_cmake_defines,
                         cmake_targets=(cmake_targets if m == manifest else ["install"]),
-                        extra_b2_args=extra_b2_args,
                     )
                     builder.build(reconfigure=reconfigure)
 
@@ -707,15 +705,6 @@ class BuildCmd(ProjectCmdBase):
             "--cmake-target",
             help=("Repeatable argument that specifies targets for cmake build."),
             default=[],
-            action="append",
-        )
-        parser.add_argument(
-            "--extra-b2-args",
-            help=(
-                "Repeatable argument that contains extra arguments to pass "
-                "to b2, which compiles boost. "
-                "e.g.: 'cxxflags=-fPIC' 'cflags=-fPIC'"
-            ),
             action="append",
         )
         parser.add_argument(

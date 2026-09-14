@@ -16,7 +16,6 @@ from typing import overload
 
 from .builder import (
     AutoconfBuilder,
-    Boost,
     CMakeBootStrapBuilder,
     CMakeBuilder,
     Iproute2Builder,
@@ -124,8 +123,6 @@ SCHEMA: dict[str, dict[str, object]] = {
     "homebrew": {"optional_section": True},
     "pps": {"optional_section": True},
     "preinstalled.env": {"optional_section": True},
-    "bootstrap.args": {"optional_section": True},
-    "b2.args": {"optional_section": True},
     "make.build_args": {"optional_section": True},
     "make.install_args": {"optional_section": True},
     "make.test_args": {"optional_section": True},
@@ -151,8 +148,6 @@ ALLOWED_EXPR_SECTIONS: list[str] = [
     "dependencies",
     "make.build_args",
     "make.install_args",
-    "bootstrap.args",
-    "b2.args",
     "download",
     "git",
     "install.files",
@@ -694,7 +689,6 @@ class ManifestParser:
         final_install_prefix: str | None = None,
         extra_cmake_defines: dict[str, str] | None = None,
         cmake_targets: list[str] | None = None,
-        extra_b2_args: list[str] | None = None,
     ) -> BuilderBase:
         builder = self.get_builder_name(ctx)
         build_in_src_dir = self.get("build", "build_in_src_dir", "false", ctx=ctx)
@@ -760,22 +754,6 @@ class ManifestParser:
                 inst_dir,
                 args,
                 conf_env_args,
-            )
-
-        if builder == "boost":
-            args = self.get_section_as_args("b2.args", ctx)
-            if extra_b2_args is not None:
-                args += extra_b2_args
-            return Boost(
-                loader,
-                dep_manifests,
-                build_options,
-                ctx,
-                self,
-                src_dir,
-                build_dir,
-                inst_dir,
-                args,
             )
 
         if builder == "cmake":
