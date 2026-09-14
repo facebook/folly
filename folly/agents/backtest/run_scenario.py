@@ -51,8 +51,12 @@ CHECKPOINT_TOOL_FILES = {
     "backtest-checkpoint": PurePosixPath("backtest/checkpoint.py"),
 }
 RESERVED_INPUT_NAMES = {"AGENTS.md", "AGENTS.override.md"}
+TASK_ROOT_INSTRUCTION = (
+    "`$W` is the task root. Resolve every task-relative path from `$W`. Start "
+    'shell commands with `cd "$W" &&`.\n\n'
+)
 RULE_LOADING_INSTRUCTION = (
-    "Read every rule listed in `rules/rules-inventory.md`, in order. Follow "
+    "Read every rule listed in `$W/rules/rules-inventory.md`, in order. Follow "
     "those rules for conditional loads; do not look for ambient rule files.\n\n"
 )
 
@@ -477,7 +481,9 @@ def prepare(
             checkpoint_run,
         )
         run.workdir.mkdir()
-        prompt_prefix = RULE_LOADING_INSTRUCTION if install_rules else ""
+        prompt_prefix = TASK_ROOT_INSTRUCTION
+        if install_rules:
+            prompt_prefix += RULE_LOADING_INSTRUCTION
         if critic_iterate_rounds is not None:
             prompt_prefix += f"c-i-{critic_iterate_rounds}\n\n"
         if checkpoint_run:
@@ -583,7 +589,7 @@ def _preserve_output(run: Run) -> bool:
 def _author_environment(run: Run, tool_bin: Path | None) -> dict[str, str]:
     environment = os.environ.copy()
     for name in tuple(environment):
-        if name.startswith(("CODEX_", "PYTHON")) or name in {
+        if name.startswith(("CODEX_", "GIT_", "PYTHON")) or name in {
             "BASH_ENV",
             "CRITIC_ITERATE_RULES_DIR",
             "ENV",
@@ -593,6 +599,7 @@ def _author_environment(run: Run, tool_bin: Path | None) -> dict[str, str]:
         }:
             environment.pop(name)
     environment["CODEX_HOME"] = str(run.codex_home)
+    environment["W"] = str(run.workdir)
     if tool_bin is not None:
         inherited_path = environment.get("PATH")
         environment["PATH"] = (
@@ -608,20 +615,43 @@ def _author_environment(run: Run, tool_bin: Path | None) -> dict[str, str]:
     return environment
 
 
-def _author_command(run: Run, codex: Path, model: str, effort: str) -> list[str]:
+def _initialize_isolated_codex_root(
+    root: Path,
+    environment: dict[str, str],
+    command_runner: CommandRunner,
+) -> None:
+    # Codex discovers project rules and skills from its Git root through its
+    # CWD. Other CLIs need an equivalent clean-start mode; Claude has
+    # --safe-mode. Do not generalize this Git boundary to other agents.
+    result = command_runner(
+        ["git", "init", "--quiet", str(root)],
+        check=False,
+        env=environment,
+        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+    )
+    if result.returncode:
+        error = result.stderr.decode(errors="replace").strip()
+        raise RunnerError(
+            "could not create private Codex Git root" + (f": {error}" if error else "")
+        )
+
+
+def _author_command(
+    run: Run, codex: Path, codex_cwd: Path, model: str, effort: str
+) -> list[str]:
     return [
         str(codex),
         "-a",
         "never",
         "exec",
-        "--skip-git-repo-check",
         "--json",
         "--model",
         model,
         "--config",
         f"model_reasoning_effort={json.dumps(effort)}",
         "--cd",
-        str(run.workdir),
+        str(codex_cwd),
         "-",
     ]
 
@@ -663,6 +693,13 @@ def _finish_run(run: Run, returncode: int) -> int:
     return 0
 
 
+def _cleanup_codex_cwd(run: Run, codex_cwd: Path) -> None:
+    try:
+        shutil.rmtree(codex_cwd)
+    except OSError as error:
+        _update_metadata(run, codex_cwd_cleanup_error=str(error))
+
+
 def launch(
     run: Run,
     codex: str | Path,
@@ -690,24 +727,31 @@ def launch(
         raise
 
     environment = _author_environment(run, tool_bin)
-    command = _author_command(run, codex_path, model, effort)
+    codex_cwd: Path | None = None
     try:
+        _initialize_isolated_codex_root(run.root, environment, command_runner)
+        codex_cwd = Path(tempfile.mkdtemp(prefix="codex-cwd.", dir=run.root))
         with (
             run.prompt.open("rb") as stdin,
             (run.root / "trace.jsonl").open("wb") as stdout,
             (run.root / "err.txt").open("wb") as stderr,
         ):
+            command = _author_command(run, codex_path, codex_cwd, model, effort)
             result = command_runner(
                 command,
+                cwd=codex_cwd,
                 stdin=stdin,
                 stdout=stdout,
                 stderr=stderr,
                 env=environment,
                 check=False,
             )
-    except OSError:
+    except (OSError, RunnerError):
         _update_metadata(run, status="launch-error")
         raise
+    finally:
+        if codex_cwd is not None:
+            _cleanup_codex_cwd(run, codex_cwd)
     return _finish_run(run, result.returncode)
 
 

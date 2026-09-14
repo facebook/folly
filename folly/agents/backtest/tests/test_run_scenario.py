@@ -122,8 +122,8 @@ class RunScenarioTest(unittest.TestCase):
 
         return commands, run
 
-    @staticmethod
     def fake_codex(
+        self,
         run: runner.Run,
         *,
         returncode: int,
@@ -137,11 +137,24 @@ class RunScenarioTest(unittest.TestCase):
         def execute(
             command: list[str],
             *,
-            stdout: BinaryIO,
-            stderr: BinaryIO,
+            cwd: str | Path | None = None,
+            stdout: BinaryIO | int,
+            stderr: BinaryIO | int,
             env: dict[str, str],
             **unused: object,
         ) -> subprocess.CompletedProcess[bytes]:
+            if command[0] == "git":
+                self.assertEqual(command, ["git", "init", "--quiet", str(run.root)])
+                (run.root / ".git").mkdir()
+                return subprocess.CompletedProcess(command, 0, b"", b"")
+            assert cwd is not None
+            assert not isinstance(stdout, int)
+            assert not isinstance(stderr, int)
+            workdir = Path(cwd)
+            self.assertEqual(workdir.parent, run.root)
+            self.assertEqual(list(workdir.iterdir()), [])
+            self.assertTrue((run.root / ".git").is_dir())
+            self.assertEqual(command[command.index("--cd") + 1], str(workdir))
             commands.append(command)
             environments.append(env)
             if output is not None:
@@ -471,9 +484,9 @@ class RunScenarioTest(unittest.TestCase):
 
         self.assertEqual(
             run.prompt.read_text(),
-            "Read every rule listed in `rules/rules-inventory.md`, in order. "
-            "Follow those rules for conditional loads; do not look for ambient "
-            "rule files.\n\nDo the task.\n",
+            runner.TASK_ROOT_INSTRUCTION
+            + runner.RULE_LOADING_INSTRUCTION
+            + "Do the task.\n",
         )
         self.assertTrue((run.workdir / "rules/rules-inventory.md").is_file())
         metadata = json.loads((run.root / "run.json").read_text())
@@ -493,7 +506,8 @@ class RunScenarioTest(unittest.TestCase):
         self.assertTrue(run.checkpoint)
         self.assertEqual(
             run.prompt.read_text(),
-            runner.RULE_LOADING_INSTRUCTION
+            runner.TASK_ROOT_INSTRUCTION
+            + runner.RULE_LOADING_INSTRUCTION
             + "c-i-0\n\n"
             + runner._checkpoint_instruction()
             + "Do the task.\n",
@@ -505,7 +519,8 @@ class RunScenarioTest(unittest.TestCase):
         self.assertTrue(default_run.checkpoint)
         self.assertEqual(
             default_run.prompt.read_text(),
-            runner.RULE_LOADING_INSTRUCTION
+            runner.TASK_ROOT_INSTRUCTION
+            + runner.RULE_LOADING_INSTRUCTION
             + runner._checkpoint_instruction()
             + "Do the task.\n",
         )
@@ -582,7 +597,10 @@ class RunScenarioTest(unittest.TestCase):
 
         run = self.prepare(install_rules=False)
 
-        self.assertEqual(run.prompt.read_text(), "Do the bare task.\n")
+        self.assertEqual(
+            run.prompt.read_text(),
+            runner.TASK_ROOT_INSTRUCTION + "Do the bare task.\n",
+        )
         self.assertEqual({path.name for path in run.workdir.iterdir()}, {"input.md"})
         self.assertFalse(run.install_rules)
         metadata = json.loads((run.root / "run.json").read_text())
@@ -715,35 +733,44 @@ class RunScenarioTest(unittest.TestCase):
             "ENV",
             "FOLLY_BACKTEST_RUN_DIR",
             "FOLLY_BACKTEST_WORKDIR",
+            "GIT_CEILING_DIRECTORIES",
+            "GIT_DIR",
+            "GIT_WORK_TREE",
             "ZDOTDIR",
         }
 
-        with mock.patch.dict(os.environ, dict.fromkeys(forbidden_environment, "set")):
+        with mock.patch.dict(
+            os.environ,
+            {
+                **dict.fromkeys(forbidden_environment, "set"),
+                "TMPDIR": str(self.scenario),
+            },
+        ):
             result = runner.launch(
                 run, codex, "model", "high", command_runner=command_runner
             )
 
         self.assertEqual(result, 0)
+        (command,) = commands
+        codex_cwd = Path(command[command.index("--cd") + 1])
         self.assertEqual(
-            commands,
+            command,
             [
-                [
-                    str(codex.resolve()),
-                    "-a",
-                    "never",
-                    "exec",
-                    "--skip-git-repo-check",
-                    "--json",
-                    "--model",
-                    "model",
-                    "--config",
-                    'model_reasoning_effort="high"',
-                    "--cd",
-                    str(run.workdir),
-                    "-",
-                ]
+                str(codex.resolve()),
+                "-a",
+                "never",
+                "exec",
+                "--json",
+                "--model",
+                "model",
+                "--config",
+                'model_reasoning_effort="high"',
+                "--cd",
+                str(codex_cwd),
+                "-",
             ],
         )
+        self.assertFalse(codex_cwd.exists())
         (environment,) = environments
         self.assertTrue(
             forbidden_environment.isdisjoint(environment),
@@ -751,6 +778,8 @@ class RunScenarioTest(unittest.TestCase):
         )
         tool_bin = run.root / "bin"
         self.assertEqual(environment["PATH"].split(os.pathsep, 1)[0], str(tool_bin))
+        self.assertEqual(environment["TMPDIR"], str(self.scenario))
+        self.assertEqual(environment["W"], str(run.workdir))
         for name, relative in runner.TOOL_FILES.items():
             self.assertEqual(
                 (tool_bin / name).resolve(), (self.rules_root / relative).resolve()
@@ -767,6 +796,24 @@ class RunScenarioTest(unittest.TestCase):
         self.assertEqual(metadata["status"], "complete")
         self.assertEqual(metadata["exit_code"], 0)
         self.assertEqual(metadata["executables"]["codex"], str(codex.resolve()))
+
+    def test_launch_preserves_result_when_cwd_cleanup_fails(self) -> None:
+        write(self.scenario / "draft.md", "draft")
+        self.manifest(inputs=[{"source": "draft.md", "destination": "output.md"}])
+        run, codex = self.prepare_launch()
+        _, _, command_runner = self.fake_codex(run, returncode=0, output="complete")
+
+        with mock.patch.object(
+            runner.shutil, "rmtree", side_effect=OSError("cleanup failed")
+        ):
+            result = runner.launch(
+                run, codex, "model", "high", command_runner=command_runner
+            )
+
+        self.assertEqual(result, 0)
+        metadata = json.loads((run.root / "run.json").read_text())
+        self.assertEqual(metadata["status"], "complete")
+        self.assertEqual(metadata["codex_cwd_cleanup_error"], "cleanup failed")
 
     def test_checkpoint_mode_installs_runtime_and_marks_bad_accounting(self) -> None:
         write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
@@ -786,6 +833,7 @@ class RunScenarioTest(unittest.TestCase):
         self.assertIn(f'paths=["{installed}"]', policy)
         self.assertEqual(environment["FOLLY_BACKTEST_RUN_DIR"], str(run.root))
         self.assertEqual(environment["FOLLY_BACKTEST_WORKDIR"], str(run.workdir))
+        self.assertEqual(environment["W"], str(run.workdir))
         self.assertTrue((run.root / "reviews").is_dir())
 
         (run.workdir / "output.md").write_text("complete")
@@ -799,7 +847,7 @@ class RunScenarioTest(unittest.TestCase):
         write(self.scenario / "draft.md", "draft")
         self.manifest(inputs=[{"source": "draft.md", "destination": "output.md"}])
         run, codex = self.prepare_launch()
-        _, _, command_runner = self.fake_codex(
+        commands, _, command_runner = self.fake_codex(
             run,
             returncode=7,
             output="partial",
@@ -812,6 +860,8 @@ class RunScenarioTest(unittest.TestCase):
         )
 
         self.assertEqual(result, 7)
+        codex_cwd = Path(commands[0][commands[0].index("--cd") + 1])
+        self.assertFalse(codex_cwd.exists())
         self.assertEqual((run.root / "output.md").read_text(), "partial")
         self.assertEqual((run.root / "trace.jsonl").read_text(), "trace\n")
         self.assertEqual((run.root / "err.txt").read_text(), "failure\n")
@@ -880,6 +930,9 @@ class RunScenarioTest(unittest.TestCase):
                     active_run: runner.Run = run,
                     **unused: object,
                 ) -> subprocess.CompletedProcess[bytes]:
+                    if command[0] == "git":
+                        (active_run.root / ".git").mkdir()
+                        return subprocess.CompletedProcess(command, 0, b"", b"")
                     output = active_run.workdir / "output.md"
                     if output_kind == "directory":
                         output.mkdir()
