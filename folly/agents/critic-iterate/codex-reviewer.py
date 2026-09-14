@@ -24,10 +24,11 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import BinaryIO, Optional, Sequence, TextIO
+from typing import Optional, Sequence, TextIO
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+import isolated_agent  # noqa: E402
 
-CODEX = "codex"
 REVIEW_MODEL_ENV = "CODEX_REVIEW_MODEL"
 REVIEW_EFFORT = "high"
 UNKNOWN_MODEL = "UNKNOWN-NOTIFY-USER"
@@ -109,16 +110,6 @@ def _install_cold_review_policy(
     )
 
 
-def _create_codex_home(
-    output_dir: Path, args: argparse.Namespace, wrapper_executable: Path
-) -> Path:
-    codex_home = output_dir / "codex-home"
-    codex_home.mkdir(mode=0o700)
-    if args.preamble == "fresh-review-preamble":
-        _install_cold_review_policy(codex_home, wrapper_executable, args.preamble_dir)
-    return codex_home
-
-
 def _review_model(wrapper_executable: Path) -> Optional[str]:
     """Return the invoking model; None lets Codex choose its default."""
     session_id = os.environ.get("CODEX_THREAD_ID") or os.environ.get("CODEX_SESSION_ID")
@@ -140,102 +131,91 @@ def _review_model(wrapper_executable: Path) -> Optional[str]:
     return None
 
 
-def _review_command(
-    sandbox: Optional[str], review_path: Path, model: Optional[str]
-) -> list[str]:
-    command = [CODEX]
-    if sandbox is not None:
-        command.extend(("-s", sandbox))
-    # Reviews are headless, so an approval prompt cannot be answered. Both
-    # preambles require the complete review in the final response, which
-    # --output-last-message captures as review.md.
-    command.extend(
-        [
-            "-a",
-            "never",
-            "exec",
-            "--ignore-user-config",
-            "--ephemeral",
-            "--json",
-        ]
-    )
-    if model is not None:
-        command.extend(("--model", model))
-    command.extend(
-        (
-            "--config",
-            f'model_reasoning_effort="{REVIEW_EFFORT}"',
-            "--output-last-message",
-            str(review_path),
-            "-",
-        )
-    )
-    return command
+def _review_environment_additions() -> dict[str, str]:
+    return {
+        name: os.environ[name]
+        for name in ("FOLLY_BACKTEST_RUN_DIR", "FOLLY_BACKTEST_WORKDIR")
+        if name in os.environ
+    }
 
 
-def _environment_without_git_overrides() -> dict[str, str]:
-    # Git variables can redirect initialization and Codex's repository view.
-    environment = os.environ.copy()
-    for name in tuple(environment):
-        if name.startswith("GIT_"):
-            environment.pop(name)
-    return environment
-
-
-def _create_isolated_codex_cwd(root: Path, errors: TextIO) -> Optional[Path]:
-    # Codex discovers project rules and skills from its Git root through its
-    # CWD. Other CLIs need an equivalent clean-start mode; Claude has
-    # --safe-mode. Do not generalize this Git boundary to other agents.
-    try:
-        result = subprocess.run(
-            ["git", "init", "--quiet", str(root)],
-            check=False,
-            env=_environment_without_git_overrides(),
-            stderr=errors,
-            stdout=subprocess.DEVNULL,
-        )
-        if result.returncode != 0:
-            print("could not create private Codex Git root", file=errors)
-            return None
-        workdir = root / "cwd"
-        workdir.mkdir()
-        return workdir
-    except OSError as error:
-        print(f"could not create private Codex workdir: {error}", file=errors)
-        return None
-
-
-def _execute_review(
-    command: list[str],
-    workdir: Path,
-    codex_home: Path,
-    model: Optional[str],
-    prompt: BinaryIO,
-    trace: BinaryIO,
+def _run_review(
+    args: argparse.Namespace,
+    wrapper_executable: Path,
+    output_dir: Path,
     errors: TextIO,
+    prompt_contents: bytes,
+    preamble_contents: bytes,
 ) -> int:
-    environment = _environment_without_git_overrides()
-    environment["CODEX_HOME"] = str(codex_home)
-    if model is not None:
-        environment[REVIEW_MODEL_ENV] = model
-    try:
-        result = subprocess.run(
-            command,
-            cwd=workdir,
-            env=environment,
-            stdin=prompt,
-            stdout=trace,
-            stderr=errors,
-            check=False,
+    sandbox = REVIEW_PROFILES[args.preamble]
+    with tempfile.TemporaryDirectory(prefix="codex-review.") as run_root:
+        try:
+            workspace = isolated_agent.CODEX.prepare(Path(run_root))
+        except (OSError, isolated_agent.IsolationError) as error:
+            print(f"could not create private Codex workspace: {error}", file=errors)
+            return 2
+        model = _review_model(wrapper_executable)
+        if model is None:
+            print(
+                "IMPORTANT FALLBACK: report in the final debrief that the "
+                "caller model was unavailable and Codex used its default.",
+                file=sys.stderr,
+            )
+        (output_dir / "metadata.json").write_text(
+            json.dumps(
+                {
+                    "model": model or "Codex default",
+                    "reasoning_effort": REVIEW_EFFORT,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
         )
-    except OSError as error:
-        print(f"could not run {CODEX}: {error}", file=errors)
-        return 2
-    return result.returncode
+        effective_prompt = output_dir / "effective-prompt.md"
+        effective_prompt.write_bytes(preamble_contents + b"\n\n" + prompt_contents)
+
+        try:
+            if args.preamble == "fresh-review-preamble":
+                _install_cold_review_policy(
+                    workspace.home, wrapper_executable, args.preamble_dir
+                )
+        except OSError as error:
+            print(f"could not create private Codex home: {error}", file=errors)
+            return 2
+
+        review_path = output_dir / "review.md"
+        with (
+            effective_prompt.open("rb") as prompt,
+            (output_dir / "run.jsonl").open("xb") as trace,
+        ):
+            try:
+                result = isolated_agent.CODEX.run(
+                    workspace,
+                    # Fresh review must launch its nested reviewer; cold review
+                    # has no such write and stays read-only.
+                    isolated_agent.Request(
+                        model=model,
+                        effort=REVIEW_EFFORT,
+                        access=sandbox or "default",
+                        ephemeral=True,
+                        response_path=review_path,
+                    ),
+                    stdin=prompt,
+                    stdout=trace,
+                    stderr=errors.buffer,
+                    additions=_review_environment_additions(),
+                )
+            except (OSError, isolated_agent.IsolationError) as error:
+                print(f"could not run Codex: {error}", file=errors)
+                return 2
+        if result.returncode != 0:
+            return result.returncode
+        return _emit_final_review(review_path, errors)
 
 
 def run(args: argparse.Namespace, wrapper_executable: Path) -> int:
-    sandbox = REVIEW_PROFILES[args.preamble]
     try:
         prompt_contents = args.prompt.read_bytes()
     except OSError as error:
@@ -263,58 +243,15 @@ def run(args: argparse.Namespace, wrapper_executable: Path) -> int:
         )
         print(f"REVIEW_OUTPUT_DIR={output_dir}", flush=True)
 
-        with (
-            (output_dir / "err.txt").open("x", encoding="utf-8") as errors,
-            tempfile.TemporaryDirectory(prefix="codex-review.") as workspace_root,
-        ):
-            workdir = _create_isolated_codex_cwd(Path(workspace_root), errors)
-            if workdir is None:
-                return 2
-            model = _review_model(wrapper_executable)
-            if model is None:
-                print(
-                    "IMPORTANT FALLBACK: report in the final debrief that the "
-                    "caller model was unavailable and Codex used its default.",
-                    file=sys.stderr,
-                )
-            (output_dir / "metadata.json").write_text(
-                json.dumps(
-                    {
-                        "model": model or "Codex default",
-                        "reasoning_effort": REVIEW_EFFORT,
-                    },
-                    indent=2,
-                    sort_keys=True,
-                )
-                + "\n",
-                encoding="utf-8",
+        with (output_dir / "err.txt").open("x", encoding="utf-8") as errors:
+            return _run_review(
+                args,
+                wrapper_executable,
+                output_dir,
+                errors,
+                prompt_contents,
+                preamble_contents,
             )
-            effective_prompt = output_dir / "effective-prompt.md"
-            effective_prompt.write_bytes(preamble_contents + b"\n\n" + prompt_contents)
-
-            # A private Codex home and empty working directory exclude ambient
-            # user and repository rules.
-            try:
-                codex_home = _create_codex_home(output_dir, args, wrapper_executable)
-            except OSError as error:
-                print(f"could not create private Codex home: {error}", file=errors)
-                return 2
-
-            # Fresh review leaves `-s` unset because a read-only outer sandbox
-            # blocks the nested cold review's private output. Cold review stays
-            # explicitly read-only.
-            review_path = output_dir / "review.md"
-            command = _review_command(sandbox, review_path, model)
-            with (
-                effective_prompt.open("rb") as prompt,
-                (output_dir / "run.jsonl").open("xb") as trace,
-            ):
-                result = _execute_review(
-                    command, workdir, codex_home, model, prompt, trace, errors
-                )
-            if result != 0:
-                return result
-            return _emit_final_review(review_path, errors)
     finally:
         os.umask(previous_umask)
 

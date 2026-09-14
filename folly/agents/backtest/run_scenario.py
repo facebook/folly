@@ -50,6 +50,7 @@ TOOL_FILES = {
 CHECKPOINT_TOOL_FILES = {
     "backtest-checkpoint": PurePosixPath("backtest/checkpoint.py"),
 }
+AGENT_RUNTIME_FILES = (PurePosixPath("scripts/isolated_agent.py"),)
 RESERVED_INPUT_NAMES = {"AGENTS.md", "AGENTS.override.md"}
 TASK_ROOT_INSTRUCTION = (
     "`$W` is the task root. Resolve every task-relative path from `$W`. Start "
@@ -298,12 +299,18 @@ def _generation_sources(
         CRITIC_ITERATE_SUPPORT_FILES if CRITIC_ITERATE_RULE in selected_rules else ()
     )
     tool_files = TOOL_FILES.values() if install_rules else ()
+    agent_runtime_files = AGENT_RUNTIME_FILES if install_rules else ()
     if _uses_checkpoints(manifest, install_rules):
         tool_files = (*tool_files, *CHECKPOINT_TOOL_FILES.values())
         sources.append((runner_path.parent / "checkpoint_accounting.py").resolve())
     sources.extend(
         _resolve_below(rules_root, path, "rule")
-        for path in (*selected_rules, *support_files, *tool_files)
+        for path in (
+            *agent_runtime_files,
+            *selected_rules,
+            *support_files,
+            *tool_files,
+        )
     )
     return tuple(dict.fromkeys(sources))
 

@@ -49,6 +49,7 @@ def make_tools(rules_root: Path) -> None:
     for relative in (
         *runner.TOOL_FILES.values(),
         *runner.CHECKPOINT_TOOL_FILES.values(),
+        *runner.AGENT_RUNTIME_FILES,
     ):
         executable(rules_root / relative)
 
@@ -273,6 +274,7 @@ class RunScenarioTest(unittest.TestCase):
                 "shared.md",
                 "agents/writing.md",
                 "agents/critic-iterate/codex-reviewer.py",
+                "agents/scripts/isolated_agent.py",
             }.issubset(status)
         )
         self.assertNotIn("scenario/prompt.no-rules.md", status)
@@ -382,6 +384,7 @@ class RunScenarioTest(unittest.TestCase):
         self.assertNotIn("scenario/prompt.md", status)
         self.assertFalse(any("writing.md" in argument for argument in status))
         self.assertFalse(any("codex-reviewer.py" in argument for argument in status))
+        self.assertFalse(any("isolated_agent.py" in argument for argument in status))
 
     def test_generation_revision_rejects_multiple_checkouts(self) -> None:
         agents_root = self.root / "rules-checkout/folly/agents"
