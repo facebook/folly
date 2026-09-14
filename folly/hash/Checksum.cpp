@@ -244,9 +244,30 @@ uint32_t crc32_sw(
 
 } // namespace detail
 
+namespace {
+#if FOLLY_X64
+// The fast-crc32 generated kernels are tuned for Intel. Above 4096 bytes they
+// beat crc32c_hw on Xeon (1.10x at 8KiB, 1.63x at 1MiB) and lose to it on every
+// AMD part measured, at every size from 4KiB to 4MiB (0.70x-0.85x on Zen 3).
+// Vendor and size are one decision, so they are answered in one place.
+bool crc32c_prefer_generated(size_t nbytes) {
+  // Size first: most callers are below the threshold and this way they never
+  // touch the guard variable.
+  if (nbytes <= 4096) {
+    return false;
+  }
+  static const bool isIntel = folly::CpuId().vendor_intel();
+  return isIntel;
+}
+#endif
+} // namespace
+
 uint32_t crc32c(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
-#if defined(FOLLY_ENABLE_AVX512_CRC32C_V8S3X4)
-  if (detail::crc32c_hw_supported_avx512() && nbytes > 4096) {
+#if FOLLY_X64
+  // available() is a cross-library call that does not inline, so it goes last:
+  // a caller below the threshold must not pay for it.
+  if (crc32c_prefer_generated(nbytes) && detail::crc32c_hw_supported_avx512() &&
+      detail::avx512_crc32c_v8s3x4_available()) {
     return detail::avx512_crc32c_v8s3x4(data, nbytes, startingChecksum);
   }
 #endif
@@ -267,8 +288,8 @@ uint32_t crc32c(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
 #endif
 
   if (detail::crc32c_hw_supported()) {
-#if defined(FOLLY_ENABLE_SSE42_CRC32C_V8S3X3)
-    if (nbytes > 4096) {
+#if FOLLY_X64 && defined(FOLLY_ENABLE_SSE42_CRC32C_V8S3X3)
+    if (crc32c_prefer_generated(nbytes)) {
       return detail::sse_crc32c_v8s3x3(data, nbytes, startingChecksum);
     }
 #endif

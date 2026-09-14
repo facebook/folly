@@ -13,6 +13,9 @@ namespace folly::detail {
 CRC_EXPORT uint32_t avx512_crc32c_v8s3x4(const uint8_t*, size_t, uint32_t) {
   abort(); // not implemented on this platform
 }
+CRC_EXPORT bool avx512_crc32c_v8s3x4_available() {
+  return false;
+}
 } // namespace folly::detail
 #else
 #include <nmmintrin.h> // @donotremove
@@ -56,6 +59,10 @@ static uint32_t xnmodp(uint64_t n) /* x^n mod P, in log(n) time */ {
 
 CRC_AINLINE __m128i crc_shift(uint32_t crc, size_t nbytes) {
   return clmul_scalar(crc, xnmodp(nbytes * 8 - 33));
+}
+
+CRC_EXPORT bool avx512_crc32c_v8s3x4_available() {
+  return true;
 }
 
 FOLLY_TARGET_ATTRIBUTE("avx512f,avx512vl,sse4.2")

@@ -9,4 +9,9 @@
 
 namespace folly::detail {
 uint32_t avx512_crc32c_v8s3x4(const uint8_t* buf, size_t len, uint32_t crc0);
+
+// Whether this library compiled the real kernel rather than the
+// not-implemented stub. Only this library can answer that; it depends on the
+// flags applied to this target, which a caller cannot observe.
+bool avx512_crc32c_v8s3x4_available();
 }

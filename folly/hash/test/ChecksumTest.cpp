@@ -97,6 +97,14 @@ void testCRC32CContinuation(
   }
 }
 
+// crc32c_hw_supported_avx512() asks about the CPU. Whether this build linked
+// the real kernel or the abort() stub is a separate question, and only the
+// kernel's own library can answer it.
+bool avx512CrcUsable() {
+  return folly::detail::crc32c_hw_supported_avx512() &&
+      folly::detail::avx512_crc32c_v8s3x4_available();
+}
+
 void testMatchesBoost32Type() {
   for (auto expected : expectedResults) {
     boost::crc_32_type result;
@@ -193,7 +201,7 @@ TEST(Checksum, crc32cContinuationHardwareSse42) {
 }
 
 TEST(Checksum, crc32cHardwareAvx512) {
-  if (folly::detail::crc32c_hw_supported_avx512()) {
+  if (avx512CrcUsable()) {
     testCRC32C(folly::detail::avx512_crc32c_v8s3x4);
   } else {
 #if FOLLY_X64
@@ -204,7 +212,7 @@ TEST(Checksum, crc32cHardwareAvx512) {
 }
 
 TEST(Checksum, crc32cHardwareEqAvx512) {
-  if (folly::detail::crc32c_hw_supported_avx512()) {
+  if (avx512CrcUsable()) {
     for (size_t i = 0; i < 1000; i++) {
       auto sw = folly::detail::crc32c_sw(buffer, i, 0);
       auto hw = folly::detail::avx512_crc32c_v8s3x4(buffer, i, 0);
@@ -219,7 +227,7 @@ TEST(Checksum, crc32cHardwareEqAvx512) {
 }
 
 TEST(Checksum, crc32cContinuationHardwareAvx512) {
-  if (folly::detail::crc32c_hw_supported_avx512()) {
+  if (avx512CrcUsable()) {
     testCRC32CContinuation(folly::detail::avx512_crc32c_v8s3x4);
   } else {
 #if FOLLY_X64
@@ -321,7 +329,7 @@ TEST(Checksum, crc32clargeBuffers) {
     auto crcHw = folly::detail::crc32c_hw(bufp, kLargeBufSz, ~0);
     ASSERT_EQ(kCrc, crcHw);
   }
-  if (folly::detail::crc32c_hw_supported_avx512()) {
+  if (avx512CrcUsable()) {
     auto crcAvx = folly::detail::avx512_crc32c_v8s3x4(bufp, kLargeBufSz, ~0);
     ASSERT_EQ(kCrc, crcAvx);
   }
@@ -343,6 +351,40 @@ TEST(Checksum, crc32cAutodetect) {
 
 TEST(Checksum, crc32cContinuationAutodetect) {
   testCRC32CContinuation(folly::crc32c);
+}
+
+// crc32c() selects between crc32c_hw and the generated kernels on a 4096-byte
+// threshold, so the two sides of it run different code. expectedResults jumps
+// from 17 bytes straight to 2MiB, and which kernel the threshold selects is
+// vendor-dependent, so the generated ones are also tested directly rather than
+// only through whichever crc32c() happens to reach on the host running this.
+TEST(Checksum, crc32cEqAcrossDispatchThreshold) {
+  constexpr size_t kOffsets[] = {0, 1, 8, 15};
+  for (uint32_t startingChecksum : {0U, ~0U}) {
+    for (size_t offset : kOffsets) {
+      for (size_t length = 4080; length <= 4200; length++) {
+        SCOPED_TRACE(
+            testing::Message()
+            << "startingChecksum=" << startingChecksum << " offset=" << offset
+            << " length=" << length);
+        const uint8_t* data = buffer + offset;
+        const uint32_t sw =
+            folly::detail::crc32c_sw(data, length, startingChecksum);
+        ASSERT_EQ(sw, folly::crc32c(data, length, startingChecksum));
+        if (folly::detail::crc32c_hw_supported_sse42()) {
+          ASSERT_EQ(
+              sw,
+              folly::detail::sse_crc32c_v8s3x3(data, length, startingChecksum));
+        }
+        if (avx512CrcUsable()) {
+          ASSERT_EQ(
+              sw,
+              folly::detail::avx512_crc32c_v8s3x4(
+                  data, length, startingChecksum));
+        }
+      }
+    }
+  }
 }
 
 TEST(Checksum, crc32) {
