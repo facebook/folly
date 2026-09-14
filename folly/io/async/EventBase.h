@@ -786,7 +786,7 @@ class EventBase
    * - In strict mode (strictLoopThread = true), isInEventBaseThread() always
    *   returns false. This is to support use cases in which the loop is run by a
    *   dedicated executor, possibly not continuously, so it is safe to rely on
-   *   isInEventBaseThread() from any thread with with no risk of races. In this
+   *   isInEventBaseThread() from any thread with no risk of races. In this
    *   mode, the behavior is equivalent to inRunningEventBaseThread().
    */
   bool isInEventBaseThread() const;

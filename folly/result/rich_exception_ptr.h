@@ -524,7 +524,7 @@ class rich_exception_ptr_impl : protected B {
           "rich_exception_ptr::operator== invalid for 2 small value uintptrs",
           false);
       // The fallback could trivally compare `get_uintptr()`, to return `true`
-      // correctly sometimes, but the the right comparison semantics must
+      // correctly sometimes, but the right comparison semantics must
       // actually be determined by `result<T>` that knows the small-value type.
       return false;
     }

@@ -96,7 +96,7 @@ using detail::decay_t;
  *      }
  *
  *  Note: If passed an rvalue, invokes the move-ctor, not the copy-ctor. This
- *  can be used to to force a move, where just using std::move would not:
+ *  can be used to force a move, where just using std::move would not:
  *
  *      folly::copy(std::move(data)); // force-move, not just a cast to &&
  *
