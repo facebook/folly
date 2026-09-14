@@ -1,0 +1,57 @@
+21c21,22
+<       request.tracingId(), process(std::move(request)));
+---
+>       static_cast<uintptr_t>(request.tracingId()),
+>       process(std::move(request)));
+39,40c40,41
+< active while the wrapped task runs and is removed when that task completes,
+< throws, or is cancelled or destroyed.
+---
+> active while the wrapped task runs. It is removed when the task exits normally
+> or exceptionally, or when the wrapper is destroyed.
+57,59c58,60
+< The final public C++ name and exact signature of that presence-aware slot are
+< not specified here. Code must not depend on the older convention in which a
+< parallel integer array used zero for untagged frames.
+---
+> The public C++ name and exact signature of that presence-aware slot remain
+> unresolved. Code must not depend on a parallel integer array that uses zero for
+> untagged frames.
+73a75,85
+> For example, a trace through nested scopes may contain:
+> 
+> | Displayed frame | Metadata slot |
+> | --------------- | ------------- |
+> | leaf             | empty         |
+> | inner owner      | present: `0`  |
+> | outer owner      | present: `7`  |
+> 
+> The effective value is zero, not seven. Selecting the first nonzero payload
+> would violate the contract.
+> 
+107,111c119,123
+< The metadata-aware in-process async-stack reader returns one metadata slot for
+< each displayed stack address. Synthetic metadata frames are an internal
+< encoding: they do not appear as addresses and must not be symbolized. An
+< address-only reader returns the ordinary stack with those synthetic frames
+< removed.
+---
+> The implementation inserts a synthetic metadata node below the real async
+> frame that owns the annotation. The metadata-aware in-process async-stack
+> reader returns one metadata slot for each displayed stack address. Synthetic
+> nodes do not appear as addresses and must not be symbolized. An address-only
+> reader returns the ordinary stack with those nodes removed.
+142,143c154,155
+< until there are concrete 32-bit use cases. This does not make all of Folly fail
+< to build on 32-bit platforms.
+---
+> until there are concrete 32-bit use cases. Code that must consume metadata is
+> therefore not portable to 32-bit builds under this contract.
+149,151c161,163
+< No uniform metadata-reader contract across Windows, macOS, libc++, and
+< libstdc++ is established here. The coroutine wrapper itself does not require a
+< specific standard-library implementation, but debugger and profiler support is
+---
+> This contract does not establish that every metadata reader is available on
+> both Windows and macOS, or with both libc++ and libstdc++. The coroutine wrapper
+> does not impose a standard-library choice, but debugger and profiler support is

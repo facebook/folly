@@ -18,17 +18,15 @@ It is one observed output, not a gold answer.
 
 Below, `apply_diffs` is short for `../../../../scripts/apply_diffs`.
 
-- **Initial draft:**
-  `apply_diffs output-author.md output-author-to-initial.diff`
-- **Author review:** [output-author.md](output-author.md)
-- **Review 1:**
-  `apply_diffs output.md output-review5-to-review4.diff output-review4-to-review3.diff output-review3-to-review2.diff output-review2-to-review1.diff`
-- **Review 2:** truncate the Review 1 command after
-  `output-review3-to-review2.diff`
-- **Review 3:** truncate the Review 1 command after
-  `output-review4-to-review3.diff`
-- **Review 4:** truncate the Review 1 command after
-  `output-review5-to-review4.diff`
+- **Initial draft:** [output-initial.md](output-initial.md)
+- **Author review:**
+  `apply_diffs output-initial.md output-initial-to-author.diff`
+- **Review 1:** [output-review1.md](output-review1.md)
+- **Review 2:** `apply_diffs output-review1.md output-review1-to-review2.diff`
+- **Review 3:**
+  `apply_diffs output-review1.md output-review1-to-review2.diff output-review2-to-review3.diff`
+- **Review 4:**
+  `apply_diffs output-review1.md output-review1-to-review2.diff output-review2-to-review3.diff output-review3-to-review4.diff`
 - **Review 5:** [output.md](output.md)
 
 ## Review

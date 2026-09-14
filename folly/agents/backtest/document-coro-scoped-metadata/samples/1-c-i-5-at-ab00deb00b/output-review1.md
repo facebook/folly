@@ -1,14 +1,16 @@
 # Coroutine-scoped metadata
 
-Coroutine-scoped metadata attaches an opaque value to a `folly::coro::Task`
-and the work that it awaits. Stack readers can use that value to attribute work
-to a request, job, tenant, or another application-defined scope without adding
-state to every coroutine promise or executor hop.
+`co_withMetadata()` lets application code attach an opaque `uintptr_t` value to
+a `folly::coro::Task`. The value is intended to let an in-process stack walker
+attribute executing frames to a request, job, tenant, or another
+application-defined scope. Attaching is available, but no finalized public C++
+reader currently exposes presence-preserving values.
 
-The scope follows Folly's logical async stack. It survives suspension and
-executor changes, but it does not automatically cross an operation that starts
-a new async stack. The current heap and sampling profilers also do not capture
-the value.
+The value follows the wrapped task and ordinary tasks it `co_await`s, including
+across suspension and executor changes. Work started with detached ancestry,
+such as an `AsyncScope::add()` child, does not inherit it unless the child is
+wrapped explicitly. Heap and sampling profilers do not currently transport the
+value.
 
 ## Apply metadata to a task
 
@@ -50,21 +52,20 @@ interpret them. In particular:
 - Folly does not dereference the value or manage an object that it may encode.
 
 Presence is represented separately from the value. A reader must therefore use
-the presence-aware metadata result rather than compare the payload with zero.
-The in-process reader's metadata slot has optional semantics: an empty result
-means that the frame is untagged, while a present result may contain any
+the presence-aware metadata result rather than compare the payload with zero. A
+conforming in-process reader's metadata slot has optional semantics: an empty
+result means that the frame is untagged, while a present result may contain any
 `uintptr_t`, including zero.
 
-The public C++ name and exact signature of that presence-aware slot remain
-unresolved. Code must not depend on a parallel integer array that uses zero for
-untagged frames.
+Code must not depend on a parallel integer array that uses zero for untagged
+frames.
 
 ## Nesting and isolation
 
-Scopes nest according to the async call chain. If code with value `outer`
-awaits a task wrapped with value `inner`, a metadata-aware stack reader exposes
-both annotations. The inner value is effective while that task runs. When the
-inner task exits, the outer value is restored.
+Scopes nest according to the async call chain. If code with value `outer` awaits
+a task wrapped with value `inner`, a metadata-aware stack reader exposes both
+annotations. The inner value is effective while that task runs. When the inner
+task exits, the outer value is restored.
 
 The reader reports metadata sparsely. Each annotation belongs to the real async
 frame immediately above its scope boundary. It is not copied onto every
@@ -76,9 +77,9 @@ For example, a trace through nested scopes may contain:
 
 | Displayed frame | Metadata slot |
 | --------------- | ------------- |
-| leaf             | empty         |
-| inner owner      | present: `0`  |
-| outer owner      | present: `7`  |
+| leaf            | empty         |
+| inner owner     | present: `0`  |
+| outer owner     | present: `7`  |
 
 The effective value is zero, not seven. Selecting the first nonzero payload
 would violate the contract.
@@ -109,24 +110,33 @@ scope.add(folly::coro::co_withExecutor(
 co_await scope.joinAsync();
 ```
 
-The same rule applies to genuinely detached or escaping work. The metadata
-scope owns a node in the wrapper coroutine frame; retaining its parent link
-after the wrapper has finished would be unsafe. A new async stack must establish
-its own metadata scope.
+The same rule applies to genuinely detached or escaping work. The metadata scope
+owns a node in the wrapper coroutine frame; retaining its parent link after the
+wrapper has finished would be unsafe. A new async stack must establish its own
+metadata scope.
 
 ## Reading metadata
 
-The implementation inserts a synthetic metadata node below the real async
-frame that owns the annotation. The metadata-aware in-process async-stack
-reader returns one metadata slot for each displayed stack address. Synthetic
-nodes do not appear as addresses and must not be symbolized. An address-only
-reader returns the ordinary stack with those nodes removed.
+No finalized public C++ interface currently exposes the required
+presence-preserving, per-frame result. This is a blocking gap for OSS code that
+needs to read the value. The result must have the semantics below, but its type
+name, include, and callable signature remain unresolved.
+
+The implementation inserts a synthetic metadata node below the real async frame
+that owns the annotation. A conforming metadata-aware reader returns one
+metadata slot for each displayed stack address. It omits synthetic nodes from
+the address list because they cannot be symbolized.
+
+The address-only `folly::symbolizer::getAsyncStackTraceSafe()` path removes the
+synthetic nodes. Do not assume every async-stack walker does:
+`getAsyncStackTraceFromInitialFrame()` can currently return the marker cookie.
+Callers of that API must filter metadata nodes before symbolizing the trace.
 
 A bounded read can omit an outer annotation when its owning frame lies beyond
 the returned portion of the trace. Absence in a truncated trace therefore does
 not prove that no outer scope exists.
 
-Reading is supported when the reader is either:
+A reader of the underlying chain is supported only when it is either:
 
 - running on the same thread, including an interruption of that thread; or
 - inspecting a stopped target, as a debugger may do.
@@ -137,9 +147,9 @@ contract.
 ## Profiler and debugger support
 
 Attaching metadata does not currently make it available in heap-profiler or
-sampling-profiler output. Those paths collect addresses but do not transport
-the metadata payload. In particular, heap-profiler samples with the same stack
-but different values may be combined before metadata could distinguish them.
+sampling-profiler output. Those paths collect addresses but do not transport the
+metadata payload. In particular, heap-profiler samples with the same stack but
+different values may be combined before metadata could distinguish them.
 
 Debugger and profiler walkers may recognize and hide the synthetic marker so
 that it does not appear as a bogus code frame. Marker filtering alone is not
@@ -148,19 +158,17 @@ tool explicitly documents a payload-carrying path.
 
 ## Portability
 
-The value width follows `uintptr_t`; it is not a fixed 64-bit wire format.
-64-bit in-process readers expose the presence-aware accessor. On 32-bit builds,
-the accessor is intentionally omitted, leaving the consumer contract open
-until there are concrete 32-bit use cases. Code that must consume metadata is
-therefore not portable to 32-bit builds under this contract.
+The value width follows `uintptr_t`; it is not a fixed 64-bit wire format. The
+intended 64-bit metadata slot exposes a presence-aware accessor. On 32-bit
+builds, that accessor is intentionally omitted. A 32-bit build is not globally
+rejected, but consuming coroutine metadata there is unsupported and has no
+public value-width contract.
 
-The marker representation supports 32-bit and 64-bit pointer widths. Other
-pointer widths are rejected at compile time. The coroutine API also requires
-`FOLLY_HAS_COROUTINES`.
+Pointer widths other than 32 and 64 bits are rejected at compile time. The
+coroutine API also requires `FOLLY_HAS_COROUTINES`.
 
-This contract does not establish that every metadata reader is available on
-both Windows and macOS, or with both libc++ and libstdc++. The coroutine wrapper
-does not impose a standard-library choice, but debugger and profiler support is
+This contract makes no availability guarantee for metadata readers on Windows or
+macOS, or with libc++ or libstdc++. Debugger and profiler support is
 backend-specific and currently incomplete.
 
 ## Cost model
