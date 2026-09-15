@@ -681,7 +681,10 @@ ssize_t AsyncUDPSocket::writeChain(
     const folly::SocketAddress& address,
     std::unique_ptr<folly::IOBuf>&& buf,
     WriteOptions options) {
-  CHECK(nontrivialCmsgs_.empty()) << "Nontrivial options are not supported";
+  if (!nontrivialCmsgs_.empty()) {
+    errno = EOPNOTSUPP;
+    return -1;
+  }
   int msg_flags = options.zerocopy ? getZeroCopyFlags() : 0;
   iovec vec[16];
   size_t iovec_len = buf->fillIov(vec, sizeof(vec) / sizeof(vec[0])).numIovecs;
@@ -750,8 +753,10 @@ ssize_t AsyncUDPSocket::writeChain(
     memcpy(CMSG_DATA(cm), &txtime, sizeof(txtime));
   }
 #else
-  CHECK_LT(options.gso, 1) << "GSO not supported";
-  CHECK_LT(options.txTime.count(), 1) << "TX_TIME not supported";
+  if (options.gso >= 1 || options.txTime.count() >= 1) {
+    errno = EOPNOTSUPP;
+    return -1;
+  }
 #endif
 
   auto ret = sendmsg(fd_, &msg, msg_flags);
@@ -995,7 +1000,10 @@ ssize_t AsyncUDPSocket::writevWithCmsgs(
     errno = EOPNOTSUPP;
     return -1;
   }
-  CHECK_LT(options.gso, 1) << "GSO not supported";
+  if (options.gso >= 1) {
+    errno = EOPNOTSUPP;
+    return -1;
+  }
 #ifdef _WIN32
   return netops::wsaSendMsgDirect(fd_, msg.getMsg());
 #else
@@ -1040,7 +1048,10 @@ int AsyncUDPSocket::writemGSO(
   constexpr size_t kSmallSizeMax = 40;
   char* controlPtr = nullptr;
 #ifndef FOLLY_HAVE_MSG_ERRQUEUE
-  CHECK(!options) << "GSO not supported";
+  if (options) {
+    errno = EOPNOTSUPP;
+    return -1;
+  }
 #endif
   maybeUpdateDynamicCmsgs();
   size_t singleControlBufSize = 1;
@@ -1097,7 +1108,10 @@ int AsyncUDPSocket::writemGSOv(
   constexpr size_t kSmallSizeMax = 40;
   char* controlPtr = nullptr;
 #ifndef FOLLY_HAVE_MSG_ERRQUEUE
-  CHECK(!options) << "GSO not supported";
+  if (options) {
+    errno = EOPNOTSUPP;
+    return -1;
+  }
 #endif
   maybeUpdateDynamicCmsgs();
   size_t singleControlBufSize = 1;

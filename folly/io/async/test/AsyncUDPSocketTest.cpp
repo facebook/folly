@@ -1383,6 +1383,32 @@ TEST_F(AsyncUDPSocketTest, TestWriteWithCmsgsErrorPaths) {
   EXPECT_EQ(-1, socket_->writeWithCmsgs(addr, nullBuf, cmsgs));
   EXPECT_EQ(EINVAL, errno);
 
+  // setNontrivialCmsgs() entries are unsupported on the single-IOBuf
+  // writeChain() path (only writeWithCmsgs() and friends serialize them).
+  {
+    struct linger sl{
+        .l_onoff = 1,
+        .l_linger = 123,
+    };
+    folly::SocketNontrivialCmsgMap nontrivialCmsgs;
+    nontrivialCmsgs[{SOL_SOCKET, SO_LINGER}] =
+        std::string(reinterpret_cast<const char*>(&sl), sizeof(sl));
+    socket_->setNontrivialCmsgs(nontrivialCmsgs);
+
+    EXPECT_CALL(*netOpsDispatcher, sendmsg(_, _, _)).Times(0);
+    errno = 0;
+    EXPECT_EQ(
+        -1,
+        socket_->writeChain(
+            addr,
+            folly::IOBuf::copyBuffer("hey"),
+            folly::AsyncUDPSocket::WriteOptions(
+                0 /*gsoVal*/, false /* zerocopyVal*/)));
+    EXPECT_EQ(EOPNOTSUPP, errno);
+    testing::Mock::VerifyAndClearExpectations(netOpsDispatcher.get());
+    socket_->setNontrivialCmsgs(folly::SocketNontrivialCmsgMap{});
+  }
+
   // On a connected socket, sending anywhere else is rejected.
   socket_->connect(addr);
   folly::SocketAddress other("127.0.0.1", 10001);
