@@ -49,3 +49,9 @@ fbcode/cachelib/public_tld = .
 ^fbcode/cachelib/public_tld/website/node_modules(/|$)
 ^fbcode/cachelib/public_tld/website/build(/|$)
 ^fbcode/cachelib/public_tld/website/\.rewrite-lockfile\.fb$
+
+[cmake.defines.test=on]
+BUILD_TESTS=ON
+
+[cmake.defines.test=off]
+BUILD_TESTS=OFF
