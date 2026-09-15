@@ -41,7 +41,6 @@
  *  * std::invoke_result
  *  * std::invoke_result_t
  *  * std::is_invocable
- *  * std::is_invocable_v
  *  * std::is_invocable_r
  *  * std::is_invocable_r_v
  *  * std::is_nothrow_invocable
@@ -241,14 +240,10 @@ using invoke_result = invoke_detail::invoke_result<void, F, A...>;
 //  mimic: std::invoke_result_t, C++17
 using invoke_detail::invoke_result_t;
 
-//  mimic: std::is_invocable_v, C++17
-template <typename F, typename... A>
-inline constexpr bool is_invocable_v =
-    invoke_detail::is_invocable_v<void, F, A...>;
-
 //  mimic: std::is_invocable, C++17
 template <typename F, typename... A>
-struct is_invocable : std::bool_constant<is_invocable_v<F, A...>> {};
+struct is_invocable
+    : std::bool_constant<invoke_detail::is_invocable_v<void, F, A...>> {};
 
 //  mimic: std::is_invocable_r_v, C++17
 template <typename R, typename F, typename... A>
@@ -397,7 +392,7 @@ struct invoke_first_match : private Invoker... {
   template <size_t... Idx, typename... A>
   static constexpr size_t first_(std::index_sequence<Idx...>, tag_t<A...>) {
     constexpr std::array<bool, sizeof...(Idx) + 1> r = {
-        {is_invocable_v<at<Idx> const&, A...>..., false}};
+        {invoke_detail::is_invocable_v<void, at<Idx> const&, A...>..., false}};
     for (size_t i = 0; i < sizeof...(Invoker); ++i) {
       if (r[i]) {
         return i;
@@ -958,7 +953,7 @@ struct tag_invoke_result
 ///         obj_key_equal>;
 ///     object_set objs;
 template <typename Arg, typename Fun>
-concept passable_to = is_invocable_v<Fun, Arg>;
+concept passable_to = invoke_detail::is_invocable_v<void, Fun, Arg>;
 
 #endif
 

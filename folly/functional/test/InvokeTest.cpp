@@ -16,6 +16,8 @@
 
 #include <folly/functional/Invoke.h>
 
+#include <type_traits>
+
 #include <folly/portability/GTest.h>
 
 class InvokeTest : public testing::Test {};
@@ -115,11 +117,11 @@ TEST_F(InvokeTest, invoke_result) {
 }
 
 TEST_F(InvokeTest, is_invocable) {
-  EXPECT_TRUE((folly::is_invocable_v<Fn, int, char>));
-  EXPECT_TRUE((folly::is_invocable_v<Fn, int, char*>));
-  EXPECT_FALSE((folly::is_invocable_v<Fn, int>));
-  EXPECT_TRUE((folly::is_invocable_v<Fn, Cv*>));
-  EXPECT_TRUE((folly::is_invocable_v<Fn, ImmCv*>));
+  EXPECT_TRUE((folly::is_invocable<Fn, int, char>::value));
+  EXPECT_TRUE((folly::is_invocable<Fn, int, char*>::value));
+  EXPECT_FALSE((folly::is_invocable<Fn, int>::value));
+  EXPECT_TRUE((folly::is_invocable<Fn, Cv*>::value));
+  EXPECT_TRUE((folly::is_invocable<Fn, ImmCv*>::value));
 }
 
 TEST_F(InvokeTest, is_invocable_r) {
@@ -411,9 +413,9 @@ TEST_F(InvokeTest, invoke_first_match) {
     [[maybe_unused]] void operator()() const;
   };
   using inv = folly::invoke_first_match<a, b, c>;
-  EXPECT_TRUE((folly::is_invocable_v<inv const&, int>));
-  EXPECT_TRUE((folly::is_invocable_v<inv const&>));
-  EXPECT_FALSE((folly::is_invocable_v<inv const&, int, int>));
+  EXPECT_TRUE((std::is_invocable_v<inv const&, int>));
+  EXPECT_TRUE((std::is_invocable_v<inv const&>));
+  EXPECT_FALSE((std::is_invocable_v<inv const&, int, int>));
 }
 
 namespace {
