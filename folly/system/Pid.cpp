@@ -20,7 +20,9 @@
 
 #include <glog/logging.h>
 
+#include <folly/Portability.h>
 #include <folly/portability/Unistd.h>
+#include <folly/synchronization/AtomicRef.h>
 #include <folly/system/AtFork.h>
 
 namespace folly {
@@ -30,19 +32,21 @@ namespace {
 enum class State : uint8_t { INVALID, LOCKED, VALID };
 
 class PidState {
-  std::atomic<State> value_{State::INVALID};
+  State value_;
 
  public:
+  constexpr PidState() noexcept : value_(State::INVALID) {}
+
   FOLLY_ALWAYS_INLINE State load() noexcept {
-    return value_.load(std::memory_order_acquire);
+    return make_atomic_ref(value_).load(std::memory_order_acquire);
   }
 
   void store(State state) noexcept {
-    value_.store(state, std::memory_order_release);
+    make_atomic_ref(value_).store(state, std::memory_order_release);
   }
 
   bool cas(State& expected, State newstate) noexcept {
-    return value_.compare_exchange_strong(
+    return make_atomic_ref(value_).compare_exchange_strong(
         expected,
         newstate,
         std::memory_order_relaxed,
@@ -52,14 +56,9 @@ class PidState {
 
 class PidCache {
   PidState state_;
-  pid_t pid_;
+  pid_t pid_{};
 
  public:
-  static PidCache& instance() {
-    static PidCache cache;
-    return cache;
-  }
-
   FOLLY_ALWAYS_INLINE pid_t get() {
     DCHECK(!valid() || pid_ == getpid());
     return valid() ? pid_ : init();
@@ -81,10 +80,12 @@ class PidCache {
   }
 }; // PidCache
 
+FOLLY_CONSTINIT PidCache cache_;
+
 } // namespace
 
 pid_t get_cached_pid() {
-  return PidCache::instance().get();
+  return cache_.get();
 }
 
 } // namespace folly
