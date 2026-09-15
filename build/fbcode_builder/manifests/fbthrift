@@ -23,10 +23,10 @@ job_weight_mib = 2048
 CMAKE_INSTALL_RPATH_USE_LINK_PATH=ON
 
 [cmake.defines.all(not(os=windows),test=on)]
-enable_tests=ON
+THRIFT_TESTS=ON
 
 [cmake.defines.any(os=windows,test=off)]
-enable_tests=OFF
+THRIFT_TESTS=OFF
 
 [cmake.defines.all(os=linux,feature_shared_libs=on)]
 BUILD_SHARED_LIBS=ON

@@ -26,10 +26,10 @@ builder = nop
 CMAKE_INSTALL_RPATH_USE_LINK_PATH=ON
 
 [cmake.defines.all(not(os=windows),test=on)]
-enable_tests=ON
+THRIFT_TESTS=ON
 
 [cmake.defines.any(os=windows,test=off)]
-enable_tests=OFF
+THRIFT_TESTS=OFF
 
 [cmake.defines.os=linux]
 THRIFT_PYTHON=ON
