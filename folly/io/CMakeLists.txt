@@ -88,7 +88,6 @@ folly_add_library(
     folly_portability_iovec
   EXPORTED_DEPS
     ${GLOG_LIBRARIES}
-    folly_container_span
     folly_cpp_attributes
     folly_detail_iterators
     folly_fbstring

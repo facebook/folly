@@ -66,7 +66,7 @@ folly_add_library(
     Traits.h
   EXPORTED_DEPS
     folly_c_portability
-    folly_container_span
+    folly_lang_cast
     folly_memory
     folly_traits
 )

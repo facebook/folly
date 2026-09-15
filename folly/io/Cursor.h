@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <span>
 #include <stdexcept>
 #include <type_traits>
 
@@ -28,7 +29,6 @@
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
-#include <folly/container/span.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/lang/Bits.h>

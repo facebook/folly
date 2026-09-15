@@ -60,7 +60,7 @@ fb_dirsync_cpp_library(
         "//folly:c_portability",
         "//folly:memory",
         "//folly:traits",
-        "//folly/container:span",
+        "//folly/lang:cast",
     ],
 )
 

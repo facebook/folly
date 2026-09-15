@@ -19,7 +19,7 @@
 #include <folly/CPortability.h>
 #include <folly/Memory.h>
 #include <folly/Traits.h>
-#include <folly/container/span.h>
+#include <folly/lang/Cast.h>
 
 #include <concepts>
 #include <span>
