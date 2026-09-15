@@ -27,16 +27,26 @@ template <typename VT, typename CT>
 MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
     size_t nBuckets, folly::Range<const Duration*> durations)
     : cachedTime_(), cachedSum_(0), cachedCount_(0) {
-  CHECK_GT(durations.size(), 0u);
+  if (durations.empty()) {
+    throw std::invalid_argument(
+        "MultiLevelTimeSeries must have at least one level");
+  }
 
   levels_.reserve(durations.size());
   size_t i = 0;
   Duration prev{0};
   for (auto dur : durations) {
     if (dur == Duration(0)) {
-      CHECK_EQ(i, durations.size() - 1);
+      if (i != durations.size() - 1) {
+        throw std::invalid_argument(
+            "MultiLevelTimeSeries all-time level (duration 0) must be last");
+      }
     } else if (i > 0) {
-      CHECK(prev < dur);
+      if (!(prev < dur)) {
+        throw std::invalid_argument(
+            "MultiLevelTimeSeries level durations must be strictly "
+            "increasing");
+      }
     }
     levels_.emplace_back(nBuckets, dur);
     prev = dur;

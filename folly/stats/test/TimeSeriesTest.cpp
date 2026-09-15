@@ -1462,6 +1462,45 @@ TEST(MultiLevelTimeSeries, QueryByInterval) {
   }
 }
 
+TEST(MultiLevelTimeSeries, GetLevelThrowsWhenNoLevelCoversStart) {
+  // Regression test: previously LOG(FATAL)'d when no all-time level is
+  // configured and the requested start predates every level's window. Now
+  // throws std::out_of_range, matching the sibling getLevelByDuration().
+  folly::MultiLevelTimeSeries<int> mhts(60, {seconds(60), seconds(3600)});
+
+  TimePoint curTime;
+  for (curTime = mkTimePoint(0); curTime < mkTimePoint(7200);
+       curTime += seconds(1)) {
+    mhts.addValue(curTime, 1);
+  }
+  mhts.flush();
+
+  EXPECT_THROW(mhts.getLevel(curTime - seconds(7200)), std::out_of_range);
+  // A start time within the coarsest level's window still works normally.
+  EXPECT_NO_THROW(mhts.getLevel(curTime - seconds(3600)));
+}
+
+TEST(MultiLevelTimeSeries, ConstructWithNoLevelsThrows) {
+  EXPECT_THROW(
+      folly::MultiLevelTimeSeries<int>(60, std::vector<seconds>{}),
+      std::invalid_argument);
+}
+
+TEST(MultiLevelTimeSeries, ConstructWithMisplacedAllTimeLevelThrows) {
+  EXPECT_THROW(
+      (folly::MultiLevelTimeSeries<int>(60, {seconds(0), seconds(60)})),
+      std::invalid_argument);
+}
+
+TEST(MultiLevelTimeSeries, ConstructWithNonIncreasingDurationsThrows) {
+  EXPECT_THROW(
+      (folly::MultiLevelTimeSeries<int>(60, {seconds(60), seconds(60)})),
+      std::invalid_argument);
+  EXPECT_THROW(
+      (folly::MultiLevelTimeSeries<int>(60, {seconds(60), seconds(30)})),
+      std::invalid_argument);
+}
+
 TEST(MinuteHourTimeSeries, constReaders) {
   using MLTS = folly::MultiLevelTimeSeries<int64_t>;
 

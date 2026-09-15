@@ -132,10 +132,16 @@ class MultiLevelTimeSeries {
         return level;
       }
     }
-    // We should always have an all-time level, so this is never reached.
-    LOG(FATAL) << "No level of timeseries covers internval" << " from "
-               << start.time_since_epoch().count() << " to now";
-    return levels_.back();
+    // No configured level's duration is large enough to cover the requested
+    // start time: this happens when no all-time level is configured and
+    // start predates every level's window. This is different from start
+    // merely predating a level's currently-retained data (which is handled
+    // gracefully elsewhere, per this method's docs) -- no level here could
+    // ever answer this query, regardless of how much data has accumulated.
+    throw std::out_of_range(
+        folly::to<std::string>(
+            "No level of timeseries covers start time ",
+            start.time_since_epoch().count()));
   }
 
   /*
