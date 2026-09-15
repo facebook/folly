@@ -43,7 +43,6 @@
 #include <folly/Format.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
-#include <folly/container/span.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/File.h>
 #include <folly/gen/String.h>

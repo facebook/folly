@@ -11,7 +11,7 @@ fb_dirsync_cpp_unittest(
         "//folly:range",
         "//folly/algorithm/simd/detail:simd_any_of",
         "//folly/algorithm/simd/detail:simd_platform",
-        "//folly/container:span",
+        "//folly/lang:cast",
         "//folly/portability:gtest",
     ],
 )

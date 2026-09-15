@@ -17,10 +17,10 @@
 #include <folly/Unicode.h>
 
 #include <initializer_list>
+#include <span>
 #include <stdexcept>
 
 #include <folly/Range.h>
-#include <folly/container/span.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>

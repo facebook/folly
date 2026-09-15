@@ -31,7 +31,6 @@
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
 #include <folly/container/sorted_vector_types.h>
-#include <folly/container/span.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>

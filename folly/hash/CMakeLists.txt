@@ -133,10 +133,12 @@ folly_add_library(
   HEADERS
     UniqueHashKey.h
   DEPS
+    folly_lang_cast
     folly_portability_openssl
     folly_portability_unistd
   EXPORTED_DEPS
     folly_container_span
+    folly_traits
 )
 
 add_subdirectory(detail)

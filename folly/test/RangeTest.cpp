@@ -36,8 +36,6 @@
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
-#include <folly/container/span.h>
-
 #if __has_include(<range/v3/range/concepts.hpp>)
 #include <range/v3/range/concepts.hpp>
 

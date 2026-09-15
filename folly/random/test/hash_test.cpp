@@ -18,7 +18,6 @@
 
 #include <numeric>
 
-#include <folly/container/span.h>
 #include <folly/portability/GTest.h>
 
 struct HashCounterEngineTest : testing::Test {};

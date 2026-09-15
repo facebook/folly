@@ -18,7 +18,7 @@
 
 #include <folly/Range.h>
 #include <folly/algorithm/simd/detail/SimdPlatform.h>
-#include <folly/container/span.h>
+#include <folly/lang/Cast.h>
 #include <folly/portability/GTest.h>
 
 #include <array>

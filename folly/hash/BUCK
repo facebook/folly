@@ -128,12 +128,14 @@ fb_dirsync_cpp_library(
     headers = ["UniqueHashKey.h"],
     use_raw_headers = True,
     deps = [
+        "//folly/lang:cast",
         "//folly/portability:openssl",
         "//folly/portability:unistd",
     ],
     exported_deps = [
         "fbsource//third-party/blake3:blake3",  # @manual
         "fbsource//third-party/xxHash:xxhash",  # @manual
+        "//folly:traits",
         "//folly/container:span",
     ],
 )

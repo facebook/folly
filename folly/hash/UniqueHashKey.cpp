@@ -16,6 +16,9 @@
 
 #include <folly/hash/UniqueHashKey.h>
 
+#include <cstring>
+
+#include <folly/lang/Cast.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Unistd.h>
 

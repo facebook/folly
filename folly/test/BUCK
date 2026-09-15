@@ -25,7 +25,6 @@ fb_dirsync_cpp_unittest(
     deps = [
         "//folly:range",
         "//folly:unicode",
-        "//folly/container:span",
         "//folly/lang:keep",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
@@ -1302,7 +1301,6 @@ fb_dirsync_cpp_unittest(
         "fbsource//third-party/range-v3:range-v3",
         "//folly:memory",
         "//folly:range",
-        "//folly/container:span",
         "//folly/memory:allocator",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
@@ -1535,7 +1533,6 @@ fb_dirsync_cpp_unittest(
         "//folly:memory",
         "//folly:string",
         "//folly:subprocess",
-        "//folly/container:span",
         "//folly/gen:base",
         "//folly/gen:file",
         "//folly/gen:string",

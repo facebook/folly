@@ -18,7 +18,6 @@ fb_dirsync_cpp_unittest(
     name = "hash_test",
     srcs = ["hash_test.cpp"],
     deps = [
-        "//folly/container:span",
         "//folly/portability:gtest",
         "//folly/random:hash",
     ],
