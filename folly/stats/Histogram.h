@@ -165,6 +165,8 @@ class HistogramBuckets {
    *
    * @return Returns the index of the bucket that contains the Nth percentile
    *         data point.
+   *
+   * @throws std::invalid_argument if pct is outside [0.0, 1.0], including NaN.
    */
   template <typename CountFn>
   size_t getPercentileBucketIdx(
@@ -184,6 +186,8 @@ class HistogramBuckets {
    *
    * @return Returns an estimate for N, where N is the number where exactly pct
    *         percentage of the data points in the histogram are less than N.
+   *
+   * @throws std::invalid_argument if pct is outside [0.0, 1.0], including NaN.
    */
   template <typename CountFn, typename AvgFn>
   ValueType getPercentileEstimate(
@@ -395,6 +399,8 @@ class Histogram {
    *
    * The lowest and highest percentile data points in returned bucket will be
    * returned in the lowPct and highPct arguments, if they are not nullptr.
+   *
+   * @throws std::invalid_argument if pct is outside [0.0, 1.0], including NaN.
    */
   size_t getPercentileBucketIdx(
       double pct, double* lowPct = nullptr, double* highPct = nullptr) const {
@@ -411,6 +417,8 @@ class Histogram {
    *
    * @return Returns an estimate for N, where N is the number where exactly pct
    *         percentage of the data points in the histogram are less than N.
+   *
+   * @throws std::invalid_argument if pct is outside [0.0, 1.0], including NaN.
    */
   ValueType getPercentileEstimate(double pct) const {
     CountFromBucket countFn;

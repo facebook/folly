@@ -16,6 +16,8 @@
 
 #include <folly/stats/Histogram.h>
 
+#include <stdexcept>
+
 #include <folly/portability/GTest.h>
 
 using folly::Histogram;
@@ -220,4 +222,37 @@ TEST(Histogram, Counts) {
     h.addValue(0);
   }
   EXPECT_EQ(110, h.computeTotalCount());
+}
+
+TEST(Histogram, ConstructWithNonPositiveBucketSizeThrows) {
+  EXPECT_THROW((Histogram<int64_t>(0, 0, 100)), std::invalid_argument);
+  EXPECT_THROW((Histogram<int64_t>(-1, 0, 100)), std::invalid_argument);
+}
+
+TEST(Histogram, ConstructWithNaNBucketSizeThrows) {
+  EXPECT_THROW(
+      (Histogram<double>(std::nan(""), 0.0, 100.0)), std::invalid_argument);
+}
+
+TEST(Histogram, ConstructWithMinNotLessThanMaxThrows) {
+  EXPECT_THROW((Histogram<int64_t>(1, 100, 100)), std::invalid_argument);
+  EXPECT_THROW((Histogram<int64_t>(1, 100, 0)), std::invalid_argument);
+}
+
+TEST(Histogram, ConstructWithNaNMinThrows) {
+  EXPECT_THROW(
+      (Histogram<double>(1.0, std::nan(""), 100.0)), std::invalid_argument);
+}
+
+TEST(Histogram, GetPercentileEstimateWithOutOfRangePctThrows) {
+  Histogram<int64_t> h(1, 0, 100);
+  h.addValue(50);
+  EXPECT_THROW(h.getPercentileEstimate(-0.01), std::invalid_argument);
+  EXPECT_THROW(h.getPercentileEstimate(1.01), std::invalid_argument);
+}
+
+TEST(Histogram, GetPercentileEstimateWithNaNPctThrows) {
+  Histogram<double> h(1.0, 0.0, 100.0);
+  h.addValue(50.0);
+  EXPECT_THROW(h.getPercentileEstimate(std::nan("")), std::invalid_argument);
 }

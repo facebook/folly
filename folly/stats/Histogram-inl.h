@@ -16,9 +16,12 @@
 
 #pragma once
 
+#include <stdexcept>
+
 #include <glog/logging.h>
 
 #include <folly/Conv.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -31,8 +34,16 @@ HistogramBuckets<T, BucketT>::HistogramBuckets(
     ValueType max,
     const BucketType& defaultBucket)
     : bucketSize_(bucketSize), min_(min), max_(max) {
-  CHECK_GT(bucketSize_, ValueType(0));
-  CHECK_LT(min_, max_);
+  // Negated form: NaN must be rejected, and NaN <= 0.0 is false.
+  if (!(bucketSize_ > ValueType(0))) {
+    throw_exception<std::invalid_argument>(to<std::string>(
+        "HistogramBuckets: bucketSize must be positive: ", bucketSize_));
+  }
+  // Negated form: NaN must be rejected, and NaN >= max_ is false.
+  if (!(min_ < max_)) {
+    throw_exception<std::invalid_argument>(to<std::string>(
+        "HistogramBuckets: min must be less than max: ", min_, " vs. ", max_));
+  }
 
   // Deliberately make this a signed type, because we're about
   // to compare it against max-min, which is nominally signed, too.
@@ -74,8 +85,16 @@ template <typename CountFn>
 size_t HistogramBuckets<T, BucketType>::getPercentileBucketIdx(
     double pct, CountFn countFromBucket, double* lowPct, double* highPct)
     const {
-  CHECK_GE(pct, 0.0);
-  CHECK_LE(pct, 1.0);
+  // Negated form: NaN must be rejected, and NaN < 0.0 is false.
+  if (!(pct >= 0.0)) {
+    throw_exception<std::invalid_argument>(
+        to<std::string>("HistogramBuckets: pct must be >= 0.0: ", pct));
+  }
+  // Negated form: NaN must be rejected, and NaN > 1.0 is false.
+  if (!(pct <= 1.0)) {
+    throw_exception<std::invalid_argument>(
+        to<std::string>("HistogramBuckets: pct must be <= 1.0: ", pct));
+  }
 
   auto numBuckets = buckets_.size();
 
