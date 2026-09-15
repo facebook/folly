@@ -60,7 +60,6 @@ fb_dirsync_cpp_library(
         "//folly:file_util",
     ],
     exported_deps = [
-        "//folly/container:span",
         "//folly/lang:cstring_view",
     ],
 )

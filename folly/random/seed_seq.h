@@ -19,10 +19,10 @@
 #include <concepts>
 #include <cstring>
 #include <random>
+#include <span>
 #include <type_traits>
 
 #include <folly/Traits.h>
-#include <folly/container/span.h>
 #include <folly/functional/Invoke.h>
 
 namespace folly {

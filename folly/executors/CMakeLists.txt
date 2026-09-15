@@ -413,7 +413,6 @@ folly_add_library(
     folly_tracing_static_tracepoint
   EXPORTED_DEPS
     ${GLOG_LIBRARIES}
-    folly_container_span
     folly_default_keep_alive_executor
     folly_executors_global_thread_pool_list
     folly_executors_task_queue_lifo_sem_mpmc_queue

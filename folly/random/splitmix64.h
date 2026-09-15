@@ -21,9 +21,9 @@
 #include <istream>
 #include <limits>
 #include <ostream>
+#include <span>
 #include <type_traits>
 
-#include <folly/container/span.h>
 #include <folly/functional/Invoke.h>
 #include <folly/random/seed_seq.h>
 

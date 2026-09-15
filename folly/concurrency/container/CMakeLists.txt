@@ -21,7 +21,6 @@ folly_add_library(
   EXPORTED_DEPS
     folly_c_portability
     folly_constexpr_math
-    folly_container_span
     folly_lang_align
     folly_lang_bits
     folly_lang_new

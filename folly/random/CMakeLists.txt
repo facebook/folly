@@ -28,7 +28,6 @@ folly_add_library(
   HEADERS
     seed_seq.h
   EXPORTED_DEPS
-    folly_container_span
     folly_functional_invoke
     folly_traits
 )
@@ -38,7 +37,6 @@ folly_add_library(
   HEADERS
     splitmix64.h
   EXPORTED_DEPS
-    folly_container_span
     folly_functional_invoke
     folly_random_seed_seq
 )
@@ -48,7 +46,6 @@ folly_add_library(
   HEADERS
     xoshiro256pp.h
   EXPORTED_DEPS
-    folly_container_span
     folly_functional_invoke
     folly_likely
     folly_portability

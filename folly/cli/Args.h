@@ -18,12 +18,12 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <system_error>
 #include <vector>
 
-#include <folly/container/span.h>
 #include <folly/lang/cstring_view.h>
 
 namespace folly {

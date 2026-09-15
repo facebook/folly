@@ -20,12 +20,12 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <span>
 
 #include <folly/Portability.h>
 #include <folly/Utility.h>
 #include <folly/algorithm/simd/Movemask.h>
 #include <folly/container/SparseByteSet.h>
-#include <folly/container/span.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Bits.h>
 #include <folly/lang/Hint.h>

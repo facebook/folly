@@ -32,7 +32,6 @@ folly_add_library(
     folly_algorithm_simd_detail_simd_any_of
     folly_algorithm_simd_detail_simd_platform
     folly_c_portability
-    folly_container_span
 )
 
 folly_add_library(

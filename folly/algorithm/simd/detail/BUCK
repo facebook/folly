@@ -35,7 +35,6 @@ fb_dirsync_cpp_library(
         ":simd_any_of",
         ":simd_platform",
         "//folly:c_portability",
-        "//folly/container:span",
     ],
 )
 

@@ -136,6 +136,5 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/blake3:blake3",  # @manual
         "fbsource//third-party/xxHash:xxhash",  # @manual
         "//folly:traits",
-        "//folly/container:span",
     ],
 )

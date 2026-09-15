@@ -27,7 +27,6 @@ folly_add_library(
     fmt::fmt
     folly_file_util
   EXPORTED_DEPS
-    folly_container_span
     folly_lang_cstring_view
 )
 

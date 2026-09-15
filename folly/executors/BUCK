@@ -356,7 +356,6 @@ fb_dirsync_cpp_library(
         "//folly:default_keep_alive_executor",
         "//folly:memory",
         "//folly:shared_mutex",
-        "//folly/container:span",
         "//folly/executors/task_queue:lifo_sem_mpmc_queue",
         "//folly/executors/thread_factory:named_thread_factory",
         "//folly/io/async:request_context",

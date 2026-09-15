@@ -31,7 +31,6 @@
 #include <folly/Conv.h>
 #include <folly/Likely.h>
 #include <folly/Range.h>
-#include <folly/container/span.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/lang/cstring_view.h>
 #include <folly/portability/Config.h>

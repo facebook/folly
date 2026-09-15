@@ -20,9 +20,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <execution>
+#include <span>
 
 #include <folly/Range.h>
-#include <folly/container/span.h>
 
 namespace folly::simd {
 

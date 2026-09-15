@@ -19,13 +19,13 @@
 #include <atomic>
 #include <cstddef>
 #include <new>
+#include <span>
 #include <thread>
 
 #include <folly/CPortability.h>
 #include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
 #include <folly/ScopeGuard.h>
-#include <folly/container/span.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Bits.h>
 #include <folly/lang/New.h>

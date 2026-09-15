@@ -378,7 +378,6 @@ fb_dirsync_cpp_library(
         ":optional",
         ":portability",
         ":range",
-        "//folly/container:span",
         "//folly/gen:string",
         "//folly/io:iobuf",
         "//folly/portability:sys_resource",

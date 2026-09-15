@@ -104,6 +104,7 @@
 
 #include <chrono>
 #include <exception>
+#include <span>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -119,7 +120,6 @@
 #include <folly/Optional.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
-#include <folly/container/span.h>
 #include <folly/gen/String.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/portability/SysResource.h>

@@ -25,7 +25,6 @@
 #include <folly/CPortability.h>
 #include <folly/algorithm/simd/detail/SimdAnyOf.h>
 #include <folly/algorithm/simd/detail/SimdPlatform.h>
-#include <folly/container/span.h>
 
 namespace folly::simd::detail {
 

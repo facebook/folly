@@ -56,7 +56,6 @@ folly_add_library(
     folly_portability_sys_mman
     folly_scope_guard
   EXPORTED_DEPS
-    folly_container_span
     folly_conv
     folly_lang_cstring_view
     folly_lang_safe_assert

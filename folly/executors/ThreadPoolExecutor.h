@@ -26,7 +26,6 @@
 #include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/Memory.h>
 #include <folly/SharedMutex.h>
-#include <folly/container/span.h>
 #include <folly/executors/GlobalThreadPoolList.h>
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
 #include <folly/executors/thread_factory/NamedThreadFactory.h>

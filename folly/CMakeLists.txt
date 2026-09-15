@@ -1328,7 +1328,6 @@ if(NOT WIN32)
       folly_system_shell
     EXPORTED_DEPS
       Boost::headers
-      folly_container_span
       folly_exception
       folly_file
       folly_file_util

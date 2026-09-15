@@ -26,7 +26,6 @@
 #include <type_traits>
 
 #include <folly/Traits.h>
-#include <folly/container/span.h>
 
 namespace folly {
 

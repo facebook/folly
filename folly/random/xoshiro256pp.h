@@ -21,12 +21,12 @@
 #include <limits>
 #include <ostream>
 #include <random>
+#include <span>
 #include <type_traits>
 #include <utility>
 
 #include <folly/Likely.h>
 #include <folly/Portability.h>
-#include <folly/container/span.h>
 #include <folly/functional/Invoke.h>
 #include <folly/random/seed_seq.h>
 #include <folly/random/splitmix64.h>

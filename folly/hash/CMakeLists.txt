@@ -137,7 +137,6 @@ folly_add_library(
     folly_portability_openssl
     folly_portability_unistd
   EXPORTED_DEPS
-    folly_container_span
     folly_traits
 )
 

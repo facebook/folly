@@ -33,7 +33,6 @@ folly_add_library(
     find_first_of.h
   EXPORTED_DEPS
     folly_algorithm_simd_movemask
-    folly_container_span
     folly_container_sparse_byte_set
     folly_lang_align
     folly_lang_bits
@@ -47,7 +46,6 @@ folly_add_library(
   HEADERS
     find_first_of_extra.h
   EXPORTED_DEPS
-    folly_container_span
     folly_range
 )
 
