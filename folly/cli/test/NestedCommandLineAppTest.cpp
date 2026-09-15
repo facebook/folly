@@ -22,6 +22,8 @@
 #include <folly/portability/GTest.h>
 
 #include <cstdlib>
+#include <stdexcept>
+
 #include <glog/logging.h>
 
 using namespace ::testing;
@@ -237,6 +239,31 @@ TEST(ProgramOptionsTest, BuiltinCommand) {
       app.isBuiltinCommand(NestedCommandLineApp::kVersionCommand.str()));
   ASSERT_FALSE(app.isBuiltinCommand(
       NestedCommandLineApp::kHelpCommand.str() + "nonsense"));
+}
+
+TEST(ProgramOptionsTest, AddCommandDuplicateThrows) {
+  NestedCommandLineApp app;
+  app.addCommand("foo", "", "", "", [](auto&, auto&) {});
+  EXPECT_THROW(
+      app.addCommand("foo", "", "", "", [](auto&, auto&) {}),
+      std::invalid_argument);
+}
+
+TEST(ProgramOptionsTest, AddAliasNonexistentOldNameThrows) {
+  NestedCommandLineApp app;
+  EXPECT_THROW(app.addAlias("newname", "nonexistent"), std::invalid_argument);
+}
+
+TEST(ProgramOptionsTest, AddAliasExistingNewNameThrows) {
+  NestedCommandLineApp app;
+  app.addCommand("foo", "", "", "", [](auto&, auto&) {});
+  EXPECT_THROW(
+      app.addAlias("foo", NestedCommandLineApp::kHelpCommand.str()),
+      std::invalid_argument);
+}
+
+TEST(ProgramOptionsTest, ProgramExitZeroStatusWithMessageThrows) {
+  EXPECT_THROW(ProgramExit(0, "message"), std::invalid_argument);
 }
 
 TEST(ProgramOptionsTest, ParseCallbacks) {

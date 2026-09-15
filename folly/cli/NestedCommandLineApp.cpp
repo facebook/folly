@@ -17,6 +17,7 @@
 #include <folly/cli/NestedCommandLineApp.h>
 
 #include <iostream>
+#include <stdexcept>
 
 #include <fmt/format.h>
 #include <glog/logging.h>
@@ -45,7 +46,10 @@ std::string guessProgramName() {
 ProgramExit::ProgramExit(int status, const std::string& msg)
     : std::runtime_error(msg), status_(status) {
   // Message is only allowed for non-zero exit status
-  CHECK(status_ != 0 || msg.empty());
+  if (status_ == 0 && !msg.empty()) {
+    throw std::invalid_argument(
+        "ProgramExit: a message is only allowed for a non-zero exit status");
+  }
 }
 
 NestedCommandLineApp::NestedCommandLineApp(
@@ -108,16 +112,20 @@ po::options_description& NestedCommandLineApp::addCommand(
       std::move(positionalOptions)};
 
   auto p = commands_.emplace(std::move(name), std::move(info));
-  CHECK(p.second) << "Command already exists";
+  if (!p.second) {
+    throw std::invalid_argument("Command already exists: " + p.first->first);
+  }
 
   return p.first->second.options;
 }
 
 void NestedCommandLineApp::addAlias(std::string newName, std::string oldName) {
-  CHECK(aliases_.count(oldName) || commands_.count(oldName))
-      << "Alias old name does not exist";
-  CHECK(!aliases_.count(newName) && !commands_.count(newName))
-      << "Alias new name already exists";
+  if (!aliases_.count(oldName) && !commands_.count(oldName)) {
+    throw std::invalid_argument("Alias old name does not exist: " + oldName);
+  }
+  if (aliases_.count(newName) || commands_.count(newName)) {
+    throw std::invalid_argument("Alias new name already exists: " + newName);
+  }
   aliases_.emplace(std::move(newName), std::move(oldName));
 }
 
