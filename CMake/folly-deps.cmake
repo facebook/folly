@@ -18,6 +18,38 @@ include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
 include(CMakePushCheckState)
 
+# Fetch the archive `manifest` pins, so a fetched dependency cannot drift from
+# the one getdeps builds. OVERRIDE_FIND_PACKAGE makes a later find_package()
+# resolve to what was fetched instead of searching the system, which thrift/lib
+# relies on for Boost. The fetched source directory is not set in the caller's
+# scope; read it back with FetchContent_GetProperties.
+function(folly_fetch_from_manifest name manifest)
+  # for in-fbsource builds
+  set(path
+    "${CMAKE_CURRENT_SOURCE_DIR}/../opensource/fbcode_builder/manifests/${manifest}")
+  if (NOT EXISTS "${path}")
+    # For shipit-transformed builds
+    set(path
+      "${CMAKE_CURRENT_SOURCE_DIR}/build/fbcode_builder/manifests/${manifest}")
+  endif()
+  file(READ "${path}" text)
+  if (NOT text MATCHES
+      "url = (https://[^\r\n]+\\.tar\\.gz)[\r\n]+sha256 = ([0-9a-f]+)")
+    message(FATAL_ERROR "no archive in ${path}")
+  endif()
+  set(url "${CMAKE_MATCH_1}")
+  set(sha256 "${CMAKE_MATCH_2}")
+  message(STATUS "${name} not found, fetching ${url}")
+  include(FetchContent)
+  FetchContent_Declare(
+    ${name}
+    URL "${url}"
+    URL_HASH SHA256=${sha256}
+    OVERRIDE_FIND_PACKAGE
+  )
+  FetchContent_MakeAvailable(${name})
+endfunction()
+
 set(
   BOOST_LINK_STATIC "auto"
   CACHE STRING
@@ -49,15 +81,51 @@ if(WIN32)
   list(APPEND FOLLY_BOOST_COMPONENTS thread)
 endif()
 
-find_package(Boost 1.69.0 REQUIRED
+find_package(Boost 1.69.0
   COMPONENTS
     ${FOLLY_BOOST_COMPONENTS}
 )
+if (NOT Boost_FOUND)
+  set(BOOST_ENABLE_CMAKE ON)
+  set(BOOST_INCLUDE_LIBRARIES ${FOLLY_BOOST_COMPONENTS})
+  # Boost 1.83's libs/predef and libs/filesystem still ask for
+  # cmake_minimum_required 2.8 and 3.0. CMake 4 rejects anything below 3.5 and
+  # warns below 3.10.
+  set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
+  folly_fetch_from_manifest(Boost boost)
+  unset(CMAKE_POLICY_VERSION_MINIMUM)
+  # In the modular layout Boost::headers points at libs/headers/include, which
+  # is empty, so gather every module's include directory instead. folly reads
+  # the variable below; thrift's lib/cpp links the target.
+  FetchContent_GetProperties(Boost SOURCE_DIR folly_boost_source_dir)
+  file(GLOB Boost_INCLUDE_DIRS
+    "${folly_boost_source_dir}/libs/*/include"
+    "${folly_boost_source_dir}/libs/numeric/*/include")
+  target_include_directories(boost_headers
+    INTERFACE "$<BUILD_INTERFACE:${Boost_INCLUDE_DIRS}>")
+endif()
 # Only add include directories globally, not libraries
 # Per-target Boost dependencies are specified via EXTERNAL_DEPS
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIRS})
 
-find_package(FastFloat MODULE REQUIRED)
+find_package(FastFloat MODULE)
+if (NOT FASTFLOAT_INCLUDE_DIR)
+  # fast_float asks for cmake_minimum_required 3.9; CMake 4 warns below 3.10.
+  set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
+  # fast_float also FORCEs CMAKE_BUILD_TYPE to Release when it is unset, which
+  # would choose the build type for the whole superproject.
+  set(folly_saved_build_type "${CMAKE_BUILD_TYPE}")
+  folly_fetch_from_manifest(FastFloat fast_float)
+  unset(CMAKE_POLICY_VERSION_MINIMUM)
+  if (NOT folly_saved_build_type)
+    set(CMAKE_BUILD_TYPE "" CACHE STRING "Choose the type of build." FORCE)
+  endif()
+  # FindFastFloat.cmake reports through FASTFLOAT_INCLUDE_DIR rather than a
+  # target, so fill in the cache entry its find_path() would have set.
+  FetchContent_GetProperties(FastFloat SOURCE_DIR folly_fastfloat_source_dir)
+  set(FASTFLOAT_INCLUDE_DIR "${folly_fastfloat_source_dir}/include"
+    CACHE PATH "fast_float include directory" FORCE)
+endif()
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${FASTFLOAT_INCLUDE_DIR})
 
 find_package(Gflags MODULE)
@@ -326,35 +394,10 @@ if (NOT DEFINED fmt_CONFIG)
   find_package(Fmt MODULE)
 endif()
 if (NOT TARGET fmt::fmt)
-  # Take the archive `manifests/fmt` pins rather than a second copy of the
-  # version, so a fetched fmt cannot drift from the one getdeps builds.
-  # Always the .tar.gz entry, since CMake untars everywhere.
-  set(folly_fmt_manifest
-    # for in-fbsource builds
-    "${CMAKE_CURRENT_SOURCE_DIR}/../opensource/fbcode_builder/manifests/fmt")
-  if (NOT EXISTS "${folly_fmt_manifest}")
-    # For shipit-transformed builds
-    set(folly_fmt_manifest
-      "${CMAKE_CURRENT_SOURCE_DIR}/build/fbcode_builder/manifests/fmt")
-  endif()
-  file(READ "${folly_fmt_manifest}" folly_fmt_manifest_text)
-  if (NOT folly_fmt_manifest_text MATCHES
-      "url = (https://[^\r\n]+\\.tar\\.gz)[\r\n]+sha256 = ([0-9a-f]+)")
-    message(FATAL_ERROR "no archive in ${folly_fmt_manifest}")
-  endif()
-  set(folly_fmt_url "${CMAKE_MATCH_1}")
-  set(folly_fmt_sha256 "${CMAKE_MATCH_2}")
-  message(STATUS "fmt not found, fetching ${folly_fmt_url}")
-  include(FetchContent)
   # fmt defaults this off for a subproject, which would leave it out of every
   # export set and make install(EXPORT folly) fail.
   set(FMT_INSTALL ON)
-  FetchContent_Declare(
-    fmt
-    URL "${folly_fmt_url}"
-    URL_HASH SHA256=${folly_fmt_sha256}
-  )
-  FetchContent_MakeAvailable(fmt)
+  folly_fetch_from_manifest(fmt fmt)
 endif()
 target_link_libraries(folly_deps INTERFACE fmt::fmt)
 
