@@ -449,16 +449,6 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
-    name = "span_test",
-    srcs = ["span_test.cpp"],
-    supports_static_listing = False,
-    deps = [
-        "//folly/container:span",
-        "//folly/portability:gtest",
-    ],
-)
-
-fb_dirsync_cpp_unittest(
     name = "std_bitset_test",
     srcs = ["StdBitsetTest.cpp"],
     deps = [

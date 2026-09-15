@@ -116,6 +116,7 @@ folly_add_library(
   EXPORTED_DEPS
     folly_lang_safe_assert
     folly_portability
+    folly_portability_constexpr
     folly_traits
 )
 

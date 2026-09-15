@@ -343,6 +343,7 @@ folly_add_library(
     folly_container_iterator
     folly_cpp_attributes
     folly_functional_invoke
+    folly_lang_cast
     folly_portability
     folly_portability_constexpr
     folly_traits

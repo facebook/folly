@@ -16,12 +16,16 @@
 
 #pragma once
 
+#include <cassert>
+#include <cstddef>
 #include <memory>
+#include <span>
 #include <type_traits>
 
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/lang/SafeAssert.h>
+#include <folly/portability/Constexpr.h>
 
 namespace folly {
 
@@ -70,5 +74,84 @@ template <typename Dst, typename Src>
 FOLLY_ERASE Dst& reinterpret_function_cast(Src& src) noexcept {
   return *reinterpret_function_cast<Dst>(&src);
 }
+
+namespace detail {
+
+struct span_cast_impl_fn {
+  template <
+      template <typename, std::size_t> class Span,
+      typename U,
+      typename T,
+      std::size_t Extent>
+  constexpr auto operator()(Span<T, Extent> in, U* castData) const {
+    assert(
+        static_cast<void const*>(in.data()) ==
+        static_cast<void const*>(castData));
+
+    // check alignment
+    if (!folly::is_constant_evaluated_or(true)) {
+      assert(reinterpret_cast<std::uintptr_t>(in.data()) % sizeof(U) == 0);
+    }
+
+    if constexpr (Extent == std::dynamic_extent) {
+      assert(in.size() * sizeof(T) % sizeof(U) == 0);
+      return Span<U, std::dynamic_extent>(
+          castData, in.size() * sizeof(T) / sizeof(U));
+    } else {
+      static_assert(Extent * sizeof(T) % sizeof(U) == 0);
+      constexpr std::size_t kResSize = Extent * sizeof(T) / sizeof(U);
+      return Span<U, kResSize>(castData, kResSize);
+    }
+  }
+};
+
+inline constexpr span_cast_impl_fn span_cast_impl;
+
+} // namespace detail
+
+/// static_span_cast
+/// static_span_cast_fn
+/// reinterpret_span_cast
+/// reinterpret_span_cast_fn
+/// const_span_cast
+/// const_span_cast_fn
+///
+/// Casts a span to a different span. The result is a span referring to the same
+/// region in memory but as a different type.
+///
+/// Example:
+///
+///   std::span<std::byte> bytes = ...
+///   std::span<int> ints = folly::reinterpret_span_cast<int>(bytes);
+
+template <typename U>
+struct static_span_cast_fn {
+  template <typename T, std::size_t Extent>
+  constexpr auto operator()(std::span<T, Extent> in) const {
+    return detail::span_cast_impl(in, static_cast<U*>(in.data()));
+  }
+};
+template <typename U>
+inline constexpr static_span_cast_fn<U> static_span_cast;
+
+template <typename U>
+struct reinterpret_span_cast_fn {
+  template <typename T, std::size_t Extent>
+  constexpr auto operator()(std::span<T, Extent> in) const {
+    return detail::span_cast_impl(in, reinterpret_cast<U*>(in.data()));
+  }
+};
+template <typename U>
+inline constexpr reinterpret_span_cast_fn<U> reinterpret_span_cast;
+
+template <typename U>
+struct const_span_cast_fn {
+  template <typename T, std::size_t Extent>
+  constexpr auto operator()(std::span<T, Extent> in) const {
+    return detail::span_cast_impl(in, const_cast<U*>(in.data()));
+  }
+};
+template <typename U>
+inline constexpr const_span_cast_fn<U> const_span_cast;
 
 } // namespace folly

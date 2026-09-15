@@ -320,6 +320,7 @@ fb_dirsync_cpp_library(
         "//folly:traits",
         "//folly:utility",
         "//folly/functional:invoke",
+        "//folly/lang:cast",
         "//folly/portability:constexpr",
     ],
 )
