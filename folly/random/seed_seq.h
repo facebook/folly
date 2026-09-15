@@ -48,7 +48,7 @@ struct seed_seq_generate_fn {
   template <typename SeedSeq, typename Word, std::size_t Size>
     requires(
         std::is_trivially_copyable_v<Word> && //
-        (Size != dynamic_extent) && //
+        (Size != std::dynamic_extent) && //
         seq_inv_v<SeedSeq>)
   void operator()(std::span<Word, Size> dst, SeedSeq& seq) const //
       noexcept(seq_nx_inv_v<SeedSeq>) {

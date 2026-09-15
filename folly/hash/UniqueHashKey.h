@@ -25,6 +25,7 @@
 #include <tuple>
 #include <type_traits>
 
+#include <folly/Traits.h>
 #include <folly/container/span.h>
 
 namespace folly {
@@ -182,7 +183,7 @@ class unique_hash_key {
       !std::is_same_v<bool, V> && //
       !std::is_same_v<char, V> && //
       alignof(V) <= data_align && //
-      (E == data_size / sizeof(T) || E == dynamic_extent);
+      (E == data_size / sizeof(T) || E == std::dynamic_extent);
 
  public:
   template <
@@ -200,7 +201,7 @@ class unique_hash_key {
       std::size_t E,
       std::enable_if_t<is_span_compatible_v<T, E>, int> = 0>
   explicit operator std::span<T const, E>() const noexcept {
-    constexpr auto count = E == dynamic_extent ? data_size / sizeof(T) : E;
+    constexpr auto count = E == std::dynamic_extent ? data_size / sizeof(T) : E;
     return std::span<T const, E>{
         reinterpret_cast<T const*>(data_.data()), count};
   }
