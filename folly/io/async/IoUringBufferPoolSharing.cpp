@@ -85,19 +85,28 @@ bool setupIoUringBufferPoolSharingImpl(
   (void)numIoThreads;
   (void)getEventBase;
   (void)numHwQueues;
-  LOG(FATAL) << "Buffer pool sharing is only supported on Linux";
+  LOG(ERROR) << "Buffer pool sharing is only supported on Linux";
+  return false;
 #else
-  CHECK_GT(numIoThreads, 0) << "need at least one IO thread";
-  CHECK_GT(numHwQueues, 0)
-      << "need at least 1 hw queue but passing: " << numHwQueues;
+  if (numIoThreads == 0) {
+    LOG(ERROR) << "need at least one IO thread";
+    return false;
+  }
+  if (numHwQueues == 0) {
+    LOG(ERROR) << "need at least 1 hw queue but passing: " << numHwQueues;
+    return false;
+  }
 
   std::vector<EbBackend> entries;
   entries.reserve(numIoThreads);
   for (size_t i = 0; i < numIoThreads; ++i) {
     auto* evb = getEventBase(i);
     auto* backend = dynamic_cast<IoUringBackend*>(evb->getBackend());
-    CHECK(backend) << "EventBase at index " << i
-                   << " does not have IoUringBackend";
+    if (!backend) {
+      LOG(ERROR) << "EventBase at index " << i
+                 << " does not have IoUringBackend";
+      return false;
+    }
     entries.push_back({evb, backend});
   }
 

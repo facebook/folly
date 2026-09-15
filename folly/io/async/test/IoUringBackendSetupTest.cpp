@@ -124,6 +124,32 @@ TEST_F(IoUringBufferPoolSharingTest, ReportsFailureWithFewerQueuesThanThreads) {
   }
 }
 
+// These three cases are rejected before any real io_uring work is attempted,
+// so they don't need IoUringBackend::isAvailable() or an io_uring-backed
+// EventBase at all.
+TEST(
+    IoUringBufferPoolSharingArgValidationTest,
+    FailsGracefullyWithNoEventBases) {
+  std::vector<EventBase*> eventBases;
+  EXPECT_FALSE(setupIoUringBufferPoolSharing(eventBases, 1));
+}
+
+TEST(
+    IoUringBufferPoolSharingArgValidationTest,
+    FailsGracefullyWithZeroHwQueues) {
+  EventBase evb;
+  std::vector<EventBase*> eventBases{&evb};
+  EXPECT_FALSE(setupIoUringBufferPoolSharing(eventBases, 0));
+}
+
+TEST(
+    IoUringBufferPoolSharingArgValidationTest,
+    FailsGracefullyWithoutIoUringBackend) {
+  EventBase evb; // default backend, not IoUringBackend
+  std::vector<EventBase*> eventBases{&evb};
+  EXPECT_FALSE(setupIoUringBufferPoolSharing(eventBases, 1));
+}
+
 class IoUringBackendSetupTest : public ::testing::Test {
  protected:
   void SetUp() override {
