@@ -367,9 +367,15 @@ AtomicHashArray<
     Allocator,
     ProbeFcn,
     KeyConvertFcn>::create(size_t maxSize, const Config& c) {
-  CHECK_LE(c.maxLoadFactor, 1.0);
-  CHECK_GT(c.maxLoadFactor, 0.0);
-  CHECK_NE(c.emptyKey, c.lockedKey);
+  if (c.maxLoadFactor > 1.0) {
+    throw_exception<std::invalid_argument>("maxLoadFactor");
+  }
+  if (c.maxLoadFactor <= 0.0) {
+    throw_exception<std::invalid_argument>("maxLoadFactor");
+  }
+  if (c.emptyKey == c.lockedKey) {
+    throw_exception<std::invalid_argument>("emptyKey");
+  }
   size_t capacity = size_t(maxSize / c.maxLoadFactor);
   size_t sz = sizeof(AtomicHashArray) + sizeof(value_type) * capacity;
 

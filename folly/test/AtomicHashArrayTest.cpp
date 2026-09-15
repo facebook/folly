@@ -420,3 +420,21 @@ TEST(Aha, ConstValue) {
 TEST(Aha, ZeroSizeMapThrows) {
   EXPECT_THROW(AHAIntCInt::create(0), std::invalid_argument);
 }
+
+TEST(Aha, MaxLoadFactorTooHighThrows) {
+  AHAIntCInt::Config config;
+  config.maxLoadFactor = 1.5;
+  EXPECT_THROW(AHAIntCInt::create(10, config), std::invalid_argument);
+}
+
+TEST(Aha, MaxLoadFactorNonPositiveThrows) {
+  AHAIntCInt::Config config;
+  config.maxLoadFactor = 0.0;
+  EXPECT_THROW(AHAIntCInt::create(10, config), std::invalid_argument);
+}
+
+TEST(Aha, EmptyKeyEqualsLockedKeyThrows) {
+  AHAIntCInt::Config config;
+  config.lockedKey = config.emptyKey;
+  EXPECT_THROW(AHAIntCInt::create(10, config), std::invalid_argument);
+}
