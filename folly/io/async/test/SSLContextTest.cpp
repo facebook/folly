@@ -284,6 +284,11 @@ TEST_F(SSLContextTest, TestInvalidSigAlgThrows) {
   }
 }
 
+TEST_F(SSLContextTest, TestSetServerECCurveThrowsOnUnknownCurve) {
+  SSLContext tmpCtx;
+  EXPECT_THROW(tmpCtx.setServerECCurve("not-a-real-curve"), std::runtime_error);
+}
+
 TEST_F(SSLContextTest, TestSetCiphersuites) {
   std::vector<std::string> ciphersuitesList{
       "TLS_AES_128_CCM_SHA256",

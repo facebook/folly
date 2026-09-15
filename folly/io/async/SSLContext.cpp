@@ -182,11 +182,13 @@ void SSLContext::setServerECCurve(const char* curveName) {
 
   nid = OBJ_sn2nid(curveName);
   if (nid == 0) {
-    LOG(FATAL) << "Unknown curve name:" << curveName;
+    throw std::runtime_error(std::string("Unknown curve name: ") + curveName);
   }
   ecdh = EC_KEY_new_by_curve_name(nid);
   if (ecdh == nullptr) {
-    LOG(FATAL) << "Unable to create curve:" << curveName;
+    throw std::runtime_error(
+        std::string("Unable to create curve: ") + curveName + " " +
+        getErrors());
   }
 
   SSL_CTX_set_tmp_ecdh(ctx_, ecdh);
