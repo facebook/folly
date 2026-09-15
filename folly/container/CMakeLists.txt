@@ -335,22 +335,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME span
-  HEADERS
-    span.h
-  EXPORTED_DEPS
-    folly_container_access
-    folly_container_iterator
-    folly_cpp_attributes
-    folly_functional_invoke
-    folly_lang_cast
-    folly_portability
-    folly_portability_constexpr
-    folly_traits
-    folly_utility
-)
-
-folly_add_library(
   NAME sparse_byte_set
   HEADERS
     SparseByteSet.h

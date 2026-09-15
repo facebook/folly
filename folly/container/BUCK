@@ -309,23 +309,6 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
-    name = "span",
-    headers = ["span.h"],
-    use_raw_headers = True,
-    exported_deps = [
-        ":access",
-        ":iterator",
-        "//folly:cpp_attributes",
-        "//folly:portability",
-        "//folly:traits",
-        "//folly:utility",
-        "//folly/functional:invoke",
-        "//folly/lang:cast",
-        "//folly/portability:constexpr",
-    ],
-)
-
-fb_dirsync_cpp_library(
     name = "tape",
     headers = [
         "tape.h",
