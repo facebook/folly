@@ -27,6 +27,7 @@
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
+#include <folly/String.h>
 #include <folly/io/HugePages.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/SysMman.h>
@@ -355,8 +356,10 @@ bool MemoryMapping::mlock(LockMode mode, LockFlags flags) {
   auto msg = fmt::format("mlock({}) failed at {}", mapLength_, amountSucceeded);
   if (mode == LockMode::TRY_LOCK && errno == EPERM) {
     PLOG(WARNING) << msg;
-  } else if (mode == LockMode::TRY_LOCK && errno == ENOMEM) {
-    VLOG(1) << msg;
+  } else if (
+      mode == LockMode::TRY_LOCK && (errno == ENOMEM || errno == EAGAIN)) {
+    auto err = errno;
+    VLOG(1) << msg << ": " << errnoStr(err) << " [" << err << "]";
   } else {
     PLOG(FATAL) << msg;
   }

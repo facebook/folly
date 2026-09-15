@@ -85,6 +85,7 @@ folly_add_library(
     folly_portability_gflags
     folly_portability_sys_mman
     folly_portability_sys_syscall
+    folly_string
   EXPORTED_DEPS
     folly_file
     folly_portability_unistd

@@ -76,6 +76,7 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
         "//folly:portability",
+        "//folly:string",
         "//folly/io:huge_pages",
         "//folly/portability:gflags",
         "//folly/portability:sys_mman",
