@@ -207,6 +207,13 @@ void stringAppendfImpl(std::string& output, const char* format, va_list args) {
   std::unique_ptr<char[]> heap_buffer(new char[size_t(bytes_used + 1)]);
   int final_bytes_used = stringAppendfImplHelper(
       heap_buffer.get(), size_t(bytes_used + 1), format, args);
+  if (final_bytes_used < 0) {
+    throw std::runtime_error(
+        to<std::string>(
+            "Invalid format string; second snprintf returned negative "
+            "with format string: ",
+            format));
+  }
   // The second call can take fewer bytes if, for example, we were printing a
   // string buffer with null-terminating char using a width specifier -
   // vsnprintf("%.*s", buf.size(), buf)
