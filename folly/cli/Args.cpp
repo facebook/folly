@@ -24,7 +24,7 @@
 #include <system_error>
 #include <vector>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <folly/FileUtil.h>
 

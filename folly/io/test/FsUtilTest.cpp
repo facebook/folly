@@ -20,7 +20,7 @@
 #include <fstream>
 #include <random>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <glog/logging.h>
 
 #include <folly/String.h>
