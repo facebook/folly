@@ -69,6 +69,24 @@ class AsyncFdSocket : public AsyncSocket {
       NetworkSocket fd,
       const folly::SocketAddress* peerAddress = nullptr);
 
+  static UniquePtr newSocket(EventBase* evb) {
+    return UniquePtr{new AsyncFdSocket(evb)};
+  }
+
+  static UniquePtr newSocket(
+      EventBase* evb,
+      const folly::SocketAddress& address,
+      uint32_t connectTimeout = 0) {
+    return UniquePtr{new AsyncFdSocket(evb, address, connectTimeout)};
+  }
+
+  static UniquePtr newSocket(
+      EventBase* evb,
+      NetworkSocket fd,
+      const folly::SocketAddress* peerAddress = nullptr) {
+    return UniquePtr{new AsyncFdSocket(evb, fd, peerAddress)};
+  }
+
   /**
    * EXPERIMENTAL / TEMPORARY: These move-like constructors should not be
    * used to go from one AsyncFdSocket to another because this will not

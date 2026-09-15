@@ -104,6 +104,24 @@ struct AsyncFdSocketTest : public testing::Test {
   std::unique_ptr<AsyncFdSocket> recvSock_;
 };
 
+TEST(AsyncFdSocketFactoryTest, CreatesAsyncFdSockets) {
+  EventBase evb;
+
+  auto unconnectedSocket = AsyncFdSocket::newSocket(&evb);
+  EXPECT_NE(dynamic_cast<AsyncFdSocket*>(unconnectedSocket.get()), nullptr);
+
+  SocketAddress address;
+  address.setFromPath("/dev/null");
+  auto connectingSocket = AsyncFdSocket::newSocket(&evb, address);
+  EXPECT_NE(dynamic_cast<AsyncFdSocket*>(connectingSocket.get()), nullptr);
+
+  std::array<NetworkSocket, 2> fds;
+  PCHECK(0 == netops::socketpair(AF_UNIX, SOCK_STREAM, 0, fds.data()));
+  auto peerSocket = AsyncSocket::newSocket(&evb, fds[0]);
+  auto connectedSocket = AsyncFdSocket::newSocket(&evb, fds[1]);
+  EXPECT_NE(dynamic_cast<AsyncFdSocket*>(connectedSocket.get()), nullptr);
+}
+
 TEST_F(AsyncFdSocketTest, TestAddSeqNum) {
   EXPECT_EQ(17, detail::addSocketFdsSeqNum(0, 17));
   EXPECT_EQ(17, detail::addSocketFdsSeqNum(17, 0));
