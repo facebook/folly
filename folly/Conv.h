@@ -127,6 +127,15 @@
 #include <charconv>
 #endif
 
+// libc++ implements std::from_chars for integers only. The standard requires
+// the floating-point overloads too, so __cpp_lib_to_chars marks a complete
+// implementation and libc++ leaves it undefined.
+#if defined(__cpp_lib_to_chars)
+#define FOLLY_HAVE_STD_FLOAT_FROM_CHARS 1
+#else
+#define FOLLY_HAVE_STD_FLOAT_FROM_CHARS 0
+#endif
+
 #include <folly/CPortability.h>
 
 #include <folly/Demangle.h>
@@ -1009,14 +1018,33 @@ extern template Expected<float, ConversionCode> str_to_floating<float>(
 extern template Expected<double, ConversionCode> str_to_floating<double>(
     StringPiece* src) noexcept;
 
+/// Backed by fast_float where available, `std::from_chars` otherwise. Which
+/// one must not be visible here: `__has_include` varies per translation unit,
+/// so a branching declaration would not match Conv.cpp's definition.
 template <typename T>
-Expected<T, ConversionCode> str_to_floating_fast_float_from_chars(
+Expected<T, ConversionCode> str_to_floating_from_chars(
     StringPiece* src) noexcept;
 
 extern template Expected<float, ConversionCode>
-str_to_floating_fast_float_from_chars<float>(StringPiece* src) noexcept;
+str_to_floating_from_chars<float>(StringPiece* src) noexcept;
 extern template Expected<double, ConversionCode>
-str_to_floating_fast_float_from_chars<double>(StringPiece* src) noexcept;
+str_to_floating_from_chars<double>(StringPiece* src) noexcept;
+
+#if FOLLY_HAVE_STD_FLOAT_FROM_CHARS
+
+/// The `std::from_chars` fallback, compiled wherever the standard library
+/// supports it so that tests cover it in builds that do have fast_float.
+/// Prefer `str_to_floating_from_chars`.
+template <typename T>
+Expected<T, ConversionCode> str_to_floating_std_from_chars(
+    StringPiece* src) noexcept;
+
+extern template Expected<float, ConversionCode>
+str_to_floating_std_from_chars<float>(StringPiece* src) noexcept;
+extern template Expected<double, ConversionCode>
+str_to_floating_std_from_chars<double>(StringPiece* src) noexcept;
+
+#endif
 
 template <class Tgt>
 Expected<Tgt, ConversionCode> digits_to(const char* b, const char* e) noexcept;

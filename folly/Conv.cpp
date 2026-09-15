@@ -16,13 +16,29 @@
 
 #include <folly/Conv.h>
 
+#include <algorithm>
 #include <array>
 #include <istream>
 
 #include <fmt/format.h>
 #include <folly/lang/SafeAssert.h>
 
+// fast_float parses several times faster than any standard library; define
+// FOLLY_USE_FAST_FLOAT to 0 to force the std::from_chars fallback.
+#if !defined(FOLLY_USE_FAST_FLOAT)
+#if __has_include(<fast_float/fast_float.h>)
+#define FOLLY_USE_FAST_FLOAT 1
+#else
+#define FOLLY_USE_FAST_FLOAT 0
+#endif
+#endif
+
+#include <charconv>
+#include <limits>
+
+#if FOLLY_USE_FAST_FLOAT
 #include <fast_float/fast_float.h>
+#endif
 
 namespace folly {
 namespace detail {
@@ -361,19 +377,113 @@ Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept {
   return result;
 }
 
-/// Uses `fast_float::from_chars` to convert from string to an integer.
+namespace {
+
+const char* skip_leading_space(const char* b, const char* e) noexcept {
+  return std::find_if_not(b, e, [](char c) {
+    return (c >= '\t' && c <= '\r') || c == ' ';
+  });
+}
+
+#if FOLLY_HAVE_STD_FLOAT_FROM_CHARS
+
+/// Whether the number in `[b, e)`, known to be outside `long double` range,
+/// is the tiny one rather than the huge one.
+bool is_underflow(const char* b, const char* e) noexcept {
+  if (*b == '-' || *b == '+') {
+    ++b;
+  }
+  auto const* exponent = std::find_if(b, e, [](char c) {
+    return c == 'e' || c == 'E';
+  });
+  if (exponent != e) {
+    return exponent + 1 != e && exponent[1] == '-';
+  }
+  // Without an exponent, leaving the range takes thousands of characters:
+  // either integer digits, which is huge, or "0.000...", which is tiny.
+  return *b == '0' || *b == '.';
+}
+
+/// `std::from_chars` leaves the output unmodified on `result_out_of_range`,
+/// and libstdc++ reports that for subnormal results too. A wider type, where
+/// those are normal, recovers them; the rest saturates the way strtod does.
 template <class Tgt>
-Expected<Tgt, ConversionCode> str_to_floating_fast_float_from_chars(
+Tgt out_of_range_value(const char* b, const char* e) noexcept {
+  constexpr auto kInf = std::numeric_limits<Tgt>::infinity();
+  constexpr auto kMax =
+      static_cast<long double>(std::numeric_limits<Tgt>::max());
+
+  long double wide = 0;
+  if (std::from_chars(b, e, wide, std::chars_format::general).ec ==
+      std::errc()) {
+    if (wide > kMax) {
+      return kInf;
+    }
+    if (wide < -kMax) {
+      return -kInf;
+    }
+    return static_cast<Tgt>(wide);
+  }
+
+  auto const magnitude = is_underflow(b, e) ? Tgt(0) : kInf;
+  return *b == '-' ? -magnitude : magnitude;
+}
+
+#endif // FOLLY_HAVE_STD_FLOAT_FROM_CHARS
+
+} // namespace
+
+#if FOLLY_HAVE_STD_FLOAT_FROM_CHARS
+
+/// The fallback for builds without fast_float. Compiled whether or not this
+/// build has fast_float, so that the tests cover it either way.
+template <class Tgt>
+Expected<Tgt, ConversionCode> str_to_floating_std_from_chars(
     StringPiece* src) noexcept {
-  if (src->empty()) {
+  auto* e = src->end();
+  auto* b = skip_leading_space(src->begin(), e);
+  if (b == e) {
     return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
   }
 
-  // move through leading whitespace characters
+  // std::from_chars rejects a leading '+', which folly accepts; skipping it
+  // must not also admit "+-1".
+  if (*b == '+') {
+    ++b;
+    if (b != e && (*b == '+' || *b == '-')) {
+      return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
+    }
+  }
+
+  Tgt result = 0;
+  auto [ptr, ec] = std::from_chars(b, e, result, std::chars_format::general);
+  if (ec == std::errc::result_out_of_range) {
+    result = out_of_range_value<Tgt>(b, ptr);
+  } else if (ec != std::errc()) {
+    return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
+  }
+
+  src->advance(ptr - src->data());
+  return result;
+}
+
+template Expected<float, ConversionCode> str_to_floating_std_from_chars<float>(
+    StringPiece* src) noexcept;
+template Expected<double, ConversionCode>
+str_to_floating_std_from_chars<double>(StringPiece* src) noexcept;
+
+#endif // FOLLY_HAVE_STD_FLOAT_FROM_CHARS
+
+#if !FOLLY_USE_FAST_FLOAT && !FOLLY_HAVE_STD_FLOAT_FROM_CHARS
+#error "folly::to<float> needs either fast_float or std::from_chars for floats"
+#endif
+
+template <class Tgt>
+Expected<Tgt, ConversionCode> str_to_floating_from_chars(
+    StringPiece* src) noexcept {
+#if FOLLY_USE_FAST_FLOAT
   auto* e = src->end();
-  auto* b = std::find_if_not(src->begin(), e, [](char c) {
-    return (c >= '\t' && c <= '\r') || c == ' ';
-  });
+  auto* b = skip_leading_space(src->begin(), e);
   if (b == e) {
     return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
   }
@@ -382,22 +492,24 @@ Expected<Tgt, ConversionCode> str_to_floating_fast_float_from_chars(
   fast_float::parse_options options{
       fast_float::chars_format::general |
       fast_float::chars_format::allow_leading_plus};
+  // Out of range is not an error: fast_float saturates, which is what folly
+  // reports.
   auto [ptr, ec] = fast_float::from_chars_advanced(b, e, result, options);
-  bool isOutOfRange{ec == std::errc::result_out_of_range};
-  bool isOk{ec == std::errc()};
-  if (!isOk && !isOutOfRange) {
+  if (ec != std::errc() && ec != std::errc::result_out_of_range) {
     return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
   }
 
-  auto numMatchedChars = ptr - src->data();
-  src->advance(numMatchedChars);
+  src->advance(ptr - src->data());
   return result;
+#else
+  return str_to_floating_std_from_chars<Tgt>(src);
+#endif
 }
 
-template Expected<float, ConversionCode>
-str_to_floating_fast_float_from_chars<float>(StringPiece* src) noexcept;
-template Expected<double, ConversionCode>
-str_to_floating_fast_float_from_chars<double>(StringPiece* src) noexcept;
+template Expected<float, ConversionCode> str_to_floating_from_chars<float>(
+    StringPiece* src) noexcept;
+template Expected<double, ConversionCode> str_to_floating_from_chars<double>(
+    StringPiece* src) noexcept;
 
 /**
  * StringPiece to double, with progress information. Alters the
@@ -405,7 +517,7 @@ str_to_floating_fast_float_from_chars<double>(StringPiece* src) noexcept;
  */
 template <class Tgt>
 Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
-  return detail::str_to_floating_fast_float_from_chars<Tgt>(src);
+  return detail::str_to_floating_from_chars<Tgt>(src);
 }
 
 template Expected<float, ConversionCode> str_to_floating<float>(

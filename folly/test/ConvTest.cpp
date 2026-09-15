@@ -1528,26 +1528,51 @@ TEST(Conv, TryStringToFloat) {
   tryStringToFloat<folly::StringPiece>(StrToFloatTryTo<folly::StringPiece>());
 }
 
-/// Uses `folly::detail::str_to_floating_fast_float_from_chars` to convert a
-/// string to a float.
+/// Uses `folly::detail::str_to_floating_from_chars` to convert a string to a
+/// float.
 template <class String>
-class StrToFloatFastFloatFromChars : public StrToFloat<String> {
+class StrToFloatFromChars : public StrToFloat<String> {
  public:
   Expected<float, ConversionCode> operator()(String src) const override {
     StringPiece sp{src};
-    return folly::detail::str_to_floating_fast_float_from_chars<float>(&sp);
+    return folly::detail::str_to_floating_from_chars<float>(&sp);
   }
 
   bool returnsErrorOnTrailingJunk() const override { return false; }
 };
 
-TEST(Conv, TryStringToFloat_FastFloatFromChars) {
-  tryStringToFloat<std::string>(StrToFloatFastFloatFromChars<std::string>());
-  tryStringToFloat<std::string_view>(
-      StrToFloatFastFloatFromChars<std::string_view>());
+TEST(Conv, TryStringToFloat_FromChars) {
+  tryStringToFloat<std::string>(StrToFloatFromChars<std::string>());
+  tryStringToFloat<std::string_view>(StrToFloatFromChars<std::string_view>());
   tryStringToFloat<folly::StringPiece>(
-      StrToFloatFastFloatFromChars<folly::StringPiece>());
+      StrToFloatFromChars<folly::StringPiece>());
 }
+
+#if FOLLY_HAVE_STD_FLOAT_FROM_CHARS
+
+/// Uses `folly::detail::str_to_floating_std_from_chars` to convert a string to
+/// a float. This is the fallback for builds without fast_float, and it runs
+/// here whether or not this build has fast_float.
+template <class String>
+class StrToFloatStdFromChars : public StrToFloat<String> {
+ public:
+  Expected<float, ConversionCode> operator()(String src) const override {
+    StringPiece sp(src);
+    return folly::detail::str_to_floating_std_from_chars<float>(&sp);
+  }
+
+  bool returnsErrorOnTrailingJunk() const override { return false; }
+};
+
+TEST(Conv, TryStringToFloat_StdFromChars) {
+  tryStringToFloat<std::string>(StrToFloatStdFromChars<std::string>());
+  tryStringToFloat<std::string_view>(
+      StrToFloatStdFromChars<std::string_view>());
+  tryStringToFloat<folly::StringPiece>(
+      StrToFloatStdFromChars<folly::StringPiece>());
+}
+
+#endif // FOLLY_HAVE_STD_FLOAT_FROM_CHARS
 
 template <class String>
 void tryToDouble() {
