@@ -122,7 +122,7 @@ void SerialExecutorImpl<Queue>::worker() {
     // context. dequeue() is cheap, non-blocking, and doesn't run application
     // logic, so it is fine to sneak it in the previous context.
     queue_.dequeue(task);
-    RequestContext::setContext(std::move(task.ctx));
+    ctxGuard.setContext(std::move(task.ctx));
     invokeCatchingExns("SerialExecutor: func", std::exchange(task.func, {}));
 
     if (++processed == queueSize) {
@@ -150,7 +150,7 @@ void SerialExecutorImpl<Queue>::drain() {
   while (queueSize != 0) {
     Task task;
     queue_.dequeue(task);
-    RequestContext::setContext(std::move(task.ctx));
+    ctxGuard.setContext(std::move(task.ctx));
     task.func = {};
     queueSize = scheduled_.fetch_sub(1, std::memory_order_acq_rel) - 1;
   }

@@ -48,7 +48,7 @@ void QueuedImmediateExecutor::add(Func func) {
   RequestContextSaverScopeGuard guard;
   while (!queue.empty()) {
     auto& task = queue.front();
-    RequestContext::setContext(std::move(task.ctx));
+    guard.setContext(std::move(task.ctx));
     invokeCatchingExns("QueuedImmediateExecutor", std::ref(task.func));
     queue.pop();
   }
