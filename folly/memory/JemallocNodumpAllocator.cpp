@@ -48,8 +48,16 @@ bool JemallocNodumpAllocator::extend_and_setup_arena() {
           &len,
           nullptr,
           0)) {
-    LOG(FATAL) << "Unable to extend arena: " << errnoStr(ret);
+    LOG(ERROR) << "Unable to extend arena: " << errnoStr(ret);
+    arena_index_ = 0;
+    return false;
   }
+  // From here on, arena_index_ refers to a real jemalloc arena, so flags_
+  // routes allocate()/reallocate()/deallocate() through it. If any step
+  // below fails, both must be reset before returning false: otherwise
+  // allocations would keep flowing into this arena even though it never got
+  // its MADV_DONTDUMP-tagging hook installed, silently defeating this
+  // class's only purpose without any allocation-time error to notice it by.
   flags_ = MALLOCX_ARENA(arena_index_) | MALLOCX_TCACHE_NONE;
 
 #ifdef FOLLY_JEMALLOC_NODUMP_ALLOCATOR_CHUNK
@@ -59,7 +67,10 @@ bool JemallocNodumpAllocator::extend_and_setup_arena() {
   len = sizeof(hooks);
   // Read the existing hooks
   if (auto ret = mallctl(key.c_str(), &hooks, &len, nullptr, 0)) {
-    LOG(FATAL) << "Unable to get the hooks: " << errnoStr(ret);
+    LOG(ERROR) << "Unable to get the hooks: " << errnoStr(ret);
+    flags_ = 0;
+    arena_index_ = 0;
+    return false;
   }
   if (original_alloc_ == nullptr) {
     original_alloc_ = hooks.alloc;
@@ -71,7 +82,10 @@ bool JemallocNodumpAllocator::extend_and_setup_arena() {
   hooks.alloc = &JemallocNodumpAllocator::alloc;
   if (auto ret =
           mallctl(key.c_str(), nullptr, nullptr, &hooks, sizeof(hooks))) {
-    LOG(FATAL) << "Unable to set the hooks: " << errnoStr(ret);
+    LOG(ERROR) << "Unable to set the hooks: " << errnoStr(ret);
+    flags_ = 0;
+    arena_index_ = 0;
+    return false;
   }
 #else
   const auto key =
@@ -80,7 +94,10 @@ bool JemallocNodumpAllocator::extend_and_setup_arena() {
   len = sizeof(hooks);
   // Read the existing hooks
   if (auto ret = mallctl(key.c_str(), &hooks, &len, nullptr, 0)) {
-    LOG(FATAL) << "Unable to get the hooks: " << errnoStr(ret);
+    LOG(ERROR) << "Unable to get the hooks: " << errnoStr(ret);
+    flags_ = 0;
+    arena_index_ = 0;
+    return false;
   }
   if (original_alloc_ == nullptr) {
     original_alloc_ = hooks->alloc;
@@ -94,7 +111,10 @@ bool JemallocNodumpAllocator::extend_and_setup_arena() {
   extent_hooks_t* new_hooks = &extent_hooks_;
   if (auto ret = mallctl(
           key.c_str(), nullptr, nullptr, &new_hooks, sizeof(new_hooks))) {
-    LOG(FATAL) << "Unable to set the hooks: " << errnoStr(ret);
+    LOG(ERROR) << "Unable to set the hooks: " << errnoStr(ret);
+    flags_ = 0;
+    arena_index_ = 0;
+    return false;
   }
 #endif
 
