@@ -256,6 +256,8 @@ class QuotientMultiSetBuilder final {
 
   // Returns whether the key's slot is in a newly created block.
   // Only allows insert keys in nondecreasing order.
+  // Throws std::invalid_argument if key exceeds the configured key range, or
+  // is smaller than a previously inserted key.
   bool insert(uint64_t key);
 
   // Set payload of the latest created block.

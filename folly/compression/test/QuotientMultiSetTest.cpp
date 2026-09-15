@@ -17,6 +17,7 @@
 #include <folly/compression/QuotientMultiSet.h>
 
 #include <random>
+#include <stdexcept>
 
 #include <fmt/format.h>
 
@@ -135,6 +136,18 @@ class QuotientMultiSetTest : public ::testing::Test {
 };
 
 } // namespace
+
+TEST_F(QuotientMultiSetTest, InsertKeyOutOfRangeThrows) {
+  folly::QuotientMultiSetBuilder builder(8, 1, 0.95);
+  const auto maxKey = folly::qms_detail::maxValue(8);
+  EXPECT_THROW(builder.insert(maxKey + 1), std::invalid_argument);
+}
+
+TEST_F(QuotientMultiSetTest, InsertOutOfOrderKeyThrows) {
+  folly::QuotientMultiSetBuilder builder(32, 2, 0.95);
+  builder.insert(10);
+  EXPECT_THROW(builder.insert(5), std::invalid_argument);
+}
 
 TEST_F(QuotientMultiSetTest, Simple) {
   std::vector<uint64_t> keys = {

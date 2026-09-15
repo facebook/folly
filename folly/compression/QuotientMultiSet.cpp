@@ -17,8 +17,10 @@
 #include <folly/compression/QuotientMultiSet.h>
 
 #include <cmath>
+#include <stdexcept>
 
 #include <folly/Math.h>
+#include <folly/lang/Exception.h>
 
 #if FOLLY_QUOTIENT_MULTI_SET_SUPPORTED
 
@@ -59,9 +61,13 @@ bool QuotientMultiSetBuilder::maybeAllocateBlocks(size_t limitIndex) {
 }
 
 bool QuotientMultiSetBuilder::insert(uint64_t key) {
-  FOLLY_SAFE_CHECK(key <= maxKey_, "Invalid key");
-  FOLLY_SAFE_CHECK(
-      key >= prevKey_, "Keys need to be inserted in nondecreasing order");
+  if (key > maxKey_) {
+    throw_exception<std::invalid_argument>("Invalid key");
+  }
+  if (key < prevKey_) {
+    throw_exception<std::invalid_argument>(
+        "Keys need to be inserted in nondecreasing order");
+  }
   const auto qr = qms_detail::getQuotientAndRemainder(key, divisor_, fraction_);
   const auto& quotient = qr.first;
   const auto& remainder = qr.second;
