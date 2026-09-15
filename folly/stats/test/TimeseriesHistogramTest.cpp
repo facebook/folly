@@ -17,6 +17,7 @@
 #include <folly/stats/TimeseriesHistogram.h>
 
 #include <random>
+#include <stdexcept>
 
 #include <folly/portability/GTest.h>
 
@@ -531,4 +532,25 @@ TEST(TimeseriesHistogram, QueryByInterval) {
     EXPECT_GE(actualCount, estimatedCount);
     EXPECT_LE(actualCount - tolerance, estimatedCount);
   }
+}
+
+TEST(TimeseriesHistogram, AddValuesWithMismatchedHistogramThrows) {
+  TimeseriesHistogram<int> hist(
+      10,
+      0,
+      100,
+      MultiLevelTimeSeries<int>(60, IntMHTS::NUM_LEVELS, IntMHTS::kDurations));
+
+  Histogram<int> mismatchedMin(10, 1, 100);
+  EXPECT_THROW(
+      hist.addValues(mkTimePoint(0), mismatchedMin), std::invalid_argument);
+
+  Histogram<int> mismatchedBucketSize(20, 0, 100);
+  EXPECT_THROW(
+      hist.addValues(mkTimePoint(0), mismatchedBucketSize),
+      std::invalid_argument);
+
+  Histogram<int> matching(10, 0, 100);
+  matching.addValue(42);
+  EXPECT_NO_THROW(hist.addValues(mkTimePoint(0), matching));
 }

@@ -41,10 +41,13 @@ void TimeseriesHistogram<T, CT, C>::addValue(
 template <typename T, typename CT, typename C>
 void TimeseriesHistogram<T, CT, C>::addValues(
     TimePoint now, const folly::Histogram<ValueType>& hist) {
-  CHECK_EQ(hist.getMin(), getMin());
-  CHECK_EQ(hist.getMax(), getMax());
-  CHECK_EQ(hist.getBucketSize(), getBucketSize());
-  CHECK_EQ(hist.getNumBuckets(), getNumBuckets());
+  if (hist.getMin() != getMin() || hist.getMax() != getMax() ||
+      hist.getBucketSize() != getBucketSize() ||
+      hist.getNumBuckets() != getNumBuckets()) {
+    throw_exception<std::invalid_argument>(
+        "TimeseriesHistogram::addValues: input histogram has mismatched "
+        "bucket configuration");
+  }
 
   for (size_t n = 0; n < hist.getNumBuckets(); ++n) {
     const typename folly::Histogram<ValueType>::Bucket& histBucket =
