@@ -20,9 +20,7 @@
 
 #include <glog/logging.h>
 
-#include <folly/Portability.h>
 #include <folly/portability/Unistd.h>
-#include <folly/synchronization/AtomicRef.h>
 #include <folly/system/AtFork.h>
 
 namespace folly {
@@ -32,21 +30,19 @@ namespace {
 enum class State : uint8_t { INVALID, LOCKED, VALID };
 
 class PidState {
-  State value_;
+  std::atomic<State> value_{State::INVALID};
 
  public:
-  constexpr PidState() noexcept : value_(State::INVALID) {}
-
   FOLLY_ALWAYS_INLINE State load() noexcept {
-    return make_atomic_ref(value_).load(std::memory_order_acquire);
+    return value_.load(std::memory_order_acquire);
   }
 
   void store(State state) noexcept {
-    make_atomic_ref(value_).store(state, std::memory_order_release);
+    value_.store(state, std::memory_order_release);
   }
 
   bool cas(State& expected, State newstate) noexcept {
-    return make_atomic_ref(value_).compare_exchange_strong(
+    return value_.compare_exchange_strong(
         expected,
         newstate,
         std::memory_order_relaxed,
@@ -80,7 +76,7 @@ class PidCache {
   }
 }; // PidCache
 
-FOLLY_CONSTINIT PidCache cache_;
+constinit PidCache cache_;
 
 } // namespace
 
