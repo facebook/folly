@@ -197,7 +197,9 @@ class ConcurrentHashMap {
    * Construct a ConcurrentHashMap with 1 << ShardBits shards, size
    * and max_size given.  Both size and max_size will be rounded up to
    * the next power of two, if they are not already a power of two, so
-   * that we can index in to Shards efficiently.
+   * that we can index in to Shards efficiently. If the rounded max_size
+   * would end up smaller than the rounded size, max_size is raised to
+   * match it, since max_size can never be smaller than the initial size.
    *
    * Insertion functions will throw bad_alloc if max_size is exceeded.
    */
@@ -205,8 +207,10 @@ class ConcurrentHashMap {
     size_ = folly::nextPowTwo(size);
     if (max_size != 0) {
       max_size_ = folly::nextPowTwo(max_size);
+      if (max_size_ < size_) {
+        max_size_ = size_;
+      }
     }
-    CHECK(max_size_ == 0 || max_size_ >= size_);
     for (uint64_t i = 0; i < NumShards; i++) {
       segments_[i].store(nullptr, std::memory_order_relaxed);
     }

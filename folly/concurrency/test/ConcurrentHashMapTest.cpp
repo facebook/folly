@@ -132,6 +132,20 @@ TYPED_TEST_P(ConcurrentHashMapTest, MaxSizeTest) {
   EXPECT_TRUE(insert_failed);
 }
 
+// nextPowTwo(9) == 16 and nextPowTwo(8) == 8, so a naive independent rounding
+// of size and max_size would make max_size_ (8) end up smaller than size_
+// (16). max_size is a lower bound like size, so it should be raised to match
+// rather than left inconsistent -- verified behaviorally here, since neither
+// is directly queryable: the map must still be able to hold up to 16
+// elements (matching the rounded size, not the smaller un-clamped max_size)
+// before insert starts failing.
+TYPED_TEST_P(ConcurrentHashMapTest, MaxSizeBelowSizeIsClampedTest) {
+  CHM<uint64_t, uint64_t> foomap(9, 8);
+  for (uint64_t i = 0; i < 16; i++) {
+    EXPECT_TRUE(foomap.insert(i, 0).second);
+  }
+}
+
 TYPED_TEST_P(ConcurrentHashMapTest, MoveTest) {
   CHM<uint64_t, uint64_t> foomap(2, 16);
   auto other = std::move(foomap);
@@ -1250,6 +1264,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     ConcurrentHashMapTest,
     MapTest,
     MaxSizeTest,
+    MaxSizeBelowSizeIsClampedTest,
     MoveTest,
     EmplaceTest,
     MapResizeTest,
