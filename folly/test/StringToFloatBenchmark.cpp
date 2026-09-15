@@ -191,15 +191,46 @@ BENCHMARK(hardcoded_exponential_notation_FAST_FLOAT, n) {
   }
 }
 
-int fastFloatRandomInputIndex = 0;
-BENCHMARK(random_input_FAST_FLOAT, n) {
-  double value{};
+BENCHMARK(random_input_STD_FROM_CHARS, n) {
+  if (randomValues.empty()) {
+    return;
+  }
+  static std::size_t index = 0;
+  double value = 0;
   for (unsigned int i = 0; i < n; ++i) {
-    std::string& input = randomValues[fastFloatRandomInputIndex];
-    fastFloatRandomInputIndex += 1;
+    if (index == randomValues.size()) {
+      index = 0;
+    }
+    std::string& input = randomValues[index];
+    index += 1;
+    char* b = input.data();
+    char* e = b + input.size();
+    invoke_std_from_chars(b, e, value);
+  }
+}
+
+BENCHMARK(random_input_FAST_FLOAT, n) {
+  if (randomValues.empty()) {
+    return;
+  }
+  static std::size_t index = 0;
+  double value = 0;
+  for (unsigned int i = 0; i < n; ++i) {
+    if (index == randomValues.size()) {
+      index = 0;
+    }
+    std::string& input = randomValues[index];
+    index += 1;
     char* b = input.data();
     char* e = b + input.size();
     fast_float::from_chars(b, e, value);
+  }
+}
+
+BENCHMARK(zero_input_STD_FROM_CHARS, n) {
+  double value = 0;
+  for (unsigned int i = 0; i < n; ++i) {
+    invoke_std_from_chars(kInputZero, kInputZero + 1, value);
   }
 }
 
@@ -207,6 +238,17 @@ BENCHMARK(zero_input_FAST_FLOAT, n) {
   double value{};
   for (unsigned int i = 0; i < n; ++i) {
     fast_float::from_chars(kInputZero, kInputZero + 1, value);
+  }
+}
+
+BENCHMARK(single_digit_ints_STD_FROM_CHARS, n) {
+  double value = 0;
+  constexpr std::size_t kSelectionMask = 8 - 1;
+  for (std::size_t i = 0; i < n; i++) {
+    std::string& input = singleDigitIntValues[i & kSelectionMask];
+    char* b = input.data();
+    char* e = b + input.size();
+    invoke_std_from_chars(b, e, value);
   }
 }
 
@@ -221,22 +263,48 @@ BENCHMARK(single_digit_ints_FAST_FLOAT, n) {
   }
 }
 
+BENCHMARK(double_digit_ints_STD_FROM_CHARS, n) {
+  double value = 0;
+  constexpr std::size_t kSelectionMask = 64 - 1;
+  for (std::size_t i = 0; i < n; i++) {
+    std::string& input = doubleDigitIntValues[i & kSelectionMask];
+    char* b = input.data();
+    char* e = b + input.size();
+    invoke_std_from_chars(b, e, value);
+  }
+}
+
 BENCHMARK(double_digit_ints_FAST_FLOAT, n) {
   double value{};
-  constexpr std::size_t kSelectioMask = 64 - 1;
+  constexpr std::size_t kSelectionMask = 64 - 1;
   for (std::size_t i = 0; i < n; i++) {
-    std::string& input = doubleDigitIntValues[i & kSelectioMask];
+    std::string& input = doubleDigitIntValues[i & kSelectionMask];
     char* b = input.data();
     char* e = b + input.size();
     fast_float::from_chars(b, e, value);
   }
 }
 
+// The mask must be one less than a power of two, or it selects a skewed subset
+// of the 10,000 values.
+constexpr std::size_t kPercentageSelectionMask = 8192 - 1;
+
+BENCHMARK(four_digit_percentages_STD_FROM_CHARS, n) {
+  double value = 0;
+  for (std::size_t i = 0; i < n; i++) {
+    std::string& input =
+        fourDigitPercentageValues[i & kPercentageSelectionMask];
+    char* b = input.data();
+    char* e = b + input.size();
+    invoke_std_from_chars(b, e, value);
+  }
+}
+
 BENCHMARK(four_digit_percentages_FAST_FLOAT, n) {
   double value{};
-  constexpr std::size_t kSelectioMask = 8096 - 1;
   for (std::size_t i = 0; i < n; i++) {
-    std::string& input = fourDigitPercentageValues[i & kSelectioMask];
+    std::string& input =
+        fourDigitPercentageValues[i & kPercentageSelectionMask];
     char* b = input.data();
     char* e = b + input.size();
     fast_float::from_chars(b, e, value);

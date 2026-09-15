@@ -21,6 +21,7 @@
 #include <folly/Conv.h>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
@@ -1387,6 +1388,26 @@ void tryStringToFloat(const StrToFloat<String>& strToFloat) {
   for (const auto& input : kOversizedInputs) {
     auto rv = strToFloat(input);
     EXPECT_EQ(rv.value(), -numeric_limits<float>::infinity()) << input;
+  }
+
+  // Subnormals: representable, but below numeric_limits<float>::min()
+  auto rv6 = strToFloat(String("1.4E-45"));
+  EXPECT_TRUE(rv6.hasValue());
+  EXPECT_EQ(rv6.value(), numeric_limits<float>::denorm_min());
+  auto rv7 = strToFloat(String("-1.1754942E-38"));
+  EXPECT_TRUE(rv7.hasValue());
+  EXPECT_EQ(rv7.value(), -std::nextafter(numeric_limits<float>::min(), 0.0f));
+
+  // Below numeric limits. Underflow saturates to a zero carrying the sign of
+  // the input, the way strtod does, whatever the underlying parser reports.
+  // Every strToFloat implementation owes this, so assert it for all of them.
+  for (const std::string& magnitude : {"1E-46", "1E-400"}) {
+    for (const std::string& input : {magnitude, "-" + magnitude}) {
+      auto rv = strToFloat(String(input));
+      ASSERT_TRUE(rv.hasValue()) << input;
+      EXPECT_EQ(rv.value(), 0.0f) << input;
+      EXPECT_EQ(std::signbit(rv.value()), input[0] == '-') << input;
+    }
   }
 
   // NaN
