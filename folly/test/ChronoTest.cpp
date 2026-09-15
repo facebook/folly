@@ -21,6 +21,10 @@
 using namespace std::chrono;
 using namespace folly::chrono;
 
+namespace {
+struct UnrelatedClock {};
+} // namespace
+
 static_assert( //
     std::is_same_v<
         clock_traits<steady_clock>::spec,
@@ -38,6 +42,25 @@ static_assert( //
     std::is_same_v<
         system_clock::time_point::duration,
         coarse_system_clock::time_point::duration>);
+
+static_assert(granularity_v<steady_clock> == clock_granularity::fine);
+static_assert(granularity_v<coarse_steady_clock> == clock_granularity::coarse);
+static_assert(granularity_v<system_clock> == clock_granularity::fine);
+static_assert(granularity_v<coarse_system_clock> == clock_granularity::coarse);
+static_assert(granularity_v<UnrelatedClock> == clock_granularity::unknown);
+
+static_assert( //
+    std::is_same_v<clock_traits<steady_clock>::spec::fine_clock, steady_clock>);
+static_assert( //
+    std::is_same_v<
+        clock_traits<steady_clock>::spec::coarse_clock,
+        coarse_steady_clock>);
+static_assert( //
+    std::is_same_v<clock_traits<system_clock>::spec::fine_clock, system_clock>);
+static_assert( //
+    std::is_same_v<
+        clock_traits<system_clock>::spec::coarse_clock,
+        coarse_system_clock>);
 
 namespace {
 
@@ -96,4 +119,34 @@ TEST_F(ChronoTest, round_time_point) {
   EXPECT_EQ(point + seconds(7), round<seconds>(point + milliseconds(7200)));
   EXPECT_EQ(point + seconds(8), round<seconds>(point + milliseconds(7500)));
   EXPECT_EQ(point + seconds(8), round<seconds>(point + milliseconds(7800)));
+}
+
+TEST_F(ChronoTest, to_coarse_time_point_steady) {
+  auto const tp = steady_clock::time_point{} + seconds(7);
+  auto const coarse = to_coarse_time_point(tp);
+  static_assert(
+      std::is_same_v<decltype(coarse), coarse_steady_clock::time_point const>);
+  EXPECT_EQ(tp.time_since_epoch(), coarse.time_since_epoch());
+}
+
+TEST_F(ChronoTest, to_fine_time_point_steady) {
+  auto const tp = coarse_steady_clock::time_point{} + seconds(7);
+  auto const fine = to_fine_time_point(tp);
+  static_assert(std::is_same_v<decltype(fine), steady_clock::time_point const>);
+  EXPECT_EQ(tp.time_since_epoch(), fine.time_since_epoch());
+}
+
+TEST_F(ChronoTest, to_coarse_time_point_system) {
+  auto const tp = system_clock::time_point{} + seconds(7);
+  auto const coarse = to_coarse_time_point(tp);
+  static_assert(
+      std::is_same_v<decltype(coarse), coarse_system_clock::time_point const>);
+  EXPECT_EQ(tp.time_since_epoch(), coarse.time_since_epoch());
+}
+
+TEST_F(ChronoTest, to_fine_time_point_system) {
+  auto const tp = coarse_system_clock::time_point{} + seconds(7);
+  auto const fine = to_fine_time_point(tp);
+  static_assert(std::is_same_v<decltype(fine), system_clock::time_point const>);
+  EXPECT_EQ(tp.time_since_epoch(), fine.time_since_epoch());
 }

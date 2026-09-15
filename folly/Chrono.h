@@ -33,15 +33,26 @@ namespace chrono {
 /* using override */ using std::chrono::floor;
 /* using override */ using std::chrono::round;
 
+struct coarse_steady_clock;
+struct coarse_system_clock;
+
 //  steady_clock_spec
 //
 //  All clocks with this spec share epoch and tick rate.
-struct steady_clock_spec {};
+struct steady_clock_spec {
+  using fine_clock = std::chrono::steady_clock;
+  using coarse_clock = coarse_steady_clock;
+};
 
 //  system_clock_spec
 //
 //  All clocks with this spec share epoch and tick rate.
-struct system_clock_spec {};
+struct system_clock_spec {
+  using fine_clock = std::chrono::system_clock;
+  using coarse_clock = coarse_system_clock;
+};
+
+enum class clock_granularity { unknown, fine, coarse };
 
 //  clock_traits
 //
@@ -57,6 +68,39 @@ struct clock_traits {
  public:
   using spec = detected_or_t<void, detect_spec_, Clock>;
 };
+
+namespace detail {
+
+template <typename Clock>
+struct clock_traits_granularity_ {
+  using granu = clock_granularity;
+  using spec = typename clock_traits<Clock>::spec;
+
+  template <typename S>
+  using fine_clock_ = typename S::fine_clock;
+
+  template <typename S>
+  using coarse_clock_ = typename S::coarse_clock;
+
+  static constexpr bool is_fine =
+      std::is_same_v<Clock, detected_or_t<void, fine_clock_, spec>>;
+  static constexpr bool is_coarse =
+      std::is_same_v<Clock, detected_or_t<void, coarse_clock_, spec>>;
+
+  // clang-format off
+  static constexpr clock_granularity granularity =
+      is_fine ? granu::fine : is_coarse ? granu::coarse : granu::unknown;
+  // clang-format on
+};
+
+} // namespace detail
+
+//  granularity_v
+//
+//  Whether Clock is the fine or coarse clock of its clock_traits<Clock>::spec.
+template <typename Clock>
+static constexpr clock_granularity granularity_v =
+    detail::clock_traits_granularity_<Clock>::granularity;
 
 template <>
 struct clock_traits<std::chrono::steady_clock> {
@@ -127,6 +171,34 @@ struct coarse_system_clock {
         std::chrono::duration_cast<duration>(std::chrono::seconds(t)));
   }
 };
+
+struct to_coarse_time_point_fn {
+  template <
+      typename Clock,
+      typename Duration,
+      typename...,
+      typename CoarseClock = typename clock_traits<Clock>::spec::coarse_clock,
+      typename CoarseTimePoint = std::chrono::time_point<CoarseClock, Duration>>
+  FOLLY_ERASE constexpr CoarseTimePoint operator()(
+      std::chrono::time_point<Clock, Duration> const& tp) const noexcept {
+    return CoarseTimePoint{tp.time_since_epoch()};
+  }
+};
+inline constexpr to_coarse_time_point_fn to_coarse_time_point{};
+
+struct to_fine_time_point_fn {
+  template <
+      typename Clock,
+      typename Duration,
+      typename...,
+      typename FineClock = typename clock_traits<Clock>::spec::fine_clock,
+      typename FineTimePoint = std::chrono::time_point<FineClock, Duration>>
+  FOLLY_ERASE constexpr FineTimePoint operator()(
+      std::chrono::time_point<Clock, Duration> const& tp) const noexcept {
+    return FineTimePoint{tp.time_since_epoch()};
+  }
+};
+inline constexpr to_fine_time_point_fn to_fine_time_point{};
 
 } // namespace chrono
 } // namespace folly
