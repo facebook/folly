@@ -83,7 +83,8 @@ class SingleWriterFixedHashMap {
 
   explicit SingleWriterFixedHashMap(
       size_t capacity, const SingleWriterFixedHashMap& o)
-      : capacity_(folly::nextPowTwo(capacity)) {
+      : capacity_(
+            folly::nextPowTwo(capacity > o.size() ? capacity : o.size())) {
     if (o.empty()) {
       return;
     }

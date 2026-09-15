@@ -167,6 +167,47 @@ TEST(SingleWriterFixedHashMap, copyTombstones) {
   copy_tombstones_test();
 }
 
+void copy_resize_grows_to_fit_live_count_test() {
+  SWFHM m(64);
+  for (int i = 0; i < 8; ++i) {
+    m.insert(i, i);
+  }
+  ASSERT_EQ(m.size(), 8);
+  // The requested capacity is a lower bound, not an upper bound: if it's too
+  // small to hold the source's live elements, the new map grows to fit
+  // instead of silently overflowing insert()'s probe loop while copying.
+  SWFHM m2(2, m);
+  ASSERT_EQ(m2.capacity(), 8);
+  ASSERT_EQ(m2.size(), 8);
+  for (int i = 0; i < 8; ++i) {
+    ASSERT_TRUE(m2.contains(i));
+  }
+}
+
+TEST(SingleWriterFixedHashMap, copyResizeGrowsToFitLiveCount) {
+  copy_resize_grows_to_fit_live_count_test();
+}
+
+void copy_resize_uses_live_count_not_used_test() {
+  SWFHM m(64);
+  for (int i = 0; i < 20; ++i) {
+    m.insert(i, i);
+    m.erase(i);
+  }
+  // used() is a high-water mark that never decrements on erase(); size() is
+  // the live count. The requested capacity must be honored as-is (not
+  // needlessly inflated) when there is nothing left to copy, even though
+  // used() is large.
+  ASSERT_EQ(m.used(), 20);
+  ASSERT_EQ(m.size(), 0);
+  SWFHM m2(1, m);
+  ASSERT_EQ(m2.capacity(), 1);
+}
+
+TEST(SingleWriterFixedHashMap, copyResizeUsesLiveCountNotUsed) {
+  copy_resize_uses_live_count_not_used_test();
+}
+
 void duplicate_insert_test() {
   SWFHM m(4);
 
