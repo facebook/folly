@@ -1,0 +1,11 @@
+#include <vector>
+
+std::vector<int> deduplicateAdjacent(const std::vector<int>& values) {
+  std::vector<int> result;
+  for (int value : values) {
+    if (result.empty() || result.back() == value) {
+      result.emplace_back(value);
+    }
+  }
+  return result;
+}
