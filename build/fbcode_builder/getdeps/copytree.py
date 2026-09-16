@@ -11,6 +11,7 @@ import shutil
 import stat
 import subprocess
 from collections.abc import Callable
+from pathlib import Path
 
 from .getdeps_platform import is_windows
 from .runcmd import run_cmd
@@ -19,64 +20,74 @@ from .runcmd import run_cmd
 PREFETCHED_DIRS: set[str] = set()
 
 
-def containing_repo_type(path: str) -> tuple[str | None, str | None]:
+def containing_repo_type(path: str | Path) -> tuple[str | None, str | None]:
+    # The return stays `str` (not `Path`): callers feed it into Env values,
+    # argv lists, and hashes, all of which must remain str.
+    p = Path(path)
     while True:
-        if os.path.exists(os.path.join(path, ".git")):
-            return ("git", path)
-        if os.path.exists(os.path.join(path, ".hg")):
-            return ("hg", path)
+        if (p / ".git").exists():
+            return ("git", os.fspath(p))
+        if (p / ".hg").exists():
+            return ("hg", os.fspath(p))
 
-        parent = os.path.dirname(path)
-        if parent == path:
+        parent = p.parent
+        if parent == p:
             return None, None
-        path = parent
+        p = parent
 
 
-def find_eden_root(dirpath: str) -> str | None:
+def find_eden_root(dirpath: str | Path) -> str | None:
     """If the specified directory is inside an EdenFS checkout, returns
     the canonical absolute path to the root of that checkout.
 
     Returns None if the specified directory is not in an EdenFS checkout.
     """
+    d = Path(dirpath)
     if is_windows():
-        repo_type, repo_root = containing_repo_type(dirpath)
+        repo_type, repo_root = containing_repo_type(d)
         if repo_root is not None:
-            if os.path.exists(os.path.join(repo_root, ".eden", "config")):
+            if (Path(repo_root) / ".eden" / "config").exists():
                 return repo_root
         return None
 
     try:
-        return os.readlink(os.path.join(dirpath, ".eden", "root"))
+        return os.readlink(d / ".eden" / "root")
     except OSError:
         return None
 
 
-def prefetch_dir_if_eden(dirpath: str) -> None:
+def prefetch_dir_if_eden(dirpath: str | Path) -> None:
     """After an amend/rebase, Eden may need to fetch a large number
     of trees from the servers.  The simplistic single threaded walk
     performed by copytree makes this more expensive than is desirable
     so we help accelerate things by performing a prefetch on the
     source directory"""
-    global PREFETCHED_DIRS
-    if dirpath in PREFETCHED_DIRS:
+    # Normalize to str for the dedup set so str and Path callers share it.
+    key = os.fspath(dirpath)
+    if key in PREFETCHED_DIRS:
         return
     root = find_eden_root(dirpath)
     if root is None:
         return
-    glob = f"{os.path.relpath(dirpath, root).replace(os.sep, '/')}/**"
+    glob = f"{os.path.relpath(key, root).replace(os.sep, '/')}/**"
     print(f"Prefetching {glob}")
     subprocess.call(["edenfsctl", "prefetch", "--repo", root, glob, "--background"])
-    PREFETCHED_DIRS.add(dirpath)
+    PREFETCHED_DIRS.add(key)
 
 
-def simple_copytree(src_dir: str, dest_dir: str, symlinks: bool = False) -> str:
+def simple_copytree(
+    src_dir: str | Path, dest_dir: str | Path, symlinks: bool = False
+) -> str:
     """A simple version of shutil.copytree() that can delegate to native tools if faster"""
+    src = Path(src_dir)
+    dest = Path(dest_dir)
     if is_windows():
-        os.makedirs(dest_dir, exist_ok=True)
+        dest.mkdir(parents=True, exist_ok=True)
         cmd = [
             "robocopy.exe",
-            src_dir,
-            dest_dir,
+            # argv must stay str for subprocess.
+            os.fspath(src),
+            os.fspath(dest),
             # copy directories, including empty ones
             "/E",
             # Ignore Extra files in destination
@@ -97,14 +108,14 @@ def simple_copytree(src_dir: str, dest_dir: str, symlinks: bool = False) -> str:
         exit_code = run_cmd(cmd, allow_fail=True)
         if exit_code > 1:
             raise subprocess.CalledProcessError(exit_code, cmd)
-        return dest_dir
+        return os.fspath(dest)
     else:
-        return shutil.copytree(src_dir, dest_dir, symlinks=symlinks)
+        return os.fspath(shutil.copytree(src, dest, symlinks=symlinks))
 
 
 def _remove_readonly_and_try_again(
     func: Callable[..., object],
-    path: str,
+    path: str | Path,
     #  `typing.Type[<base type>]` to avoid runtime subscripting errors.
     exc_info: tuple[type, BaseException, object],
 ) -> None:
@@ -129,7 +140,7 @@ def _remove_readonly_and_try_again(
         raise exc_info[1]
 
 
-def rmtree_more(path: str) -> None:
+def rmtree_more(path: str | Path) -> None:
     """Wrapper around shutil.rmtree() that makes it remove readonly files as well.
     Useful when git on windows decides to make some files readonly on checkout"""
     shutil.rmtree(path, onerror=_remove_readonly_and_try_again)

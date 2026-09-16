@@ -11,6 +11,7 @@ import select
 import subprocess
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from shlex import quote as shellquote
 
 from .envfuncs import Env
@@ -93,9 +94,9 @@ def _print_env_diff(env: Env, log_fn: Callable[[str], None]) -> None:
 def check_cmd(
     cmd: list[str],
     env: Env | None = None,
-    cwd: str | None = None,
+    cwd: str | Path | None = None,
     allow_fail: bool = False,
-    log_file: str | None = None,
+    log_file: str | Path | None = None,
 ) -> None:
     """Run the command and abort on failure"""
     rc = run_cmd(cmd, env=env, cwd=cwd, allow_fail=allow_fail, log_file=log_file)
@@ -106,9 +107,9 @@ def check_cmd(
 def run_cmd(
     cmd: list[str],
     env: Env | None = None,
-    cwd: str | None = None,
+    cwd: str | Path | None = None,
     allow_fail: bool = False,
-    log_file: str | None = None,
+    log_file: str | Path | None = None,
     preexec_fn: Callable[[], None] | None = None,
 ) -> int:
     def log_to_stdout(msg: str) -> None:
@@ -143,7 +144,7 @@ def run_cmd(
 def _run_cmd(
     cmd: list[str],
     env: Env | None,
-    cwd: str | None,
+    cwd: str | Path | None,
     allow_fail: bool,
     log_fn: Callable[[str], None],
     preexec_fn: Callable[[], None] | None = None,
@@ -170,11 +171,16 @@ def _run_cmd(
         env_dict = None
 
     if cwd:
-        log_fn("+ cd %s && \\\n" % shellquote(cwd))
+        # Normalize to str: the prefix surgery below is string manipulation,
+        # and subprocess receives the normalized value.
+        cwd_str = os.fspath(cwd)
+        log_fn("+ cd %s && \\\n" % shellquote(cwd_str))
         # Our long path escape sequence may confuse cmd.exe, so if the cwd
         # is short enough, strip that off.
-        if is_windows() and (len(cwd) < 250) and cwd.startswith("\\\\?\\"):
-            cwd = cwd[4:]
+        if is_windows() and (len(cwd_str) < 250) and cwd_str.startswith("\\\\?\\"):
+            cwd_str = cwd_str[4:]
+    else:
+        cwd_str = None
 
     log_fn("+ %s\n" % cmd_str)
 
@@ -189,7 +195,7 @@ def _run_cmd(
         p = subprocess.Popen(
             cmd,
             env=env_dict,
-            cwd=cwd,
+            cwd=cwd_str,
             stdout=stdout,
             stderr=subprocess.STDOUT,
             preexec_fn=preexec_fn,

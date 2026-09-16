@@ -10,6 +10,7 @@ import os
 import shlex
 import sys
 from collections.abc import ItemsView, Iterator, KeysView, Mapping, ValuesView
+from pathlib import Path
 from typing import overload, TypeVar
 
 _T = TypeVar("_T")
@@ -178,7 +179,11 @@ def path_search(
     exename is eg: `ninja` and this function knows to append a .exe
     to the end on windows.
     Returns the path to the exe if found, or None if either no
-    PATH is set in env or no executable is found."""
+    PATH is set in env or no executable is found.
+
+    NOTE: the return stays `str` (not `Path`) on purpose: results feed
+    Env values, argv lists, and project-hash inputs, all of which must
+    remain str. Revisit when the core builders/loaders are retyped."""
 
     path = env.get("PATH", None)
     if path is None:
@@ -202,10 +207,10 @@ def _perform_path_search(path: str, exename: str) -> str | None:
         exename = "%s.exe" % exename
 
     for bindir in path.split(os.pathsep):
-        full_name = os.path.join(bindir, exename)
-        if os.path.exists(full_name) and os.path.isfile(full_name):
+        full_name = Path(bindir, exename)
+        if full_name.exists() and full_name.is_file():
             if not is_win and not os.access(full_name, os.X_OK):
                 continue
-            return full_name
+            return os.fspath(full_name)
 
     return None
