@@ -47,6 +47,17 @@ EnvironmentState EnvironmentState::fromCurrentEnvironment() {
 }
 
 void EnvironmentState::setAsCurrentEnvironment() {
+  // Validate all keys before calling clearenv(): once that succeeds, the
+  // entire previous environment is gone, so a malformed key discovered
+  // partway through the setenv() loop below would otherwise leave environ
+  // in a half-destroyed state (neither the old environment nor the new one)
+  // at the moment the process aborts.
+  for (const auto& [k, v] : env_) {
+    if (k.empty() || k.find('=') != std::string::npos) {
+      throw MalformedEnvironment{
+          to<std::string>("Environment contains an invalid key \"", k, "\"")};
+    }
+  }
   PCHECK(0 == clearenv());
   for (const auto& [k, v] : env_) {
     PCHECK(0 == setenv(k.c_str(), v.c_str(), /* overwrite = */ 1));

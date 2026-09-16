@@ -161,6 +161,20 @@ TEST(EnvironmentStateTest, Update) {
   EXPECT_STREQ("foon", getenv("spork"));
 }
 
+TEST(EnvironmentStateTest, SetAsCurrentEnvironmentFailsOnEmptyKey) {
+  EnvVarSaver saver{};
+  auto env = EnvironmentState::empty();
+  (*env)[""] = "value";
+  EXPECT_THROW(env.setAsCurrentEnvironment(), MalformedEnvironment);
+}
+
+TEST(EnvironmentStateTest, SetAsCurrentEnvironmentFailsOnKeyContainingEquals) {
+  EnvVarSaver saver{};
+  auto env = EnvironmentState::empty();
+  (*env)["FOO=BAR"] = "value";
+  EXPECT_THROW(env.setAsCurrentEnvironment(), MalformedEnvironment);
+}
+
 TEST(EnvironmentStateTest, forSubprocess) {
   auto env = EnvironmentState::empty();
   (*env)["spork"] = "foon";
