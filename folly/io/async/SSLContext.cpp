@@ -594,10 +594,12 @@ int SSLContext::baseServerNameOpenSSLCallback(SSL* ssl, int* al, void* data) {
       *al = TLS1_AD_UNRECOGNIZED_NAME;
       return SSL_TLSEXT_ERR_ALERT_FATAL;
     default:
-      CHECK(false);
+      LOG(FATAL)
+          << "SSLContext::baseServerNameOpenSSLCallback: "
+             "application-installed ServerNameCallback returned "
+             "unexpected ServerNameCallbackResult "
+          << static_cast<int>(ret);
   }
-
-  return SSL_TLSEXT_ERR_NOACK;
 }
 
 int SSLContext::alpnSelectCallback(

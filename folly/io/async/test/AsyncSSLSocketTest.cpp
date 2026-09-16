@@ -816,6 +816,44 @@ TEST(AsyncSSLSocketTest, SNITestClientHelloNoHostname) {
 }
 
 /**
+ * If the application-installed ServerNameCallback returns a
+ * ServerNameCallbackResult outside the three documented enumerators (as if
+ * the callback has gone haywire), the AsyncSSLSocket must not continue as
+ * normal with establishing a connection. The process must crash rather than
+ * silently proceed with a fail-open answer or hit undefined behavior. In the
+ * future, though, we may choose to handle this another way.
+ *
+ * The bad value used (see SNIServerBadCallbackResult) is deliberately chosen
+ * to be in-range per [dcl.enum] (a well-defined cast, not independently UB)
+ * but not a declared enumerator, so this test exercises folly's own handling
+ * specifically.
+ */
+static void runSniHandshakeWithBadCallbackResult() {
+  EventBase eventBase;
+  std::shared_ptr<SSLContext> clientCtx(new SSLContext);
+  std::shared_ptr<SSLContext> dfServerCtx(new SSLContext);
+  const std::string serverName("xyz.newdev.facebook.com");
+  NetworkSocket fds[2];
+  getfds(fds);
+  getctx(clientCtx, dfServerCtx);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+  SNIClient client(std::move(clientSock));
+  SNIServerBadCallbackResult server(std::move(serverSock), dfServerCtx);
+
+  eventBase.loop();
+}
+
+TEST(AsyncSSLSocketTest, SNITestBadCallbackResultCrashesDeathTest) {
+  EXPECT_DEATH(
+      runSniHandshakeWithBadCallbackResult(),
+      "unexpected ServerNameCallbackResult|invalid-enum-load");
+}
+
+/**
  * 1. Create an SSLContext that does not have an ALPN
  * 2. Use AsyncSSLSocket::setSupportedApplicationProtocols on the client and
  * server, and assert that a common ALPN was negotiated.

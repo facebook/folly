@@ -1061,6 +1061,47 @@ class SNIServer
   std::string expectedServerName_;
 };
 
+// Simulates an application-installed ServerNameCallback that has gone
+// haywire, returning a folly::SSLContext::ServerNameCallbackResult outside
+// the three documented enumerators.
+class SNIServerBadCallbackResult
+    : private AsyncSSLSocket::HandshakeCB,
+      private AsyncTransport::ReadCallback {
+ public:
+  explicit SNIServerBadCallbackResult(
+      AsyncSSLSocket::UniquePtr socket,
+      const std::shared_ptr<folly::SSLContext>& ctx)
+      : socket_(std::move(socket)) {
+    ctx->setServerNameCallback([](SSL*) {
+      // 3 is deliberately chosen: ServerNameCallbackResult has 3 enumerators
+      // (0, 1, 2), so its legal range per [dcl.enum] (smallest bit-width
+      // fitting the enumerators) is 0..3 -- 3 is not a declared enumerator,
+      // but is a well-defined, in-range value to cast, unlike an arbitrary
+      // out-of-range value (which UBSan's own invalid-enum-load check would
+      // catch on its own, independent of this code's own handling).
+      return static_cast<folly::SSLContext::ServerNameCallbackResult>(3);
+    });
+    socket_->sslAccept(this);
+  }
+
+ private:
+  void handshakeSuc(AsyncSSLSocket* /* ssl */) noexcept override {}
+  void handshakeErr(
+      AsyncSSLSocket*, const AsyncSocketException& ex) noexcept override {
+    ADD_FAILURE() << "server handshake error: " << ex.what();
+  }
+  void getReadBuffer(void** /* bufReturn */, size_t* lenReturn) override {
+    *lenReturn = 0;
+  }
+  void readDataAvailable(size_t /* len */) noexcept override {}
+  void readEOF() noexcept override { socket_->close(); }
+  void readErr(const AsyncSocketException& ex) noexcept override {
+    ADD_FAILURE() << "server read error: " << ex.what();
+  }
+
+  AsyncSSLSocket::UniquePtr socket_;
+};
+
 class SSLClient
     : public AsyncSocket::ConnectCallback,
       public AsyncTransport::WriteCallback,
