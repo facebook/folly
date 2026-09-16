@@ -286,6 +286,9 @@ returns an alternative or findings.
   is execution-only, not a readable input.
 - For review of a change, read-only access to the diff.
 
+Treat task-note wording as evidence, not approved prose: define, replace, or cut
+language the intended reader would not understand.
+
 Mark each source path as required to read or merely permitted.
 
 For prose, a requested addition must name the reader task or required
@@ -360,31 +363,18 @@ finish, resume above at step 2.
 
 **Run external review:** follow `{FA}/critic-iterate/run-review.md`.
 
-**Commit / diff messages — separate inner loop from outer evaluator.** The
-author runs the `write.md` inner loop to convergence before the outer evaluator.
+**Commit / diff messages.** Before opening the author draft or cold report, put
+a complete independent message, including its Test Plan, in `REVIEW FRAME:`.
+Then follow the general comparison, triage, and closure rules.
 
-Before opening the author draft or cold report, the evaluator drafts from only
-the task note, the rule files selected under "Fresh reviewer inputs," and the
-diff. Treat task-note wording as untrusted: define, replace, or cut anything the
-intended reader would not understand. Emit the finalized draft as required
-above, then follow the general prose order: compare the author draft before
-classifying the cold report.
-
-The evaluator returns the regenerated draft verbatim, followed by quoted rubric
-flags against the author draft. Apply the plain-language check to the author
-draft too, even when its wording came from the task note; include cold-reader
-artifact failures among the flags.
-
-The author uses the general `MUST_TAKE` / `MINOR` / `REJECTED` triage and
-closure rules.
-
-**Structural best-of-both.** Treat the regenerated draft as a diagnostic and
-idea source, not a second draft to blend. Borrow changes that reduce reader
-effort: clearer ordering, plainer language, or less unnecessary text. First
-preserve exactly the structure the target audience needs; when two versions do
-that with equal effort, prefer the shorter one. Reject changes that mainly add
-coverage, copy the reviewer wholesale, or replace a concrete relationship with
-an abstraction the reader must unpack.
+**Commit / diff structural comparison.** Compare the drafts' reader model and
+structure, not sentences. Treat the independent message as a diagnostic and idea
+source, not a second draft to blend. Borrow changes that reduce reader effort:
+clearer ordering, plainer language, or less unnecessary text. First preserve
+exactly the structure the target audience needs; when two versions do that with
+equal effort, prefer the shorter one. Reject changes that mainly add coverage,
+copy the reviewer wholesale, or replace a concrete relationship with an
+abstraction the reader must unpack.
 
 **Context packet discipline (commit messages).** The author or orchestrator
 still builds a context packet for commit messages. For fresh review, pass only
@@ -469,10 +459,10 @@ delegating writing, follow `{FA}/critic-iterate/delegated-author.md`.
 - Do NOT use reviewer failure as an escape hatch. Codex CLI infra failure
   blocks; bad reviewer output must be retried, not accepted.
 - Do NOT skip required dual revision because a commit message "looks tight" or
-  the outer evaluator seems unnecessary. Only the "Dual-Revision Thresholds"
-  exemptions apply.
+  fresh review seems unnecessary. Only the "Dual-Revision Thresholds" exemptions
+  apply.
 - User critique is not dual revision; run the applicable Codex review, including
-  anchor-free regeneration where required.
+  the independent `REVIEW FRAME:` where required.
 - A reviewer result belongs to the exact candidate it inspected, not to a
   completed workflow stage. After any later text edit, the round no longer
   covers the final revision; follow "Integration and closure" to choose another

@@ -91,6 +91,9 @@ concision.
 ## Sentences
 
 - Short sentences. Short paragraphs.
+- **Dense sentences.** If a sentence stacks 4+ noun phrases or chained
+  possessives, cut it if unneeded; otherwise restructure it. For a sentence over
+  20 words, read it aloud; cut or restructure it if you stumble.
 - One claim per sentence by default — the goal is fast comprehension. Glue
   (em-dash, semicolon) when the second clause depends on the first to make sense
   ("keep X — stripping breaks Y"). Split independent claims: "X — and Y" → "X.
@@ -264,8 +267,8 @@ below — don't re-enumerate here.
 
 ## Iterate — inner loop, until convergence
 
-When required, dual revision follows this iterative inner loop after it
-converges (see "Outer evaluator" below).
+When `{FA}/critic-iterate.md` "Dual Revision" applies, it follows this iterative
+inner loop after it converges.
 
 Per round: explanation → shape → cut (including the test plan) → plain language
 → cold re-read. Converge when a full round makes no edit.
@@ -397,53 +400,6 @@ passes the sentence Cut test, and lead with the content that earns it.
   on first use, or rewrite around the concrete operation. Industry-standard
   terms ("idempotent", "race condition") are fine in body prose; for titles,
   apply the title-only test.
-
-## Outer evaluator — anchor-free regeneration + rubric (separate)
-
-When dual revision is required, run it AFTER the inner loop converges. Follow
-`critic-iterate.md` "Dual Revision". The source-aware fresh evaluator integrates
-the required cold read. For commit and diff messages, it provides two outputs:
-
-1. **Anchor-free regenerated draft.** The reviewer produces its OWN draft from
-   the allowed inputs (task note, selected rule files, diff artifact) before
-   reading the author draft. This is the primary signal — the side-by-side
-   comparison surfaces failures the author can't see because they're locked into
-   their draft (mis-led lead, wrong shape choice, buried invariant, missing
-   must-know fact). Compare structurally, not sentence-by-sentence.
-2. **Rubric findings.** A small rubric (below) the reviewer runs anchor-free
-   against its own draft and reports against the author's. Scoped to patterns
-   that require fresh eyes — NOT a re-run of the cut test.
-
-Use `critic-iterate.md` "Integration and closure" to triage the result, run the
-required author review, and decide whether another external pair follows.
-
-### Rubric (fresh-eyes patterns only)
-
-For each item: read the FULL draft (Summary + Test Plan) with that one item in
-mind. Capture ✅ (clean) or ❌ (offending — quote + location).
-
-1. **Opening states the goal early?** Apply "State the goal early." Flag missing
-   or buried goals, unnecessary setup before the goal, unjustified
-   invariant-first leads, stack references that are dependency bookkeeping
-   rather than explanation, and unclear intended readers.
-2. **Any sentence stacks 4+ noun phrases or chains possessives** ("the X's Y
-   whose Z affects W")? First ask: does this sentence earn its slot? If not,
-   cut. If yes, restructure.
-3. **Any sentence > 30 words?** Read aloud. If you stumble, first ask: does this
-   sentence earn its slot? If not, cut. If yes, restructure.
-4. **Any 2+ parallel facts in prose that should be bullets?**
-5. **Any 3+ inline items in prose that should be bullets?**
-6. **Does the draft give the intended audience exactly the facts and
-   relationships needed for its purpose?** Flag true but unnecessary detail,
-   abstractions the reader must unpack, and missing relationships the reader
-   must guess. When two versions require the same effort and convey the same
-   needed structure, prefer the shorter one.
-
-Cut-test patterns (mechanism narration, scope defense, predecessor
-re-explanation, verb-as-label, wrap-ups) are NOT in the rubric — the inner loop
-owns them. If the regenerated draft is markedly different on any of those,
-that's a finding worth reporting; but the rubric itself doesn't pattern-match
-for them.
 
 ## Test plans — what you checked, briefly
 
