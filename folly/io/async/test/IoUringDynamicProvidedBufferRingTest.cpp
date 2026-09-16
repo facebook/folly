@@ -155,21 +155,33 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, BufferCountCheck) {
     };
   };
 
-  auto minRing =
-      IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(2));
-  EXPECT_EQ(minRing->count(), 2);
+  // Each ring is destroyed before the next is created so registrations don't
+  // accumulate: io_uring_register_buf_ring() counts against RLIMIT_MEMLOCK,
+  // and holding all rings (including the 32768-buffer one) alive at once made
+  // this test flaky on memlock-constrained hosts.
+  {
+    auto minRing =
+        IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(2));
+    EXPECT_EQ(minRing->count(), 2);
+  }
 
-  auto maxRing =
-      IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(32768));
-  EXPECT_EQ(maxRing->count(), 32768);
+  {
+    auto maxRing =
+        IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(32768));
+    EXPECT_EQ(maxRing->count(), 32768);
+  }
 
-  auto bufRing =
-      IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(1000));
-  EXPECT_EQ(bufRing->count(), 1024);
+  {
+    auto bufRing =
+        IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(1000));
+    EXPECT_EQ(bufRing->count(), 1024);
+  }
 
-  auto roundedRing =
-      IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(1));
-  EXPECT_EQ(roundedRing->count(), 2);
+  {
+    auto roundedRing =
+        IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(1));
+    EXPECT_EQ(roundedRing->count(), 2);
+  }
 
   EXPECT_THROW(
       IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(0)),
