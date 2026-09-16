@@ -25,6 +25,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Conv.h>
+#include <folly/Portability.h>
 #include <folly/portability/Atomic.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysTime.h>
@@ -816,6 +817,20 @@ TEST(Ahm, iteratorSkipsEmptySubmaps) {
 
   ++it;
   ASSERT_EQ(map.end(), it);
+}
+
+// erase() delegates to AtomicHashArray::erase(), which treats the map's own
+// emptyKey/lockedKey/erasedKey sentinels as illegal keys via a DCHECK-based
+// check shared with find()/insert() -- checked only in debug builds, exactly
+// like those two, not enforced (and not needed) in release.
+TEST(Ahm, eraseWithSentinelKeyIsDebugOnlyIllegal) {
+  AtomicHashMap<int64_t, int64_t> map(100);
+  constexpr int64_t kEmptyKeySentinel = -1; // AtomicHashArray::Config default
+  if (folly::kIsDebug) {
+    EXPECT_DEATH(map.erase(kEmptyKeySentinel), "");
+  } else {
+    EXPECT_EQ(0, map.erase(kEmptyKeySentinel));
+  }
 }
 
 namespace {

@@ -118,6 +118,7 @@ fb_dirsync_cpp_unittest(
         "//folly:atomic_hash_map",
         "//folly:benchmark",
         "//folly:conv",
+        "//folly:portability",
         "//folly/portability:atomic",
         "//folly/portability:gtest",
         "//folly/portability:sys_time",

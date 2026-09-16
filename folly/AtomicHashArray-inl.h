@@ -300,9 +300,7 @@ size_t AtomicHashArray<
     Allocator,
     ProbeFcn,
     KeyConvertFcn>::erase(KeyT key_in) {
-  CHECK_NE(key_in, kEmptyKey_);
-  CHECK_NE(key_in, kLockedKey_);
-  CHECK_NE(key_in, kErasedKey_);
+  checkLegalKeyIfKey(key_in);
 
   for (size_t idx = keyToAnchorIdx(key_in), numProbes = 0;;
        idx = ProbeFcn()(idx, numProbes, capacity_)) {
