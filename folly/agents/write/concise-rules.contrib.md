@@ -3,6 +3,5 @@
 Purpose: keep rule documents short without deleting the information needed to
 apply them correctly.
 
-It gives concrete checks for cutting, merging, and factoring rule text without
-losing when or how a rule applies. `../critic-iterate.md` handles related-rule
-searches, placement, and audit reports; `../write.md` handles general prose.
+It owns rule-document cutting, related-rule discovery, placement, consolidation,
+and the audit evidence for those decisions. `../write.md` owns general prose.

@@ -4,9 +4,9 @@ When writing or shortening guidelines and rules documents for token efficiency:
 
 ## What to cut
 
-- **Explanations that restate the rule.** If the rule is "avoid X," don't follow
-  with "X is bad because..." unless the "because" changes how the reader applies
-  the rule.
+- **Repeated guidance.** Keep one clear version of each instruction. An extra
+  explanation stays only when it changes how the reader applies the rule; an
+  extra example stays only when it teaches a distinct point.
 - **Knowledge strong models already supply.** Do not encode common syntax,
   framework basics, or standard advice. Keep project-specific decisions,
   high-impact caveats, and actions a strong model would not take by default. An
@@ -20,8 +20,6 @@ When writing or shortening guidelines and rules documents for token efficiency:
 - **Process history.** Cut notes about how a rule was developed, tested, or
   might later be promoted or split. Put rollout context in plans or run records;
   rule docs should state current operating behavior.
-- **Redundant code blocks.** One good example beats two that illustrate the same
-  point. Consolidate.
 
 ## What to keep
 
@@ -53,6 +51,14 @@ license to add new content.
 
 ## Process
 
+- Before editing, search for rules that govern the topic and read each related
+  file in full. Check the destination and adjacent headings for fit. Place
+  guidance with the rules that govern it.
+- In the pass artifact, name the related rules and their file and heading, or
+  the search terms that found none. Also name the related files read in full,
+  the destination and adjacent headings checked, and whether guidance was moved,
+  merged, cross-referenced, or kept separate, with the reason. A bare “no
+  structural issues” is not enough.
 - After each edit pass, re-read the full doc and ask: "Would an agent behave
   differently without this line?" If yes, keep. If no, cut.
 - Preserve the decision function — this is the most common mistake when

@@ -196,20 +196,6 @@ accountability artifact, which follows the author / cold-read step above. If you
 are about to type "Done" / "Applied" / etc. without having emitted every
 required pass artifact, you are not done.
 
-**Rule-doc structural audit.** For any rule-doc edit, the artifact must show
-placement and consolidation work. Include:
-
-- **Rule-application search**: name which existing rules govern the edit's
-  topic. Place the edit next to them. Skipping this is how existing rules get
-  silently ignored.
-- Related rule(s) found, with file / heading or search terms that found none.
-- The destination heading and adjacent headings checked for fit.
-- Related files read in full.
-- The consolidation decision: moved / merged / cross-referenced / deliberately
-  left separate, with a reason.
-
-Bare conclusions like "no structural issues" are invalid.
-
 ## Dual Revision
 
 Self-revision alone has self-anchoring bias: the author's choices feel
