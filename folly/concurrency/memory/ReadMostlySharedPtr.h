@@ -36,6 +36,16 @@ using DefaultRefCount = TLRefCount;
 
 namespace detail {
 
+/// ReadMostlySharedPtrCore
+///
+/// The shared control block underlying `ReadMostlyMainPtr`,
+/// `ReadMostlyWeakPtr`, and `ReadMostlySharedPtr`. It holds the managed
+/// object (as a type-erased `std::shared_ptr<const void>`) along with two
+/// independent ref-counts: one for outstanding `ReadMostlySharedPtr`s
+/// (which keeps the pointee alive) and one for outstanding weak references
+/// (which keeps this control block itself alive). `RefCount` is pluggable
+/// so that the "shared" count can use a cheap thread-local implementation
+/// (see `DefaultRefCount`) rather than a single contended atomic.
 template <typename RefCount = DefaultRefCount>
 class ReadMostlySharedPtrCore {
  public:
@@ -87,6 +97,33 @@ concept ptr_convertible = std::is_convertible_v<From*, To*>;
 
 } // namespace detail
 
+/// ReadMostlyMainPtr
+///
+/// The single owning handle for a read-mostly-managed object. There is
+/// exactly one `ReadMostlyMainPtr` per managed object -- it is move-only,
+/// never copyable -- and it is the root from which any number of
+/// `ReadMostlySharedPtr` (read-side, shared-ownership) and
+/// `ReadMostlyWeakPtr` (non-owning) handles are derived, via `getShared()`
+/// or by constructing a `ReadMostlySharedPtr`/`ReadMostlyWeakPtr` from it.
+///
+/// Compared to `std::shared_ptr`/`std::weak_ptr`, where any shared_ptr copy
+/// is as good as any other and there is no distinguished owner,
+/// `ReadMostlyMainPtr` plays a role closer to `std::unique_ptr`: it is the
+/// sole owner and is responsible for eventually releasing the object.
+/// Destroying or resetting the `ReadMostlyMainPtr` does not necessarily
+/// destroy the pointee immediately -- it releases the main ptr's own
+/// reference and switches the underlying `RefCount` to its slower, globally
+/// synchronized mode, since outstanding `ReadMostlySharedPtr`s (created
+/// while thread-local operation was safe) may still be dropped from other
+/// threads. The pointee is destroyed once the last such reference goes away.
+///
+/// This class is optimized for workloads where the object is read (i.e.
+/// copied into `ReadMostlySharedPtr`s) far more often than it is replaced.
+/// With `DefaultRefCount` (`TLRefCount`), acquiring a `ReadMostlySharedPtr`
+/// increments a thread-local counter rather than a shared atomic, avoiding
+/// cache-line contention across reader threads; the cost is pushed onto the
+/// comparatively rare `reset()` on the `ReadMostlyMainPtr`, which must
+/// reconcile all thread-local counts.
 template <typename T, typename RefCount = DefaultRefCount>
 class ReadMostlyMainPtr {
  public:
@@ -168,6 +205,15 @@ class ReadMostlyMainPtr {
   T* ptrRaw_{nullptr};
 };
 
+/// ReadMostlyWeakPtr
+///
+/// A non-owning reference to a read-mostly-managed object, analogous to
+/// `std::weak_ptr`. It may be constructed from a `ReadMostlyMainPtr`, a
+/// `ReadMostlySharedPtr`, or another `ReadMostlyWeakPtr`. It keeps the
+/// control block (not the pointee) alive, and does not itself prevent the
+/// pointee from being destroyed. Call `lock()` to attempt to obtain a
+/// `ReadMostlySharedPtr`, which succeeds as long as the owning
+/// `ReadMostlyMainPtr` has not yet released its reference.
 template <typename T, typename RefCount = DefaultRefCount>
 class ReadMostlyWeakPtr {
  public:
@@ -277,6 +323,17 @@ class ReadMostlyWeakPtr {
   T* ptrRaw_{nullptr};
 };
 
+/// ReadMostlySharedPtr
+///
+/// A copyable, shared-ownership handle to a read-mostly-managed object,
+/// analogous to `std::shared_ptr`. Unlike `std::shared_ptr`, it cannot be
+/// constructed directly from a raw pointer or a `std::shared_ptr` -- it must
+/// be obtained from a `ReadMostlyMainPtr` (via `getShared()` or a converting
+/// constructor/assignment), from a locked `ReadMostlyWeakPtr`, or by
+/// copying another `ReadMostlySharedPtr`. As long as one exists, the
+/// pointee stays alive, even after the originating `ReadMostlyMainPtr` has
+/// been reset or destroyed. Use `getStdShared()` to obtain an interoperable
+/// `std::shared_ptr<T>` that keeps the same object alive.
 template <typename T, typename RefCount = DefaultRefCount>
 class ReadMostlySharedPtr {
  public:
@@ -417,9 +474,13 @@ class ReadMostlySharedPtr {
   detail::ReadMostlySharedPtrCore<RefCount>* impl_{nullptr};
 };
 
-/**
- * This can be used to destroy multiple ReadMostlyMainPtrs at once.
- */
+/// ReadMostlyMainPtrDeleter
+///
+/// Batches the destruction of multiple `ReadMostlyMainPtr`s so that the
+/// comparatively expensive global `RefCount` synchronization they require
+/// is paid once for the whole batch rather than once per pointer. Collect
+/// pointers via `add()`; they are all released together when the deleter
+/// itself is destroyed.
 template <typename RefCount = DefaultRefCount>
 class ReadMostlyMainPtrDeleter {
  public:
