@@ -95,7 +95,8 @@ if(WIN32)
   list(APPEND FOLLY_BOOST_COMPONENTS thread)
 endif()
 
-find_package(Boost 1.69.0
+# CMake 4 dropped FindBoost, so this config-only probe warns without QUIET.
+find_package(Boost 1.69.0 QUIET
   COMPONENTS
     ${FOLLY_BOOST_COMPONENTS}
 )
