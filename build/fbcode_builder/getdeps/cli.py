@@ -218,7 +218,7 @@ class InstallSysDepsCmd(ProjectCmdBase):
         parser.add_argument(
             "--distro",
             help="Filter to just this distro to run",
-            choices=["ubuntu", "centos_stream"],
+            choices=["ubuntu", "centos_stream", "fedora"],
             action="store",
             dest="distro",
             default=None,

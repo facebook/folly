@@ -5,7 +5,7 @@ name = libaio
 libaio-dev
 
 # AlmaLinux 8 ships libaio-devel in BaseOS; centos_stream and rocky too.
-[rpms.any(distro=centos_stream,distro=alma,distro=rocky)]
+[rpms.any(distro=centos_stream,distro=alma,distro=rocky,distro=fedora)]
 libaio-devel
 
 [download]

@@ -11,3 +11,6 @@ subdir = benchmark-1.8.0/
 
 [cmake.defines]
 BENCHMARK_ENABLE_TESTING=OFF
+
+[rpms.distro=fedora]
+google-benchmark-devel
