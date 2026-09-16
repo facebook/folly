@@ -25,6 +25,11 @@ if(NOT TARGET glog::glog)
   find_package(Glog QUIET)
 endif()
 
+# folly_deps carries Threads::Threads in its link interface.
+# The preference matches folly's own build so consumers also get -pthread.
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_dependency(Threads)
+
 # Include the folly-targets.cmake file, which is generated from our CMake rules
 if (NOT TARGET Folly::folly)
   include("${FOLLY_CMAKE_DIR}/folly-targets.cmake")
