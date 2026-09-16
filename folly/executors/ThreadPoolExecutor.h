@@ -17,6 +17,7 @@
 #pragma once
 
 #include <algorithm>
+#include <exception>
 #include <mutex>
 #include <queue>
 #include <span>
@@ -256,13 +257,16 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
     folly::AtomicStruct<std::chrono::steady_clock::time_point> lastActiveTime;
     folly::Baton<> initBaton;
     folly::Baton<> readyBaton;
+    std::exception_ptr startupException;
     bool cancelledBeforeReady{false};
   };
 
   using ThreadPtr = std::shared_ptr<Thread>;
 
-  // Prerequisite: threadListLock_ writelocked
-  void afterConstructThreads(std::span<const ThreadPtr> newThreads) noexcept;
+  // Prerequisite: threadListLock_ writelocked. Returns an initialization
+  // exception before publishing any of the new threads.
+  std::exception_ptr afterConstructThreads(
+      std::span<const ThreadPtr> newThreads) noexcept;
 
   struct Task {
     struct Expiration {
@@ -309,7 +313,8 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   // The function that will be bound to pool threads. It must call
   // thread->initBaton.post() once alive, then thread->readyBaton.wait()
   // followed by a check of thread->cancelledBeforeReady before entering the
-  // work loop.
+  // work loop. If initialization fails, it may instead store the exception in
+  // thread->startupException, post thread->initBaton, and return.
   virtual void threadRun(ThreadPtr thread) = 0;
 
   // Stop n threads and put their ThreadPtrs in the stoppedThreads_ queue

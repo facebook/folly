@@ -226,11 +226,18 @@ std::shared_ptr<ThreadPoolExecutor::Thread> IOThreadPoolExecutor::makeThread() {
 }
 
 void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
-  this->threadPoolHook_.registerThread();
-
   const auto& ioThread = *thisThread_ =
       std::static_pointer_cast<IOThread>(thread);
-  ioThread->eventBase = eventBaseManager_->getEventBase();
+  try {
+    ioThread->eventBase = eventBaseManager_->getEventBase();
+  } catch (...) {
+    thread->startupException = std::current_exception();
+  }
+  if (thread->startupException) {
+    thread->initBaton.post();
+    return;
+  }
+  this->threadPoolHook_.registerThread();
   if (maxReadAtOnce_) {
     ioThread->eventBase->setMaxReadAtOnce(*maxReadAtOnce_);
   }

@@ -287,10 +287,13 @@ void ThreadPoolExecutor::addThreads(size_t n) {
     newThreads.push_back(makeThread());
   }
   size_t created = 0;
+  bool initialized = false;
   auto rollback = makeGuard([&] {
     for (size_t i = 0; i < created; i++) {
-      newThreads[i]->initBaton.wait(
-          folly::Baton<>::wait_options().logging_enabled(false));
+      if (!initialized) {
+        newThreads[i]->initBaton.wait(
+            folly::Baton<>::wait_options().logging_enabled(false));
+      }
       newThreads[i]->cancelledBeforeReady = true;
       newThreads[i]->readyBaton.post();
     }
@@ -303,8 +306,12 @@ void ThreadPoolExecutor::addThreads(size_t n) {
         std::bind(&ThreadPoolExecutor::threadRun, this, thread));
     ++created;
   }
+  auto startupException = afterConstructThreads(newThreads);
+  initialized = true;
+  if (startupException) {
+    std::rethrow_exception(startupException);
+  }
   rollback.dismiss();
-  afterConstructThreads(newThreads);
 }
 
 // threadListLock_ is writelocked
@@ -319,19 +326,35 @@ bool ThreadPoolExecutor::tryAddOneThread() noexcept {
         << folly::exceptionStr(std::current_exception());
     return false;
   }
-  afterConstructThreads({&thread, 1});
+  auto rollback = makeGuard([&] {
+    thread->cancelledBeforeReady = true;
+    thread->readyBaton.post();
+    thread->handle.join();
+  });
+  if (auto ex = afterConstructThreads({&thread, 1})) {
+    FB_LOG_EVERY_MS(ERROR, 1000)
+        << "ThreadPoolExecutor: thread startup failed: "
+        << folly::exceptionStr(ex);
+    return false;
+  }
+  rollback.dismiss();
   return true;
 }
 
 // threadListLock_ is writelocked
-void ThreadPoolExecutor::afterConstructThreads(
+std::exception_ptr ThreadPoolExecutor::afterConstructThreads(
     std::span<const ThreadPtr> newThreads) noexcept {
-  for (auto& thread : newThreads) {
-    threadList_.add(thread);
-  }
   for (auto& thread : newThreads) {
     thread->initBaton.wait(
         folly::Baton<>::wait_options().logging_enabled(false));
+  }
+  for (auto& thread : newThreads) {
+    if (thread->startupException) {
+      return thread->startupException;
+    }
+  }
+  for (auto& thread : newThreads) {
+    threadList_.add(thread);
   }
   for (auto& o : observers_) {
     for (auto& thread : newThreads) {
@@ -342,6 +365,7 @@ void ThreadPoolExecutor::afterConstructThreads(
   for (auto& thread : newThreads) {
     thread->readyBaton.post();
   }
+  return nullptr;
 }
 
 // threadListLock_ is writelocked
@@ -647,6 +671,8 @@ void ThreadPoolExecutor::ensureMaxActiveThreads() {
   if (active >= total) {
     return;
   }
+  // A startup failure rolls back every unpublished thread before propagating,
+  // leaving activeThreads_ unchanged so a later call can retry.
   ThreadPoolExecutor::addThreads(total - active);
   activeThreads_.store(total, std::memory_order_relaxed);
 }

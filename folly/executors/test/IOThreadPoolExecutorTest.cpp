@@ -14,11 +14,68 @@
  * limitations under the License.
  */
 
+#include <atomic>
+#include <stdexcept>
+#include <system_error>
+
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/test/IOThreadPoolExecutorBaseTestLib.h>
 
 namespace folly {
 namespace test {
+
+namespace {
+
+[[noreturn]] std::unique_ptr<EventBaseBackendBase>
+throwEventBaseConstructionFailure() {
+  throw std::system_error(std::make_error_code(std::errc::too_many_files_open));
+}
+
+} // namespace
+
+TEST(IOThreadPoolExecutor, EventBaseConstructionFailurePropagates) {
+  auto options =
+      EventBase::Options{}.setBackendFactory(throwEventBaseConstructionFailure);
+  auto manager = EventBaseManager{std::move(options)};
+  auto constructExecutor = [&] {
+    auto executor = IOThreadPoolExecutor{
+        1, 1, std::make_shared<NamedThreadFactory>("IOThreadPool"), &manager};
+  };
+
+  EXPECT_THROW(constructExecutor(), std::system_error);
+}
+
+TEST(IOThreadPoolExecutor, DynamicEventBaseConstructionFailureIsHandled) {
+  auto options =
+      EventBase::Options{}.setBackendFactory(throwEventBaseConstructionFailure);
+  auto manager = EventBaseManager{std::move(options)};
+  auto executor = IOThreadPoolExecutor{
+      1, 0, std::make_shared<NamedThreadFactory>("IOThreadPool"), &manager};
+
+  EXPECT_THROW(executor.add([] {}), std::runtime_error);
+  EXPECT_EQ(executor.numActiveThreads(), 0);
+}
+
+TEST(IOThreadPoolExecutor, GetAllEventBasesRecoversFromStartupFailure) {
+  std::atomic<int> attempts{0};
+  auto options = EventBase::Options{}.setBackendFactory(
+      [&attempts]() -> std::unique_ptr<EventBaseBackendBase> {
+        if (attempts.fetch_add(1) == 0) {
+          throwEventBaseConstructionFailure();
+        }
+        return EventBase::getDefaultBackend();
+      });
+  auto manager = EventBaseManager{std::move(options)};
+  auto executor = IOThreadPoolExecutor{
+      1, 0, std::make_shared<NamedThreadFactory>("IOThreadPool"), &manager};
+
+  EXPECT_THROW(executor.getAllEventBases(), std::system_error);
+  EXPECT_EQ(executor.numActiveThreads(), 0);
+
+  auto eventBases = executor.getAllEventBases();
+  EXPECT_EQ(eventBases.size(), 1);
+  EXPECT_EQ(executor.numActiveThreads(), 1);
+}
 
 TEST(IOThreadPoolExecutor, MaxReadAtOnce) {
   {
