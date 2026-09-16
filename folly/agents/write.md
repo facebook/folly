@@ -267,8 +267,8 @@ below — don't re-enumerate here.
 
 ## Iterate — inner loop, until convergence
 
-When `{FA}/critic-iterate.md` "Dual Revision" applies, it follows this iterative
-inner loop after it converges.
+When `{FA}/critic-iterate.md` "Fresh Review" applies, run it after this
+iterative inner loop converges.
 
 Per round: explanation → shape → cut (including the test plan) → plain language
 → cold re-read. Converge when a full round makes no edit.
