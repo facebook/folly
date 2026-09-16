@@ -28,12 +28,21 @@
 
 namespace folly {
 
-/*
- * ProducerConsumerQueue is a one producer and one consumer queue
- * without locks.
- */
+/// ProducerConsumerQueue.
+///
+/// A wait-free single-producer single-consumer fixed-size queue.
+///
+/// Queue elements are stored in a single ring buffer. If the queue is full,
+/// enqueue operations (writes) fail by returning false. If the queue is empty,
+/// dequeue operations (reads) fail by returning false. The ring buffer is fixed
+/// at its initial capacity and is never grown.
+///
+/// For performance, the fields are divided between common, producer-owned, and
+/// consumer-owned cache-lines. The producer maintains a cache of the consumer's
+/// index and vice versa, in order to accelerate the checks of whether the queue
+/// is full or empty.
 template <class T>
-struct ProducerConsumerQueue {
+struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
   using value_type = T;
 
   ProducerConsumerQueue(const ProducerConsumerQueue&) = delete;
@@ -45,10 +54,7 @@ struct ProducerConsumerQueue {
   // given time is actually (size-1), so if you start with an empty queue,
   // isFull() will return true after size-1 insertions.
   explicit ProducerConsumerQueue(uint32_t size)
-      : size_(size),
-        records_(static_cast<T*>(std::malloc(sizeof(T) * size))),
-        readIndex_(0),
-        writeIndex_(0) {
+      : size_(size), records_(static_cast<T*>(std::malloc(sizeof(T) * size))) {
     assert(size >= 2);
     if (!records_) {
       throw std::bad_alloc();
@@ -60,63 +66,79 @@ struct ProducerConsumerQueue {
     // (No real synchronization needed at destructor time: only one
     // thread can be doing this.)
     if (!std::is_trivially_destructible<T>::value) {
-      size_t readIndex = readIndex_;
-      size_t endIndex = writeIndex_;
+      auto readIndex = readIndex_.load(std::memory_order_relaxed);
+      auto const endIndex = writeIndex_.load(std::memory_order_relaxed);
       while (readIndex != endIndex) {
-        records_[readIndex].~T();
-        if (++readIndex == size_) {
-          readIndex = 0;
-        }
+        records_[readIndex % size_].~T();
+        ++readIndex;
       }
     }
 
     std::free(records_);
   }
 
+  //  Checks a private, unsynchronized cache of the other side's cursor
+  //  before touching the real cross-thread atomic. writeIndex_/readIndex_
+  //  only ever increase, so a stale cached value is always a safe
+  //  (conservative) underestimate of the other side's true progress - it is
+  //  always safe to trust the cache when it says there is room/data, and a
+  //  fresh cross-thread read is only needed when it says there might not
+  //  be. In steady state, where the two sides stay within a queue's worth
+  //  of each other, that real read is rare rather than universal. This
+  //  relies on the cursors being ever-increasing logical counters, wrapped
+  //  via `% size_` only at the point of indexing into records_, never
+  //  wrapped in the stored/compared value itself - with a wrapped cursor,
+  //  a stale cache can alias to the wrong answer in either direction, since
+  //  "behind" is no longer a total order once values cycle. The comparisons
+  //  below must be magnitude checks (`>=`/subtraction), not equality: the
+  //  cache is only ever refreshed from within write()/read()/frontPtr(), so
+  //  a caller that advances its own cursor another way (e.g. popFront()
+  //  after an external frontPtr()) can leave the far side's cache stuck
+  //  behind the local cursor by more than zero - equality would then never
+  //  match again and the cache would be trusted forever after it stopped
+  //  meaning anything.
   template <class... Args>
   bool write(Args&&... recordArgs) {
     auto const currentWrite = writeIndex_.load(std::memory_order_relaxed);
-    auto nextRecord = currentWrite + 1;
-    if (nextRecord == size_) {
-      nextRecord = 0;
+    if (currentWrite - readIndexCache_ >= size_ - 1) {
+      readIndexCache_ = readIndex_.load(std::memory_order_acquire);
+      if (currentWrite - readIndexCache_ >= size_ - 1) {
+        return false; // queue is full
+      }
     }
-    if (nextRecord != readIndex_.load(std::memory_order_acquire)) {
-      new (&records_[currentWrite]) T(std::forward<Args>(recordArgs)...);
-      writeIndex_.store(nextRecord, std::memory_order_release);
-      return true;
-    }
-
-    // queue is full
-    return false;
+    new (&records_[currentWrite % size_]) T(std::forward<Args>(recordArgs)...);
+    writeIndex_.store(currentWrite + 1, std::memory_order_release);
+    return true;
   }
 
   // move (or copy) the value at the front of the queue to given variable
   bool read(T& record) {
     auto const currentRead = readIndex_.load(std::memory_order_relaxed);
-    if (currentRead == writeIndex_.load(std::memory_order_acquire)) {
-      // queue is empty
-      return false;
+    if (currentRead >= writeIndexCache_) {
+      writeIndexCache_ = writeIndex_.load(std::memory_order_acquire);
+      if (currentRead >= writeIndexCache_) {
+        return false; // queue is empty
+      }
     }
-
-    auto nextRecord = currentRead + 1;
-    if (nextRecord == size_) {
-      nextRecord = 0;
-    }
-    record = std::move(records_[currentRead]);
-    records_[currentRead].~T();
-    readIndex_.store(nextRecord, std::memory_order_release);
+    auto const idx = currentRead % size_;
+    record = std::move(records_[idx]);
+    records_[idx].~T();
+    readIndex_.store(currentRead + 1, std::memory_order_release);
     return true;
   }
 
   // pointer to the value at the front of the queue (for use in-place) or
-  // nullptr if empty.
+  // nullptr if empty. Cached the same way as read(); see write()'s comment.
   T* frontPtr() {
     auto const currentRead = readIndex_.load(std::memory_order_relaxed);
-    if (currentRead == writeIndex_.load(std::memory_order_acquire)) {
-      // queue is empty
-      return nullptr;
+    if (currentRead >= writeIndexCache_) {
+      writeIndexCache_ = writeIndex_.load(std::memory_order_acquire);
+      if (currentRead >= writeIndexCache_) {
+        // queue is empty
+        return nullptr;
+      }
     }
-    return &records_[currentRead];
+    return &records_[currentRead % size_];
   }
 
   // queue must not be empty
@@ -124,29 +146,9 @@ struct ProducerConsumerQueue {
     auto const currentRead = readIndex_.load(std::memory_order_relaxed);
     assert(currentRead != writeIndex_.load(std::memory_order_acquire));
 
-    auto nextRecord = currentRead + 1;
-    if (nextRecord == size_) {
-      nextRecord = 0;
-    }
-    records_[currentRead].~T();
-    readIndex_.store(nextRecord, std::memory_order_release);
-  }
-
-  bool isEmpty() const {
-    return readIndex_.load(std::memory_order_acquire) ==
-        writeIndex_.load(std::memory_order_acquire);
-  }
-
-  bool isFull() const {
-    auto nextRecord = writeIndex_.load(std::memory_order_acquire) + 1;
-    if (nextRecord == size_) {
-      nextRecord = 0;
-    }
-    if (nextRecord != readIndex_.load(std::memory_order_acquire)) {
-      return false;
-    }
-    // queue is full
-    return true;
+    auto const idx = currentRead % size_;
+    records_[idx].~T();
+    readIndex_.store(currentRead + 1, std::memory_order_release);
   }
 
   // * If called by consumer, then true size may be more (because producer may
@@ -155,28 +157,36 @@ struct ProducerConsumerQueue {
   //   be removing items concurrently).
   // * It is undefined to call this from any other thread.
   size_t sizeGuess() const {
-    int ret = writeIndex_.load(std::memory_order_acquire) -
+    return writeIndex_.load(std::memory_order_acquire) -
         readIndex_.load(std::memory_order_acquire);
-    if (ret < 0) {
-      ret += size_;
-    }
-    return ret;
   }
+
+  bool isEmpty() const { return sizeGuess() == 0; }
+
+  bool isFull() const { return sizeGuess() == size_ - 1; }
 
   // maximum number of items in the queue.
   size_t capacity() const { return size_ - 1; }
 
  private:
-  using AtomicIndex = std::atomic<unsigned int>;
+  using AtomicIndex = std::atomic<uint64_t>;
 
-  char pad0_[hardware_destructive_interference_size];
+  //  One line of state common to both sides: read-only after construction,
+  //  so concurrent reads of it from both threads never contend.
   const uint32_t size_;
   T* const records_;
 
-  alignas(hardware_destructive_interference_size) AtomicIndex readIndex_;
-  alignas(hardware_destructive_interference_size) AtomicIndex writeIndex_;
+  //  One line owned by the producer: writeIndex_ is written on every
+  //  write(), and readIndexCache_ is the producer's own cached lower bound
+  //  on the consumer's readIndex_, read every write() and refreshed only
+  //  rarely. The consumer only ever reaches this line via its own rare
+  //  refresh of writeIndexCache_.
+  alignas(hardware_destructive_interference_size) AtomicIndex writeIndex_{0};
+  uint64_t readIndexCache_{0};
 
-  char pad1_[hardware_destructive_interference_size - sizeof(AtomicIndex)];
+  //  One line owned by the consumer, symmetric with the producer's.
+  alignas(hardware_destructive_interference_size) AtomicIndex readIndex_{0};
+  uint64_t writeIndexCache_{0};
 };
 
 } // namespace folly
