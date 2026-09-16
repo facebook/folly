@@ -11,14 +11,12 @@ Surface the full rejection text even if a retry succeeds.
 
 ## Retry with evidence
 
-Guardian evaluates the transcript, including command output. Use the wrapper
-path already resolved under `critic-iterate.md` "Loading", then show the ambient
-Codex command, the wrapper path, and its fixed interface:
+Guardian evaluates the transcript, including command output. Show the ambient
+Codex command and the wrapper's fixed interface:
 
 ```bash
 codex --version
-readlink -f .../codex-reviewer.py
-.../codex-reviewer.py --help
+"{FA}/critic-iterate/codex-reviewer.py" --help
 ```
 
 Then state:
@@ -40,12 +38,11 @@ stop.
 Allow-list the trusted wrapper, never `codex exec` or a shell. The wrapper must
 continue to validate every argument and create its own output directory.
 
-Substitute the resolved wrapper path, then print these declarations for the user
-to add to `~/.codex/rules/default.rules`:
+Print these declarations for the user to add to `~/.codex/rules/default.rules`:
 
 ```bash
 cat <<'RULES'
-host_executable(name="codex-reviewer.py", paths=[".../codex-reviewer.py"])
+host_executable(name="codex-reviewer.py", paths=["{FA}/critic-iterate/codex-reviewer.py"])
 prefix_rule(pattern=["codex-reviewer.py"], decision="allow", justification="The review wrapper validates its fixed profiles and arguments and controls its output directory.")
 RULES
 ```
@@ -57,8 +54,8 @@ codex execpolicy check \
   --pretty \
   --resolve-host-executables \
   --rules "$HOME/.codex/rules/default.rules" \
-  .../codex-reviewer.py \
-  --preamble-dir="$(dirname "$(readlink -f "/path/to/critic-iterate.md")")/critic-iterate" \
+  "{FA}/critic-iterate/codex-reviewer.py" \
+  --preamble-dir="{FA}/critic-iterate" \
   --preamble=cold-review-preamble \
   "$(mktemp)"
 ```

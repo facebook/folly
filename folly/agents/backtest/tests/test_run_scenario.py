@@ -716,6 +716,19 @@ class RunScenarioTest(unittest.TestCase):
         inventory = (workdir / "rules/rules-inventory.md").read_text()
         self.assertIn("1. `writing.md`", inventory)
         self.assertIn("2. `critic-iterate.md`", inventory)
+        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
+            self.assertNotIn(f"`{support.as_posix()}`", inventory)
+
+        without_critic_workdir = self.root / "without-critic-workdir"
+        without_critic_workdir.mkdir()
+        runner.stage(
+            self.scenario,
+            self.manifest(rules=["writing.md"]),
+            self.rules_root,
+            without_critic_workdir,
+        )
+        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
+            self.assertFalse((without_critic_workdir / "rules" / support).exists())
 
     def test_stage_rejects_hidden_policy_inside_an_input_tree(self) -> None:
         workdir = self.root / "workdir"

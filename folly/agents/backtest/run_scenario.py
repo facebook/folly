@@ -41,6 +41,7 @@ CRITIC_ITERATE_SUPPORT_FILES = (
     PurePosixPath("critic-iterate/cold-review-preamble.md"),
     PurePosixPath("critic-iterate/fresh-review-preamble.md"),
     PurePosixPath("critic-iterate/auth-prompt.md"),
+    PurePosixPath("critic-iterate/run-review.md"),
 )
 TOOL_FILES = {
     "codex-reviewer.py": PurePosixPath("critic-iterate/codex-reviewer.py"),

@@ -23,7 +23,6 @@ preamble defines the role-specific rules.
 
 Resolve these once from `PATH`; use the fallback if absent:
 
-- `codex-reviewer.py`: `critic-iterate/codex-reviewer.py`.
 - `session_current_model_id.py`: `critic-iterate/session_current_model_id.py`.
 - `reformat-md`: `scripts/reformat-md`.
 
@@ -366,76 +365,7 @@ Do not edit the candidate while either reviewer runs. If it changes after a
 round starts, that round no longer covers the revision. After the reviewers
 finish, resume above at step 2.
 
-**Codex reviewer mechanism.** Use this fixed command:
-
-```bash
-package_dir="$(dirname "$(readlink -f "/path/to/critic-iterate.md")")"
-review_tmp=$(mktemp -d)
-# Write cold-prompt.md and fresh-prompt.md under "$review_tmp" before this call.
-.../codex-reviewer.py \
-  --preamble-dir="$package_dir/critic-iterate" \
-  --preamble=fresh-review-preamble \
-  "$review_tmp/fresh-prompt.md"
-```
-
-When writing `fresh-prompt.md`, replace each variable below with its current
-absolute value; the child shell will not inherit them:
-
-```bash
-.../codex-reviewer.py \
-  --preamble-dir="$package_dir/critic-iterate" \
-  --preamble=cold-review-preamble \
-  "$review_tmp/cold-prompt.md" >"$review_tmp/cold-result.txt"
-```
-
-Do not prefix either wrapper call with an environment assignment. Hermetic runs
-use the copied rule's sibling preambles.
-
-`cold-result.txt` contains `REVIEW_OUTPUT_DIR=<path>` followed by the report.
-The top-level author or orchestrator may poll the outer fresh-review command
-normally. If polling loses later stdout from that command after recording its
-`REVIEW_OUTPUT_DIR`, use that directory's `review.md` only if it is nonempty,
-`run.jsonl` reaches `turn.completed`, and the trace checks below pass.
-Otherwise, treat the round as failed; never scan temporary directories or infer
-a result from partial output.
-
-On success it prints `REVIEW_OUTPUT_DIR=<path>` followed by the review. The
-private directory holds the same review in `review.md`, the model setting and
-reasoning effort in `metadata.json`, plus `effective-prompt.md`, `run.jsonl`,
-and `err.txt` for audit.
-
-The outer marker names the fresh-review directory. The fresh response includes
-the child marker; the author records both.
-
-Each prompt must name every input its reviewer may read. Start repo-relative
-commands with `cd <repo> &&`. Do not include raw chat or the full context
-packet. For commit / diff-message review, follow the specialization below.
-
-The author revises from the outer fresh review's `review.md`; it already
-incorporates the cold report. Every other file in either private directory is
-process evidence. On failure, inspect the smallest relevant log excerpt.
-
-Before accepting a prose review, confirm that its only cold-review launch
-precedes any source read or statement about the artifact, that `REVIEW FRAME:`
-appears before any embargoed input is read, and that `ARTIFACT CHECK:` appears
-before the cold-result file is read. Confirm that the cold trace reads no
-undeclared source and launches no reviewer. If a check fails, discard the round,
-fix its prompt if needed, and start a new outer fresh-review command before
-editing.
-
-Missing `codex`, auth / sandbox failure, non-zero exit, or timeout means the CLI
-path cannot run; stop and report the infra/setup failure. For a Guardian
-possible-exfiltration rejection of the top-level wrapper call, read
-`critic-iterate/auth-prompt.md` only for that rejection, never on the happy path
-or for an unrelated policy failure. Those recovery steps do not reach a nested
-reviewer running with a private `CODEX_HOME`. The fresh reviewer reports a
-nested rejection or run failure and stops. Do not rerun until the blocking
-policy or configuration changes; then the top-level author or orchestrator
-starts a new prose review round. Empty, off-topic, or malformed reviewer output
-is a bad run; the top-level author or orchestrator discards it, tightens the
-prompt, and starts a new outer fresh-review command. Each required reviewer
-check is incomplete until it produces usable output. Do not proceed self-only or
-switch reviewer paths.
+**Run external review:** follow `{FA}/critic-iterate/run-review.md`.
 
 **Commit / diff messages — separate inner loop from outer evaluator.** The
 author runs the `writing.md` inner loop to convergence before the outer
@@ -529,12 +459,12 @@ output feeds convergence. Downgrade only for pure-mechanical work (file moves,
 grep-and-report, ID renames).
 
 Delegating authorship does not satisfy the fresh-review requirement. Give
-authorship subagents the Codex reviewer mechanism above. Whoever authors
-normally runs those checks; a non-author ambient does not add another after they
-pass. If delegated authorship fails before the draft converges, stop and report
-it; never take over the writing. If the draft converged and only its review
-failed, the top-level orchestrator may recover the infrastructure and rerun the
-required review on that unchanged draft.
+authorship subagents the mechanism in `{FA}/critic-iterate/run-review.md`.
+Whoever authors normally runs those checks; a non-author ambient does not add
+another after they pass. If delegated authorship fails before the draft
+converges, stop and report it; never take over the writing. If the draft
+converged and only its review failed, the top-level orchestrator may recover the
+infrastructure and rerun the required review on that unchanged draft.
 
 Never substitute self-assessment for a required delegated check (Codex reviewer
 calls per Dual Revision, or any subagent call this file mandates).
@@ -554,7 +484,6 @@ model is Opus 5+ or GPT-5.5+ (resolve it with
 - **Outputs.** Unlike the reviewer, an author writes files: tell it to put the
   draft in `draft.md` and add each pass artifact to `passes.md` under a unique
   numbered heading before starting the next pass. Pass no `-o`.
-- **Guardian rejection.** Handle as above.
 
 ## Resist These Shortcuts
 
