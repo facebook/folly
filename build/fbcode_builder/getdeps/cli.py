@@ -192,6 +192,102 @@ class FetchCmd(ProjectCmdBase):
             fetcher.update()
 
 
+def _warn_about_dangling_symlinks(src_dir: str, project: str) -> None:
+    """Print a warning for each broken symlink under src_dir.
+
+    The vendor copy below dereferences symlinks (and drops dangling ones),
+    so without this a broken link would vanish from the vendored tree with
+    no diagnostic. .git contents are skipped: they are not vendored either.
+    """
+    for root, dirs, files in os.walk(src_dir):
+        if ".git" in dirs:
+            dirs.remove(".git")
+        for name in files + dirs:
+            path = os.path.join(root, name)
+            if os.path.islink(path) and not os.path.exists(path):
+                print(
+                    "Warning: %s contains dangling symlink %s; it will be "
+                    "missing from the vendored tree" % (project, path)
+                )
+
+
+@cmd("vendor", "copy the sources of a project's dependencies into a directory")
+class VendorCmd(ProjectCmdBase):
+    """Populate a directory with one source tree per third-party dependency,
+    analogous to `cargo vendor`, so that a later build can run without
+    network access (see --vendor-dir)."""
+
+    def setup_project_cmd_parser(self, parser):
+        parser.add_argument(
+            "--output-dir",
+            required=True,
+            help=(
+                "Directory to populate; each dependency is copied "
+                "to <output-dir>/<project>"
+            ),
+        )
+        # NB: not read in run_project_cmd below. Like fetch/list-deps,
+        # this is consumed generically by buildopts._check_host_type
+        # during setup_build_options, before the loader is built.
+        parser.add_argument(
+            "--host-type",
+            help="Vendor deps for this host type rather than the current system",
+        )
+
+    def run_project_cmd(self, args, loader, manifest):
+        os.makedirs(args.output_dir, exist_ok=True)
+        vendored = []
+        vendored_names = set()
+        for m in loader.manifests_in_dependency_order():
+            if m == manifest:
+                continue
+            fetcher = loader.create_fetcher(m)
+            if isinstance(fetcher, SystemPackageFetcher):
+                # Satisfied by system packages; nothing to vendor
+                continue
+            fetcher.update()
+            _warn_about_dangling_symlinks(fetcher.get_src_dir(), m.name)
+            dest = os.path.join(args.output_dir, m.name)
+            if os.path.exists(dest):
+                shutil.rmtree(dest)
+            print("Vendoring %s -> %s" % (m.name, dest))
+            # Follow symlinks so the result is self-contained: subproject
+            # fetchers link into the scratch dir, which won't exist offline.
+            shutil.copytree(
+                fetcher.get_src_dir(),
+                dest,
+                ignore=shutil.ignore_patterns(".git"),
+                ignore_dangling_symlinks=True,
+            )
+            vendored.append("%s %s\n" % (m.name, fetcher.hash()))
+            vendored_names.add(m.name)
+        # Drop trees recorded by a previous run that are no longer
+        # dependencies (e.g. after --allow-system-packages or --no-tests
+        # changes) so a later --vendor-dir build cannot silently use stale
+        # sources. Only names from the previous manifest are removed: an
+        # unrelated directory mistakenly passed as --output-dir, or files
+        # the user placed here themselves, are left alone.
+        previous: set[str] = set()
+        manifest_path = os.path.join(args.output_dir, "getdeps-vendor.txt")
+        if os.path.isfile(manifest_path):
+            with open(manifest_path) as f:
+                for line in f:
+                    parts = line.split()
+                    if parts:
+                        previous.add(parts[0])
+        for name in sorted(previous - vendored_names):
+            stale = os.path.join(args.output_dir, name)
+            if not os.path.lexists(stale):
+                continue
+            print("Removing stale %s" % stale)
+            if os.path.isdir(stale) and not os.path.islink(stale):
+                shutil.rmtree(stale)
+            else:
+                os.remove(stale)
+        with open(os.path.join(args.output_dir, "getdeps-vendor.txt"), "w") as f:
+            f.writelines(vendored)
+
+
 @cmd("install-system-deps", "Install system packages to satisfy the deps for a project")
 class InstallSysDepsCmd(ProjectCmdBase):
     def setup_project_cmd_parser(self, parser):
@@ -917,6 +1013,15 @@ def parse_args():
         help="Allow satisfying third party deps from installed system packages",
         action="store_true",
         default=False,
+    )
+    add_common_arg(
+        "--vendor-dir",
+        help=(
+            "Take third party sources from <vendor-dir>/<project>, as populated "
+            "by the vendor command, and fail rather than download anything "
+            "that is missing there"
+        ),
+        default=None,
     )
     add_common_arg(
         "-v",

@@ -226,10 +226,18 @@ class BuilderBase:
         self._build(reconfigure=reconfigure)
 
         if self.build_opts.free_up_disk:
-            # don't clean --src-dir=. case as user may want to build again or run tests on the build
-            if self.src_dir.startswith(self.build_opts.scratch_dir) and os.path.isdir(
-                self.build_dir
-            ):
+            # don't clean --src-dir=. case as user may want to build again or
+            # run tests on the build; vendored sources are ours to clean up after.
+            managed = [self.build_opts.scratch_dir]
+            if self.build_opts.vendor_dir:
+                managed.append(self.build_opts.vendor_dir)
+            # Compare by path component so a sibling directory that merely
+            # shares a name prefix (e.g. /tmp/vendor-copy vs /tmp/vendor)
+            # is not mistaken for a managed source tree.
+            if any(
+                self.src_dir == d or self.src_dir.startswith(d + os.sep)
+                for d in managed
+            ) and os.path.isdir(self.build_dir):
                 if os.path.islink(self.build_dir):
                     os.remove(self.build_dir)
                 else:

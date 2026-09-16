@@ -17,6 +17,18 @@ repositories that use `fbcode_builder`.  Typically this directory is copied
 into the open source repositories as `build/fbcode_builder/`.
 
 
+## Vendoring dependencies for offline builds
+
+Distributions typically require builds to run without network access and to
+ship third-party sources alongside the project.  `getdeps.py vendor
+--output-dir DIR project` copies the source tree of every dependency that is
+not satisfied by system packages to `DIR/<project>` and records what it
+vendored in `DIR/getdeps-vendor.txt`.  A later `getdeps.py --vendor-dir DIR
+build project` then takes those trees instead of fetching, and fails if a
+dependency is missing from `DIR` rather than downloading it.  Pass the same
+`--allow-system-packages` and `--no-tests` options to both commands so they
+agree on the dependency set.
+
 # Project Configuration Files
 
 The `manifests` subdirectory contains configuration files for many different

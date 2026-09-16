@@ -60,6 +60,7 @@ class BuildOptions:
         use_shipit: bool = False,
         vcvars_path: str | None = None,
         allow_system_packages: bool = False,
+        vendor_dir: str | None = None,
         lfs_path: str | None = None,
         shared_lib: bool = False,
         facebook_internal: bool | None = None,
@@ -126,6 +127,10 @@ class BuildOptions:
         self.host_type: HostType = host_type
         self.use_shipit: bool = use_shipit
         self.allow_system_packages: bool = allow_system_packages
+        # realpath so prefix checks against LocalDirFetcher paths line up
+        self.vendor_dir: str | None = (
+            os.path.realpath(vendor_dir) if vendor_dir else None
+        )
         self.lfs_path: str | None = lfs_path
         self.shared_lib: bool = shared_lib
         if shared_lib and self.is_windows():
@@ -732,6 +737,7 @@ def setup_build_options(
             "use_shipit",
             "vcvars_path",
             "allow_system_packages",
+            "vendor_dir",
             "lfs_path",
             "shared_lib",
             "free_up_disk",

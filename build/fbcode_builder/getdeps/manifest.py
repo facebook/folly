@@ -32,6 +32,7 @@ from .expr import ExprNode, parse_expr
 from .fetcher import (
     ArchiveFetcher,
     GitFetcher,
+    LocalDirFetcher,
     PreinstalledNopFetcher,
     ShipitTransformerFetcher,
     SimpleShipitTransformerFetcher,
@@ -563,7 +564,7 @@ class ManifestParser:
     def get_repo_url(self, ctx: ManifestContext) -> str | None:
         return self.get("git", "repo_url", ctx=ctx)
 
-    def _create_fetcher(
+    def _create_fetcher(  # noqa: C901
         self, build_options: BuildOptions, ctx: ManifestContext
     ) -> Fetcher:
         real_shipit_available = ShipitTransformerFetcher.available(build_options)
@@ -611,6 +612,22 @@ class ManifestParser:
                 if package_fetcher.packages_are_installed():
                     # pyre-fixme[7]: Expected `Fetcher` but got `SystemPackageFetcher`.
                     return package_fetcher
+
+        # Only enforce the vendor dir when a network fetcher would otherwise
+        # be chosen: projects with no fetch configuration are meant to come
+        # from the preinstalled environment or system packages, and `vendor`
+        # skips those too, so failing here would point at a dir that can
+        # never contain them.
+        if build_options.vendor_dir and (repo_url is not None or url is not None):
+            vendored = os.path.join(build_options.vendor_dir, self.name)
+            if not os.path.isdir(vendored):
+                raise Exception(
+                    f"project {self.name} is not present in "
+                    f"{build_options.vendor_dir}; populate it with "
+                    "`getdeps.py vendor` using the same options"
+                )
+            # pyre-fixme[7]: Expected `Fetcher` but got `LocalDirFetcher`.
+            return LocalDirFetcher(vendored)
 
         if repo_url:
             rev = self.get("git", "rev")
