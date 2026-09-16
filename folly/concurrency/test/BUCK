@@ -2,8 +2,21 @@ load("@fbsource//tools/build_defs:testpilot_defs.bzl", "tpx_labels")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 
 oncall("fbcode_entropy_wardens_folly")
+
+# StressTestReclamation spins up thousands of real threads to stress hazptr
+# node reclamation; TSAN's per-access instrumentation overhead pushes that
+# past the CI timeout. The same reclamation code path is already covered
+# under TSAN by concurrent_hash_map_test (EraseStressTest,
+# TryEmplaceEraseStressTest, ConcurrentInsertClear) and by hazptr_test.
+_TSAN_INCOMPATIBLE_LABELS = ci.labels(
+    ci.remove(
+        ci.linux(ci.mode("fbcode//mode/dev-tsan")),
+        ci.linux(ci.mode("fbcode//mode/opt-tsan")),
+    ),
+)
 
 fb_dirsync_cpp_binary(
     name = "cache_locality_benchmark",
@@ -102,7 +115,8 @@ fb_dirsync_cpp_unittest(
         tpx_labels.heavyweight,
         tpx_labels.serialize,
         "slow",
-    ],
+    ]
+    + _TSAN_INCOMPATIBLE_LABELS,
     supports_static_listing = False,
     deps = [
         "//folly:traits",
@@ -139,7 +153,8 @@ fb_dirsync_cpp_unittest(
         tpx_labels.heavyweight,
         tpx_labels.serialize,
         "slow",
-    ],
+    ]
+    + _TSAN_INCOMPATIBLE_LABELS,
     preprocessor_flags = ["-DFOLLY_F14_FORCE_FALLBACK=1"],
     supports_static_listing = False,
     deps = [
