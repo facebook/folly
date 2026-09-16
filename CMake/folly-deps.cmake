@@ -18,13 +18,7 @@ include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
 include(CMakePushCheckState)
 
-# Fetch the archive or commit `manifest` pins, so a fetched dependency cannot
-# drift from the one getdeps builds. OVERRIDE_FIND_PACKAGE makes a later
-# find_package() resolve to what was fetched instead of searching the system,
-# which thrift/lib relies on for Boost. The fetched source and binary
-# directories are not set in the caller's scope; read them back with
-# FetchContent_GetProperties.
-function(folly_fetch_from_manifest name manifest)
+function(folly_manifest_path manifest out)
   # for in-fbsource builds
   set(path
     "${CMAKE_CURRENT_SOURCE_DIR}/../opensource/fbcode_builder/manifests/${manifest}")
@@ -33,6 +27,17 @@ function(folly_fetch_from_manifest name manifest)
     set(path
       "${CMAKE_CURRENT_SOURCE_DIR}/build/fbcode_builder/manifests/${manifest}")
   endif()
+  set(${out} "${path}" PARENT_SCOPE)
+endfunction()
+
+# Fetch the archive or commit `manifest` pins, so a fetched dependency cannot
+# drift from the one getdeps builds. OVERRIDE_FIND_PACKAGE makes a later
+# find_package() resolve to what was fetched instead of searching the system,
+# which thrift/lib relies on for Boost. The fetched source and binary
+# directories are not set in the caller's scope; read them back with
+# FetchContent_GetProperties.
+function(folly_fetch_from_manifest name manifest)
+  folly_manifest_path(${manifest} path)
   file(READ "${path}" text)
   include(FetchContent)
   if (text MATCHES
@@ -214,7 +219,68 @@ if (ZLIB_FOUND)
   list(APPEND CMAKE_REQUIRED_LIBRARIES ${ZLIB_LIBRARIES})
 endif()
 
-find_package(OpenSSL 1.1.1 MODULE REQUIRED)
+# OpenSSL ships no CMakeLists.txt, so it cannot go through
+# folly_fetch_from_manifest. ExternalProject runs its own Configure script at
+# build time instead, which leaves the paths below non-existent during
+# configure; that is only workable because nothing here compiles against
+# OpenSSL at configure time.
+function(folly_build_openssl)
+  if (WIN32)
+    message(FATAL_ERROR
+      "OpenSSL not found. Building it here needs a Unix shell, so install "
+      "OpenSSL and set OPENSSL_ROOT_DIR.")
+  endif()
+  folly_manifest_path(openssl path)
+  file(READ "${path}" text)
+  if (NOT text MATCHES
+      "url = (https://[^\r\n]+\\.tar\\.gz)[\r\n]+sha256 = ([0-9a-f]+)")
+    message(FATAL_ERROR "no archive in ${path}")
+  endif()
+  message(STATUS "OpenSSL not found, building ${CMAKE_MATCH_1}")
+  set(prefix "${CMAKE_CURRENT_BINARY_DIR}/openssl")
+  # Configure does not find the SDK on its own the way the compiler CMake
+  # drives does, and without it every header lookup fails.
+  set(extra "")
+  if (APPLE)
+    set(sysroot "${CMAKE_OSX_SYSROOT}")
+    if (NOT sysroot)
+      execute_process(COMMAND xcrun --show-sdk-path
+        OUTPUT_VARIABLE sysroot OUTPUT_STRIP_TRAILING_WHITESPACE)
+    endif()
+    if (sysroot)
+      set(extra "-isysroot" "${sysroot}")
+    endif()
+  endif()
+  include(ExternalProject)
+  ExternalProject_Add(
+    openssl
+    URL "${CMAKE_MATCH_1}"
+    URL_HASH SHA256=${CMAKE_MATCH_2}
+    # Timestamp the extracted tree, so a changed pin rebuilds it.
+    DOWNLOAD_EXTRACT_TIMESTAMP FALSE
+    BUILD_IN_SOURCE ON
+    CONFIGURE_COMMAND
+      <SOURCE_DIR>/Configure --prefix=${prefix} --libdir=lib no-shared ${extra}
+    BUILD_COMMAND make -j
+    # install_sw leaves out the man pages, which dominate a full install.
+    INSTALL_COMMAND make install_sw
+    # Without this Ninja has no rule to produce the libraries and refuses to
+    # link them.
+    BUILD_BYPRODUCTS "${prefix}/lib/libssl.a" "${prefix}/lib/libcrypto.a"
+  )
+  # An include directory has to exist by generate time even when what it will
+  # hold does not.
+  file(MAKE_DIRECTORY "${prefix}/include")
+  # libssl before libcrypto: the static link order matters.
+  set(OPENSSL_LIBRARIES
+      "${prefix}/lib/libssl.a" "${prefix}/lib/libcrypto.a" PARENT_SCOPE)
+  set(OPENSSL_INCLUDE_DIR "${prefix}/include" PARENT_SCOPE)
+endfunction()
+
+find_package(OpenSSL 1.1.1 MODULE)
+if (NOT OPENSSL_FOUND)
+  folly_build_openssl()
+endif()
 list(APPEND FOLLY_LINK_LIBRARIES ${OPENSSL_LIBRARIES})
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${OPENSSL_INCLUDE_DIR})
 list(APPEND CMAKE_REQUIRED_LIBRARIES ${OPENSSL_LIBRARIES})
