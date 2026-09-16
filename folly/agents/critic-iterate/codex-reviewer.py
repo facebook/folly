@@ -20,11 +20,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
-from typing import Optional, Sequence, TextIO
+from typing import Callable, Optional, Sequence, TextIO
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import isolated_agent  # noqa: E402
@@ -139,6 +141,26 @@ def _review_environment_additions() -> dict[str, str]:
     }
 
 
+def _retry(
+    attempt: Callable[[], tuple[subprocess.CompletedProcess[bytes], bytes]],
+    *,
+    delays: Sequence[tuple[float, float]],
+    should_retry: Callable[[bytes], bool],
+    on_retry: Callable[[float], None],
+    random_float: Callable[[], float] = random.random,
+    sleep: Callable[[float], None] = time.sleep,
+) -> subprocess.CompletedProcess[bytes]:
+    result, attempt_stderr = attempt()
+    for minimum, maximum in delays:
+        if result.returncode == 0 or not should_retry(attempt_stderr):
+            break
+        delay = minimum + random_float() * (maximum - minimum)
+        on_retry(delay)
+        sleep(delay)
+        result, attempt_stderr = attempt()
+    return result
+
+
 def _run_review(
     args: argparse.Namespace,
     wrapper_executable: Path,
@@ -186,11 +208,14 @@ def _run_review(
             return 2
 
         review_path = output_dir / "review.md"
-        with (
-            effective_prompt.open("rb") as prompt,
-            (output_dir / "run.jsonl").open("xb") as trace,
-        ):
-            try:
+
+        def run_attempt() -> tuple[subprocess.CompletedProcess[bytes], bytes]:
+            review_path.unlink(missing_ok=True)
+            with (
+                effective_prompt.open("rb") as prompt,
+                (output_dir / "run.jsonl").open("wb") as trace,
+                tempfile.TemporaryFile() as attempt_errors,
+            ):
                 result = isolated_agent.CODEX.run(
                     workspace,
                     # Fresh review must launch its nested reviewer; cold review
@@ -204,12 +229,24 @@ def _run_review(
                     ),
                     stdin=prompt,
                     stdout=trace,
-                    stderr=errors.buffer,
+                    stderr=attempt_errors,
                     additions=_review_environment_additions(),
                 )
-            except (OSError, isolated_agent.IsolationError) as error:
-                print(f"could not run Codex: {error}", file=errors)
-                return 2
+                attempt_errors.seek(0)
+                attempt_stderr = attempt_errors.read()
+            errors.write(attempt_stderr.decode("utf-8", errors="replace"))
+            return result, attempt_stderr
+
+        result = _retry(
+            run_attempt,
+            delays=((5, 15), (15, 45), (45, 120)),
+            should_retry=lambda attempt_stderr: b"Could not resolve host"
+            in attempt_stderr,
+            on_retry=lambda delay: print(
+                f"Codex infrastructure flakiness; retrying in {delay:.1f} seconds.",
+                file=errors,
+            ),
+        )
         if result.returncode != 0:
             return result.returncode
         return _emit_final_review(review_path, errors)
