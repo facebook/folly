@@ -11,6 +11,9 @@ rule-backed runs use their rules and helper scripts from that checkout too. Run
 the scenario at another revision to compare rule revisions. The runner does not
 know which run is a baseline or choose a winner.
 
+Inside a rule-backed run, `{FA}` points to that run's staged rule package.
+No-rules runs have neither the binding nor rule helpers.
+
 After every attempted run, follow [mandatory-debrief.md](mandatory-debrief.md)
 before reporting the result.
 

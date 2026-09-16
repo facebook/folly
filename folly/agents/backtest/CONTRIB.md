@@ -30,12 +30,15 @@ Read-only staging is not a filesystem sandbox. Check the trace after each run;
 an undeclared read makes that run unusable for comparison.
 
 In `scenario.json`, list rules relative to `folly/agents`. Name every required
-rule; the runner does not discover files or load a profile. It stages
-critic-iterate's reviewer preambles and authorization procedure when
-`critic-iterate.md` is selected. Development documents such as `README.md`,
-`CONTRIB.md`, and `*.contrib.md` are rejected as rules. The runner adds the
-rule-loading instruction for a normal run; keep the scenario prompt focused on
-the task.
+rule; the runner does not discover files. It:
+
+- stages those rules and files they may need in one run-specific package;
+- binds `{FA}` to the package's absolute path; and
+- lists only those rules in the startup inventory.
+
+Development documents such as `README.md`, `CONTRIB.md`, and `*.contrib.md` are
+rejected as rules. The runner adds the rule-loading instruction for a normal
+run; keep the scenario prompt focused on the task.
 
 - **Rule-focused tests.** List the exact operational rules in `scenario.json`.
   These tests exercise only rule behavior, and bypass the loader files.

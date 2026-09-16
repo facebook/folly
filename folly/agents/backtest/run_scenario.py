@@ -55,10 +55,6 @@ CHECKPOINT_TOOL_FILES = {
 AGENT_RUNTIME_FILES = (PurePosixPath("scripts/isolated_agent.py"),)
 RESERVED_INPUT_NAMES = {"AGENTS.md", "AGENTS.override.md"}
 RESERVED_INPUT_ROOTS = {".codex", ".git", ".llms"}
-RULE_LOADING_INSTRUCTION = (
-    "Read every rule listed in `rules/rules-inventory.md`, in order. Follow "
-    "those rules for conditional loads; do not look for ambient rule files.\n\n"
-)
 
 
 class RunnerError(ValueError):
@@ -84,7 +80,6 @@ class Run:
     root: Path
     agent_workspace: isolated_agent.Workspace
     prompt: Path
-    rules_root: Path
     install_rules: bool
     critic_iterate_rounds: int | None
     checkpoint: bool
@@ -189,6 +184,14 @@ def _checkpoint_instruction() -> str:
     return (
         "After writing the initial draft, immediately run "
         "`backtest-checkpoint 0` and follow its stdout.\n\n"
+    )
+
+
+def _rule_loading_instruction(rules_root: Path) -> str:
+    return (
+        f"For this run, `{{FA}}` means `{rules_root}`. Read every rule listed "
+        "in `{FA}/rules-inventory.md`, in order. Follow those rules "
+        "for conditional loads; do not look for ambient rule files.\n\n"
     )
 
 
@@ -414,6 +417,7 @@ def stage(
     workdir: Path,
     *,
     install_rules: bool = True,
+    runtime_files: Sequence[PurePosixPath] = (),
 ) -> None:
     rules_root = rules_root.resolve()
     if not rules_root.is_dir():
@@ -435,7 +439,7 @@ def stage(
             if CRITIC_ITERATE_RULE in manifest.rules
             else ()
         )
-        for rule in (*manifest.rules, *support_files):
+        for rule in (*manifest.rules, *support_files, *runtime_files):
             destination = PurePosixPath("rules") / rule
             _claim(destinations, destination)
             source = _resolve_below(rules_root, rule, "rule")
@@ -447,7 +451,10 @@ def stage(
         path = workdir / destination
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(contents)
-        path.chmod(0o644 if destination == PurePosixPath("output.md") else 0o444)
+        if destination == PurePosixPath("output.md"):
+            path.chmod(0o644)
+        else:
+            path.chmod(path.stat().st_mode & 0o555)
 
 
 def prepare(
@@ -489,12 +496,13 @@ def prepare(
             root,
             agent_workspace,
             root / "author-prompt.md",
-            rules_root,
             install_rules,
             critic_iterate_rounds,
             checkpoint_run,
         )
-        prompt_prefix = RULE_LOADING_INSTRUCTION if install_rules else ""
+        prompt_prefix = (
+            _rule_loading_instruction(run.workdir / "rules") if install_rules else ""
+        )
         if critic_iterate_rounds is not None:
             prompt_prefix += f"c-i-{critic_iterate_rounds}\n\n"
         if checkpoint_run:
@@ -502,12 +510,16 @@ def prepare(
         run.prompt.write_text(prompt_prefix + prompt.read_text())
         run.prompt.chmod(0o444)
         shutil.copyfile(manifest_path, root / "scenario.json")
+        runtime_files = (*TOOL_FILES.values(), *AGENT_RUNTIME_FILES)
+        if checkpoint_run:
+            runtime_files += tuple(CHECKPOINT_TOOL_FILES.values())
         stage(
             scenario,
             manifest,
-            run.rules_root,
+            rules_root,
             run.workdir,
             install_rules=install_rules,
+            runtime_files=runtime_files,
         )
         metadata: dict[str, object] = {
             "model": model,
@@ -546,12 +558,11 @@ def _install_tools(run: Run) -> tuple[Path, dict[str, Path]]:
     selected_tools = TOOL_FILES
     if run.checkpoint:
         selected_tools = {**selected_tools, **CHECKPOINT_TOOL_FILES}
-    tools = {
-        name: _resolve_executable(
-            _resolve_below(run.rules_root, relative, f"{name} tool"), name
-        )
-        for name, relative in selected_tools.items()
-    }
+    tools = {}
+    for name, relative in selected_tools.items():
+        executable = _resolve_below(run.workdir / "rules", relative, f"{name} tool")
+        executable.chmod(0o555)
+        tools[name] = _resolve_executable(executable, name)
     for name, executable in tools.items():
         shim = tool_bin / name
         if executable.name == name:

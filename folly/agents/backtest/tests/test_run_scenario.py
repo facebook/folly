@@ -93,6 +93,8 @@ class RunScenarioTest(unittest.TestCase):
         install_rules: bool = True,
         critic_iterate_rounds: int | None = None,
     ) -> runner.Run:
+        if install_rules:
+            make_tools(self.rules_root)
         return runner.prepare(
             scenario or self.scenario,
             self.rules_root,
@@ -105,7 +107,6 @@ class RunScenarioTest(unittest.TestCase):
         )
 
     def prepare_launch(self) -> tuple[runner.Run, Path]:
-        make_tools(self.rules_root)
         codex = executable(self.root / "codex")
         return self.prepare(), codex
 
@@ -513,11 +514,15 @@ class RunScenarioTest(unittest.TestCase):
 
         run = self.prepare()
 
+        staged_rules = run.workdir / "rules"
         self.assertEqual(
             run.prompt.read_text(),
-            runner.RULE_LOADING_INSTRUCTION + "Do the task.\n",
+            runner._rule_loading_instruction(staged_rules) + "Do the task.\n",
         )
-        self.assertTrue((run.workdir / "rules/rules-inventory.md").is_file())
+        reviewer = runner.TOOL_FILES["codex-reviewer.py"]
+        (self.rules_root / reviewer).write_text("changed after prepare")
+        self.assertEqual((staged_rules / reviewer).read_text(), "tool")
+        self.assertTrue((staged_rules / runner.AGENT_RUNTIME_FILES[0]).is_file())
         metadata = json.loads((run.root / "run.json").read_text())
         self.assertEqual(metadata["generation_revision"], REVISION)
         self.assertNotIn("critic_iterate_rounds", metadata)
@@ -535,7 +540,7 @@ class RunScenarioTest(unittest.TestCase):
         self.assertTrue(run.checkpoint)
         self.assertEqual(
             run.prompt.read_text(),
-            runner.RULE_LOADING_INSTRUCTION
+            runner._rule_loading_instruction(run.workdir / "rules")
             + "c-i-0\n\n"
             + runner._checkpoint_instruction()
             + "Do the task.\n",
@@ -547,7 +552,7 @@ class RunScenarioTest(unittest.TestCase):
         self.assertTrue(default_run.checkpoint)
         self.assertEqual(
             default_run.prompt.read_text(),
-            runner.RULE_LOADING_INSTRUCTION
+            runner._rule_loading_instruction(default_run.workdir / "rules")
             + runner._checkpoint_instruction()
             + "Do the task.\n",
         )
@@ -810,7 +815,8 @@ class RunScenarioTest(unittest.TestCase):
         self.assertNotIn("W", environment)
         for name, relative in runner.TOOL_FILES.items():
             self.assertEqual(
-                (tool_bin / name).resolve(), (self.rules_root / relative).resolve()
+                (tool_bin / name).resolve(),
+                (run.workdir / "rules" / relative).resolve(),
             )
         self.assertFalse((tool_bin / "backtest-checkpoint").exists())
         policy = (run.agent_home / "rules/default.rules").read_text()
@@ -830,7 +836,6 @@ class RunScenarioTest(unittest.TestCase):
         for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
             write(self.rules_root / support, support.name)
         self.manifest(rules=[runner.CRITIC_ITERATE_RULE.as_posix()])
-        make_tools(self.rules_root)
         run = self.prepare(critic_iterate_rounds=0)
 
         tool_bin, tools = runner._install_tools(run)
@@ -838,6 +843,7 @@ class RunScenarioTest(unittest.TestCase):
 
         self.assertIn("backtest-checkpoint", tools)
         installed = tool_bin / "backtest-checkpoint"
+        self.assertEqual(tools["backtest-checkpoint"].stat().st_mode & 0o777, 0o555)
         self.assertTrue(os.access(installed, os.X_OK))
         policy = (run.agent_home / "rules/default.rules").read_text()
         self.assertIn(f'paths=["{installed}"]', policy)
@@ -894,22 +900,6 @@ class RunScenarioTest(unittest.TestCase):
             "output.md is not a regular file",
         )
 
-    def test_launch_rejects_a_helper_outside_the_rules_tree(self) -> None:
-        self.manifest()
-        run, codex = self.prepare_launch()
-        outside = executable(self.root / "outside-reviewer")
-        reviewer = self.rules_root / runner.TOOL_FILES["codex-reviewer.py"]
-        reviewer.unlink()
-        reviewer.symlink_to(outside)
-
-        with self.assertRaisesRegex(runner.RunnerError, "resolves outside"):
-            runner.launch(run, codex, "model", "high")
-
-        self.assertEqual(
-            json.loads((run.root / "run.json").read_text())["status"],
-            "launch-error",
-        )
-
     def test_success_without_output_is_runner_failure(self) -> None:
         self.manifest()
         run, codex = self.prepare_launch()
@@ -926,7 +916,6 @@ class RunScenarioTest(unittest.TestCase):
 
     def test_success_rejects_non_file_output(self) -> None:
         self.manifest()
-        make_tools(self.rules_root)
         codex = executable(self.root / "codex")
         for kind in ("directory", "symlink"):
             with self.subTest(kind):
