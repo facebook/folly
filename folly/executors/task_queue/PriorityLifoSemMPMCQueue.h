@@ -18,10 +18,13 @@
 
 #include <glog/logging.h>
 
+#include <stdexcept>
+
 #include <folly/Executor.h>
 #include <folly/MPMCQueue.h>
 #include <folly/Range.h>
 #include <folly/executors/task_queue/BlockingQueue.h>
+#include <folly/lang/Exception.h>
 #include <folly/synchronization/LifoSem.h>
 
 namespace folly {
@@ -40,7 +43,10 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
       size_t max_capacity,
       const typename Semaphore::Options& semaphoreOptions = {})
       : sem_(semaphoreOptions) {
-    CHECK_GT(numPriorities, 0) << "Number of priorities should be positive";
+    if (numPriorities == 0) {
+      throw_exception<std::invalid_argument>(
+          "Number of priorities should be positive");
+    }
     queues_.reserve(numPriorities);
     for (int8_t i = 0; i < numPriorities; i++) {
       queues_.emplace_back(max_capacity);
@@ -51,8 +57,14 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
       folly::Range<const size_t*> capacities,
       const typename Semaphore::Options& semaphoreOptions = {})
       : sem_(semaphoreOptions) {
-    CHECK_GT(capacities.size(), 0) << "Number of priorities should be positive";
-    CHECK_LT(capacities.size(), 256) << "At most 255 priorities supported";
+    if (capacities.size() == 0) {
+      throw_exception<std::invalid_argument>(
+          "Number of priorities should be positive");
+    }
+    if (capacities.size() >= 256) {
+      throw_exception<std::invalid_argument>(
+          "At most 255 priorities supported");
+    }
 
     queues_.reserve(capacities.size());
     for (auto capacity : capacities) {

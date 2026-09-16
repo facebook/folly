@@ -16,6 +16,7 @@
 
 #include <atomic>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 
 #include <boost/thread.hpp>
@@ -1313,6 +1314,36 @@ class SingleThreadedCPUThreadPoolExecutor
       : CPUThreadPoolExecutor(1) {}
   ~SingleThreadedCPUThreadPoolExecutor() override { stop(); }
 };
+
+TEST(ThreadPoolExecutorTest, CPUThreadPoolExecutorZeroNumPrioritiesThrows) {
+  EXPECT_THROW(
+      CPUThreadPoolExecutor(1 /* numThreads */, 0 /* numPriorities */),
+      std::invalid_argument);
+}
+
+TEST(ThreadPoolExecutorTest, CPUThreadPoolExecutorNegativeNumPrioritiesThrows) {
+  EXPECT_THROW(
+      CPUThreadPoolExecutor(1 /* numThreads */, -1 /* numPriorities */),
+      std::invalid_argument);
+}
+
+TEST(
+    ThreadPoolExecutorTest,
+    CPUThreadPoolExecutorZeroNumPrioritiesWithMaxQueueSizeThrows) {
+  EXPECT_THROW(
+      CPUThreadPoolExecutor(
+          1 /* numThreads */, 0 /* numPriorities */, 1 /* maxQueueSize */),
+      std::invalid_argument);
+}
+
+TEST(
+    ThreadPoolExecutorTest,
+    CPUThreadPoolExecutorNegativeNumPrioritiesWithMaxQueueSizeThrows) {
+  EXPECT_THROW(
+      CPUThreadPoolExecutor(
+          1 /* numThreads */, -1 /* numPriorities */, 1 /* maxQueueSize */),
+      std::invalid_argument);
+}
 
 TYPED_TEST(ThreadPoolExecutorTypedTest, WeakRef) {
   WeakRefTest<TypeParam>();

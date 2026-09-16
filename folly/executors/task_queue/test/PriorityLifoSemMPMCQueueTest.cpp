@@ -16,6 +16,7 @@
 
 #include <folly/executors/task_queue/PriorityLifoSemMPMCQueue.h>
 
+#include <stdexcept>
 #include <vector>
 
 #include <folly/Range.h>
@@ -23,6 +24,28 @@
 #include <folly/portability/GTest.h>
 
 using namespace folly;
+
+TEST(PriorityLifoSemMPMCQueue, ZeroNumPrioritiesThrows) {
+  EXPECT_THROW(
+      (PriorityLifoSemMPMCQueue<int, QueueBehaviorIfFull::THROW>(0, 1)),
+      std::invalid_argument);
+}
+
+TEST(PriorityLifoSemMPMCQueue, EmptyCapacitiesThrows) {
+  const std::vector<size_t> capacities;
+  EXPECT_THROW(
+      (PriorityLifoSemMPMCQueue<int, QueueBehaviorIfFull::THROW>(
+          folly::range(capacities))),
+      std::invalid_argument);
+}
+
+TEST(PriorityLifoSemMPMCQueue, TooManyCapacitiesThrows) {
+  const std::vector<size_t> capacities(256, 1);
+  EXPECT_THROW(
+      (PriorityLifoSemMPMCQueue<int, QueueBehaviorIfFull::THROW>(
+          folly::range(capacities))),
+      std::invalid_argument);
+}
 
 TEST(PriorityLifoSemMPMCQueue, Capacities) {
   const std::vector<size_t> capacities = {1, 2, 3};

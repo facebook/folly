@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <stdexcept>
+
 #include <folly/ConstexprMath.h>
 #include <folly/Executor.h>
 #include <folly/concurrency/PriorityUnboundedQueueSet.h>
@@ -33,7 +35,12 @@ class PriorityUnboundedBlockingQueue : public BlockingQueue<T> {
   explicit PriorityUnboundedBlockingQueue(
       uint8_t numPriorities,
       const typename Semaphore::Options& semaphoreOptions = {})
-      : sem_(semaphoreOptions), queue_(numPriorities) {}
+      : sem_(semaphoreOptions), queue_(numPriorities) {
+    if (numPriorities == 0) {
+      throw_exception<std::invalid_argument>(
+          "Number of priorities should be positive");
+    }
+  }
 
   uint8_t getNumPriorities() override { return queue_.priorities(); }
 

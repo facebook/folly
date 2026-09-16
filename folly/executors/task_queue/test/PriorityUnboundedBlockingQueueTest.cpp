@@ -16,6 +16,7 @@
 
 #include <folly/executors/task_queue/PriorityUnboundedBlockingQueue.h>
 
+#include <stdexcept>
 #include <vector>
 
 #include <folly/container/Enumerate.h>
@@ -25,6 +26,10 @@
 using namespace folly;
 
 class PriorityUnboundedBlockingQueueTest : public testing::Test {};
+
+TEST_F(PriorityUnboundedBlockingQueueTest, zero_num_priorities_throws) {
+  EXPECT_THROW(PriorityUnboundedBlockingQueue<int>(0), std::invalid_argument);
+}
 
 TEST_F(PriorityUnboundedBlockingQueueTest, push_pop) {
   PriorityUnboundedBlockingQueue<int> q(3);

@@ -18,12 +18,15 @@
 #include <folly/executors/CPUThreadPoolExecutor.h>
 
 #include <atomic>
+#include <stdexcept>
+
 #include <folly/Memory.h>
 #include <folly/Optional.h>
 #include <folly/executors/QueueObserver.h>
 #include <folly/executors/task_queue/PriorityLifoSemMPMCQueue.h>
 #include <folly/executors/task_queue/PriorityUnboundedBlockingQueue.h>
 #include <folly/executors/task_queue/UnboundedBlockingQueue.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/ThrottledLifoSem.h>
 
@@ -46,6 +49,21 @@ FOLLY_GFLAGS_DEFINE_bool(
 namespace folly {
 
 const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
+
+namespace {
+
+auto makeBoundedLifoSemPriorityQueue(int8_t numPriorities, size_t maxQueueSize)
+    -> std::unique_ptr<BlockingQueue<CPUThreadPoolExecutor::CPUTask>> {
+  if (numPriorities <= 0) {
+    throw_exception<std::invalid_argument>(
+        "Number of priorities should be positive");
+  }
+  return std::make_unique<
+      PriorityLifoSemMPMCQueue<CPUThreadPoolExecutor::CPUTask>>(
+      static_cast<uint8_t>(numPriorities), maxQueueSize);
+}
+
+} // namespace
 
 CPUThreadPoolExecutor::CPUTask::CPUTask(
     Func&& f,
@@ -72,6 +90,10 @@ CPUThreadPoolExecutor::CPUTask::CPUTask()
 
 /* static */ auto CPUThreadPoolExecutor::makeDefaultPriorityQueue(
     int8_t numPriorities) -> std::unique_ptr<BlockingQueue<CPUTask>> {
+  if (numPriorities <= 0) {
+    throw_exception<std::invalid_argument>(
+        "Number of priorities should be positive");
+  }
   return FLAGS_folly_cputhreadpoolexecutor_use_throttled_lifo_sem
       ? makeThrottledLifoSemPriorityQueue(numPriorities)
       : makeLifoSemPriorityQueue(numPriorities);
@@ -84,7 +106,10 @@ CPUThreadPoolExecutor::CPUTask::CPUTask()
 
 /* static */ auto CPUThreadPoolExecutor::makeLifoSemPriorityQueue(
     int8_t numPriorities) -> std::unique_ptr<BlockingQueue<CPUTask>> {
-  CHECK_GT(numPriorities, 0) << "Number of priorities should be positive";
+  if (numPriorities <= 0) {
+    throw_exception<std::invalid_argument>(
+        "Number of priorities should be positive");
+  }
   return std::make_unique<PriorityUnboundedBlockingQueue<CPUTask, LifoSem>>(
       numPriorities);
 }
@@ -101,6 +126,10 @@ CPUThreadPoolExecutor::CPUTask::CPUTask()
 /* static */ auto CPUThreadPoolExecutor::makeThrottledLifoSemPriorityQueue(
     int8_t numPriorities, std::chrono::nanoseconds wakeUpInterval)
     -> std::unique_ptr<BlockingQueue<CPUTask>> {
+  if (numPriorities <= 0) {
+    throw_exception<std::invalid_argument>(
+        "Number of priorities should be positive");
+  }
   ThrottledLifoSem::Options opts;
   opts.wakeUpInterval = wakeUpInterval;
   return std::make_unique<
@@ -181,8 +210,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     Options opt)
     : CPUThreadPoolExecutor(
           numThreads,
-          std::make_unique<PriorityLifoSemMPMCQueue<CPUTask>>(
-              numPriorities, maxQueueSize),
+          makeBoundedLifoSemPriorityQueue(numPriorities, maxQueueSize),
           std::move(threadFactory),
           std::move(opt)) {}
 
