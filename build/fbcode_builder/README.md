@@ -8,6 +8,8 @@ The main entry point is the `getdeps.py` script.  This script has several
 subcommands, but the most notable is the `build` command.  This will download
 and build all dependencies for a project, and then build the project itself.
 
+`getdeps.py` requires Python 3.6 or newer and enforces this at startup.
+
 ## Deployment
 
 This directory is copied literally into a number of different Facebook open

@@ -14,6 +14,9 @@ targets `getdeps.cli:main` and brings third-party deps along."""
 import os
 import sys
 
+if sys.version_info < (3, 6):
+    sys.exit("getdeps requires Python 3.6 or newer")
+
 # Make `getdeps` resolve to the package sitting next to this script.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
