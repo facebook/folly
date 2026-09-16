@@ -15,6 +15,7 @@
  */
 
 #include <list>
+#include <stdexcept>
 
 #include <folly/Benchmark.h>
 #include <folly/Synchronized.h>
@@ -31,6 +32,22 @@
 #include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
+
+TEST(MeteredExecutorOptionsTest, ZeroMaxInQueueThrows) {
+  MeteredExecutor::Options options;
+  options.maxInQueue = 0;
+  EXPECT_THROW(
+      MeteredExecutor(std::make_unique<CPUThreadPoolExecutor>(1), options),
+      std::invalid_argument);
+}
+
+TEST(MeteredExecutorOptionsTest, TooLargeMaxInQueueThrows) {
+  MeteredExecutor::Options options;
+  options.maxInQueue = uint32_t(1) << 31;
+  EXPECT_THROW(
+      MeteredExecutor(std::make_unique<CPUThreadPoolExecutor>(1), options),
+      std::invalid_argument);
+}
 
 class MeteredExecutorTest : public testing::Test {
  protected:

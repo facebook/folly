@@ -83,6 +83,21 @@ class MeteredExecutorImpl : public DefaultKeepAliveExecutor {
   bool resume();
 
  private:
+  // Routes construction through validateOptions() so that a bad Options
+  // value throws before the DefaultKeepAliveExecutor base class -- whose
+  // destructor asserts its keepAlive_ was already released via
+  // joinKeepAlive(), only called from ~MeteredExecutorImpl() -- is ever
+  // constructed. Throwing from this class's own constructor body would be
+  // too late: the base class subobject would already be alive, and its
+  // destructor would run during unwinding without joinKeepAlive() ever
+  // having been called. Evaluating validateOptions() as an argument to a
+  // delegating constructor call happens before the delegate (and hence its
+  // base class) is constructed at all, so a throw here leaves nothing to
+  // unwind.
+  struct OptionsValidated {};
+  MeteredExecutorImpl(KeepAlive keepAlive, Options options, OptionsValidated);
+  static Options validateOptions(Options options);
+
   class Task {
    public:
     Task() = default;

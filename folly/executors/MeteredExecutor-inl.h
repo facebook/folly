@@ -15,7 +15,9 @@
  */
 
 #include <limits>
+#include <stdexcept>
 
+#include <folly/Exception.h>
 #include <folly/io/async/AtomicNotificationQueue.h>
 
 namespace folly {
@@ -24,9 +26,27 @@ namespace detail {
 template <template <typename> class Atom>
 MeteredExecutorImpl<Atom>::MeteredExecutorImpl(
     KeepAlive keepAlive, Options options)
-    : options_(std::move(options)), kaInner_(std::move(keepAlive)) {
-  CHECK_GE(options_.maxInQueue, 1);
-  CHECK_LT(options_.maxInQueue, uint32_t(1) << 31);
+    : MeteredExecutorImpl(
+          std::move(keepAlive),
+          validateOptions(std::move(options)),
+          OptionsValidated{}) {}
+
+template <template <typename> class Atom>
+MeteredExecutorImpl<Atom>::MeteredExecutorImpl(
+    KeepAlive keepAlive, Options options, OptionsValidated)
+    : options_(std::move(options)), kaInner_(std::move(keepAlive)) {}
+
+template <template <typename> class Atom>
+auto MeteredExecutorImpl<Atom>::validateOptions(Options options) -> Options {
+  if (options.maxInQueue < 1) {
+    throw_exception<std::invalid_argument>(
+        "MeteredExecutor: maxInQueue must be >= 1");
+  }
+  if (options.maxInQueue >= (uint32_t(1) << 31)) {
+    throw_exception<std::invalid_argument>(
+        "MeteredExecutor: maxInQueue must be < 2^31");
+  }
+  return options;
 }
 
 template <template <typename> class Atom>
