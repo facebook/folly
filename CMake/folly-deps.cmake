@@ -18,11 +18,12 @@ include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
 include(CMakePushCheckState)
 
-# Fetch the archive `manifest` pins, so a fetched dependency cannot drift from
-# the one getdeps builds. OVERRIDE_FIND_PACKAGE makes a later find_package()
-# resolve to what was fetched instead of searching the system, which thrift/lib
-# relies on for Boost. The fetched source directory is not set in the caller's
-# scope; read it back with FetchContent_GetProperties.
+# Fetch the archive or commit `manifest` pins, so a fetched dependency cannot
+# drift from the one getdeps builds. OVERRIDE_FIND_PACKAGE makes a later
+# find_package() resolve to what was fetched instead of searching the system,
+# which thrift/lib relies on for Boost. The fetched source and binary
+# directories are not set in the caller's scope; read them back with
+# FetchContent_GetProperties.
 function(folly_fetch_from_manifest name manifest)
   # for in-fbsource builds
   set(path
@@ -33,20 +34,28 @@ function(folly_fetch_from_manifest name manifest)
       "${CMAKE_CURRENT_SOURCE_DIR}/build/fbcode_builder/manifests/${manifest}")
   endif()
   file(READ "${path}" text)
-  if (NOT text MATCHES
-      "url = (https://[^\r\n]+\\.tar\\.gz)[\r\n]+sha256 = ([0-9a-f]+)")
-    message(FATAL_ERROR "no archive in ${path}")
-  endif()
-  set(url "${CMAKE_MATCH_1}")
-  set(sha256 "${CMAKE_MATCH_2}")
-  message(STATUS "${name} not found, fetching ${url}")
   include(FetchContent)
-  FetchContent_Declare(
-    ${name}
-    URL "${url}"
-    URL_HASH SHA256=${sha256}
-    OVERRIDE_FIND_PACKAGE
-  )
+  if (text MATCHES
+      "url = (https://[^\r\n]+\\.tar\\.gz)[\r\n]+sha256 = ([0-9a-f]+)")
+    message(STATUS "${name} not found, fetching ${CMAKE_MATCH_1}")
+    FetchContent_Declare(
+      ${name}
+      URL "${CMAKE_MATCH_1}"
+      URL_HASH SHA256=${CMAKE_MATCH_2}
+      OVERRIDE_FIND_PACKAGE
+    )
+  elseif (text MATCHES "repo_url = ([^\r\n]+)[\r\n]+rev = ([0-9a-f]+)")
+    # A revision pins the tree as tightly as the sha256 above.
+    message(STATUS "${name} not found, fetching ${CMAKE_MATCH_1} ${CMAKE_MATCH_2}")
+    FetchContent_Declare(
+      ${name}
+      GIT_REPOSITORY "${CMAKE_MATCH_1}"
+      GIT_TAG "${CMAKE_MATCH_2}"
+      OVERRIDE_FIND_PACKAGE
+    )
+  else()
+    message(FATAL_ERROR "no archive or pinned commit in ${path}")
+  endif()
   FetchContent_MakeAvailable(${name})
 endfunction()
 
@@ -109,26 +118,21 @@ endif()
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIRS})
 
 find_package(FastFloat MODULE)
-if (NOT FASTFLOAT_INCLUDE_DIR)
-  # fast_float asks for cmake_minimum_required 3.9; CMake 4 warns below 3.10.
-  set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
-  # fast_float also FORCEs CMAKE_BUILD_TYPE to Release when it is unset, which
-  # would choose the build type for the whole superproject.
-  set(folly_saved_build_type "${CMAKE_BUILD_TYPE}")
-  folly_fetch_from_manifest(FastFloat fast_float)
-  unset(CMAKE_POLICY_VERSION_MINIMUM)
-  if (NOT folly_saved_build_type)
-    set(CMAKE_BUILD_TYPE "" CACHE STRING "Choose the type of build." FORCE)
-  endif()
-  # FindFastFloat.cmake reports through FASTFLOAT_INCLUDE_DIR rather than a
-  # target, so fill in the cache entry its find_path() would have set.
-  FetchContent_GetProperties(FastFloat SOURCE_DIR folly_fastfloat_source_dir)
-  set(FASTFLOAT_INCLUDE_DIR "${folly_fastfloat_source_dir}/include"
-    CACHE PATH "fast_float include directory" FORCE)
+if (FASTFLOAT_FOUND)
+  list(APPEND FOLLY_INCLUDE_DIRECTORIES ${FASTFLOAT_INCLUDE_DIR})
 endif()
-list(APPEND FOLLY_INCLUDE_DIRECTORIES ${FASTFLOAT_INCLUDE_DIR})
 
 find_package(Gflags MODULE)
+if (NOT LIBGFLAGS_FOUND)
+  # As a subproject gflags builds only its single-threaded library.
+  set(GFLAGS_BUILD_gflags_LIB ON)
+  set(GFLAGS_BUILD_gflags_nothreads_LIB OFF)
+  folly_fetch_from_manifest(gflags gflags)
+  # FindGflags reports through variables; the subproject alias already carries
+  # the generated include directory, so only the library needs one.
+  set(LIBGFLAGS_LIBRARY gflags)
+  set(LIBGFLAGS_FOUND ON)
+endif()
 set(FOLLY_HAVE_LIBGFLAGS ${LIBGFLAGS_FOUND})
 if(LIBGFLAGS_FOUND)
   list(APPEND FOLLY_LINK_LIBRARIES ${LIBGFLAGS_LIBRARY})
@@ -137,8 +141,38 @@ if(LIBGFLAGS_FOUND)
   set(FOLLY_LIBGFLAGS_INCLUDE ${LIBGFLAGS_INCLUDE_DIR})
 endif()
 
-find_package(Glog MODULE)
-set(FOLLY_HAVE_LIBGLOG ${GLOG_FOUND})
+# FindGlog declares glog::glog even when it finds nothing, which would collide
+# with the alias a fetched glog declares, so run its library search up front and
+# pick the branch before the module gets to.
+find_library(GLOG_LIBRARY_RELEASE glog PATHS ${GLOG_LIBRARYDIR})
+find_library(GLOG_LIBRARY_DEBUG glogd PATHS ${GLOG_LIBRARYDIR})
+if (GLOG_LIBRARY_RELEASE OR GLOG_LIBRARY_DEBUG)
+  find_package(Glog MODULE)
+  set(FOLLY_HAVE_LIBGLOG ${GLOG_FOUND})
+else()
+  # glog runs include(CTest), which would turn testing on for the whole
+  # superproject. CMP0077 makes the option() inside it defer to this.
+  set(folly_saved_build_testing "${BUILD_TESTING}")
+  set(BUILD_TESTING OFF)
+  folly_fetch_from_manifest(glog glog)
+  if (folly_saved_build_testing STREQUAL "")
+    unset(BUILD_TESTING)
+  else()
+    set(BUILD_TESTING "${folly_saved_build_testing}")
+  endif()
+  # glog exports its whole src/, which puts internal headers on the include
+  # path of everything linking glog::glog -- folly/Demangle.cpp probes for
+  # libiberty's <demangle.h> and finds glog's. Export only the glog/ directory,
+  # completed with the public headers that are not generated into it.
+  FetchContent_GetProperties(glog
+    SOURCE_DIR folly_glog_source_dir BINARY_DIR folly_glog_binary_dir)
+  file(GLOB folly_glog_headers "${folly_glog_source_dir}/src/glog/*.h")
+  file(COPY ${folly_glog_headers} DESTINATION "${folly_glog_binary_dir}/glog")
+  set_property(TARGET glog PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+    "$<BUILD_INTERFACE:${folly_glog_binary_dir}>"
+    "$<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>")
+  set(FOLLY_HAVE_LIBGLOG ON)
+endif()
 list(APPEND FOLLY_LINK_LIBRARIES glog::glog)
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${GLOG_INCLUDE_DIR})
 # Glog 0.7+ requires GLOG_USE_GLOG_EXPORT to be defined so that headers
@@ -147,7 +181,32 @@ if (EXISTS "${GLOG_INCLUDE_DIR}/glog/export.h")
   list(APPEND FOLLY_CXX_FLAGS -DGLOG_USE_GLOG_EXPORT)
 endif()
 
-find_package(LibEvent MODULE REQUIRED)
+find_package(LibEvent MODULE)
+if (NOT LibEvent_FOUND)
+  set(EVENT__DISABLE_TESTS ON)
+  set(EVENT__DISABLE_BENCHMARK ON)
+  set(EVENT__DISABLE_SAMPLES ON)
+  set(EVENT__DISABLE_REGRESS ON)
+  # libevent declares this with set(CACHE), not option(), so a plain variable
+  # would be dropped on the configure that creates the cache entry.
+  set(EVENT__LIBRARY_TYPE STATIC CACHE STRING "libevent library type")
+  # libevent also FORCEs CMAKE_BUILD_TYPE to Release when it is unset, which
+  # would choose the build type for the whole superproject.
+  set(folly_saved_build_type "${CMAKE_BUILD_TYPE}")
+  folly_fetch_from_manifest(LibEvent libevent)
+  if (NOT folly_saved_build_type)
+    set(CMAKE_BUILD_TYPE "" CACHE STRING "Choose the type of build." FORCE)
+  endif()
+  # FindLibEvent reports through variables. These cover the same sources as the
+  # combined `event` target, but unlike it they carry the include directories
+  # and are exported, which install(EXPORT folly) requires. The cache entry
+  # above is a default, so follow whichever variant libevent ended up building.
+  if (TARGET event_core_static)
+    set(LIBEVENT_LIB event_core_static event_extra_static)
+  else()
+    set(LIBEVENT_LIB event_core_shared event_extra_shared)
+  endif()
+endif()
 list(APPEND FOLLY_LINK_LIBRARIES ${LIBEVENT_LIB})
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${LIBEVENT_INCLUDE_DIR})
 

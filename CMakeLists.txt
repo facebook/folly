@@ -375,7 +375,14 @@ option(BUILD_HANGING_TESTS "If enabled, compile tests that are known to hang." O
 option(BUILD_SLOW_TESTS "If enabled, compile tests that take a while to run in debug mode." OFF)
 if (BUILD_TESTS OR BUILD_BENCHMARKS)
   option(USE_CMAKE_GOOGLE_TEST_INTEGRATION "If enabled, use the google test integration included in CMake." ON)
-  find_package(GMock MODULE REQUIRED)
+  find_package(GMock MODULE)
+  if (NOT LIBGMOCK_FOUND)
+    # Everything else uses the shared runtime; gtest would pick the static one.
+    set(gtest_force_shared_crt ON)
+    folly_fetch_from_manifest(GTest googletest)
+    # The module picks up the GTest:: targets a fetched googletest declares.
+    find_package(GMock MODULE REQUIRED)
+  endif()
   find_package(GTest MODULE REQUIRED)
   if (USE_CMAKE_GOOGLE_TEST_INTEGRATION)
     include(GoogleTest OPTIONAL RESULT_VARIABLE HAVE_CMAKE_GTEST)
