@@ -141,14 +141,14 @@ if(LIBGFLAGS_FOUND)
   set(FOLLY_LIBGFLAGS_INCLUDE ${LIBGFLAGS_INCLUDE_DIR})
 endif()
 
-# FindGlog declares glog::glog even when it finds nothing, which would collide
-# with the alias a fetched glog declares, so run its library search up front and
-# pick the branch before the module gets to.
-find_library(GLOG_LIBRARY_RELEASE glog PATHS ${GLOG_LIBRARYDIR})
-find_library(GLOG_LIBRARY_DEBUG glogd PATHS ${GLOG_LIBRARYDIR})
-if (GLOG_LIBRARY_RELEASE OR GLOG_LIBRARY_DEBUG)
-  find_package(Glog MODULE)
-  set(FOLLY_HAVE_LIBGLOG ${GLOG_FOUND})
+find_package(Glog MODULE)
+if (GLOG_FOUND)
+  list(APPEND FOLLY_INCLUDE_DIRECTORIES ${GLOG_INCLUDE_DIR})
+  # Glog 0.7+ requires GLOG_USE_GLOG_EXPORT to be defined so that headers
+  # include glog/export.h which defines GLOG_EXPORT.
+  if (EXISTS "${GLOG_INCLUDE_DIR}/glog/export.h")
+    list(APPEND FOLLY_CXX_FLAGS -DGLOG_USE_GLOG_EXPORT)
+  endif()
 else()
   # glog runs include(CTest), which would turn testing on for the whole
   # superproject. CMP0077 makes the option() inside it defer to this.
@@ -171,15 +171,11 @@ else()
   set_property(TARGET glog PROPERTY INTERFACE_INCLUDE_DIRECTORIES
     "$<BUILD_INTERFACE:${folly_glog_binary_dir}>"
     "$<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>")
-  set(FOLLY_HAVE_LIBGLOG ON)
+  # folly's granular libraries name ${GLOG_LIBRARIES} in their EXPORTED_DEPS.
+  set(GLOG_LIBRARIES glog::glog)
 endif()
+set(FOLLY_HAVE_LIBGLOG ON)
 list(APPEND FOLLY_LINK_LIBRARIES glog::glog)
-list(APPEND FOLLY_INCLUDE_DIRECTORIES ${GLOG_INCLUDE_DIR})
-# Glog 0.7+ requires GLOG_USE_GLOG_EXPORT to be defined so that headers
-# include glog/export.h which defines GLOG_EXPORT.
-if (EXISTS "${GLOG_INCLUDE_DIR}/glog/export.h")
-  list(APPEND FOLLY_CXX_FLAGS -DGLOG_USE_GLOG_EXPORT)
-endif()
 
 find_package(LibEvent MODULE)
 if (NOT LibEvent_FOUND)

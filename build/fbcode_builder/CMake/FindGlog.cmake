@@ -30,7 +30,7 @@ mark_as_advanced(
 set(GLOG_LIBRARIES ${GLOG_LIBRARY})
 set(GLOG_INCLUDE_DIRS ${GLOG_INCLUDE_DIR})
 
-if (NOT TARGET glog::glog)
+if (GLOG_FOUND AND NOT TARGET glog::glog)
   add_library(glog::glog UNKNOWN IMPORTED)
   set_target_properties(glog::glog PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${GLOG_INCLUDE_DIRS}")
   set_target_properties(glog::glog PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES "C" IMPORTED_LOCATION "${GLOG_LIBRARIES}")
