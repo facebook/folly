@@ -60,8 +60,23 @@ static int getLinuxVersion(StringPiece release) {
   }
   const auto v2 = folly::to<int>(release.subpiece(dot1 + 1, dot2 - (dot1 + 1)));
 
-  const auto dash = release.find('-', dot2 + 1);
-  const auto v3 = folly::to<int>(release.subpiece(dot2 + 1, dash - (dot2 + 1)));
+  // The third version component may be followed by additional
+  // dot-separated sub-version numbers before the release suffix.
+  // For example, WSL2 kernels report a 4-component version string
+  // like "6.6.114.1-microsoft-standard-WSL2", rather than the
+  // standard 3-component "major.minor.patch-suffix" format. We only
+  // need the first three numeric components to determine the
+  // kernel version, so stop parsing v3 at the first character that
+  // isn't a digit, whether that's another dot or the release-suffix
+  // dash.
+  auto v3End = dot2 + 1;
+  while (v3End < release.size() && isdigit(release[v3End])) {
+    ++v3End;
+  }
+  if (v3End == dot2 + 1) {
+    throw std::invalid_argument("could not find third version component");
+  }
+  const auto v3 = folly::to<int>(release.subpiece(dot2 + 1, v3End - (dot2 + 1)));
 
   return ((v1 * 1000 + v2) * 1000) + v3;
 }
