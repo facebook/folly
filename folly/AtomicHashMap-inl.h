@@ -18,10 +18,12 @@
 #error "This should only be included by AtomicHashMap.h"
 #endif
 
+#include <stdexcept>
+#include <type_traits>
+
 #include <folly/detail/AtomicHashUtils.h>
 #include <folly/detail/Iterators.h>
-
-#include <type_traits>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -47,7 +49,9 @@ AtomicHashMap<
           config.growthFactor < 0
               ? 1.0f - config.maxLoadFactor
               : config.growthFactor) {
-  CHECK(config.maxLoadFactor > 0.0f && config.maxLoadFactor < 1.0f);
+  if (!(config.maxLoadFactor > 0.0f && config.maxLoadFactor < 1.0f)) {
+    throw_exception<std::invalid_argument>("maxLoadFactor");
+  }
   subMaps_[0].store(
       SubMap::create(finalSizeEst, config).release(),
       std::memory_order_relaxed);
