@@ -1091,6 +1091,7 @@ folly_add_library(
     ProducerConsumerQueue.h
   EXPORTED_DEPS
     folly_concurrency_cache_locality
+    folly_lang_bits
 )
 
 folly_add_library(

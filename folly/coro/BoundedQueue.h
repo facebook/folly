@@ -34,12 +34,7 @@ class BoundedQueue {
 
  public:
   explicit BoundedQueue(uint32_t capacity)
-      : queue_(
-            kSPSC ? capacity + 1 // One more extra space because usable space of
-                                 // ProducerConsumerQueue used below is (size-1)
-                  : capacity),
-        enqueueSemaphore_{capacity},
-        dequeueSemaphore_{0} {}
+      : queue_(capacity), enqueueSemaphore_{capacity}, dequeueSemaphore_{0} {}
 
   BoundedQueue(const BoundedQueue&) = delete;
   BoundedQueue& operator=(const BoundedQueue&) = delete;

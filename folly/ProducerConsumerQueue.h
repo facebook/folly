@@ -19,12 +19,14 @@
 #include <atomic>
 #include <cassert>
 #include <cstdlib>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
 
 #include <folly/concurrency/CacheLocality.h>
+#include <folly/lang/Bits.h>
 
 namespace folly {
 
@@ -37,6 +39,10 @@ namespace folly {
 /// dequeue operations (reads) fail by returning false. The ring buffer is fixed
 /// at its initial capacity and is never grown.
 ///
+/// For performance, the queue capacity is a power of two. This allows the queue
+/// to accelerate index math and avoid expensive integer-division. If the size
+/// provided is not a power of two, the queue rounds it up.
+///
 /// For performance, the fields are divided between common, producer-owned, and
 /// consumer-owned cache-lines. The producer maintains a cache of the consumer's
 /// index and vice versa, in order to accelerate the checks of whether the queue
@@ -48,14 +54,10 @@ struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
   ProducerConsumerQueue(const ProducerConsumerQueue&) = delete;
   ProducerConsumerQueue& operator=(const ProducerConsumerQueue&) = delete;
 
-  // size must be >= 2.
-  //
-  // Also, note that the number of usable slots in the queue at any
-  // given time is actually (size-1), so if you start with an empty queue,
-  // isFull() will return true after size-1 insertions.
   explicit ProducerConsumerQueue(uint32_t size)
-      : size_(size), records_(static_cast<T*>(std::malloc(sizeof(T) * size))) {
-    assert(size >= 2);
+      : size_(validateSize(size)), // ensures size within [1, 1 << 31]
+        mask_(nextPowTwo(size_) - 1), // nextPowTwo(size_) is in [1, 1 << 31]
+        records_(static_cast<T*>(std::malloc(allocationSize(mask_)))) {
     if (!records_) {
       throw std::bad_alloc();
     }
@@ -69,7 +71,7 @@ struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
       auto readIndex = readIndex_.load(std::memory_order_relaxed);
       auto const endIndex = writeIndex_.load(std::memory_order_relaxed);
       while (readIndex != endIndex) {
-        records_[readIndex % size_].~T();
+        records_[readIndex & mask_].~T();
         ++readIndex;
       }
     }
@@ -86,7 +88,7 @@ struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
   //  be. In steady state, where the two sides stay within a queue's worth
   //  of each other, that real read is rare rather than universal. This
   //  relies on the cursors being ever-increasing logical counters, wrapped
-  //  via `% size_` only at the point of indexing into records_, never
+  //  via `& mask_` only at the point of indexing into records_, never
   //  wrapped in the stored/compared value itself - with a wrapped cursor,
   //  a stale cache can alias to the wrong answer in either direction, since
   //  "behind" is no longer a total order once values cycle. The comparisons
@@ -96,17 +98,21 @@ struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
   //  after an external frontPtr()) can leave the far side's cache stuck
   //  behind the local cursor by more than zero - equality would then never
   //  match again and the cache would be trusted forever after it stopped
-  //  meaning anything.
+  //  meaning anything. The same ever-increasing representation is also
+  //  what lets fullness (occupancy == size_) and emptiness (occupancy ==
+  //  0) be told apart without reserving a slot: with wrapped indices, both
+  //  look like readIndex_ == writeIndex_, which is why the classic version
+  //  of this design capped usable capacity at size_ - 1.
   template <class... Args>
   bool write(Args&&... recordArgs) {
     auto const currentWrite = writeIndex_.load(std::memory_order_relaxed);
-    if (currentWrite - readIndexCache_ >= size_ - 1) {
+    if (currentWrite - readIndexCache_ >= size_) {
       readIndexCache_ = readIndex_.load(std::memory_order_acquire);
-      if (currentWrite - readIndexCache_ >= size_ - 1) {
+      if (currentWrite - readIndexCache_ >= size_) {
         return false; // queue is full
       }
     }
-    new (&records_[currentWrite % size_]) T(std::forward<Args>(recordArgs)...);
+    new (&records_[currentWrite & mask_]) T(std::forward<Args>(recordArgs)...);
     writeIndex_.store(currentWrite + 1, std::memory_order_release);
     return true;
   }
@@ -120,7 +126,7 @@ struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
         return false; // queue is empty
       }
     }
-    auto const idx = currentRead % size_;
+    auto const idx = currentRead & mask_;
     record = std::move(records_[idx]);
     records_[idx].~T();
     readIndex_.store(currentRead + 1, std::memory_order_release);
@@ -138,7 +144,7 @@ struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
         return nullptr;
       }
     }
-    return &records_[currentRead % size_];
+    return &records_[currentRead & mask_];
   }
 
   // queue must not be empty
@@ -146,7 +152,7 @@ struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
     auto const currentRead = readIndex_.load(std::memory_order_relaxed);
     assert(currentRead != writeIndex_.load(std::memory_order_acquire));
 
-    auto const idx = currentRead % size_;
+    auto const idx = currentRead & mask_;
     records_[idx].~T();
     readIndex_.store(currentRead + 1, std::memory_order_release);
   }
@@ -163,17 +169,57 @@ struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
 
   bool isEmpty() const { return sizeGuess() == 0; }
 
-  bool isFull() const { return sizeGuess() == size_ - 1; }
+  bool isFull() const { return sizeGuess() == size_; }
 
   // maximum number of items in the queue.
-  size_t capacity() const { return size_ - 1; }
+  size_t capacity() const { return size_; }
 
  private:
   using AtomicIndex = std::atomic<uint64_t>;
 
+  //  Upper bound on the constructor's size argument: the largest power of
+  //  two that fits in uint32_t. Enforcing it up front keeps mask_'s
+  //  nextPowTwo() call entirely within uint32_t (see the constructor) and
+  //  bounds how large sizeof(T) * (mask + 1) can get before allocationSize()
+  //  below has to check it against size_t's own range.
+  static constexpr uint32_t kMaxSize = uint32_t{1} << 31;
+
+  //  Throws rather than asserting: an invalid size is a caller error that
+  //  can occur in release builds too, not a condition this class can allow
+  //  itself to just proceed past - proceeding would feed 0 or an
+  //  out-of-range value into nextPowTwo() below, which is undefined for 0
+  //  and cannot represent a result above kMaxSize in a uint32_t.
+  static uint32_t validateSize(uint32_t size) {
+    if (size < 1 || size > kMaxSize) {
+      throw std::invalid_argument(
+          "ProducerConsumerQueue: size must be in [1, 1 << 31]");
+    }
+    return size;
+  }
+
+  //  Computed in 64 bits and checked against size_t's actual range before
+  //  narrowing: sizeof(T) * (mask + 1) can legally exceed the 32-bit size_t
+  //  that std::malloc() takes on a 32-bit platform, even though mask itself
+  //  always fits in uint32_t. Silently truncating that byte count would
+  //  allocate a smaller buffer than record indices (computed mod mask+1 in
+  //  the wider sense) are entitled to touch.
+  static size_t allocationSize(uint32_t mask) {
+    uint64_t const bytes = sizeof(T) * (uint64_t{mask} + 1);
+    if (bytes > std::numeric_limits<size_t>::max()) {
+      throw std::length_error(
+          "ProducerConsumerQueue: requested size overflows size_t");
+    }
+    return static_cast<size_t>(bytes);
+  }
+
   //  One line of state common to both sides: read-only after construction,
-  //  so concurrent reads of it from both threads never contend.
+  //  so concurrent reads of it from both threads never contend. size_ is
+  //  the caller-visible capacity; mask_ may cover a larger, power-of-two
+  //  rounded-up allocation so indexing can use `&` instead of `%` - the
+  //  slots beyond size_ are allocated but never live, since occupancy never
+  //  exceeds size_.
   const uint32_t size_;
+  const uint32_t mask_;
   T* const records_;
 
   //  One line owned by the producer: writeIndex_ is written on every

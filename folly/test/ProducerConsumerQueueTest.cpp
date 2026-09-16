@@ -283,13 +283,37 @@ TEST(PCQ, EmptyFull) {
 
   EXPECT_TRUE(queue.write(2));
   EXPECT_FALSE(queue.isEmpty());
-  EXPECT_TRUE(queue.isFull()); // Tricky: full after 2 writes, not 3.
+  EXPECT_FALSE(queue.isFull());
 
-  EXPECT_FALSE(queue.write(3));
-  EXPECT_EQ(queue.sizeGuess(), 2);
+  EXPECT_TRUE(queue.write(3));
+  EXPECT_FALSE(queue.isEmpty());
+  EXPECT_TRUE(queue.isFull()); // Full after size writes: no reserved slot.
+
+  EXPECT_FALSE(queue.write(4));
+  EXPECT_EQ(queue.sizeGuess(), 3);
 }
 
 TEST(PCQ, Capacity) {
   folly::ProducerConsumerQueue<int> queue(3);
-  EXPECT_EQ(queue.capacity(), 2); // PCQ max size is buffer size - 1.
+  EXPECT_EQ(queue.capacity(), 3); // No reserved slot: capacity == size.
+}
+
+TEST(PCQ, MinimumSize) {
+  // size == 1 is well-defined with no reserved slot: a single usable slot.
+  folly::ProducerConsumerQueue<int> queue(1);
+  EXPECT_EQ(queue.capacity(), 1);
+  EXPECT_TRUE(queue.isEmpty());
+
+  EXPECT_TRUE(queue.write(1));
+  EXPECT_TRUE(queue.isFull());
+  EXPECT_FALSE(queue.write(2));
+
+  int value = 0;
+  EXPECT_TRUE(queue.read(value));
+  EXPECT_EQ(value, 1);
+  EXPECT_TRUE(queue.isEmpty());
+
+  EXPECT_TRUE(queue.write(3));
+  EXPECT_TRUE(queue.read(value));
+  EXPECT_EQ(value, 3);
 }
