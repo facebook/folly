@@ -24,14 +24,25 @@ not expose earlier drafts. This is not a security boundary.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import shutil
 import sys
 from pathlib import Path
 
 
-CHECKPOINT_MARKER_PREFIX = "@@FOLLY_BACKTEST_CHECKPOINT:"
-CHECKPOINT_MARKER_SUFFIX = "@@"
+# Accounting checks that checkpoint indices are sequential, but the agent being
+# checkpointed should not see those indices in the marker.
+# Birthday-collision probability:
+# checkpoints  4 nibbles  5 nibbles  6 nibbles
+# 5            0.02%      0.001%     0.00006%
+# 10           0.07%      0.004%     0.0003%
+# 20           0.3%       0.02%      0.001%
+# 100          7%         0.5%       0.03%
+def make_checkpoint_marker(index: int, key: bytes) -> str:
+    token = hashlib.blake2s(str(index).encode(), key=key, digest_size=3).hexdigest()
+    return f"@@FOLLY_BACKTEST_CHECKPOINT:{token}@@"
 
 
 def get_checkpoint_dir() -> Path:
@@ -67,8 +78,10 @@ def main() -> None:
         expected = len(list(checkpoints.glob("*.md")))
         if index != expected:
             raise ValueError(f"expected checkpoint {expected}, got {index}")
+        metadata = json.loads((checkpoints.parent / "run.json").read_text())
+        checkpoint_key = bytes.fromhex(metadata["checkpoint_key"])
         shutil.copyfile(get_output_md(), checkpoints / f"{index}.md")
-        print(f"{CHECKPOINT_MARKER_PREFIX}{index}{CHECKPOINT_MARKER_SUFFIX}")
+        print(make_checkpoint_marker(index, checkpoint_key))
         print(next_instruction(index))
     except Exception:
         print(

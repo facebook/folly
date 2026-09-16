@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import tempfile
@@ -21,6 +22,9 @@ import unittest
 from pathlib import Path
 
 from folly.agents.backtest import checkpoint
+
+
+CHECKPOINT_KEY = bytes.fromhex("00112233445566778899aabbccddeeff")
 
 
 class CheckpointTest(unittest.TestCase):
@@ -45,6 +49,9 @@ class CheckpointTest(unittest.TestCase):
             output = root / "workdir/output.md"
             output.parent.mkdir()
             output.write_text("initial")
+            (root / "run.json").write_text(
+                json.dumps({"checkpoint_key": CHECKPOINT_KEY.hex()})
+            )
 
             first = self.run_checkpoint(0, root, output.parent)
             output.write_text("author")
@@ -55,8 +62,7 @@ class CheckpointTest(unittest.TestCase):
             self.assertEqual(
                 first.stdout.splitlines(),
                 [
-                    f"{checkpoint.CHECKPOINT_MARKER_PREFIX}0"
-                    f"{checkpoint.CHECKPOINT_MARKER_SUFFIX}",
+                    "@@FOLLY_BACKTEST_CHECKPOINT:5fdd93@@",
                     checkpoint.next_instruction(0),
                 ],
             )
@@ -64,8 +70,7 @@ class CheckpointTest(unittest.TestCase):
             self.assertEqual(second.stderr, "")
             self.assertEqual(
                 second.stdout.splitlines()[0],
-                f"{checkpoint.CHECKPOINT_MARKER_PREFIX}1"
-                f"{checkpoint.CHECKPOINT_MARKER_SUFFIX}",
+                "@@FOLLY_BACKTEST_CHECKPOINT:233243@@",
             )
             for phrase in (
                 "complete one round",

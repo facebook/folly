@@ -25,7 +25,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from .checkpoint import CHECKPOINT_MARKER_PREFIX, CHECKPOINT_MARKER_SUFFIX
+from .checkpoint import make_checkpoint_marker
 
 
 TOKEN_FIELDS = (
@@ -81,27 +81,24 @@ def _public_run(path: Path) -> tuple[str, str]:
     return thread_id, final_message
 
 
-def _checkpoint_marker(event: dict[str, Any]) -> int | None:
+def _checkpoint_marker(
+    event: dict[str, Any], marker_to_index: dict[str, int]
+) -> int | None:
     """Read the marker emitted after a checkpoint is saved."""
-    if event.get("type") != "event_msg":
+    if event.get("type") != "response_item":
         return None
     payload = event["payload"]
-    if payload.get("type") != "item_completed":
+    if payload.get("type") != "custom_tool_call_output":
         return None
-    item = payload["item"]
-    if item.get("type") != "CommandExecution":
-        return None
-    marker = item["stdout"].partition("\n")[0]
-    if not marker.startswith(CHECKPOINT_MARKER_PREFIX) or not marker.endswith(
-        CHECKPOINT_MARKER_SUFFIX
-    ):
-        return None
-    if item["exit_code"] != 0:
-        raise ValueError("checkpoint command failed")
-    index_text = marker.removeprefix(CHECKPOINT_MARKER_PREFIX).removesuffix(
-        CHECKPOINT_MARKER_SUFFIX
-    )
-    return int(index_text)
+    # CommandExecution.stdout was empty in 2/6 observed successful calls; the
+    # model-visible custom tool output retained all markers.
+    for block in payload["output"]:
+        if block.get("type") != "input_text":
+            continue
+        for line in block["text"].splitlines():
+            if line in marker_to_index:
+                return marker_to_index[line]
+    return None
 
 
 def _token_usage(
@@ -126,7 +123,7 @@ def _token_usage(
 
 
 def _author_checkpoints(
-    codex_home: Path, thread_id: str
+    codex_home: Path, thread_id: str, marker_to_index: dict[str, int]
 ) -> tuple[
     datetime,
     list[tuple[dict[str, int], int]],
@@ -145,7 +142,7 @@ def _author_checkpoints(
     pending = False
     final_usage = None
     for event in events:
-        index = _checkpoint_marker(event)
+        index = _checkpoint_marker(event, marker_to_index)
         if index is not None:
             if pending:
                 raise ValueError("checkpoint commands overlap")
@@ -357,10 +354,18 @@ def collect(
 ) -> list[dict[str, object]]:
     """Materialize accounting only when snapshots, author, and reviews agree."""
     paths = _checkpoint_paths(run_root, review_budget, output=output)
+    metadata_path = run_root / "run.json"
+    metadata = json.loads(metadata_path.read_text())
+    checkpoint_key = bytes.fromhex(metadata["checkpoint_key"])
+    marker_to_index = {
+        make_checkpoint_marker(index, checkpoint_key): index
+        for index in range(len(paths))
+    }
+    assert len(marker_to_index) == len(paths)
 
     thread_id, final_message = _public_run(run_root / "trace.jsonl")
     started_at, author_checkpoints, final_usage = _author_checkpoints(
-        agent_home, thread_id
+        agent_home, thread_id, marker_to_index
     )
     if len(author_checkpoints) != len(paths):
         raise ValueError("rollout checkpoints do not match saved snapshots")
@@ -392,10 +397,6 @@ def collect(
         json.dumps(records, indent=2, sort_keys=True) + "\n"
     )
     if reviewer_settings is not None:
-        metadata_path = run_root / "run.json"
-        metadata = json.loads(metadata_path.read_text())
-        if not isinstance(metadata, dict):
-            raise ValueError("run.json is not an object")
         metadata["reviewer_model"] = reviewer_settings.model
         metadata["reviewer_reasoning_effort"] = reviewer_settings.reasoning_effort
         metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n")

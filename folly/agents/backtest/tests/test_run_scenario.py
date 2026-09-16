@@ -547,6 +547,7 @@ class RunScenarioTest(unittest.TestCase):
         )
         metadata = json.loads((run.root / "run.json").read_text())
         self.assertEqual(metadata["critic_iterate_rounds"], 0)
+        self.assertRegex(metadata["checkpoint_key"], r"^[0-9a-f]{32}$")
 
         default_run = self.prepare()
         self.assertTrue(default_run.checkpoint)

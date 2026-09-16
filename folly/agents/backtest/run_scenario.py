@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import secrets
 import shutil
 import stat
 import subprocess
@@ -538,6 +539,8 @@ def prepare(
             metadata["no_rules"] = True
         if critic_iterate_rounds is not None:
             metadata["critic_iterate_rounds"] = critic_iterate_rounds
+        if checkpoint_run:
+            metadata["checkpoint_key"] = secrets.token_hex(16)
         (root / "run.json").write_text(
             json.dumps(metadata, indent=2, sort_keys=True) + "\n"
         )

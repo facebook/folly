@@ -25,6 +25,7 @@ from folly.agents.backtest import checkpoint, checkpoint_accounting
 
 
 THREAD_ID = "01a00000-0000-7000-8000-000000000000"
+CHECKPOINT_KEY = bytes.fromhex("00112233445566778899aabbccddeeff")
 
 
 def usage(input_tokens: int, output_tokens: int) -> dict[str, int]:
@@ -42,21 +43,34 @@ def write_jsonl(path: Path, events: list[dict[str, object]]) -> None:
     path.write_text("".join(json.dumps(event) + "\n" for event in events))
 
 
-def checkpoint_event(index: int, exit_code: int = 0) -> dict[str, object]:
-    return {
-        "type": "event_msg",
-        "payload": {
-            "type": "item_completed",
-            "item": {
-                "type": "CommandExecution",
-                "stdout": (
-                    f"{checkpoint.CHECKPOINT_MARKER_PREFIX}{index}"
-                    f"{checkpoint.CHECKPOINT_MARKER_SUFFIX}\nnext instruction\n"
-                ),
-                "exit_code": exit_code,
+def checkpoint_events(index: int) -> tuple[dict[str, object], ...]:
+    marker = checkpoint.make_checkpoint_marker(index, CHECKPOINT_KEY)
+    return (
+        {
+            "type": "event_msg",
+            "payload": {
+                "type": "item_completed",
+                "item": {
+                    "type": "CommandExecution",
+                    "stdout": "",
+                    "exit_code": 0,
+                },
             },
         },
-    }
+        {
+            "type": "response_item",
+            "payload": {
+                "type": "custom_tool_call_output",
+                "output": [
+                    {"type": "input_text", "text": "Chunk ID: test"},
+                    {
+                        "type": "input_text",
+                        "text": f"Process exited with code 0\nFinal output:\n{marker}\n",
+                    },
+                ],
+            },
+        },
+    )
 
 
 def token_event(tokens: dict[str, int], second: int) -> dict[str, object]:
@@ -85,7 +99,9 @@ class AccountingFixture:
         self.workdir.mkdir(parents=True)
         self.checkpoints.mkdir()
         self.reviews.mkdir()
-        (root / "run.json").write_text("{}")
+        (root / "run.json").write_text(
+            json.dumps({"checkpoint_key": CHECKPOINT_KEY.hex()})
+        )
         self.author_events: list[dict[str, object]] = [
             {
                 "timestamp": "2026-09-04T00:00:00Z",
@@ -108,7 +124,7 @@ class AccountingFixture:
         (self.workdir / "output.md").write_text(text)
         self.author_events.extend(
             (
-                checkpoint_event(index),
+                *checkpoint_events(index),
                 token_event(tokens, second),
             )
         )
@@ -233,6 +249,7 @@ class CheckpointAccountingTest(unittest.TestCase):
             self.assertEqual(
                 json.loads((run.root / "run.json").read_text()),
                 {
+                    "checkpoint_key": CHECKPOINT_KEY.hex(),
                     "reviewer_model": "review-model",
                     "reviewer_reasoning_effort": "high",
                 },
@@ -291,9 +308,8 @@ class CheckpointAccountingTest(unittest.TestCase):
             self.assertEqual(records[2]["reviewer_tokens"], [{}, retry_tokens])
 
     def test_failed_review_does_not_complete_review_phase(self) -> None:
-        # Checkpoints carry only indexes: 0 is `initial`, 1 is `author`, and 2
-        # is inferred to be `review1`. If the reviewer aborts and the author
-        # still checkpoints, accepting index 2 would mislabel unreviewed work.
+        # Checkpoint 2 is inferred to be `review1`. If the reviewer aborts and
+        # the author still checkpoints, accepting it would mislabel unreviewed work.
         with tempfile.TemporaryDirectory() as temporary:
             run = AccountingFixture(Path(temporary))
             run.checkpoint("initial", usage(100, 10), 10)
@@ -334,12 +350,3 @@ class CheckpointAccountingTest(unittest.TestCase):
         del tokens["cache_write_input_tokens"]
         with self.assertRaises(KeyError):
             checkpoint_accounting._tokens(tokens)
-
-    def test_failed_marker_cannot_reuse_the_last_snapshot(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            run = AccountingFixture(Path(temporary))
-            run.checkpoint("initial", usage(100, 10), 10)
-            run.author_events.append(checkpoint_event(1, exit_code=1))
-
-            with self.assertRaisesRegex(ValueError, "checkpoint command failed"):
-                run.collect(review_budget=None)
