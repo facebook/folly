@@ -17,6 +17,7 @@
 #include <folly/system/MemoryMapping.h>
 
 #include <cstdlib>
+#include <stdexcept>
 
 #include <glog/logging.h>
 
@@ -40,6 +41,57 @@
 static constexpr double kSomeDouble = 3.14;
 
 namespace folly {
+
+TEST(MemoryMapping, GrowWithAnonymousThrows) {
+  EXPECT_THROW(
+      MemoryMapping(
+          MemoryMapping::kAnonymous,
+          4096,
+          MemoryMapping::Options().setGrow(true)),
+      std::invalid_argument);
+}
+
+TEST(MemoryMapping, AnonymousWithPageSizeThrows) {
+  EXPECT_THROW(
+      MemoryMapping(
+          MemoryMapping::kAnonymous,
+          4096,
+          MemoryMapping::Options().setPageSize(4096)),
+      std::invalid_argument);
+}
+
+TEST(MemoryMapping, AnonymousWithNegativeLengthThrows) {
+  EXPECT_THROW(
+      MemoryMapping(MemoryMapping::kAnonymous, -1), std::invalid_argument);
+}
+
+TEST(MemoryMapping, NegativePageSizeThrows) {
+  File f = File::temporary();
+  EXPECT_THROW(
+      MemoryMapping(
+          File(f.fd()),
+          0,
+          sizeof(double),
+          MemoryMapping::Options().setPageSize(-1)),
+      std::invalid_argument);
+}
+
+TEST(MemoryMapping, NonPowerOfTwoPageSizeThrows) {
+  File f = File::temporary();
+  EXPECT_THROW(
+      MemoryMapping(
+          File(f.fd()),
+          0,
+          sizeof(double),
+          MemoryMapping::Options().setPageSize(100)),
+      std::invalid_argument);
+}
+
+TEST(MemoryMapping, NegativeOffsetThrows) {
+  File f = File::temporary();
+  EXPECT_THROW(
+      MemoryMapping(File(f.fd()), -1, sizeof(double)), std::invalid_argument);
+}
 
 TEST(MemoryMapping, Basic) {
   File f = File::temporary();

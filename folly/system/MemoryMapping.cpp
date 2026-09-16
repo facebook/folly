@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <stdexcept>
 #include <utility>
 
 #include <fmt/core.h>
@@ -29,6 +30,7 @@
 #include <folly/Portability.h>
 #include <folly/String.h>
 #include <folly/io/HugePages.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/SysSyscall.h>
@@ -149,7 +151,10 @@ off64_t getFileSize(File const& file, off64_t& pageSize, bool& autoExtend) {
 void MemoryMapping::init(off64_t offset, off64_t length) {
   const bool grow = options_.grow;
   const bool anon = !file_;
-  CHECK(!(grow && anon));
+  if (grow && anon) {
+    throw_exception<std::invalid_argument>(
+        "MemoryMapping: grow is not supported for anonymous mappings");
+  }
 
   off64_t& pageSize = options_.pageSize;
 
@@ -164,17 +169,29 @@ void MemoryMapping::init(off64_t offset, off64_t length) {
   } else {
     DCHECK(!file_);
     DCHECK_EQ(offset, 0);
-    CHECK_EQ(pageSize, 0);
-    CHECK_GE(length, 0);
+    if (pageSize != 0) {
+      throw_exception<std::invalid_argument>(
+          "MemoryMapping: pageSize is not supported for anonymous mappings");
+    }
+    if (length < 0) {
+      throw_exception<std::invalid_argument>("MemoryMapping: length");
+    }
   }
 
   if (pageSize == 0) {
     pageSize = off64_t(sysconf(_SC_PAGESIZE));
   }
 
-  CHECK_GT(pageSize, 0);
-  CHECK_EQ(pageSize & (pageSize - 1), 0); // power of two
-  CHECK_GE(offset, 0);
+  if (pageSize <= 0) {
+    throw_exception<std::invalid_argument>("MemoryMapping: pageSize");
+  }
+  if ((pageSize & (pageSize - 1)) != 0) {
+    throw_exception<std::invalid_argument>(
+        "MemoryMapping: pageSize must be a power of two");
+  }
+  if (offset < 0) {
+    throw_exception<std::invalid_argument>("MemoryMapping: offset");
+  }
 
   // Round down the start of the mapped region
   off64_t skipStart = offset % pageSize;
