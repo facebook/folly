@@ -35,7 +35,7 @@ Immediately batch-load these from `{FA}/`:
 - `task-ledger.loader.md`
 - `critic-iterate.loader.md`
 - `design-vetting.loader.md`
-- `writing.loader.md`
+- `write.loader.md`
 - `code.loader.md`
 
 If a loader or rule is missing, stop and notify the user.
@@ -61,7 +61,7 @@ The main rules target those gaps:
   repeated drafting and independent review across design, code, and writing.
 - `design-vetting.md` surfaces requirements, constraints, failure modes, and the
   evidence needed to choose between options before a plan hardens.
-- `writing.md` pushes explanations toward plain language and the reader's actual
+- `write.md` pushes explanations toward plain language and the reader's actual
   context.
 - `code.md` and the testing rules push implementation toward correctness,
   simplicity, and reviewability.

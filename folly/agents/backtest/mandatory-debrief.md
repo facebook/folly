@@ -3,7 +3,7 @@
 A debrief lets the user inspect the result, understand what changed and what it
 cost, and decide what it shows. It is not a run log or compliance report.
 
-Use [writing.md](../writing.md): "General maxims" for voice, "Document" for
+Use [write.md](../write.md): "General maxims" for voice, "Document" for
 investigation evidence, and "Test plans — what you checked, briefly" for checks.
 After every attempted run, use the shape below. Omit optional sections and
 inapplicable fields. A failed run still includes any findings and cost it

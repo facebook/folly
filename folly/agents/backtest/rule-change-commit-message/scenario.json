@@ -26,7 +26,7 @@
   "rules": [
     "task-ledger.md",
     "rule-conflicts.md",
-    "writing.md",
+    "write.md",
     "critic-iterate.md"
   ]
 }

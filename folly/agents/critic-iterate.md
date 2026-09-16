@@ -13,8 +13,8 @@ Author and orchestrator sessions load these package files:
 - `task-ledger.md`: when `task-ledger.loader.md` applies. Before drafting a
   durable explanation, reread the active workstream ledger.
 - `rule-conflicts.md`: before deciding whether a broader rule or skill applies.
-- `writing.md`: before drafting or revising prose.
-- `writing/concise-rules.md`: before editing a rule document.
+- `write.md`: before drafting or revising prose.
+- `write/concise-rules.md`: before editing a rule document.
 - `design-vetting.md`: before choosing a substantive design or correctness fix.
 
 If a required file is unavailable, stop and report the missing dependency.
@@ -133,7 +133,7 @@ edit unless the change is an isolated typo or formatting fix.
 When critic findings, reviewer findings, or loaded rules appear to conflict,
 apply `rule-conflicts.md` before triage.
 
-Before drafting durable prose, apply `writing.md` "Set the reader before the
+Before drafting durable prose, apply `write.md` "Set the reader before the
 outline".
 
 When user critique names a concrete issue, do not rely on memory: fix it as the
@@ -361,8 +361,7 @@ finish, resume above at step 2.
 **Run external review:** follow `{FA}/critic-iterate/run-review.md`.
 
 **Commit / diff messages — separate inner loop from outer evaluator.** The
-author runs the `writing.md` inner loop to convergence before the outer
-evaluator.
+author runs the `write.md` inner loop to convergence before the outer evaluator.
 
 Before opening the author draft or cold report, the evaluator drafts from only
 the task note, the rule files selected under "Fresh reviewer inputs," and the
@@ -427,7 +426,7 @@ Never pass ledger paths or raw ledger contents to the fresh-review task note.
 
 The Decision trail is RAW input — the inner loop selects only the facts needed
 for the reader's task, then applies the cut test (typically the load-bearing
-constraint or rejected alternative; see `writing.md` "## What evergreen context
+constraint or rejected alternative; see `write.md` "## What evergreen context
 means"). The packet-vs-final-message split is input-vs-keep, not a different
 taxonomy. Omitting a decision the reader needs starves the loop; forcing process
 history the reader does not need invents motivation and adds noise.
@@ -498,7 +497,7 @@ thresholds, and exemptions.
 
 Identify these critic dimensions before inspecting the current draft:
 
-- **Explanation critic** — For durable explanatory prose, apply `writing.md`
+- **Explanation critic** — For durable explanatory prose, apply `write.md`
   "Substance". For a durable document, also apply "Document". Flag a missing
   question or problem, missing facts or reasoning needed to follow the
   conclusion, and facts the reader does not need. Check applicable proposal and
@@ -507,11 +506,10 @@ Identify these critic dimensions before inspecting the current draft:
   one independent question, set the draft's structure aside and sketch the
   simplest outline that serves its primary reader and purpose. Compare it with
   the draft before line edits. Combine parts that do the same job and cut text
-  that serves no additional reader need. Then apply `writing.md` "Pick the right
+  that serves no additional reader need. Then apply `write.md` "Pick the right
   shape" to each remaining container.
-- **Sentence critic** — Apply `writing.md` "## Iterate" Cut test; it is
-  canonical.
-- **Plain-language critic** — per `writing.md` "## Substance". A necessary
+- **Sentence critic** — Apply `write.md` "## Iterate" Cut test; it is canonical.
+- **Plain-language critic** — per `write.md` "## Substance". A necessary
   sentence can still be jargon-heavy. Replace noun chains and abstract process
   labels with concrete actors, actions, conditions, or outcomes. Restore any
   needed cause, condition, or sequence, and state how the parts connect. Remove

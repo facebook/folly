@@ -17,5 +17,5 @@ This trigger authorizes the reviewer calls required by `{FA}/critic-iterate.md`.
 
 Also load:
 
-- `{FA}/writing.md` before `{FA}/critic-iterate.md` for prose;
+- `{FA}/write.md` before `{FA}/critic-iterate.md` for prose;
 - `{FA}/code.md` too for code edits or reviews.

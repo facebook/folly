@@ -7,7 +7,7 @@ It covers audience, explanation, structure, sentence-level editing, commit
 messages, and self-revision. General critic iteration and code quality belong
 elsewhere.
 
-`writing.md` "Commit Summary — brief or essay" deliberately pairs a large,
+`write.md` "Commit Summary — brief or essay" deliberately pairs a large,
 self-explanatory test diff with a one-line race fix. Preserve that pair — or
 equally concrete opposing cases — so future revisions do not tie explanation
 length to diff size.

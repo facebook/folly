@@ -5,4 +5,4 @@ apply them correctly.
 
 It gives concrete checks for cutting, merging, and factoring rule text without
 losing when or how a rule applies. `../critic-iterate.md` handles related-rule
-searches, placement, and audit reports; `../writing.md` handles general prose.
+searches, placement, and audit reports; `../write.md` handles general prose.

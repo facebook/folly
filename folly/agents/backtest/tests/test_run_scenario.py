@@ -253,7 +253,7 @@ class RunScenarioTest(unittest.TestCase):
         write(self.scenario / "input/data.md", "data")
         write(self.root / "shared.md", "shared")
         write(self.root / "checkpoint_accounting.py", "accounting")
-        write(self.rules_root / "writing.md", "writing")
+        write(self.rules_root / "write.md", "writing")
         make_tools(self.rules_root)
         manifest = self.manifest(
             no_rules_prompt="prompt.no-rules.md",
@@ -261,7 +261,7 @@ class RunScenarioTest(unittest.TestCase):
                 {"source": "input", "destination": "input"},
                 {"source": "../shared.md", "destination": "shared.md"},
             ],
-            rules=["writing.md"],
+            rules=["write.md"],
         )
         commands, command_runner = self.source_control()
 
@@ -284,7 +284,7 @@ class RunScenarioTest(unittest.TestCase):
                 "scenario/scenario.json",
                 "scenario/input",
                 "shared.md",
-                "agents/writing.md",
+                "agents/write.md",
                 "agents/critic-iterate/codex-reviewer.py",
                 "agents/scripts/isolated_agent.py",
             }.issubset(status)
@@ -373,10 +373,10 @@ class RunScenarioTest(unittest.TestCase):
         runner_path = self.root / "run_scenario.py"
         write(runner_path, "runner")
         write(self.scenario / "prompt.no-rules.md", "bare prompt")
-        write(self.rules_root / "writing.md", "writing")
+        write(self.rules_root / "write.md", "writing")
         make_tools(self.rules_root)
         manifest = self.manifest(
-            no_rules_prompt="prompt.no-rules.md", rules=["writing.md"]
+            no_rules_prompt="prompt.no-rules.md", rules=["write.md"]
         )
         commands, command_runner = self.source_control()
 
@@ -394,7 +394,7 @@ class RunScenarioTest(unittest.TestCase):
         status = commands[0]
         self.assertIn("scenario/prompt.no-rules.md", status)
         self.assertNotIn("scenario/prompt.md", status)
-        self.assertFalse(any("writing.md" in argument for argument in status))
+        self.assertFalse(any("write.md" in argument for argument in status))
         self.assertFalse(any("codex-reviewer.py" in argument for argument in status))
         self.assertTrue(any("isolated_agent.py" in argument for argument in status))
 
@@ -433,7 +433,7 @@ class RunScenarioTest(unittest.TestCase):
             ),
             (
                 "development rule",
-                {"prompt": "prompt.md", "inputs": [], "rules": ["writing.contrib.md"]},
+                {"prompt": "prompt.md", "inputs": [], "rules": ["write.contrib.md"]},
                 "development material",
             ),
             (
@@ -621,11 +621,11 @@ class RunScenarioTest(unittest.TestCase):
         write(self.scenario / "prompt.md", "Do the task.\n")
         write(self.scenario / "prompt.no-rules.md", "Do the bare task.\n")
         write(self.scenario / "input.md", "input")
-        write(self.rules_root / "writing.md", "writing")
+        write(self.rules_root / "write.md", "writing")
         self.manifest(
             no_rules_prompt="prompt.no-rules.md",
             inputs=[{"source": "input.md", "destination": "input.md"}],
-            rules=["writing.md"],
+            rules=["write.md"],
         )
 
         run = self.prepare(install_rules=False)
@@ -673,8 +673,8 @@ class RunScenarioTest(unittest.TestCase):
                 self.root / "tree-workdir",
             )
 
-        (self.rules_root / "writing.md").symlink_to(self.root / "outside.md")
-        rule_manifest = self.manifest(rules=["writing.md"])
+        (self.rules_root / "write.md").symlink_to(self.root / "outside.md")
+        rule_manifest = self.manifest(rules=["write.md"])
         with self.assertRaisesRegex(runner.RunnerError, "resolves outside"):
             runner.stage(
                 self.scenario,
@@ -690,18 +690,18 @@ class RunScenarioTest(unittest.TestCase):
         write(self.scenario / "source/Api.h.txt", "header")
         write(self.root / "shared.md", "shared")
         write(self.scenario / "samples/1/output.md", "prior output")
-        write(self.rules_root / "writing.md", "writing")
+        write(self.rules_root / "write.md", "writing")
         write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
         for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
             write(self.rules_root / support, support.name)
-        write(self.rules_root / "writing.contrib.md", "decoy")
+        write(self.rules_root / "write.contrib.md", "decoy")
         manifest = self.manifest(
             inputs=[
                 {"source": "draft.md", "destination": "output.md"},
                 {"source": "source", "destination": "source"},
                 {"source": "../shared.md", "destination": "shared.md"},
             ],
-            rules=["writing.md", "critic-iterate.md"],
+            rules=["write.md", "critic-iterate.md"],
         )
 
         runner.stage(self.scenario, manifest, self.rules_root, workdir)
@@ -710,12 +710,12 @@ class RunScenarioTest(unittest.TestCase):
         self.assertEqual((workdir / "shared.md").read_text(), "shared")
         self.assertTrue((workdir / "output.md").stat().st_mode & 0o200)
         self.assertFalse((workdir / "source/Api.h").stat().st_mode & 0o200)
-        self.assertFalse((workdir / "rules/writing.contrib.md").exists())
+        self.assertFalse((workdir / "rules/write.contrib.md").exists())
         self.assertFalse((workdir / "samples").exists())
         for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
             self.assertTrue((workdir / "rules" / support).is_file())
         inventory = (workdir / "rules/rules-inventory.md").read_text()
-        self.assertIn("1. `writing.md`", inventory)
+        self.assertIn("1. `write.md`", inventory)
         self.assertIn("2. `critic-iterate.md`", inventory)
         for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
             self.assertNotIn(f"`{support.as_posix()}`", inventory)
@@ -724,7 +724,7 @@ class RunScenarioTest(unittest.TestCase):
         without_critic_workdir.mkdir()
         runner.stage(
             self.scenario,
-            self.manifest(rules=["writing.md"]),
+            self.manifest(rules=["write.md"]),
             self.rules_root,
             without_critic_workdir,
         )
