@@ -25,6 +25,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Unit.h>
+#include <folly/Utility.h>
 #include <folly/container/HeterogeneousAccess.h>
 #include <folly/container/detail/F14Table.h>
 #include <folly/hash/Hash.h>
@@ -1307,7 +1308,7 @@ class VectorContainerPolicy
       std::size_t size,
       std::size_t /*capacity*/,
       VectorContainerPolicy const& rhs) {
-    return beforeBuildImpl(size, rhs, [](Value const& v) { return v; });
+    return beforeBuildImpl(size, rhs, folly::identity);
   }
 
   bool beforeBuild(
