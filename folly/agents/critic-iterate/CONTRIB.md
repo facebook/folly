@@ -9,7 +9,8 @@ fresh- and cold-review preambles define the reviewer roles. `codex-reviewer.py`
 runs them; `session_current_model_id.py` identifies the ambient model used by
 the delegation rule.
 
-- `run-review.md` owns the launch and failure procedure.
+- `run-review.md` owns the normal launch and validation procedure.
+- `review-failures.md` owns external-review launch, output, and trace failures.
 - `delegated-author.md` owns the conditional writing-author handoff.
 
 `critic-iterate.md` is loaded on the common path, so unused guidance there
