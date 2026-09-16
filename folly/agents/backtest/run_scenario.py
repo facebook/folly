@@ -42,6 +42,7 @@ CRITIC_ITERATE_SUPPORT_FILES = (
     PurePosixPath("critic-iterate/fresh-review-preamble.md"),
     PurePosixPath("critic-iterate/auth-prompt.md"),
     PurePosixPath("critic-iterate/run-review.md"),
+    PurePosixPath("critic-iterate/delegated-author.md"),
 )
 TOOL_FILES = {
     "codex-reviewer.py": PurePosixPath("critic-iterate/codex-reviewer.py"),
@@ -406,8 +407,8 @@ def _rules_inventory(rules: tuple[PurePosixPath, ...]) -> bytes:
         "# Rules inventory\n\n"
         "Read these files in order, resolving each path relative to this file:\n\n"
         f"{listed_rules}\n\n"
-        "When `critic-iterate.md` is selected, its reviewer support files are "
-        "also staged. Read them only when that rule directs you to.\n"
+        "When `critic-iterate.md` is selected, files it may need later are "
+        "staged too. Read them only when directed.\n"
     ).encode()
 
 

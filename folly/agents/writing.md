@@ -122,7 +122,8 @@ concision.
   verb ("Prefer X"), both fine.
 - Dedup cross-references — keep the informative version (a listing entry with
   description beats a bare "see X").
-- Wrap text to 80 chars with `.../reformat-md FILE...`; it edits files in place.
+- Wrap text to 80 chars with `{FA}/scripts/reformat-md FILE...`; it edits files
+  in place.
 - **Proposals.** Apply `design-vetting.md` before a substantive design or fix
   proposal. State where the problem occurs and what outcome the proposal must
   produce.

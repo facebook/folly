@@ -21,13 +21,6 @@ If a required file is unavailable, stop and report the missing dependency.
 Runtime reviewer roles instead load only the inputs their task permits; their
 preamble defines the role-specific rules.
 
-Resolve these once from `PATH`; use the fallback if absent:
-
-- `session_current_model_id.py`: `critic-iterate/session_current_model_id.py`.
-- `reformat-md`: `scripts/reformat-md`.
-
-`.../name` means the resolved absolute path. Stop if unavailable.
-
 ## Trigger
 
 Default-on for:
@@ -458,32 +451,13 @@ Default the Agent-tool `model` parameter to inherit for any subagent whose
 output feeds convergence. Downgrade only for pure-mechanical work (file moves,
 grep-and-report, ID renames).
 
-Delegating authorship does not satisfy the fresh-review requirement. Give
-authorship subagents the mechanism in `{FA}/critic-iterate/run-review.md`.
-Whoever authors normally runs those checks; a non-author ambient does not add
-another after they pass. If delegated authorship fails before the draft
-converges, stop and report it; never take over the writing. If the draft
-converged and only its review failed, the top-level orchestrator may recover the
-infrastructure and rerun the required review on that unchanged draft.
-
 Never substitute self-assessment for a required delegated check (Codex reviewer
 calls per Dual Revision, or any subagent call this file mandates).
 
-**Delegate authorship of writing artifacts to the Codex CLI unless the ambient
-model is Opus 5+ or GPT-5.5+ (resolve it with
-`.../session_current_model_id.py <session UUID>`).** When delegating:
-
-- **Source.** Forward source documents verbatim. Never pre-digest them into a
-  summarized or bulleted "must-cover" list — Codex compresses. For conversation
-  context, quote key user inputs verbatim with minimal glue and give Codex the
-  session JSONL path for lookup. Copy it into Codex's workdir when the reviewer
-  cannot read the original path.
-- **Write access.** Authorship needs a writable environment. Use the caller's
-  existing environment; do not reuse the reviewer wrapper or add an outer
-  sandbox.
-- **Outputs.** Unlike the reviewer, an author writes files: tell it to put the
-  draft in `draft.md` and add each pass artifact to `passes.md` under a unique
-  numbered heading before starting the next pass. Pass no `-o`.
+**Writing delegation:** use the Codex CLI unless the ambient model is Opus 5+ or
+GPT-5.5+ (check with
+`{FA}/critic-iterate/session_current_model_id.py <session UUID>`). When
+delegating writing, follow `{FA}/critic-iterate/delegated-author.md`.
 
 ## Resist These Shortcuts
 
