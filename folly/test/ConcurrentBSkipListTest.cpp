@@ -5528,7 +5528,11 @@ template <typename ListType>
 StressResult runSplitHeavySkipperStress(int seconds) {
   ListType list;
 
-  constexpr int kStable = 20000;
+  // Under unoptimized + !NDEBUG + TSAN, the single-threaded setup loop alone
+  // can crawl toward the CI timeout at kStable=20000 with P=2 aggressive height
+  // growth forcing many splits per insert. Scale it down under sanitizers;
+  // non-sanitizer runs keep full coverage.
+  constexpr int kStable = folly::kIsSanitizeThread ? 2000 : 20000;
   constexpr int kTransient = 200000;
   for (int i = 0; i < kStable; ++i) {
     list.add(RevKey(2 + i * 2));
@@ -5648,7 +5652,11 @@ template <typename ListType>
 VersionedKeyStressResult runVersionedSplitHeavySkipperStress(int seconds) {
   ListType list;
 
-  constexpr int kStable = 20000;
+  // Under unoptimized + !NDEBUG + TSAN, the single-threaded setup loop alone
+  // can crawl toward the CI timeout at kStable=20000 with P=2 aggressive height
+  // growth forcing many splits per insert. Scale it down under sanitizers;
+  // non-sanitizer runs keep full coverage.
+  constexpr int kStable = folly::kIsSanitizeThread ? 2000 : 20000;
   constexpr int kTransient = 400000;
   for (int i = 0; i < kStable; ++i) {
     list.add(makeVersionedKey(2 + i * 2));
