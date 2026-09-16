@@ -287,6 +287,10 @@ author-side passes. Before acting on review, mark any useful proposal outside
 the user's agreed task as `SCOPE_EXPANSION`. Without user approval, do not apply
 it or let it block completion.
 
+For prose, compare the candidate with the independent frame by reader model and
+structure, not sentence by sentence. Neither is preferred; keep the structure
+that better serves the reader.
+
 For external prose review, classify every remaining fresh-reviewer finding
 before editing; its response already integrates the cold report:
 
@@ -352,15 +356,6 @@ finish, resume above at step 2.
 **Commit / diff messages.** Before opening the author draft or cold report, put
 a complete independent message, including its Test Plan, in `REVIEW FRAME:`.
 Then follow the general comparison, triage, and closure rules.
-
-**Commit / diff structural comparison.** Compare the drafts' reader model and
-structure, not sentences. Treat the independent message as a diagnostic and idea
-source, not a second draft to blend. Borrow changes that reduce reader effort:
-clearer ordering, plainer language, or less unnecessary text. First preserve
-exactly the structure the target audience needs; when two versions do that with
-equal effort, prefer the shorter one. Reject changes that mainly add coverage,
-copy the reviewer wholesale, or replace a concrete relationship with an
-abstraction the reader must unpack.
 
 **Context packet discipline (commit messages).** The author or orchestrator
 still builds a context packet for commit messages. For fresh review, pass only
