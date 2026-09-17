@@ -475,26 +475,6 @@ four; the example carries the bug.
 >
 > - CI (materialized JSON byte-identity is enforced).
 
-### Substantial change — essay-shaped
-
-```
-# Motivation
-<short — problem statement, situation, or proposal context>
-
-# Mechanism (only when non-obvious)
-<short, code-pointer-style>
-
-# Alternatives rejected
-- <option A> — <one-line why not>
-- <option B> — <one-line why not>
-
-# Killswitch / rollback (for risky changes)
-<killswitch name, what flipping it does>
-
-# Notes on design choices (optional)
-- <specific decision> — <one-line why>
-```
-
 ## Note on genre
 
 The examples here are commit-message-shaped. The same principles apply to design
