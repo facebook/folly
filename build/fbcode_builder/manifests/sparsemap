@@ -8,3 +8,6 @@ sha256 = b603a24f596f95a06ec1d437f4cb928c2647cf9bc73b751ac6fb82deb7863d98
 [build]
 builder = cmake
 subdir = sparse-map-0.7.0/
+
+[rpms]
+tsl-sparse-map-devel
