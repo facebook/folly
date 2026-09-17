@@ -43,10 +43,12 @@ namespace folly {
 /// to accelerate index math and avoid expensive integer-division. If the size
 /// provided is not a power of two, the queue rounds it up.
 ///
-/// For performance, the fields are divided between common, producer-owned, and
-/// consumer-owned cache-lines. The producer maintains a cache of the consumer's
-/// index and vice versa, in order to accelerate the checks of whether the queue
-/// is full or empty.
+/// For performance, all state is split into a producer-owned and a
+/// consumer-owned cache-line (see the Side struct below): each holds that
+/// side's own index, its cache of the other side's index, and read-only
+/// copies of the data pointer/mask/size, so that write() and read() each
+/// touch only their own line, plus the other side's line on the occasions
+/// they need to refresh their cached index.
 template <class T>
 struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
   using value_type = T;
@@ -55,106 +57,117 @@ struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
   ProducerConsumerQueue& operator=(const ProducerConsumerQueue&) = delete;
 
   explicit ProducerConsumerQueue(uint32_t size)
-      : size_(validateSize(size)), // ensures size within [1, 1 << 31]
-        mask_(nextPowTwo(size_) - 1), // nextPowTwo(size_) is in [1, 1 << 31]
-        records_(static_cast<T*>(std::malloc(allocationSize(mask_)))) {
-    if (!records_) {
-      throw std::bad_alloc();
-    }
-  }
+      : ProducerConsumerQueue(makeState(size)) {}
 
   ~ProducerConsumerQueue() {
     // We need to destruct anything that may still exist in our queue.
     // (No real synchronization needed at destructor time: only one
-    // thread can be doing this.)
+    // thread can be doing this.) Reads producer_/consumer_'s copies of
+    // records/mask, identical to each other, rather than adding back a
+    // separate common copy just for this one-time cleanup.
     if (!std::is_trivially_destructible<T>::value) {
-      auto readIndex = readIndex_.load(std::memory_order_relaxed);
-      auto const endIndex = writeIndex_.load(std::memory_order_relaxed);
+      auto readIndex = consumer_.localIndex.load(std::memory_order_relaxed);
+      auto const endIndex =
+          producer_.localIndex.load(std::memory_order_relaxed);
       while (readIndex != endIndex) {
-        records_[readIndex & mask_].~T();
+        producer_.records[readIndex & producer_.mask].~T();
         ++readIndex;
       }
     }
 
-    std::free(records_);
+    std::free(producer_.records);
   }
 
   //  Checks a private, unsynchronized cache of the other side's cursor
-  //  before touching the real cross-thread atomic. writeIndex_/readIndex_
-  //  only ever increase, so a stale cached value is always a safe
-  //  (conservative) underestimate of the other side's true progress - it is
-  //  always safe to trust the cache when it says there is room/data, and a
-  //  fresh cross-thread read is only needed when it says there might not
-  //  be. In steady state, where the two sides stay within a queue's worth
-  //  of each other, that real read is rare rather than universal. This
-  //  relies on the cursors being ever-increasing logical counters, wrapped
-  //  via `& mask_` only at the point of indexing into records_, never
-  //  wrapped in the stored/compared value itself - with a wrapped cursor,
-  //  a stale cache can alias to the wrong answer in either direction, since
-  //  "behind" is no longer a total order once values cycle. The comparisons
-  //  below must be magnitude checks (`>=`/subtraction), not equality: the
-  //  cache is only ever refreshed from within write()/read()/frontPtr(), so
-  //  a caller that advances its own cursor another way (e.g. popFront()
-  //  after an external frontPtr()) can leave the far side's cache stuck
-  //  behind the local cursor by more than zero - equality would then never
-  //  match again and the cache would be trusted forever after it stopped
-  //  meaning anything. The same ever-increasing representation is also
-  //  what lets fullness (occupancy == size_) and emptiness (occupancy ==
-  //  0) be told apart without reserving a slot: with wrapped indices, both
-  //  look like readIndex_ == writeIndex_, which is why the classic version
-  //  of this design capped usable capacity at size_ - 1.
+  //  before touching the real cross-thread atomic. localIndex only ever
+  //  increases, so a stale remoteIndexCache is always a safe (conservative)
+  //  underestimate of the other side's true progress - it is always safe to
+  //  trust the cache when it says there is room/data, and a fresh
+  //  cross-thread read is only needed when it says there might not be. In
+  //  steady state, where the two sides stay within a queue's worth of each
+  //  other, that real read is rare rather than universal. This relies on the
+  //  cursors being ever-increasing logical counters, wrapped via `& mask`
+  //  only at the point of indexing into records, never wrapped in the
+  //  stored/compared value itself - with a wrapped cursor, a stale cache can
+  //  alias to the wrong answer in either direction, since "behind" is no
+  //  longer a total order once values cycle. The comparisons below must be
+  //  magnitude checks (`>=`/subtraction), not equality: the cache is only
+  //  ever refreshed from within write()/read()/frontPtr(), so a caller that
+  //  advances its own cursor another way (e.g. popFront() after an external
+  //  frontPtr()) can leave the far side's cache stuck behind the local
+  //  cursor by more than zero - equality would then never match again and
+  //  the cache would be trusted forever after it stopped meaning anything.
+  //  The same ever-increasing representation is also what lets fullness
+  //  (occupancy == size) and emptiness (occupancy == 0) be told apart
+  //  without reserving a slot: with wrapped indices, both look like
+  //  consumer_.localIndex == producer_.localIndex, which is why the classic
+  //  version of this design capped usable capacity at size - 1.
+  //
+  //  Reads only producer_, never consumer_ (whose records/mask are the same
+  //  values, but on the other cache-line) - so write()'s hot path touches
+  //  exactly one line, except for the occasional cross-read of
+  //  consumer_.localIndex below.
   template <class... Args>
   bool write(Args&&... recordArgs) {
-    auto const currentWrite = writeIndex_.load(std::memory_order_relaxed);
-    if (currentWrite - readIndexCache_ >= size_) {
-      readIndexCache_ = readIndex_.load(std::memory_order_acquire);
-      if (currentWrite - readIndexCache_ >= size_) {
+    auto const currentWrite =
+        producer_.localIndex.load(std::memory_order_relaxed);
+    if (currentWrite - producer_.remoteIndexCache >= producer_.size) {
+      producer_.remoteIndexCache =
+          consumer_.localIndex.load(std::memory_order_acquire);
+      if (currentWrite - producer_.remoteIndexCache >= producer_.size) {
         return false; // queue is full
       }
     }
-    new (&records_[currentWrite & mask_]) T(std::forward<Args>(recordArgs)...);
-    writeIndex_.store(currentWrite + 1, std::memory_order_release);
+    new (&producer_.records[currentWrite & producer_.mask])
+        T(std::forward<Args>(recordArgs)...);
+    producer_.localIndex.store(currentWrite + 1, std::memory_order_release);
     return true;
   }
 
-  // move (or copy) the value at the front of the queue to given variable
+  // move (or copy) the value at the front of the queue to given variable.
+  // Reads only consumer_; see write()'s comment.
   bool read(T& record) {
-    auto const currentRead = readIndex_.load(std::memory_order_relaxed);
-    if (currentRead >= writeIndexCache_) {
-      writeIndexCache_ = writeIndex_.load(std::memory_order_acquire);
-      if (currentRead >= writeIndexCache_) {
+    auto const currentRead =
+        consumer_.localIndex.load(std::memory_order_relaxed);
+    if (currentRead >= consumer_.remoteIndexCache) {
+      consumer_.remoteIndexCache =
+          producer_.localIndex.load(std::memory_order_acquire);
+      if (currentRead >= consumer_.remoteIndexCache) {
         return false; // queue is empty
       }
     }
-    auto const idx = currentRead & mask_;
-    record = std::move(records_[idx]);
-    records_[idx].~T();
-    readIndex_.store(currentRead + 1, std::memory_order_release);
+    auto const idx = currentRead & consumer_.mask;
+    record = std::move(consumer_.records[idx]);
+    consumer_.records[idx].~T();
+    consumer_.localIndex.store(currentRead + 1, std::memory_order_release);
     return true;
   }
 
   // pointer to the value at the front of the queue (for use in-place) or
   // nullptr if empty. Cached the same way as read(); see write()'s comment.
   T* frontPtr() {
-    auto const currentRead = readIndex_.load(std::memory_order_relaxed);
-    if (currentRead >= writeIndexCache_) {
-      writeIndexCache_ = writeIndex_.load(std::memory_order_acquire);
-      if (currentRead >= writeIndexCache_) {
+    auto const currentRead =
+        consumer_.localIndex.load(std::memory_order_relaxed);
+    if (currentRead >= consumer_.remoteIndexCache) {
+      consumer_.remoteIndexCache =
+          producer_.localIndex.load(std::memory_order_acquire);
+      if (currentRead >= consumer_.remoteIndexCache) {
         // queue is empty
         return nullptr;
       }
     }
-    return &records_[currentRead & mask_];
+    return &consumer_.records[currentRead & consumer_.mask];
   }
 
   // queue must not be empty
   void popFront() {
-    auto const currentRead = readIndex_.load(std::memory_order_relaxed);
-    assert(currentRead != writeIndex_.load(std::memory_order_acquire));
+    auto const currentRead =
+        consumer_.localIndex.load(std::memory_order_relaxed);
+    assert(currentRead != producer_.localIndex.load(std::memory_order_acquire));
 
-    auto const idx = currentRead & mask_;
-    records_[idx].~T();
-    readIndex_.store(currentRead + 1, std::memory_order_release);
+    auto const idx = currentRead & consumer_.mask;
+    consumer_.records[idx].~T();
+    consumer_.localIndex.store(currentRead + 1, std::memory_order_release);
   }
 
   // * If called by consumer, then true size may be more (because producer may
@@ -163,25 +176,50 @@ struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
   //   be removing items concurrently).
   // * It is undefined to call this from any other thread.
   size_t sizeGuess() const {
-    return writeIndex_.load(std::memory_order_acquire) -
-        readIndex_.load(std::memory_order_acquire);
+    return producer_.localIndex.load(std::memory_order_acquire) -
+        consumer_.localIndex.load(std::memory_order_acquire);
   }
 
   bool isEmpty() const { return sizeGuess() == 0; }
 
-  bool isFull() const { return sizeGuess() == size_; }
+  bool isFull() const { return sizeGuess() == producer_.size; }
 
   // maximum number of items in the queue.
-  size_t capacity() const { return size_; }
+  size_t capacity() const { return producer_.size; }
 
  private:
-  using AtomicIndex = std::atomic<uint64_t>;
+  //  Everything one side needs on its hot path, bundled into a single
+  //  cache-line-sized unit: read-only copies of the pointer/mask/size
+  //  (identical between the producer's and the consumer's instance - see
+  //  makeState() and the delegating constructor below, which compute them
+  //  once and share them between both), this side's own index (written only
+  //  by this side), and its cache of the other side's index (refreshed only
+  //  when it might be stale; see write()'s comment). One instance per side,
+  //  each pinned to its own cache-line by the alignas on producer_/consumer_
+  //  below, is what lets write()/read() each touch exactly one line, only
+  //  crossing into the other for that rare refresh.
+  struct Side {
+    T* const records{};
+    uint32_t const mask{};
+    uint32_t const size{};
+    std::atomic<uint64_t> localIndex{};
+    uint64_t remoteIndexCache{};
+  };
+
+  //  Bundles the three values makeState() computes, so the delegating
+  //  constructor below can initialize both producer_ and consumer_ from a
+  //  single malloc() call rather than validating/allocating twice.
+  struct State {
+    T* records{};
+    uint32_t mask{};
+    uint32_t size{};
+  };
 
   //  Upper bound on the constructor's size argument: the largest power of
-  //  two that fits in uint32_t. Enforcing it up front keeps mask_'s
-  //  nextPowTwo() call entirely within uint32_t (see the constructor) and
-  //  bounds how large sizeof(T) * (mask + 1) can get before allocationSize()
-  //  below has to check it against size_t's own range.
+  //  two that fits in uint32_t. Enforcing it up front keeps the nextPowTwo()
+  //  call below entirely within uint32_t and bounds how large
+  //  sizeof(T) * (mask + 1) can get before allocationSize() below has to
+  //  check it against size_t's own range.
   static constexpr uint32_t kMaxSize = uint32_t{1} << 31;
 
   //  Throws rather than asserting: an invalid size is a caller error that
@@ -212,27 +250,22 @@ struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
     return static_cast<size_t>(bytes);
   }
 
-  //  One line of state common to both sides: read-only after construction,
-  //  so concurrent reads of it from both threads never contend. size_ is
-  //  the caller-visible capacity; mask_ may cover a larger, power-of-two
-  //  rounded-up allocation so indexing can use `&` instead of `%` - the
-  //  slots beyond size_ are allocated but never live, since occupancy never
-  //  exceeds size_.
-  const uint32_t size_;
-  const uint32_t mask_;
-  T* const records_;
+  static State makeState(uint32_t size) {
+    uint32_t const validSize = validateSize(size); // in [1, 1 << 31]
+    uint32_t const mask = nextPowTwo(validSize) - 1; // in [1, 1 << 31)
+    auto* const records = static_cast<T*>(std::malloc(allocationSize(mask)));
+    if (!records) {
+      throw std::bad_alloc();
+    }
+    return State{records, mask, validSize};
+  }
 
-  //  One line owned by the producer: writeIndex_ is written on every
-  //  write(), and readIndexCache_ is the producer's own cached lower bound
-  //  on the consumer's readIndex_, read every write() and refreshed only
-  //  rarely. The consumer only ever reaches this line via its own rare
-  //  refresh of writeIndexCache_.
-  alignas(hardware_destructive_interference_size) AtomicIndex writeIndex_{0};
-  uint64_t readIndexCache_{0};
+  explicit ProducerConsumerQueue(State st) noexcept
+      : producer_{st.records, st.mask, st.size},
+        consumer_{st.records, st.mask, st.size} {}
 
-  //  One line owned by the consumer, symmetric with the producer's.
-  alignas(hardware_destructive_interference_size) AtomicIndex readIndex_{0};
-  uint64_t writeIndexCache_{0};
+  alignas(hardware_destructive_interference_size) Side producer_;
+  alignas(hardware_destructive_interference_size) Side consumer_;
 };
 
 } // namespace folly
