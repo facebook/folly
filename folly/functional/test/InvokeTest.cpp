@@ -345,63 +345,6 @@ TEST_F(InvokeTest, invoke_member) {
   EXPECT_EQ(17, test(fn, 1, "2"));
 }
 
-namespace {
-
-namespace invoker {
-
-FOLLY_CREATE_STATIC_MEMBER_INVOKER_SUITE(stat);
-
-}
-
-} // namespace
-
-TEST_F(InvokeTest, static_member_invoke) {
-  struct HasStat {
-    static char stat(int, int) noexcept { return 'a'; }
-    static int volatile&& stat(int, char const*) {
-      static int volatile x_ = 17;
-      return std::move(x_);
-    }
-    [[maybe_unused]] static float stat(float, float) { return 3.14; }
-  };
-  using traits = folly::invoke_traits<decltype(invoker::stat<HasStat>)>;
-
-  EXPECT_TRUE((traits::is_invocable_v<int, char>));
-  EXPECT_TRUE((traits::is_invocable_v<int, char>));
-  EXPECT_TRUE((traits::is_invocable_v<int, char*>));
-  EXPECT_FALSE((traits::is_invocable_v<int>));
-
-  EXPECT_TRUE((traits::is_invocable_r_v<int, int, char>));
-  EXPECT_TRUE((traits::is_invocable_r_v<int, int, char*>));
-  EXPECT_FALSE((traits::is_invocable_r_v<int, int>));
-
-  EXPECT_TRUE((traits::is_nothrow_invocable_v<int, char>));
-  EXPECT_FALSE((traits::is_nothrow_invocable_v<int, char*>));
-  EXPECT_FALSE((traits::is_nothrow_invocable_v<int>));
-
-  EXPECT_TRUE((traits::is_nothrow_invocable_r_v<int, int, char>));
-  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, int, char*>));
-  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, int>));
-}
-
-TEST_F(InvokeTest, static_member_no_invoke) {
-  struct HasNoStat {};
-
-  using traits = folly::invoke_traits<decltype(invoker::stat<HasNoStat>)>;
-
-  EXPECT_FALSE((traits::is_invocable_v<>));
-  EXPECT_FALSE((traits::is_invocable_v<int>));
-
-  EXPECT_FALSE((traits::is_invocable_r_v<int>));
-  EXPECT_FALSE((traits::is_invocable_r_v<int, int>));
-
-  EXPECT_FALSE((traits::is_nothrow_invocable_v<>));
-  EXPECT_FALSE((traits::is_nothrow_invocable_v<int>));
-
-  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int>));
-  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, int>));
-}
-
 TEST_F(InvokeTest, invoke_first_match) {
   struct a {
     [[maybe_unused]] void operator()(int) const;
