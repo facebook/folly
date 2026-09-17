@@ -147,9 +147,14 @@ list(APPEND FOLLY_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIRS})
 
 find_package(FastFloat MODULE)
 if (NOT FASTFLOAT_FOUND)
+  # fast_float asks for cmake_minimum_required 3.9, which is deprecated and
+  # leaves CMP0077 OLD, so its option() calls would clear the two settings
+  # below. 3.13 is where that policy arrived.
+  set(CMAKE_POLICY_VERSION_MINIMUM 3.13)
   set(FASTFLOAT_TEST OFF)
   set(FASTFLOAT_SANITIZE OFF)
   folly_fetch_from_manifest(FastFloat fast_float)
+  unset(CMAKE_POLICY_VERSION_MINIMUM)
   # Header-only, and Conv.cpp selects it with __has_include, so only the
   # include directory matters. The std::from_chars fallback parses into
   # long double, which libc++ has no overload for.
