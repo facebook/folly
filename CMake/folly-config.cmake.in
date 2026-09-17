@@ -25,6 +25,23 @@ if(NOT TARGET glog::glog)
   find_package(Glog QUIET)
 endif()
 
+# Likewise for gflags, which the targets name when folly built it as a
+# subproject rather than finding it on the system.
+if(NOT TARGET gflags::gflags_static)
+  find_package(gflags QUIET)
+endif()
+
+# A dependency folly fetched is confined to folly's build tree and never enters
+# the installed link interface, so a consumer that needs one supplies its own.
+# The lookups here are for the copies folly found on the system, which its
+# export set does name.
+if(@FOLLY_OPENSSL_SYSTEM@)
+  find_dependency(OpenSSL)
+endif()
+if(NOT TARGET event_core_static AND NOT TARGET event_core_shared)
+  find_package(Libevent QUIET)
+endif()
+
 # folly_deps carries Threads::Threads in its link interface.
 # The preference matches folly's own build so consumers also get -pthread.
 set(THREADS_PREFER_PTHREAD_FLAG ON)

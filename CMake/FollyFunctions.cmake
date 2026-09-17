@@ -341,6 +341,36 @@ define_property(GLOBAL PROPERTY FOLLY_COMPONENT_TARGETS
 )
 set_property(GLOBAL PROPERTY FOLLY_COMPONENT_TARGETS "")
 
+# Dependencies that exist only in this build tree, recorded by folly-deps.cmake
+# when it fetches one whose own build installs nothing. install(EXPORT folly)
+# refuses to export a target that links a target in no export set.
+define_property(GLOBAL PROPERTY FOLLY_BUILD_LOCAL_TARGETS
+  BRIEF_DOCS "Dependencies that must stay out of folly's install interface"
+  FULL_DOCS "Target names, both alias and underlying, to wrap in
+    $<BUILD_LOCAL_INTERFACE:> wherever folly links them"
+)
+
+# Wrap any dependency in ARGN that must not reach folly's install interface,
+# leaving the rest untouched, and return the list in `out`.
+function(folly_localize_deps out)
+  get_property(_local GLOBAL PROPERTY FOLLY_BUILD_LOCAL_TARGETS)
+  # $<BUILD_LOCAL_INTERFACE:> arrived in CMake 3.26; folly-deps.cmake warns
+  # that installing is not possible when an older CMake needs it.
+  if(NOT _local OR CMAKE_VERSION VERSION_LESS 3.26)
+    set(${out} "${ARGN}" PARENT_SCOPE)
+    return()
+  endif()
+  set(_result "")
+  foreach(_dep IN LISTS ARGN)
+    if("${_dep}" IN_LIST _local)
+      list(APPEND _result "$<BUILD_LOCAL_INTERFACE:${_dep}>")
+    else()
+      list(APPEND _result "${_dep}")
+    endif()
+  endforeach()
+  set(${out} "${_result}" PARENT_SCOPE)
+endfunction()
+
 # Track deferred dependencies to be linked after all targets are created
 # Each entry is: "target|visibility|dep1,dep2,dep3"
 define_property(GLOBAL PROPERTY FOLLY_DEFERRED_DEPS
@@ -417,8 +447,10 @@ function(folly_add_library)
         $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
         $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>
     )
+    folly_localize_deps(_interface_deps
+      ${FOLLY_LIB_EXPORTED_DEPS} ${FOLLY_LIB_EXTERNAL_DEPS})
     target_link_libraries(${_target_name}
-      INTERFACE folly_deps ${FOLLY_LIB_EXPORTED_DEPS} ${FOLLY_LIB_EXTERNAL_DEPS}
+      INTERFACE folly_deps ${_interface_deps}
     )
     # Track external deps for monolithic library (header-only deps are used transitively)
     if(FOLLY_LIB_EXTERNAL_DEPS)
@@ -549,8 +581,9 @@ function(folly_add_library)
 
     # Link external dependencies
     if(FOLLY_LIB_EXTERNAL_DEPS)
+      folly_localize_deps(_external_deps ${FOLLY_LIB_EXTERNAL_DEPS})
       target_link_libraries(${_target_name}
-        PUBLIC ${FOLLY_LIB_EXTERNAL_DEPS}
+        PUBLIC ${_external_deps}
       )
     endif()
 
@@ -605,8 +638,9 @@ function(folly_add_library)
 
     # Link external dependencies (e.g., libsodium, openssl) directly
     if(FOLLY_LIB_EXTERNAL_DEPS)
+      folly_localize_deps(_external_deps ${FOLLY_LIB_EXTERNAL_DEPS})
       target_link_libraries(${_target_name}
-        PUBLIC ${FOLLY_LIB_EXTERNAL_DEPS}
+        PUBLIC ${_external_deps}
       )
     endif()
 
@@ -676,6 +710,7 @@ function(folly_resolve_deferred_dependencies)
     endforeach()
 
     if(_valid_deps)
+      folly_localize_deps(_valid_deps ${_valid_deps})
       target_link_libraries(${_target} ${_visibility} ${_valid_deps})
     endif()
   endforeach()
@@ -715,6 +750,7 @@ function(folly_create_monolithic_library)
   get_property(_external_deps GLOBAL PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS)
   if(_external_deps)
     list(REMOVE_DUPLICATES _external_deps)
+    folly_localize_deps(_external_deps ${_external_deps})
     target_link_libraries(folly PUBLIC ${_external_deps})
   endif()
 

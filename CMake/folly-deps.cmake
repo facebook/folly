@@ -40,6 +40,18 @@ function(folly_fetch_from_manifest name manifest)
   folly_manifest_path(${manifest} path)
   file(READ "${path}" text)
   include(FetchContent)
+  # A fetched dependency is a build-time convenience, not part of what folly
+  # installs, so suppress its install rules. Consumers get it from the
+  # find_package() calls in folly-config.cmake instead.
+  set(exclude "")
+  if (CMAKE_VERSION VERSION_LESS 3.28)
+    message(WARNING
+      "Fetching ${name} needs CMake 3.28 to keep it out of folly's install, "
+      "so install will fail. Install ${name}, or configure with "
+      "-DCMAKE_SKIP_INSTALL_RULES=ON to build without installing.")
+  else()
+    set(exclude EXCLUDE_FROM_ALL)
+  endif()
   if (text MATCHES
       "url = (https://[^\r\n]+\\.tar\\.gz)[\r\n]+sha256 = ([0-9a-f]+)")
     message(STATUS "${name} not found, fetching ${CMAKE_MATCH_1}")
@@ -48,6 +60,7 @@ function(folly_fetch_from_manifest name manifest)
       URL "${CMAKE_MATCH_1}"
       URL_HASH SHA256=${CMAKE_MATCH_2}
       OVERRIDE_FIND_PACKAGE
+      ${exclude}
     )
   elseif (text MATCHES "repo_url = ([^\r\n]+)[\r\n]+rev = ([0-9a-f]+)")
     # A revision pins the tree as tightly as the sha256 above.
@@ -57,6 +70,7 @@ function(folly_fetch_from_manifest name manifest)
       GIT_REPOSITORY "${CMAKE_MATCH_1}"
       GIT_TAG "${CMAKE_MATCH_2}"
       OVERRIDE_FIND_PACKAGE
+      ${exclude}
     )
   else()
     message(FATAL_ERROR "no archive or pinned commit in ${path}")
@@ -118,15 +132,34 @@ if (NOT Boost_FOUND)
     "${folly_boost_source_dir}/libs/numeric/*/include")
   target_include_directories(boost_headers
     INTERFACE "$<BUILD_INTERFACE:${Boost_INCLUDE_DIRS}>")
+  # Both the alias and the underlying name get linked.
+  set(folly_boost_local Boost::headers boost_headers)
+  foreach(folly_boost_component IN LISTS FOLLY_BOOST_COMPONENTS)
+    list(APPEND folly_boost_local
+      "Boost::${folly_boost_component}" "boost_${folly_boost_component}")
+  endforeach()
+  set_property(GLOBAL APPEND PROPERTY FOLLY_BUILD_LOCAL_TARGETS
+    ${folly_boost_local})
 endif()
 # Only add include directories globally, not libraries
 # Per-target Boost dependencies are specified via EXTERNAL_DEPS
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIRS})
 
 find_package(FastFloat MODULE)
-if (FASTFLOAT_FOUND)
-  list(APPEND FOLLY_INCLUDE_DIRECTORIES ${FASTFLOAT_INCLUDE_DIR})
+if (NOT FASTFLOAT_FOUND)
+  set(FASTFLOAT_TEST OFF)
+  set(FASTFLOAT_SANITIZE OFF)
+  folly_fetch_from_manifest(FastFloat fast_float)
+  # Header-only, and Conv.cpp selects it with __has_include, so only the
+  # include directory matters. The std::from_chars fallback parses into
+  # long double, which libc++ has no overload for.
+  FetchContent_GetProperties(FastFloat SOURCE_DIR folly_fast_float_source_dir)
+  if (NOT folly_fast_float_source_dir)
+    message(FATAL_ERROR "fast_float was fetched but not populated")
+  endif()
+  set(FASTFLOAT_INCLUDE_DIR "${folly_fast_float_source_dir}/include")
 endif()
+list(APPEND FOLLY_INCLUDE_DIRECTORIES ${FASTFLOAT_INCLUDE_DIR})
 
 find_package(Gflags MODULE)
 if (NOT LIBGFLAGS_FOUND)
@@ -138,6 +171,8 @@ if (NOT LIBGFLAGS_FOUND)
   # the generated include directory, so only the library needs one.
   set(LIBGFLAGS_LIBRARY gflags)
   set(LIBGFLAGS_FOUND ON)
+  set_property(GLOBAL APPEND PROPERTY FOLLY_BUILD_LOCAL_TARGETS
+    gflags gflags_static gflags::gflags gflags::gflags_static)
 endif()
 set(FOLLY_HAVE_LIBGFLAGS ${LIBGFLAGS_FOUND})
 if(LIBGFLAGS_FOUND)
@@ -179,6 +214,15 @@ else()
     "$<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>")
   # folly's granular libraries name ${GLOG_LIBRARIES} in their EXPORTED_DEPS.
   set(GLOG_LIBRARIES glog::glog)
+  set_property(GLOBAL APPEND PROPERTY FOLLY_BUILD_LOCAL_TARGETS
+    glog glog::glog)
+  # glog's own install(EXPORT glog-targets) is validated even though nothing
+  # installs it, and it names the fetched gflags. Confine that edge too.
+  get_target_property(folly_glog_link glog INTERFACE_LINK_LIBRARIES)
+  if (folly_glog_link)
+    folly_localize_deps(folly_glog_link ${folly_glog_link})
+    set_property(TARGET glog PROPERTY INTERFACE_LINK_LIBRARIES ${folly_glog_link})
+  endif()
 endif()
 set(FOLLY_HAVE_LIBGLOG ON)
 list(APPEND FOLLY_LINK_LIBRARIES glog::glog)
@@ -208,6 +252,8 @@ if (NOT LibEvent_FOUND)
   else()
     set(LIBEVENT_LIB event_core_shared event_extra_shared)
   endif()
+  set_property(GLOBAL APPEND PROPERTY FOLLY_BUILD_LOCAL_TARGETS
+    ${LIBEVENT_LIB})
 endif()
 list(APPEND FOLLY_LINK_LIBRARIES ${LIBEVENT_LIB})
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${LIBEVENT_INCLUDE_DIR})
@@ -279,8 +325,23 @@ function(folly_build_openssl)
 endfunction()
 
 find_package(OpenSSL 1.1.1 MODULE)
+# Only a system copy reaches folly's export set, so only then does a consumer
+# have to find it. folly-config.cmake.in substitutes this, so it has to be a
+# literal ON or OFF rather than an unset OPENSSL_FOUND.
+if (OPENSSL_FOUND)
+  set(FOLLY_OPENSSL_SYSTEM ON)
+else()
+  set(FOLLY_OPENSSL_SYSTEM OFF)
+endif()
 if (NOT OPENSSL_FOUND)
   folly_build_openssl()
+  # BUILD_BYPRODUCTS orders the link step only, so compiles can reach
+  # <openssl/*.h> before the headers are installed. Applied to folly_deps below.
+  set(folly_openssl_external_project openssl)
+  # Staged in the build tree and never installed, so these paths would dangle
+  # for a consumer of an installed folly.
+  set_property(GLOBAL APPEND PROPERTY FOLLY_BUILD_LOCAL_TARGETS
+    ${OPENSSL_LIBRARIES})
 endif()
 list(APPEND FOLLY_LINK_LIBRARIES ${OPENSSL_LIBRARIES})
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${OPENSSL_INCLUDE_DIR})
@@ -510,32 +571,43 @@ endif()
 
 add_library(folly_deps INTERFACE)
 
+if (folly_openssl_external_project)
+  add_dependencies(folly_deps ${folly_openssl_external_project})
+endif()
+
 find_package(fmt CONFIG)
 if (NOT DEFINED fmt_CONFIG)
   # Fallback on a normal search on the current system.
   find_package(Fmt MODULE)
 endif()
 if (NOT TARGET fmt::fmt)
-  # fmt defaults this off for a subproject, which would leave it out of every
-  # export set and make install(EXPORT folly) fail.
-  set(FMT_INSTALL ON)
   folly_fetch_from_manifest(fmt fmt)
+  set_property(GLOBAL APPEND PROPERTY FOLLY_BUILD_LOCAL_TARGETS fmt fmt::fmt)
 endif()
-target_link_libraries(folly_deps INTERFACE fmt::fmt)
+folly_localize_deps(folly_fmt_dep fmt::fmt)
+target_link_libraries(folly_deps INTERFACE ${folly_fmt_dep})
 
 list(REMOVE_DUPLICATES FOLLY_INCLUDE_DIRECTORIES)
-if(NOT "${CMAKE_SOURCE_DIR}" STREQUAL "${PROJECT_SOURCE_DIR}")
-  # When consumed via add_subdirectory/FetchContent, wrap each include
-  # directory in BUILD_INTERFACE so absolute build-tree paths don't leak
-  # into the parent project's install-time INTERFACE_INCLUDE_DIRECTORIES.
-  foreach(_dir IN LISTS FOLLY_INCLUDE_DIRECTORIES)
+foreach(_dir IN LISTS FOLLY_INCLUDE_DIRECTORIES)
+  # A failed find_path() leaves <VAR>-NOTFOUND behind, which would reach the
+  # compiler as a relative include directory.
+  if(_dir MATCHES "-NOTFOUND$")
+    continue()
+  endif()
+  # Wrap build-tree paths in BUILD_INTERFACE so they do not leak into an
+  # install interface, whether folly is the top project or a subproject. An
+  # installed folly re-finds these through folly-config.cmake.
+  string(FIND "${_dir}" "${CMAKE_BINARY_DIR}/" _dir_in_build_tree)
+  if(NOT "${CMAKE_SOURCE_DIR}" STREQUAL "${PROJECT_SOURCE_DIR}"
+      OR _dir_in_build_tree EQUAL 0)
     target_include_directories(folly_deps INTERFACE $<BUILD_INTERFACE:${_dir}>)
-  endforeach()
-else()
-  target_include_directories(folly_deps INTERFACE ${FOLLY_INCLUDE_DIRECTORIES})
-endif()
-target_link_libraries(folly_deps INTERFACE
+  else()
+    target_include_directories(folly_deps INTERFACE ${_dir})
+  endif()
+endforeach()
+folly_localize_deps(folly_deps_link
   ${FOLLY_LINK_LIBRARIES}
   ${FOLLY_SHINY_DEPENDENCIES}
   ${FOLLY_ASAN_FLAGS}
 )
+target_link_libraries(folly_deps INTERFACE ${folly_deps_link})
