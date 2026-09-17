@@ -443,10 +443,6 @@ delegating writing, follow `{FA}/critic-iterate/delegated-author.md`.
   the "Fresh Review Thresholds" exemptions apply.
 - User critique is not fresh review; run the applicable Codex review, including
   the independent `REVIEW FRAME:` where required.
-- A reviewer result belongs to the exact candidate it inspected, not to a
-  completed workflow stage. After any later text edit, the round no longer
-  covers the final revision; follow "Integration and closure" to choose another
-  pair or close after author review.
 - Critic-iterate runs the full process on every trigger. Do not label material
   intended for future reuse as scratch. Beyond the explicit exemptions in this
   file, the sole process exemption is an explicit user ask for "one inner loop".
