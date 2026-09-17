@@ -208,7 +208,7 @@ You may also use `vcpkg install folly:x64-windows --head` to build against `main
 
 ## macOS
 
-`getdeps.py` builds work on macOS and are tested in CI, however if you prefer, you can try one of the macOS package managers
+`getdeps.py` builds work on macOS and are tested in CI, however if you prefer, you can try Homebrew.
 
 ### Homebrew
 
@@ -221,36 +221,3 @@ You may also use `folly/build/bootstrap-osx-homebrew.sh` to build against `main`
 ```
 
 This will create a build directory `_build` in the top-level.
-
-### MacPorts
-
-Install the required packages from MacPorts:
-
-```
-  sudo port install \
-    boost \
-    cmake \
-    gflags \
-    git \
-    google-glog \
-    libevent \
-    libtool \
-    lz4 \
-    lzma \
-    openssl \
-    snappy \
-    xz \
-    zlib
-```
-
-Download and install folly with the parameters listed below:
-
-```
-  git clone https://github.com/facebook/folly.git
-  cd folly
-  mkdir _build
-  cd _build
-  cmake ..
-  make
-  sudo make install
-```
