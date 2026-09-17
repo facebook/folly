@@ -15,6 +15,7 @@ from pathlib import Path
 
 from ..copytree import containing_repo_type, find_eden_root
 from ..envfuncs import path_search
+from ..fetcher import copy_if_different, LocalDirFetcher
 from ..runcmd import run_cmd
 
 
@@ -55,3 +56,22 @@ class PathInputsTest(unittest.TestCase):
             )
             self.assertEqual(rc, 0)
             self.assertTrue(log.is_file())
+
+    def test_local_dir_fetcher_accepts_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            fetcher = LocalDirFetcher(Path(tmp))
+            src_dir = fetcher.get_src_dir()
+            self.assertIsInstance(src_dir, str)
+            self.assertEqual(src_dir, os.path.realpath(tmp))
+
+    def test_copy_if_different_accepts_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp, "src.txt")
+            dest = Path(tmp, "sub", "dest.txt")
+            src.write_text("data\n")
+            self.assertTrue(copy_if_different(src, dest))
+            self.assertEqual(dest.read_text(), "data\n")
+            # Second copy is a no-op: dest mtime is preserved.
+            mtime = dest.stat().st_mtime_ns
+            self.assertFalse(copy_if_different(src, dest))
+            self.assertEqual(dest.stat().st_mtime_ns, mtime)

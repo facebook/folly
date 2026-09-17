@@ -22,6 +22,7 @@ import zipfile
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from datetime import datetime
+from pathlib import Path, PurePosixPath
 from typing import NamedTuple, TYPE_CHECKING
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -37,18 +38,23 @@ if TYPE_CHECKING:
     from .manifest import ManifestContext, ManifestParser
 
 
-def _validate_archive_members(names: list[str], dest_dir: str) -> None:
+def _validate_archive_members(names: list[str], dest_dir: str | Path) -> None:
     """Validate archive member paths to prevent path traversal (Zip Slip) attacks."""
-    dest_dir = os.path.realpath(dest_dir)
+    dest = Path(dest_dir).resolve()
     for name in names:
-        if os.path.isabs(name):
+        if Path(name).is_absolute():
             raise ValueError(f"Blocked absolute path in archive: {name!r}")
-        member_path = os.path.realpath(os.path.join(dest_dir, name))
-        if not member_path.startswith(dest_dir + os.sep) and member_path != dest_dir:
+        # resolve() normalizes ".." and follows symlinks; relative_to is
+        # component-aware, unlike a raw startswith prefix check.
+        try:
+            (dest / name).resolve().relative_to(dest)
+        except ValueError:
             raise ValueError(f"Blocked path traversal in archive: {name!r}")
 
 
-def safe_extractall(archive: tarfile.TarFile | zipfile.ZipFile, dest: str) -> None:
+def safe_extractall(
+    archive: tarfile.TarFile | zipfile.ZipFile, dest: str | Path
+) -> None:
     """Safely extract a tar or zip archive with path traversal protection."""
     if isinstance(archive, tarfile.TarFile):
         _validate_archive_members(archive.getnames(), dest)
@@ -64,9 +70,8 @@ def safe_extractall(archive: tarfile.TarFile | zipfile.ZipFile, dest: str) -> No
         raise TypeError(f"Unsupported archive type: {type(archive)}")
 
 
-def file_name_is_cmake_file(file_name: str) -> bool:
-    file_name = file_name.lower()
-    base = os.path.basename(file_name)
+def file_name_is_cmake_file(file_name: str | Path) -> bool:
+    base = Path(file_name).name.lower()
     return (
         base.endswith(".cmake")
         or base.endswith(".cmake.in")
@@ -181,8 +186,8 @@ class LocalDirFetcher:
     This fetcher cannot update or track changes.  It always reports that the
     project has changed, forcing it to always be built."""
 
-    def __init__(self, path: str) -> None:
-        self.path: str = os.path.realpath(path)
+    def __init__(self, path: str | Path) -> None:
+        self.path: str = os.fspath(Path(path).resolve())
 
     def update(self) -> ChangeStatus:
         return ChangeStatus(all_changed=True)
@@ -295,17 +300,15 @@ class GitFetcher(Fetcher):
             directory = directory.replace(s, "-")
 
         # Place it in a repos dir in the scratch space
-        repos_dir = os.path.join(build_options.scratch_dir, "repos")
-        if not os.path.exists(repos_dir):
-            os.makedirs(repos_dir)
-        self.repo_dir: str = os.path.join(repos_dir, directory)
+        repos_dir = Path(build_options.scratch_dir, "repos")
+        repos_dir.mkdir(parents=True, exist_ok=True)
+        self.repo_dir: str = os.fspath(repos_dir / directory)
 
         if not rev and build_options.project_hashes:
-            hash_file = os.path.join(
-                build_options.project_hashes,
-                re.sub("\\.git$", "-rev.txt", url.path[1:]),
+            hash_file = Path(build_options.project_hashes) / re.sub(
+                "\\.git$", "-rev.txt", url.path[1:]
             )
-            if os.path.exists(hash_file):
+            if hash_file.exists():
                 with open(hash_file, "r") as f:
                     data = f.read()
                     m = re.match("Subproject commit ([a-fA-F0-9]{40})", data)
@@ -352,7 +355,7 @@ class GitFetcher(Fetcher):
         return ChangeStatus(True)
 
     def update(self) -> ChangeStatus:
-        if os.path.exists(self.repo_dir):
+        if Path(self.repo_dir).exists():
             return self._update()
         self._clone()
         return ChangeStatus(True)
@@ -373,13 +376,13 @@ class GitFetcher(Fetcher):
         cmd += [
             "--",
             self.origin_repo,
-            os.path.basename(self.repo_dir),
+            Path(self.repo_dir).name,
         ]
-        run_cmd(cmd, cwd=os.path.dirname(self.repo_dir))
+        run_cmd(cmd, cwd=os.fspath(Path(self.repo_dir).parent))
         self._update()
 
     def clean(self) -> None:
-        if os.path.exists(self.repo_dir):
+        if Path(self.repo_dir).exists():
             run_cmd(["git", "clean", "-fxd"], cwd=self.repo_dir)
 
     def hash(self) -> str:
@@ -390,7 +393,7 @@ class GitFetcher(Fetcher):
 
 
 def does_file_need_update(
-    src_name: str, src_st: os.stat_result, dest_name: str
+    src_name: str | Path, src_st: os.stat_result, dest_name: str | Path
 ) -> bool:
     try:
         target_st = os.lstat(dest_name)
@@ -423,32 +426,34 @@ def does_file_need_update(
     return False
 
 
-def copy_if_different(src_name: str, dest_name: str) -> bool:
+def copy_if_different(src_name: str | Path, dest_name: str | Path) -> bool:
     """Copy src_name -> dest_name, but only touch dest_name
     if src_name is different from dest_name, making this a
     more build system friendly way to copy."""
-    src_st = os.lstat(src_name)
-    if not does_file_need_update(src_name, src_st, dest_name):
+    src = Path(src_name)
+    dest = Path(dest_name)
+    src_st = os.lstat(src)
+    if not does_file_need_update(src, src_st, dest):
         return False
 
-    dest_parent = os.path.dirname(dest_name)
-    if not os.path.exists(dest_parent):
-        os.makedirs(dest_parent)
+    dest_parent = dest.parent
+    if not dest_parent.exists():
+        dest_parent.mkdir(parents=True)
     if stat.S_ISLNK(src_st.st_mode):
         try:
-            os.unlink(dest_name)
+            os.unlink(dest)
         except OSError as exc:
             if exc.errno != errno.ENOENT:
                 raise
-        target = os.readlink(src_name)
-        os.symlink(target, dest_name)
+        target = os.readlink(src)
+        os.symlink(target, dest)
     else:
-        shutil.copy2(src_name, dest_name)
+        shutil.copy2(src, dest)
 
     return True
 
 
-def filter_strip_marker(dest_name: str, marker: str) -> None:
+def filter_strip_marker(dest_name: str | Path, marker: str) -> None:
     """Strip lines/blocks tagged with the given marker from a file."""
     try:
         with open(dest_name, "r") as f:
@@ -474,14 +479,14 @@ def filter_strip_marker(dest_name: str, marker: str) -> None:
 
 
 def list_files_under_dir_newer_than_timestamp(
-    dir_to_scan: str, ts: float
+    dir_to_scan: str | Path, ts: float
 ) -> Iterator[str]:
     for root, _dirs, files in os.walk(dir_to_scan):
         for src_file in files:
-            full_name = os.path.join(root, src_file)
+            full_name = Path(root, src_file)
             st = os.lstat(full_name)
             if st.st_mtime > ts:
-                yield full_name
+                yield os.fspath(full_name)
 
 
 class ShipitPathMap:
@@ -768,13 +773,13 @@ class SimpleShipitTransformerFetcher(Fetcher):
     ) -> None:
         self.build_options: BuildOptions = build_options
         self.manifest: ManifestParser = manifest
-        self.repo_dir: str = os.path.join(
-            build_options.scratch_dir, "shipit", manifest.name
+        self.repo_dir: str = os.fspath(
+            Path(build_options.scratch_dir, "shipit", manifest.name)
         )
         self.ctx: ManifestContext = ctx
 
     def clean(self) -> None:
-        if os.path.exists(self.repo_dir):
+        if Path(self.repo_dir).exists():
             shutil.rmtree(self.repo_dir)
 
     def update(self) -> ChangeStatus:
@@ -821,8 +826,8 @@ class SubFetcher(Fetcher):
             stat = fetcher.update()
             if stat.build_changed() or stat.sources_changed():
                 changed = True
-            link = self.base.get_src_dir() + "/" + dir
-            if not os.path.exists(link):
+            link = Path(self.base.get_src_dir()) / dir
+            if not link.exists():
                 os.symlink(fetcher.get_src_dir(), link)
         return ChangeStatus(changed)
 
@@ -847,9 +852,11 @@ class ShipitTransformerFetcher(Fetcher):
         www_path = ["/var/www/scripts/opensource/codesync"]
         if build_options.fbsource_dir:
             fbcode_path = [
-                os.path.join(
-                    build_options.fbsource_dir,
-                    "fbcode/opensource/codesync/codesync-cli/codesync",
+                os.fspath(
+                    Path(
+                        build_options.fbsource_dir,
+                        "fbcode/opensource/codesync/codesync-cli/codesync",
+                    )
                 )
             ]
         else:
@@ -862,38 +869,38 @@ class ShipitTransformerFetcher(Fetcher):
         self.build_options: BuildOptions = build_options
         self.project_name: str = project_name
         self.external_branch: str = external_branch
-        self.repo_dir: str = os.path.join(
-            build_options.scratch_dir, "shipit", project_name
+        self.repo_dir: str = os.fspath(
+            Path(build_options.scratch_dir, "shipit", project_name)
         )
         self.shipit: str | None = None
         for path in ShipitTransformerFetcher._shipit_paths(build_options):
-            if os.path.exists(path):
+            if Path(path).exists():
                 self.shipit = path
                 break
 
     def update(self) -> ChangeStatus:
-        if os.path.exists(self.repo_dir):
+        if Path(self.repo_dir).exists():
             return ChangeStatus()
         self.run_shipit()
         return ChangeStatus(True)
 
     def clean(self) -> None:
-        if os.path.exists(self.repo_dir):
+        if Path(self.repo_dir).exists():
             shutil.rmtree(self.repo_dir)
 
     @classmethod
     def available(cls, build_options: BuildOptions) -> bool:
         return any(
-            os.path.exists(path)
+            Path(path).exists()
             for path in ShipitTransformerFetcher._shipit_paths(build_options)
         )
 
     def run_shipit(self) -> None:
         tmp_path = self.repo_dir + ".new"
         try:
-            if os.path.exists(tmp_path):
+            if Path(tmp_path).exists():
                 shutil.rmtree(tmp_path)
-            os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+            Path(tmp_path).parent.mkdir(parents=True, exist_ok=True)
             cmd = [
                 self.shipit,
                 "shipit",
@@ -922,12 +929,12 @@ class ShipitTransformerFetcher(Fetcher):
 
             # Remove the .git directory from the repository it generated.
             # There is no need to commit this.
-            repo_git_dir = os.path.join(tmp_path, ".git")
+            repo_git_dir = Path(tmp_path) / ".git"
             shutil.rmtree(repo_git_dir)
             os.rename(tmp_path, self.repo_dir)
         except Exception:
             # Clean up after a failed extraction
-            if os.path.exists(tmp_path):
+            if Path(tmp_path).exists():
                 shutil.rmtree(tmp_path)
             self.clean()
             raise
@@ -940,7 +947,7 @@ class ShipitTransformerFetcher(Fetcher):
         return self.repo_dir
 
 
-def download_url_to_file_with_progress(url: str, file_name: str) -> None:
+def download_url_to_file_with_progress(url: str, file_name: str | Path) -> None:
     print("Download with %s -> %s ..." % (url, file_name))
 
     class Progress:
@@ -1025,7 +1032,7 @@ def download_url_to_file_with_progress(url: str, file_name: str) -> None:
                     raise
 
                 print("Default download failed, retrying with curl and fwdproxy...")
-                cmd = f"curl -L $(fwdproxy-config curl) -o {shlex.quote(file_name)} {shlex.quote(url)}"
+                cmd = f"curl -L $(fwdproxy-config curl) -o {shlex.quote(os.fspath(file_name))} {shlex.quote(url)}"
                 print(f"Running command: {cmd}")
                 result = subprocess.run(cmd, shell=True, capture_output=True)
                 if result.returncode != 0:
@@ -1059,12 +1066,13 @@ class ArchiveFetcher(Fetcher):
         self.build_options: BuildOptions = build_options
 
         parsed_url = urlparse(self.url)
-        basename = "%s-%s" % (manifest.name, os.path.basename(parsed_url.path))
-        self.file_name: str = os.path.join(
-            build_options.scratch_dir, "downloads", basename
+        # URL paths are posix regardless of platform.
+        basename = "%s-%s" % (manifest.name, PurePosixPath(parsed_url.path).name)
+        self.file_name: str = os.fspath(
+            Path(build_options.scratch_dir, "downloads", basename)
         )
-        self.src_dir: str = os.path.join(
-            build_options.scratch_dir, "extracted", basename
+        self.src_dir: str = os.fspath(
+            Path(build_options.scratch_dir, "extracted", basename)
         )
         self.hash_file: str = self.src_dir + ".hash"
 
@@ -1085,10 +1093,9 @@ class ArchiveFetcher(Fetcher):
 
     def _download_dir(self) -> str:
         """returns the download dir, creating it if it doesn't already exist"""
-        download_dir = os.path.dirname(self.file_name)
-        if not os.path.exists(download_dir):
-            os.makedirs(download_dir)
-        return download_dir
+        download_dir = Path(self.file_name).parent
+        download_dir.mkdir(parents=True, exist_ok=True)
+        return os.fspath(download_dir)
 
     def _download(self) -> None:
         self._download_dir()
@@ -1109,39 +1116,39 @@ class ArchiveFetcher(Fetcher):
         self._verify_hash()
 
     def clean(self) -> None:
-        if os.path.exists(self.src_dir):
+        if Path(self.src_dir).exists():
             shutil.rmtree(self.src_dir)
 
     def update(self) -> ChangeStatus:
         try:
             with open(self.hash_file, "r") as f:
                 saved_hash = f.read().strip()
-                if saved_hash == self.sha256 and os.path.exists(self.src_dir):
+                if saved_hash == self.sha256 and Path(self.src_dir).exists():
                     # Everything is up to date
                     return ChangeStatus()
                 print(
                     "saved hash %s doesn't match expected hash %s, re-validating"
                     % (saved_hash, self.sha256)
                 )
-                os.unlink(self.hash_file)
+                Path(self.hash_file).unlink()
         except EnvironmentError:
             pass
 
         # If we got here we know the contents of src_dir are either missing
         # or wrong, so blow away whatever happened to be there first.
-        if os.path.exists(self.src_dir):
+        if Path(self.src_dir).exists():
             shutil.rmtree(self.src_dir)
 
         # If we already have a file here, make sure it looks legit before
         # proceeding: any errors and we just remove it and re-download
-        if os.path.exists(self.file_name):
+        if Path(self.file_name).exists():
             try:
                 self._verify_hash()
             except Exception:
-                if os.path.exists(self.file_name):
-                    os.unlink(self.file_name)
+                if Path(self.file_name).exists():
+                    Path(self.file_name).unlink()
 
-        if not os.path.exists(self.file_name):
+        if not Path(self.file_name).exists():
             self._download()
             self._verify_hash()
 
@@ -1153,28 +1160,22 @@ class ArchiveFetcher(Fetcher):
             raise Exception("don't know how to extract %s" % self.file_name)
         os.makedirs(self.src_dir)
         print("Extract %s -> %s" % (self.file_name, self.src_dir))
+        src = self.src_dir
         if is_windows():
             # Ensure that we don't fall over when dealing with long paths
             # on windows
-            src = r"\\?\%s" % os.path.normpath(self.src_dir)
-        else:
-            src = self.src_dir
+            src = "\\\\?\\" + os.path.normpath(src)
 
         with opener(self.file_name) as t:
-            # The `str` here is necessary to ensure that we don't pass a unicode
-            # object down to tarfile.extractall on python2.  When extracting
-            # the boost tarball it makes some assumptions and tries to convert
-            # a non-ascii path to ascii and throws.
-            src = str(src)
             safe_extractall(t, src)
 
         if is_windows():
             subdir = self.manifest.get("build", "subdir")
-            checkdir = src
+            checkdir = Path(src)
             if subdir:
-                checkdir = src + "\\" + subdir
-            if os.path.exists(checkdir):
-                children = os.listdir(checkdir)
+                checkdir = checkdir / subdir
+            if checkdir.exists():
+                children = [p.name for p in checkdir.iterdir()]
                 print(f"Extracted to {checkdir} contents: {children}")
 
         with open(self.hash_file, "w") as f:

@@ -32,14 +32,14 @@ class RetryTest(unittest.TestCase):
             sha256="896d76ff65c88f5fd9e42f90d152b0579049158a163431dd77cdc57748b1d7b0",
         )
 
-    @patch("os.makedirs")
+    @patch("pathlib.Path.mkdir")
     @patch("os.environ.get")
     @patch("time.sleep")
     @patch("subprocess.run")
     def test_no_retries(
-        self, mock_run, mock_sleep, mock_os_environ_get, mock_makedirs
+        self, mock_run, mock_sleep, mock_os_environ_get, mock_mkdir
     ) -> None:
-        def custom_makedirs(path, exist_ok=False):
+        def custom_mkdir(*args, **kwargs):
             return None
 
         def custom_get(key, default=None):
@@ -50,7 +50,7 @@ class RetryTest(unittest.TestCase):
             else:
                 return None
 
-        mock_makedirs.side_effect = custom_makedirs
+        mock_mkdir.side_effect = custom_mkdir
         mock_os_environ_get.side_effect = custom_get
         mock_sleep.side_effect = None
         fetcher = self._get_archive_fetcher()
@@ -68,14 +68,14 @@ class RetryTest(unittest.TestCase):
         )
 
     @patch("random.random")
-    @patch("os.makedirs")
+    @patch("pathlib.Path.mkdir")
     @patch("os.environ.get")
     @patch("time.sleep")
     @patch("subprocess.run")
     def test_retries(
-        self, mock_run, mock_sleep, mock_os_environ_get, mock_makedirs, mock_random
+        self, mock_run, mock_sleep, mock_os_environ_get, mock_mkdir, mock_random
     ) -> None:
-        def custom_makedirs(path, exist_ok=False):
+        def custom_mkdir(*args, **kwargs):
             return None
 
         def custom_get(key, default=None):
@@ -93,7 +93,7 @@ class RetryTest(unittest.TestCase):
             IOError("<urlopen error [Errno 104] Connection reset by peer>"),
             None,
         ]
-        mock_makedirs.side_effect = custom_makedirs
+        mock_mkdir.side_effect = custom_mkdir
         mock_os_environ_get.side_effect = custom_get
         mock_sleep.side_effect = None
         fetcher = self._get_archive_fetcher()
@@ -115,14 +115,14 @@ class RetryTest(unittest.TestCase):
         mock_run.assert_has_calls(calls, any_order=False)
 
     @patch("random.random")
-    @patch("os.makedirs")
+    @patch("pathlib.Path.mkdir")
     @patch("os.environ.get")
     @patch("time.sleep")
     @patch("subprocess.run")
     def test_all_retries(
-        self, mock_run, mock_sleep, mock_os_environ_get, mock_makedirs, mock_random
+        self, mock_run, mock_sleep, mock_os_environ_get, mock_mkdir, mock_random
     ) -> None:
-        def custom_makedirs(path, exist_ok=False):
+        def custom_mkdir(*args, **kwargs):
             return None
 
         def custom_get(key, default=None):
@@ -138,7 +138,7 @@ class RetryTest(unittest.TestCase):
         mock_run.side_effect = IOError(
             "<urlopen error [Errno 104] Connection reset by peer>"
         )
-        mock_makedirs.side_effect = custom_makedirs
+        mock_mkdir.side_effect = custom_mkdir
         mock_os_environ_get.side_effect = custom_get
         mock_sleep.side_effect = None
         fetcher = self._get_archive_fetcher()
