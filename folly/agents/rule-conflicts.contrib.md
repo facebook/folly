@@ -3,6 +3,21 @@
 Purpose: decide what to do when loaded rules disagree without treating read
 order as priority.
 
-- Loaded for every task through `rule-conflicts.loader.md`.
+- Loaded whenever new instructions are added through `rule-conflicts.loader.md`.
 - Owns scope and specificity rules for conflicts.
-- Does not own package loading.
+
+# Why is "Preserve the active user request" in this package?
+
+It is here only for trigger convenience. Agents tend to get confused in these
+kinds of scenarios:
+
+```
+> user prompt
+* load rules
+* hook injection
+* prior subagent completion
+* Agent now forgot about user prompt, does something else.
+```
+
+Since this loader triggers on most of those, it may be a good place to remind
+the agent to actually do what the user asked for.
