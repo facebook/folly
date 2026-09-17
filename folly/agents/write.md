@@ -337,12 +337,6 @@ Commit Summaries usually don't need these sections:
 - **"What survives" / mission-preserved.** Keep the invariant once, not as a
   section.
 
-### Test plan — cut tests
-
-Cut an item if a cheaper check provides the same coverage or it only narrates
-the diff without saying what was checked. Match each verb to the rigor used, and
-reduce routine checks to `CI`. See "## Test plans" below.
-
 ### Cold re-read and loop
 
 Cold re-read the WHOLE message after each round of cuts. If any paragraph scans
@@ -404,7 +398,7 @@ passes the sentence Cut test, and lead with the content that earns it.
 ## Test plans — what you checked, briefly
 
 A reviewer learns trust from the rigor of your verification, not from
-exit-code 0. The inner loop's Test-plan cut tests (above) call back here.
+exit-code 0.
 
 Failure modes:
 
@@ -430,9 +424,6 @@ Verb choice carries rigor. Match what you actually did: "checked", "verified",
 X", "ran Y") leaves ambiguous whether you read the result. Vary the word — don't
 lean on "eyeballed" as a tic.
 
-Bullets scan; prose runs together. Iterate the Test Plan with the same loop
-discipline as the Summary.
-
 Good — `CI` / `Docs-only` first for vanilla diffs, the rest for the non-obvious
 cases:
 
@@ -440,11 +431,6 @@ cases:
 - "Skimmed materialized JSON — only the 6 expected handles changed."
 - "Added a unit test for the new branch; pre-existing tests still pass."
 - Before/after screenshots, repro, "A-B-A-B to rule out luck".
-
-Avoid:
-
-- "Compilation succeeded."
-- "`buck2 test ... passed`" (unless ASan-only or similar non-obvious mode).
 
 ## Worked examples
 
