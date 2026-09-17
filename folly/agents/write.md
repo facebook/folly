@@ -300,7 +300,6 @@ part is lost, cut it.
 
 Cut on (locality first, style second):
 
-- **Nothing material lost** — the artifact reads cleanly without it.
 - **Restates the title or an earlier sentence.** (Includes wrap-ups, especially
   invariant restatements after a goal-led lead.)
 - **Unneeded intermediate detail.** State the result the reader needs. Keep
@@ -323,9 +322,6 @@ Cut on (locality first, style second):
   reader misunderstand or do wrong? If nothing, cut it. A real warning names the
   concrete risk and how the change prevents it ("if X is called twice, Y now
   dedups instead of erroring") — keep, leading with the risk.
-
-When "tighter" is rationalizable, ask whether a shorter version preserves the
-needed structure without increasing reader effort. If yes, use it.
 
 ### Cut test — per section
 
