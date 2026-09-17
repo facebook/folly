@@ -1191,7 +1191,7 @@ static const vector<pair<int, int>> VectorSizes = {
     {10, -1},
     {10, 1},
     {10, 0},
-#if !FOLLY_SANITIZE_ADDRESS
+#if !FOLLY_SANITIZE
     {100, -1},
     {100, 1},
 #endif
@@ -2491,12 +2491,6 @@ STL_TEST(
     p,
     i,
     j) {
-  if (folly::kIsSanitizeThread) {
-    // This test is too slow when running under TSAN that it times out.
-    // There's little value of running under TSAN as this test is
-    // single-threaded.
-    SKIP();
-  }
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
 
