@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
+from pathlib import Path
 from typing import Any
 
 from .buildopts import setup_build_options
@@ -179,7 +180,8 @@ class ProjectCmdBase(SubCmd):
         )
 
     def check_built(self, loader, manifest):
-        built_marker = os.path.join(
+        built_marker = Path(
             loader.get_project_install_dir(manifest), ".built-by-getdeps"
         )
-        return os.path.exists(built_marker)
+
+        return built_marker.exists()

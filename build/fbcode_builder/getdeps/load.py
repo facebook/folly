@@ -11,6 +11,7 @@ import hashlib
 import os
 import typing
 from collections.abc import Iterator
+from pathlib import Path
 
 from . import fetcher
 from .envfuncs import path_search
@@ -33,7 +34,7 @@ class Loader:
                 if name.startswith("."):
                     continue
 
-                yield os.path.join(path, name)
+                yield os.fspath(Path(path, name))
 
     def _load_manifest(self, path: str) -> ManifestParser:
         return ManifestParser(path)
@@ -46,7 +47,7 @@ class Loader:
             return ManifestParser(project_name)
 
         for manifest in self._list_manifests(build_opts):
-            if os.path.basename(manifest) == project_name:
+            if Path(manifest).name == project_name:
                 return ManifestParser(manifest)
 
         raise ManifestNotFound(project_name)
@@ -447,10 +448,10 @@ class ManifestLoader:
         # If a patchfile is specified, include its contents in the hash
         patchfile: str | None = manifest.get("build", "patchfile", ctx=ctx)
         if patchfile:
-            patchfile_path: str = os.path.join(
-                self.build_opts.fbcode_builder_dir, "patches", patchfile
+            patchfile_path: str = os.fspath(
+                Path(self.build_opts.fbcode_builder_dir, "patches", patchfile)
             )
-            if not os.path.exists(patchfile_path):
+            if not Path(patchfile_path).exists():
                 raise RuntimeError(
                     f"Patchfile '{patchfile}' is listed in the '{manifest.name}' manifest "
                     f"but was not found at '{patchfile_path}'. "
@@ -492,7 +493,7 @@ class ManifestLoader:
             return override
 
         project_dir_name: str = self._get_project_dir_name(manifest)
-        return os.path.join(self.build_opts.install_dir, project_dir_name)
+        return os.fspath(Path(self.build_opts.install_dir, project_dir_name))
 
     def get_project_build_dir(self, manifest: ManifestParser) -> str:
         override = self._build_dir_overrides.get(manifest.name)
@@ -500,7 +501,7 @@ class ManifestLoader:
             return override
 
         project_dir_name: str = self._get_project_dir_name(manifest)
-        return os.path.join(self.build_opts.scratch_dir, "build", project_dir_name)
+        return os.fspath(Path(self.build_opts.scratch_dir, "build", project_dir_name))
 
     def get_project_install_prefix(self, manifest: ManifestParser) -> str | None:
         return self._install_prefix_overrides.get(manifest.name)

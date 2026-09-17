@@ -11,6 +11,7 @@ import re
 import shutil
 import sys
 import typing
+from pathlib import Path
 
 from .builder import BuilderBase
 from .copytree import rmtree_more, simple_copytree
@@ -78,46 +79,46 @@ class CargoBuilder(BuilderBase):
         self._check_cmd(cmd, cwd=self.workspace_dir(), env=env)
 
     def build_source_dir(self) -> str:
-        return os.path.join(self.build_dir, "source")
+        return os.fspath(Path(self.build_dir, "source"))
 
     def workspace_dir(self) -> str:
-        return os.path.join(self.build_source_dir(), self.ws_dir or "")
+        return os.fspath(Path(self.build_source_dir(), self.ws_dir or ""))
 
     def manifest_dir(self, manifest: str) -> str:
-        return os.path.join(self.build_source_dir(), manifest)
+        return os.fspath(Path(self.build_source_dir(), manifest))
 
     def recreate_dir(self, src: str, dst: str) -> None:
-        if os.path.isdir(dst):
-            if os.path.islink(dst):
+        if Path(dst).is_dir():
+            if Path(dst).is_symlink():
                 os.remove(dst)
             else:
                 rmtree_more(dst)
         simple_copytree(src, dst)
 
     def recreate_linked_dir(self, src: str, dst: str) -> None:
-        if os.path.isdir(dst):
-            if os.path.islink(dst):
+        if Path(dst).is_dir():
+            if Path(dst).is_symlink():
                 os.remove(dst)
-            elif os.path.isdir(dst):
+            elif Path(dst).is_dir():
                 shutil.rmtree(dst)
         os.symlink(src, dst)
 
     def cargo_config_file(self) -> str:
         build_source_dir = self.build_dir
         if self.cargo_config_file_subdir:
-            return os.path.join(build_source_dir, self.cargo_config_file_subdir)
+            return os.fspath(Path(build_source_dir, self.cargo_config_file_subdir))
         else:
-            return os.path.join(build_source_dir, ".cargo", "config.toml")
+            return os.fspath(Path(build_source_dir, ".cargo", "config.toml"))
 
     def _create_cargo_config(self) -> dict[str, dict[str, str]]:
         cargo_config_file = self.cargo_config_file()
-        cargo_config_dir = os.path.dirname(cargo_config_file)
-        if not os.path.isdir(cargo_config_dir):
+        cargo_config_dir = Path(cargo_config_file).parent
+        if not cargo_config_dir.is_dir():
             os.mkdir(cargo_config_dir)
 
         dep_to_git = self._resolve_dep_to_git()
 
-        if os.path.isfile(cargo_config_file):
+        if Path(cargo_config_file).is_file():
             with open(cargo_config_file, "r") as f:
                 print(f"Reading {cargo_config_file}", file=sys.stderr)
                 cargo_content = f.read()
@@ -190,7 +191,7 @@ opt-level = "{}"
 
         build_args = [
             "--artifact-dir",
-            os.path.join(self.inst_dir, "bin"),
+            os.fspath(Path(self.inst_dir, "bin")),
             "-Zunstable-options",
         ]
 
@@ -216,7 +217,7 @@ opt-level = "{}"
                 )
 
         self.recreate_linked_dir(
-            build_source_dir, os.path.join(self.inst_dir, "source")
+            build_source_dir, os.fspath(Path(self.inst_dir, "source"))
         )
 
     def run_tests(
@@ -274,8 +275,8 @@ opt-level = "{}"
         workspace_dir = self.workspace_dir()
         git_url_to_crates_and_paths = self._resolve_config(dep_to_git)
         if git_url_to_crates_and_paths:
-            patch_cargo = os.path.join(workspace_dir, "Cargo.toml")
-            if os.path.isfile(patch_cargo):
+            patch_cargo = Path(workspace_dir, "Cargo.toml")
+            if patch_cargo.is_file():
                 with open(patch_cargo, "r") as f:
                     manifest_content = f.read()
             else:
@@ -391,7 +392,7 @@ path = "{null_file}"
 
             if dep_builder == "cargo":
                 dep_source_dir = self.loader.get_project_install_dir(dep_manifest)
-                dep_source_dir = os.path.join(dep_source_dir, "source")
+                dep_source_dir = os.fspath(Path(dep_source_dir, "source"))
             else:
                 fetcher = self.loader.create_fetcher(dep_manifest)
                 dep_source_dir = fetcher.get_src_dir()
@@ -404,7 +405,9 @@ path = "{null_file}"
                             # pyre-fixme[16]: Optional type has no attribute `replace`.
                             subpath = subpath.replace("/", "\\")
                         # pyrefly: ignore [no-matching-overload]
-                        crate_path = os.path.join(dep_source_dir, subpath)
+                        # pyre-fixme[6]: For 2nd argument expected
+                        #  `Union[PathLike[str], str]` but got `Optional[str]`.
+                        crate_path = os.fspath(Path(dep_source_dir, subpath))
                         print(
                             f"{self.manifest.name}: Mapped crate {crate} to dep {dep} dir {crate_path}",
                             file=sys.stderr,
@@ -415,7 +418,7 @@ path = "{null_file}"
                 search_pattern = re.compile('\\[package\\]\nname = "(.*)"')
                 for crate_root, _, files in os.walk(dep_source_dir):
                     if "Cargo.toml" in files:
-                        with open(os.path.join(crate_root, "Cargo.toml"), "r") as f:
+                        with open(Path(crate_root, "Cargo.toml"), "r") as f:
                             content = f.read()
                             match = search_pattern.search(content)
                             if match:
@@ -433,10 +436,10 @@ path = "{null_file}"
 
             if not dep_crate_map and dep_cargo_conf:
                 dep_cargo_dir = self.loader.get_project_build_dir(dep_manifest)
-                dep_cargo_dir = os.path.join(dep_cargo_dir, "source")
+                dep_cargo_dir = os.fspath(Path(dep_cargo_dir, "source"))
                 dep_ws_dir = dep_cargo_conf.get("workspace_dir", None)
                 if dep_ws_dir:
-                    dep_cargo_dir = os.path.join(dep_cargo_dir, dep_ws_dir)
+                    dep_cargo_dir = os.fspath(Path(dep_cargo_dir, dep_ws_dir))
                 git_conf["cargo_vendored_sources"] = dep_cargo_dir
 
             # pyre-fixme[6]: For 2nd argument expected `Dict[str, str]` but got
@@ -472,7 +475,7 @@ path = "{null_file}"
             for f in files:
                 if f == "Cargo.toml":
                     more_dep_to_crates = CargoBuilder._extract_crates_used(
-                        os.path.join(root, f), dep_to_git
+                        os.fspath(Path(root, f)), dep_to_git
                     )
                     for dep_name, crates in more_dep_to_crates.items():
                         existing_crates = dep_to_crates.get(dep_name, set())
@@ -530,7 +533,7 @@ path = "{null_file}"
         for _crate, crate_source_dir in crate_source_map.items():
             for crate_root, _, files in os.walk(crate_source_dir):
                 if "Cargo.toml" in files:
-                    with open(os.path.join(crate_root, "Cargo.toml"), "r") as f:
+                    with open(Path(crate_root, "Cargo.toml"), "r") as f:
                         content = f.read()
                         if search_pattern in content:
                             return crate_root

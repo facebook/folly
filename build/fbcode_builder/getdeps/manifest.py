@@ -12,6 +12,7 @@ import io
 import os
 import sys
 import typing
+from pathlib import Path
 from typing import overload
 
 from .builder import (
@@ -333,7 +334,7 @@ class ManifestParser:
             "manifest", "shipit_strip_marker", defval="@fb-only"
         )
 
-        if self.name != os.path.basename(file_name):
+        if self.name != Path(file_name).name:
             raise Exception(
                 "filename of the manifest '%s' does not match the manifest name '%s'"
                 % (file_name, self.name)
@@ -716,7 +717,7 @@ class ManifestParser:
             build_dir = src_dir
             subdir = self.get("build", "subdir", None, ctx=ctx)
             if subdir is not None:
-                build_dir = os.path.join(build_dir, subdir)
+                build_dir = os.fspath(Path(build_dir, subdir))
             print("build_dir is %s" % build_dir)  # just to quiet lint
 
         if builder == "make" or builder == "cmakebootstrap":
