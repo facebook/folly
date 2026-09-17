@@ -432,13 +432,7 @@ delegating writing, follow `{FA}/critic-iterate/delegated-author.md`.
 ## Resist These Shortcuts
 
 - Do NOT skim on later passes. Each pass must be as careful as the first.
-- Avoid confirmation bias — critic is adversary, not cheerleader.
-- Do NOT defer an in-scope issue to a later pass or reviewer.
 - Do NOT dismiss an in-scope issue as "pre-existing."
-- Do NOT narrate completion before pasting the accountability artifact.
-- Do NOT pick critic dimensions after inspecting the draft.
-- Do NOT use reviewer failure as an escape hatch. Codex CLI infra failure
-  blocks; bad reviewer output must be retried, not accepted.
 - Do NOT skip required fresh review because a commit message "looks tight." Only
   the "Fresh Review Thresholds" exemptions apply.
 - User critique is not fresh review; run the applicable Codex review, including
