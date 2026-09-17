@@ -35,6 +35,7 @@ def make_ctx() -> ManifestContext:
             "os": "linux",
             "distro": None,
             "distro_vers": None,
+            "distro_family": None,
             "fb": "off",
             "fbsource": "off",
             "test": "off",

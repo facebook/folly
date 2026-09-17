@@ -964,6 +964,7 @@ class ManifestContext:
         "os",
         "distro",
         "distro_vers",
+        "distro_family",
         "fb",
         "fbsource",
         "test",

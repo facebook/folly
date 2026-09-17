@@ -18,13 +18,46 @@ def is_windows() -> bool:
     return sys.platform.startswith("win")
 
 
+# Distribution families, after Chef's platform_family: distros that share a
+# package namespace and release cadence for the purposes of manifests.
+# Fedora is deliberately its own family (unlike Ansible's os_family, which
+# folds it into RedHat): its base repos carry far more of our dependencies
+# than the EL family's do, and manifests already select on that difference.
+DISTRO_FAMILIES: dict[str, tuple[str, ...]] = {
+    "rhel": ("rhel", "centos", "centos_stream", "alma", "rocky"),
+    "fedora": ("fedora",),
+    "debian": ("debian", "ubuntu", "pop!_os", "mint"),
+    "arch": ("arch",),
+}
+
+
+def distro_family(distro: str | None) -> str | None:
+    if distro is None:
+        return None
+    for family, members in DISTRO_FAMILIES.items():
+        if distro in members:
+            return family
+    # Fall back to prefix matching: distro names are normalized from free
+    # text, so an exact table miss can still belong to a known family
+    # (Debian's NAME="Debian GNU/Linux" normalizes to "debian_gnu/").
+    # This preserves the pre-refactor startswith tolerance.
+    for family, members in DISTRO_FAMILIES.items():
+        if distro.startswith(members):
+            return family
+    return None
+
+
 def get_linux_type() -> tuple[str | None, str | None, str | None]:
     try:
         with open("/etc/os-release") as f:
             data = f.read()
     except EnvironmentError:
         return (None, None, None)
+    return parse_os_release(data)
 
+
+def parse_os_release(data: str) -> tuple[str, str | None, str | None]:
+    """Derive (ostype, distro, distrovers) from the contents of /etc/os-release."""
     os_vars: dict[str, str] = {}
     for line in data.splitlines():
         parts = line.split("=", 1)
@@ -47,6 +80,17 @@ def get_linux_type() -> tuple[str | None, str | None, str | None]:
     version_id = os_vars.get("VERSION_ID")
     if version_id:
         version_id = version_id.lower()
+
+    # Red Hat Enterprise Linux's NAME would otherwise become
+    # "red_hat_enterprise"; use the same short name as its os-release ID.
+    if name == "red_hat_enterprise":
+        name = "rhel"
+
+    # The EL family is versioned by major release for packaging purposes,
+    # and manifests select on distro_vers=9; RHEL, Alma and Rocky report
+    # a minor too ("9.8") which would never match.
+    if version_id and distro_family(name) == "rhel":
+        version_id = version_id.split(".")[0]
 
     return "linux", name, version_id
 
@@ -260,6 +304,10 @@ class HostType:
     def is_freebsd(self) -> bool:
         return self.ostype == "freebsd"
 
+    @property
+    def distro_family(self) -> str | None:
+        return distro_family(self.distro)
+
     def as_tuple_string(self) -> str:
         return "%s-%s-%s" % (
             self.ostype,
@@ -272,13 +320,12 @@ class HostType:
             return None
         if self.is_darwin():
             return "homebrew"
-        if self.distro in ("fedora", "centos", "centos_stream", "rocky", "alma"):
+        family = self.distro_family
+        if family in ("fedora", "rhel"):
             return "rpm"
-        if self.distro is not None and self.distro.startswith(
-            ("debian", "ubuntu", "pop!_os", "mint")
-        ):
+        if family == "debian":
             return "deb"
-        if self.distro == "arch":
+        if family == "arch":
             return "pacman-package"
         return None
 

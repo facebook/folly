@@ -13,7 +13,6 @@ from ..builder import CMakeBuilder
 from ..envfuncs import Env
 from ..manifest import ManifestContext, ManifestParser
 
-
 MINIMAL_MANIFEST = """
 [manifest]
 name = test
@@ -41,6 +40,7 @@ def make_cmake_builder() -> CMakeBuilder:
                 "os": None,
                 "distro": None,
                 "distro_vers": None,
+                "distro_family": None,
                 "fb": "off",
                 "fbsource": "off",
                 "test": "off",

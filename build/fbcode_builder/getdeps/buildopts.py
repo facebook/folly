@@ -271,6 +271,7 @@ class BuildOptions:
                 "os": host_type.ostype,
                 "distro": host_type.distro,
                 "distro_vers": host_type.distrovers,
+                "distro_family": host_type.distro_family,
                 "fb": "on" if self.facebook_internal else "off",
                 "fbsource": "on" if self.fbsource_dir else "off",
                 "test": "off",
