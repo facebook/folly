@@ -6,6 +6,7 @@
 import json
 import os
 import re
+from pathlib import Path
 
 from .buildopts import setup_build_options
 from .cmd_base import BUILD_TYPE_ARG, ProjectCmdBase
@@ -109,9 +110,11 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
 
         artifacts, runs_on, py3 = _resolve_platform(args, build_opts)
 
-        os.makedirs(args.output_dir, exist_ok=True)
+        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
         job_file_prefix = args.job_file_prefix or "getdeps_"
-        output_file = os.path.join(args.output_dir, f"{job_file_prefix}{artifacts}.yml")
+        output_file = os.fspath(
+            Path(args.output_dir, f"{job_file_prefix}{artifacts}.yml")
+        )
         job_name = (
             args.job_name_prefix + artifacts.capitalize()
             if args.job_name_prefix

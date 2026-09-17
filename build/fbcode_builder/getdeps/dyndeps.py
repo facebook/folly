@@ -16,6 +16,7 @@ import subprocess
 import sys
 import typing
 from collections.abc import Generator
+from pathlib import Path
 from struct import unpack
 
 if typing.TYPE_CHECKING:
@@ -67,12 +68,12 @@ class DepBase:
             lib_dir = "bin"
         else:
             lib_dir = "lib"
-        self.munged_lib_dir = os.path.join(destdir, lib_dir)
+        self.munged_lib_dir = os.fspath(Path(destdir, lib_dir))
 
-        final_lib_dir: str = os.path.join(final_install_prefix or destdir, lib_dir)
+        final_lib_dir: str = os.fspath(Path(final_install_prefix or destdir, lib_dir))
 
-        if not os.path.isdir(self.munged_lib_dir):
-            os.makedirs(self.munged_lib_dir)
+        if not Path(self.munged_lib_dir).is_dir():
+            Path(self.munged_lib_dir).mkdir(parents=True, exist_ok=True)
 
         # Look only at the things that got installed in the leaf package,
         # which will be the last entry in the install dirs list
@@ -80,17 +81,17 @@ class DepBase:
         print("Process deps under %s" % inst_dir, file=sys.stderr)
 
         for dir in OBJECT_SUBDIRS:
-            src_dir: str = os.path.join(inst_dir, dir)
-            if not os.path.isdir(src_dir):
+            src_dir: str = os.fspath(Path(inst_dir, dir))
+            if not Path(src_dir).is_dir():
                 continue
-            dest_dir: str = os.path.join(destdir, dir)
-            if not os.path.exists(dest_dir):
-                os.makedirs(dest_dir)
+            dest_dir: str = os.fspath(Path(destdir, dir))
+            if not Path(dest_dir).exists():
+                Path(dest_dir).mkdir(parents=True, exist_ok=True)
 
             for objfile in self.list_objs_in_dir(src_dir):
                 print("Consider %s/%s" % (dir, objfile))
-                dest_obj: str = os.path.join(dest_dir, objfile)
-                copyfile(os.path.join(src_dir, objfile), dest_obj)
+                dest_obj: str = os.fspath(Path(dest_dir, objfile))
+                copyfile(os.fspath(Path(src_dir, objfile)), dest_obj)
                 self.munge_in_place(dest_obj, final_lib_dir)
 
     def find_all_dependencies(self, build_dir: str) -> list[str]:
@@ -120,7 +121,7 @@ class DepBase:
             # directories?  If so, then it is a candidate for processing
             dep: str | None = self.resolve_loader_path(d)
             if dep:
-                dest_dep: str = os.path.join(self.munged_lib_dir, os.path.basename(dep))
+                dest_dep: str = os.fspath(Path(self.munged_lib_dir, Path(dep).name))
                 print("dep: %s -> %s" % (d, dest_dep))
                 if dest_dep in self.processed_deps:
                     # A previous dependency with the same name has already
@@ -149,13 +150,13 @@ class DepBase:
         raise RuntimeError("rewrite_dep not implemented")
 
     def resolve_loader_path(self, dep: str) -> str | None:
-        if os.path.isabs(dep):
+        if Path(dep).is_absolute():
             return dep
-        d: str = os.path.basename(dep)
+        d: str = Path(dep).name
         for inst_dir in self.install_dirs:
             for libdir in OBJECT_SUBDIRS:
-                candidate: str = os.path.join(inst_dir, libdir, d)
-                if os.path.exists(candidate):
+                candidate: str = os.fspath(Path(inst_dir, libdir, d))
+                if Path(candidate).exists():
                     return candidate
         return None
 
@@ -163,14 +164,14 @@ class DepBase:
         self, dir: str, recurse: bool = False, output_prefix: str = ""
     ) -> Generator[str, None, None]:
         for entry in os.listdir(dir):
-            entry_path: str = os.path.join(dir, entry)
+            entry_path: str = os.fspath(Path(dir, entry))
             st: os.stat_result = os.lstat(entry_path)
             if stat.S_ISREG(st.st_mode):
                 if self.is_objfile(entry_path):
-                    relative_result: str = os.path.join(output_prefix, entry)
+                    relative_result: str = os.fspath(Path(output_prefix, entry))
                     yield os.path.normcase(relative_result)
             elif recurse and stat.S_ISDIR(st.st_mode):
-                child_prefix: str = os.path.join(output_prefix, entry)
+                child_prefix: str = os.fspath(Path(output_prefix, entry))
                 for result in self.list_objs_in_dir(
                     entry_path, recurse=recurse, output_prefix=child_prefix
                 ):
@@ -286,7 +287,7 @@ class WinDeps(DepBase):
         return True
 
     def is_objfile(self, objfile: str) -> bool:
-        if not os.path.isfile(objfile):
+        if not Path(objfile).is_file():
             return False
         if objfile.lower().endswith(".exe"):
             return True
@@ -319,7 +320,7 @@ class WinDeps(DepBase):
         dep_dirs: set[str] = set()
         # Find paths by scanning the binaries.
         for dep in self.find_all_dependencies(build_dir):
-            dep_dirs.add(os.path.dirname(dep))
+            dep_dirs.add(os.fspath(Path(dep).parent))
 
         dep_dirs.update(self.read_custom_dep_dirs(build_dir))
         return sorted(dep_dirs)
@@ -333,8 +334,8 @@ class WinDeps(DepBase):
         dep_dirs: set[str] = set()
         for inst_dir in self.install_dirs:
             for subdir in OBJECT_SUBDIRS:
-                path: str = os.path.join(inst_dir, subdir)
-                if os.path.exists(path):
+                path: str = os.fspath(Path(inst_dir, subdir))
+                if Path(path).exists():
                     dep_dirs.add(path)
 
         dep_dirs.update(self.read_custom_dep_dirs(build_dir))
@@ -348,8 +349,8 @@ class WinDeps(DepBase):
         # output directory.
         dep_dirs: set[str] = set()
         try:
-            explicit_dep_dirs_path: str = os.path.join(
-                build_dir, "LIBRARY_DEP_DIRS.txt"
+            explicit_dep_dirs_path: str = os.fspath(
+                Path(build_dir, "LIBRARY_DEP_DIRS.txt")
             )
             with open(explicit_dep_dirs_path, "r") as f:
                 for line in f.read().splitlines():
@@ -402,7 +403,7 @@ class ElfDeps(DepBase):
             # its a system package, so we assume it is in the path
             patchelf_install = "patchelf"
         else:
-            patchelf_install = os.path.join(patchelf_install, "bin", "patchelf")
+            patchelf_install = os.fspath(Path(patchelf_install, "bin", "patchelf"))
         self.patchelf: str = patchelf_install
 
     def list_dynamic_deps(self, objfile: str) -> list[str]:
@@ -424,16 +425,15 @@ class ElfDeps(DepBase):
         new_dep: str,
         final_lib_dir: str,
     ) -> None:
-        final_dep: str = os.path.join(
-            final_lib_dir,
-            os.path.relpath(new_dep, self.munged_lib_dir),
+        final_dep: str = os.fspath(
+            Path(final_lib_dir, os.path.relpath(new_dep, self.munged_lib_dir))
         )
         self.check_call_verbose(
             [self.patchelf, "--replace-needed", depname, final_dep, objfile]
         )
 
     def is_objfile(self, objfile: str) -> bool:
-        if not os.path.isfile(objfile):
+        if not Path(objfile).is_file():
             return False
         with open(objfile, "rb") as f:
             # https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#File_header
@@ -455,7 +455,7 @@ class MachDeps(DepBase):
         return True
 
     def is_objfile(self, objfile: str) -> bool:
-        if not os.path.isfile(objfile):
+        if not Path(objfile).is_file():
             return False
         with open(objfile, "rb") as f:
             # mach stores the magic number in native endianness,
@@ -481,7 +481,7 @@ class MachDeps(DepBase):
         for line in lines:
             m: re.Match[str] | None = re.match("\t(\\S+)\\s", line)
             if m:
-                if os.path.basename(m.group(1)) != os.path.basename(objfile):
+                if Path(m.group(1)).name != Path(objfile).name:
                     deps.append(os.path.normcase(m.group(1)))
         return deps
 
@@ -498,11 +498,10 @@ class MachDeps(DepBase):
             # object.  It doesn't appear to hurt to retain it, but
             # it does look weird, so let's rewrite it to be sure.
             self.check_call_verbose(
-                ["install_name_tool", "-id", os.path.basename(objfile), objfile]
+                ["install_name_tool", "-id", Path(objfile).name, objfile]
             )
-        final_dep: str = os.path.join(
-            final_lib_dir,
-            os.path.relpath(new_dep, self.munged_lib_dir),
+        final_dep: str = os.fspath(
+            Path(final_lib_dir, os.path.relpath(new_dep, self.munged_lib_dir))
         )
 
         self.check_call_verbose(

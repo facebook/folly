@@ -12,6 +12,7 @@ import email.message
 import os
 import re
 import stat
+from pathlib import Path
 
 from .builder import BuilderBase, CMakeBuilder
 
@@ -113,7 +114,7 @@ class PythonWheelBuilder(BuilderBase):
         name_version_prefix = "-".join((wheel_name.distribution, wheel_name.version))
         dist_info_name = name_version_prefix + ".dist-info"
         data_dir_name = name_version_prefix + ".data"
-        self.dist_info_dir = os.path.join(self.src_dir, dist_info_name)
+        self.dist_info_dir = os.fspath(Path(self.src_dir, dist_info_name))
         wheel_metadata = self._read_wheel_metadata(wheel_name)
 
         # Check that we can understand the wheel version.
@@ -132,9 +133,7 @@ class PythonWheelBuilder(BuilderBase):
         )
         find_dependency_lines = ["find_dependency({})".format(dep) for dep in dep_list]
 
-        getdeps_cmake_dir = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "CMake"
-        )
+        getdeps_cmake_dir = os.fspath(Path(__file__).parent.parent / "CMake")
         self.template_format_dict = {
             # Note that CMake files always uses forward slash separators in path names,
             # even on Windows.  Therefore replace path separators here.
@@ -151,11 +150,11 @@ class PythonWheelBuilder(BuilderBase):
         for entry in os.listdir(self.src_dir):
             if entry == data_dir_name:
                 continue
-            self._add_sources(path_mapping, os.path.join(self.src_dir, entry), entry)
+            self._add_sources(path_mapping, os.fspath(Path(self.src_dir, entry)), entry)
 
         # Files under the .data directory also need to be installed in the correct
         # locations
-        if os.path.exists(data_dir_name):
+        if Path(data_dir_name).exists():
             # TODO: process the subdirectories of data_dir_name
             # This isn't implemented yet since for now we have only needed dependencies
             # on some simple pure Python wheels, so I haven't tested against wheels with
@@ -192,7 +191,7 @@ class PythonWheelBuilder(BuilderBase):
     def _write_cmakelists(
         self, path_mapping: dict[str, str], dependencies: list[str]
     ) -> None:
-        cmake_path = os.path.join(self.build_dir, "CMakeLists.txt")
+        cmake_path = os.fspath(Path(self.build_dir, "CMakeLists.txt"))
         with open(cmake_path, "w") as f:
             f.write(CMAKE_HEADER.format(**self.template_format_dict))
             for dep in dependencies:
@@ -218,7 +217,7 @@ class PythonWheelBuilder(BuilderBase):
 
     def _write_cmake_config_template(self) -> None:
         config_path_name = self.manifest.name + "-config.cmake.in"
-        output_path = os.path.join(self.build_dir, config_path_name)
+        output_path = os.fspath(Path(self.build_dir, config_path_name))
 
         with open(output_path, "w") as f:
             f.write(CMAKE_CONFIG_FILE.format(**self.template_format_dict))
@@ -234,13 +233,13 @@ class PythonWheelBuilder(BuilderBase):
         for entry in os.listdir(src_path):
             self._add_sources(
                 path_mapping,
-                os.path.join(src_path, entry),
-                os.path.join(install_path, entry),
+                os.fspath(Path(src_path, entry)),
+                os.fspath(Path(install_path, entry)),
             )
 
     def _parse_wheel_name(self) -> WheelNameInfo:
         # The ArchiveFetcher prepends "manifest_name-", so strip that off first.
-        wheel_name = os.path.basename(self.src_dir)
+        wheel_name = Path(self.src_dir).name
         prefix = self.manifest.name + "-"
         if not wheel_name.startswith(prefix):
             raise Exception(
@@ -275,7 +274,7 @@ class PythonWheelBuilder(BuilderBase):
         )
 
     def _read_wheel_metadata(self, wheel_name: WheelNameInfo) -> email.message.Message:
-        metadata_path = os.path.join(self.dist_info_dir, "WHEEL")
+        metadata_path = os.fspath(Path(self.dist_info_dir, "WHEEL"))
         with codecs.open(metadata_path, "r", encoding="utf-8") as f:
             return email.message_from_file(f)
 
