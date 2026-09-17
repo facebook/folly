@@ -432,49 +432,6 @@ cases:
 - "Added a unit test for the new branch; pre-existing tests still pass."
 - Before/after screenshots, repro, "A-B-A-B to rule out luck".
 
-## Worked examples
-
-### Bug fix — short message
-
-**Good (3 sentences):**
-
-> TW job names routinely contain regex metacharacters.
->
-> `fullStringRegex("tsp_x/foo.bar")` used to produce `^tsp_x/foo.bar$` — this
-> accidentally overmatches, e.g. capturing `tsp_x/foozbar`.
->
-> Fix this by escaping the regexes.
-
-**Typical agent draft on the same diff:**
-
-> `fullStringRegex(s)` produced `^s$` — which silently over-matched any spec
-> whose handle contained regex metacharacters (e.g. `tsp_x/foo.bar` matched
-> `tsp_x/fooXbar`). No production spec deliberately exercised regex semantics;
-> this is a latent bug fix. Source diff is two lines per file. The materialized
-> JSON delta is exactly the 613 metacharacter-bearing regexes getting their
-> meta-characters escaped — reviewable now that the predecessor diff
-> determinized the ordering.
-
-**Lesson:** "No production spec deliberately exercised regex semantics" is an
-empirical check — belongs in Test Plan, not Summary. "this is a latent bug fix"
-labels what the example already shows. Sentence 3 describes diff shape. Sentence
-4 previews the predecessor instead of a brief xref. The good version drops all
-four; the example carries the bug.
-
-### Refactor — short message with invariant
-
-**Good (3 sentences + Test Plan):**
-
-> This refactor does NOT change the materialized JSON.
->
-> The goal here is to make migration specs operate on explicit job handles,
-> **not** on regexes. Regexes are confusing and risky (the prior diff shows a
-> latent bug).
->
-> Test Plan:
->
-> - CI (materialized JSON byte-identity is enforced).
-
 ## Note on genre
 
 The examples here are commit-message-shaped. The same principles apply to design
