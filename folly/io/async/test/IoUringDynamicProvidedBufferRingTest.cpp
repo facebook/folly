@@ -38,7 +38,6 @@ class IoUringDynamicProvidedBufferRingTestHelper {
       : ring(ring) {}
 
   uint32_t ringBufferCount() { return ring.ringBufferCount_; }
-  uint32_t returnedBuffers() { return ring.bufferReturnedCount; }
   uint32_t areaCount() { return ring.areaCount_; }
 
   const char* areaData(uint32_t area, uint16_t bid) {
@@ -281,7 +280,9 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, ConcurrentDecBufferState) {
   }
 
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
-  EXPECT_EQ(helper.returnedBuffers(), kBufferCount);
+  EXPECT_EQ(helper.outstandingSum(), helper.ringAvailable())
+      << "once every buffer is returned, the only outstanding entries are the "
+         "ones still posted in the ring";
 }
 
 TEST_F(
@@ -794,6 +795,137 @@ TEST_F(
     const auto* posted = helper.headAddr();
     auto buf = consumeOne(*bufRing, helper, 64);
     EXPECT_EQ(buf->data(), posted);
+  }
+}
+
+// The producer (getIoBuf) runs on a single thread while returns land on
+// arbitrary threads, so a consumer's thread-local refcount is purely negative.
+// When such a thread exits, ~LocalRefCount folds that negative delta into the
+// global count while the ring is still alive, which can drive the global count
+// to zero or below. That must not be mistaken for "last reference dropped".
+TEST_F(
+    IoUringDynamicProvidedBufferRingTest, ConsumerThreadsExitWhileRingAlive) {
+  constexpr uint32_t kBufferCount = 64;
+  constexpr int kRounds = 50;
+
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = 1,
+      .bufferCount = kBufferCount,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
+
+  for (int round = 0; round < kRounds; round++) {
+    // Producer stays on this thread, as it would on the io_uring thread.
+    bufRing->enobuf(); // refill the ring after the previous round drained it
+    std::vector<std::unique_ptr<IOBuf>> bufs;
+    while (helper.ringAvailable() > 0) {
+      bufs.push_back(consumeOne(*bufRing, helper, 64));
+    }
+    ASSERT_FALSE(bufs.empty()) << "round " << round;
+
+    // Each returner is a fresh, short-lived thread: it only ever decrements,
+    // then exits and folds a negative local count into the global count.
+    std::vector<std::thread> returners;
+    size_t perThread = (bufs.size() + 3) / 4;
+    for (size_t start = 0; start < bufs.size(); start += perThread) {
+      size_t end = std::min(start + perThread, bufs.size());
+      std::vector<std::unique_ptr<IOBuf>> owned;
+      for (size_t i = start; i < end; i++) {
+        owned.push_back(std::move(bufs[i]));
+      }
+      returners.emplace_back([owned = std::move(owned)]() mutable {
+        owned.clear();
+      });
+    }
+    for (auto& returner : returners) {
+      returner.join();
+    }
+  }
+
+  // The ring must still be alive and usable after all those thread exits.
+  auto buf = consumeOne(*bufRing, helper, 64);
+  EXPECT_NE(buf, nullptr);
+  buf.reset();
+}
+
+static void runDestroyRaceIteration(
+    uint16_t gid, uint32_t bufferCount, int numThreads) {
+  io_uring ring{};
+  io_uring_queue_init(512, &ring, 0);
+  IoUringDynamicProvidedBufferRing::Options options = {
+      .gid = gid,
+      .bufferCount = bufferCount,
+      .bufferSize = 64,
+  };
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+
+  std::vector<std::unique_ptr<IOBuf>> bufs;
+  bufs.reserve(bufferCount);
+  for (uint32_t bufIdx = 0; bufIdx < bufferCount; bufIdx++) {
+    bufs.push_back(bufRing->getIoBuf(bufIdx, 32, false));
+  }
+
+  std::atomic<bool> go{false};
+  std::vector<std::thread> threads;
+  threads.reserve(numThreads);
+  uint32_t bufsPerThread = bufferCount / numThreads;
+
+  for (int threadIdx = 0; threadIdx < numThreads; threadIdx++) {
+    uint32_t start = threadIdx * bufsPerThread;
+    std::vector<std::unique_ptr<IOBuf>> threadBufs;
+    threadBufs.reserve(bufsPerThread);
+    for (uint32_t bufIdx = start; bufIdx < start + bufsPerThread; bufIdx++) {
+      threadBufs.push_back(std::move(bufs[bufIdx]));
+    }
+
+    threads.emplace_back([&go, threadBufs = std::move(threadBufs)]() mutable {
+      while (!go.load(std::memory_order_acquire)) {
+      }
+      for (auto& buf : threadBufs) {
+        buf.reset();
+      }
+    });
+  }
+
+  go.store(true, std::memory_order_release);
+  bufRing.reset();
+
+  for (auto& thread : threads) {
+    thread.join();
+  }
+
+  io_uring_queue_exit(&ring);
+}
+
+TEST_F(
+    IoUringDynamicProvidedBufferRingTest, ConcurrentDecBufferStateWithDestroy) {
+  constexpr int kIterations = 100;
+  for (int iter = 0; iter < kIterations; iter++) {
+    runDestroyRaceIteration(iter % 65536, 64, 8);
+  }
+}
+
+TEST_F(
+    IoUringDynamicProvidedBufferRingTest,
+    ConcurrentDecBufferStateWithDestroyStress) {
+  constexpr uint32_t kBufferCounts[] = {2, 4, 8, 16, 64};
+  constexpr int kThreadCounts[] = {1, 2, 4, 8};
+
+  int iter = 0;
+  for (auto bufferCount : kBufferCounts) {
+    for (auto numThreads : kThreadCounts) {
+      if (bufferCount < static_cast<uint32_t>(numThreads)) {
+        continue;
+      }
+      for (int run = 0; run < 10; run++) {
+        runDestroyRaceIteration(iter % 65536, bufferCount, numThreads);
+        iter++;
+      }
+    }
   }
 }
 

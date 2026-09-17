@@ -19,9 +19,9 @@
 #include <limits>
 #include <vector>
 
+#include <folly/concurrency/memory/TLRefCount.h>
 #include <folly/io/async/IoUringBase.h>
 #include <folly/io/async/Liburing.h>
-#include <folly/synchronization/DistributedMutex.h>
 
 #if FOLLY_HAS_LIBURING
 
@@ -118,7 +118,7 @@ class IoUringDynamicProvidedBufferRing {
 
   BufferArea* addArea() noexcept;
 
-  void delayedDestroy(uint32_t refs) noexcept;
+  void delayedDestroy() noexcept;
   void incBufferState(
       BufferArea& area,
       uint16_t bid,
@@ -212,26 +212,25 @@ class IoUringDynamicProvidedBufferRing {
   alignas(folly::hardware_constructive_interference_size)
       std::vector<std::unique_ptr<BufferArea>> areas_;
   struct io_uring_buf_ring* ringPtr_{nullptr};
-  folly::DistributedMutex mutex_;
   uint32_t sizePerBuffer_{0};
   uint32_t ringBufferCount_{0};
   uint16_t ringTail_{0};
   uint16_t ringHead_{0};
   uint16_t areaCount_{0};
   uint16_t const gid_{0};
-  uint32_t bufferGetCount_{0};
-  uint32_t bufferReturnedCount{0};
 
   // Hot fields (cacheline 2)
   alignas(folly::hardware_constructive_interference_size) io_uring* ringIoPtr;
-  uint32_t shutdownReferences_{0};
   uint32_t enobufCount_{0};
   BufferArea* bufferActiveArea_{nullptr};
   BufferArea* bufferRefillArea_{nullptr};
   bool useIncremental_{false};
   bool enobuf_{false};
   uint16_t ringRefillThreshold_{1};
-  std::atomic<bool> wantsShutdown_{false};
+
+  // Hot refcount for buffer tracking
+  alignas(folly::hardware_constructive_interference_size) folly::TLRefCount
+      bufferUsedCount_;
 };
 
 } // namespace folly

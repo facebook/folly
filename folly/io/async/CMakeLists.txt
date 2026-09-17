@@ -609,10 +609,10 @@ folly_add_library(
     folly_string
   EXPORTED_DEPS
     Boost::headers
+    folly_concurrency_memory_tl_ref_count
     folly_io_async_delayed_destruction
     folly_io_async_liburing
     folly_io_iobuf
-    folly_synchronization_distributed_mutex
 )
 
 folly_add_library(

@@ -22,6 +22,7 @@
 #include <utility>
 
 #include <folly/Conv.h>
+#include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <folly/lang/Align.h>
 #include <folly/portability/SysMman.h>
@@ -40,20 +41,20 @@ constexpr uint32_t kMaxAreaCount = 64;
 namespace folly {
 
 void IoUringDynamicProvidedBufferRing::checkInvariants() {
-  // This object is carefully packed into two 64 byte cache lines. These
-  // cachelines holds the hottest fields accessed during hot code, i.e.
-  // getIoBuf()
+  // This object is carefully packed into cache lines holding the hottest fields
+  // accessed during hot code, i.e. getIoBuf(). The hot scalar fields occupy the
+  // first two cache lines, followed by the bufferUsedCount_ refcount on its own
+  // aligned cache line(s) which is platform dependent
+  constexpr size_t kCacheline = folly::hardware_constructive_interference_size;
+  constexpr size_t kRefCountCachelines =
+      (sizeof(folly::TLRefCount) + kCacheline - 1) / kCacheline;
   static_assert(
       sizeof(IoUringDynamicProvidedBufferRing) ==
-      2 * folly::hardware_constructive_interference_size);
+      (2 + kRefCountCachelines) * kCacheline);
 
   static_assert(
       alignof(IoUringDynamicProvidedBufferRing) ==
       folly::hardware_constructive_interference_size);
-
-  static_assert(
-      sizeof(folly::DistributedMutex) == 8,
-      "folly::DistributedMutex size changed from 8 bytes");
 }
 
 IoUringDynamicProvidedBufferRing::UniquePtr
@@ -125,6 +126,11 @@ IoUringDynamicProvidedBufferRing::IoUringDynamicProvidedBufferRing(
       gid_(options.gid),
       ringIoPtr(ioRingPtr),
       useIncremental_(options.useIncrementalBuffers) {
+  SCOPE_FAIL {
+    bufferUsedCount_.useGlobal();
+    --bufferUsedCount_;
+  };
+
   if (ringBufferCount_ > kMaxRingRefillEntries) {
     throw std::runtime_error(
         folly::to<std::string>(
@@ -190,14 +196,11 @@ uint32_t IoUringDynamicProvidedBufferRing::getAndResetEnobufCount() noexcept {
 }
 
 void IoUringDynamicProvidedBufferRing::destroy() noexcept {
-  std::unique_lock lock{mutex_};
   ::io_uring_unregister_buf_ring(ringIoPtr, gid_);
-  DCHECK(bufferGetCount_ >= bufferReturnedCount);
-  auto remaining = bufferGetCount_ - bufferReturnedCount;
-  shutdownReferences_ = remaining;
-  wantsShutdown_ = true;
-  lock.unlock();
-  delayedDestroy(remaining);
+  bufferUsedCount_.useGlobal();
+  if (--bufferUsedCount_ == 0) {
+    delayedDestroy();
+  }
 }
 
 bool IoUringDynamicProvidedBufferRing::getNewRefillArea() noexcept {
@@ -332,7 +335,6 @@ void IoUringDynamicProvidedBufferRing::bufFreeFn(
 std::unique_ptr<IOBuf> IoUringDynamicProvidedBufferRing::getIoBufSingle(
     uint16_t bid, size_t length, bool hasMore) noexcept {
   std::unique_ptr<IOBuf> ret;
-  DCHECK(!wantsShutdown_);
   DCHECK_LT(bid, ringBufferCount_)
       << "Buffer index " << bid << " exceeds buffer count " << ringBufferCount_;
 
@@ -494,11 +496,9 @@ IoUringDynamicProvidedBufferRing::BufferArea::~BufferArea() {
   ::munmap(buffers, memSize);
 }
 
-void IoUringDynamicProvidedBufferRing::delayedDestroy(uint32_t refs) noexcept {
-  if (refs == 0) {
-    ::munmap(ringPtr_, ringMemSize());
-    delete this;
-  }
+void IoUringDynamicProvidedBufferRing::delayedDestroy() noexcept {
+  ::munmap(ringPtr_, ringMemSize());
+  delete this;
 }
 
 void IoUringDynamicProvidedBufferRing::incBufferState(
@@ -506,7 +506,7 @@ void IoUringDynamicProvidedBufferRing::incBufferState(
     uint16_t bid,
     bool hasMore,
     size_t bytesConsumed) noexcept {
-  bufferGetCount_++;
+  ++bufferUsedCount_;
 
   if (useIncremental_ && hasMore) {
     BufferState* bufferState = &area.states[bid];
@@ -527,24 +527,12 @@ void IoUringDynamicProvidedBufferRing::incBufferState(
 
 void IoUringDynamicProvidedBufferRing::decBufferState(
     BufferArea& area, uint16_t bid) noexcept {
-  std::unique_lock lock{mutex_};
-  bufferReturnedCount++;
-
-  if (FOLLY_UNLIKELY(wantsShutdown_)) {
-    auto refs = --shutdownReferences_;
-    lock.unlock();
-    delayedDestroy(refs);
-    return;
+  if (!useIncremental_ || area.states[bid].refCount.fetch_sub(1) == 1) {
+    area.outstanding.fetch_sub(1, std::memory_order_release);
   }
 
-  if (!useIncremental_) {
-    area.outstanding.fetch_sub(1, std::memory_order_release);
-    return;
-  }
-
-  auto oldRefCount = area.states[bid].refCount.fetch_sub(1);
-  if (oldRefCount == 1) {
-    area.outstanding.fetch_sub(1, std::memory_order_release);
+  if (FOLLY_UNLIKELY(--bufferUsedCount_ == 0)) {
+    delayedDestroy();
   }
 }
 
