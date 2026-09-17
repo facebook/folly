@@ -89,6 +89,7 @@ class IsolatedAgentTest(unittest.TestCase):
             "BASH_ENV": "bad",
             "CODEX_HOME": "bad",
             "GIT_DIR": "bad",
+            "META_CODEX_LLM_RULES": "1",
             "PATH": "/bin",
             "PYTHONPATH": "bad",
             "SAFE": "kept",
@@ -109,6 +110,7 @@ class IsolatedAgentTest(unittest.TestCase):
         self.assertEqual(environment["SAFE"], "kept")
         self.assertEqual(environment["TMPDIR"], str(prepared.temporary))
         self.assertEqual(environment["W"], str(prepared.task))
+        self.assertNotIn("META_CODEX_LLM_RULES", environment)
         self.assertNotIn("XDG_CONFIG_HOME", environment)
         with self.assertRaisesRegex(
             isolated_agent.IsolationError, "reserved environment override"
