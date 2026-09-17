@@ -33,20 +33,6 @@
 
 #define FOLLY_DETAIL_FORWARD_REF(a) static_cast<decltype(a)&&>(a)
 
-/**
- *  include or backport:
- *  * std::invoke
- *  * std::invoke_result
- *  * std::invoke_result_t
- *  * std::is_invocable
- *  * std::is_invocable_r
- *  * std::is_invocable_r_v
- *  * std::is_nothrow_invocable
- *  * std::is_nothrow_invocable_v
- *  * std::is_nothrow_invocable_r
- *  * std::is_nothrow_invocable_r_v
- */
-
 namespace folly {
 
 namespace invoke_detail {
@@ -282,8 +268,6 @@ struct invoke_private_overload;
 
 template <bool, typename I>
 struct invoke_traits_base_ {};
-template <typename I>
-struct invoke_traits_base_<false, I> {};
 template <typename I>
 struct invoke_traits_base_<true, I> {
   inline static constexpr I invoke{};
