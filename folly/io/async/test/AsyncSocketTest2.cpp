@@ -997,13 +997,25 @@ TEST_P(AsyncSocketConnectTFOTest, ConnectWriteAndClose) {
  * Test calling two sequential writes for zero-copy. 1st with TFO
  * we fallback to turn off the zc flag and for following writes
  * we continue as usual.
+ *
+ * Only exercises the io_uring SEND_ZC + TFO first send, so this is its own
+ * test suite instantiated with just that one param combo rather than a
+ * TEST_P on AsyncSocketConnectTFOTest, which would otherwise generate
+ * param variants that can never apply.
  */
-TEST_P(AsyncSocketConnectTFOTest, ConnectWriteZeroCopyFastOpen) {
-  if (getBackendType() != BackendType::IO_URING ||
-      getTFOState() != TFOState::ENABLED) {
-    GTEST_SKIP() << "only exercises the io_uring SEND_ZC + TFO first send";
-  }
+#if FOLLY_ALLOW_TFO
+class AsyncSocketConnectTFOZeroCopyTest : public AsyncSocketConnectTFOTest {};
 
+INSTANTIATE_TEST_SUITE_P(
+    ConnectTFOZeroCopyTests,
+    AsyncSocketConnectTFOZeroCopyTest,
+    ::testing::Values(
+        ConnectTestParam(BackendType::IO_URING, TFOState::ENABLED)),
+    [](const ::testing::TestParamInfo<ConnectTestParam>&) {
+      return "IoUringBackend_TFOEnabled";
+    });
+
+TEST_P(AsyncSocketConnectTFOZeroCopyTest, ConnectWriteZeroCopyFastOpen) {
   TestServer server(/*enableTFO=*/true);
   EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
@@ -1045,6 +1057,7 @@ TEST_P(AsyncSocketConnectTFOTest, ConnectWriteZeroCopyFastOpen) {
   ASSERT_TRUE(socket->isClosedBySelf());
   ASSERT_FALSE(socket->isClosedByPeer());
 }
+#endif // FOLLY_ALLOW_TFO
 
 /**
  * Zero-copy write on an established (non-TFO) io_uring socket. Exercises the
