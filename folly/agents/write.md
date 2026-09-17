@@ -33,13 +33,17 @@ convergence" below. The maxims here apply to all prose (docs, posts, comments).
   clarity or accuracy, or to make it materially shorter without losing needed
   content or increasing reader effort. Replace an abstract process label when
   the target audience would have to unpack it.
-- **Pick the right shape.** Lifecycle/procedure → numbered list. Parallel states
-  / parallel facts (N≥2) / inline enumeration (3+ items) → bullets, with lead
-  labels where they aid scanning. Reserve semicolon/em-dash glue for tight
-  causal pairs ("keep X — stripping breaks Y"). The shape rule fires regardless
-  of punctuation. An enumeration or parallel-states comparison hiding in prose
-  is a shape miss — rewrite the container, not just the sentences. (The Iterate
-  loop's Shape pass applies this for commit messages specifically.)
+- **Pick the right shape:**
+  - Lifecycle or procedure → numbered list.
+  - 2+ parallel states, facts, decisions, or reasons → bullets.
+  - 3+ inline items → bullets.
+
+  Use lead labels where they aid scanning. Reserve semicolon/em-dash glue for
+  tight causal pairs ("keep X — stripping breaks Y"). A parallel comparison or
+  enumeration hiding in prose is a shape miss — rewrite the container, not just
+  the sentences. (The Iterate loop's Shape pass applies this for commit messages
+  specifically.)
+
 - **Lead with why.** For prose about code, start with the problem or goal. Add a
   constraint, rejected alternative, or invariant when it explains the choice.
   Include enough of what the code does to make that reason clear, then leave
