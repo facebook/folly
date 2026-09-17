@@ -15,7 +15,7 @@ fbthrift = thrift/lib/rust
 
 [build]
 builder = cmake
-job_weight_mib = 2048
+job_weight_mib = 3072
 
 [cmake.defines]
 # Each dependency has its own prefix here, so record their lib dirs too;

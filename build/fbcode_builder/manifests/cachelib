@@ -10,7 +10,7 @@ repo_url = https://github.com/facebook/cachelib.git
 [build]
 builder = cmake
 subdir = cachelib
-job_weight_mib = 2048
+job_weight_mib = 3072
 
 [dependencies]
 zlib
