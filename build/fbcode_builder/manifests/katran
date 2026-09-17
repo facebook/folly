@@ -28,6 +28,7 @@ libmnl
 zlib
 googletest
 fmt
+CLI11
 
 [debs]
 libssl-dev
