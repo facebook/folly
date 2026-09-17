@@ -3396,6 +3396,8 @@ TEST(ConcurrentBSkipListHetero, FindReturnsCorrectValue) {
 // ============================================================================
 
 // Sentinel keys (numeric_limits min/max) are caller UB — DCHECK catches them.
+// DCHECK compiles out under NDEBUG, so these only hold in debug builds.
+#ifndef NDEBUG
 TEST(ConcurrentBSkipListDeathTest, SentinelInsertDChecks) {
   LargeNodeList list;
   EXPECT_DEATH(list.add(std::numeric_limits<int64_t>::min()), "sentinel keys");
@@ -3418,6 +3420,7 @@ TEST(ConcurrentBSkipListDeathTest, SentinelFindDChecks) {
   EXPECT_DEATH(
       list.contains(std::numeric_limits<int64_t>::max()), "sentinel keys");
 }
+#endif // NDEBUG
 
 // ============================================================================
 // descendToLeafLocked path coverage — exercises insertOrUpdateExisting
