@@ -170,22 +170,25 @@ struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
     consumer_.localIndex.store(currentRead + 1, std::memory_order_release);
   }
 
-  // * If called by consumer, then true size may be more (because producer may
-  //   be adding items concurrently).
-  // * If called by producer, then true size may be less (because consumer may
-  //   be removing items concurrently).
-  // * It is undefined to call this from any other thread.
-  size_t sizeGuess() const {
-    return producer_.localIndex.load(std::memory_order_acquire) -
-        consumer_.localIndex.load(std::memory_order_acquire);
+  //  An approximation of the current size.
+  //  * Clamped to [0, capacity()].
+  //  * May be called from any thread.
+  //  * Provides no memory ordering.
+  //  * If called by consumer, may undercount but not overcount.
+  //  * If called by producer, may overcount but not undercount.
+  size_t sizeGuess() const noexcept {
+    auto const c = consumer_.localIndex.load(std::memory_order_relaxed);
+    auto const p = producer_.localIndex.load(std::memory_order_relaxed);
+    auto const m = capacity();
+    return p < c ? 0 : m < p - c ? m : p - c;
   }
 
-  bool isEmpty() const { return sizeGuess() == 0; }
+  bool isEmpty() const noexcept { return sizeGuess() == 0; }
 
-  bool isFull() const { return sizeGuess() == producer_.size; }
+  bool isFull() const noexcept { return sizeGuess() == producer_.size; }
 
   // maximum number of items in the queue.
-  size_t capacity() const { return producer_.size; }
+  size_t capacity() const noexcept { return producer_.size; }
 
  private:
   //  Everything one side needs on its hot path, bundled into a single
