@@ -26,9 +26,7 @@
 #include <boost/preprocessor/logical/not.hpp>
 #include <boost/preprocessor/tuple/to_list.hpp>
 
-#include <folly/CppAttributes.h>
-#include <folly/Portability.h>
-#include <folly/Preprocessor.h>
+#include <folly/CPortability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/lang/CustomizationPoint.h>
