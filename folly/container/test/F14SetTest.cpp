@@ -821,6 +821,38 @@ TEST(F14VectorSet, OrderPreservingReinsertionView) {
 }
 
 template <typename T>
+inline constexpr bool has_data_v = requires(T& v) { v.data(); };
+
+TEST(F14VectorSet, Data) {
+  using TSet = F14VectorSet<int>;
+  TSet s;
+  for (int i = 0; i < 5; ++i) {
+    s.emplace(i);
+  }
+
+  // Storage order matches [rbegin, rend), the raw values_ range. Elements
+  // are const even through a non-const set, like set iterators.
+  auto* p = s.data();
+  static_assert(std::is_same_v<decltype(p), int const*>);
+  EXPECT_EQ(p, s.rbegin());
+  for (int i = 0; i < 5; ++i) {
+    EXPECT_EQ(i, p[i]);
+  }
+
+  TSet const& cs = s;
+  EXPECT_EQ(cs.data(), p);
+
+  TSet e;
+  EXPECT_EQ(e.data(), e.rbegin());
+
+  static_assert(!has_data_v<F14ValueSet<int>>);
+  static_assert(!has_data_v<F14NodeSet<int>>);
+  static_assert(!has_data_v<F14FastSet<int>>);
+  static_assert(!has_data_v<F14FastSet<std::string>>);
+  static_assert(has_data_v<pmr::F14VectorSet<int>>);
+}
+
+template <typename T>
 inline constexpr bool has_as_span_v = requires(T& v) { v.as_span(); };
 
 TEST(F14VectorSet, AsSpan) {
@@ -830,18 +862,16 @@ TEST(F14VectorSet, AsSpan) {
     s.emplace(i);
   }
 
-  // Storage order matches [rbegin, rend), the raw values_ range. Elements
-  // are const even through a non-const set, like set iterators.
+  // as_span() is data() and size() bundled into a span.
   auto sp = s.as_span();
   static_assert(std::is_same_v<decltype(sp), std::span<int const>>);
+  EXPECT_EQ(sp.data(), s.data());
   EXPECT_EQ(sp.size(), s.size());
-  EXPECT_EQ(sp.data(), s.rbegin());
-  for (int i = 0; i < 5; ++i) {
-    EXPECT_EQ(i, sp[i]);
-  }
 
   TSet const& cs = s;
-  EXPECT_EQ(cs.as_span().size(), 5);
+  auto csp = cs.as_span();
+  EXPECT_EQ(csp.data(), cs.data());
+  EXPECT_EQ(csp.size(), cs.size());
 
   TSet e;
   EXPECT_TRUE(e.as_span().empty());

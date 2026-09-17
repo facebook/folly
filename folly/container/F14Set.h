@@ -1292,7 +1292,7 @@ class F14VectorSet
   }
 
   /**
-   * Contiguous view of all elements in storage order.
+   * Pointer to the elements in storage order, like `std::vector::data()`.
    * @methodset Iterators
    *
    * Storage order is the reverse of iteration order (the [rbegin, rend)
@@ -1300,14 +1300,23 @@ class F14VectorSet
    * into the erased slot. Invalidated by any mutation, like iterators.
    * Elements are const even through a non-const set, like set iterators.
    */
+  value_type const* data() const noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return std::to_address(this->table_.values_);
+  }
+
+  /**
+   * Contiguous view of all elements in storage order, i.e. `{data(),
+   * size()}`.
+   * @methodset Iterators
+   */
   std::span<value_type const> as_span() noexcept
       [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
-    return {std::to_address(this->table_.values_), this->table_.size()};
+    return {this->data(), this->size()};
   }
   /// @methodset Iterators
   std::span<value_type const> as_span() const noexcept
       [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
-    return {std::to_address(this->table_.values_), this->table_.size()};
+    return {this->data(), this->size()};
   }
 
   friend Range<const_reverse_iterator> tag_invoke(

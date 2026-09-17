@@ -1660,19 +1660,53 @@ TEST(SortedVectorTypes, TestSwapContainer) {
       map.get_container(), (std::vector<std::pair<int, int>>{{1, 1}, {3, 3}}));
 }
 
+TEST(SortedVectorTypes, Data) {
+  // Set: storage order is sorted order; elements are const.
+  sorted_vector_set<int> s{3, 1, 2};
+  auto* sp = s.data();
+  static_assert(std::is_same_v<decltype(sp), int const*>);
+  EXPECT_EQ(sp[0], 1);
+  EXPECT_EQ(sp[1], 2);
+  EXPECT_EQ(sp[2], 3);
+  EXPECT_EQ(sp, s.get_container().data());
+
+  sorted_vector_set<int> const& cs = s;
+  EXPECT_EQ(cs.data(), sp);
+
+  sorted_vector_set<int> e;
+  EXPECT_EQ(e.data(), e.get_container().data());
+
+  // Map: storage order is sorted order; mapped values are mutable.
+  sorted_vector_map<int, int> m{{3, 30}, {1, 10}, {2, 20}};
+  auto* mp = m.data();
+  static_assert(std::is_same_v<decltype(mp), std::pair<int, int>*>);
+  EXPECT_EQ(mp[0].first, 1);
+  EXPECT_EQ(mp[2].second, 30);
+  mp[1].second = 42;
+  EXPECT_EQ(m.find(2)->second, 42);
+
+  sorted_vector_map<int, int> const& cm = m;
+  auto* cmp = cm.data();
+  static_assert(std::is_same_v<decltype(cmp), std::pair<int, int> const*>);
+  EXPECT_EQ(cmp, mp);
+
+  // Custom contiguous containers expose data too.
+  folly::small_sorted_vector_map<int, int> sm{{1, 1}};
+  EXPECT_EQ(sm.data(), sm.get_container().data());
+}
+
 TEST(SortedVectorTypes, AsSpan) {
   // Set: storage order is sorted order; elements are const.
   sorted_vector_set<int> s{3, 1, 2};
   auto sp = s.as_span();
   static_assert(std::is_same_v<decltype(sp), std::span<int const>>);
-  EXPECT_EQ(sp.size(), 3);
-  EXPECT_EQ(sp[0], 1);
-  EXPECT_EQ(sp[1], 2);
-  EXPECT_EQ(sp[2], 3);
-  EXPECT_EQ(sp.data(), s.get_container().data());
+  EXPECT_EQ(sp.data(), s.data());
+  EXPECT_EQ(sp.size(), s.size());
 
   sorted_vector_set<int> const& cs = s;
-  EXPECT_EQ(cs.as_span().size(), 3);
+  auto csp = cs.as_span();
+  EXPECT_EQ(csp.data(), cs.data());
+  EXPECT_EQ(csp.size(), cs.size());
 
   sorted_vector_set<int> e;
   EXPECT_TRUE(e.as_span().empty());
@@ -1681,17 +1715,15 @@ TEST(SortedVectorTypes, AsSpan) {
   sorted_vector_map<int, int> m{{3, 30}, {1, 10}, {2, 20}};
   auto ms = m.as_span();
   static_assert(std::is_same_v<decltype(ms), std::span<std::pair<int, int>>>);
-  EXPECT_EQ(ms.size(), 3);
-  EXPECT_EQ(ms[0].first, 1);
-  EXPECT_EQ(ms[2].second, 30);
-  ms[1].second = 42;
-  EXPECT_EQ(m.find(2)->second, 42);
+  EXPECT_EQ(ms.data(), m.data());
+  EXPECT_EQ(ms.size(), m.size());
 
   sorted_vector_map<int, int> const& cm = m;
   auto cms = cm.as_span();
   static_assert(
       std::is_same_v<decltype(cms), std::span<std::pair<int, int> const>>);
-  EXPECT_EQ(cms[1].second, 42);
+  EXPECT_EQ(cms.data(), cm.data());
+  EXPECT_EQ(cms.size(), cm.size());
 
   // Custom contiguous containers expose as_span too.
   folly::small_sorted_vector_map<int, int> sm{{1, 1}};

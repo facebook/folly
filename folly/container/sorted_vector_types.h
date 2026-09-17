@@ -424,7 +424,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     }
   {
     static_assert(is_contiguous_range_v<Container>);
-    return {std::to_address(m_.cont_.data()), m_.cont_.size()};
+    return {data(), size()};
   }
   std::span<value_type const> as_span() const noexcept
       [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]
@@ -434,7 +434,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     }
   {
     static_assert(is_contiguous_range_v<Container>);
-    return {std::to_address(m_.cont_.data()), m_.cont_.size()};
+    return {data(), size()};
   }
 
   /**
@@ -1173,7 +1173,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     }
   {
     static_assert(is_contiguous_range_v<Container>);
-    return {std::to_address(m_.cont_.data()), m_.cont_.size()};
+    return {data(), size()};
   }
   std::span<value_type const> as_span() const noexcept
       [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]
@@ -1183,7 +1183,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     }
   {
     static_assert(is_contiguous_range_v<Container>);
-    return {std::to_address(m_.cont_.data()), m_.cont_.size()};
+    return {data(), size()};
   }
 
   /**
@@ -1654,6 +1654,9 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 #endif // FOLLY_CPLUSPLUS >= 202002L && defined(__cpp_impl_three_way_comparison)
 
+  // Mutable overload; do not mutate keys or otherwise break the sorted order
+  // through the pointer.
+  value_type* data() noexcept { return m_.cont_.data(); }
   const value_type* data() const noexcept { return m_.cont_.data(); }
 
  private:

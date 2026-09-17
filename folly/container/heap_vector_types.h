@@ -1346,7 +1346,7 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
   }
 
   // Contiguous view of all elements in heap (storage) order, as with
-  // iterate(). Invalidated by any mutation, like iterators.
+  // iterate(): {data(), size()}. Invalidated by any mutation, like iterators.
   //
   // Only available when the underlying container exposes data() and size().
   std::span<value_type const> as_span() const noexcept
@@ -1357,7 +1357,7 @@ class heap_vector_container : growth_policy_wrapper<GrowthPolicy> {
     }
   {
     static_assert(is_contiguous_range_v<Container>);
-    return {std::to_address(m_.cont_.data()), m_.cont_.size()};
+    return {data(), size()};
   }
 
  protected:
@@ -1474,7 +1474,7 @@ class heap_vector_set
     }
   {
     static_assert(is_contiguous_range_v<Container>);
-    return {std::to_address(this->m_.cont_.data()), this->m_.cont_.size()};
+    return {this->data(), this->size()};
   }
 };
 
@@ -1578,11 +1578,17 @@ class heap_vector_map
   // Since heap_vector_container methods are publicly available through
   // inheritance, just expose method used within this class.
   using heap_vector_container::as_span;
+  using heap_vector_container::data;
   using heap_vector_container::end;
   using heap_vector_container::find;
   using heap_vector_container::heap_vector_container;
   using heap_vector_container::key_comp;
   using heap_vector_container::lower_bound;
+
+  // Mutable overload; do not mutate keys through the pointer.
+  value_type* data() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    return std::to_address(m_.cont_.data());
+  }
 
   // Mutable overload; do not mutate keys through the span.
   std::span<value_type> as_span() noexcept [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]
@@ -1592,7 +1598,7 @@ class heap_vector_map
     }
   {
     static_assert(is_contiguous_range_v<Container>);
-    return {std::to_address(m_.cont_.data()), m_.cont_.size()};
+    return {data(), this->size()};
   }
 
   mapped_type& at(const key_type& key) [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
