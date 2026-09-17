@@ -77,7 +77,37 @@ x86-64, and ARM), iOS, macOS, and Windows (x86-64). The CMake build is only
 tested on some of these platforms; at a minimum, we aim to support macOS and
 Linux (on the latest Ubuntu LTS release or newer.)
 
+## Build with CMake
+
+The CMake build fetches any dependency it cannot find installed, so a clone and
+two commands are enough:
+
+    git clone https://github.com/facebook/folly
+    cd folly
+    cmake -B _build
+    cmake --build _build
+
+Anything already on the system is used as-is. Alternatively, install the system
+packages first:
+
+    sudo ./build/fbcode_builder/getdeps.py install-system-deps --recursive
+
+Tests are not part of the `all` target. Configure with `-DBUILD_TESTS=ON` to
+build them, which also fetches googletest if it is not installed:
+
+    cmake -B _build -DBUILD_TESTS=ON
+    cmake --build _build
+    (cd _build && ctest)
+
+`cmake --install` needs CMake 3.28 or newer once anything has been fetched,
+because fetched dependencies are deliberately left out of what folly installs.
+An installed folly expects its dependencies on the consumer's system instead;
+`folly-config.cmake` looks them up with `find_package`.
+
 ## `getdeps.py`
+
+This is what CI uses, and it also builds folly's sibling projects. Prefer the
+CMake build above unless you need that.
 
 This script is used by many of Meta's OSS tools.  It will download and build all of the necessary dependencies first, and will then invoke cmake etc to build folly.  This will help ensure that you build with relevant versions of all of the dependent libraries, taking into account what versions are installed locally on your system.
 
@@ -151,35 +181,16 @@ By default `getdeps.py` will build the tests for folly. To run them:
 `build.sh` can be used on Linux and MacOS, on Windows use
 the `build.bat` script instead. Its a wrapper around `getdeps.py`.
 
-## Build with cmake directly
+### Iterating on a `getdeps.py` build
 
-If you don't want to let getdeps invoke cmake for you then by default, building the tests is disabled as part of the CMake `all` target.
-To build the tests, specify `-DBUILD_TESTS=ON` to CMake at configure time.
-
-NB if you want to invoke `cmake` again to iterate on a `getdeps.py` build, there is a helpful `run_cmake.py` script output in the scratch-path build directory. You can find the scratch build directory from logs or with `python3 ./build/fbcode_builder/getdeps.py show-build-dir`.
+To invoke `cmake` again against a build getdeps made, there is a helpful `run_cmake.py` script output in the scratch-path build directory. You can find the scratch build directory from logs or with `python3 ./build/fbcode_builder/getdeps.py show-build-dir`.
 
 Running tests with ctests also works if you cd to the build dir, e.g.
 `(cd $(python3 ./build/fbcode_builder/getdeps.py show-build-dir) && ctest)`
 
-### Finding dependencies in non-default locations
-
-If you have boost, gtest, or other dependencies installed in a non-default
-location, you can use the `CMAKE_INCLUDE_PATH` and `CMAKE_LIBRARY_PATH`
-variables to make CMAKE look also look for header files and libraries in
-non-standard locations.  For example, to also search the directories
-`/alt/include/path1` and `/alt/include/path2` for header files and the
-directories `/alt/lib/path1` and `/alt/lib/path2` for libraries, you can invoke
-`cmake` as follows:
-
-```
-cmake \
-  -DCMAKE_INCLUDE_PATH=/alt/include/path1:/alt/include/path2 \
-  -DCMAKE_LIBRARY_PATH=/alt/lib/path1:/alt/lib/path2 ...
-```
-
 ## Ubuntu LTS, CentOS Stream, Fedora
 
-Use the `getdeps.py` approach above. We test in CI on Ubuntu LTS, and occasionally on other distros.
+Either build approach works. We test in CI on Ubuntu LTS, and occasionally on other distros.
 
 If you find the set of system packages is not quite right for your chosen distro, you can specify distro version specific overrides in the dependency manifests (e.g. https://github.com/facebook/folly/blob/main/build/fbcode_builder/manifests/boost ). You could probably make it work on most recent Ubuntu/Debian or Fedora/Redhat derived distributions.
 
