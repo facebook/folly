@@ -833,7 +833,11 @@ class EventBase
    * first handler fired within that cycle.
    *
    */
-  void bumpHandlingTime() final;
+  void bumpHandlingTime() final {
+    if (enableTimeMeasurement_ && nextLoopCnt_ != latestLoopCnt_) {
+      bumpHandlingTimeSlow();
+    }
+  }
 
   /**
    * Give the loop a chance to return from the backend after an internal
@@ -1021,6 +1025,10 @@ class EventBase
    * some event/timeout/callback in this loop iteration.
    */
   bool nothingHandledYet() const noexcept;
+
+  // Out-of-line slow path of bumpHandlingTime(), taken by the first handler
+  // dispatched in a loop cycle.
+  void bumpHandlingTimeSlow();
 
   using LoopCallbackList = LoopCallback::List;
 

@@ -865,21 +865,15 @@ void EventBase::loopForever() {
   }
 }
 
-void EventBase::bumpHandlingTime() {
-  if (!enableTimeMeasurement_) {
-    return;
-  }
-
+void EventBase::bumpHandlingTimeSlow() {
   VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__
            << " (loop) latest " << latestLoopCnt_ << " next " << nextLoopCnt_;
-  if (nothingHandledYet()) {
-    latestLoopCnt_ = nextLoopCnt_;
-    // set the time
-    startWork_ = std::chrono::steady_clock::now();
+  latestLoopCnt_ = nextLoopCnt_;
+  // set the time
+  startWork_ = std::chrono::steady_clock::now();
 
-    VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__
-             << " (loop) startWork_ " << startWork_.time_since_epoch().count();
-  }
+  VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__
+           << " (loop) startWork_ " << startWork_.time_since_epoch().count();
 }
 
 void EventBase::yieldAfterInternalEvent() {
@@ -1168,7 +1162,6 @@ void EventBase::SmoothLoopTime::addSample(
 }
 
 bool EventBase::nothingHandledYet() const noexcept {
-  VLOG(11) << "latest " << latestLoopCnt_ << " next " << nextLoopCnt_;
   return (nextLoopCnt_ != latestLoopCnt_);
 }
 
