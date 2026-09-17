@@ -4534,10 +4534,22 @@ TEST_P(AsyncSocketTest, TestEvbDetachWtRegisteredIOHandlers) {
   socket->close();
 }
 
-TEST_P(AsyncSocketTest, TestEvbDetachThenClose) {
-  if (GetParam() == BackendType::IO_URING) {
-    GTEST_SKIP() << "io_uring does not support detachNetworkSocket()";
-  }
+// Not a TEST_P(AsyncSocketTest, ...): detachNetworkSocket() is structurally
+// unsupported under the io_uring backend (in-flight multishot recv SQEs and
+// per-fd provided buffer rings can't be safely handed off synchronously; see
+// D91003790 for an abandoned attempt at an async-aware variant). A plain,
+// non-parameterized fixture keeps tests like this one off the IoUringBackend
+// instantiation entirely, rather than registering them there and skipping at
+// runtime.
+class AsyncSocketNoIoUringTest : public ::testing::Test {
+ protected:
+  EventBase& getEventBase() { return evb_; }
+
+ private:
+  EventBase evb_;
+};
+
+TEST_F(AsyncSocketNoIoUringTest, TestEvbDetachThenClose) {
   // Start listening on a local port
   TestServer server;
 
