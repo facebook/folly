@@ -213,12 +213,21 @@ BENCHMARK_DRAW_LINE();
 
 static void do_rcu_lock_unlock(
     BenchmarkSuspender& braces, rcu_domain& domain, size_t iters) {
+  auto own = std::make_unique<TestObj>(42);
+  std::atomic<TestObj*> ptr{own.get()};
+  folly::compiler_must_not_predict(ptr);
+
+  int sum = 0;
   braces.dismissing([&] {
     while (iters--) {
       domain.lock();
+      auto* obj = ptr.load(std::memory_order_acquire);
+      folly::compiler_must_not_predict(obj->value);
+      sum += obj->value;
       domain.unlock();
     }
   });
+  folly::compiler_must_not_elide(sum);
 }
 
 BENCHMARK(rcu_lock_unlock, iters) {
