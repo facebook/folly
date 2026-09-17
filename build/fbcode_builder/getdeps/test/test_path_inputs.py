@@ -22,7 +22,7 @@ from ..runcmd import run_cmd
 class PathInputsTest(unittest.TestCase):
     def test_containing_repo_type_accepts_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            os.makedirs(os.path.join(tmp, ".git"))
+            Path(tmp, ".git").mkdir(parents=True, exist_ok=True)
             for path in (tmp, Path(tmp)):
                 repo_type, repo_root = containing_repo_type(path)
                 self.assertEqual(repo_type, "git")
@@ -37,14 +37,14 @@ class PathInputsTest(unittest.TestCase):
     def test_path_search_returns_str(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             for name in ("mytool", "mytool.exe"):
-                with open(os.path.join(tmp, name), "w") as f:
+                with open(os.fspath(Path(tmp, name)), "w") as f:
                     f.write("#!/bin/sh\n")
-                os.chmod(os.path.join(tmp, name), 0o755)
+                os.chmod(os.fspath(Path(tmp, name)), 0o755)
             env = {"PATH": tmp}
             found = path_search(env, "mytool")
             self.assertIsNotNone(found)
             self.assertIsInstance(found, str)
-            self.assertEqual(os.path.dirname(str(found)), tmp)
+            self.assertEqual(os.fspath(Path(str(found)).parent), tmp)
 
     def test_run_cmd_accepts_path_cwd_and_log_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -62,7 +62,7 @@ class PathInputsTest(unittest.TestCase):
             fetcher = LocalDirFetcher(Path(tmp))
             src_dir = fetcher.get_src_dir()
             self.assertIsInstance(src_dir, str)
-            self.assertEqual(src_dir, os.path.realpath(tmp))
+            self.assertEqual(src_dir, os.fspath(Path(tmp).resolve()))
 
     def test_copy_if_different_accepts_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -7,6 +7,7 @@
 import os
 import tempfile
 import unittest
+from pathlib import Path
 
 from ..fetcher import filter_strip_marker, ShipitPathMap
 from ..manifest import ManifestParser
@@ -170,28 +171,28 @@ class ShipitMirrorSymlinkTest(unittest.TestCase):
 
     def test_mirror_skips_filter_for_dangling_symlinks(self) -> None:
         with tempfile.TemporaryDirectory() as src_root, tempfile.TemporaryDirectory() as dest_root:
-            project_dir = os.path.join(src_root, "proj")
-            order_dir = os.path.join(project_dir, "scripts", "order_centos-7.2")
-            recipes_dir = os.path.join(project_dir, "scripts", "recipes")
-            os.makedirs(order_dir)
-            os.makedirs(recipes_dir)
+            project_dir = os.fspath(Path(src_root, "proj"))
+            order_dir = os.fspath(Path(project_dir, "scripts", "order_centos-7.2"))
+            recipes_dir = os.fspath(Path(project_dir, "scripts", "recipes"))
+            Path(order_dir).mkdir(parents=True, exist_ok=True)
+            Path(recipes_dir).mkdir(parents=True, exist_ok=True)
 
-            target_file = os.path.join(recipes_dir, "fbthrift.sh")
+            target_file = os.fspath(Path(recipes_dir, "fbthrift.sh"))
             with open(target_file, "w") as f:
                 f.write("#!/bin/bash\necho hello\n")
 
-            symlink_path = os.path.join(order_dir, "15_fbthrift")
+            symlink_path = os.fspath(Path(order_dir, "15_fbthrift"))
             os.symlink("../recipes/fbthrift.sh", symlink_path)
 
             mapping = ShipitPathMap()
             mapping.add_mapping("proj", "proj")
             mapping.mirror(src_root, dest_root)
 
-            mirrored_symlink = os.path.join(
-                dest_root, "proj", "scripts", "order_centos-7.2", "15_fbthrift"
+            mirrored_symlink = os.fspath(
+                Path(dest_root, "proj", "scripts", "order_centos-7.2", "15_fbthrift")
             )
-            mirrored_target = os.path.join(
-                dest_root, "proj", "scripts", "recipes", "fbthrift.sh"
+            mirrored_target = os.fspath(
+                Path(dest_root, "proj", "scripts", "recipes", "fbthrift.sh")
             )
-            self.assertTrue(os.path.islink(mirrored_symlink))
-            self.assertTrue(os.path.isfile(mirrored_target))
+            self.assertTrue(Path(mirrored_symlink).is_symlink())
+            self.assertTrue(Path(mirrored_target).is_file())

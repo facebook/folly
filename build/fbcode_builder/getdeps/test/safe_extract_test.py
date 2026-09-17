@@ -10,6 +10,7 @@ import tarfile
 import tempfile
 import unittest
 import zipfile
+from pathlib import Path
 
 from ..fetcher import _validate_archive_members, safe_extractall
 
@@ -55,9 +56,9 @@ class SafeExtractallTarTest(unittest.TestCase):
             with tempfile.TemporaryDirectory() as dest:
                 with tarfile.open(archive) as tar:
                     safe_extractall(tar, dest)
-                self.assertTrue(os.path.isfile(os.path.join(dest, "hello.txt")))
-                self.assertTrue(os.path.isfile(os.path.join(dest, "sub/nested.txt")))
-                with open(os.path.join(dest, "hello.txt")) as f:
+                self.assertTrue(Path(dest, "hello.txt").is_file())
+                self.assertTrue(Path(dest, "sub/nested.txt").is_file())
+                with open(os.fspath(Path(dest, "hello.txt"))) as f:
                     self.assertEqual(f.read(), "hello world")
         finally:
             os.unlink(archive)
@@ -90,8 +91,8 @@ class SafeExtractallZipTest(unittest.TestCase):
             with tempfile.TemporaryDirectory() as dest:
                 with zipfile.ZipFile(archive) as zf:
                     safe_extractall(zf, dest)
-                self.assertTrue(os.path.isfile(os.path.join(dest, "hello.txt")))
-                with open(os.path.join(dest, "hello.txt")) as f:
+                self.assertTrue(Path(dest, "hello.txt").is_file())
+                with open(os.fspath(Path(dest, "hello.txt"))) as f:
                     self.assertEqual(f.read(), "hello world")
         finally:
             os.unlink(archive)

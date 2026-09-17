@@ -28,14 +28,15 @@ import argparse
 import os
 import tempfile
 import unittest
+from pathlib import Path
 from typing import Any
 
 from .. import cmd_base, workflow_generator
 from ..buildopts import setup_build_options as real_setup_build_options
 
 
-_FIXTURES_DIR: str = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "fixtures", "expected"
+_FIXTURES_DIR: str = os.fspath(
+    Path(os.path.abspath(__file__)).parent / "fixtures" / "expected"
 )
 _UPDATE_FIXTURES: bool = os.environ.get("UPDATE_FIXTURES") == "1"
 
@@ -45,9 +46,7 @@ _UPDATE_HINT: str = (
     " //opensource/fbcode_builder/getdeps/test:test\n"
     "then review the resulting `sl status` diff."
 )
-_MANIFESTS_DIR: str = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "manifests"
-)
+_MANIFESTS_DIR: str = os.fspath(Path(os.path.abspath(__file__)).parent / "manifests")
 
 
 def _make_args(project: str, output_dir: str, **overrides: Any) -> argparse.Namespace:
@@ -104,8 +103,8 @@ def _patched_setup_build_options(
     # In a Buck PAR, buildopts.py is wrapped and its derived
     # `fbcode_builder_dir` does not contain `manifests/`. Point at
     # the manifests resource shipped next to this test instead.
-    if not os.path.isdir(opts.manifests_dir):
-        opts.fbcode_builder_dir = os.path.dirname(_MANIFESTS_DIR)
+    if not Path(opts.manifests_dir).is_dir():
+        opts.fbcode_builder_dir = os.fspath(Path(_MANIFESTS_DIR).parent)
     return opts
 
 
@@ -168,32 +167,32 @@ class WorkflowGeneratorGoldenTest(unittest.TestCase):
     def _check_scenario(
         self, fixture_dir: str, project: str, overrides: dict[str, Any]
     ) -> None:
-        expected_root = os.path.join(_FIXTURES_DIR, fixture_dir)
+        expected_root = os.fspath(Path(_FIXTURES_DIR, fixture_dir))
         with tempfile.TemporaryDirectory() as tmp:
             args = _make_args(
                 project,
                 tmp,
-                scratch_path=os.path.join(tmp, "scratch"),
+                scratch_path=os.fspath(Path(tmp, "scratch")),
                 **overrides,
             )
             _run(args)
             if _UPDATE_FIXTURES:
-                os.makedirs(expected_root, exist_ok=True)
+                Path(expected_root).mkdir(parents=True, exist_ok=True)
                 for name in sorted(os.listdir(tmp)):
-                    src = os.path.join(tmp, name)
-                    if not os.path.isfile(src):
+                    src = os.fspath(Path(tmp, name))
+                    if not Path(src).is_file():
                         continue
                     with open(src) as f:
                         actual = f.read()
-                    with open(os.path.join(expected_root, name), "w") as f:
+                    with open(os.fspath(Path(expected_root, name)), "w") as f:
                         f.write(actual)
                 return
             for name in sorted(os.listdir(expected_root)):
-                with open(os.path.join(expected_root, name)) as f:
+                with open(os.fspath(Path(expected_root, name))) as f:
                     expected = f.read()
-                actual_path = os.path.join(tmp, name)
+                actual_path = os.fspath(Path(tmp, name))
                 self.assertTrue(
-                    os.path.exists(actual_path),
+                    Path(actual_path).exists(),
                     f"generator did not emit expected file {name!r} for "
                     f"scenario {fixture_dir!r}{_UPDATE_HINT}",
                 )
