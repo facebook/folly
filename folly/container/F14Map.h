@@ -1571,6 +1571,7 @@ class F14VectorMapImpl
   template <typename BeforeDestroy>
   FOLLY_ALWAYS_INLINE iterator
   eraseInto(const_iterator pos, BeforeDestroy&& beforeDestroy) {
+    FOLLY_SAFE_DCHECK(pos != cend(), "erase() of a past-the-end iterator");
     auto index = this->table_.iterToIndex(pos);
     auto underlying = this->table_.find(VectorContainerIndexSearch{index});
     eraseUnderlying(underlying, beforeDestroy);
