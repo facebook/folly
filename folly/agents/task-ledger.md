@@ -27,6 +27,8 @@ infer active work from completed history. Delete the task once it no longer
 helps remaining work, and keep only requirements or rationale that still
 constrain the workstream.
 
+Before debriefing the user, mark completed tasks done and prune the ledger.
+
 Keep goals, unsuperseded requirements, and needed context for the workstream's
 lifetime. Remove that context only at the user's request or after a durable
 artifact supersedes it.

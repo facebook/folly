@@ -13,3 +13,6 @@ Claude) and name the unresolved conflict in the final debrief.
 Whenever rules are loaded, a hook adds instructions to the context, or an
 asynchronous result arrives, reread the latest user message. Re-evaluate which
 user tasks remain active, then continue them while incorporating the new input.
+
+When user changes question, answer new question only. Self-contained does not
+mean recap completed work.

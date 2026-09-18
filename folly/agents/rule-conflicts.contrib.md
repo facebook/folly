@@ -21,3 +21,8 @@ kinds of scenarios:
 
 Since this loader triggers on most of those, it may be a good place to remind
 the agent to actually do what the user asked for.
+
+Codex's default `model_messages.instructions_template` requires, “The final
+answer must always be fully self-contained.” This rule narrows that default when
+user changes question. Repeating completed work wastes tokens and can replace
+requested follow-up.
