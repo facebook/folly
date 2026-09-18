@@ -33,19 +33,22 @@ static std::string generateRandomGuid() {
   return guid;
 }
 
+constexpr size_t kGuidPoolSize = 1024;
+
+const std::vector<std::string> kGuidPool = [] {
+  std::vector<std::string> p(kGuidPoolSize);
+  for (auto& s : p) {
+    s = generateRandomGuid();
+  }
+  return p;
+}();
+
 template <auto folly_uuid_parse_func>
 inline void folly_uuid_parse_benchmark(size_t n) {
-  std::vector<std::string> sVec;
-  BENCHMARK_SUSPEND {
-    sVec.resize(n);
-    for (auto& s : sVec) {
-      s = generateRandomGuid();
-    }
-  }
-
   std::string out;
   for (size_t i = 0; i < n; ++i) {
-    folly::compiler_must_not_elide(folly_uuid_parse_func(out, sVec[i]));
+    folly::compiler_must_not_elide(
+        folly_uuid_parse_func(out, kGuidPool[i % kGuidPoolSize]));
     folly::compiler_must_not_elide(out);
   }
 }
@@ -72,32 +75,20 @@ BENCHMARK(uuid_parse_folly, n) {
 }
 
 BENCHMARK(uuid_parse_glibc, n) {
-  std::vector<std::string> sVec;
-  BENCHMARK_SUSPEND {
-    sVec.resize(n);
-    for (auto& s : sVec) {
-      s = generateRandomGuid();
-    }
-  }
   uuid_t uuid;
   for (size_t i = 0; i < n; ++i) {
-    folly::compiler_must_not_elide(uuid_parse(sVec[i].c_str(), uuid));
+    folly::compiler_must_not_elide(
+        uuid_parse(kGuidPool[i % kGuidPoolSize].c_str(), uuid));
     folly::compiler_must_not_elide(uuid);
   }
 }
 
 BENCHMARK(uuid_parse_boost, n) {
-  std::vector<std::string> sVec;
-  BENCHMARK_SUSPEND {
-    sVec.resize(n);
-    for (auto& s : sVec) {
-      s = generateRandomGuid();
-    }
-  }
   boost::uuids::uuid uuid;
   for (size_t i = 0; i < n; ++i) {
     folly::compiler_must_not_elide(
-        uuid = boost::lexical_cast<boost::uuids::uuid>(sVec[i]));
+        uuid = boost::lexical_cast<boost::uuids::uuid>(
+            kGuidPool[i % kGuidPoolSize]));
     folly::compiler_must_not_elide(uuid);
   }
 }
