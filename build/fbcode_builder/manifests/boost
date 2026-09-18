@@ -26,7 +26,7 @@ icu4c
 [pps]
 boost
 
-[rpms.all(distro=centos_stream,distro_vers=8)]
+[rpms.all(distro_family=rhel,distro_vers=8)]
 boost169
 boost169-math
 boost169-test

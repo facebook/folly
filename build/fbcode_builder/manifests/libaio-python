@@ -4,7 +4,7 @@ name = libaio-python
 [debs]
 libaio-dev
 
-[rpms.distro=centos_stream]
+[rpms.distro_family=rhel]
 libaio-devel
 
 [download]

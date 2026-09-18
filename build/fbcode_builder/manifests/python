@@ -5,12 +5,12 @@ name = python
 python@3.10
 
 # sapling needs match statements with arrive in python 3.12 in centos 10
-[rpms.not(all(distro=centos_stream,distro_vers=9))]
+[rpms.not(all(distro_family=rhel,distro_vers=9))]
 python3
 python3-devel
 
 # Centos Stream 9 default python is 3.9, sapling needs 3.10+
-[rpms.all(distro=centos_stream,distro_vers=9)]
+[rpms.all(distro_family=rhel,distro_vers=9)]
 python3.12
 python3.12-devel
 

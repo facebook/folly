@@ -62,9 +62,9 @@ fbcode/algopt/rebalancer/oss_root = .
 fbcode/algopt/rebalancer = algopt/rebalancer
 fbcode/algopt/lp = algopt/lp
 
-[dependencies.all(distro=centos_stream,distro_vers=9)]
+[dependencies.all(distro_family=rhel,distro_vers=9)]
 clang19
 
-[cmake.defines.all(distro=centos_stream,distro_vers=9)]
+[cmake.defines.all(distro_family=rhel,distro_vers=9)]
 CMAKE_C_COMPILER=clang-19
 CMAKE_CXX_COMPILER=clang++-19

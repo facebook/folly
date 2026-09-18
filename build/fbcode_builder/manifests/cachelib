@@ -31,10 +31,10 @@ xxhash
 # specific configuration we rely on the folly manifest to provide this
 # dependency to avoid duplication.
 
-[rpms.all(distro=centos_stream,distro_vers=9)]
+[rpms.all(distro_family=rhel,distro_vers=9)]
 gcc-toolset-14
 
-[cmake.defines.all(distro=centos_stream,distro_vers=9)]
+[cmake.defines.all(distro_family=rhel,distro_vers=9)]
 CMAKE_C_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/gcc
 CMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
 

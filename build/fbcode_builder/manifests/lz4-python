@@ -7,7 +7,7 @@ lz4
 [rpms]
 lz4-devel
 # centos 8 and centos_stream 9 are missing this rpm
-[rpms.not(any(all(distro=centos,distro_vers=8),all(distro=centos_stream,distro_vers=9)))]
+[rpms.not(all(distro_family=rhel,any(distro_vers=8,distro_vers=9)))]
 lz4-static
 
 [debs]
