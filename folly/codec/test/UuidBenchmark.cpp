@@ -93,6 +93,80 @@ BENCHMARK(uuid_parse_boost, n) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// unparse (16 bytes -> 36 char text)
+// ---------------------------------------------------------------------------
+
+const std::vector<std::array<uint8_t, 16>> kUuidPool = [] {
+  std::vector<std::array<uint8_t, 16>> p(kGuidPoolSize);
+  for (auto& u : p) {
+    uuid_generate(u.data());
+  }
+  return p;
+}();
+
+template <typename UnparseFunc>
+inline void uuid_unparse_benchmark(size_t n, UnparseFunc unparse) {
+  for (size_t i = 0; i < n; ++i) {
+    unparse(kUuidPool[i % kGuidPoolSize].data());
+  }
+}
+
+// Group 1: conversion only, into a caller-owned buffer.
+BENCHMARK(uuid_unparse_buf_folly, n) {
+  char out[37];
+  uuid_unparse_benchmark(n, [&](const uint8_t* in) {
+    folly::uuid_unparse_upper(out, in);
+    folly::compiler_must_not_elide(out);
+  });
+}
+
+BENCHMARK_RELATIVE(uuid_unparse_buf_libuuid, n) {
+  char out[37];
+  uuid_unparse_benchmark(n, [&](const uint8_t* in) {
+    uuid_unparse_upper(in, out);
+    folly::compiler_must_not_elide(out);
+  });
+}
+
+BENCHMARK_RELATIVE(uuid_unparse_buf_boost, n) {
+  char out[37];
+  uuid_unparse_benchmark(n, [&](const uint8_t* in) {
+    boost::uuids::uuid u{};
+    std::memcpy(u.data, in, 16);
+    boost::uuids::to_chars(u, out);
+    folly::compiler_must_not_elide(out);
+  });
+}
+
+// Group 2: producing a std::string.
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(uuid_unparse_str_folly, n) {
+  std::string out;
+  uuid_unparse_benchmark(n, [&](const uint8_t* in) {
+    folly::uuid_unparse_upper(out, in);
+    folly::compiler_must_not_elide(out);
+  });
+}
+
+BENCHMARK_RELATIVE(uuid_unparse_str_libuuid, n) {
+  std::string out;
+  uuid_unparse_benchmark(n, [&](const uint8_t* in) {
+    out.resize(36);
+    uuid_unparse_upper(in, &out[0]);
+    folly::compiler_must_not_elide(out);
+  });
+}
+
+BENCHMARK_RELATIVE(uuid_unparse_str_boost, n) {
+  uuid_unparse_benchmark(n, [](const uint8_t* in) {
+    boost::uuids::uuid u{};
+    std::memcpy(u.data, in, 16);
+    folly::compiler_must_not_elide(boost::uuids::to_string(u));
+  });
+}
+
 int main(int argc, char** argv) {
   folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();

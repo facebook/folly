@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
+#include <array>
 #include <cctype>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <string_view>
 #include <fmt/format.h>
 
 #include <folly/Random.h>
+
 #include <folly/codec/Uuid.h>
 #include <folly/portability/GTest.h>
 
@@ -221,3 +224,132 @@ INSTANTIATE_TEST_SUITE_P(
       return "CompareScalarTo" + info_.param.name;
     });
 #endif
+
+namespace {
+
+std::array<std::uint8_t, 16> randomUuidBytes() {
+  std::array<std::uint8_t, 16> bytes{};
+  folly::Random::secureRandom(bytes.data(), bytes.size());
+  return bytes;
+}
+
+// Independent rendering of the canonical 8-4-4-4-12 form, used as the oracle.
+std::string expectedUuidString(const std::uint8_t* in, bool upper) {
+  std::string out;
+  for (int i = 0; i < 16; ++i) {
+    if (i == 4 || i == 6 || i == 8 || i == 10) {
+      out += '-';
+    }
+    out += upper ? fmt::format("{:02X}", in[i]) : fmt::format("{:02x}", in[i]);
+  }
+  return out;
+}
+
+} // namespace
+
+TEST(UuidUnparseTest, MatchesCanonicalRendering) {
+  for (int i = 0; i < 1000; ++i) {
+    const auto raw = randomUuidBytes();
+
+    std::string actualUpper;
+    std::string actualLower;
+    folly::uuid_unparse_upper(actualUpper, raw.data());
+    folly::uuid_unparse_lower(actualLower, raw.data());
+
+    ASSERT_EQ(expectedUuidString(raw.data(), true), actualUpper);
+    ASSERT_EQ(expectedUuidString(raw.data(), false), actualLower);
+  }
+}
+
+TEST(UuidUnparseTest, RoundTripsThroughParse) {
+  for (int i = 0; i < 1000; ++i) {
+    const auto raw = randomUuidBytes();
+
+    std::string text;
+    folly::uuid_unparse_lower(text, raw.data());
+
+    std::string parsed;
+    ASSERT_EQ(folly::uuid_parse(parsed, text), folly::UuidParseCode::SUCCESS);
+    ASSERT_EQ(
+        std::string_view(reinterpret_cast<const char*>(raw.data()), 16),
+        parsed);
+  }
+}
+
+TEST(UuidUnparseTest, BufferOverloadNulTerminatesAndDoesNotOverrun) {
+  const auto raw = randomUuidBytes();
+
+  char out[39];
+  std::memset(out, '\xFF', sizeof(out));
+  folly::uuid_unparse_upper(out + 1, raw.data());
+
+  EXPECT_EQ(out[0], '\xFF') << "wrote before the buffer";
+  EXPECT_EQ(out[37], '\0') << "missing NUL terminator";
+  EXPECT_EQ(out[38], '\xFF') << "wrote past the terminator";
+  EXPECT_EQ(std::strlen(out + 1), 36u);
+}
+
+// The std::string overload leaves termination to the string itself.
+TEST(UuidUnparseTest, StringOverloadIsExactly36Chars) {
+  const auto raw = randomUuidBytes();
+
+  std::string out = "some pre-existing longer value";
+  folly::uuid_unparse_upper(out, raw.data());
+
+  EXPECT_EQ(out.size(), 36u);
+  EXPECT_EQ(std::strlen(out.c_str()), 36u);
+}
+
+// Sequential input bytes must appear in order across the 8-4-4-4-12 layout.
+TEST(UuidUnparseTest, KnownVectors) {
+  const std::uint8_t sequential[16] = {
+      0x00,
+      0x11,
+      0x22,
+      0x33,
+      0x44,
+      0x55,
+      0x66,
+      0x77,
+      0x88,
+      0x99,
+      0xAA,
+      0xBB,
+      0xCC,
+      0xDD,
+      0xEE,
+      0xFF};
+  const std::uint8_t zeros[16] = {};
+  std::uint8_t ones[16];
+  std::memset(ones, 0xFF, sizeof(ones));
+
+  std::string out;
+
+  folly::uuid_unparse_lower(out, sequential);
+  EXPECT_EQ("00112233-4455-6677-8899-aabbccddeeff", out);
+  folly::uuid_unparse_upper(out, sequential);
+  EXPECT_EQ("00112233-4455-6677-8899-AABBCCDDEEFF", out);
+
+  folly::uuid_unparse_lower(out, zeros);
+  EXPECT_EQ("00000000-0000-0000-0000-000000000000", out);
+
+  folly::uuid_unparse_lower(out, ones);
+  EXPECT_EQ("ffffffff-ffff-ffff-ffff-ffffffffffff", out);
+}
+
+// Filling all 16 bytes with the same value exercises one hex-pair table entry,
+// both nibbles, at every output offset. Covers all 256 entries of both tables.
+TEST(UuidUnparseTest, AllByteValues) {
+  for (int v = 0; v < 256; ++v) {
+    std::uint8_t in[16];
+    std::memset(in, static_cast<std::uint8_t>(v), sizeof(in));
+
+    std::string actualUpper;
+    std::string actualLower;
+    folly::uuid_unparse_upper(actualUpper, in);
+    folly::uuid_unparse_lower(actualLower, in);
+
+    ASSERT_EQ(expectedUuidString(in, true), actualUpper) << "byte " << v;
+    ASSERT_EQ(expectedUuidString(in, false), actualLower) << "byte " << v;
+  }
+}

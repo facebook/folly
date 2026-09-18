@@ -355,4 +355,69 @@ inline UuidParseCode uuid_parse(std::string& out, std::string_view s) {
   return detail::uuid_parse_generic<uuid_parse_buffer_to_buffer>(out, s);
 }
 
+namespace detail {
+
+// One entry per byte value, so each input byte becomes a single 2-byte store.
+// Held as char pairs rather than uint16_t to keep the table independent of
+// host endianness.
+template <char Alpha>
+constexpr std::array<std::array<char, 2>, 256> generateHexPairTable() {
+  const auto nibble = [](unsigned v) -> char {
+    return v < 10
+        ? static_cast<char>('0' + v)
+        : static_cast<char>(Alpha + (v - 10));
+  };
+  std::array<std::array<char, 2>, 256> table = {};
+  for (std::size_t i = 0; i < 256; ++i) {
+    table[i][0] = nibble(static_cast<unsigned>(i) >> 4);
+    table[i][1] = nibble(static_cast<unsigned>(i) & 0xFu);
+  }
+  return table;
+}
+
+inline constexpr auto hex_pairs_upper = generateHexPairTable<'A'>();
+inline constexpr auto hex_pairs_lower = generateHexPairTable<'a'>();
+
+// Where each input byte's two hex chars land in the 8-4-4-4-12 layout.
+inline constexpr std::array<std::uint8_t, 16> uuid_unparse_offsets = {
+    0, 2, 4, 6, 9, 11, 14, 16, 19, 21, 24, 26, 28, 30, 32, 34};
+
+// The table is a template parameter, not a runtime argument: picking the case
+// must not cost anything at the call site.
+template <const std::array<std::array<char, 2>, 256>& Table>
+FOLLY_ALWAYS_INLINE void uuid_unparse_buffer_to_buffer(
+    char* out, const std::uint8_t* in) {
+  for (std::size_t i = 0; i < 16; ++i) {
+    std::memcpy(out + uuid_unparse_offsets[i], Table[in[i]].data(), 2);
+  }
+  out[8] = out[13] = out[18] = out[23] = '-';
+}
+
+} // namespace detail
+
+// reads 16 bytes from in and writes 37 bytes to out: 36 characters plus a NUL
+// terminator, matching libuuid's uuid_unparse.
+FOLLY_ALWAYS_INLINE void uuid_unparse_upper(char* out, const std::uint8_t* in) {
+  detail::uuid_unparse_buffer_to_buffer<detail::hex_pairs_upper>(out, in);
+  out[36] = '\0';
+}
+
+FOLLY_ALWAYS_INLINE void uuid_unparse_lower(char* out, const std::uint8_t* in) {
+  detail::uuid_unparse_buffer_to_buffer<detail::hex_pairs_lower>(out, in);
+  out[36] = '\0';
+}
+
+// reads 16 bytes from in and overwrites out with 36 bytes
+inline void uuid_unparse_upper(std::string& out, const std::uint8_t* in) {
+  folly::resizeWithoutInitialization(out, 36);
+  detail::uuid_unparse_buffer_to_buffer<detail::hex_pairs_upper>(
+      out.data(), in);
+}
+
+inline void uuid_unparse_lower(std::string& out, const std::uint8_t* in) {
+  folly::resizeWithoutInitialization(out, 36);
+  detail::uuid_unparse_buffer_to_buffer<detail::hex_pairs_lower>(
+      out.data(), in);
+}
+
 } // namespace folly
