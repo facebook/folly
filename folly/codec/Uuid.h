@@ -47,6 +47,15 @@ uuid_parse_generic(std::string& out, std::string_view s) {
   return buffer_to_buffer_func(out.data(), s.data());
 }
 
+// The case is a template parameter, not a runtime argument: picking it must
+// not cost anything at the call site.
+template <bool Upper>
+constexpr char uuid_unparse_digit(unsigned v) {
+  return v < 10
+      ? static_cast<char>('0' + v)
+      : static_cast<char>((Upper ? 'A' : 'a') + (v - 10));
+}
+
 #if FOLLY_X64 && defined(__AVX2__)
 
 // given a register full of hexadecimal digits (0-9, a-f, A-F),
@@ -173,6 +182,93 @@ uuid_parse_buffer_to_buffer_avx2(char* out, const char* s) {
 
 inline UuidParseCode uuid_parse_avx2(std::string& out, std::string_view s) {
   return uuid_parse_generic<uuid_parse_buffer_to_buffer_avx2>(out, s);
+}
+
+// Alphabet - mapping between a number 0..15 and a corresponding digit. Written
+// twice (to 32 bytes) because vpshufb looks up within its own 128 bit lane, so
+// each lane needs a copy.
+template <bool Upper>
+constexpr std::array<char, 32> generateHexAlphabet() {
+  std::array<char, 32> alphabet = {};
+  for (unsigned i = 0; i < 32; ++i) {
+    alphabet[i] = uuid_unparse_digit<Upper>(i % 16);
+  }
+  return alphabet;
+}
+
+template <bool Upper>
+inline constexpr auto hex_alphabet = generateHexAlphabet<Upper>();
+
+// Converting 16 bytes to the corresponding "uuid_unparse_digit".
+template <bool Upper>
+FOLLY_ALWAYS_INLINE __m256i uuid_unparse_digits_avx2(const std::uint8_t* in) {
+  // One input number per 16 bit word: 0x00ab.
+  const __m256i words =
+      _mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i_u*)in));
+
+  // Split each byte into 0x0a, 0x0b
+  // We do this as (x >> 4 | x << 8) & 0x0f - the left shift is by a whole byte
+  // so that the low nibble lands above the high one, which is print order.
+  //
+  // With AVX512VBMI the whole conversion to nibbles can be done with one
+  // vpmultishiftqb
+  const __m256i spread =
+      _mm256_or_si256(_mm256_srli_epi16(words, 4), _mm256_slli_epi16(words, 8));
+  // vpshufb zeroes a byte whose index has bit 7 set, and the high byte still
+  // holds the whole input number, so unlike vpermb it needs the dirty bits
+  // cleared.
+  const __m256i nibbles = _mm256_and_si256(spread, _mm256_set1_epi8(0x0f));
+
+  const __m256i alphabet =
+      _mm256_loadu_si256((const __m256i_u*)hex_alphabet<Upper>.data());
+  return _mm256_shuffle_epi8(alphabet, nibbles);
+}
+
+template <bool Upper>
+FOLLY_ALWAYS_INLINE void uuid_unparse_buffer_to_buffer_avx2(
+    char* out, const std::uint8_t* in) {
+  const __m256i digits = uuid_unparse_digits_avx2<Upper>(in);
+
+  // We now need to store the digits to the output
+  // clang-format off
+  // Let's say digits are:
+  // digits = 00112233445566778899aabbccddeeff
+  // We are expected to write the following 36 bytes:
+  // out    = 00112233-4455-6677-8899-aabbccddeeff
+  // We are going to do it in two parts:
+  // head = [0011]
+  // tail =     [2233-4455-6677-8899-aabbccddeeff]
+  // clang-format on
+
+  // On avx512 this is one _mm256_mask_permutexvar_epi8
+  const auto computeLast32Bytes = [&] {
+    // _mm256_shuffle_epi8 operates only on 16byte lanes.
+    // We need to do a cross lane shuffle, so we first preposition 4 byte
+    // chunks.
+    const __m256i lanes = _mm256_permutevar8x32_epi32(
+        digits, _mm256_setr_epi32(1, 2, 3, 4, 4, 5, 6, 7));
+
+    // now moving lanes.
+    // We are also utilizing the fact that _mm256_shuffle_epi8
+    // can put a 0 where we tell it.
+    // That way we can first put `0` and then mix in `-` with
+    // an `or` instruction.
+    // clang-format off
+    const __m256i place = _mm256_setr_epi8(
+      0, 1, 2, 3, -1, 4, 5, 6, 7, -1, 8, 9, 10, 11, -1, 12,
+      1, 2, 3, -1, 4, 5, 6, 7,  8,  9, 10, 11, 12, 13, 14, 15);
+    const __m256i dashes = _mm256_setr_epi8(
+      0, 0, 0, 0, '-', 0, 0, 0, 0, '-', 0, 0, 0, 0, '-', 0,
+      0, 0, 0, '-', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    // clang-format on
+
+    return _mm256_or_si256(_mm256_shuffle_epi8(lanes, place), dashes);
+  };
+  const __m256i tail = computeLast32Bytes();
+
+  // digits, not lanes - the permute above moved the first four out of the way.
+  _mm_storeu_si32(out, _mm256_castsi256_si128(digits));
+  _mm256_storeu_si256((__m256i_u*)(out + 4), tail);
 }
 
 #endif // FOLLY_X64 && defined(__AVX2__)
@@ -360,37 +456,43 @@ namespace detail {
 // One entry per byte value, so each input byte becomes a single 2-byte store.
 // Held as char pairs rather than uint16_t to keep the table independent of
 // host endianness.
-template <char Alpha>
+template <bool Upper>
 constexpr std::array<std::array<char, 2>, 256> generateHexPairTable() {
-  const auto nibble = [](unsigned v) -> char {
-    return v < 10
-        ? static_cast<char>('0' + v)
-        : static_cast<char>(Alpha + (v - 10));
-  };
   std::array<std::array<char, 2>, 256> table = {};
   for (std::size_t i = 0; i < 256; ++i) {
-    table[i][0] = nibble(static_cast<unsigned>(i) >> 4);
-    table[i][1] = nibble(static_cast<unsigned>(i) & 0xFu);
+    table[i][0] = uuid_unparse_digit<Upper>(static_cast<unsigned>(i) >> 4);
+    table[i][1] = uuid_unparse_digit<Upper>(static_cast<unsigned>(i) & 0xFu);
   }
   return table;
 }
 
-inline constexpr auto hex_pairs_upper = generateHexPairTable<'A'>();
-inline constexpr auto hex_pairs_lower = generateHexPairTable<'a'>();
+// The case is a template parameter, not a runtime argument: picking it must
+// not cost anything at the call site.
+template <bool Upper>
+inline constexpr auto hex_pairs = generateHexPairTable<Upper>();
 
 // Where each input byte's two hex chars land in the 8-4-4-4-12 layout.
 inline constexpr std::array<std::uint8_t, 16> uuid_unparse_offsets = {
     0, 2, 4, 6, 9, 11, 14, 16, 19, 21, 24, 26, 28, 30, 32, 34};
 
-// The table is a template parameter, not a runtime argument: picking the case
-// must not cost anything at the call site.
-template <const std::array<std::array<char, 2>, 256>& Table>
-FOLLY_ALWAYS_INLINE void uuid_unparse_buffer_to_buffer(
+template <bool Upper>
+FOLLY_ALWAYS_INLINE void uuid_unparse_buffer_to_buffer_scalar(
     char* out, const std::uint8_t* in) {
   for (std::size_t i = 0; i < 16; ++i) {
-    std::memcpy(out + uuid_unparse_offsets[i], Table[in[i]].data(), 2);
+    std::memcpy(
+        out + uuid_unparse_offsets[i], hex_pairs<Upper>[in[i]].data(), 2);
   }
   out[8] = out[13] = out[18] = out[23] = '-';
+}
+
+template <bool Upper>
+FOLLY_ALWAYS_INLINE void uuid_unparse_buffer_to_buffer(
+    char* out, const std::uint8_t* in) {
+#if FOLLY_X64 && defined(__AVX2__)
+  uuid_unparse_buffer_to_buffer_avx2<Upper>(out, in);
+#else
+  uuid_unparse_buffer_to_buffer_scalar<Upper>(out, in);
+#endif
 }
 
 } // namespace detail
@@ -398,26 +500,24 @@ FOLLY_ALWAYS_INLINE void uuid_unparse_buffer_to_buffer(
 // reads 16 bytes from in and writes 37 bytes to out: 36 characters plus a NUL
 // terminator, matching libuuid's uuid_unparse.
 FOLLY_ALWAYS_INLINE void uuid_unparse_upper(char* out, const std::uint8_t* in) {
-  detail::uuid_unparse_buffer_to_buffer<detail::hex_pairs_upper>(out, in);
+  detail::uuid_unparse_buffer_to_buffer<true>(out, in);
   out[36] = '\0';
 }
 
 FOLLY_ALWAYS_INLINE void uuid_unparse_lower(char* out, const std::uint8_t* in) {
-  detail::uuid_unparse_buffer_to_buffer<detail::hex_pairs_lower>(out, in);
+  detail::uuid_unparse_buffer_to_buffer<false>(out, in);
   out[36] = '\0';
 }
 
 // reads 16 bytes from in and overwrites out with 36 bytes
 inline void uuid_unparse_upper(std::string& out, const std::uint8_t* in) {
   folly::resizeWithoutInitialization(out, 36);
-  detail::uuid_unparse_buffer_to_buffer<detail::hex_pairs_upper>(
-      out.data(), in);
+  detail::uuid_unparse_buffer_to_buffer<true>(out.data(), in);
 }
 
 inline void uuid_unparse_lower(std::string& out, const std::uint8_t* in) {
   folly::resizeWithoutInitialization(out, 36);
-  detail::uuid_unparse_buffer_to_buffer<detail::hex_pairs_lower>(
-      out.data(), in);
+  detail::uuid_unparse_buffer_to_buffer<false>(out.data(), in);
 }
 
 } // namespace folly
