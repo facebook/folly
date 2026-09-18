@@ -75,7 +75,13 @@ function(folly_fetch_from_manifest name manifest)
   else()
     message(FATAL_ERROR "no archive or pinned commit in ${path}")
   endif()
+  # CMAKE_REQUIRED_* configure folly's own check_* calls, and a subproject
+  # inherits them. An imported target such as Threads::Threads is absent from
+  # the separate project a try_compile() generates, so a dependency's own checks
+  # fail there with "target was not found".
+  cmake_push_check_state(RESET)
   FetchContent_MakeAvailable(${name})
+  cmake_pop_check_state()
 endfunction()
 
 set(
