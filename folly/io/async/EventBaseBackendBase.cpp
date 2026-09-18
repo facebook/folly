@@ -21,12 +21,14 @@
 namespace folly {
 void EventBaseEvent::eb_ev_base(EventBase* evb) {
   evb_ = evb;
-  event_.ev_base = evb ? evb->getLibeventBase() : nullptr;
+  auto* backend = evb ? evb->getBackend() : nullptr;
+  event_.ev_base = backend ? backend->getEventBase() : nullptr;
 }
 
 int EventBaseEvent::eb_event_base_set(EventBase* evb) {
   evb_ = evb;
-  auto* base = evb_ ? evb_->getLibeventBase() : nullptr;
+  auto* backend = evb_ ? evb_->getBackend() : nullptr;
+  auto* base = backend ? backend->getEventBase() : nullptr;
   if (base) {
     return ::event_base_set(base, &event_);
   }

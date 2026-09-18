@@ -1250,7 +1250,7 @@ const char* EventBase::getLibeventMethod() {
   struct base {
     const op* evsel;
   };
-  auto b = reinterpret_cast<base*>(getLibeventBase());
+  auto b = reinterpret_cast<base*>(evb_ ? evb_->getEventBase() : nullptr);
   return !b ? "" : b->evsel->name;
 }
 

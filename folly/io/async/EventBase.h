@@ -820,6 +820,11 @@ class EventBase
   // Avoid using these functions if possible.  These functions are not
   // guaranteed to always be present if we ever provide alternative EventBase
   // implementations that do not use libevent internally.
+  [[deprecated(
+      "Exposes libevent internals, and already returns null for backends that "
+      "are not libevent, such as EpollBackend. Prefer folly's own event APIs; "
+      "getBackend()->getEventBase() is the stopgap if you truly need the "
+      "libevent base.")]]
   event_base* getLibeventBase() const;
 
   static const char* getLibeventVersion();
