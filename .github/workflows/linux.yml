@@ -1,0 +1,63 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
+
+name: linux
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+  actions: read  #  to query GitHub Actions cache usage
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - name: static
+          shared: 'OFF'
+        - name: shared
+          shared: 'ON'
+    env:
+      SCCACHE_GHA_ENABLED: "on"
+    steps:
+
+    - uses: actions/checkout@v6
+
+    - name: Set up sccache
+      uses: mozilla-actions/sccache-action@v0.0.10
+      with:
+        version: "v0.14.0"
+
+    # Whatever the runner already has is used; the rest is fetched or built by
+    # the CMake build itself, so there is no dependency install step.
+    - name: Configure
+      run: >
+        cmake -B _build
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo
+        -DBUILD_SHARED_LIBS=${{ matrix.shared }}
+        -DBUILD_TESTS=ON
+        -DCMAKE_C_COMPILER_LAUNCHER=sccache
+        -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+
+    - name: Build
+      run: cmake --build _build -j
+
+    - name: Test
+      run: ctest --test-dir _build --output-on-failure
+
+    - name: Show sccache stats
+      if: always()
+      run: sccache --show-stats

@@ -208,7 +208,7 @@ You may also use `vcpkg install folly:x64-windows --head` to build against `main
 
 ## macOS
 
-`getdeps.py` builds work on macOS and are tested in CI, however if you prefer, you can try Homebrew.
+The CMake build is tested on macOS in CI, and `getdeps.py` builds work there too. If you prefer, you can try Homebrew.
 
 ### Homebrew
 
