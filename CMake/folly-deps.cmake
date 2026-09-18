@@ -200,7 +200,17 @@ else()
   # superproject. CMP0077 makes the option() inside it defer to this.
   set(folly_saved_build_testing "${BUILD_TESTING}")
   set(BUILD_TESTING OFF)
+  # glog asks for `gflags` in lower case, which on a case-insensitive
+  # filesystem matches the FindGflags.cmake on our module path and warns.
+  # Config mode resolves the gflags fetched above on either filesystem.
+  set(folly_saved_prefer_config "${CMAKE_FIND_PACKAGE_PREFER_CONFIG}")
+  set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
   folly_fetch_from_manifest(glog glog)
+  if (folly_saved_prefer_config STREQUAL "")
+    unset(CMAKE_FIND_PACKAGE_PREFER_CONFIG)
+  else()
+    set(CMAKE_FIND_PACKAGE_PREFER_CONFIG "${folly_saved_prefer_config}")
+  endif()
   if (folly_saved_build_testing STREQUAL "")
     unset(BUILD_TESTING)
   else()
