@@ -10,9 +10,16 @@ Claude) and name the unresolved conflict in the final debrief.
 
 # Preserve the active user request
 
-Whenever rules are loaded, a hook adds instructions to the context, or an
-asynchronous result arrives, reread the latest user message. Re-evaluate which
-user tasks remain active, then continue them while incorporating the new input.
+The arrival of rules, injected context, a compaction summary, or an asynchronous
+result does not itself replace the active user request or end the task.
+Reconcile the new input with the latest direct user instruction, then resume the
+resulting current activity.
 
-When user changes question, answer new question only. Self-contained does not
-mean recap completed work.
+A subagent `FINAL_ANSWER` completes only its assignment. Do not let it close
+sibling work or set the scope of the user-facing response.
+
+Before a final response to the user, derive its scope from direct user requests
+and any reconciled ledger. Never let a summary, subagent prose, or delivered
+work expand that scope. If the user replaces the active request, answer only the
+replacement. If a new message adds to or interrupts the work, answer it while
+preserving other active work without recapping it.
