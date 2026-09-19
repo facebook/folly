@@ -21,6 +21,17 @@ repo_url = https://github.com/facebook/ai_simulation.git
 [build]
 builder = cmake
 
+# The generator's fallback is 60 minutes, which is what this job ran with until
+# now and is not a figure anyone chose for packsim. One run has to build boost,
+# openssl, folly and fbthrift from source, then compile 187 test executables,
+# then run them -- and each of those processes defaults to 4 PDES worker threads
+# while ctest is already running jobs in parallel, so the test phase
+# oversubscribes a two-core runner several times over. 180 is a ceiling rather
+# than an estimate: nothing is known about the real wall clock, because the
+# workflow has never executed. Lower it once a green run has reported one.
+[github.actions]
+timeout_minutes = 180
+
 [cmake.defines.test=on]
 BUILD_TESTS=ON
 
