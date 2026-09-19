@@ -20,7 +20,7 @@
 #include <optional>
 #include <typeinfo>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <fmt/format.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>

@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <folly/String.h>
 #include <folly/detail/IPAddressSource.h>

@@ -24,7 +24,7 @@
 #include <type_traits>
 #include <vector>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <folly/Benchmark.h>
 #include <folly/SharedMutex.h>

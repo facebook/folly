@@ -32,7 +32,7 @@
 
 #include <boost/functional/hash.hpp>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <folly/Exception.h>
 #include <folly/hash/Hash.h>
