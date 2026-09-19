@@ -716,7 +716,7 @@ FOLLY_NOINLINE void StaticMetaBase::ensureThreadEntryIsInSet(
 void* ThreadEntry::releaseElement(uint32_t id) {
   auto rlocked = meta->allId2ThreadEntrySets_[id].rlock();
   auto capacity = getElementsCapacity();
-  void* ptrToReturn = (capacity >= id) ? elements[id].release() : nullptr;
+  void* ptrToReturn = (capacity > id) ? elements[id].release() : nullptr;
   auto slot = rlocked->getIndexFor(this);
   if (slot < 0) {
     DCHECK(removed_ || ptrToReturn == nullptr);
