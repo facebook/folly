@@ -71,8 +71,14 @@ void Arena<Alloc>::merge(Arena<Alloc>&& other) {
   FOLLY_SAFE_CHECK(
       blockGoodAllocSize() == other.blockGoodAllocSize(),
       "cannot merge arenas of different minBlockSize");
+  const bool wasEmpty = blocks_.empty();
   blocks_.splice_after(blocks_.before_begin(), other.blocks_);
   other.blocks_.clear();
+  if (wasEmpty) {
+    // currentBlock_ is still before_begin(); leaving it there would let
+    // canReuseExistingBlock() bump-allocate into a merged block.
+    currentBlock_ = blocks_.last();
+  }
   largeBlocks_.splice_after(largeBlocks_.before_begin(), other.largeBlocks_);
   other.largeBlocks_.clear();
   other.ptr_ = other.end_ = nullptr;

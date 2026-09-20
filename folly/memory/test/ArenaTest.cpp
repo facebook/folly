@@ -374,6 +374,21 @@ TEST(Arena, Merge) {
   EXPECT_EQ(0, arena2.bytesUsed());
 }
 
+TEST(Arena, MergeIntoUntouchedArena) {
+  SysArena src;
+  auto* live = static_cast<char*>(alloc(src, 1));
+  *live = 'x';
+
+  // dst has never allocated, so its currentBlock_ is still before_begin().
+  SysArena dst;
+  dst.merge(std::move(src));
+
+  // The merged block holds live memory; it must not be handed out again, and
+  // the allocation below (which fills with 0xff) must not land on top of it.
+  EXPECT_NE(live, alloc(dst, 1));
+  EXPECT_EQ('x', *live);
+}
+
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
