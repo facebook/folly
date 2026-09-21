@@ -152,9 +152,10 @@ LIBCXX_BUCKIFIED_SELECTOR = selects.and_(
 )
 
 STATIC_CXX_STDLIB_SELECTOR = selects.or_(
-    LIBSTDCXX_BUCKIFIED_SELECTOR,
-    LIBCXX_BUCKIFIED_SELECTOR,
-    selects.cond("fbsource//xplat/toolchains/android/ndk:cxx_runtime_type[static]"),
+    # @fb-only[end= ]: LIBSTDCXX_BUCKIFIED_SELECTOR,
+    # @fb-only[end= ]: LIBCXX_BUCKIFIED_SELECTOR,
+    # @fb-only[end= ]: selects.cond("fbsource//xplat/toolchains/android/ndk:cxx_runtime_type[static]"),
+    False, # @oss-only
 )
 
 fb_dirsync_cpp_library(
