@@ -75,6 +75,15 @@ function(folly_fetch_from_manifest name manifest)
   else()
     message(FATAL_ERROR "no archive or pinned commit in ${path}")
   endif()
+  # A shared dependency has to be installed alongside whatever links it, and
+  # folly installs nothing it fetches. $<BUILD_LOCAL_INTERFACE:> hides such a
+  # dependency from folly's usage requirements but not from the link dependents
+  # that install(EXPORT folly) records for a shared library, so keep it static
+  # and position independent and let it fold into folly.
+  if (BUILD_SHARED_LIBS)
+    set(BUILD_SHARED_LIBS OFF)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+  endif()
   # CMAKE_REQUIRED_* configure folly's own check_* calls, and a subproject
   # inherits them. An imported target such as Threads::Threads is absent from
   # the separate project a try_compile() generates, so a dependency's own checks
