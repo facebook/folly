@@ -896,7 +896,7 @@ fb_dirsync_cpp_library(
         # x86_64-conda-linux-gnu-c++ (conda-forge gcc 11.4.0-13) 11.4.0
         # fails to compile Demangle.cpp because of unused static functions despite
         # using [[maybe_unused]] attribute.
-        "ovr_config//distro/constraints:conda": ["-Wno-unused-function"],
+        # @fb-only[end= ]: "ovr_config//distro/constraints:conda": ["-Wno-unused-function"],
     }),
     use_raw_headers = True,
     deps = [
@@ -910,7 +910,7 @@ fb_dirsync_cpp_library(
         "fbsource//xplat/folly:folly_demangle_macos_disable_iberty_config": [],
         "ovr_config//os:linux": ["fbsource//third-party/binutils:iberty-demangle"],
         "ovr_config//os:macos": ["fbsource//third-party/binutils:iberty-demangle"],
-        "ovr_config//runtime:fbcode-no-arvr": ["fbsource//third-party/binutils/tp2:iberty"],
+        # @fb-only[end= ]: "ovr_config//runtime:fbcode-no-arvr": ["fbsource//third-party/binutils/tp2:iberty"],
     }),
     exported_deps = [
         ":fbstring",
