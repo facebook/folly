@@ -17,27 +17,19 @@
 # Exception tracer is excluded when FOLLY_NO_EXCEPTION_TRACER is set
 if (NOT FOLLY_NO_EXCEPTION_TRACER)
 
-folly_add_library(
-  NAME compatibility
-  HEADERS
-    Compatibility.h
-)
+  folly_add_library(NAME compatibility HEADERS Compatibility.h)
 
-folly_add_library(
-  NAME exception_abi
-  HEADERS
-    ExceptionAbi.h
-  EXPORTED_DEPS
-    folly_debugging_exception_tracer_compatibility
-)
+  folly_add_library(NAME exception_abi HEADERS ExceptionAbi.h EXPORTED_DEPS
+                    folly_debugging_exception_tracer_compatibility)
 
-folly_add_library(
-  NAME exception_counter
-  SRCS
+  folly_add_library(
+    NAME
+    exception_counter
+    SRCS
     ExceptionCounterLib.cpp
-  HEADERS
+    HEADERS
     ExceptionCounterLib.h
-  DEPS
+    DEPS
     folly_debugging_exception_tracer_stacktrace
     folly_debugging_symbolizer_symbolizer
     folly_hash_spooky_hash_v2
@@ -45,42 +37,42 @@ folly_add_library(
     folly_singleton_thread_local
     folly_synchronization_rw_spin_lock
     folly_synchronized
-  EXPORTED_DEPS
+    EXPORTED_DEPS
     folly_debugging_exception_tracer_compatibility
     folly_debugging_exception_tracer_exception_tracer_base
-    folly_debugging_exception_tracer_exception_tracer_callbacks
-)
+    folly_debugging_exception_tracer_exception_tracer_callbacks)
 
-folly_add_library(
-  NAME exception_counter_static_registration
-  SRCS
+  folly_add_library(
+    NAME
+    exception_counter_static_registration
+    SRCS
     ExceptionCounterLibStaticRegistration.cpp
-  DEPS
+    DEPS
     folly_debugging_exception_tracer_exception_counter
-    folly_debugging_exception_tracer_exception_tracer_callbacks
-)
+    folly_debugging_exception_tracer_exception_tracer_callbacks)
 
-folly_add_library(
-  NAME exception_tracer
-  SRCS
+  folly_add_library(
+    NAME
+    exception_tracer
+    SRCS
     ExceptionStackTraceLib.cpp
-  DEPS
+    DEPS
     folly_debugging_exception_tracer_exception_abi
     folly_debugging_exception_tracer_exception_tracer_base
     folly_debugging_exception_tracer_stacktrace
     folly_lang_exception
     folly_utility
-  EXPORTED_DEPS
-    folly_debugging_exception_tracer_exception_tracer_callbacks
-)
+    EXPORTED_DEPS
+    folly_debugging_exception_tracer_exception_tracer_callbacks)
 
-folly_add_library(
-  NAME exception_tracer_base
-  SRCS
+  folly_add_library(
+    NAME
+    exception_tracer_base
+    SRCS
     ExceptionTracer.cpp
-  HEADERS
+    HEADERS
     ExceptionTracer.h
-  DEPS
+    DEPS
     ${GLOG_LIBRARIES}
     folly_debugging_exception_tracer_exception_abi
     folly_debugging_exception_tracer_stacktrace
@@ -88,42 +80,42 @@ folly_add_library(
     folly_debugging_symbolizer_symbolizer
     folly_portability
     folly_string
-  EXPORTED_DEPS
-    folly_portability_config
-)
+    EXPORTED_DEPS
+    folly_portability_config)
 
-folly_add_library(
-  NAME exception_tracer_callbacks
-  SRCS
+  folly_add_library(
+    NAME
+    exception_tracer_callbacks
+    SRCS
     ExceptionTracerLib.cpp
-  HEADERS
+    HEADERS
     ExceptionTracerLib.h
-  DEPS
+    DEPS
     folly_indestructible
     folly_portability
     folly_shared_mutex
     folly_synchronized
-  EXPORTED_DEPS
-    folly_debugging_exception_tracer_compatibility
-)
+    EXPORTED_DEPS
+    folly_debugging_exception_tracer_compatibility)
 
-folly_add_library(
-  NAME smart_exception_stack_trace_hooks
-  SRCS
+  folly_add_library(
+    NAME
+    smart_exception_stack_trace_hooks
+    SRCS
     SmartExceptionStackTraceHooks.cpp
-  DEPS
+    DEPS
     folly_debugging_exception_tracer_exception_tracer_callbacks
     folly_debugging_exception_tracer_smart_exception_tracer_singleton
-    folly_debugging_symbolizer_symbolizer
-)
+    folly_debugging_symbolizer_symbolizer)
 
-folly_add_library(
-  NAME smart_exception_tracer
-  SRCS
+  folly_add_library(
+    NAME
+    smart_exception_tracer
+    SRCS
     SmartExceptionTracer.cpp
-  HEADERS
+    HEADERS
     SmartExceptionTracer.h
-  DEPS
+    DEPS
     ${GLOG_LIBRARIES}
     folly_container_f14_hash
     folly_debugging_exception_tracer_smart_exception_tracer_singleton
@@ -132,35 +124,34 @@ folly_add_library(
     folly_map_util
     folly_scope_guard
     folly_synchronized
-  EXPORTED_DEPS
+    EXPORTED_DEPS
     folly_debugging_exception_tracer_compatibility
     folly_debugging_exception_tracer_exception_tracer_base
     folly_debugging_exception_tracer_exception_tracer_callbacks
-    folly_exception_wrapper
-)
+    folly_exception_wrapper)
 
-folly_add_library(
-  NAME smart_exception_tracer_singleton
-  SRCS
+  folly_add_library(
+    NAME
+    smart_exception_tracer_singleton
+    SRCS
     SmartExceptionTracerSingleton.cpp
-  HEADERS
+    HEADERS
     SmartExceptionTracerSingleton.h
-  EXPORTED_DEPS
+    EXPORTED_DEPS
     folly_container_f14_hash
     folly_debugging_exception_tracer_stacktrace
-    folly_synchronized
-)
+    folly_synchronized)
 
-folly_add_library(
-  NAME stacktrace
-  SRCS
+  folly_add_library(
+    NAME
+    stacktrace
+    SRCS
     StackTrace.cpp
-  HEADERS
+    HEADERS
     StackTrace.h
-  DEPS
+    DEPS
     folly_debugging_symbolizer_stack_trace
-  EXPORTED_DEPS
-    folly_portability
-)
+    EXPORTED_DEPS
+    folly_portability)
 
-endif() # NOT FOLLY_NO_EXCEPTION_TRACER
+endif () # NOT FOLLY_NO_EXCEPTION_TRACER

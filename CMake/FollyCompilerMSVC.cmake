@@ -14,38 +14,62 @@
 
 # Some additional configuration options.
 option(MSVC_ENABLE_ALL_WARNINGS "If enabled, pass /Wall to the compiler." ON)
-option(MSVC_ENABLE_DEBUG_INLINING "If enabled, enable inlining in the debug configuration. This allows /Zc:inline to be far more effective." OFF)
-option(MSVC_ENABLE_FAST_LINK "If enabled, pass /DEBUG:FASTLINK to the linker. This makes linking faster, but the gtest integration for Visual Studio can't currently handle the .pdbs generated." OFF)
-option(MSVC_ENABLE_LEAN_AND_MEAN_WINDOWS "If enabled, define WIN32_LEAN_AND_MEAN to include a smaller subset of Windows.h" ON)
-option(MSVC_ENABLE_LTCG "If enabled, use Link Time Code Generation for Release builds." OFF)
-option(MSVC_ENABLE_PARALLEL_BUILD "If enabled, build multiple source files in parallel." ON)
-option(MSVC_ENABLE_STATIC_ANALYSIS "If enabled, do more complex static analysis and generate warnings appropriately." OFF)
-option(MSVC_USE_STATIC_RUNTIME "If enabled, build against the static, rather than the dynamic, runtime." OFF)
-option(MSVC_SUPPRESS_BOOST_CONFIG_OUTDATED "If enabled, suppress Boost's warnings about the config being out of date." ON)
+option(
+  MSVC_ENABLE_DEBUG_INLINING
+  "If enabled, enable inlining in the debug configuration. This allows /Zc:inline to be far more effective."
+  OFF)
+option(
+  MSVC_ENABLE_FAST_LINK
+  "If enabled, pass /DEBUG:FASTLINK to the linker. This makes linking faster, but the gtest integration for Visual Studio can't currently handle the .pdbs generated."
+  OFF)
+option(
+  MSVC_ENABLE_LEAN_AND_MEAN_WINDOWS
+  "If enabled, define WIN32_LEAN_AND_MEAN to include a smaller subset of Windows.h"
+  ON)
+option(MSVC_ENABLE_LTCG
+       "If enabled, use Link Time Code Generation for Release builds." OFF)
+option(MSVC_ENABLE_PARALLEL_BUILD
+       "If enabled, build multiple source files in parallel." ON)
+option(
+  MSVC_ENABLE_STATIC_ANALYSIS
+  "If enabled, do more complex static analysis and generate warnings appropriately."
+  OFF)
+option(MSVC_USE_STATIC_RUNTIME
+       "If enabled, build against the static, rather than the dynamic, runtime."
+       OFF)
+option(
+  MSVC_SUPPRESS_BOOST_CONFIG_OUTDATED
+  "If enabled, suppress Boost's warnings about the config being out of date."
+  ON)
 
 # Alas, option() doesn't support string values.
-set(MSVC_FAVORED_ARCHITECTURE "blend" CACHE STRING "One of 'blend', 'AMD64', 'INTEL64', or 'ATOM'. This tells the compiler to generate code optimized to run best on the specified architecture.")
+set(MSVC_FAVORED_ARCHITECTURE
+    "blend"
+    CACHE
+      STRING
+      "One of 'blend', 'AMD64', 'INTEL64', or 'ATOM'. This tells the compiler to generate code optimized to run best on the specified architecture."
+)
 # Add a pretty drop-down selector for these values when using the GUI.
-set_property(
-  CACHE MSVC_FAVORED_ARCHITECTURE
-  PROPERTY STRINGS
-    blend
-    AMD64
-    ATOM
-    INTEL64
-)
+set_property(CACHE MSVC_FAVORED_ARCHITECTURE PROPERTY STRINGS blend AMD64 ATOM
+                                                      INTEL64)
 # Validate, and then add the favored architecture.
-if (NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "blend" AND NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "AMD64" AND NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "INTEL64" AND NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "ATOM")
-  message(FATAL_ERROR "MSVC_FAVORED_ARCHITECTURE must be set to one of exactly, 'blend', 'AMD64', 'INTEL64', or 'ATOM'! Got '${MSVC_FAVORED_ARCHITECTURE}' instead!")
-endif()
+if (NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "blend"
+    AND NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "AMD64"
+    AND NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "INTEL64"
+    AND NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "ATOM")
+  message(
+    FATAL_ERROR
+      "MSVC_FAVORED_ARCHITECTURE must be set to one of exactly, 'blend', 'AMD64', 'INTEL64', or 'ATOM'! Got '${MSVC_FAVORED_ARCHITECTURE}' instead!"
+  )
+endif ()
 
-set(MSVC_LANGUAGE_VERSION "c++20" CACHE STRING "One of 'c++20', or 'c++latest'. This determines which version of C++ to compile as.")
-set_property(
-  CACHE MSVC_LANGUAGE_VERSION
-  PROPERTY STRINGS
+set(MSVC_LANGUAGE_VERSION
     "c++20"
-    "c++latest"
+    CACHE
+      STRING
+      "One of 'c++20', or 'c++latest'. This determines which version of C++ to compile as."
 )
+set_property(CACHE MSVC_LANGUAGE_VERSION PROPERTY STRINGS "c++20" "c++latest")
 
 ############################################################
 # We need to adjust a couple of the default option sets.
@@ -54,39 +78,53 @@ set_property(
 # If the static runtime is requested, we have to
 # overwrite some of CMake's defaults.
 if (MSVC_USE_STATIC_RUNTIME)
-  foreach(flag_var
-      CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
-      CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO
-      CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
-      CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+  foreach (
+    flag_var
+    CMAKE_C_FLAGS
+    CMAKE_C_FLAGS_DEBUG
+    CMAKE_C_FLAGS_RELEASE
+    CMAKE_C_FLAGS_MINSIZEREL
+    CMAKE_C_FLAGS_RELWITHDEBINFO
+    CMAKE_CXX_FLAGS
+    CMAKE_CXX_FLAGS_DEBUG
+    CMAKE_CXX_FLAGS_RELEASE
+    CMAKE_CXX_FLAGS_MINSIZEREL
+    CMAKE_CXX_FLAGS_RELWITHDEBINFO)
     if (${flag_var} MATCHES "/MD")
       string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-    endif()
-  endforeach()
-endif()
+    endif ()
+  endforeach ()
+endif ()
 
 # The Ninja generator doesn't de-dup the exception mode flag, so remove the
 # default flag so that MSVC doesn't warn about it on every single file.
 if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-  foreach(flag_var
-      CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
-      CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO
-      CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
-      CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+  foreach (
+    flag_var
+    CMAKE_C_FLAGS
+    CMAKE_C_FLAGS_DEBUG
+    CMAKE_C_FLAGS_RELEASE
+    CMAKE_C_FLAGS_MINSIZEREL
+    CMAKE_C_FLAGS_RELWITHDEBINFO
+    CMAKE_CXX_FLAGS
+    CMAKE_CXX_FLAGS_DEBUG
+    CMAKE_CXX_FLAGS_RELEASE
+    CMAKE_CXX_FLAGS_MINSIZEREL
+    CMAKE_CXX_FLAGS_RELWITHDEBINFO)
     if (${flag_var} MATCHES "/EHsc")
       string(REGEX REPLACE "/EHsc" "" ${flag_var} "${${flag_var}}")
-    endif()
-  endforeach()
-endif()
+    endif ()
+  endforeach ()
+endif ()
 
 # In order for /Zc:inline, which speeds up the build significantly, to work
 # we need to remove the /Ob0 parameter that CMake adds by default, because that
 # would normally disable all inlining.
-foreach(flag_var CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG)
+foreach (flag_var CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG)
   if (${flag_var} MATCHES "/Ob0")
     string(REGEX REPLACE "/Ob0" "" ${flag_var} "${${flag_var}}")
-  endif()
-endforeach()
+  endif ()
+endforeach ()
 
 # When building with Ninja, or with /MP enabled, there is the potential
 # for multiple processes to need to lock the same pdb file.
@@ -98,16 +136,17 @@ endforeach()
 # into the object files in a similar way to gcc/clang which should reduce
 # contention and potentially make the build faster... but at the cost of
 # larger object files
-foreach(flag_var CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG)
+foreach (flag_var CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG)
   if (${flag_var} MATCHES "/Zi")
     string(REGEX REPLACE "/Zi" "/Z7" ${flag_var} "${${flag_var}}")
-  endif()
-endforeach()
+  endif ()
+endforeach ()
 
 # Apply the option set for Folly to the specified target.
-function(apply_folly_compile_options_to_target THETARGET)
+function (apply_folly_compile_options_to_target THETARGET)
   # The general options passed:
-  target_compile_options(${THETARGET}
+  target_compile_options(
+    ${THETARGET}
     PUBLIC
       /EHs # Don't catch structured exceptions with catch (...)
       /GF # There are bugs with constexpr StringPiece when string pooling is disabled.
@@ -117,40 +156,33 @@ function(apply_folly_compile_options_to_target THETARGET)
       /Zc:strictStrings # Don't allow conversion from a string literal to mutable characters.
       /Zc:threadSafeInit # Enable thread-safe function-local statics initialization.
       /Zc:throwingNew # Assume operator new throws on failure.
-
       /permissive- # Be mean, don't allow bad non-standard stuff (C++/CLI, __declspec, etc. are all left intact).
       /std:${MSVC_LANGUAGE_VERSION} # Build in the requested version of C++
       /utf-8 # fmt needs unicode support, which requires compiling with /utf-8
-
     PRIVATE
       /bigobj # Support objects with > 65k sections. Needed due to templates.
       /favor:${MSVC_FAVORED_ARCHITECTURE} # Architecture to prefer when generating code.
       /Zc:inline # Have the compiler eliminate unreferenced COMDAT functions and data before emitting the object file.
-
       $<$<BOOL:${MSVC_ENABLE_ALL_WARNINGS}>:/Wall> # Enable all warnings if requested.
       $<$<BOOL:${MSVC_ENABLE_PARALLEL_BUILD}>:/MP> # Enable multi-processor compilation if requested.
       $<$<BOOL:${MSVC_ENABLE_STATIC_ANALYSIS}>:/analyze> # Enable static analysis if requested.
-
       # Debug builds
       $<$<CONFIG:DEBUG>:
-        /Gy- # Disable function level linking.
-
-        $<$<BOOL:${MSVC_ENABLE_DEBUG_INLINING}>:/Ob2> # Add /Ob2 if allowing inlining in debug mode.
+      /Gy- # Disable function level linking.
+      $<$<BOOL:${MSVC_ENABLE_DEBUG_INLINING}>:/Ob2> # Add /Ob2 if allowing inlining in debug mode.
       >
-
       # Non-debug builds
       $<$<NOT:$<CONFIG:DEBUG>>:
-        /Gw # Optimize global data. (-fdata-sections)
-        /Gy # Enable function level linking. (-ffunction-sections)
-        /Qpar # Enable parallel code generation.
-        /Oi # Enable intrinsic functions.
-        /Ot # Favor fast code.
+      /Gw # Optimize global data. (-fdata-sections)
+      /Gy # Enable function level linking. (-ffunction-sections)
+      /Qpar # Enable parallel code generation.
+      /Oi # Enable intrinsic functions.
+      /Ot # Favor fast code.
+      $<$<BOOL:${MSVC_ENABLE_LTCG}>:/GL> # Enable link time code generation.
+      >)
 
-        $<$<BOOL:${MSVC_ENABLE_LTCG}>:/GL> # Enable link time code generation.
-      >
-  )
-
-  target_compile_options(${THETARGET}
+  target_compile_options(
+    ${THETARGET}
     PUBLIC
       /wd4191 # 'type cast' unsafe conversion of function pointers
       /wd4291 # no matching operator delete found
@@ -164,13 +196,11 @@ function(apply_folly_compile_options_to_target THETARGET)
       /wd4724 # potential mod by 0
       /wd4868 # compiler may not enforce left-to-right evaluation order
       /wd4996 # user deprecated
-
       # The warnings that are disabled:
       /wd4068 # Unknown pragma.
       /wd4091 # 'typedef' ignored on left of '' when no variable is declared.
       /wd4146 # Unary minus applied to unsigned type, result still unsigned.
       /wd4800 # Values being forced to bool, this happens many places, and is a "performance warning".
-
       # NOTE: glog/logging.h:1116 change to `size_t pcount() const { return size_t(pptr() - pbase()); }`
       # NOTE: gmock/gmock-spec-builders.h:1177 change to `*static_cast<const Action<F>*>(untyped_actions_[size_t(count - 1)]) :`
       # NOTE: gmock/gmock-spec-builders.h:1749 change to `const size_t count = untyped_expectations_.size();`
@@ -209,14 +239,12 @@ function(apply_folly_compile_options_to_target THETARGET)
       /wd4365 # Signed/unsigned mismatch.
       /wd4388 # Signed/unsigned mismatch on relative comparison operator.
       /wd4389 # Signed/unsigned mismatch on equality comparison operator.
-
       # TODO:
       /wd4100 # Unreferenced formal parameter.
       /wd4459 # Declaration of parameter hides global declaration.
       /wd4505 # Unreferenced local function has been removed.
       /wd4701 # Potentially uninitialized local variable used.
       /wd4702 # Unreachable code.
-
       # These warnings are disabled because we've
       # enabled all warnings. If all warnings are
       # not enabled, we still need to disable them
@@ -253,48 +281,45 @@ function(apply_folly_compile_options_to_target THETARGET)
       /wd5027 # Move assignment operator was implicitly defined as deleted.
       /wd5031 # #pragma warning(pop): likely mismatch, popping warning state pushed in different file. This is needed because of how boost does things.
       /wd5045 # Compiler will insert Spectre mitigation for memory load if /Qspectre switch is specified.
-
       # Warnings to treat as errors:
       /we4099 # Mixed use of struct and class on same type names.
       /we4129 # Unknown escape sequence. This is usually caused by incorrect escaping.
       /we4566 # Character cannot be represented in current charset. This is remidied by prefixing string with "u8".
-
     PRIVATE
       # Warnings disabled for /analyze
       $<$<BOOL:${MSVC_ENABLE_STATIC_ANALYSIS}>:
-        /wd6001 # Using uninitialized memory. This is disabled because it is wrong 99% of the time.
-        /wd6011 # Dereferencing potentially NULL pointer.
-        /wd6031 # Return value ignored.
-        /wd6235 # (<non-zero constant> || <expression>) is always a non-zero constant.
-        /wd6237 # (<zero> && <expression>) is always zero. <expression> is never evaluated and may have side effects.
-        /wd6239 # (<non-zero constant> && <expression>) always evaluates to the result of <expression>.
-        /wd6240 # (<expression> && <non-zero constant>) always evaluates to the result of <expression>.
-        /wd6246 # Local declaration hides declaration of same name in outer scope.
-        /wd6248 # Setting a SECURITY_DESCRIPTOR's DACL to NULL will result in an unprotected object. This is done by one of the boost headers.
-        /wd6255 # _alloca indicates failure by raising a stack overflow exception.
-        /wd6262 # Function uses more than x bytes of stack space.
-        /wd6271 # Extra parameter passed to format function. The analysis pass doesn't recognize %j or %z, even though the runtime does.
-        /wd6285 # (<non-zero constant> || <non-zero constant>) is always true.
-        /wd6297 # 32-bit value is shifted then cast to 64-bits. The places this occurs never use more than 32 bits.
-        /wd6308 # Realloc might return null pointer: assigning null pointer to '<name>', which is passed as an argument to 'realloc', will cause the original memory to leak.
-        /wd6326 # Potential comparison of a constant with another constant.
-        /wd6330 # Unsigned/signed mismatch when passed as a parameter.
-        /wd6340 # Mismatch on sign when passed as format string value.
-        /wd6387 # '<value>' could be '0': This does not adhere to the specification for a function.
-        /wd28182 # Dereferencing NULL pointer. '<value>' contains the same NULL value as '<expression>'.
-        /wd28251 # Inconsistent annotation for function. This is because we only annotate the declaration and not the definition.
-        /wd28278 # Function appears with no prototype in scope.
-      >
-  )
+      /wd6001 # Using uninitialized memory. This is disabled because it is wrong 99% of the time.
+      /wd6011 # Dereferencing potentially NULL pointer.
+      /wd6031 # Return value ignored.
+      /wd6235 # (<non-zero constant> || <expression>) is always a non-zero constant.
+      /wd6237 # (<zero> && <expression>) is always zero. <expression> is never evaluated and may have side effects.
+      /wd6239 # (<non-zero constant> && <expression>) always evaluates to the result of <expression>.
+      /wd6240 # (<expression> && <non-zero constant>) always evaluates to the result of <expression>.
+      /wd6246 # Local declaration hides declaration of same name in outer scope.
+      /wd6248 # Setting a SECURITY_DESCRIPTOR's DACL to NULL will result in an unprotected object. This is done by one of the boost headers.
+      /wd6255 # _alloca indicates failure by raising a stack overflow exception.
+      /wd6262 # Function uses more than x bytes of stack space.
+      /wd6271 # Extra parameter passed to format function. The analysis pass doesn't recognize %j or %z, even though the runtime does.
+      /wd6285 # (<non-zero constant> || <non-zero constant>) is always true.
+      /wd6297 # 32-bit value is shifted then cast to 64-bits. The places this occurs never use more than 32 bits.
+      /wd6308 # Realloc might return null pointer: assigning null pointer to '<name>', which is passed as an argument to 'realloc', will cause the original memory to leak.
+      /wd6326 # Potential comparison of a constant with another constant.
+      /wd6330 # Unsigned/signed mismatch when passed as a parameter.
+      /wd6340 # Mismatch on sign when passed as format string value.
+      /wd6387 # '<value>' could be '0': This does not adhere to the specification for a function.
+      /wd28182 # Dereferencing NULL pointer. '<value>' contains the same NULL value as '<expression>'.
+      /wd28251 # Inconsistent annotation for function. This is because we only annotate the declaration and not the definition.
+      /wd28278 # Function appears with no prototype in scope.
+      >)
 
   # And the extra defines:
-  target_compile_definitions(${THETARGET}
+  target_compile_definitions(
+    ${THETARGET}
     PUBLIC
       _CRT_NONSTDC_NO_WARNINGS # Don't deprecate posix names of functions.
       _CRT_SECURE_NO_WARNINGS # Don't deprecate the non _s versions of various standard library functions, because safety is for chumps.
       _SCL_SECURE_NO_WARNINGS # Don't deprecate the non _s versions of various standard library functions, because safety is for chumps.
       _STL_EXTRA_DISABLED_WARNINGS=4774\ 4987
-
       $<$<BOOL:${MSVC_ENABLE_CPP_LATEST}>:_HAS_AUTO_PTR_ETC=1> # We're building in C++ 17 or greater mode, but certain dependencies (Boost) still have dependencies on unary_function and binary_function, so we have to make sure not to remove them.
       $<$<BOOL:${MSVC_ENABLE_LEAN_AND_MEAN_WINDOWS}>:WIN32_LEAN_AND_MEAN> # Don't include most of Windows.h
       $<$<BOOL:${MSVC_SUPPRESS_BOOST_CONFIG_OUTDATED}>:BOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE> # MSVC moves faster than boost, so add a quick way to disable the messages.
@@ -302,27 +327,55 @@ function(apply_folly_compile_options_to_target THETARGET)
 
   # Ignore a warning about an object file not defining any symbols,
   # these are known, and we don't care.
-  set_property(TARGET ${THETARGET} APPEND_STRING PROPERTY STATIC_LIBRARY_FLAGS " /ignore:4221")
+  set_property(
+    TARGET ${THETARGET}
+    APPEND_STRING
+    PROPERTY STATIC_LIBRARY_FLAGS " /ignore:4221")
 
   # The options to pass to the linker:
-  set_property(TARGET ${THETARGET} APPEND_STRING PROPERTY LINK_FLAGS_DEBUG " /INCREMENTAL") # Do incremental linking.
+  set_property(
+    TARGET ${THETARGET}
+    APPEND_STRING
+    PROPERTY LINK_FLAGS_DEBUG " /INCREMENTAL") # Do incremental linking.
   if (NOT $<TARGET_PROPERTY:${THETARGET},TYPE> STREQUAL "STATIC_LIBRARY")
-    set_property(TARGET ${THETARGET} APPEND_STRING PROPERTY LINK_FLAGS_DEBUG " /OPT:NOREF") # No unreferenced data elimination.
-    set_property(TARGET ${THETARGET} APPEND_STRING PROPERTY LINK_FLAGS_DEBUG " /OPT:NOICF") # No Identical COMDAT folding.
+    set_property(
+      TARGET ${THETARGET}
+      APPEND_STRING
+      PROPERTY LINK_FLAGS_DEBUG " /OPT:NOREF"
+    )# No unreferenced data elimination.
+    set_property(
+      TARGET ${THETARGET}
+      APPEND_STRING
+      PROPERTY LINK_FLAGS_DEBUG " /OPT:NOICF") # No Identical COMDAT folding.
 
-    set_property(TARGET ${THETARGET} APPEND_STRING PROPERTY LINK_FLAGS_RELEASE " /OPT:REF") # Remove unreferenced functions and data.
-    set_property(TARGET ${THETARGET} APPEND_STRING PROPERTY LINK_FLAGS_RELEASE " /OPT:ICF") # Identical COMDAT folding.
-  endif()
+    set_property(
+      TARGET ${THETARGET}
+      APPEND_STRING
+      PROPERTY LINK_FLAGS_RELEASE " /OPT:REF"
+    )# Remove unreferenced functions and data.
+    set_property(
+      TARGET ${THETARGET}
+      APPEND_STRING
+      PROPERTY LINK_FLAGS_RELEASE " /OPT:ICF") # Identical COMDAT folding.
+  endif ()
 
   if (MSVC_ENABLE_FAST_LINK)
-    set_property(TARGET ${THETARGET} APPEND_STRING PROPERTY LINK_FLAGS_DEBUG " /DEBUG:FASTLINK") # Generate a partial PDB file that simply references the original object and library files.
-  endif()
+    set_property(
+      TARGET ${THETARGET}
+      APPEND_STRING
+      PROPERTY LINK_FLAGS_DEBUG " /DEBUG:FASTLINK")
+
+    # Generate a partial PDB file that simply references the original object and library files.
+  endif ()
 
   # Add /GL to the compiler, and /LTCG to the linker
   # if link time code generation is enabled.
   if (MSVC_ENABLE_LTCG)
-    set_property(TARGET ${THETARGET} APPEND_STRING PROPERTY LINK_FLAGS_RELEASE " /LTCG")
-  endif()
-endfunction()
+    set_property(
+      TARGET ${THETARGET}
+      APPEND_STRING
+      PROPERTY LINK_FLAGS_RELEASE " /LTCG")
+  endif ()
+endfunction ()
 
 list(APPEND FOLLY_LINK_LIBRARIES Iphlpapi.lib Ws2_32.lib)

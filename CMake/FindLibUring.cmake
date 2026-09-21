@@ -19,11 +19,10 @@ find_library(LIBURING_LIBRARY NAMES uring)
 mark_as_advanced(LIBURING_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(
-        LIBURING
-        REQUIRED_VARS LIBURING_LIBRARY LIBURING_INCLUDE_DIR)
+find_package_handle_standard_args(LIBURING REQUIRED_VARS LIBURING_LIBRARY
+                                                         LIBURING_INCLUDE_DIR)
 
-if(LIBURING_FOUND)
+if (LIBURING_FOUND)
   set(LIBURING_LIBRARIES ${LIBURING_LIBRARY})
   set(LIBURING_INCLUDE_DIRS ${LIBURING_INCLUDE_DIR})
-endif()
+endif ()

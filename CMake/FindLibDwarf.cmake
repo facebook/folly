@@ -27,11 +27,10 @@ find_library(LIBDWARF_LIBRARY NAMES dwarf)
 mark_as_advanced(LIBDWARF_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(
-  LIBDWARF
-  REQUIRED_VARS LIBDWARF_LIBRARY LIBDWARF_INCLUDE_DIR)
+find_package_handle_standard_args(LIBDWARF REQUIRED_VARS LIBDWARF_LIBRARY
+                                                         LIBDWARF_INCLUDE_DIR)
 
-if(LIBDWARF_FOUND)
+if (LIBDWARF_FOUND)
   set(LIBDWARF_LIBRARIES ${LIBDWARF_LIBRARY})
   set(LIBDWARF_INCLUDE_DIRS ${LIBDWARF_INCLUDE_DIR})
-endif()
+endif ()

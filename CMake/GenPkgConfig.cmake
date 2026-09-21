@@ -22,26 +22,25 @@
 #   target
 # ${VAR_PREFIX}_PRIVATE_LIBS: set to the linker flags needed for static
 #   linking computed from the specified target
-function(gen_pkgconfig_vars)
+function (gen_pkgconfig_vars)
   if (NOT ${ARGC} EQUAL 2)
     message(FATAL_ERROR "gen_pkgconfig_vars() requires exactly 2 arguments")
-  endif()
+  endif ()
   set(var_prefix "${ARGV0}")
   set(target "${ARGV1}")
 
   get_target_property(target_cflags "${target}" INTERFACE_COMPILE_OPTIONS)
-  if(target_cflags)
+  if (target_cflags)
     list(APPEND cflags "${target_cflags}")
-  endif()
-  get_target_property(
-    target_inc_dirs "${target}" INTERFACE_INCLUDE_DIRECTORIES)
-  if(target_inc_dirs)
+  endif ()
+  get_target_property(target_inc_dirs "${target}" INTERFACE_INCLUDE_DIRECTORIES)
+  if (target_inc_dirs)
     list(APPEND include_dirs "${target_inc_dirs}")
-  endif()
+  endif ()
   get_target_property(target_defns "${target}" INTERFACE_COMPILE_DEFINITIONS)
-  if(target_defns)
+  if (target_defns)
     list(APPEND definitions "${target_defns}")
-  endif()
+  endif ()
 
   # The INTERFACE_LINK_LIBRARIES list is unfortunately somewhat awkward to
   # process.  Entries in this list may be any of
@@ -52,43 +51,42 @@ function(gen_pkgconfig_vars)
   #
   # Walk through each entry and transform it into the desired arguments
   get_target_property(link_libs "${target}" INTERFACE_LINK_LIBRARIES)
-  if(link_libs)
-    foreach(lib_arg IN LISTS link_libs)
-      if(TARGET "${lib_arg}")
+  if (link_libs)
+    foreach (lib_arg IN LISTS link_libs)
+      if (TARGET "${lib_arg}")
         # Add any compile options specified in the targets
         # INTERFACE_COMPILE_OPTIONS.  We don't need to process its
         # INTERFACE_LINK_LIBRARIES property, since our INTERFACE_LINK_LIBRARIES
         # will already include its entries transitively.
         get_target_property(lib_cflags "${lib_arg}" INTERFACE_COMPILE_OPTIONS)
-        if(lib_cflags)
+        if (lib_cflags)
           list(APPEND cflags "${lib_cflags}")
-        endif()
-        get_target_property(lib_defs "${lib_arg}"
-          INTERFACE_COMPILE_DEFINITIONS)
-        if(lib_defs)
+        endif ()
+        get_target_property(lib_defs "${lib_arg}" INTERFACE_COMPILE_DEFINITIONS)
+        if (lib_defs)
           list(APPEND definitions "${lib_defs}")
-        endif()
-      elseif(lib_arg MATCHES "^[-/]")
+        endif ()
+      elseif (lib_arg MATCHES "^[-/]")
         list(APPEND private_libs "${lib_arg}")
-      else()
+      else ()
         list(APPEND private_libs "-l${lib_arg}")
-      endif()
-    endforeach()
-  endif()
+      endif ()
+    endforeach ()
+  endif ()
 
   list(APPEND cflags "${CMAKE_REQUIRED_FLAGS}")
-  if(definitions)
+  if (definitions)
     list(REMOVE_DUPLICATES definitions)
-    foreach(def_arg IN LISTS definitions)
+    foreach (def_arg IN LISTS definitions)
       list(APPEND cflags "-D${def_arg}")
-    endforeach()
-  endif()
-  if(include_dirs)
+    endforeach ()
+  endif ()
+  if (include_dirs)
     list(REMOVE_DUPLICATES include_dirs)
-    foreach(inc_dir IN LISTS include_dirs)
+    foreach (inc_dir IN LISTS include_dirs)
       list(APPEND cflags "-I${inc_dir}")
-    endforeach()
-  endif()
+    endforeach ()
+  endif ()
 
   # Set the output variables
   string(REPLACE ";" " " cflags "${cflags}")
@@ -98,21 +96,26 @@ function(gen_pkgconfig_vars)
   # a target, which gets propagated to us through INTERFACE_COMPILE_OPTIONS.
   # Before CMake 3.19 there's no way to solve this in a general way, so we
   # work around the specific case. See #1414 and CMake bug #21074.
-  if(CMAKE_VERSION VERSION_LESS 3.19)
-    string(REPLACE
-      "<COMPILE_LANG_AND_ID:CUDA,NVIDIA>" "<COMPILE_LANGUAGE:CUDA>"
-      cflags "${cflags}"
-    )
+  if (CMAKE_VERSION VERSION_LESS 3.19)
+    string(REPLACE "<COMPILE_LANG_AND_ID:CUDA,NVIDIA>"
+                   "<COMPILE_LANGUAGE:CUDA>" cflags "${cflags}")
 
-  endif()
+  endif ()
   # patch for fmt's generator expression
   if (MSVC)
     # fmt 11.0.3 and above
-    string(REPLACE "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/utf-8>" "/utf-8" cflags "${cflags}")
+    string(
+      REPLACE "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/utf-8>"
+              "/utf-8" cflags "${cflags}")
     # fmt 11.0.2 and below
-    string(REPLACE "$<$<COMPILE_LANGUAGE:CXX>:/utf-8>" "/utf-8" cflags "${cflags}")
-  endif()
+    string(REPLACE "$<$<COMPILE_LANGUAGE:CXX>:/utf-8>" "/utf-8" cflags
+                   "${cflags}")
+  endif ()
 
-  set("${var_prefix}_CFLAGS" "${cflags}" PARENT_SCOPE)
-  set("${var_prefix}_PRIVATE_LIBS" "${private_libs}" PARENT_SCOPE)
-endfunction()
+  set("${var_prefix}_CFLAGS"
+      "${cflags}"
+      PARENT_SCOPE)
+  set("${var_prefix}_PRIVATE_LIBS"
+      "${private_libs}"
+      PARENT_SCOPE)
+endfunction ()

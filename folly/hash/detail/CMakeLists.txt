@@ -16,33 +16,28 @@
 # Update this file when the corresponding BUCK file changes.
 
 folly_add_library(
-  NAME checksum_detail
+  NAME
+  checksum_detail
   SRCS
-    ChecksumDetail.cpp
-    Crc32CombineDetail.cpp
-    Crc32cDetail.cpp
+  ChecksumDetail.cpp
+  Crc32CombineDetail.cpp
+  Crc32cDetail.cpp
   HEADERS
-    ChecksumDetail.h
+  ChecksumDetail.h
   DEPS
-    folly_bits
-    folly_cpp_attributes
-    folly_cpu_id
-    folly_external_nvidia_hash_detail_crc32c_detail
+  folly_bits
+  folly_cpp_attributes
+  folly_cpu_id
+  folly_external_nvidia_hash_detail_crc32c_detail
   EXPORTED_DEPS
-    folly_external_nvidia_hash_checksum
-    folly_external_nvidia_hash_detail_crc32c_detail
-    folly_portability
-)
+  folly_external_nvidia_hash_checksum
+  folly_external_nvidia_hash_detail_crc32c_detail
+  folly_portability)
 
 # Apply -mpclmul flag on x86 if supported (required for CRC32 intrinsics)
 if (COMPILER_HAS_M_PCLMUL)
   target_compile_options(folly_hash_detail_checksum_detail_obj PRIVATE -mpclmul)
-endif()
+endif ()
 
-folly_add_library(
-  NAME random_seed
-  HEADERS
-    RandomSeed.h
-  EXPORTED_DEPS
-    folly_portability
-)
+folly_add_library(NAME random_seed HEADERS RandomSeed.h EXPORTED_DEPS
+                  folly_portability)

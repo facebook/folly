@@ -13,11 +13,11 @@
 # limitations under the License.
 
 folly_add_library(
-  NAME test_ext
+  NAME
+  test_ext
   SRCS
-    test_ext.cpp
+  test_ext.cpp
   DEPS
-    folly_experimental_io_fs_util
-    folly_ext_test_ext
-    folly_json_dynamic
-)
+  folly_experimental_io_fs_util
+  folly_ext_test_ext
+  folly_json_dynamic)

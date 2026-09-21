@@ -22,9 +22,6 @@
 find_path(FASTFLOAT_INCLUDE_DIR NAMES fast_float/fast_float.h)
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(
-    FastFloat DEFAULT_MSG
-    FASTFLOAT_INCLUDE_DIR
-)
+find_package_handle_standard_args(FastFloat DEFAULT_MSG FASTFLOAT_INCLUDE_DIR)
 
 mark_as_advanced(FASTFLOAT_INCLUDE_DIR)

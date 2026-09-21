@@ -25,12 +25,10 @@ find_library(SNAPPY_LIBRARY_DEBUG NAMES snappyd)
 find_library(SNAPPY_LIBRARY_RELEASE NAMES snappy)
 
 include(SelectLibraryConfigurations)
-SELECT_LIBRARY_CONFIGURATIONS(SNAPPY)
+select_library_configurations(SNAPPY)
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(
-    SNAPPY DEFAULT_MSG
-    SNAPPY_LIBRARY SNAPPY_INCLUDE_DIR
-)
+find_package_handle_standard_args(SNAPPY DEFAULT_MSG SNAPPY_LIBRARY
+                                  SNAPPY_INCLUDE_DIR)
 
 mark_as_advanced(SNAPPY_INCLUDE_DIR SNAPPY_LIBRARY)

@@ -19,12 +19,11 @@ find_library(LIBSODIUM_LIBRARY NAMES sodium)
 mark_as_advanced(LIBSODIUM_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(
-  LIBSODIUM
-  REQUIRED_VARS LIBSODIUM_LIBRARY LIBSODIUM_INCLUDE_DIR)
+find_package_handle_standard_args(LIBSODIUM REQUIRED_VARS LIBSODIUM_LIBRARY
+                                                          LIBSODIUM_INCLUDE_DIR)
 
-if(LIBSODIUM_FOUND)
+if (LIBSODIUM_FOUND)
   set(LIBSODIUM_LIBRARIES ${LIBSODIUM_LIBRARY})
   set(LIBSODIUM_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIR})
   message(STATUS "Found Libsodium: ${LIBSODIUM_LIBRARY}")
-endif()
+endif ()

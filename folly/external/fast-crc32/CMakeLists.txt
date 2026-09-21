@@ -18,71 +18,71 @@
 # x86 CRC32 implementations - built on all platforms
 # Source files provide abort() stubs on non-x86 via #if guards
 folly_add_library(
-  NAME avx512_crc32c_v8s3x4
+  NAME
+  avx512_crc32c_v8s3x4
   SRCS
-    avx512_crc32c_v8s3x4.cpp
+  avx512_crc32c_v8s3x4.cpp
   HEADERS
-    avx512_crc32c_v8s3x4.h
+  avx512_crc32c_v8s3x4.h
   EXPORTED_DEPS
-    folly_portability
-)
+  folly_portability)
 
 # Apply AVX512 flags only on x86 (not needed on Windows)
 if (IS_X86_64_ARCH AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_compile_options(folly_external_fast-crc32_avx512_crc32c_v8s3x4_obj
-    PRIVATE -mavx512f -mavx512vl)
-endif()
+                         PRIVATE -mavx512f -mavx512vl)
+endif ()
 if (COMPILER_HAS_M_PCLMUL)
   target_compile_options(folly_external_fast-crc32_avx512_crc32c_v8s3x4_obj
-    PRIVATE -mpclmul)
-endif()
+                         PRIVATE -mpclmul)
+endif ()
 
 folly_add_library(
-  NAME sse_crc32c_v8s3x3
+  NAME
+  sse_crc32c_v8s3x3
   SRCS
-    sse_crc32c_v8s3x3.cpp
+  sse_crc32c_v8s3x3.cpp
   HEADERS
-    sse_crc32c_v8s3x3.h
+  sse_crc32c_v8s3x3.h
   EXPORTED_DEPS
-    folly_portability
-)
+  folly_portability)
 
 if (COMPILER_HAS_M_PCLMUL)
   target_compile_options(folly_external_fast-crc32_sse_crc32c_v8s3x3_obj
-    PRIVATE -mpclmul)
-endif()
+                         PRIVATE -mpclmul)
+endif ()
 
 # ARM NEON CRC32 implementations - built on all platforms
 # Source files provide abort() stubs on non-ARM via #if guards
 folly_add_library(
-  NAME neon_crc32c_v3s4x2e_v2
+  NAME
+  neon_crc32c_v3s4x2e_v2
   SRCS
-    neon_crc32c_v3s4x2e_v2.cpp
+  neon_crc32c_v3s4x2e_v2.cpp
   HEADERS
-    neon_crc32c_v3s4x2e_v2.h
+  neon_crc32c_v3s4x2e_v2.h
   DEPS
-    folly_portability
-    folly_system_aux_vector
-)
+  folly_portability
+  folly_system_aux_vector)
 
 folly_add_library(
-  NAME neon_eor3_crc32c_v8s2x4e_s2x1
+  NAME
+  neon_eor3_crc32c_v8s2x4e_s2x1
   SRCS
-    neon_eor3_crc32c_v8s2x4e_s2x1.cpp
+  neon_eor3_crc32c_v8s2x4e_s2x1.cpp
   HEADERS
-    neon_eor3_crc32c_v8s2x4e_s2x1.h
+  neon_eor3_crc32c_v8s2x4e_s2x1.h
   DEPS
-    folly_portability
-    folly_system_aux_vector
-)
+  folly_portability
+  folly_system_aux_vector)
 
 folly_add_library(
-  NAME neon_eor3_crc32_v8s2x4e_s1x2
+  NAME
+  neon_eor3_crc32_v8s2x4e_s1x2
   SRCS
-    neon_eor3_crc32_v8s2x4e_s1x2.cpp
+  neon_eor3_crc32_v8s2x4e_s1x2.cpp
   HEADERS
-    neon_eor3_crc32_v8s2x4e_s1x2.h
+  neon_eor3_crc32_v8s2x4e_s1x2.h
   DEPS
-    folly_portability
-    folly_system_aux_vector
-)
+  folly_portability
+  folly_system_aux_vector)
