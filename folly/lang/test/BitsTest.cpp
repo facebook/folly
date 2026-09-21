@@ -21,7 +21,7 @@
 #include <random>
 #include <vector>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <folly/Random.h>
 #include <folly/portability/GTest.h>

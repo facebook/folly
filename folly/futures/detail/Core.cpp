@@ -18,7 +18,7 @@
 
 #include <new>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <folly/Utility.h>
 #include <folly/lang/Assume.h>
 
