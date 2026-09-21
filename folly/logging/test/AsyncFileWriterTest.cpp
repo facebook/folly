@@ -52,9 +52,11 @@ DEFINE_int64(
     2,
     "number of threads to use to generate non-discardable log messages during "
     "the AsyncFileWriter.discard test");
+// A nonzero sleep throttles the reader enough that draining the unbounded
+// NEVER_DISCARD backlog this test produces takes minutes.
 DEFINE_int64(
     async_discard_read_sleep_usec,
-    500,
+    0,
     "how long the read thread should sleep between reads in "
     "the AsyncFileWriter.discard test");
 DEFINE_int64(
