@@ -33,11 +33,11 @@ fb_dirsync_cpp_library(
     ],
     force_static = select({
         "DEFAULT": True,
-        "ovr_config//folly_async_stack:folly_async_stack_linkage[shared]": False,
+        # @fb-only[end= ]: "ovr_config//folly_async_stack:folly_async_stack_linkage[shared]": False,
     }),
     preferred_linkage = select({
         "DEFAULT": None,
-        "ovr_config//folly_async_stack:folly_async_stack_linkage[shared]": "shared",
+        # @fb-only[end= ]: "ovr_config//folly_async_stack:folly_async_stack_linkage[shared]": "shared",
         "ovr_config//os:windows": "static",
     }),
     use_raw_headers = True,
