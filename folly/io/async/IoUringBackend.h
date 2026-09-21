@@ -101,8 +101,6 @@ class IoUringBackend : public EventBaseBackendBase {
       int fd, void* buf, unsigned long nbytes, RecvZcCallback&& callback)
       override;
 
-  event_base* getEventBase() override { return nullptr; }
-
   int eb_event_base_loop(int flags) override;
   int eb_event_base_loopbreak() override;
 

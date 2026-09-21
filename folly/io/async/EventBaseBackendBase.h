@@ -150,7 +150,10 @@ class EventBaseBackendBase {
     pollLoopHook_ = pollLoopHook;
   }
 
-  virtual event_base* getEventBase() = 0;
+  // Only meaningful for the libevent backend, which returns the event_base it
+  // drives. Every other backend returns nullptr. New code should not rely on
+  // this.
+  virtual event_base* getEventBase() { return nullptr; }
   virtual int eb_event_base_loop(int flags) = 0;
   virtual int eb_event_base_loopbreak() = 0;
 
