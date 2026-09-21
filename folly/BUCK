@@ -2756,27 +2756,27 @@ fb_dirsync_cpp_library(
 
 # For things that would go in c++ stdlib <utility>:
 
-fb_native.export_file(
-    name = "src-tree",
-    src = ".",
-    mode = "reference",
-    visibility = ["PUBLIC"],
-)
+# @fb-only[end= ]: fb_native.export_file(
+    # @fb-only[end= ]: name = "src-tree",
+    # @fb-only[end= ]: src = ".",
+    # @fb-only[end= ]: mode = "reference",
+    # @fb-only[end= ]: visibility = ["PUBLIC"],
+# @fb-only[end= ]: )
 
-fb_native.export_file(
-    name = "support/gdb.py",
-    src = "support/gdb.py",
-    visibility = ["PUBLIC"],
-)
+# @fb-only[end= ]: fb_native.export_file(
+    # @fb-only[end= ]: name = "support/gdb.py",
+    # @fb-only[end= ]: src = "support/gdb.py",
+    # @fb-only[end= ]: visibility = ["PUBLIC"],
+# @fb-only[end= ]: )
 
-fb_native.export_file(
-    name = "fibers/scripts/gdb.py",
-    src = "fibers/scripts/gdb.py",
-    visibility = ["PUBLIC"],
-)
+# @fb-only[end= ]: fb_native.export_file(
+    # @fb-only[end= ]: name = "fibers/scripts/gdb.py",
+    # @fb-only[end= ]: src = "fibers/scripts/gdb.py",
+    # @fb-only[end= ]: visibility = ["PUBLIC"],
+# @fb-only[end= ]: )
 
-fb_native.export_file(
-    name = "coro/scripts/co_bt.py",
-    src = "coro/scripts/co_bt.py",
-    visibility = ["PUBLIC"],
-)
+# @fb-only[end= ]: fb_native.export_file(
+    # @fb-only[end= ]: name = "coro/scripts/co_bt.py",
+    # @fb-only[end= ]: src = "coro/scripts/co_bt.py",
+    # @fb-only[end= ]: visibility = ["PUBLIC"],
+# @fb-only[end= ]: )
