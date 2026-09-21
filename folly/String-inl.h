@@ -298,10 +298,10 @@ size_t delimCountTokens(char delim, StringPiece sp, bool ignoreEmpty);
 size_t delimCountTokens(StringPiece delim, StringPiece sp, bool ignoreEmpty);
 
 template <class OutStringT, class Container>
-std::enable_if_t<
-    IsSplitSupportedContainer<Container>::value &&
-    HasSimdSplitCompatibleValueType<Container>::value>
-internalSplitRecurseChar(
+  requires(
+      IsSplitSupportedContainer<Container>::value &&
+      HasSimdSplitCompatibleValueType<Container>::value)
+void internalSplitRecurseChar(
     char delim,
     folly::StringPiece sp,
     std::back_insert_iterator<Container> it,
@@ -577,15 +577,12 @@ namespace detail {
  * to implement append()).
  */
 template <class T>
-struct IsSizableString {
-  enum {
-    value = IsSomeString<T>::value || std::is_same<T, StringPiece>::value
-  };
-};
+concept IsSizableString =
+    IsSomeString<T>::value || std::same_as<T, StringPiece>;
 
 template <class Iterator>
-struct IsSizableStringContainerIterator
-    : IsSizableString<typename std::iterator_traits<Iterator>::value_type> {};
+concept IsSizableStringContainerIterator =
+    IsSizableString<typename std::iterator_traits<Iterator>::value_type>;
 
 template <class Delim, class Iterator, class String>
 void internalJoinAppend(
@@ -602,8 +599,9 @@ void internalJoinAppend(
 }
 
 template <class Delim, class Iterator, class String>
-typename std::enable_if<IsSizableStringContainerIterator<Iterator>::value>::type
-internalJoin(Delim delimiter, Iterator begin, Iterator end, String& output) {
+  requires(IsSizableStringContainerIterator<Iterator>)
+void internalJoin(
+    Delim delimiter, Iterator begin, Iterator end, String& output) {
   output.clear();
   if (begin == end) {
     return;
@@ -619,9 +617,9 @@ internalJoin(Delim delimiter, Iterator begin, Iterator end, String& output) {
 }
 
 template <class Delim, class Iterator, class String>
-typename std::enable_if<
-    !IsSizableStringContainerIterator<Iterator>::value>::type
-internalJoin(Delim delimiter, Iterator begin, Iterator end, String& output) {
+  requires(!IsSizableStringContainerIterator<Iterator>)
+void internalJoin(
+    Delim delimiter, Iterator begin, Iterator end, String& output) {
   output.clear();
   if (begin == end) {
     return;
