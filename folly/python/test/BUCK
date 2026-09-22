@@ -78,6 +78,12 @@ fb_dirsync_rule(
         "//folly/python:iobuf_ext",
     ],
     fbcode_rule = cython_library,
+    # Pin the Python module namespace so the cython stub is published as
+    # `folly.python.test.iobuf_helper` in both cells. Without it the xplat
+    # cell derives the base module from its package path
+    # (`xplat.folly.python.test.iobuf_helper`), which breaks consumers that
+    # build against xplat folly. Mirrors `//folly/python:iobuf`.
+    package = "folly/python/test",
     types = [
         "iobuf_helper.pyi",
     ],
