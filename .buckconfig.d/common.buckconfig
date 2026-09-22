@@ -20,5 +20,11 @@ prelude = bundled
 [build]
 execution_platforms = prelude//platforms:default
 
+# Default Windows compiler identity for the shim's ovr_config//os:windows-*
+# and ovr_config//compiler:* config settings; matches the prelude's default
+# MSVC Windows toolchain. Set to "clang" to build with clang-cl.
+[cxx]
+windows_compiler_type = windows
+
 [parser]
 target_platform_detector_spec = target:root//...->prelude//platforms:default target:shim//...->prelude//platforms:default
