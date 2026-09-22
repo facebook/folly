@@ -16,8 +16,10 @@
 
 #include <folly/coro/WithMetadata.h>
 
+#include <cstdint>
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Task.h>
@@ -61,6 +63,49 @@ CO_TEST(WithMetadata, ZeroMetadataAddsMarker) {
   EXPECT_TRUE(scope.hasMarker);
   EXPECT_EQ(scope.metadata, 0);
 }
+
+template <typename SemiAwaitable>
+using WithMetadataResult =
+    decltype(co_withMetadata(std::uintptr_t{}, FOLLY_DECLVAL(SemiAwaitable)));
+
+static_assert(std::is_same_v<WithMetadataResult<Task<int>>, Task<int>>);
+static_assert(
+    std::is_same_v<WithMetadataResult<TaskWithExecutor<int>>, Task<int>>);
+static_assert(std::is_same_v<WithMetadataResult<Task<int&>>, Task<int&>>);
+
+#if FOLLY_HAS_IMMOVABLE_COROUTINES
+CO_TEST(WithMetadata, PreservesTaskWrapperProperties) {
+  { // `now_task` remains immediately awaitable.
+    static_assert(
+        std::is_same_v<WithMetadataResult<now_task<int>>, now_task<int>>);
+    static_assert(
+        std::is_same_v<
+            WithMetadataResult<now_task_with_executor<int>>,
+            now_task<int>>);
+
+    auto& parentFrame = co_await coro::detail::co_current_async_stack_frame;
+    const auto scope = co_await co_withMetadata(
+        17, to_now_task(inspectCurrentScope(parentFrame)));
+    EXPECT_EQ(scope.metadata, AsyncStackMetadata{17});
+  }
+  { // `value_task` retains its safe-alias level.
+    static_assert(
+        std::is_same_v<WithMetadataResult<value_task<int>>, value_task<int>>);
+    static_assert(
+        std::is_same_v<
+            WithMetadataResult<
+                safe_task_with_executor<safe_alias::maybe_value, int>>,
+            value_task<int>>);
+
+    auto readMetadata = []() -> value_task<AsyncStackMetadata> {
+      auto& frame = co_await coro::detail::co_current_async_stack_frame;
+      co_return folly::detail::getAsyncStackTraceEntryMetadata(frame);
+    };
+    const auto metadata = co_await co_withMetadata(29, readMetadata());
+    EXPECT_EQ(metadata, AsyncStackMetadata{29});
+  }
+}
+#endif
 
 CO_TEST(WithMetadata, MoveOnlyResult) {
   auto child = []() -> Task<std::unique_ptr<int>> {

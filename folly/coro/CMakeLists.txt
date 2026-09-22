@@ -761,7 +761,11 @@ folly_add_library(
   WithMetadata.h
   EXPORTED_DEPS
   folly_coro_detail_current_async_frame
+  folly_coro_detail_pick_task_wrapper
+  folly_coro_safe_now_task
+  folly_coro_safe_safe_task
   folly_coro_task
+  folly_coro_traits
   folly_tracing_async_stack)
 
 add_subdirectory(detail)

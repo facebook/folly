@@ -943,6 +943,10 @@ fb_dirsync_cpp_library(
     exported_deps = [
         ":detail_current_async_frame",
         ":task",
+        ":traits",
+        "//folly/coro/detail:pick_task_wrapper",
+        "//folly/coro/safe:now_task",
+        "//folly/coro/safe:safe_task",
         "//folly/tracing:async_stack",
     ],
 )
