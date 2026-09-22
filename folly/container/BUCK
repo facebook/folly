@@ -1,6 +1,6 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
-    "../defs.bzl",
+    "@fbsource//xplat/folly:defs.bzl",
     "FBANDROID_CPPFLAGS",
 )
 
