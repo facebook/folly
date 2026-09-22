@@ -74,7 +74,7 @@ class IsolatedAgentTest(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
-        self.agent = isolated_agent.Agent(FakeImpl())
+        self.agent = isolated_agent.Agent(FakeImpl(), self.root / "home")
 
     def test_prepare_separates_engine_home_from_workspace(self) -> None:
         prepared = self.agent.prepare(self.root / "run")
@@ -82,6 +82,29 @@ class IsolatedAgentTest(unittest.TestCase):
         self.assertEqual(prepared.task.parent, prepared.workspace_root)
         self.assertFalse(prepared.home.is_relative_to(prepared.workspace_root))
         self.assertTrue((prepared.workspace_root / ".git").is_dir())
+
+    def test_prepare_links_shared_cache_directories(self) -> None:
+        for has_local_directory in (True, False):
+            with self.subTest(has_local_directory=has_local_directory):
+                user_home = self.root / f"user-home-{has_local_directory}"
+                if has_local_directory:
+                    (user_home / "local").mkdir(parents=True)
+                agent = isolated_agent.Agent(FakeImpl(), user_home)
+                prepared = agent.prepare(self.root / f"run-{has_local_directory}")
+
+                cache_root = (
+                    user_home / "local" / "isolated_agents_cache"
+                    if has_local_directory
+                    else user_home / "isolated_agents_cache"
+                )
+                for name in (".cache", "packages"):
+                    shared_directory = cache_root / name
+                    isolated_directory = prepared.home / name
+                    self.assertTrue(shared_directory.is_dir())
+                    self.assertTrue(isolated_directory.is_symlink())
+                    self.assertEqual(
+                        isolated_directory.resolve(), shared_directory.resolve()
+                    )
 
     def test_environment_removes_injection_variables(self) -> None:
         prepared = self.agent.prepare(self.root / "run")

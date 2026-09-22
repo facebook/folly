@@ -71,6 +71,7 @@ class IsolatedCodexTest(unittest.TestCase):
             executable: Path, *arguments: str
         ) -> subprocess.CompletedProcess[str]:
             environment = os.environ.copy()
+            environment["HOME"] = str(self.root / "home")
             environment["PATH"] = os.pathsep.join(
                 (str(executable.parent), environment["PATH"])
             )

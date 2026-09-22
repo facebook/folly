@@ -50,6 +50,7 @@ RESERVED_ENVIRONMENT_NAMES = {
     "ZDOTDIR",
 }
 INHERITED_ENVIRONMENT_PREFIXES = (*RESERVED_ENVIRONMENT_PREFIXES, "FOLLY_BACKTEST_")
+SHARED_CACHE_DIRECTORIES = (".cache", "packages")
 
 
 class IsolationError(ValueError):
@@ -236,6 +237,20 @@ def _workspace(root: Path) -> Workspace:
     )
 
 
+def _shared_cache_root(user_home: Path) -> Path:
+    local = user_home / "local"
+    return (local if local.is_dir() else user_home) / "isolated_agents_cache"
+
+
+def _link_shared_cache(home: Path, user_home: Path) -> None:
+    shared_root = _shared_cache_root(user_home)
+    shared_root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    for name in SHARED_CACHE_DIRECTORIES:
+        shared_directory = shared_root / name
+        shared_directory.mkdir(mode=0o700, exist_ok=True)
+        (home / name).symlink_to(shared_directory, target_is_directory=True)
+
+
 def _require_directory(path: Path, parent: Path) -> None:
     if path.is_symlink() or not path.is_dir():
         raise IsolationError(f"isolated workspace is incomplete: {path}")
@@ -257,6 +272,7 @@ class Agent:
     """An engine-bound launcher with a shared isolation and workspace contract."""
 
     impl: AgentImpl
+    user_home: Path
 
     @property
     def name(self) -> str:
@@ -295,6 +311,7 @@ class Agent:
             path.mkdir(mode=0o700)
         for path in (result.task, result.temporary):
             path.mkdir(mode=0o700, parents=True)
+        _link_shared_cache(result.home, self.user_home)
         if initialize_engine:
             self.initialize(result, command_runner=command_runner)
         return result
@@ -358,4 +375,4 @@ class Agent:
         return self.impl.extract_session_id(trace)
 
 
-CODEX = Agent(CodexImpl())
+CODEX = Agent(CodexImpl(), Path.home())
