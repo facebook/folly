@@ -2678,7 +2678,7 @@ fb_dirsync_cpp_library(
         ],
     }),
     exported_preprocessor_flags = select({
-        "//xplat/folly/buck_config:folly-singleton-schedule-at-exit-disabled": [
+        "fbsource//xplat/folly/buck_config:folly-singleton-schedule-at-exit-disabled": [
             "-DFOLLY_SINGLETON_SKIP_SCHEDULE_ATEXIT=1",
         ],
         "DEFAULT": [],
