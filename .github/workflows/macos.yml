@@ -33,15 +33,12 @@ jobs:
         version: "v0.14.0"
 
     # Whatever the runner already has is used; the rest is fetched or built by
-    # the CMake build itself, so there is no dependency install step. The
-    # compiler matches the one the getdeps mac build used.
+    # the CMake build itself, so there is no dependency install step.
     - name: Configure
       run: >
         cmake -B _build
         -DCMAKE_BUILD_TYPE=RelWithDebInfo
         -DBUILD_TESTS=ON
-        -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang
-        -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
         -DCMAKE_C_COMPILER_LAUNCHER=sccache
         -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
