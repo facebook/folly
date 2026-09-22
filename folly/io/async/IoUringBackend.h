@@ -83,8 +83,11 @@ class IoUringBackend : public EventBaseBackendBase {
     return options_.timeout.count() > 0 && options_.batchSize > 0;
   }
   bool useBundles() const {
-    return options_.providedBufUseBundles &&
-        (params_.features & IORING_FEAT_RECVSEND_BUNDLE);
+    // Bundles are only supported with the dynamic provided buffer ring;
+    // the fixed (static) ring's bundle support is broken.
+    return (params_.features & IORING_FEAT_RECVSEND_BUNDLE) &&
+        options_.providedBufferRingMode ==
+        IoUringOptions::ProvidedBufferRingMode::Dynamic;
   }
 
   int computeSrcPortForQueueId(

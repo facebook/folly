@@ -170,12 +170,6 @@ struct IoUringOptions {
     return *this;
   }
 
-  IoUringOptions& setProvidedBufUseBundles(bool v) {
-    providedBufUseBundles = v;
-
-    return *this;
-  }
-
   IoUringOptions& setRegisterRingFd(bool v) {
     registerRingFd = v;
 
@@ -306,7 +300,6 @@ struct IoUringOptions {
   uint32_t initialProvidedBuffersEachSize{0};
   uint32_t providedBufRings{1};
   ProvidedBufferRingMode providedBufferRingMode{ProvidedBufferRingMode::Fixed};
-  bool providedBufUseBundles{false};
 
   uint32_t flags{0};
 

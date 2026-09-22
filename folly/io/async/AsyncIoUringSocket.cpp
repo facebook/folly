@@ -141,7 +141,6 @@ AsyncIoUringSocket::Options::defaultAllocateNoBufferPoolBuffer() {
 AsyncIoUringSocket::ReadSqe::ReadSqe(AsyncIoUringSocket* parent)
     : IoSqeBase(IoSqeBase::Type::Read), parent_(parent) {
   supportsMultishotRecv_ = parent->options_.multishotRecv;
-  useBundles_ = parent->options_.useBundles;
   // If the backend for this socket has an IoUringZeroCopyBufferPool, then zero
   // copy is enabled implicitly.
   supportsZeroCopyRx_ = parent->backend_->zcBufferPool() != nullptr;
@@ -808,7 +807,7 @@ void AsyncIoUringSocket::ReadSqe::processSubmit(
           used_len = maxSize_;
         }
 
-        if (useBundles_) {
+        if (parent_->backend_->useBundles()) {
           ioprio_flags |= IORING_RECVSEND_BUNDLE;
         }
 
