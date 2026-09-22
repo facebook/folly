@@ -34,8 +34,13 @@ zlib
 googletest
 
 [debs]
-bpftool
 clang
+
+[debs.not(distro=ubuntu)]
+bpftool
+
+[debs.distro=ubuntu]
+linux-tools-common
 
 [rpms]
 bpftool
