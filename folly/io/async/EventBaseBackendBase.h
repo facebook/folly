@@ -57,6 +57,30 @@ class EventBaseEvent {
 
   int eb_ev_res() const { return event_.ev_res; }
 
+  void eb_ev_res(int res) {
+    event_.ev_res = static_cast<decltype(event_.ev_res)>(res);
+  }
+
+  // Registration state, as libevent's EVLIST_* bitmask.
+  bool eb_ev_flags_any(int mask) const {
+    return (event_ref_flags(&event_) & mask) != 0;
+  }
+
+  void eb_ev_flags_add(int mask) { event_ref_flags(&event_) |= mask; }
+
+  void eb_ev_flags_remove(int mask) { event_ref_flags(&event_) &= ~mask; }
+
+  void eb_ev_flags_reset() { event_ref_flags(&event_).get() = EVLIST_INIT; }
+
+  // The casts matter on libevent 1.4, where ev_fd and ev_res are int but the
+  // callback takes (int, short, void*).
+  void eb_ev_invoke_callback() {
+    (*event_ref_callback(&event_))(
+        static_cast<int>(event_.ev_fd),
+        static_cast<short>(event_.ev_res),
+        event_ref_arg(&event_));
+  }
+
   void* getUserData() { return userData_; }
   FreeFunction getFreeFunction() const { return freeFn_; }
 

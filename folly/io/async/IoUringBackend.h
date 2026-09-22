@@ -408,10 +408,8 @@ class IoUringBackend : public EventBaseBackendBase {
     }
 
     void processSubmit(io_uring_sqe* sqe) noexcept override {
-      auto* ev = event_->getEvent();
-      if (ev) {
-        prepPollAdd(sqe, ev->ev_fd, getPollFlags(ev->ev_events));
-      }
+      prepPollAdd(
+          sqe, event_->eb_ev_fd(), getPollFlags(event_->eb_ev_events()));
     }
 
     virtual void processActive() {}

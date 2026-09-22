@@ -106,7 +106,7 @@ class EpollBackend : public EventBaseBackendBase {
   IntrusiveHeap<TimerInfo> timers_;
 
   SocketPair signalFds_;
-  std::map<int, std::set<struct event*>> signals_;
+  std::map<int, std::set<Event*>> signals_;
 };
 } // namespace folly
 #endif

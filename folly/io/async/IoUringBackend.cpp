@@ -810,12 +810,10 @@ size_t IoUringBackend::processTimers() {
     CHECK(td && e->getFreeFunction() == timerUserDataFreeFunction);
     td->iter = timers_.end();
     timers_.erase(it);
-    auto* ev = e->getEvent();
-    ev->ev_res = EV_TIMEOUT;
-    event_ref_flags(ev).get() = EVLIST_INIT;
+    e->eb_ev_res(EV_TIMEOUT);
+    e->eb_ev_flags_reset();
     // might change the lists
-    (*event_ref_callback(ev))(
-        static_cast<int>(ev->ev_fd), ev->ev_res, event_ref_arg(ev));
+    e->eb_ev_invoke_callback();
     ++ret;
   }
 
@@ -825,21 +823,19 @@ size_t IoUringBackend::processTimers() {
 }
 
 void IoUringBackend::addSignalEvent(Event& event) {
-  auto* ev = event.getEvent();
-  signals_[ev->ev_fd].insert(&event);
+  signals_[event.eb_ev_fd()].insert(&event);
 
   // we pass the write fd for notifications
-  getSignalRegistry().setNotifyFd(ev->ev_fd, signalFds_.writeFd());
+  getSignalRegistry().setNotifyFd(event.eb_ev_fd(), signalFds_.writeFd());
 }
 
 void IoUringBackend::removeSignalEvent(Event& event) {
-  auto* ev = event.getEvent();
-  auto iter = signals_.find(ev->ev_fd);
+  auto iter = signals_.find(event.eb_ev_fd());
   if (iter != signals_.end()) {
     iter->second.erase(&event);
     if (iter->second.empty()) {
       signals_.erase(iter);
-      getSignalRegistry().setNotifyFd(ev->ev_fd, -1);
+      getSignalRegistry().setNotifyFd(event.eb_ev_fd(), -1);
     }
   }
 }
@@ -863,12 +859,10 @@ size_t IoUringBackend::processSignals() {
       if (iter != signals_.end()) {
         auto& set = iter->second;
         for (auto& event : set) {
-          auto* ev = event->getEvent();
-          ev->ev_res = 0;
-          event_ref_flags(ev) |= EVLIST_ACTIVE;
-          (*event_ref_callback(ev))(
-              static_cast<int>(ev->ev_fd), ev->ev_res, event_ref_arg(ev));
-          event_ref_flags(ev) &= ~EVLIST_ACTIVE;
+          event->eb_ev_res(0);
+          event->eb_ev_flags_add(EVLIST_ACTIVE);
+          event->eb_ev_invoke_callback();
+          event->eb_ev_flags_remove(EVLIST_ACTIVE);
         }
       }
     }
@@ -911,7 +905,7 @@ void IoUringBackend::IoSqe::release() noexcept {
 
 void IoUringBackend::processPollIo(
     IoSqe* ioSqe, int res, uint32_t flags) noexcept {
-  auto* ev = ioSqe->event_ ? (ioSqe->event_->getEvent()) : nullptr;
+  auto* ev = ioSqe->event_;
   if (ev) {
     if (flags & IORING_CQE_F_MORE) {
       ioSqe->useCount_++;
@@ -922,21 +916,22 @@ void IoUringBackend::processPollIo(
 
     // if this is not a persistent event
     // remove the EVLIST_INSERTED flags
-    if (!(ev->ev_events & EV_PERSIST)) {
-      event_ref_flags(ev) &= ~EVLIST_INSERTED;
+    if (!(ev->eb_ev_events() & EV_PERSIST)) {
+      ev->eb_ev_flags_remove(EVLIST_INSERTED);
     }
 
-    if (event_ref_flags(ev) & EVLIST_INTERNAL) {
+    if (ev->eb_ev_flags_any(EVLIST_INTERNAL)) {
       DCHECK_GT(numInternalEvents_, 0);
       --numInternalEvents_;
     }
 
     // add it to the active list
-    event_ref_flags(ev) |= EVLIST_ACTIVE;
+    ev->eb_ev_flags_add(EVLIST_ACTIVE);
 
     // only clamp upper bound, as no error codes are smaller than short min
-    ev->ev_res = static_cast<short>(
-        std::min<int64_t>(res, std::numeric_limits<short>::max()));
+    ev->eb_ev_res(
+        static_cast<short>(
+            std::min<int64_t>(res, std::numeric_limits<short>::max())));
 
     ioSqe->res_ = res;
     ioSqe->cqeFlags_ = flags;
@@ -956,25 +951,22 @@ size_t IoUringBackend::processActiveEvents() {
     activeEvents_.pop_front();
     ret++;
     auto* event = ioSqe->event_;
-    auto* ev = event ? event->getEvent() : nullptr;
-    if (ev) {
+    if (event) {
       // remove it from the active list
-      event_ref_flags(ev) &= ~EVLIST_ACTIVE;
-      bool inserted = (event_ref_flags(ev) & EVLIST_INSERTED);
+      event->eb_ev_flags_remove(EVLIST_ACTIVE);
+      bool inserted = event->eb_ev_flags_any(EVLIST_INSERTED);
       // prevent the callback from freeing the aioIoSqe
       ioSqe->useCount_++;
       // adjust the ev_res for the poll case
-      ev->ev_res = getPollEvents(ioSqe->res_, ev->ev_events);
+      event->eb_ev_res(getPollEvents(ioSqe->res_, event->eb_ev_events()));
       // handle spurious poll events that return 0
       // this can happen during high load on process startup
-      if (ev->ev_res) {
-        (*event_ref_callback(ev))(
-            static_cast<int>(ev->ev_fd), ev->ev_res, event_ref_arg(ev));
+      if (event->eb_ev_res()) {
+        event->eb_ev_invoke_callback();
       }
       // get the event again
       event = ioSqe->event_;
-      ev = event ? event->getEvent() : nullptr;
-      if (ev && inserted && event_ref_flags(ev) & EVLIST_INSERTED &&
+      if (event && inserted && event->eb_ev_flags_any(EVLIST_INSERTED) &&
           !shuttingDown_) {
         release = false;
         eb_event_modify_inserted(*event, ioSqe);
@@ -1269,24 +1261,22 @@ int IoUringBackend::eb_event_base_loopbreak() {
 
 int IoUringBackend::eb_event_add(Event& event, const timeval* timeout) {
   VLOG(4) << "Add event " << &event;
-  auto* ev = event.getEvent();
-  CHECK(ev);
-  CHECK(!(event_ref_flags(ev) & ~EVLIST_ALL));
+  CHECK(!event.eb_ev_flags_any(~EVLIST_ALL));
   // we do not support read/write timeouts
   if (timeout) {
-    event_ref_flags(ev) |= EVLIST_TIMEOUT;
+    event.eb_ev_flags_add(EVLIST_TIMEOUT);
     addTimerEvent(event, timeout);
     return 0;
   }
 
-  if (ev->ev_events & EV_SIGNAL) {
-    event_ref_flags(ev) |= EVLIST_INSERTED;
+  if (event.eb_ev_events() & EV_SIGNAL) {
+    event.eb_ev_flags_add(EVLIST_INSERTED);
     addSignalEvent(event);
     return 0;
   }
 
-  if ((ev->ev_events & (EV_READ | EV_WRITE)) &&
-      !(event_ref_flags(ev) & (EVLIST_INSERTED | EVLIST_ACTIVE))) {
+  if ((event.eb_ev_events() & (EV_READ | EV_WRITE)) &&
+      !event.eb_ev_flags_any(EVLIST_INSERTED | EVLIST_ACTIVE)) {
     auto* ioSqe = allocIoSqe();
     CHECK(ioSqe);
     ioSqe->event_ = &event;
@@ -1294,10 +1284,10 @@ int IoUringBackend::eb_event_add(Event& event, const timeval* timeout) {
 
     // just append it
     submitList_.push_back(*ioSqe);
-    if (event_ref_flags(ev) & EVLIST_INTERNAL) {
+    if (event.eb_ev_flags_any(EVLIST_INTERNAL)) {
       numInternalEvents_++;
     }
-    event_ref_flags(ev) |= EVLIST_INSERTED;
+    event.eb_ev_flags_add(EVLIST_INSERTED);
     event.setUserData(ioSqe);
   }
 
@@ -1310,19 +1300,18 @@ int IoUringBackend::eb_event_del(Event& event) {
     return -1;
   }
 
-  auto* ev = event.getEvent();
-  if (event_ref_flags(ev) & EVLIST_TIMEOUT) {
-    event_ref_flags(ev) &= ~EVLIST_TIMEOUT;
+  if (event.eb_ev_flags_any(EVLIST_TIMEOUT)) {
+    event.eb_ev_flags_remove(EVLIST_TIMEOUT);
     removeTimerEvent(event);
     return 1;
   }
 
-  if (!(event_ref_flags(ev) & (EVLIST_ACTIVE | EVLIST_INSERTED))) {
+  if (!event.eb_ev_flags_any(EVLIST_ACTIVE | EVLIST_INSERTED)) {
     return -1;
   }
 
-  if (ev->ev_events & EV_SIGNAL) {
-    event_ref_flags(ev) &= ~(EVLIST_INSERTED | EVLIST_ACTIVE);
+  if (event.eb_ev_events() & EV_SIGNAL) {
+    event.eb_ev_flags_remove(EVLIST_INSERTED | EVLIST_ACTIVE);
     removeSignalEvent(event);
     return 0;
   }
@@ -1333,12 +1322,12 @@ int IoUringBackend::eb_event_del(Event& event) {
 
   // if the event is on the active list, we just clear the flags
   // and reset the event_ ptr
-  if (event_ref_flags(ev) & EVLIST_ACTIVE) {
-    event_ref_flags(ev) &= ~EVLIST_ACTIVE;
+  if (event.eb_ev_flags_any(EVLIST_ACTIVE)) {
+    event.eb_ev_flags_remove(EVLIST_ACTIVE);
   }
 
-  if (event_ref_flags(ev) & EVLIST_INSERTED) {
-    event_ref_flags(ev) &= ~EVLIST_INSERTED;
+  if (event.eb_ev_flags_any(EVLIST_INSERTED)) {
+    event.eb_ev_flags_remove(EVLIST_INSERTED);
 
     // not in use  - we can cancel it
     if (!ioSqe->useCount_ && !wasLinked) {
@@ -1357,7 +1346,7 @@ int IoUringBackend::eb_event_del(Event& event) {
       }
     }
 
-    if (event_ref_flags(ev) & EVLIST_INTERNAL) {
+    if (event.eb_ev_flags_any(EVLIST_INTERNAL)) {
       DCHECK_GT(numInternalEvents_, 0);
       numInternalEvents_--;
     }
@@ -1377,7 +1366,7 @@ int IoUringBackend::eb_event_modify_inserted(Event& event, IoSqe* ioSqe) {
   VLOG(4) << "Modify event " << &event;
   // unlink and append
   ioSqe->unlink();
-  if (event_ref_flags(event.getEvent()) & EVLIST_INTERNAL) {
+  if (event.eb_ev_flags_any(EVLIST_INTERNAL)) {
     numInternalEvents_++;
   }
   submitList_.push_back(*ioSqe);
