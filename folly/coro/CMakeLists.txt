@@ -248,66 +248,44 @@ folly_add_library(
 folly_add_library(
   NAME
   detail_barrier
-  HEADERS
-  detail/Barrier.h
   EXPORTED_DEPS
-  folly_coro_coroutine
-  folly_coro_traits
-  folly_coro_with_async_stack
-  folly_tracing_async_stack)
+  folly_coro_detail_detail_barrier)
 
 folly_add_library(
   NAME
   detail_barrier_task
-  HEADERS
-  detail/BarrierTask.h
   EXPORTED_DEPS
-  folly_coro_coroutine
-  folly_coro_detail_barrier
-  folly_coro_detail_malloc
-  folly_coro_with_async_stack)
+  folly_coro_detail_detail_barrier_task)
 
 folly_add_library(
   NAME
   detail_current_async_frame
-  HEADERS
-  detail/CurrentAsyncFrame.h
   EXPORTED_DEPS
-  folly_coro_coroutine
-  folly_coro_with_async_stack
-  folly_executor
-  folly_tracing_async_stack)
+  folly_coro_detail_detail_current_async_frame)
 
 folly_add_library(
   NAME
   detail_helpers
-  HEADERS
-  detail/Helpers.h
   EXPORTED_DEPS
-  folly_coro_coroutine
-  folly_executor
-  folly_io_async_request_context
-  folly_singleton_thread_local
-  folly_tracing_async_stack)
+  folly_coro_detail_detail_helpers)
 
 folly_add_library(
   NAME
   detail_malloc
-  SRCS
-  detail/Malloc.cpp
-  HEADERS
-  detail/Malloc.h
-  DEPS
-  folly_lang_hint
-  folly_lang_new
   EXPORTED_DEPS
-  folly_c_portability)
+  folly_coro_detail_detail_malloc)
 
-folly_add_library(NAME detail_manual_lifetime HEADERS detail/ManualLifetime.h
-                  EXPORTED_DEPS folly_scope_guard)
+folly_add_library(
+  NAME detail_manual_lifetime
+  EXPORTED_DEPS
+    folly_coro_detail_detail_manual_lifetime
+)
 
-folly_add_library(NAME detail_traits HEADERS detail/Traits.h EXPORTED_DEPS
-                  folly_traits)
+folly_add_library(
+  NAME detail_traits
+  EXPORTED_DEPS
+    folly_coro_detail_detail_traits
+)
 
 folly_add_library(
   NAME
@@ -382,16 +360,8 @@ folly_add_library(
 folly_add_library(
   NAME
   inline_task
-  HEADERS
-  detail/InlineTask.h
   EXPORTED_DEPS
-  folly_coro_coroutine
-  folly_coro_detail_malloc
-  folly_coro_with_async_stack
-  folly_lang_assume
-  folly_scope_guard
-  folly_tracing_async_stack
-  folly_try)
+  folly_coro_detail_inline_task)
 
 folly_add_library(
   NAME

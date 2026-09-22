@@ -294,95 +294,49 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "detail_barrier",
-    headers = ["detail/Barrier.h"],
-    use_raw_headers = True,
-    exported_deps = [
-        ":coroutine",
-        ":traits",
-        ":with_async_stack",
-        "//folly/tracing:async_stack",
-    ],
+    exported_deps = ["//folly/coro/detail:detail_barrier"],
 )
 
 ### this line is a hint for source control merge
 
 fb_dirsync_cpp_library(
     name = "detail_barrier_task",
-    headers = ["detail/BarrierTask.h"],
-    use_raw_headers = True,
-    exported_deps = [
-        ":coroutine",
-        ":detail_barrier",
-        ":detail_malloc",
-        ":with_async_stack",
-    ],
+    exported_deps = ["//folly/coro/detail:detail_barrier_task"],
 )
 
 ### this line is a hint for source control merge
 
 fb_dirsync_cpp_library(
     name = "detail_current_async_frame",
-    headers = ["detail/CurrentAsyncFrame.h"],
-    use_raw_headers = True,
-    exported_deps = [
-        ":coroutine",
-        ":with_async_stack",
-        "//folly:executor",
-        "//folly/tracing:async_stack",
-    ],
+    exported_deps = ["//folly/coro/detail:detail_current_async_frame"],
 )
 
 ### this line is a hint for source control merge
 
 fb_dirsync_cpp_library(
     name = "detail_helpers",
-    headers = ["detail/Helpers.h"],
-    use_raw_headers = True,
-    exported_deps = [
-        ":coroutine",
-        "//folly:executor",
-        "//folly:singleton_thread_local",
-        "//folly/io/async:request_context",
-        "//folly/tracing:async_stack",
-    ],
+    exported_deps = ["//folly/coro/detail:detail_helpers"],
 )
 
 ### this line is a hint for source control merge
 
 fb_dirsync_cpp_library(
     name = "detail_malloc",
-    srcs = ["detail/Malloc.cpp"],
-    headers = ["detail/Malloc.h"],
-    use_raw_headers = True,
-    deps = [
-        "//folly/lang:hint",
-        "//folly/lang:new",
-    ],
-    exported_deps = [
-        "//folly:c_portability",
-    ],
+    exported_deps = ["//folly/coro/detail:detail_malloc"],
 )
 
 ### this line is a hint for source control merge
 
 fb_dirsync_cpp_library(
     name = "detail_manual_lifetime",
-    headers = ["detail/ManualLifetime.h"],
-    use_raw_headers = True,
-    exported_deps = [
-        "//folly:scope_guard",
-    ],
+    exported_deps = ["//folly/coro/detail:detail_manual_lifetime"],
 )
 
 ### this line is a hint for source control merge
 
 fb_dirsync_cpp_library(
     name = "detail_traits",
-    headers = ["detail/Traits.h"],
-    use_raw_headers = True,
-    exported_deps = [
-        "//folly:traits",
-    ],
+    exported_deps = ["//folly/coro/detail:detail_traits"],
 )
 
 ### this line is a hint for source control merge
@@ -479,17 +433,7 @@ fb_dirsync_cpp_library(
 
 fb_dirsync_cpp_library(
     name = "inline_task",
-    headers = ["detail/InlineTask.h"],
-    use_raw_headers = True,
-    exported_deps = [
-        ":coroutine",
-        ":detail_malloc",
-        ":with_async_stack",
-        "//folly:scope_guard",
-        "//folly:try",
-        "//folly/lang:assume",
-        "//folly/tracing:async_stack",
-    ],
+    exported_deps = ["//folly/coro/detail:inline_task"],
 )
 
 ### this line is a hint for source control merge
