@@ -680,8 +680,8 @@ fb_dirsync_cpp_library(
     name = "config",
     # @fb-only[end= ]: headers = ["folly-config.h"],
     apple_sdks = ALL_APPLE_SDKS,
-    exported_preprocessor_flags = CPPFLAGS,
-    fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
+    # @fb-only[end= ]: exported_preprocessor_flags = CPPFLAGS,
+    # @fb-only[end= ]: fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
     propagated_pp_flags = select({
         "DEFAULT": [],
         # The `liblz4.so` in the default conda channel doesn't *publicly* export
@@ -2678,10 +2678,10 @@ fb_dirsync_cpp_library(
         ],
     }),
     exported_preprocessor_flags = select({
+        "DEFAULT": [],
         "fbsource//xplat/folly/buck_config:folly-singleton-schedule-at-exit-disabled": [
             "-DFOLLY_SINGLETON_SKIP_SCHEDULE_ATEXIT=1",
         ],
-        "DEFAULT": [],
     }) + select({
         # Symbolizer is not available for all platforms, disable it for now.
         "DEFAULT": ["-DFOLLY_HAVE_DWARF=0"],
