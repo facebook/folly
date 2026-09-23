@@ -1209,6 +1209,7 @@ class basic_fbstring {
   // Added by C++11
   // C++11 21.4.5, element access:
   const value_type& front() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    assert(!empty());
     return *begin();
   }
   const value_type& back() const [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
@@ -1216,7 +1217,10 @@ class basic_fbstring {
     // Should be begin()[size() - 1], but that branches twice
     return *(end() - 1);
   }
-  value_type& front() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] { return *begin(); }
+  value_type& front() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
+    assert(!empty());
+    return *begin();
+  }
   value_type& back() [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]] {
     assert(!empty());
     // Should be begin()[size() - 1], but that branches twice
