@@ -171,6 +171,9 @@ void clause11_21_4_2_f(String& test) {
 template <class String>
 void clause11_21_4_2_g(String& test) {
   // Constructor from size_t, char
+  if (test.empty()) {
+    return;
+  }
   const size_t n = random(0, test.size());
   const auto c = test.front();
   test = String(n, c);
