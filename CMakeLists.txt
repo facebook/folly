@@ -174,6 +174,22 @@ endif ()
 include(FollyFunctions)
 
 include(folly-deps) # Find the required packages
+
+# A shared folly links what it was built against, and a fetched dependency
+# exists only in this build tree, so the installed libraries would point at
+# files that are not there. Build and test such a tree, but do not offer to
+# install it. A static folly links none of them, so it installs as before and
+# folly-config.cmake finds the consumer's own copies.
+get_property(folly_fetched_deps GLOBAL PROPERTY FOLLY_FETCHED_DEPS)
+if (BUILD_SHARED_LIBS AND folly_fetched_deps
+    AND NOT DEFINED CMAKE_SKIP_INSTALL_RULES)
+  list(JOIN folly_fetched_deps ", " folly_fetched_deps_text)
+  message(STATUS
+    "Not installable, so install rules are off. Install these and reconfigure "
+    "for an installable shared folly: ${folly_fetched_deps_text}")
+  set(CMAKE_SKIP_INSTALL_RULES ON)
+endif()
+
 include(FollyConfigChecks)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMake/folly-config.h.cmake
                ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h)

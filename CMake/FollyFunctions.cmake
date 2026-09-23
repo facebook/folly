@@ -392,6 +392,14 @@ define_property(
   FULL_DOCS "Target names, both alias and underlying, to wrap in
     $<BUILD_LOCAL_INTERFACE:> wherever folly links them")
 
+# Dependencies folly fetched because the system did not have them. They are
+# built here and never installed, so folly cannot be installed either.
+define_property(GLOBAL PROPERTY FOLLY_FETCHED_DEPS
+  BRIEF_DOCS "Dependencies fetched into this build tree"
+  FULL_DOCS "Names passed to folly_fetch_from_manifest, reported once the
+    dependency search is done"
+)
+
 # Wrap any dependency in ARGN that must not reach folly's install interface,
 # leaving the rest untouched, and return the list in `out`.
 function (folly_localize_deps out)
