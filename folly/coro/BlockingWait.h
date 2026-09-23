@@ -300,7 +300,7 @@ class BlockingWaitExecutor final
       queue_.swap(infos);
       RequestContextSaverScopeGuard guard;
       for (auto& info : infos) {
-        folly::RequestContext::setContext(std::move(info.rctx));
+        guard.setContext(std::move(info.rctx));
         std::exchange(info.func, nullptr)();
       }
     });
