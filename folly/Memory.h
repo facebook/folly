@@ -438,6 +438,19 @@ std::shared_ptr<remove_cvref_t<T>> copy_to_shared_ptr(T&& t) {
 }
 
 /**
+ *  copy_to_shared_ptr_const
+ *
+ *  Move or copy the argument to the heap and return it owned by a
+ *  shared_ptr<T const>.
+ *
+ *  Like copy_to_shared_ptr, but returns a shared_ptr to const.
+ */
+template <typename T>
+std::shared_ptr<remove_cvref_t<T> const> copy_to_shared_ptr_const(T&& t) {
+  return std::make_shared<remove_cvref_t<T> const>(static_cast<T&&>(t));
+}
+
+/**
  *  copy_through_unique_ptr
  *
  *  If the argument is nonnull, allocates a copy of its pointee.

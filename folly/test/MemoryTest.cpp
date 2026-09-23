@@ -166,6 +166,11 @@ TEST(copyToSharedPtr, example) {
   EXPECT_EQ(17, *s);
 }
 
+TEST(copyToSharedPtrConst, example) {
+  std::shared_ptr<int const> s = copy_to_shared_ptr_const(17);
+  EXPECT_EQ(17, *s);
+}
+
 TEST(copyThroughUniquePtr, example) {
   std::unique_ptr<int> p = std::make_unique<int>(17);
   std::unique_ptr<int> s = copy_through_unique_ptr(p);
