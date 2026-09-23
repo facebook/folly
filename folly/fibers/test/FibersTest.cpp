@@ -17,6 +17,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <thread>
 #include <vector>
 
@@ -3183,6 +3184,160 @@ TEST(TimedRWMutex, MultipleThreadsReadPriority) {
 
 TEST(TimedRWMutex, MultipleThreadsWritePriority) {
   testTimedRWMutex<TimedRWMutexWritePriority<Baton>>();
+}
+
+namespace {
+
+struct TimedRWMutexWaitState {
+  Baton waiting;
+  Baton expire;
+  Baton expired;
+  Baton completed;
+  Baton posted;
+  std::function<void()> onPost;
+};
+
+// each reader's test baton uses its own state for coordination.
+thread_local TimedRWMutexWaitState* timedRWMutexWaitState = nullptr;
+
+class TimedRWMutexTestBaton {
+ public:
+  TimedRWMutexTestBaton() : state_(*timedRWMutexWaitState) {}
+
+  void wait() {
+    state_.waiting.post();
+    state_.posted.wait();
+  }
+
+  bool try_wait_until(std::chrono::steady_clock::time_point) {
+    state_.waiting.post();
+    state_.expire.wait();
+    state_.expired.post();
+    return false;
+  }
+
+  void post() {
+    if (state_.onPost) {
+      state_.onPost();
+    }
+    state_.posted.post();
+  }
+
+ private:
+  TimedRWMutexWaitState& state_;
+};
+
+// time out the second reader while posting the first. it was already
+// granted the lock, so it must succeed and release its reader count.
+template <bool ReaderPriority>
+void testTimedRWMutexSharedTimeoutDuringHandoff(bool downgrade) {
+  TimedRWMutexImpl<ReaderPriority, TimedRWMutexTestBaton> mutex;
+  TimedRWMutexWaitState first;
+  TimedRWMutexWaitState second;
+  bool acquired = false;
+
+  first.onPost = [&] {
+    second.expire.post();
+    second.expired.wait();
+    // A cancelled reader can return now; a granted reader must wait for its
+    // wake before destroying the waiter. Bound the pause to allow either
+    // path.
+    second.completed.try_wait_for(std::chrono::seconds(1));
+  };
+
+  mutex.lock();
+  std::thread firstReader([&] {
+    timedRWMutexWaitState = &first;
+    std::shared_lock lock(mutex);
+  });
+  first.waiting.wait();
+  std::thread secondReader([&] {
+    timedRWMutexWaitState = &second;
+    acquired = mutex.try_lock_shared_until(
+        std::chrono::steady_clock::time_point::min());
+    if (acquired) {
+      mutex.unlock_shared();
+    }
+    second.completed.post();
+  });
+  second.waiting.wait();
+
+  if (downgrade) {
+    mutex.unlock_and_lock_shared();
+    mutex.unlock_shared();
+  } else {
+    mutex.unlock();
+  }
+  firstReader.join();
+  secondReader.join();
+
+  EXPECT_TRUE(acquired);
+  std::unique_lock writer(mutex, std::try_to_lock);
+  ASSERT_TRUE(writer.owns_lock());
+}
+
+// time out a reader while the write lock is held. it must fail
+// without blocking later readers or writers.
+template <bool ReaderPriority>
+void testTimedRWMutexSharedTimeoutBeforeHandoff() {
+  TimedRWMutexImpl<ReaderPriority, TimedRWMutexTestBaton> mutex;
+  for (int iteration = 0; iteration < 3; ++iteration) {
+    SCOPED_TRACE(iteration);
+    TimedRWMutexWaitState reader;
+    bool acquired = false;
+
+    mutex.lock();
+    std::thread thread([&] {
+      timedRWMutexWaitState = &reader;
+      acquired = mutex.try_lock_shared_until(
+          std::chrono::steady_clock::time_point::min());
+      if (acquired) {
+        mutex.unlock_shared();
+      }
+    });
+    reader.waiting.wait();
+    reader.expire.post();
+    thread.join();
+
+    TimedRWMutexWaitState next;
+    std::thread nextReader([&] {
+      timedRWMutexWaitState = &next;
+      std::shared_lock lock(mutex);
+    });
+    next.waiting.wait();
+    mutex.unlock();
+    nextReader.join();
+
+    EXPECT_FALSE(acquired);
+    std::unique_lock writer(mutex, std::try_to_lock);
+    ASSERT_TRUE(writer.owns_lock());
+  }
+}
+
+} // namespace
+
+TEST(TimedRWMutex, SharedTimeoutDuringUnlockReadPriority) {
+  testTimedRWMutexSharedTimeoutDuringHandoff<true>(false);
+}
+
+TEST(TimedRWMutex, SharedTimeoutDuringUnlockWritePriority) {
+  testTimedRWMutexSharedTimeoutDuringHandoff<false>(false);
+}
+
+TEST(TimedRWMutex, SharedTimeoutDuringDowngradeReadPriority) {
+  testTimedRWMutexSharedTimeoutDuringHandoff<true>(true);
+}
+
+TEST(TimedRWMutex, SharedTimeoutDuringDowngradeWritePriority) {
+  testTimedRWMutexSharedTimeoutDuringHandoff<false>(true);
+}
+
+TEST(TimedRWMutex, SharedTimeoutBeforeHandoffReadPriority) {
+  testTimedRWMutexSharedTimeoutBeforeHandoff<true>();
+}
+
+TEST(TimedRWMutex, SharedTimeoutBeforeHandoffWritePriority) {
+  testTimedRWMutexSharedTimeoutBeforeHandoff<false>();
 }
 
 namespace {

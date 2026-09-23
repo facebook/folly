@@ -244,6 +244,7 @@ class TimedRWMutexImpl {
 
   bool try_lock_(StateLock& slock);
   void unlock_();
+  void wake_readers_(StateLock& slock);
 
   using MutexWaiter = detail::MutexWaiter<BatonType>;
   using MutexWaiterList =

@@ -17,6 +17,7 @@
 #pragma once
 
 #include <mutex>
+#include <vector>
 
 #include <folly/CancellationToken.h>
 #include <folly/synchronization/detail/Sleeper.h>
@@ -593,17 +594,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
         ((slock.state() >> kReadersShift) == 0) &&
         "read waiters can only accumulate while write locked");
     slock.state() &= ~kWriteLocked;
-    slock.state() += read_waiters_.size() * kReadersInc;
-
-    MutexWaiterList waiters_to_wake = std::move(read_waiters_);
-    slock.unlock();
-
-    while (!waiters_to_wake.empty()) {
-      MutexWaiter& to_wake = waiters_to_wake.front();
-      waiters_to_wake.pop_front();
-      to_wake.wake();
-    }
-
+    wake_readers_(slock);
     return;
   }
 
@@ -633,6 +624,27 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
 }
 
 template <bool ReaderPriority, typename BatonType>
+void TimedRWMutexImpl<ReaderPriority, BatonType>::wake_readers_(
+    StateLock& slock) {
+  assert(!read_waiters_.empty());
+  std::vector<MutexWaiter*> waiters_to_wake;
+  waiters_to_wake.reserve(read_waiters_.size());
+  slock.state() += read_waiters_.size() * kReadersInc;
+
+  // A timed-out reader uses hook.is_linked() to decide whether it was granted
+  // the lock. Unlink all granted readers under StateLock before waking them.
+  while (!read_waiters_.empty()) {
+    waiters_to_wake.push_back(&read_waiters_.front());
+    read_waiters_.pop_front();
+  }
+  slock.unlock();
+
+  for (auto* waiter : waiters_to_wake) {
+    waiter->wake();
+  }
+}
+
+template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_and_lock_shared() {
   StateLock slock{state_};
   assert(
@@ -642,16 +654,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_and_lock_shared() {
   slock.state() += kReadersInc;
 
   if (!read_waiters_.empty()) {
-    slock.state() += read_waiters_.size() * kReadersInc;
-
-    MutexWaiterList waiters_to_wake = std::move(read_waiters_);
-    slock.unlock();
-
-    while (!waiters_to_wake.empty()) {
-      MutexWaiter& to_wake = waiters_to_wake.front();
-      waiters_to_wake.pop_front();
-      to_wake.wake();
-    }
+    wake_readers_(slock);
   }
 }
 } // namespace fibers
