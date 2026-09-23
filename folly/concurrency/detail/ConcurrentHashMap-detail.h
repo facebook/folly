@@ -1299,31 +1299,24 @@ class alignas(64) SIMDTable {
 
    private:
     void findNextNode() {
-      DCHECK(chunks_);
-      Chunks* const chunks = chunks_;
-      const size_t chunk_count = chunk_count_;
-      uint64_t chunk_idx = chunk_idx_;
-      uint64_t tag_idx = tag_idx_;
-      Node* node = nullptr;
       do {
-        if (tag_idx >= Chunk::kCapacity) {
-          tag_idx = 0;
-          ++chunk_idx;
+        if (tag_idx_ >= Chunk::kCapacity) {
+          tag_idx_ = 0;
+          ++chunk_idx_;
         }
-        if (chunk_idx >= chunk_count) {
+        if (chunk_idx_ >= chunk_count_) {
+          node_ = nullptr;
           break;
         }
+        DCHECK(chunks_);
         // Note that iteration could also be implemented with tag filtering
-        node = hazptrs_[1].protect(
-            chunks->getChunk(chunk_idx, chunk_count)->item(tag_idx));
-        if (node) {
+        node_ = hazptrs_[1].protect(
+            chunks_->getChunk(chunk_idx_, chunk_count_)->item(tag_idx_));
+        if (node_) {
           break;
         }
-        ++tag_idx;
+        ++tag_idx_;
       } while (true);
-      node_ = node;
-      chunk_idx_ = chunk_idx;
-      tag_idx_ = tag_idx;
     }
 
     Node* node_{nullptr};
