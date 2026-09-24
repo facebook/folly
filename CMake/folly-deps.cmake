@@ -77,6 +77,13 @@ function (folly_fetch_from_manifest name manifest)
   else ()
     message(FATAL_ERROR "no archive or pinned commit in ${path}")
   endif ()
+  # Some dependencies build a static library whatever BUILD_SHARED_LIBS says,
+  # gflags and libevent among them, and folly links those into its shared
+  # libraries. An ELF linker takes that only if the objects are position
+  # independent.
+  if (BUILD_SHARED_LIBS)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+  endif ()
   # CMAKE_REQUIRED_* configure folly's own check_* calls, and a subproject
   # inherits them. An imported target such as Threads::Threads is absent from
   # the separate project a try_compile() generates, so a dependency's own checks
