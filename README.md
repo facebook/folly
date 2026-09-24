@@ -200,7 +200,7 @@ At time of writing (Dec 2021) there is a build break on GCC 11.x based systems i
 
 Note that many tests are disabled for folly Windows builds, you can see them in the log from the cmake configure step, or by looking for WINDOWS_DISABLED in `CMakeLists.txt`
 
-That said, `getdeps.py` builds work on Windows and are tested in CI.
+That said, Windows is tested in CI with the CMake build above, and `getdeps.py` builds work there as well.
 
 If you prefer, you can try Vcpkg. folly is available in [Vcpkg](https://github.com/Microsoft/vcpkg#vcpkg) and releases may be built via `vcpkg install folly:x64-windows`.
 

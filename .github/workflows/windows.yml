@@ -1,0 +1,73 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
+
+name: windows
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+  actions: read  #  to query GitHub Actions cache usage
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      SCCACHE_GHA_ENABLED: "on"
+    steps:
+
+    # folly and the dependencies it fetches carry paths past MAX_PATH, and
+    # symlinks and checked-in fixtures that CRLF translation would corrupt.
+    - name: Fix Git config
+      run: >
+        git config --system core.longpaths true &&
+        git config --system core.autocrlf false &&
+        git config --system core.symlinks true
+      shell: cmd
+
+    - uses: actions/checkout@v6
+
+    - name: Set up sccache
+      uses: mozilla-actions/sccache-action@v0.0.10
+      with:
+        version: "v0.14.0"
+
+    # The image ships Boost, which is worth more than fetching and building it.
+    - name: Export boost environment
+      run: "echo BOOST_ROOT=%BOOST_ROOT_1_83_0% >> %GITHUB_ENV%"
+      shell: cmd
+
+    # Only the developer environment puts nmake and ninja on PATH, and folly
+    # needs nmake to drive OpenSSL's own build when the image has no OpenSSL.
+    - uses: ilammy/msvc-dev-cmd@v1
+
+    # Whatever the runner already has is used; the rest is fetched or built by
+    # the CMake build itself, so there is no dependency install step. Ninja
+    # keeps this single-config like the other platforms, and unlike the Visual
+    # Studio generator it honours the compiler launcher that sccache needs.
+    - name: Configure
+      run: >
+        cmake -B _build -G Ninja
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo
+        -DBUILD_TESTS=ON
+        -DCMAKE_C_COMPILER_LAUNCHER=sccache
+        -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+
+    - name: Build
+      run: cmake --build _build -j
+
+    - name: Test
+      run: ctest --test-dir _build --output-on-failure
+
+    - name: Show sccache stats
+      if: always()
+      run: sccache --show-stats
