@@ -1222,6 +1222,8 @@ class ThinCursor {
 
 class Cursor : public CursorBase<Cursor, const IOBuf> {
  public:
+  using Buffer = IOBuf;
+
   explicit Cursor(const IOBuf* buf) noexcept
       : CursorBase<Cursor, const IOBuf>(buf) {}
 
