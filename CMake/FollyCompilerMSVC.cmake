@@ -96,8 +96,12 @@ if (MSVC_USE_STATIC_RUNTIME)
   endforeach ()
 endif ()
 
-# The Ninja generator doesn't de-dup the exception mode flag, so remove the
-# default flag so that MSVC doesn't warn about it on every single file.
+# The Ninja generator doesn't de-dup the exception mode flag, so MSVC warns on
+# every single file when the /EHs folly puts on its own targets meets the
+# default /EHsc. Narrow the default to that same /EHs rather than dropping it:
+# a dependency folly fetches is built from these flags and never sees the
+# target ones, and with no exception mode at all Boost.Exception refuses to
+# compile.
 if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
   foreach (
     flag_var
@@ -112,7 +116,7 @@ if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
     CMAKE_CXX_FLAGS_MINSIZEREL
     CMAKE_CXX_FLAGS_RELWITHDEBINFO)
     if (${flag_var} MATCHES "/EHsc")
-      string(REGEX REPLACE "/EHsc" "" ${flag_var} "${${flag_var}}")
+      string(REGEX REPLACE "/EHsc" "/EHs" ${flag_var} "${${flag_var}}")
     endif ()
   endforeach ()
 endif ()

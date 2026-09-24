@@ -54,6 +54,19 @@ jobs:
     # the CMake build itself, so there is no dependency install step. Ninja
     # keeps this single-config like the other platforms, and unlike the Visual
     # Studio generator it honours the compiler launcher that sccache needs.
+    #
+    # RelWithDebInfo would otherwise compile with /Zi, which writes the debug
+    # info of every object in a target to one shared .pdb that the compiles
+    # coordinate over through mspdbsrv. That coordination does not survive
+    # sccache, and the compiles collide on the file:
+    #
+    #   fatal error C1041: cannot open program database '...gflags_static.pdb';
+    #   if multiple CL.EXE write to the same .PDB file, please use /FS
+    #
+    # even though CMake already passes /FS. Embedded is /Z7, which puts the
+    # debug info in each object and leaves nothing to share. CMP0141 is what
+    # makes CMake read the setting, and folly asks for an older
+    # cmake_minimum_required than the 3.25 that introduced it.
     - name: Configure
       run: >
         cmake -B _build -G Ninja
@@ -61,6 +74,8 @@ jobs:
         -DBUILD_TESTS=ON
         -DCMAKE_C_COMPILER_LAUNCHER=sccache
         -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+        -DCMAKE_POLICY_DEFAULT_CMP0141=NEW
+        -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded
 
     - name: Build
       run: cmake --build _build -j

@@ -156,8 +156,14 @@ folly_add_library(
   folly_portability_time
   folly_portability_windows)
 if (WIN32)
-  target_link_libraries(folly_portability_pthread_obj PUBLIC Boost::thread)
-  target_link_libraries(folly_portability_pthread PUBLIC Boost::thread)
+  # Unlike every other external dependency, which folly_add_library localizes,
+  # this one is named here and would reach folly's install interface. A fetched
+  # Boost builds boost_thread in this tree, and install(EXPORT folly) refuses a
+  # target that links one in no export set.
+  folly_localize_deps(folly_boost_thread Boost::thread)
+  target_link_libraries(folly_portability_pthread_obj
+                        PUBLIC ${folly_boost_thread})
+  target_link_libraries(folly_portability_pthread PUBLIC ${folly_boost_thread})
   set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS
                                       Boost::thread)
 endif ()
