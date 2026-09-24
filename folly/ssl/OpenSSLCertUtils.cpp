@@ -33,7 +33,7 @@ std::string getOpenSSLErrorString(unsigned long err) {
   return std::string(errBuff.data());
 }
 
-std::string asn1ToString(ASN1_STRING* a) {
+std::string asn1ToString(const ASN1_STRING* a) {
   auto strType = ASN1_STRING_type(a);
   if (strType == V_ASN1_UTF8STRING || strType == V_ASN1_OCTET_STRING) {
     long len = ASN1_STRING_length(a);
@@ -90,9 +90,12 @@ std::optional<GeneralName> getSubjectAltName(const GENERAL_NAME& name) {
   return std::nullopt;
 }
 
-std::string getExtOid(X509_EXTENSION* extension) {
+std::string getExtOid(const X509_EXTENSION* extension) {
   CHECK_NOTNULL(extension);
-  ASN1_OBJECT* object = X509_EXTENSION_get_object(extension);
+  // X509_EXTENSION_get_object() takes a non-const parameter before
+  // OpenSSL 4.0; the cast is a no-op there.
+  const ASN1_OBJECT* object =
+      X509_EXTENSION_get_object(const_cast<X509_EXTENSION*>(extension));
   // Query for extension OID
   constexpr int buf_size = 256;
   std::string ret(buf_size, '\0');
@@ -107,18 +110,24 @@ std::string getExtOid(X509_EXTENSION* extension) {
   return ret;
 }
 
-std::string getExtData(X509_EXTENSION* extension) {
+std::string getExtData(const X509_EXTENSION* extension) {
   CHECK_NOTNULL(extension);
-  auto asnValue = X509_EXTENSION_get_data(extension);
+  // X509_EXTENSION_get_data() takes a non-const parameter before
+  // OpenSSL 4.0; the cast is a no-op there.
+  auto asnValue =
+      X509_EXTENSION_get_data(const_cast<X509_EXTENSION*>(extension));
   return asnValue ? asn1ToString(asnValue) : std::string();
 }
 
-Optional<std::string> commonName(X509_NAME* name) {
+Optional<std::string> commonName(const X509_NAME* name) {
   if (!name) {
     return none;
   }
 
-  auto cnLoc = X509_NAME_get_index_by_NID(name, NID_commonName, -1);
+  // X509_NAME_get_index_by_NID() takes a non-const parameter before
+  // OpenSSL 3.0; the cast is a no-op there.
+  auto cnLoc = X509_NAME_get_index_by_NID(
+      const_cast<X509_NAME*>(name), NID_commonName, -1);
   if (cnLoc < 0) {
     return none;
   }
@@ -276,7 +285,7 @@ std::vector<std::string> OpenSSLCertUtils::getExtension(
     const X509& x509, folly::StringPiece oid) {
   std::vector<std::string> extValues;
   for (int i = 0; i < X509_get_ext_count(&x509); i++) {
-    X509_EXTENSION* extension = X509_get_ext(&x509, i);
+    const X509_EXTENSION* extension = X509_get_ext(&x509, i);
     std::string extensionOid = getExtOid(extension);
     if (extensionOid == oid) {
       extValues.push_back(getExtData(extension));
@@ -289,7 +298,7 @@ std::vector<std::pair<std::string, std::string>>
 OpenSSLCertUtils::getAllExtensions(const X509& x509) {
   std::vector<std::pair<std::string, std::string>> extensions;
   for (int i = 0; i < X509_get_ext_count(&x509); i++) {
-    X509_EXTENSION* extension = X509_get_ext(&x509, i);
+    const X509_EXTENSION* extension = X509_get_ext(&x509, i);
     std::string oid = getExtOid(extension);
     std::string value = getExtData(extension);
     extensions.push_back(std::make_pair(oid, value));
