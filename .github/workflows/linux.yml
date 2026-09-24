@@ -52,8 +52,10 @@ jobs:
         -DCMAKE_C_COMPILER_LAUNCHER=sccache
         -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
+    # A bare -j starts every ready compile at once, which on a cold cache
+    # exhausts the runner's memory.
     - name: Build
-      run: cmake --build _build -j
+      run: cmake --build _build -j "$(nproc)"
 
     - name: Test
       run: ctest --test-dir _build --output-on-failure
