@@ -176,11 +176,6 @@ By default `getdeps.py` will build the tests for folly. To run them:
     cd folly
     python3 ./build/fbcode_builder/getdeps.py --allow-system-packages test
 
-### `build.sh`/`build.bat` wrapper
-
-`build.sh` can be used on Linux and MacOS, on Windows use
-the `build.bat` script instead. Its a wrapper around `getdeps.py`.
-
 ### Iterating on a `getdeps.py` build
 
 To invoke `cmake` again against a build getdeps made, there is a helpful `run_cmake.py` script output in the scratch-path build directory. You can find the scratch build directory from logs or with `python3 ./build/fbcode_builder/getdeps.py show-build-dir`.
