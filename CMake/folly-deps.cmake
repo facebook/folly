@@ -176,6 +176,12 @@ if (NOT LIBGFLAGS_FOUND)
   # As a subproject gflags builds only its single-threaded library.
   set(GFLAGS_BUILD_gflags_LIB ON)
   set(GFLAGS_BUILD_gflags_nothreads_LIB OFF)
+  # gflags builds a static library even for a shared build, and its `gflags`
+  # aliases prefer it. Every shared library linking an alias then embeds its
+  # own copy, and the second copy to register its flags aborts the process.
+  if (BUILD_SHARED_LIBS)
+    set(GFLAGS_BUILD_STATIC_LIBS OFF)
+  endif ()
   folly_fetch_from_manifest(gflags gflags)
   # FindGflags reports through variables; the subproject alias already carries
   # the generated include directory, so only the library needs one.
