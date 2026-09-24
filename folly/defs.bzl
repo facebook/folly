@@ -42,15 +42,15 @@ def cpp_flags():
             "-DFOLLY_HAVE_PWRITEV=0",
             "-DFOLLY_HAVE_TFO=0",
         ],
-        ("ovr_config//os:linux", "ovr_config//os:macos"): select({
-            "DEFAULT": [],
-            "ovr_config//project/folly:mobile[enabled]": [
-                "-DFOLLY_HAVE_LIBJEMALLOC=0",
-                "-DFOLLY_HAVE_PREADV=0",
-                "-DFOLLY_HAVE_PWRITEV=0",
-                "-DFOLLY_HAVE_TFO=0",
-            ],
-        }),
+        # @fb-only[end= ]: ("ovr_config//os:linux", "ovr_config//os:macos"): select({
+            # @fb-only[end= ]: "DEFAULT": [],
+            # @fb-only[end= ]: "ovr_config//project/folly:mobile[enabled]": [
+                # @fb-only[end= ]: "-DFOLLY_HAVE_LIBJEMALLOC=0",
+                # @fb-only[end= ]: "-DFOLLY_HAVE_PREADV=0",
+                # @fb-only[end= ]: "-DFOLLY_HAVE_PWRITEV=0",
+                # @fb-only[end= ]: "-DFOLLY_HAVE_TFO=0",
+            # @fb-only[end= ]: ],
+        # @fb-only[end= ]: }),
     })
 
     if is_folly_mobile_flag():
@@ -63,10 +63,10 @@ def cpp_flags():
         flags += select({
             "DEFAULT": selects.with_or({
                 "DEFAULT": ["-DFOLLY_MOBILE=1"],
-                ("ovr_config//os:linux", "ovr_config//os:macos"): select({
-                    "DEFAULT": [],
-                    "ovr_config//project/folly:mobile[enabled]": ["-DFOLLY_MOBILE=1"],
-                }),
+                # @fb-only[end= ]: ("ovr_config//os:linux", "ovr_config//os:macos"): select({
+                    # @fb-only[end= ]: "DEFAULT": [],
+                    # @fb-only[end= ]: "ovr_config//project/folly:mobile[enabled]": ["-DFOLLY_MOBILE=1"],
+                # @fb-only[end= ]: }),
                 "ovr_config//os:windows": [],
             }),
             "ovr_config//build_mode:arvr_mode[enabled]": select({
