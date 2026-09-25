@@ -193,6 +193,7 @@ folly_add_library(
   folly_concurrency_cache_locality
   folly_concurrency_container_atomic_grow_array
   folly_container_f14_hash
+  folly_container_small_vector
   folly_detail_static_singleton_manager
   folly_function
   folly_lang_align

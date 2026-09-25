@@ -160,6 +160,7 @@ fb_dirsync_cpp_library(
         "//folly/concurrency:cache_locality",
         "//folly/concurrency/container:atomic_grow_array",
         "//folly/container:f14_hash",
+        "//folly/container:small_vector",
         "//folly/detail:static_singleton_manager",
         "//folly/lang:align",
         "//folly/lang:bits",

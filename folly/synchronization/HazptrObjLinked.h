@@ -17,10 +17,10 @@
 #pragma once
 
 #include <atomic>
-#include <stack>
 
 #include <glog/logging.h>
 
+#include <folly/container/small_vector.h>
 #include <folly/synchronization/Hazptr-fwd.h>
 #include <folly/synchronization/HazptrObj.h>
 
@@ -218,12 +218,17 @@ class hazptr_obj_linked : public hazptr_obj<Atom> {
  *   T may have both, either, or none of the two types of outbound
  *   links. For example, UnboundedQueue Segment has an immutable
  *   link, and ConcurrentHashMap NodeT has a mutable link.
+ *
+ *   For mutable links (m == true), f may release, reclaim, or retire
+ *   the visited child. for_each_link must therefore read each child
+ *   pointer before invoking f on it, and must not access that child
+ *   again after the call.
  */
 template <typename T, template <typename> class Atom, typename D>
 class hazptr_obj_base_linked
     : public hazptr_obj_linked<Atom>,
       public hazptr_deleter<T, D> {
-  using Stack = std::stack<hazptr_obj_base_linked<T, Atom, D>*>;
+  using Worklist = small_vector<hazptr_obj_base_linked<T, Atom, D>*, 2>;
 
  public:
   void retire() {
@@ -265,12 +270,12 @@ class hazptr_obj_base_linked
   }
 
   void downgrade_retire_immutable_descendants() {
-    Stack s;
-    auto push = [&](auto p) { s.push(p); };
+    Worklist worklist;
+    auto push = [&](auto p) { worklist.push_back(p); };
     call_for_each_link(false, push);
-    while (!s.empty()) {
-      auto p = s.top();
-      s.pop();
+    while (!worklist.empty()) {
+      auto p = worklist.back();
+      worklist.pop_back();
       if (p && p->downgrade_link()) {
         p->call_for_each_link(false, push);
         p->retire();
@@ -279,12 +284,12 @@ class hazptr_obj_base_linked
   }
 
   void release_delete_immutable_descendants() {
-    Stack s;
-    auto push = [&](auto p) { s.push(p); };
+    Worklist worklist;
+    auto push = [&](auto p) { worklist.push_back(p); };
     call_for_each_link(false, push);
-    while (!s.empty()) {
-      auto p = s.top();
-      s.pop();
+    while (!worklist.empty()) {
+      auto p = worklist.back();
+      worklist.pop_back();
       if (p && p->release_ref()) {
         p->call_for_each_link(false, push);
         p->delete_self();
@@ -293,18 +298,14 @@ class hazptr_obj_base_linked
   }
 
   void release_retire_mutable_children(hazptr_obj_list<Atom>& l) {
-    Stack s;
-    auto push = [&](auto p) { s.push(p); };
-    call_for_each_link(true, push);
-    while (!s.empty()) {
-      auto p = s.top();
-      s.pop();
+    auto release = [&](auto p) {
       if (p->release_link()) {
         p->pre_retire_check(); // defined in hazptr_obj
         p->set_reclaim();
         l.push(p); // treated as if retired immediately
       }
-    }
+    };
+    call_for_each_link(true, release);
   }
 
   template <typename F>
