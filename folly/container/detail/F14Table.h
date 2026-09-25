@@ -2504,6 +2504,11 @@ class F14Table : public Policy {
       auto* srcChunk =
           Chunk::chunkRawAt(std::to_address(origChunks), origChunkCount - 1);
       std::size_t remaining = origSize;
+      // Software pipeline: prefetch each item's destination chunk, then write
+      // the item deferred from the previous iteration, so the destination's
+      // cold miss overlaps the next item's hash computation.
+      Item* pendingItem = nullptr;
+      HashPair pendingHp{};
       while (remaining > 0) {
         auto iter = srcChunk->occupiedIter();
         if (prefetchBeforeRehash()) {
@@ -2518,11 +2523,19 @@ class F14Table : public Policy {
           auto hp = splitHash(
               this->computeItemHash(const_cast<Item const&>(srcItem)));
           FOLLY_SAFE_CHECK(hp.second == srcChunk->tag(srcI), "");
-
-          auto dstIter = allocateTag(fullness, hp);
-          this->moveItemDuringRehash(dstIter.itemAddr(), srcItem);
+          prefetchAddr(chunkAt(moduloByChunkCount(hp.first)));
+          if (pendingItem != nullptr) {
+            auto dstIter = allocateTag(fullness, pendingHp);
+            this->moveItemDuringRehash(dstIter.itemAddr(), *pendingItem);
+          }
+          pendingItem = &srcItem;
+          pendingHp = hp;
         }
         srcChunk = Chunk::prevChunkRaw(srcChunk);
+      }
+      if (pendingItem != nullptr) {
+        auto dstIter = allocateTag(fullness, pendingHp);
+        this->moveItemDuringRehash(dstIter.itemAddr(), *pendingItem);
       }
 
       if constexpr (kEnableItemIteration) {
