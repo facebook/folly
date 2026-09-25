@@ -22,6 +22,7 @@
 #include <folly/algorithm/simd/Movemask.h>
 #include <folly/algorithm/simd/detail/SimdForEach.h>
 #include <folly/algorithm/simd/detail/SimdPlatform.h>
+#include <folly/container/Reserve.h>
 #include <folly/lang/Bits.h>
 
 #if FOLLY_X64
@@ -82,6 +83,7 @@ struct PlatformSimdSplitByChar {
       const std::uint8_t*& prev,
       Container& res) {
     Uint mmaskBits = mmask.first;
+    folly::grow_capacity_by(res, folly::popcount(mmaskBits) / BitsPerElement{});
     while (mmaskBits) {
       auto counted = folly::findFirstSet(mmaskBits) - 1;
       auto firstSet = counted / BitsPerElement{};
