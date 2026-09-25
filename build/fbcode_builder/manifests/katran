@@ -30,9 +30,6 @@ googletest
 fmt
 CLI11
 
-[debs]
-libssl-dev
-
 [shipit.pathmap]
 fbcode/katran/public_root = .
 fbcode/katran = katran
