@@ -20,6 +20,7 @@
 #include <condition_variable>
 #include <mutex>
 
+#include <folly/CppAttributes.h>
 #include <folly/Hash.h>
 #include <folly/Indestructible.h>
 #include <folly/Portability.h>
@@ -58,6 +59,9 @@ struct WaitNodeBase {
     return status;
   }
 
+  // The analyzer cannot prove the negative capability through CTAD
+  // std::lock_guard; the locking here is correct by inspection.
+  [[FOLLY_ATTR_CLANG_NO_THREAD_SAFETY_ANALYSIS]]
   void wake() {
     std::lock_guard nodeLock(mutex_);
     signaled_ = true;
