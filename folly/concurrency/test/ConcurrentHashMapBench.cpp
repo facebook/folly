@@ -29,6 +29,26 @@ DEFINE_int32(reps, 10, "number of reps");
 DEFINE_int32(ops, 1000 * 1000, "number of operations per rep");
 DEFINE_int64(size, 10 * 1000 * 1000, "size");
 
+#if (                                                        \
+    FOLLY_SSE_PREREQ(4, 2) ||                                \
+    (FOLLY_AARCH64 && FOLLY_F14_CRC_INTRINSIC_AVAILABLE)) && \
+    FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+template <typename Key, typename Value>
+using SIMDMap = folly::ConcurrentHashMap<
+    Key,
+    Value,
+    std::hash<Key>,
+    std::equal_to<Key>,
+    std::allocator<uint8_t>,
+    8,
+    std::atomic,
+    std::mutex,
+    folly::detail::concurrenthashmap::simd::SIMDTable>;
+#else
+template <typename Key, typename Value>
+using SIMDMap = folly::ConcurrentHashMap<Key, Value>;
+#endif
+
 template <typename Func, typename EndFunc>
 inline uint64_t run_once(int nthr, const Func& fn, const EndFunc& endFn) {
   folly::test::Barrier b(nthr + 1);
@@ -93,7 +113,7 @@ uint64_t bench_ctor_dtor(
   auto repFn = [&] {
     auto fn = [&](int) {
       for (int i = 0; i < ops; ++i) {
-        folly::ConcurrentHashMap<int, int> m;
+        SIMDMap<int, int> m;
         for (int j = 0; j < size; ++j) {
           folly::doNotOptimizeAway(m.insert(j, j));
         }
@@ -108,7 +128,7 @@ uint64_t bench_ctor_dtor(
 uint64_t bench_find(
     const int nthr, const bool sameItem, const std::string& name) {
   int ops = FLAGS_ops;
-  folly::ConcurrentHashMap<int, int> m;
+  SIMDMap<int, int> m;
   for (int j = 0; j < FLAGS_size; ++j) {
     m.insert(j, j);
   }
@@ -134,7 +154,7 @@ uint64_t bench_find(
 uint64_t bench_iter(const int nthr, int size, const std::string& name) {
   int reps = size == 0 ? 1000000 : size < 1000000 ? 1000000 / size : 1;
   int ops = size == 0 ? reps : size * reps;
-  folly::ConcurrentHashMap<int, int> m;
+  SIMDMap<int, int> m;
   for (int j = 0; j < size; ++j) {
     m.insert(j, j);
   }
@@ -153,7 +173,7 @@ uint64_t bench_iter(const int nthr, int size, const std::string& name) {
 
 uint64_t bench_begin(const int nthr, int size, const std::string& name) {
   int ops = FLAGS_ops;
-  folly::ConcurrentHashMap<int, int> m;
+  SIMDMap<int, int> m;
   for (int j = 0; j < size; ++j) {
     m.insert(j, j);
   }
@@ -171,7 +191,7 @@ uint64_t bench_begin(const int nthr, int size, const std::string& name) {
 
 uint64_t bench_empty(const int nthr, int size, const std::string& name) {
   int ops = FLAGS_ops;
-  folly::ConcurrentHashMap<int, int> m;
+  SIMDMap<int, int> m;
   for (int j = 0; j < size; ++j) {
     m.insert(j, j);
   }
@@ -215,6 +235,15 @@ void benches() {
             << std::endl;
   std::cout << "Test name                         Max time  Avg time  Min time"
             << std::endl;
+#if (                                                        \
+    FOLLY_SSE_PREREQ(4, 2) ||                                \
+    (FOLLY_AARCH64 && FOLLY_F14_CRC_INTRINSIC_AVAILABLE)) && \
+    FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+  bench_iter(1, 10, "SIMD CHM iterate -- 10 items    ");
+  bench_iter(1, 1000, "SIMD CHM iterate -- 1K items    ");
+  bench_iter(1, 100000, "SIMD CHM iterate -- 100K items  ");
+  return;
+#endif
   const int maxThreads = folly::available_concurrency();
   for (int nthr = 1; nthr <= maxThreads;) {
     std::cout << "========================= " << std::setw(2) << nthr
