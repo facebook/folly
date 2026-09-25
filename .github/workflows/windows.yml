@@ -54,6 +54,10 @@ jobs:
     # the CMake build itself, so there is no dependency install step. Ninja
     # keeps this single-config like the other platforms, and unlike the Visual
     # Studio generator it honours the compiler launcher that sccache needs.
+    #
+    # RelWithDebInfo defaults to /Zi, whose shared .pdb breaks under sccache
+    # (C1041 despite /FS). Embedded (/Z7) keeps debug info in each object.
+    # CMP0141 enables the setting; folly's cmake_minimum_required predates it.
     - name: Configure
       run: >
         cmake -B _build -G Ninja
@@ -61,6 +65,8 @@ jobs:
         -DBUILD_TESTS=ON
         -DCMAKE_C_COMPILER_LAUNCHER=sccache
         -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+        -DCMAKE_POLICY_DEFAULT_CMP0141=NEW
+        -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded
 
     - name: Build
       run: cmake --build _build -j
