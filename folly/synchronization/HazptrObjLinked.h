@@ -218,6 +218,7 @@ class hazptr_obj_linked : public hazptr_obj<Atom> {
  *   T may have both, either, or none of the two types of outbound
  *   links. For example, UnboundedQueue Segment has an immutable
  *   link, and ConcurrentHashMap NodeT has a mutable link.
+ *   Null pointers passed to f are ignored.
  *
  *   For mutable links (m == true), f may release, reclaim, or retire
  *   the visited child. for_each_link must therefore read each child
@@ -299,7 +300,7 @@ class hazptr_obj_base_linked
 
   void release_retire_mutable_children(hazptr_obj_list<Atom>& l) {
     auto release = [&](auto p) {
-      if (p->release_link()) {
+      if (p && p->release_link()) {
         p->pre_retire_check(); // defined in hazptr_obj
         p->set_reclaim();
         l.push(p); // treated as if retired immediately

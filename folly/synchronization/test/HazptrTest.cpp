@@ -150,10 +150,7 @@ class NodeRC : public hazptr_obj_base_linked<NodeRC<Mutable, Atom>, Atom> {
   template <typename F>
   void for_each_link(bool m, F&& f) {
     if (Mutable == m) {
-      auto p = next();
-      if (p) {
-        f(p);
-      }
+      f(next());
     }
   }
 }; // NodeRC
