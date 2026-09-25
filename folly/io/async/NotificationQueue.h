@@ -251,7 +251,7 @@ class NotificationQueue {
    * The fdType parameter determines the type of file descriptor used
    * internally to signal message availability.  The default (eventfd) is
    * preferable for performance and because it won't fail when the queue gets
-   * too long.  It is not available on on older and non-linux kernels, however.
+   * too long.  It is not available on older and non-linux kernels, however.
    * In this case the code will fall back to using a pipe, the parameter is
    * mostly for testing purposes.
    */

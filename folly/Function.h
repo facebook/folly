@@ -844,7 +844,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   Function& operator=(Fun fun) noexcept(Nx) {
     // Doing this in place is more efficient when we can do so safely.
     if (Nx) {
-      // Q: Why is is safe to destroy and reconstruct this object in place?
+      // Q: Why is it safe to destroy and reconstruct this object in place?
       // A: See the explanation in the move assignment operator.
       this->~Function();
       ::new (this) Function(static_cast<Fun&&>(fun));

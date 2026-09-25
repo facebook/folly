@@ -216,7 +216,7 @@ read-modify-write operations in the observation path and which scales very well
 with core count.
 
 Folly offers some exotic solutions here. `folly::ReadMostlySharedPtr`is a
-version of of shared-ptr accelerated with thread-local caches and thread-local
+version of shared-ptr accelerated with thread-local caches and thread-local
 refcount operations. `folly::CoreCachedSharedPtr` is a version of shared-ptr
 accelerated with a fixed-size slab of copies to ensure that refcount operations
 be relatively uncontended, but can be subject to exotic race conditions. And
