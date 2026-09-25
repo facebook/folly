@@ -728,6 +728,27 @@ if (IS_X86_64_ARCH AND NOT MSVC)
     PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp")
 endif ()
 
+# aarch64: ifunc selectors that dispatch __folly_memcpy/__folly_memset to the
+# external/aor implementations. FollyMemcpy.cpp and FollyMemset.cpp
+# deliberately do not define those symbols on Linux aarch64, so without
+# these nothing does and anything calling them fails to link.
+if (IS_AARCH64_ARCH AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  folly_add_library(
+    NAME memcpy_aarch64_select
+    SRCS
+      memcpy_select_aarch64.cpp
+    DEPS
+      folly_external_aor_memcpy_aarch64
+  )
+  folly_add_library(
+    NAME memset_aarch64_select
+    SRCS
+      memset_select_aarch64.cpp
+    DEPS
+      folly_external_aor_memset_aarch64
+  )
+endif()
+
 folly_add_library(
   NAME
   memory
