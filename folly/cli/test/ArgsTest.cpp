@@ -205,7 +205,9 @@ class ArgsTest : public ::testing::Test {
   void write_file(const std::string& filename, const std::string& content) {
     auto path = tempDir_.path() / filename;
 
-    std::ofstream file(path.string());
+    // The expectations encode byte offsets into the file, so open in binary
+    // mode to keep the newlines from being translated to CRLF on Windows.
+    std::ofstream file(path.string(), std::ios::binary);
     file << folly::stripLeftMargin(content);
     file.close();
   }
