@@ -264,12 +264,6 @@ class ArgsTest : public ::testing::Test {
     return entry_file_error(depth, value, loc, error);
   }
 
-  Entry entry_file_error_is_a_directory(
-      size_t depth, const std::string& value, location loc) {
-    auto error = std::make_error_code(std::errc::is_a_directory);
-    return entry_file_error(depth, value, loc, error);
-  }
-
   Entry entry_file_error_max_depth(
       size_t depth, const std::string& value, location loc) {
     return entry_file_error(
@@ -2095,8 +2089,14 @@ TEST_F(ArgsTest, BareAtInArgsFileTriggersFileError) {
           "final",
       }));
 
-  // Empty filename resolves to current directory, which fails with
-  // is_a_directory
+  // The empty filename resolves to the directory itself, so the read fails. The
+  // errno for that is left to the implementation, and the Windows CRT does not
+  // answer EISDIR, so take the reported error rather than naming one.
+  ASSERT_EQ(receiver.entries.size(), 9u);
+  auto const& file_error = receiver.entries[5];
+  ASSERT_EQ(file_error.type, Entry::FILE_ERROR);
+  EXPECT_TRUE(file_error.err);
+
   EXPECT_THAT(
       receiver.entries,
       ElementsAreArray({
@@ -2109,8 +2109,11 @@ TEST_F(ArgsTest, BareAtInArgsFileTriggersFileError) {
               {.idx = 0, .off = 0, .len = 8, .b = {1, 1}, .e = {1, 8}}),
           entry_file_found(
               1, "", {.idx = 1, .off = 9, .len = 1, .b = {2, 1}, .e = {2, 1}}),
-          entry_file_error_is_a_directory(
-              1, "", {.idx = 1, .off = 9, .len = 1, .b = {2, 1}, .e = {2, 1}}),
+          entry_file_error(
+              1,
+              "",
+              {.idx = 1, .off = 9, .len = 1, .b = {2, 1}, .e = {2, 1}},
+              file_error.err),
           entry_term(
               1,
               "--after",
