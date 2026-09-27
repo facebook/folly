@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <array>
+#include <cstdint>
 #include <functional>
 #include <iostream>
 #include <limits>
@@ -146,6 +148,14 @@ FOLLY_KEEP int codeSize_find_F14Vector(
   return i != m.end() ? 1 : 0;
 }
 
+// Unlike the others above, this value type is sized so that kChunkStride
+// isn't a power of two, which is the common case for real map value types.
+FOLLY_KEEP int codeSize_find_F14Value_OddStride(
+    F14ValueMap<uint64_t, std::array<uint8_t, 17>>& m, uint64_t k) {
+  auto i = m.find(k);
+  return i != m.end() ? i->second[0] : -1;
+}
+
 FOLLY_KEEP void codeSize_bracket_Std(
     std::unordered_map<int16_t, uint32_t>& m, int16_t k, uint32_t v) {
   m[k] = v;
@@ -195,6 +205,7 @@ int main(int, char**) {
   (void)codeSize_find_F14Value;
   (void)codeSize_find_F14Node;
   (void)codeSize_find_F14Vector;
+  (void)codeSize_find_F14Value_OddStride;
 
   (void)codeSize_bracket_Std;
   (void)codeSize_bracket_F14Value;

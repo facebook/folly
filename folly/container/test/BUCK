@@ -870,6 +870,7 @@ fb_dirsync_cpp_binary(
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",
+        "//folly:benchmark_util",
         "//folly:conv",
         "//folly:format",
         "//folly:function",

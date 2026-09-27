@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include <array>
 #include <cstddef>
 #include <functional>
 #include <map>
@@ -25,6 +26,7 @@
 
 #include <glog/logging.h>
 #include <folly/Benchmark.h>
+#include <folly/BenchmarkUtil.h>
 #include <folly/Conv.h>
 #include <folly/Format.h>
 #include <folly/Function.h>
@@ -452,6 +454,78 @@ void runAllHashMapTests() {
     }
   }
 }
+
+// Pointer-chase over a randomly permuted cycle of n cache lines. Not a map
+// benchmark: it's a baseline for the raw memory latency of the host running
+// this binary, so that the Find/ManyFind results above at large map sizes
+// (which are dominated by cache/DRAM latency, not by map logic) can be
+// compared across hosts or architectures on equal footing.
+namespace {
+void pointerChase(size_t iters, size_t n) {
+  BenchmarkSuspender braces;
+  std::vector<size_t> order(n);
+  for (size_t i = 0; i < n; ++i) {
+    order[i] = i;
+  }
+  std::shuffle(order.begin(), order.end(), getRNG());
+  struct alignas(64) Line {
+    size_t next;
+    char pad[56];
+  };
+  std::vector<Line> lines(n);
+  for (size_t i = 0; i < n; ++i) {
+    lines[order[i]].next = order[(i + 1) % n];
+  }
+  size_t cur = 0;
+  braces.dismissing([&] {
+    while (iters-- > 0) {
+      cur = lines[cur].next;
+    }
+  });
+  doNotOptimizeAway(cur);
+}
+} // namespace
+
+BENCHMARK_NAMED_PARAM(pointerChase, 1K, 1000)
+BENCHMARK_NAMED_PARAM(pointerChase, 32K, 32000)
+BENCHMARK_NAMED_PARAM(pointerChase, 1M, 1000000)
+BENCHMARK_NAMED_PARAM(pointerChase, 16M, 16000000)
+
+// find() on a small map, evicting the LLC before every lookup with
+// bm_llc_evict() so each one starts genuinely cold, without needing a huge
+// resident table the way the Find/ManyFind benchmarks above do. The value
+// type is sized so kChunkStride isn't a power of two, matching the common
+// case for real map value types; useful for evaluating changes to F14's
+// per-chunk prefetching. Run with `--bm_profile --bm_profile_iters=<N>`:
+// bm_llc_evict() dominates wall-clock time enough that the default
+// adaptive/best-of calibration misreports the timed (dismissed) portion as
+// zero, even though it's measured correctly.
+namespace {
+void findColdCache(size_t iters, size_t n) {
+  using V = std::array<uint8_t, 17>;
+  BenchmarkSuspender braces;
+  prepare<uint64_t>(n);
+  F14ValueMap<uint64_t, V> m(n);
+  for (size_t i = 0; i < n; ++i) {
+    m.emplace(key<uint64_t>(static_cast<int>(i)), V{});
+  }
+  std::uniform_int_distribution<int> dist(0, static_cast<int>(n) - 1);
+  int x = 0;
+  while (iters-- > 0) {
+    auto const& k = key<uint64_t>(dist(getRNG()));
+    bm_llc_evict(iters);
+    braces.dismissing([&] {
+      auto it = m.find(k);
+      if (it != m.end()) {
+        x ^= it->second[0];
+      }
+    });
+  }
+  doNotOptimizeAway(x);
+}
+} // namespace
+
+BENCHMARK_NAMED_PARAM(findColdCache, 1K, 1000)
 
 int main(int argc, char** argv) {
   folly::Init init(&argc, &argv);
