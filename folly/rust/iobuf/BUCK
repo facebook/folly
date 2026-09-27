@@ -16,9 +16,9 @@ create_forwarding_aliases(
     name = "iobuf",
     actual_name = select({
         "DEFAULT": "fbsource//xplat/folly/rust/iobuf:_iobuf",
-        "ovr_config//os:linux": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_compatible() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
-        "ovr_config//os:macos": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_mac() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
-        "ovr_config//os:windows": "fbcode//folly/rust/iobuf:_iobuf" if is_fbcode_mode_win() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
+        "ovr_config//os:linux": "fbcode//folly/rust/iobuf:iobuf_dirsync" if is_fbcode_compatible() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
+        "ovr_config//os:macos": "fbcode//folly/rust/iobuf:iobuf_dirsync" if is_fbcode_mode_mac() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
+        "ovr_config//os:windows": "fbcode//folly/rust/iobuf:iobuf_dirsync" if is_fbcode_mode_win() else "fbsource//xplat/folly/rust/iobuf:_iobuf",
     }),
     platforms = (CXX, FBCODE, WINDOWS),
     visibility = ["PUBLIC"],
