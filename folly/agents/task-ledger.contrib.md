@@ -12,6 +12,10 @@ several tasks or goals advance independently.
 Another agent should be able to resume from the ledger and current artifacts
 without guessing which summarized tasks remain active.
 
+In long or interleaved conversations, an agent can complete the work but send a
+final response about stale or unrelated tasks. The ledger tracks the workstream;
+a disposable sidecar tracks only what the next response must cover.
+
 ## What must persist
 
 Goals and requirements outlive the tasks that implement them. Keep them until
