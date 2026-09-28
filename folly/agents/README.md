@@ -27,7 +27,7 @@ Symlink this dir to `~/folly_agents`, and add this to your user rule file:
 ```markdown
 # `folly/agents` rules
 
-`{FA}` means `~/folly_agents`; spell file reads with ~.
+`{FA}` means `$HOME/folly_agents`, exact spelling.
 
 Immediately batch-load these from `{FA}/`:
 

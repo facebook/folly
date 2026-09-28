@@ -48,6 +48,25 @@ def completed(returncode: int) -> subprocess.CompletedProcess[bytes]:
     return subprocess.CompletedProcess([], returncode)
 
 
+class ParseArgsTest(unittest.TestCase):
+    def test_accepts_standard_option_form(self) -> None:
+        preamble_dir = MODULE_PATH.parent
+        prompt = preamble_dir / "run-review.md"
+
+        args = codex_reviewer.parse_args(
+            [
+                "--preamble-dir",
+                str(preamble_dir),
+                "--preamble",
+                "fresh-review-preamble",
+                str(prompt),
+            ],
+        )
+
+        self.assertEqual(args.preamble_dir, preamble_dir)
+        self.assertEqual(args.preamble, "fresh-review-preamble")
+
+
 class RetryTest(unittest.TestCase):
     def retry(
         self,

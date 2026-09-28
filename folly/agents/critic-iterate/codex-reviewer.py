@@ -43,21 +43,17 @@ REVIEW_PROFILES = {
 
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        allow_abbrev=False,
-        usage="%(prog)s --preamble-dir=PATH --preamble=NAME PROMPT",
+    parser = argparse.ArgumentParser(allow_abbrev=False)
+    parser.add_argument(
+        "--preamble", required=True, choices=REVIEW_PROFILES, action="append"
     )
-    parser.add_argument("--preamble", required=True, choices=REVIEW_PROFILES)
-    parser.add_argument("--preamble-dir", required=True, type=Path)
+    parser.add_argument("--preamble-dir", required=True, type=Path, action="append")
     parser.add_argument("prompt", type=Path)
-    if len(argv) == 1 and argv[0] in ("-h", "--help"):
-        parser.parse_args(argv)
-    fixed_options = ("--preamble-dir=", "--preamble=")
-    if len(argv) != 3 or any(
-        not argument.startswith(prefix) for argument, prefix in zip(argv, fixed_options)
-    ):
-        parser.error("expected --preamble-dir=PATH --preamble=NAME PROMPT")
     args = parser.parse_args(argv)
+    if len(args.preamble) != 1 or len(args.preamble_dir) != 1:
+        parser.error("--preamble and --preamble-dir may be specified only once")
+    args.preamble = args.preamble[0]
+    args.preamble_dir = args.preamble_dir[0]
     if not args.preamble_dir.is_absolute():
         parser.error(f"preamble directory is not absolute: {args.preamble_dir}")
     if not args.preamble_dir.is_dir():
@@ -94,13 +90,15 @@ def _install_cold_review_policy(
     executable_paths = sorted({str(invocation_path), str(resolved_path)})
     fixed_prefix = [
         executable_name,
-        f"--preamble-dir={preamble_dir}",
-        "--preamble=cold-review-preamble",
+        "--preamble-dir",
+        str(preamble_dir),
+        "--preamble",
+        "cold-review-preamble",
     ]
     rules_dir = codex_home / "rules"
     rules_dir.mkdir(mode=0o700)
     # Exec-policy prefixes cannot restrict trailing arguments. parse_args()
-    # fixes their order and accepts only an absolute prompt path.
+    # rejects duplicate options and accepts only one absolute prompt path.
     (rules_dir / "default.rules").write_text(
         "host_executable("
         f"name={json.dumps(executable_name)}, "

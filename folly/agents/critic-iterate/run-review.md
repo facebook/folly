@@ -1,11 +1,12 @@
 External review runs exactly this:
 
 ```bash
+[[ -z "${TMPDIR:-}" || "$TMPDIR" == /* ]] || { echo "TMPDIR must be absolute" >&2; exit 2; }
 review_tmp=$(mktemp -d)
 # Write cold-prompt.md and fresh-prompt.md under "$review_tmp" before this call.
 "{FA}/critic-iterate/codex-reviewer.py" \
-  --preamble-dir="{FA}/critic-iterate" \
-  --preamble=fresh-review-preamble \
+  --preamble-dir "{FA}/critic-iterate" \
+  --preamble fresh-review-preamble \
   "$review_tmp/fresh-prompt.md"
 ```
 
@@ -14,8 +15,8 @@ their current absolute values:
 
 ```bash
 "{FA}/critic-iterate/codex-reviewer.py" \
-  --preamble-dir="{FA}/critic-iterate" \
-  --preamble=cold-review-preamble \
+  --preamble-dir "{FA}/critic-iterate" \
+  --preamble cold-review-preamble \
   "$review_tmp/cold-prompt.md" >"$review_tmp/cold-result.txt"
 ```
 
@@ -34,7 +35,7 @@ The fresh-review marker names its output directory. The fresh response includes
 the cold-review marker; the author records both.
 
 Each prompt must name every input its reviewer may read. Start repo-relative
-commands with `cd <repo> &&`. Do not include raw chat or the full context
+commands with `cd "<repo>" &&`. Do not include raw chat or the full context
 packet. For commit / diff-message review, follow the specialization in
 `{FA}/critic-iterate.md`.
 

@@ -38,10 +38,11 @@ stop.
 Allow-list the trusted wrapper, never `codex exec` or a shell. The wrapper must
 continue to validate every argument and create its own output directory.
 
-Print these declarations for the user to add to `~/.codex/rules/default.rules`:
+Replace `{FA}` below with its current value, then print these declarations for
+the user to add to `~/.codex/rules/default.rules`:
 
 ```bash
-cat <<'RULES'
+cat <<RULES
 host_executable(name="codex-reviewer.py", paths=["{FA}/critic-iterate/codex-reviewer.py"])
 prefix_rule(pattern=["codex-reviewer.py"], decision="allow", justification="The review wrapper validates its fixed profiles and arguments and controls its output directory.")
 RULES
@@ -55,8 +56,8 @@ codex execpolicy check \
   --resolve-host-executables \
   --rules "$HOME/.codex/rules/default.rules" \
   "{FA}/critic-iterate/codex-reviewer.py" \
-  --preamble-dir="{FA}/critic-iterate" \
-  --preamble=cold-review-preamble \
+  --preamble-dir "{FA}/critic-iterate" \
+  --preamble cold-review-preamble \
   "$(mktemp)"
 ```
 
