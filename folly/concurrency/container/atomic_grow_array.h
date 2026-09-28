@@ -599,7 +599,8 @@ class atomic_grow_array : private Policy {
     //  initialize new elements and the pointers to them; may throw
     for (size_type i = base; i < size; ++i) {
       //  detect race losses early
-      //  just need release, but acquire for consistency with c/x in at_slow
+      //  must be acquire, as for the failure order of the c/x in at_slow: on a
+      //  race loss, the caller dereferences the array given back in next
       if (auto const p = array_.load(std::memory_order_acquire); p != next) {
         next = p;
         return nullptr;
