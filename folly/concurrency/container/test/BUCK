@@ -9,6 +9,7 @@ fb_dirsync_cpp_unittest(
         "//folly/concurrency/container:atomic_grow_array",
         "//folly/lang:keep",
         "//folly/portability:gtest",
+        "//folly/test:deterministic_schedule",
     ],
 )
 

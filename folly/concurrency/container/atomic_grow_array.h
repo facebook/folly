@@ -29,6 +29,7 @@
 #include <folly/lang/Align.h>
 #include <folly/lang/Bits.h>
 #include <folly/lang/New.h>
+#include <folly/synchronization/AtomicUtil.h>
 
 namespace folly {
 
@@ -540,7 +541,8 @@ class atomic_grow_array : private Policy {
       //  see: folly::atomic_compare_exchange_strong_explicit
       if (array_.compare_exchange_strong(p, q, mo_acq_rel, mo_acquire)) {
         //  the race is won
-        size_.store(size, mo_release);
+        //  but a winner of a later race may already have stored a larger size
+        folly::atomic_fetch_max_cond(size_, size, mo_release);
         return q;
       }
       //  the race is lost

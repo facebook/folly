@@ -16,6 +16,7 @@ fb_dirsync_cpp_library(
         "//folly/lang:align",
         "//folly/lang:bits",
         "//folly/lang:new",
+        "//folly/synchronization:atomic_util",
     ],
 )
 

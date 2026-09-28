@@ -16,11 +16,14 @@
 
 #include <folly/concurrency/container/atomic_grow_array.h>
 
+#include <algorithm>
 #include <atomic>
 #include <numeric>
+#include <vector>
 
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/DeterministicSchedule.h>
 
 extern "C" FOLLY_KEEP int check_folly_atomic_grow_array_index(
     folly::atomic_grow_array<int>& array, size_t const index) {
@@ -86,6 +89,15 @@ struct AtomicGrowArrayTest : testing::Test {
     template <typename V>
     using atom = std::atomic<V>;
   };
+
+  using dsched = folly::test::DeterministicSchedule;
+  template <typename V>
+  using dsched_atom = folly::test::DeterministicAtomic<V>;
+  using dsched_array = folly::atomic_grow_array<
+      int,
+      folly::atomic_grow_array_policy_default<int, dsched_atom>>;
+
+  static constexpr size_t dsched_num_seeds = 256;
 };
 
 TEST_F(AtomicGrowArrayTest, example) {
@@ -199,5 +211,44 @@ TEST_F(AtomicGrowArrayTest, stress) {
       auto const view = std::as_const(array).as_view();
       EXPECT_EQ(expected, count(view));
     }
+  }
+}
+
+TEST_F(AtomicGrowArrayTest, dsched_size_matches_capacity_after_racing_growth) {
+  for (size_t seed = 0; seed < dsched_num_seeds; ++seed) {
+    SCOPED_TRACE(seed);
+    dsched sched{dsched::uniform(seed)};
+    dsched_array array;
+    std::vector<std::thread> threads;
+    for (size_t index : {0u, 1u, 3u}) {
+      threads.push_back(dsched::thread([&, index] { array[index]; }));
+    }
+    for (auto& th : threads) {
+      dsched::join(th);
+    }
+    EXPECT_EQ(array.as_view().size(), array.size());
+  }
+}
+
+TEST_F(AtomicGrowArrayTest, dsched_size_monotonic_under_racing_growth) {
+  constexpr size_t num_reads = 16;
+  for (size_t seed = 0; seed < dsched_num_seeds; ++seed) {
+    SCOPED_TRACE(seed);
+    dsched sched{dsched::uniform(seed)};
+    dsched_array array;
+    std::vector<size_t> sizes;
+    std::vector<std::thread> threads;
+    threads.push_back(dsched::thread([&] {
+      for (size_t i = 0; i < num_reads; ++i) {
+        sizes.push_back(array.size());
+      }
+    }));
+    for (size_t index : {0u, 1u, 3u}) {
+      threads.push_back(dsched::thread([&, index] { array[index]; }));
+    }
+    for (auto& th : threads) {
+      dsched::join(th);
+    }
+    EXPECT_TRUE(std::is_sorted(sizes.begin(), sizes.end()));
   }
 }
