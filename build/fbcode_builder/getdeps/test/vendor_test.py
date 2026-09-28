@@ -9,14 +9,16 @@ import contextlib
 import io
 import os
 import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
 from ..buildopts import BuildOptions
-from ..cli import VendorCmd
+from ..cli import _version_from_url, VendorCmd
 from ..fetcher import (
     ChangeStatus,
+    GitFetcher,
     LocalDirFetcher,
     PreinstalledNopFetcher,
     ShipitTransformerFetcher,
@@ -118,6 +120,123 @@ class VendorCmdTest(unittest.TestCase):
 
         with open(os.path.join(self.output_dir, "getdeps-vendor.txt")) as f:
             self.assertEqual(f.read(), "depa %s\n" % ("a" * 40))
+
+    def test_records_checked_out_commit_for_git_projects(self) -> None:
+        # An unpinned git project has rev "main"; the manifest must name the
+        # commit that was actually vendored, not the branch.
+        build_opts = MagicMock()
+        build_opts.scratch_dir = self.tmp
+        fetcher = GitFetcher(
+            build_opts,
+            MagicMock(),
+            "https://example.invalid/depa.git",
+            rev="main",
+            depth=1,
+            branch="main",
+        )
+        repo = fetcher.get_src_dir()
+        os.makedirs(repo)
+        # independent of the developer's git config (identity, signing, hooks)
+        git = [
+            "git",
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+        ]
+        subprocess.check_call(git + ["init", "-q", "-b", "main"], cwd=repo)
+        subprocess.check_call(
+            git + ["commit", "-q", "--allow-empty", "-m", "x"], cwd=repo
+        )
+        head = (
+            subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo)
+            .decode()
+            .strip()
+        )
+        fetcher.update = lambda: ChangeStatus()  # no network
+        self.assertEqual(fetcher.hash(), "main")
+
+        self.run_vendor(
+            [make_manifest("depa"), make_manifest("top")],
+            {
+                "depa": fetcher,
+                "top": FakeSourceFetcher(self.make_src_tree("top"), "t" * 40),
+            },
+        )
+
+        with open(os.path.join(self.output_dir, "getdeps-vendor.txt")) as f:
+            self.assertEqual(f.read(), "depa %s\n" % head)
+        self.assertEqual(len(head), 40)
+
+    def test_records_version_from_nearest_tag(self) -> None:
+        build_opts = MagicMock()
+        build_opts.scratch_dir = self.tmp
+        fetcher = GitFetcher(
+            build_opts,
+            MagicMock(),
+            "https://example.invalid/depa.git",
+            rev="main",
+            depth=1,
+            branch="main",
+        )
+        repo = fetcher.get_src_dir()
+        os.makedirs(repo)
+        git = [
+            "git",
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+        ]
+
+        def run(*a: str) -> None:
+            subprocess.check_call(git + list(a), cwd=repo)
+
+        run("init", "-q", "-b", "main")
+        run("commit", "-q", "--allow-empty", "-m", "one")
+        run("tag", "v2026.09.21.00")
+        fetcher.update = lambda: ChangeStatus()
+        top = FakeSourceFetcher(self.make_src_tree("top"), "t" * 40)
+        manifests = [make_manifest("depa"), make_manifest("top")]
+
+        # exactly on the tag: the tag, without its v
+        self.run_vendor(manifests, {"depa": fetcher, "top": top})
+        with open(os.path.join(self.output_dir, "getdeps-vendor.txt")) as f:
+            self.assertTrue(f.read().endswith(" 2026.09.21.00\n"))
+
+        # two commits past it: <tag>^<distance>.<commit>
+        run("commit", "-q", "--allow-empty", "-m", "two")
+        run("commit", "-q", "--allow-empty", "-m", "three")
+        head = (
+            subprocess.check_output(["git", "rev-parse", "--short=7", "HEAD"], cwd=repo)
+            .decode()
+            .strip()
+        )
+        self.run_vendor(manifests, {"depa": fetcher, "top": top})
+        with open(os.path.join(self.output_dir, "getdeps-vendor.txt")) as f:
+            self.assertTrue(f.read().endswith(" 2026.09.21.00^2.%s\n" % head))
+
+    def test_version_from_download_url(self) -> None:
+        cases = {
+            "https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.12.0.tar.gz": "0.12.0",
+            "https://github.com/fmtlib/fmt/archive/refs/tags/12.1.0.tar.gz": "12.1.0",
+            "https://example.invalid/boost_1_83_0.tar.bz2": "1.83.0",
+            "https://github.com/google/re2/archive/2020-11-01.tar.gz": "2020.11.01",
+            "https://github.com/LMDB/lmdb/archive/refs/tags/LMDB_0.9.31.tar.gz": "0.9.31",
+            "https://sourceware.org/elfutils/ftp/0.193/elfutils-0.193.tar.bz2": "0.193",
+            "https://files.pythonhosted.org/packages/ab/PyYAML-6.0.3-cp38-cp38-manylinux2014_x86_64.whl": "6.0.3",
+            "https://github.com/libunwind/libunwind/archive/f081cf42917bdd5c428b77850b473f31f81767cf.tar.gz": None,
+        }
+        for url, expected in cases.items():
+            self.assertEqual(_version_from_url(url), expected, url)
 
     def test_replaces_stale_vendored_tree(self) -> None:
         stale = os.path.join(self.output_dir, "depa", "stale.txt")
