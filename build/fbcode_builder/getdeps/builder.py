@@ -1020,6 +1020,7 @@ if __name__ == "__main__":
             self._invalidate_cache()
             self._check_cmd([cmake, self.src_dir] + define_args, env=env)
 
+        self._stop_sccache_server(env)
         self._check_cmd(
             # pyre-fixme[6]: For 1st argument expected `List[str]` but got
             #  `List[Optional[str]]`.
@@ -1083,7 +1084,22 @@ if __name__ == "__main__":
             ]
         )
 
+        self._stop_sccache_server(env)
         self._check_cmd(cmd, env=env, preexec_fn=self.memory_limit_preexec_fn)
+
+    def _stop_sccache_server(self, env: Env) -> None:
+        """Stop any running sccache server before a memory-capped build.
+
+        Compiles run inside the long-lived sccache server, not under ninja, so
+        they inherit the RLIMIT_AS of whichever earlier build spawned it (15 GiB
+        from a default-weight dependency) rather than this manifest's cap. The
+        first compile of this build respawns it under the right limit.
+        """
+        if "SANDCASTLE" in os.environ or self.memory_limit_preexec_fn is None:
+            return
+        sccache = path_search(env, "sccache")
+        if sccache:
+            self._run_cmd([sccache, "--stop-server"], env=env, allow_fail=True)
 
     def _get_missing_test_executables(
         self, test_filter: str | None, env: Env, ctest: str | None
