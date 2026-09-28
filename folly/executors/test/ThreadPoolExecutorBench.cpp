@@ -34,17 +34,17 @@ using namespace folly;
 
 // Sample results, 72-core aarch64, @mode/opt, 64 workers:
 //
-//   reference_applyPatternOnly                        44.31ns
-//   getPoolStats_allIdle                    36.762%  120.53ns
-//   getPoolStats_allActive                  41.884%  105.79ns
-//   getPoolStats_mostlyIdleUnpredictable    22.090%  200.58ns
-//   getPoolStats_mostlyActiveUnpredictable  22.720%  195.02ns
-//   getPoolStats_evenlyUnpredictable        15.943%  277.92ns
+//   reference_applyPatternOnly                        43.95ns
+//   getPoolStats_allIdle                    36.018%  122.02ns
+//   getPoolStats_allActive                  35.948%  122.26ns
+//   getPoolStats_mostlyIdleUnpredictable    35.849%  122.59ns
+//   getPoolStats_mostlyActiveUnpredictable  35.979%  122.15ns
+//   getPoolStats_evenlyUnpredictable        35.830%  122.66ns
 //
 // reference_applyPatternOnly runs the same setup and the same per-iteration
 // flag writes as every case below but never calls getPoolStats, so it is the
-// harness cost they all carry. At 44ns it is the largest single component of
-// the cheaper cases; subtract it to compare the stats calls themselves.
+// harness cost they all carry. Subtract it to compare the stats calls
+// themselves.
 //
 // Where those 44ns go, measured with throwaway probes on a Neoverse V2 at
 // 3.4GHz. Writing the same 64 values into one cacheline of local atomics,
@@ -57,19 +57,14 @@ using namespace folly;
 // of the three shrinks without writing fewer flags or running fewer workers,
 // and either would change what is being measured.
 //
-// Subtracting the reference is very nearly honest. Probes that set the flags
-// once at setup and only call getPoolStats in the loop cost 81.8ns with every
-// worker idle and 65.9ns with none, against 120.4ns and 105.4ns measured for
-// the corresponding cases below. The ~5ns shortfall is the two loops
-// overlapping in the out-of-order window, so a net figure understates the call
-// by about that much.
+// The reference and the stats call are close to additive - probes that set the
+// flags once at setup and skipped the pattern application put the overlap in
+// the out-of-order window at about 5ns - so a net figure understates the call
+// by roughly that much.
 //
-// Net of the reference, mostlyIdleUnpredictable costs 2.0x allIdle and
-// evenlyUnpredictable 3.1x, though mostlyIdle does strictly less work - a
-// quarter of its iterations take the cheaper not-idle arm. The gap is
-// misprediction of the per-worker idle branch, not work. The two skewed cases
-// share a 25% minority and cost about the same; mostlyActive is slightly
-// cheaper because more of its iterations take that cheaper arm.
+// The five getPoolStats cases are now flat: how predictable the per-worker idle
+// flag is no longer affects cost. Before this loop went branch-free they
+// measured 120.53 / 105.79 / 200.58 / 195.02 / 277.92ns on the same host.
 
 namespace {
 

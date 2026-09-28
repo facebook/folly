@@ -420,20 +420,30 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() const {
   const auto now = std::chrono::steady_clock::now();
   std::shared_lock r{threadListLock_};
   ThreadPoolExecutor::PoolStats stats;
-  size_t activeTasks = 0;
+  const auto& threads = threadList_.get();
   size_t idleAlive = 0;
   uint64_t processedTasks = stoppedThreadProcessedTasks_;
-  for (const auto& thread : threadList_.get()) {
-    if (thread->idle.load(std::memory_order_relaxed)) {
-      const std::chrono::nanoseconds idleTime =
-          now - thread->lastActiveTime.load(std::memory_order_relaxed);
-      stats.maxIdleTime = std::max(stats.maxIdleTime, idleTime);
-      idleAlive++;
-    } else {
-      activeTasks++;
-    }
+  // Maximizing (now - lastActiveTime) over the idle workers is the same as
+  // minimizing lastActiveTime over them, which keeps the subtraction out of
+  // the loop. Seeding with now also supplies the identity for busy workers and
+  // clamps the result at zero, matching a worker that went idle after now was
+  // sampled.
+  auto minLastActive = now;
+  for (const auto& thread : threads) {
+    const bool idle = thread->idle.load(std::memory_order_relaxed);
+    // lastActiveTime is read unconditionally so that the whole body is
+    // branch-free: whether a worker is idle is close to random at any instant,
+    // so a branch here mispredicts on roughly a fifth of iterations. The read
+    // is always safe - threadListLock_ keeps the thread alive - and lands on a
+    // cacheline the idle load already pulled in.
+    const auto lastActive =
+        thread->lastActiveTime.load(std::memory_order_relaxed);
+    minLastActive = std::min(minLastActive, idle ? lastActive : now);
+    idleAlive += idle ? 1 : 0;
     processedTasks += thread->processedTasks;
   }
+  const size_t activeTasks = threads.size() - idleAlive;
+  stats.maxIdleTime = now - minLastActive;
   stats.pendingTaskCount = getPendingTaskCountImpl();
   stats.totalTaskCount = stats.pendingTaskCount + activeTasks;
   stats.processedTaskCount = processedTasks;
