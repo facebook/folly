@@ -18,7 +18,9 @@
 
 #include <algorithm>
 #include <atomic>
+#include <iterator>
 #include <numeric>
+#include <ranges>
 #include <vector>
 
 #include <folly/lang/Keep.h>
@@ -56,6 +58,17 @@ static_assert( //
     std::is_nothrow_assignable_v<
         folly::atomic_grow_array<int>::const_iterator,
         folly::atomic_grow_array<int>::iterator const&>);
+
+static_assert( //
+    std::random_access_iterator<folly::atomic_grow_array<int>::iterator>);
+static_assert( //
+    std::random_access_iterator<folly::atomic_grow_array<int>::const_iterator>);
+
+static_assert( //
+    std::ranges::random_access_range<folly::atomic_grow_array<int>::view>);
+static_assert( //
+    std::ranges::random_access_range<
+        folly::atomic_grow_array<int>::const_view>);
 
 static_assert( //
     std::is_nothrow_default_constructible_v<
@@ -171,6 +184,49 @@ TEST_F(AtomicGrowArrayTest, empty) {
     auto const span = std::as_const(array).as_ptr_span();
     EXPECT_EQ(expected, countp(span));
   }
+}
+
+TEST_F(AtomicGrowArrayTest, iterator) {
+  folly::atomic_grow_array<int> array;
+  for (int i = 0; i < 4; ++i) {
+    array[i] = 3 - i;
+  }
+  auto view = array.as_view();
+  ASSERT_EQ(4, view.size());
+  std::ranges::sort(view);
+  EXPECT_EQ(
+      (std::vector<int>{0, 1, 2, 3}),
+      (std::vector<int>(view.begin(), view.end())));
+
+  auto const check = [](auto const b, auto const e) {
+    EXPECT_EQ(0, *b);
+    EXPECT_EQ(&*b, b.operator->());
+    EXPECT_EQ(1, *(b + 1));
+    EXPECT_EQ(1, *(1 + b));
+    EXPECT_EQ(2, *(e - 2));
+    EXPECT_EQ(2, b[2]);
+    EXPECT_EQ(4, e - b);
+
+    EXPECT_TRUE(b < e);
+    EXPECT_FALSE(e < b);
+    EXPECT_FALSE(b < b);
+    EXPECT_TRUE(b <= e);
+    EXPECT_TRUE(b <= b);
+    EXPECT_FALSE(e <= b);
+    EXPECT_TRUE(e > b);
+    EXPECT_FALSE(b > e);
+    EXPECT_FALSE(b > b);
+    EXPECT_TRUE(e >= b);
+    EXPECT_TRUE(b >= b);
+    EXPECT_FALSE(b >= e);
+
+    auto it = e;
+    EXPECT_EQ(3, *--it);
+    EXPECT_EQ(3, *it--);
+    EXPECT_EQ(2, *it);
+  };
+  check(view.begin(), view.end());
+  check(view.cbegin(), view.cend());
 }
 
 TEST_F(AtomicGrowArrayTest, stress) {
