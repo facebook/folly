@@ -344,10 +344,14 @@ class WritableIOBufTests(unittest.TestCase):
         y = bytearray(b"wtfbbqomg")
         yb = WritableIOBuf(y)
         xb.append_to_chain(yb)
+        before = sys.getrefcount(xb)
         test = xb
 
         self.assertEqual(test, xb)
-        self.assertEqual(sys.getrefcount(xb), 3)
+        # The alias above is the extra reference coalesce() must refuse. Assert
+        # the delta, not an absolute: Python 3.14 loads locals as borrowed
+        # references, so the absolute count is one lower there.
+        self.assertEqual(sys.getrefcount(xb), before + 1)
         try:
             xb.coalesce()
             self.fail("Expected exception for too many references")
