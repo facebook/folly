@@ -90,12 +90,18 @@ def _checkpoint_marker(
     payload = event["payload"]
     if payload.get("type") != "custom_tool_call_output":
         return None
+    output = payload.get("output")
+    if not isinstance(output, list):
+        return None
     # CommandExecution.stdout was empty in 2/6 observed successful calls; the
     # model-visible custom tool output retained all markers.
-    for block in payload["output"]:
-        if block.get("type") != "input_text":
+    for block in output:
+        if not isinstance(block, dict) or block.get("type") != "input_text":
             continue
-        for line in block["text"].splitlines():
+        text = block.get("text")
+        if not isinstance(text, str):
+            continue
+        for line in text.splitlines():
             if line in marker_to_index:
                 return marker_to_index[line]
     return None

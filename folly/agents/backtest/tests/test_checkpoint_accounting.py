@@ -176,6 +176,29 @@ class AccountingFixture:
 
 
 class CheckpointAccountingTest(unittest.TestCase):
+    def test_ignores_long_running_tool_output_before_checkpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            run = AccountingFixture(Path(temporary))
+            run.author_events.append(
+                {
+                    "type": "response_item",
+                    "payload": {
+                        "type": "custom_tool_call_output",
+                        "output": (
+                            "Script running with cell ID 35\n"
+                            "Wall time 31.0 seconds\n"
+                            "Output:\n"
+                        ),
+                    },
+                }
+            )
+            run.checkpoint("initial", usage(100, 10), 10)
+            run.author_events.append(token_event(usage(150, 15), 15))
+
+            records = run.collect(review_budget=None)
+
+            self.assertEqual([record["phase"] for record in records], ["initial"])
+
     def test_word_change_ignores_markdown_reflow(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
