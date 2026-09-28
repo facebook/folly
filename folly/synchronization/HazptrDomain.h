@@ -526,6 +526,9 @@ class hazptr_domain {
   int match_tagged(Obj* tagged[], Set& hs) {
     int counts[kNumShards] = {}; // avoid single loop-carried dependency
     ObjList match[kNumShards]; // protected, not reclaimable, to be reinserted
+    // reclaimable, batched by runs of the same cohort, to be pushed to cohorts
+    hazptr_obj_cohort<Atom>* cohorts[kNumShards] = {};
+    ObjList safe[kNumShards];
     list_walk_sharded(tagged, [&](int s, Obj* obj) {
       if (hs.contains(obj->raw_ptr())) {
         match[s].push(obj);
@@ -533,12 +536,24 @@ class hazptr_domain {
         counts[s] += 1;
         auto cohort = obj->cohort();
         DCHECK(cohort);
-        cohort->push_safe_obj(obj);
+        // if past the end of a run of the same cohort, push the run
+        if (cohort != cohorts[s]) {
+          if (cohorts[s]) {
+            cohorts[s]->push_safe_objs(safe[s]); // atomic-compare-exchange
+          }
+          cohorts[s] = cohort;
+        }
+        // start or continue a run of the same cohort
+        safe[s].push(obj);
       }
     });
     int count = 0;
     for (int s = 0; s < kNumShards; ++s) {
       if (tagged[s]) {
+        // final pass to push the last run of the same cohort
+        if (cohorts[s]) {
+          cohorts[s]->push_safe_objs(safe[s]);
+        }
         List l(match[s].head(), match[s].tail());
         tagged_[s].push_unlock(l);
       }

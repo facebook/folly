@@ -346,15 +346,17 @@ class hazptr_obj_cohort {
     }
   }
 
-  /** push_safe_obj */
-  void push_safe_obj(Obj* obj) noexcept {
+  /** push_safe_objs */
+  void push_safe_objs(hazptr_obj_list<Atom>& l) noexcept {
+    DCHECK(!l.empty());
+    Obj* top = safe_list_top();
     while (true) {
-      Obj* top = safe_list_top();
-      obj->set_next(top);
-      if (cas_safe_list_top(top, obj)) {
-        return;
+      l.tail()->set_next(top);
+      if (cas_safe_list_top(top, l.head())) {
+        break;
       }
     }
+    l.clear();
   }
 
   /** reclaim_list */
