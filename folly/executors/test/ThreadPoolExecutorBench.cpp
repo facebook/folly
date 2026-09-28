@@ -34,17 +34,19 @@ using namespace folly;
 
 // Sample results, 72-core aarch64, @mode/opt, 64 workers:
 //
-//   reference_applyPatternOnly                        43.95ns
-//   getPoolStats_allIdle                    36.018%  122.02ns
-//   getPoolStats_allActive                  35.948%  122.26ns
-//   getPoolStats_mostlyIdleUnpredictable    35.849%  122.59ns
-//   getPoolStats_mostlyActiveUnpredictable  35.979%  122.15ns
-//   getPoolStats_evenlyUnpredictable        35.830%  122.66ns
+//   reference_applyPatternOnly                        44.42ns
+//   getPoolStats_allIdle                    36.267%  122.47ns
+//   getPoolStats_allActive                  36.255%  122.51ns
+//   getPoolStats_mostlyIdleUnpredictable    36.391%  122.05ns
+//   getPoolStats_mostlyActiveUnpredictable  36.308%  122.33ns
+//   getPoolStats_evenlyUnpredictable        36.103%  123.02ns
+//   getPoolStatsLight_evenlyUnpredictable   57.816%   76.82ns
 //
 // reference_applyPatternOnly runs the same setup and the same per-iteration
-// flag writes as every case below but never calls getPoolStats, so it is the
-// harness cost they all carry. Subtract it to compare the stats calls
-// themselves.
+// flag writes as every case below but never calls the stats accessor, so it is
+// the harness cost they all carry. Subtract it to compare the calls themselves:
+// net of the reference getPoolStatsLight is 2.4x cheaper, not the 1.6x the raw
+// figures suggest.
 //
 // Where those 44ns go, measured with throwaway probes on a Neoverse V2 at
 // 3.4GHz. Writing the same 64 values into one cacheline of local atomics,
@@ -62,9 +64,9 @@ using namespace folly;
 // the out-of-order window at about 5ns - so a net figure understates the call
 // by roughly that much.
 //
-// The five getPoolStats cases are now flat: how predictable the per-worker idle
-// flag is no longer affects cost. Before this loop went branch-free they
-// measured 120.53 / 105.79 / 200.58 / 195.02 / 277.92ns on the same host.
+// The getPoolStats cases are flat: how predictable the per-worker idle flag is
+// no longer affects cost. getPoolStatsLight is cheaper again, mostly because
+// reporting no maxIdleTime lets it skip the steady_clock::now() vDSO read.
 
 namespace {
 
@@ -124,7 +126,7 @@ constexpr size_t kPatterns = 8192;
 // Whether the timed loop calls getPoolStats at all. Call::none is the
 // reference case: same setup and same per-iteration flag writes, no stats call,
 // so it measures exactly the part of every other case that is not under test.
-enum class Call { none, full };
+enum class Call { none, full, light };
 
 template <Call kCall, typename NextPattern>
 void benchPoolStats(unsigned iters, NextPattern next) {
@@ -149,7 +151,10 @@ void benchPoolStats(unsigned iters, NextPattern next) {
       for (size_t i = 0; i < flags.size(); ++i) {
         flags[i]->store((pattern >> i) & 1, std::memory_order_relaxed);
       }
-      if constexpr (kCall != Call::none) {
+      if constexpr (kCall == Call::light) {
+        auto stats = executor.getPoolStatsLight();
+        compiler_must_not_elide(stats);
+      } else if constexpr (kCall == Call::full) {
         auto stats = executor.getPoolStats();
         compiler_must_not_elide(stats);
       }
@@ -196,6 +201,15 @@ BENCHMARK_RELATIVE(getPoolStats_mostlyActiveUnpredictable, iters) {
 
 BENCHMARK_RELATIVE(getPoolStats_evenlyUnpredictable, iters) {
   benchPoolStats<Call::full>(iters, [](std::mt19937_64& rng) { return rng(); });
+}
+
+// getPoolStatsLight() reports no maxIdleTime, so it neither reads the clock
+// nor consults lastActiveTime. Only the hardest pattern is measured; its cost
+// is flat across patterns just as the full variant's now is.
+BENCHMARK_RELATIVE(getPoolStatsLight_evenlyUnpredictable, iters) {
+  benchPoolStats<Call::light>(iters, [](std::mt19937_64& rng) {
+    return rng();
+  });
 }
 
 int main(int argc, char** argv) {

@@ -319,6 +319,62 @@ TEST(ThreadPoolExecutorTest, IOPoolStatsMaxIdleTime) {
 }
 
 template <class TPE>
+static void poolStatsLight() {
+  folly::Baton<> warmupBaton, startBaton, endBaton;
+  TPE tpe(1);
+
+  tpe.add([&]() { warmupBaton.post(); });
+  warmupBaton.wait();
+
+  // PoolStatsLight does not declare the fields the light variant omits, so
+  // their absence is a compile-time guarantee and needs no assertion here.
+  // What remains to check is that the fields it does declare agree with the
+  // full variant, in both a quiescent and a saturated pool.
+  auto fullPopulated = [&] {
+    const auto s = tpe.getPoolStats();
+    return s.processedTaskCount > 0 && s.maxIdleTime >= milliseconds(50);
+  };
+  EXPECT_EQ(
+      folly::detail::spin_result::success,
+      folly::detail::spin_yield_until(
+          std::chrono::steady_clock::now() + std::chrono::seconds(5),
+          fullPopulated));
+
+  const auto idleFull = tpe.getPoolStats();
+  const auto idleLight = tpe.getPoolStatsLight();
+  EXPECT_EQ(idleFull.threadCount, idleLight.threadCount);
+  EXPECT_EQ(idleFull.activeThreadCount, idleLight.activeThreadCount);
+  EXPECT_EQ(idleFull.idleThreadCount, idleLight.idleThreadCount);
+  EXPECT_EQ(idleFull.pendingTaskCount, idleLight.pendingTaskCount);
+
+  // Saturate the pool and queue one more, so pendingTaskCount is nonzero and
+  // the agreement below is not vacuous.
+  tpe.add([&]() {
+    startBaton.post();
+    endBaton.wait();
+  });
+  startBaton.wait();
+  tpe.add([&]() {});
+
+  const auto busyFull = tpe.getPoolStats();
+  const auto busyLight = tpe.getPoolStatsLight();
+  EXPECT_GT(busyFull.pendingTaskCount, 0);
+  EXPECT_EQ(busyFull.pendingTaskCount, busyLight.pendingTaskCount);
+  EXPECT_EQ(busyFull.threadCount, busyLight.threadCount);
+  EXPECT_EQ(busyFull.activeThreadCount, busyLight.activeThreadCount);
+  EXPECT_EQ(busyFull.idleThreadCount, busyLight.idleThreadCount);
+  endBaton.post();
+}
+
+TEST(ThreadPoolExecutorTest, CPUPoolStatsLight) {
+  poolStatsLight<CPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, IOPoolStatsLight) {
+  poolStatsLight<IOThreadPoolExecutor>();
+}
+
+template <class TPE>
 static void taskStats() {
   TPE tpe(1);
   std::atomic<int> c(0);

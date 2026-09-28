@@ -18,6 +18,7 @@
 
 #include <ctime>
 #include <span>
+#include <type_traits>
 
 #include <folly/ExceptionString.h>
 #include <folly/GLog.h>
@@ -416,43 +417,61 @@ void ThreadPoolExecutor::withAll(FunctionRef<void(ThreadPoolExecutor&)> f) {
   });
 }
 
-ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() const {
-  const auto now = std::chrono::steady_clock::now();
+template <typename Stats>
+Stats ThreadPoolExecutor::getPoolStatsImpl() const {
+  constexpr bool kLight = std::is_same_v<Stats, PoolStatsLight>;
+  const auto now = kLight
+      ? std::chrono::steady_clock::time_point{}
+      : std::chrono::steady_clock::now();
   std::shared_lock r{threadListLock_};
-  ThreadPoolExecutor::PoolStats stats;
+  Stats stats;
   const auto& threads = threadList_.get();
   size_t idleAlive = 0;
-  uint64_t processedTasks = stoppedThreadProcessedTasks_;
+  [[maybe_unused]] uint64_t processedTasks =
+      kLight ? 0 : stoppedThreadProcessedTasks_;
   // Maximizing (now - lastActiveTime) over the idle workers is the same as
   // minimizing lastActiveTime over them, which keeps the subtraction out of
   // the loop. Seeding with now also supplies the identity for busy workers and
   // clamps the result at zero, matching a worker that went idle after now was
   // sampled.
-  auto minLastActive = now;
+  [[maybe_unused]] auto minLastActive = now;
   for (const auto& thread : threads) {
     const bool idle = thread->idle.load(std::memory_order_relaxed);
-    // lastActiveTime is read unconditionally so that the whole body is
-    // branch-free: whether a worker is idle is close to random at any instant,
-    // so a branch here mispredicts on roughly a fifth of iterations. The read
-    // is always safe - threadListLock_ keeps the thread alive - and lands on a
-    // cacheline the idle load already pulled in.
-    const auto lastActive =
-        thread->lastActiveTime.load(std::memory_order_relaxed);
-    minLastActive = std::min(minLastActive, idle ? lastActive : now);
     idleAlive += idle ? 1 : 0;
-    processedTasks += thread->processedTasks;
+    if constexpr (!kLight) {
+      // lastActiveTime is read unconditionally so that the whole body is
+      // branch-free: whether a worker is idle is close to random at any
+      // instant, so a branch here mispredicts on roughly a fifth of
+      // iterations. The read is always safe - threadListLock_ keeps the thread
+      // alive - and lands on a cacheline the idle load already pulled in.
+      const auto lastActive =
+          thread->lastActiveTime.load(std::memory_order_relaxed);
+      minLastActive = std::min(minLastActive, idle ? lastActive : now);
+      processedTasks += thread->processedTasks;
+    }
   }
-  const size_t activeTasks = threads.size() - idleAlive;
-  stats.maxIdleTime = now - minLastActive;
   stats.pendingTaskCount = getPendingTaskCountImpl();
-  stats.totalTaskCount = stats.pendingTaskCount + activeTasks;
-  stats.processedTaskCount = processedTasks;
+  if constexpr (!kLight) {
+    const size_t activeTasks = threads.size() - idleAlive;
+    stats.maxIdleTime = now - minLastActive;
+    stats.totalTaskCount = stats.pendingTaskCount + activeTasks;
+    stats.processedTaskCount = processedTasks;
+  }
 
   stats.threadCount = maxThreads_.load(std::memory_order_relaxed);
   stats.activeThreadCount =
       activeThreads_.load(std::memory_order_relaxed) - idleAlive;
   stats.idleThreadCount = stats.threadCount - stats.activeThreadCount;
   return stats;
+}
+
+ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() const {
+  return getPoolStatsImpl<PoolStats>();
+}
+
+ThreadPoolExecutor::PoolStatsLight ThreadPoolExecutor::getPoolStatsLight()
+    const {
+  return getPoolStatsImpl<PoolStatsLight>();
 }
 
 size_t ThreadPoolExecutor::getPendingTaskCount() const {

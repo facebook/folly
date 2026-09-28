@@ -118,21 +118,38 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
    */
   static void withAll(FunctionRef<void(ThreadPoolExecutor&)> f);
 
-  struct PoolStats {
-    PoolStats()
+  /**
+   * The subset of PoolStats describing thread occupancy, which is what
+   * getPoolStatsLight() reports. Split out so that its callers cannot name the
+   * fields it does not compute.
+   */
+  struct PoolStatsLight {
+    PoolStatsLight()
         : threadCount(0),
           idleThreadCount(0),
           activeThreadCount(0),
-          pendingTaskCount(0),
-          totalTaskCount(0),
-          processedTaskCount(0),
-          maxIdleTime(0) {}
+          pendingTaskCount(0) {}
     size_t threadCount, idleThreadCount, activeThreadCount;
-    uint64_t pendingTaskCount, totalTaskCount, processedTaskCount;
+    uint64_t pendingTaskCount;
+  };
+
+  struct PoolStats : PoolStatsLight {
+    PoolStats() : totalTaskCount(0), processedTaskCount(0), maxIdleTime(0) {}
+    uint64_t totalTaskCount, processedTaskCount;
     std::chrono::nanoseconds maxIdleTime;
   };
 
   PoolStats getPoolStats() const;
+
+  /**
+   * Cheaper getPoolStats() for callers that only need thread occupancy.
+   *
+   * Skipping maxIdleTime is what makes this cheap: it is the only field needing
+   * steady_clock::now(), whose vDSO read costs more than the rest of the call
+   * put together.
+   */
+  PoolStatsLight getPoolStatsLight() const;
+
   size_t getPendingTaskCount() const;
   const std::string& getName() const;
 
@@ -450,6 +467,12 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   bool keepAliveJoined_{false};
 
  private:
+  // Stats is the return type, and selects the field subset: it is a template
+  // parameter rather than an argument so that each variant compiles to a loop
+  // carrying only the work it needs.
+  template <typename Stats>
+  Stats getPoolStatsImpl() const;
+
   std::atomic<TaskObserver*> taskObservers_{nullptr};
 };
 
