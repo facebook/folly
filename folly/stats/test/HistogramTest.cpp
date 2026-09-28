@@ -16,10 +16,14 @@
 
 #include <folly/stats/Histogram.h>
 
+#include <cstdint>
 #include <limits>
+#include <random>
 #include <stdexcept>
+#include <type_traits>
 
 #include <folly/portability/GTest.h>
+#include <folly/stats/detail/Bucket.h>
 
 using folly::Histogram;
 
@@ -411,4 +415,143 @@ TEST(Histogram, FloatingPointRepeatedValue) {
   h.removeRepeatedValue(2.5, 99);
   EXPECT_EQ(0.0, h.getBucketByIndex(3).sum);
   EXPECT_EQ(uint64_t(0), h.getBucketByIndex(3).count);
+}
+
+namespace {
+
+// Compares the O(1) repeated helpers against two independent references on
+// random inputs: a naive loop of clamped single-value operations, and exact
+// 128-bit arithmetic. Small types are cross-checked exhaustively over their
+// whole domain.
+template <typename T>
+void checkRepeatedAgainstReference(uint64_t iterations, uint64_t maxN) {
+  static_assert(std::is_integral<T>::value, "integral types only");
+  std::mt19937_64 rng(0xFACE + sizeof(T));
+
+  auto checkOne = [](T a, T v, uint64_t n) {
+    T gotAdd = a;
+    folly::detail::repeatedValueHelper(gotAdd, v, n);
+    T gotSub = a;
+    folly::detail::subtractRepeatedHelper(gotSub, v, n);
+
+    // Ground truth in 128-bit space, for both operations. Signed types fit in
+    // signed __int128 (|v| * n <= 2^63 * (2^64-1) < 2^127), but unsigned
+    // products only fit in unsigned __int128, so the two cases are kept
+    // separate.
+    T wantAdd;
+    T wantSub;
+    if constexpr (std::is_signed<T>::value) {
+      const __int128 addTotal =
+          static_cast<__int128>(a) + static_cast<__int128>(v) * static_cast<__int128>(n);
+      const __int128 subTotal =
+          static_cast<__int128>(a) - static_cast<__int128>(v) * static_cast<__int128>(n);
+      wantAdd =
+          addTotal > std::numeric_limits<T>::max()
+          ? std::numeric_limits<T>::max()
+          : (addTotal < std::numeric_limits<T>::min()
+                 ? std::numeric_limits<T>::min()
+                 : static_cast<T>(addTotal));
+      wantSub =
+          subTotal > std::numeric_limits<T>::max()
+          ? std::numeric_limits<T>::max()
+          : (subTotal < std::numeric_limits<T>::min()
+                 ? std::numeric_limits<T>::min()
+                 : static_cast<T>(subTotal));
+    } else {
+      const unsigned __int128 addTotal =
+          static_cast<unsigned __int128>(a) +
+          static_cast<unsigned __int128>(v) * n;
+      const unsigned __int128 prod =
+          static_cast<unsigned __int128>(v) * n;
+      wantAdd = addTotal > std::numeric_limits<T>::max()
+          ? std::numeric_limits<T>::max()
+          : static_cast<T>(addTotal);
+      wantSub = prod >= static_cast<unsigned __int128>(a)
+          ? T(0)
+          : static_cast<T>(a - static_cast<T>(prod));
+    }
+
+    ASSERT_EQ(wantAdd, gotAdd) << "a=" << +a << " v=" << +v << " n=" << n;
+    ASSERT_EQ(wantSub, gotSub) << "a=" << +a << " v=" << +v << " n=" << n;
+
+    // The clamped result must also match a literal loop of clamped
+    // single-value operations, which is what the O(1) helpers replace.
+    if (n <= 1000) {
+      T loopAdd = a;
+      T loopSub = a;
+      for (uint64_t i = 0; i < n; i++) {
+        folly::detail::addHelper(loopAdd, v);
+        folly::detail::subtractHelper(loopSub, v);
+      }
+      ASSERT_EQ(loopAdd, gotAdd) << "a=" << +a << " v=" << +v << " n=" << n;
+      ASSERT_EQ(loopSub, gotSub) << "a=" << +a << " v=" << +v << " n=" << n;
+    }
+  };
+
+  // Adversarial cases around the limits: ±1 steps at the extremes, huge
+  // sample counts, zero value, zero count, and min/max accumulators.
+  const T tmax = std::numeric_limits<T>::max();
+  const T tmin = std::numeric_limits<T>::min();
+  const uint64_t huge = std::numeric_limits<uint64_t>::max();
+  const T vs[] = {T(0), T(1), T(tmax), tmin, static_cast<T>(tmax - 1),
+      static_cast<T>(tmin + 1)};
+  const T as[] = {T(0), T(1), tmax, tmin};
+  for (T a : as) {
+    for (T v : vs) {
+      for (uint64_t n : {uint64_t(0), uint64_t(1), uint64_t(2), uint64_t(3),
+               uint64_t(1000), uint64_t(1001), huge, huge - 1, huge / 2}) {
+        checkOne(a, v, n);
+      }
+    }
+  }
+
+  // Random cases.
+  if (sizeof(T) == 1) {
+    // Small types: exhaustive over (accumulator, value) pairs.
+    for (int64_t ai = std::numeric_limits<T>::min();
+         ai <= std::numeric_limits<T>::max();
+         ai++) {
+      for (int64_t vi = std::numeric_limits<T>::min();
+           vi <= std::numeric_limits<T>::max();
+           vi++) {
+        for (uint64_t n : {uint64_t(0), uint64_t(1), uint64_t(2), uint64_t(3),
+                 uint64_t(255), uint64_t(256), uint64_t(1000)}) {
+          checkOne(static_cast<T>(ai), static_cast<T>(vi), n);
+        }
+      }
+    }
+    return;
+  }
+  // A 64-bit unsigned ValueType spans a range no signed distribution can
+  // cover, so pick the distribution type accordingly.
+  using DistT =
+      std::conditional_t<std::is_unsigned<T>::value && sizeof(T) == 8,
+          uint64_t,
+          int64_t>;
+  std::uniform_int_distribution<DistT> dist(
+      std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
+  for (uint64_t i = 0; i < iterations; i++) {
+    const T a = static_cast<T>(dist(rng));
+    const T v = static_cast<T>(dist(rng));
+    const uint64_t n = rng() % (maxN + 1);
+    checkOne(a, v, n);
+    // Also test near-limit n values with random a and v.
+    checkOne(a, v, huge);
+  }
+}
+
+} // namespace
+
+// The O(1) repeated-value helpers must behave exactly like sequential clamped
+// operations and like exact wide arithmetic, for every input type Histogram
+// supports.
+TEST(Histogram, RepeatedValueMatchesClampedLoop) {
+  checkRepeatedAgainstReference<int8_t>(0, 0);
+  checkRepeatedAgainstReference<uint8_t>(0, 0);
+  checkRepeatedAgainstReference<int16_t>(100000, 1000);
+  checkRepeatedAgainstReference<uint16_t>(100000, 1000);
+  checkRepeatedAgainstReference<int32_t>(50000, 1000000);
+  checkRepeatedAgainstReference<uint32_t>(50000, 1000000);
+  checkRepeatedAgainstReference<int64_t>(50000, 1000000);
+  checkRepeatedAgainstReference<uint64_t>(50000, 1000000);
 }

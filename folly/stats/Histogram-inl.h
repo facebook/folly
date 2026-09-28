@@ -23,6 +23,7 @@
 #include <glog/logging.h>
 
 #include <folly/Conv.h>
+#include <folly/ConstexprMath.h>
 #include <folly/lang/Exception.h>
 
 namespace folly {
@@ -271,12 +272,25 @@ T HistogramBuckets<T, BucketType>::getPercentileEstimate(
     // Assume that the data points lower than the median of this bucket
     // are uniformly distributed between low and avg
     double pctThroughSection = (pct - lowPct) / (medianPct - lowPct);
-    return T(low + ((avg - low) * pctThroughSection));
+    if constexpr (std::is_integral<ValueType>::value) {
+      // Clamp the conversion: a saturated bucket average can push the double
+      // expression past the representable range of the ValueType, where a
+      // plain static_cast would be undefined behavior.
+      return T(constexpr_clamp_cast<ValueType>(
+          low + ((avg - low) * pctThroughSection)));
+    } else {
+      return T(low + ((avg - low) * pctThroughSection));
+    }
   } else {
     // Assume that the data points greater than the median of this bucket
     // are uniformly distributed between avg and high
     double pctThroughSection = (pct - medianPct) / (highPct - medianPct);
-    return T(avg + ((high - avg) * pctThroughSection));
+    if constexpr (std::is_integral<ValueType>::value) {
+      return T(constexpr_clamp_cast<ValueType>(
+          avg + ((high - avg) * pctThroughSection)));
+    } else {
+      return T(avg + ((high - avg) * pctThroughSection));
+    }
   }
 }
 
