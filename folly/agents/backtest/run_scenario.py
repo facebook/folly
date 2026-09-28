@@ -42,6 +42,7 @@ CRITIC_ITERATE_SUPPORT_FILES = (
     PurePosixPath("critic-iterate/cold-review-preamble.md"),
     PurePosixPath("critic-iterate/fresh-review-preamble.md"),
     PurePosixPath("critic-iterate/review-task.md"),
+    PurePosixPath("critic-iterate/integrate-review.md"),
     PurePosixPath("critic-iterate/auth-prompt.md"),
     PurePosixPath("critic-iterate/run-review.md"),
     PurePosixPath("critic-iterate/review-failures.md"),
