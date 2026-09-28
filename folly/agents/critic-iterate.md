@@ -227,10 +227,9 @@ changes, immediately show the old brief, new brief, and reason; mention the
 change in the final debrief and run a new review pair. If a brief exceeds 100
 words, explain why in the next accountability artifact and final debrief.
 
-**Prose review round.** After the author-side cycle converges, format the
-candidate, then start the review round. The fresh reviewer owns the round and
-starts the cold reader as a nested CLI call. The runtime preambles own reviewer
-behavior and execution order.
+**Prose review round.** The fresh reviewer owns the round and starts the cold
+reader as a nested CLI call. The runtime preambles own reviewer behavior and
+execution order.
 
 For a substantial document with a distinct opening and body that explains why
 something happens, other than a commit or diff message, cold-check the opening.
@@ -281,6 +280,63 @@ For prose, a requested addition must name the reader task or required
 relationship it serves. A requested cut must show that the artifact's purpose
 does not need that fact. Truth, relatedness, or hypothetical usefulness is not
 enough to keep it; "shorter" alone is not enough to cut it.
+
+**Commit / diff messages.** Before opening the author draft or cold report, put
+a complete independent message, including its Test Plan, in `REVIEW FRAME:`.
+Then follow the general comparison, triage, and closure rules.
+
+**Context packet discipline (commit messages).** The author or orchestrator
+still builds a context packet for commit messages. For fresh review, pass only
+the short task note described above, not the whole packet. Structure the
+author-side packet into three named sections so the author can scan it
+predictably:
+
+Before constructing the author packet or reviewer task note, reread the active
+workstream ledger when one exists. Build the author packet from current task
+inputs relevant to Stack context, Reader must know, or Decision trail, including
+any ledger goal and unsuperseded requirements or rationale. Before the author
+uses or dispatches the packet, treat every input as a claim or requirement, not
+approved wording. Apply "Evidence" when a false claim could change the message,
+then check each input against the intended reader's starting knowledge. Keep
+code identifiers when they anchor a fact or help find the relevant code. Explain
+the concrete actor, condition, action, or outcome hidden by unfamiliar
+shorthand, and define unavoidable technical terms on first use. Raw input may be
+overcomplete, but not opaque.
+
+Never pass ledger paths or raw ledger contents to the fresh-review task note.
+
+- **Stack context** — for diffs in a stack: what predecessors covered and what
+  follow-ons will do. Include review-affecting predecessor framing or follow-on
+  plans in the task note; omit mechanics not needed to understand the current
+  diff.
+- **Reader must know** — the few facts whose absence would make a reader act
+  wrongly or misunderstand the change, plus the artifact goal and intended
+  readers. Past three or four facts, reapply that test to each; do not merge
+  distinct causal facts into an abstract label. The final message may compress
+  detail and wording only while preserving the reader's needed model. Put a fact
+  in the fresh-review task note only when the reviewer needs it to verify
+  correctness and cannot derive it from the sources it may read.
+- **Decision trail** — for a design choice not mechanically forced by the spec
+  or bug, collect only the choices, constraints, or reversals needed to explain
+  the final shape. Typical candidates are a rejected alternative whose trade-off
+  is not clear from the diff, a constraint that pinned the choice, or a reversal
+  that explains a surprising result. Do not inventory the rest of the
+  discussion.
+
+The Decision trail is RAW input — the inner loop selects only the facts needed
+for the reader's task, then applies the cut test (typically the load-bearing
+constraint or rejected alternative; see `write.md` "## What evergreen context
+means"). The packet-vs-final-message split is input-vs-keep, not a different
+taxonomy. Omitting a decision the reader needs starves the loop; forcing process
+history the reader does not need invents motivation and adds noise.
+
+After the author-side cycle converges, format the prose candidate.
+
+Do not edit the candidate while either reviewer runs. If it changes after a
+round starts, that round no longer covers the revision. In that case, after the
+reviewers finish, resume at step 2 under “Integration and closure” below.
+
+**Run external review:** follow `{FA}/critic-iterate/run-review.md`.
 
 **Integration and closure.** The General Cycle's no-edit rule governs
 author-side passes. Before acting on review, mark any useful proposal outside
@@ -346,61 +402,6 @@ After each review round:
 Record dispositions only in the accountability artifact; summarize
 `SCOPE_EXPANSION` items in the final debrief. For other artifacts, take the
 better version, merge, or apply its findings.
-
-Do not edit the candidate while either reviewer runs. If it changes after a
-round starts, that round no longer covers the revision. After the reviewers
-finish, resume above at step 2.
-
-**Run external review:** follow `{FA}/critic-iterate/run-review.md`.
-
-**Commit / diff messages.** Before opening the author draft or cold report, put
-a complete independent message, including its Test Plan, in `REVIEW FRAME:`.
-Then follow the general comparison, triage, and closure rules.
-
-**Context packet discipline (commit messages).** The author or orchestrator
-still builds a context packet for commit messages. For fresh review, pass only
-the short task note described above, not the whole packet. Structure the
-author-side packet into three named sections so the author can scan it
-predictably:
-
-Before constructing the author packet or reviewer task note, reread the active
-workstream ledger when one exists. Build the author packet from current task
-inputs relevant to Stack context, Reader must know, or Decision trail, including
-any ledger goal and unsuperseded requirements or rationale. Before the author
-uses or dispatches the packet, treat every input as a claim or requirement, not
-approved wording. Apply "Evidence" when a false claim could change the message,
-then check each input against the intended reader's starting knowledge. Keep
-code identifiers when they anchor a fact or help find the relevant code. Explain
-the concrete actor, condition, action, or outcome hidden by unfamiliar
-shorthand, and define unavoidable technical terms on first use. Raw input may be
-overcomplete, but not opaque.
-
-Never pass ledger paths or raw ledger contents to the fresh-review task note.
-
-- **Stack context** — for diffs in a stack: what predecessors covered and what
-  follow-ons will do. Include review-affecting predecessor framing or follow-on
-  plans in the task note; omit mechanics not needed to understand the current
-  diff.
-- **Reader must know** — the few facts whose absence would make a reader act
-  wrongly or misunderstand the change, plus the artifact goal and intended
-  readers. Past three or four facts, reapply that test to each; do not merge
-  distinct causal facts into an abstract label. The final message may compress
-  detail and wording only while preserving the reader's needed model. Put a fact
-  in the fresh-review task note only when the reviewer needs it to verify
-  correctness and cannot derive it from the sources it may read.
-- **Decision trail** — for a design choice not mechanically forced by the spec
-  or bug, collect only the choices, constraints, or reversals needed to explain
-  the final shape. Typical candidates are a rejected alternative whose trade-off
-  is not clear from the diff, a constraint that pinned the choice, or a reversal
-  that explains a surprising result. Do not inventory the rest of the
-  discussion.
-
-The Decision trail is RAW input — the inner loop selects only the facts needed
-for the reader's task, then applies the cut test (typically the load-bearing
-constraint or rejected alternative; see `write.md` "## What evergreen context
-means"). The packet-vs-final-message split is input-vs-keep, not a different
-taxonomy. Omitting a decision the reader needs starves the loop; forcing process
-history the reader does not need invents motivation and adds noise.
 
 **Debrief tail.** End multi-step debriefs with
 `Delegated checks: T required, A attempts, F failed`; count each required
