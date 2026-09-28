@@ -5,8 +5,9 @@ fbsource_path = fbcode/ai_simulation/packsim
 # This manifest builds packsim from its published repository, cloned from the
 # `[git] repo_url` below and configured with the CMakeLists.txt at its root.
 #
-# Deliberately no `shipit_project` / `shipit.pathmap` / `shipit.strip`.
-# Those three exist to build a project out of a Meta-internal checkout by
+# Deliberately none of the keys that map an internal checkout onto the
+# published tree: the export project name, its path map and its strip list.
+# Those exist to build a project out of a Meta-internal checkout by
 # restating which of its files are public -- but packsim's published contents
 # are defined in exactly one place, and a second copy of those rules here would
 # drift from it silently. The symptom would be a green build of a tree that is
