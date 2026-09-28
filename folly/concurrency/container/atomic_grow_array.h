@@ -537,12 +537,13 @@ class atomic_grow_array : private Policy {
     //  mutex slab, whether directly or indirectly
     array* p = array_.load(mo_acquire);
     array* q = nullptr;
-    size_type const size = policy().grow(p ? p->size : 0, index);
-    assert(index < size);
     do {
       if (p && index < p->size) {
         return p;
       }
+      //  p may have changed after a race loss, so grow from its current size
+      size_type const size = policy().grow(p ? p->size : 0, index);
+      assert(index < size);
       //  the race begins here
       q = new_array(size, p);
       if (!q) {
