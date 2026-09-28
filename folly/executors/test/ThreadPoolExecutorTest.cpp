@@ -280,6 +280,45 @@ TEST(ThreadPoolExecutorTest, IOPoolStats) {
 }
 
 template <class TPE>
+static void poolStatsMaxIdleTime() {
+  folly::Baton<> warmupBaton, startBaton, endBaton;
+  TPE tpe(1);
+
+  // Workers may be created lazily, and lastActiveTime is only written when a
+  // worker goes idle, so run one task to get a worker into the thread list.
+  tpe.add([&]() { warmupBaton.post(); });
+  warmupBaton.wait();
+
+  auto idledLongEnough = [&] {
+    return tpe.getPoolStats().maxIdleTime >= milliseconds(50);
+  };
+  EXPECT_EQ(
+      folly::detail::spin_result::success,
+      folly::detail::spin_yield_until(
+          std::chrono::steady_clock::now() + std::chrono::seconds(5),
+          idledLongEnough));
+
+  tpe.add([&]() {
+    startBaton.post();
+    endBaton.wait();
+  });
+  startBaton.wait();
+  // A worker writes lastActiveTime only when it goes idle, so the worker now
+  // running the task still carries the >=50ms-old timestamp observed above.
+  // Busy workers must not contribute to maxIdleTime regardless.
+  EXPECT_EQ(std::chrono::nanoseconds::zero(), tpe.getPoolStats().maxIdleTime);
+  endBaton.post();
+}
+
+TEST(ThreadPoolExecutorTest, CPUPoolStatsMaxIdleTime) {
+  poolStatsMaxIdleTime<CPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, IOPoolStatsMaxIdleTime) {
+  poolStatsMaxIdleTime<IOThreadPoolExecutor>();
+}
+
+template <class TPE>
 static void taskStats() {
   TPE tpe(1);
   std::atomic<int> c(0);
