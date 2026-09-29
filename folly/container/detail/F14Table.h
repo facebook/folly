@@ -2747,9 +2747,12 @@ class F14Table : public Policy {
     }
 
     if (!empty()) {
+      auto* const chunks = std::to_address(chunks_); // hoisted loop-invariant
+      auto const cc = chunkCount(); // hoisted loop-invariant
       if (destroyItemOnClear()) {
-        for (std::size_t ci = 0; ci < chunkCount(); ++ci) {
-          ChunkPtr chunk = chunkAt(ci);
+        for (std::size_t ci = 0; ci < cc; ++ci) {
+          ChunkPtr chunk = std::pointer_traits<ChunkPtr>::pointer_to(
+              *Chunk::chunkRawAt(chunks, ci));
           auto iter = chunk->occupiedIter();
           if (prefetchBeforeDestroy()) {
             for (auto piter = iter; piter.hasNext();) {
@@ -2765,9 +2768,9 @@ class F14Table : public Policy {
         // It's okay to do this in a separate loop because we only do it
         // when the chunk count is small.  That avoids a branch when we
         // are promoting a clear to a reset for a large table.
-        auto scale = Chunk::capacityScale(std::to_address(chunks_));
-        for (std::size_t ci = 0; ci < chunkCount(); ++ci) {
-          chunkAt(ci)->clear();
+        auto scale = Chunk::capacityScale(chunks);
+        for (std::size_t ci = 0; ci < cc; ++ci) {
+          Chunk::chunkRawAt(chunks, ci)->clear();
         }
         chunkAt(0)->markEof(scale);
       }
