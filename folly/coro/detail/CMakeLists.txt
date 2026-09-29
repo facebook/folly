@@ -16,8 +16,7 @@
 
 folly_add_library(
   NAME detail_barrier
-  HEADERS
-    Barrier.h
+  HEADERS Barrier.h
   EXPORTED_DEPS
     folly_coro_coroutine
     folly_coro_traits
@@ -27,8 +26,7 @@ folly_add_library(
 
 folly_add_library(
   NAME detail_barrier_task
-  HEADERS
-    BarrierTask.h
+  HEADERS BarrierTask.h
   EXPORTED_DEPS
     folly_coro_coroutine
     folly_coro_detail_detail_barrier
@@ -38,8 +36,7 @@ folly_add_library(
 
 folly_add_library(
   NAME detail_current_async_frame
-  HEADERS
-    CurrentAsyncFrame.h
+  HEADERS CurrentAsyncFrame.h
   EXPORTED_DEPS
     folly_coro_coroutine
     folly_coro_with_async_stack
@@ -49,8 +46,7 @@ folly_add_library(
 
 folly_add_library(
   NAME detail_helpers
-  HEADERS
-    Helpers.h
+  HEADERS Helpers.h
   EXPORTED_DEPS
     folly_coro_coroutine
     folly_executor
@@ -61,37 +57,29 @@ folly_add_library(
 
 folly_add_library(
   NAME detail_malloc
-  SRCS
-    Malloc.cpp
-  HEADERS
-    Malloc.h
+  SRCS Malloc.cpp
+  HEADERS Malloc.h
   DEPS
     folly_lang_hint
     folly_lang_new
-  EXPORTED_DEPS
-    folly_c_portability
+  EXPORTED_DEPS folly_c_portability
 )
 
 folly_add_library(
   NAME detail_manual_lifetime
-  HEADERS
-    ManualLifetime.h
-  EXPORTED_DEPS
-    folly_scope_guard
+  HEADERS ManualLifetime.h
+  EXPORTED_DEPS folly_scope_guard
 )
 
 folly_add_library(
   NAME detail_traits
-  HEADERS
-    Traits.h
-  EXPORTED_DEPS
-    folly_traits
+  HEADERS Traits.h
+  EXPORTED_DEPS folly_traits
 )
 
 folly_add_library(
   NAME inline_task
-  HEADERS
-    InlineTask.h
+  HEADERS InlineTask.h
   EXPORTED_DEPS
     folly_coro_coroutine
     folly_coro_detail_detail_malloc
@@ -103,10 +91,9 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME
-  pick_task_wrapper
-  HEADERS
-  PickTaskWrapper.h
+  NAME pick_task_wrapper
+  HEADERS PickTaskWrapper.h
   EXPORTED_DEPS
-  folly_lang_safe_alias_fwd
-  folly_portability)
+    folly_lang_safe_alias_fwd
+    folly_portability
+)

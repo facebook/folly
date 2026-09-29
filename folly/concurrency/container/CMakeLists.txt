@@ -16,8 +16,7 @@
 
 folly_add_library(
   NAME atomic_grow_array
-  HEADERS
-    atomic_grow_array.h
+  HEADERS atomic_grow_array.h
   EXPORTED_DEPS
     folly_c_portability
     folly_constexpr_math
@@ -31,8 +30,7 @@ folly_add_library(
 
 folly_add_library(
   NAME flat_combining_priority_queue
-  HEADERS
-    FlatCombiningPriorityQueue.h
+  HEADERS FlatCombiningPriorityQueue.h
   EXPORTED_DEPS
     ${GLOG_LIBRARIES}
     folly_detail_futex
@@ -42,8 +40,7 @@ folly_add_library(
 
 folly_add_library(
   NAME lock_free_ring_buffer
-  HEADERS
-    LockFreeRingBuffer.h
+  HEADERS LockFreeRingBuffer.h
   EXPORTED_DEPS
     Boost::headers
     folly_detail_turn_sequencer
@@ -55,8 +52,7 @@ folly_add_library(
 
 folly_add_library(
   NAME relaxed_concurrent_priority_queue
-  HEADERS
-    RelaxedConcurrentPriorityQueue.h
+  HEADERS RelaxedConcurrentPriorityQueue.h
   EXPORTED_DEPS
     folly_detail_futex
     folly_lang_align
@@ -70,8 +66,7 @@ folly_add_library(
 
 folly_add_library(
   NAME single_writer_fixed_hash_map
-  HEADERS
-    SingleWriterFixedHashMap.h
+  HEADERS SingleWriterFixedHashMap.h
   EXPORTED_DEPS
     ${GLOG_LIBRARIES}
     folly_lang_bits

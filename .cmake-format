@@ -1,4 +1,24 @@
 format:
   separate_ctrl_name_with_space: true
+  max_subgroups_hwrap: 1
+  max_pargs_hwrap: 1
+  min_prefix_chars: 0
+  max_prefix_chars: 1
+  dangle_parens: true
 markup:
   enable_markup: false
+parse:
+  additional_commands:
+    folly_add_library:
+      flags:
+        - EXCLUDE_FROM_MONOLITH
+      kwargs:
+        NAME: 1
+        TARGET_NAME: 1
+        SRCS: '*'
+        HEADERS: '*'
+        DEPS: '*'
+        EXPORTED_DEPS: '*'
+        EXTERNAL_DEPS: '*'
+        EXTERNAL_INCLUDE_DIRS: '*'
+        COMPILE_OPTIONS: '*'
