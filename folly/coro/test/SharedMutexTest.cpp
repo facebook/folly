@@ -1019,7 +1019,7 @@ TEST_F(SharedMutexTest, StressTest) {
   int value2 = 0;
   folly::relaxed_atomic<bool> reachedTarget{false};
   folly::relaxed_atomic<size_t> earlyExists{0};
-  constexpr int target = 100'000;
+  constexpr int target = folly::kIsSanitize ? 10'000 : 100'000;
 
   auto incrementIfEven = [&]() -> coro::Task<void> {
     {
@@ -1071,17 +1071,22 @@ TEST_F(SharedMutexTest, StressTest) {
   CPUThreadPoolExecutor executor{
       10, std::make_shared<NamedThreadFactory>("TestThreadPool")};
 
+  // join in batches so the backlog of queued tasks stays bounded; otherwise
+  // the producer can outrun the executor by millions of tasks
+  constexpr size_t batchSize = 1'000;
   size_t writeTaskCnt = 0;
-  folly::coro::AsyncScope scope;
   while (!reachedTarget) {
-    writeTaskCnt += 2;
-    scope.add(co_withExecutor(&executor, check()));
-    scope.add(co_withExecutor(&executor, incrementIfOdd()));
-    scope.add(co_withExecutor(&executor, check()));
-    scope.add(co_withExecutor(&executor, incrementIfEven()));
-    scope.add(co_withExecutor(&executor, check()));
+    folly::coro::AsyncScope scope;
+    for (size_t i = 0; i < batchSize; ++i) {
+      writeTaskCnt += 2;
+      scope.add(co_withExecutor(&executor, check()));
+      scope.add(co_withExecutor(&executor, incrementIfOdd()));
+      scope.add(co_withExecutor(&executor, check()));
+      scope.add(co_withExecutor(&executor, incrementIfEven()));
+      scope.add(co_withExecutor(&executor, check()));
+    }
+    folly::coro::blockingWait(co_withExecutor(&executor, scope.joinAsync()));
   }
-  folly::coro::blockingWait(co_withExecutor(&executor, scope.joinAsync()));
 
   // final read
   int finalValue =
