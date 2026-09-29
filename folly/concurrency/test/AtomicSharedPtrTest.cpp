@@ -126,6 +126,33 @@ TEST(AtomicSharedPtr, ConstTest) {
   atomic_shared_ptr<const foo> catom;
 }
 
+// make_shared<T> blocks stored in atomic_shared_ptr<const T> must not be
+// treated as aliased: compare_exchange has to match the stored block.
+TEST(AtomicSharedPtr, ConstOfMakeSharedCompareExchange) {
+  atomic_shared_ptr<const int> atom(std::make_shared<int>(0));
+  for (int i = 0; i < 100; ++i) {
+    auto expected = atom.load();
+    EXPECT_TRUE(atom.compare_exchange_strong(
+        expected, std::make_shared<int>(*expected + 1)));
+  }
+  EXPECT_EQ(*atom.load(), 100);
+}
+
+// Values stored through the aliased-wrapper path (here: an aliasing
+// shared_ptr) must still compare equal to themselves in compare_exchange, and
+// a failed comparison must not drop a reference.
+TEST(AtomicSharedPtr, AliasedCompareExchange) {
+  auto owner = std::make_shared<std::pair<int, int>>(0, 0);
+  atomic_shared_ptr<int> atom(std::shared_ptr<int>(owner, &owner->second));
+  for (int i = 0; i < 100; ++i) {
+    auto expected = atom.load();
+    auto next = std::make_shared<std::pair<int, int>>(0, *expected + 1);
+    EXPECT_TRUE(atom.compare_exchange_strong(
+        expected, std::shared_ptr<int>(next, &next->second)));
+  }
+  EXPECT_EQ(*atom.load(), 100);
+}
+
 TEST(AtomicSharedPtr, AliasingConstructorTest) {
   c_count = 0;
   d_count = 0;

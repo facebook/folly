@@ -306,9 +306,12 @@ class atomic_shared_ptr {
   bool owners_eq(PackedPtr& p1, BasePtr* p2) {
     bool aliased1 = p1.extra() & ALIASED_PTR;
     if (aliased1) {
-      auto p1a = CountedDetail::template get_shared_ptr_from_counted_base<T>(
-          p1.get(), false);
-      return CountedDetail::get_counted_base(p1a) == p2;
+      // p1 owns a wrapper around the stored shared_ptr: compare that
+      // shared_ptr's owner, reading it in place. The caller's local count keeps
+      // the wrapper alive, and no reference may be taken or dropped here.
+      const auto* p1a =
+          CountedDetail::template get_shared_ptr<SharedPtr>(p1.get());
+      return CountedDetail::get_counted_base(*p1a) == p2;
     }
     return p1.get() == p2;
   }
