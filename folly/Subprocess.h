@@ -917,17 +917,30 @@ class Subprocess {
     using LineSplitter = gen::StreamSplitter<StreamSplitterCallback>;
 
    public:
+    /// Param buf is a caller-provided buffer to use for fd reads. If empty,
+    /// this function uses its own stack-allocated scratch buffer. Otherwise, no
+    /// stack-allocated scratch buffer is created.
     explicit ReadLinesCallback(
         Callback&& fdLineCb,
         uint64_t maxLineLength = 0, // No line length limit by default
         char delimiter = '\n',
-        uint64_t bufSize = 1024)
+        std::span<char> buf = {})
         : fdLineCb_(std::forward<Callback>(fdLineCb)),
           maxLineLength_(maxLineLength),
           delimiter_(delimiter),
-          bufSize_(bufSize) {}
+          buf_(buf) {}
 
     bool operator()(int pfd, int cfd) {
+      if (!buf_.empty()) {
+        return readAndSplit(pfd, cfd, buf_);
+      }
+      constexpr size_t kDefaultBufSize = 1024;
+      char stackBuf[kDefaultBufSize];
+      return readAndSplit(pfd, cfd, std::span<char>(stackBuf, kDefaultBufSize));
+    }
+
+   private:
+    bool readAndSplit(int pfd, int cfd, std::span<char> buf) {
       // Make a splitter for this cfd if it doesn't already exist
       auto it = fdToSplitter_.find(cfd);
       auto& splitter = (it != fdToSplitter_.end())
@@ -941,9 +954,8 @@ class Subprocess {
                         maxLineLength_))
                 .first->second;
       // Read as much as we can from this FD
-      char buf[bufSize_];
       while (true) {
-        ssize_t ret = readNoInt(pfd, buf, bufSize_);
+        ssize_t ret = readNoInt(pfd, buf.data(), buf.size());
         if (ret == -1 && errno == EAGAIN) { // No more data for now
           return false;
         }
@@ -952,17 +964,16 @@ class Subprocess {
           splitter.flush(); // Ignore return since the file is over anyway
           return true;
         }
-        if (!splitter(StringPiece(buf, ret))) {
+        if (!splitter(StringPiece(buf.data(), ret))) {
           return true; // The callback told us to stop
         }
       }
     }
 
-   private:
     Callback fdLineCb_;
     const uint64_t maxLineLength_;
     const char delimiter_;
-    const uint64_t bufSize_;
+    const std::span<char> buf_;
     // We lazily make splitters for all cfds that get used.
     std::unordered_map<int, LineSplitter> fdToSplitter_;
   };
@@ -973,10 +984,10 @@ class Subprocess {
       Callback&& fdLineCb,
       uint64_t maxLineLength = 0, // No line length limit by default
       char delimiter = '\n',
-      uint64_t bufSize = 1024)
+      std::span<char> buf = {})
       -> ReadLinesCallback<typename std::decay<Callback>::type> {
     return ReadLinesCallback<typename std::decay<Callback>::type>(
-        std::forward<Callback>(fdLineCb), maxLineLength, delimiter, bufSize);
+        std::forward<Callback>(fdLineCb), maxLineLength, delimiter, buf);
   }
 
   /**
