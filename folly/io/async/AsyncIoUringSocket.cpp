@@ -791,6 +791,7 @@ void AsyncIoUringSocket::ReadSqe::processSubmit(
     if (supportsZeroCopyRx_ && useZeroCopyRx_) {
       ::io_uring_prep_rw(IORING_OP_RECV_ZC, sqe, fd, nullptr, 0, 0);
       sqe->ioprio |= IORING_RECV_MULTISHOT;
+      parent_->backend_->zcBufferPool()->sqePrepZc(sqe);
     } else if (readCallbackUseIoBufs()) {
       auto* bp = parent_->backend_->bufferProvider();
       if (bp->available()) {

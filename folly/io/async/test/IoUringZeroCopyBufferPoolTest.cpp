@@ -44,6 +44,7 @@ class IoUringZeroCopyBufferPoolTestHelper {
   void* getNotifStatsPtr() { return pool.getNotifStatsPtr(); }
   uint64_t getNotifUserData() { return pool.kZcrxNotifUserData; }
   void incNoBufferCount() { pool.incNoBufferCount(); }
+  void setZcrxId(int zcrxId) { pool.zcrxId_ = zcrxId; }
 
   void consumeRefillRingEntries(uint32_t numEntries) {
     *getHead() += numEntries;
@@ -399,6 +400,26 @@ TEST(IoUringZeroCopyBufferPoolTest, CqeIsNotif) {
   // Regular CQE with arbitrary user_data.
   cqe.user_data = 42;
   EXPECT_FALSE(pool->cqeIsNotif(&cqe));
+}
+
+TEST(IoUringZeroCopyBufferPoolTest, SqePrepZcSetsIfqIdx) {
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numBuffers = 8,
+      .bufferSizeHint = 4096,
+      .rqEntries = 4,
+      .ifindex = 0,
+      .queueId = 0,
+  };
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper helper(*pool);
+  constexpr int kZcrxId = 3;
+  helper.setZcrxId(kZcrxId);
+
+  io_uring_sqe sqe{};
+  pool->sqePrepZc(&sqe);
+
+  EXPECT_EQ(sqe.zcrx_ifq_idx, kZcrxId);
 }
 
 TEST(IoUringZeroCopyBufferPoolTest, NotifStats) {

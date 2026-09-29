@@ -119,6 +119,7 @@ class IoUringRecvHandle::RecvRequest
     if (bufferPool_) {
       ::io_uring_prep_rw(IORING_OP_RECV_ZC, sqe, fd_.toFd(), nullptr, 0, 0);
       sqe->ioprio |= IORING_RECV_MULTISHOT;
+      bufferPool_->sqePrepZc(sqe);
       return;
     }
 

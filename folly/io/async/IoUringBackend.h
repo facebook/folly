@@ -788,6 +788,7 @@ class IoUringBackend : public EventBaseBackendBase {
           0);
       ::io_uring_sqe_set_data(sqe, this);
       sqe->ioprio |= IORING_RECV_MULTISHOT;
+      backend_->zcBufferPool_->sqePrepZc(sqe);
     }
   };
 

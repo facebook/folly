@@ -87,6 +87,10 @@ class IoUringZeroCopyBufferPool {
 
   void processNotificationCqe(const struct io_uring_cqe* cqe) noexcept;
 
+  void sqePrepZc(struct io_uring_sqe* sqe) const noexcept {
+    sqe->zcrx_ifq_idx = static_cast<uint32_t>(zcrxId_);
+  }
+
   static constexpr uint64_t kZcrxNotifUserData = ~uint64_t{0x0};
   bool cqeIsNotif(const struct io_uring_cqe* cqe) const noexcept {
     return cqe->user_data == kZcrxNotifUserData;
