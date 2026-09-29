@@ -19,6 +19,14 @@
 #include <folly/lang/Align.h>
 #include <folly/portability/GTest.h>
 
+static_assert(
+    folly::new_is_infallible_v ==
+    noexcept(::operator new(0, std::align_val_t(folly::max_align_v))));
+static_assert(folly::new_is_infallible_v == noexcept(folly::operator_new(0)));
+static_assert(
+    folly::new_is_infallible_v ==
+    noexcept(folly::operator_new(0, std::align_val_t(folly::max_align_v))));
+
 class NewTest : public testing::Test {};
 
 TEST_F(NewTest, operator_new_delete) {

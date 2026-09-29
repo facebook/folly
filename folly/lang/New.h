@@ -69,11 +69,19 @@ FOLLY_ERASE void do_op_del_sized_(
 
 } // namespace detail
 
+//  new_is_infallible_v
+//
+//  Whether the throwing forms of the global ::operator new are noexcept, such
+//  that allocation failure terminates rather than throws.
+//
+//  True under clang -fnew-infallible, which covers the aligned forms as well.
+inline constexpr bool new_is_infallible_v = noexcept(::operator new(0));
+
 //  operator_new
 struct operator_new_fn {
   [[nodiscard]] FOLLY_ERASE void* operator()( //
       std::size_t const s) const //
-      noexcept(noexcept(::operator new(0))) {
+      noexcept(new_is_infallible_v) {
     return detail::op_new_<true>(s);
   }
   [[nodiscard]] FOLLY_ERASE void* operator()( //
@@ -84,7 +92,7 @@ struct operator_new_fn {
   [[nodiscard]] FOLLY_ERASE void* operator()( //
       std::size_t const s,
       std::align_val_t const a) const //
-      noexcept(noexcept(::operator new(0))) {
+      noexcept(new_is_infallible_v) {
     return detail::op_new_<detail::cpp_aligned_new_>(s, a);
   }
   [[nodiscard]] FOLLY_ERASE void* operator()( //

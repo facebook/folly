@@ -122,8 +122,7 @@ class atomic_grow_array : private Policy {
  private:
   static constexpr bool is_nothrow_grow_v =
       noexcept(FOLLY_DECLVAL(Policy const&).grow(0, 0)) &&
-      noexcept(FOLLY_DECLVAL(Policy const&).make()) &&
-      noexcept(::operator new(0));
+      noexcept(FOLLY_DECLVAL(Policy const&).make()) && new_is_infallible_v;
 
   struct array;
 
