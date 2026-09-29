@@ -197,6 +197,18 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_benchmark(
+    name = "hazptr_cohort_mt_bench",
+    srcs = ["HazptrCohortMTBench.cpp"],
+    deps = [
+        ":barrier",
+        "//folly:benchmark",
+        "//folly/lang:align",
+        "//folly/portability:gflags",
+        "//folly/synchronization:hazptr",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
     name = "hazptr_bench",
     srcs = ["HazptrBench.cpp"],
     deps = [
