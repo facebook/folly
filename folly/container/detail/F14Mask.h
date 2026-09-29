@@ -291,6 +291,27 @@ class FirstEmptyInMask {
   }
 };
 
+// Same interface as FirstEmptyInMask, but already resolved rather than
+// holding a mask to search. For callers that compute the index directly
+// (e.g. via an SVE predicate, which cannot be stored in a mask the way
+// FirstEmptyInMask requires) instead of via a packed MaskType.
+class ResolvedFirstEmpty {
+  bool hasIndex_;
+  // Matches svcntp_b8's uint64_t return type, avoiding a truncate/repack.
+  std::size_t index_;
+
+ public:
+  ResolvedFirstEmpty(bool hasIndex, std::size_t index)
+      : hasIndex_{hasIndex}, index_{index} {}
+
+  bool hasIndex() const { return hasIndex_; }
+
+  unsigned index() const {
+    FOLLY_SAFE_DCHECK(hasIndex_, "");
+    return static_cast<unsigned>(index_);
+  }
+};
+
 } // namespace detail
 } // namespace f14
 } // namespace folly

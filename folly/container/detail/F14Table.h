@@ -963,9 +963,32 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     return LastOccupiedInMask{this->occupiedMask()};
   }
 
+#if FOLLY_F14_SVE_PREDICATE_NATIVE_ACTIVE
+
+  // Predicate-native, unlike occupiedMask() above (used by occupiedIter(),
+  // occupiedRangeIter(), and lastOccupied()): building occupiedMask()'s
+  // packed MaskType requires converting the predicate back into a vector
+  // (mov z,p/z,#imm), which measured as a net loss on Neoverse-V2. Since
+  // this call only needs a single index (or "none"), it can instead extract
+  // one directly via BRKB+CNTP, the same technique forEachTagMatch uses.
+  ResolvedFirstEmpty firstEmpty() const {
+    svbool_t pred = svwhilelt_b8_u32(0, kCapacity);
+    svuint8_t tagV = svset_neonq_u8(svundef_u8(), vld1q_u8(&tags_[0]));
+    svbool_t emptyPred = svcmpeq_n_u8(pred, tagV, 0);
+    if (!svptest_any(pred, emptyPred)) {
+      return {false, 0};
+    }
+    std::size_t i = svcntp_b8(pred, svbrkb_z(pred, emptyPred));
+    return {true, i};
+  }
+
+#else
+
   FirstEmptyInMask firstEmpty() const {
     return FirstEmptyInMask{this->occupiedMask() ^ kFullMask};
   }
+
+#endif
 
   bool occupied(std::size_t index) const { return tags_[index] != 0; }
 
