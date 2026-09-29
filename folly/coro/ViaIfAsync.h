@@ -829,6 +829,64 @@ class CommutativeWrapperAwaitable {
       : inner_{std::move(mover.template get<0>())()} {}
 };
 
+/// TryAwaitable
+///
+/// The awaitable returned by `co_awaitTry`.
+///
+/// `co_await co_awaitTry(awaitable)` completes with a `Try<T>` holding either
+/// the value or the error of `awaitable`. Unlike a plain `co_await`, it never
+/// rethrows the error into the awaiting coroutine.
+///
+///   auto res = co_await co_awaitTry(fetch());
+///   if (res.hasException()) {
+///     // inspect, log, retry, or propagate res.exception()
+///   }
+///
+/// ## Why this exists: the error path must stay cheap
+///
+/// A plain `co_await` of a failed task rethrows the error. Each throw costs on
+/// the order of microseconds, and with some toolchains the unwinder serializes
+/// across threads. The cost repeats at every frame of a coroutine stack, even
+/// with no `try` / `catch` spelled anywhere: an exception escaping a coroutine
+/// body is caught by its promise's `unhandled_exception()`, stored, and then
+/// rethrown by the plain `co_await` in the parent. An error passing up through
+/// N plain `co_await`s costs N throws.
+///
+/// Error paths tend to become hot precisely when a service is overloaded:
+/// timeouts, cancellations, and failing dependencies arrive in bursts. If each
+/// error costs a throw, overload makes every error more expensive, which
+/// deepens the overload -- a feedback loop that can turn a brownout into an
+/// outage. `co_awaitTry` keeps the error in an `exception_wrapper`, so the
+/// error path costs about the same as the happy path.
+///
+/// ## Guidance for generic libraries
+///
+/// Code that awaits arbitrary caller-supplied awaitables (combinators, retry,
+/// timeout, and other wrappers) cannot know how hot its callers' error paths
+/// are, so it must not throw on their behalf:
+///
+///  - To inspect errors, use `co_awaitTry` (or, in new code,
+///    `value_or_error_or_stopped` from `ValueOrError.h`), not
+///    `try { co_await ... } catch (...)`.
+///  - To propagate a captured error, use `co_yield co_error(ew)` from
+///    `Error.h` or `co_yield co_result(std::move(tryOrResult))` from
+///    `Result.h`, never `throw` or `Try::value()`.
+///  - To propagate without inspecting, use `co_await co_nothrow(awaitable)`
+///    from `Nothrow.h`.
+///
+/// Following these at every layer keeps an error from being thrown at all
+/// between the frame that raised it and the frame that handles it.
+///
+/// ## Do not "optimize" this away
+///
+/// Replacing `co_awaitTry` plus `hasException()` with `try` / `catch` around a
+/// plain `co_await` is not a performance improvement. It saves at most a few
+/// nanoseconds on the happy path (constructing and moving a `Try`) while
+/// adding a throw and unwind to every error -- often on exactly the path, such
+/// as a timeout, that runs hottest under load. Uses of `co_awaitTry` should be
+/// presumed deliberate. Do not remove one unless profiling shows both that the
+/// `Try` dominates the happy path and that the error path is cold even under
+/// overload.
 template <typename T>
 class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]]
 TryAwaitable : public CommutativeWrapperAwaitable<TryAwaitable, T> {
@@ -849,6 +907,11 @@ TryAwaitable : public CommutativeWrapperAwaitable<TryAwaitable, T> {
 
 } // namespace detail
 
+/// co_awaitTry
+///
+/// Await `awaitable`, completing with a `Try<T>` instead of rethrowing any
+/// error. See `detail::TryAwaitable` above for when and why to use this, and
+/// why uses of it should not be replaced with `try` / `catch`.
 template <typename Awaitable>
   requires(!folly::ext::must_use_immediately_v<Awaitable>)
 detail::TryAwaitable<remove_cvref_t<Awaitable>> co_awaitTry(
@@ -856,6 +919,9 @@ detail::TryAwaitable<remove_cvref_t<Awaitable>> co_awaitTry(
   return detail::TryAwaitable<remove_cvref_t<Awaitable>>{
       static_cast<Awaitable&&>(awaitable)};
 }
+/// co_awaitTry
+///
+/// Overload for immediately-awaitable arguments. See `detail::TryAwaitable`.
 template <typename Awaitable>
   requires folly::ext::must_use_immediately_v<Awaitable>
 detail::TryAwaitable<Awaitable> co_awaitTry(
