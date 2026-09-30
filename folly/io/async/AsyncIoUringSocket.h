@@ -252,6 +252,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
  private:
   friend class ReadSqe;
   friend class WriteSqe;
+  friend class
+      AsyncIoUringSocketTest_ZeroCopyReadNotifiesScarcityBeforeBuffer_Test;
   void setFd(NetworkSocket ns);
   void registerFd();
   void unregisterFd();
@@ -332,6 +334,8 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
     detachEventBase();
 
     void setUseZeroCopyRx(bool val) { useZeroCopyRx_ = val; }
+
+    void sendZeroCopyReadBuf(std::unique_ptr<IOBuf> buf, bool scarce) noexcept;
 
    private:
     ~ReadSqe() override = default;

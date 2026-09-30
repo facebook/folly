@@ -215,6 +215,36 @@ class CollectCallback : public AsyncReader::ReadCallback {
   bool holdData = true;
 };
 
+class ScarcityReadCallback : public AsyncReader::ReadCallback {
+ public:
+  enum class Event {
+    BuffersAvailable,
+    BuffersScarce,
+    BufferDelivered,
+  };
+
+  bool isBufferMovable() noexcept override { return true; }
+
+  void readBuffersScarce(bool scarce) noexcept override {
+    events.push_back(scarce ? Event::BuffersScarce : Event::BuffersAvailable);
+    if (scarce && socketToDetach) {
+      socketToDetach->setReadCB(nullptr);
+    }
+  }
+
+  void readBufferAvailable(std::unique_ptr<IOBuf>) noexcept override {
+    events.push_back(Event::BufferDelivered);
+  }
+
+  void getReadBuffer(void**, size_t*) override {}
+  void readDataAvailable(size_t) noexcept override {}
+  void readEOF() noexcept override {}
+  void readErr(const AsyncSocketException&) noexcept override {}
+
+  std::vector<Event> events;
+  AsyncIoUringSocket* socketToDetach{nullptr};
+};
+
 struct TestParams {
   bool ioUringServer = false;
   bool ioUringClient = false;
@@ -440,6 +470,34 @@ TEST_P(AsyncIoUringSocketTest, ConnectTimeout) {
   }
   EXPECT_EQ(res.error().getType(), AsyncSocketException::TIMED_OUT)
       << res.error().what();
+}
+
+TEST_P(AsyncIoUringSocketTest, ZeroCopyReadNotifiesScarcityBeforeBuffer) {
+  MAYBE_SKIP();
+  AsyncIoUringSocket::UniquePtr socket(new AsyncIoUringSocket(base.get()));
+  ScarcityReadCallback callback;
+  socket->readSqe_->setReadCallback(&callback, false);
+
+  socket->readSqe_->sendZeroCopyReadBuf(IOBuf::copyBuffer("a"), false);
+  socket->readSqe_->sendZeroCopyReadBuf(IOBuf::copyBuffer("b"), true);
+
+  const std::vector<ScarcityReadCallback::Event> expected = {
+      ScarcityReadCallback::Event::BuffersAvailable,
+      ScarcityReadCallback::Event::BufferDelivered,
+      ScarcityReadCallback::Event::BuffersScarce,
+      ScarcityReadCallback::Event::BufferDelivered,
+  };
+  EXPECT_EQ(callback.events, expected);
+
+  ScarcityReadCallback detachingCallback;
+  detachingCallback.socketToDetach = socket.get();
+  socket->readSqe_->setReadCallback(&detachingCallback, false);
+  socket->readSqe_->sendZeroCopyReadBuf(IOBuf::copyBuffer("c"), true);
+  EXPECT_EQ(
+      detachingCallback.events,
+      std::vector{ScarcityReadCallback::Event::BuffersScarce});
+
+  socket->readSqe_->setReadCallback(nullptr, false);
 }
 
 TEST_P(AsyncIoUringSocketTest, EoF) {

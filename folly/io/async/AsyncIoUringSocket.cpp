@@ -721,7 +721,7 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
         const io_uring_zcrx_cqe* rcqe = (io_uring_zcrx_cqe*)(cqe + 1);
         auto pool = parent_->backend_->zcBufferPool();
         auto result = pool->getIoBuf(cqe, rcqe);
-        sendReadBuf(std::move(result.buffer), queuedReceivedData_);
+        sendZeroCopyReadBuf(std::move(result.buffer), result.isScarce);
         buffer_guard.dismiss();
       } else if (lastUsedBufferProvider_) {
         auto bufId = flags >> 16;
@@ -841,6 +841,16 @@ void AsyncIoUringSocket::ReadSqe::processSubmit(
     VLOG(5) << "readProcessSubmit " << this << " reg=" << fd
             << " cb=" << readCallback_ << " size=" << maxSize_;
   }
+}
+
+void AsyncIoUringSocket::ReadSqe::sendZeroCopyReadBuf(
+    std::unique_ptr<IOBuf> buf, bool scarce) noexcept {
+  if (readCallback_) {
+    readCallback_->readBuffersScarce(scarce);
+  }
+  // The callback may detach itself. sendReadBuf() rechecks readCallback_ and
+  // queues the buffer when no callback remains.
+  sendReadBuf(std::move(buf), queuedReceivedData_);
 }
 
 void AsyncIoUringSocket::ReadSqe::sendReadBuf(
