@@ -235,6 +235,21 @@ std::vector<ConnectTestParam> getBackendTFOTestingValues() {
   return vals;
 }
 
+// io_uring rings are charged to RLIMIT_MEMLOCK, a budget shared by all
+// processes of the same user on the host, so keep them small. The charge scales
+// with the ring capacity and the provided-buffer count, not the buffer size.
+IoUringBackend::Options ioUringOptions() {
+  IoUringBackend::Options options;
+  options.setCapacity(64).setMaxSubmit(32);
+  return options;
+}
+
+IoUringBackend::Options ioUringOptionsWithProvidedBuffers() {
+  auto options = ioUringOptions();
+  options.setInitialProvidedBuffers(2048, 256);
+  return options;
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // constructor related tests
 ///////////////////////////////////////////////////////////////////////////
@@ -247,9 +262,8 @@ class AsyncSocketTest : public ::testing::TestWithParam<BackendType> {
         evb_ =
             std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
                 []() -> std::unique_ptr<EventBaseBackendBase> {
-                  IoUringBackend::Options options;
-                  options.setInitialProvidedBuffers(2048, 2000);
-                  return std::make_unique<IoUringBackend>(std::move(options));
+                  return std::make_unique<IoUringBackend>(
+                      ioUringOptionsWithProvidedBuffers());
                 }));
       } catch (IoUringBackend::NotAvailable const&) {
         GTEST_SKIP() << "IoUringBackend not available";
@@ -265,9 +279,8 @@ class AsyncSocketTest : public ::testing::TestWithParam<BackendType> {
     if (GetParam() == BackendType::IO_URING) {
       return std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
           []() -> std::unique_ptr<EventBaseBackendBase> {
-            IoUringBackend::Options options;
-            options.setInitialProvidedBuffers(2048, 2000);
-            return std::make_unique<IoUringBackend>(std::move(options));
+            return std::make_unique<IoUringBackend>(
+                ioUringOptionsWithProvidedBuffers());
           }));
     } else {
       return std::make_unique<EventBase>();
@@ -451,9 +464,8 @@ class AsyncSocketConnectTFOTest
         evb_ =
             std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
                 []() -> std::unique_ptr<EventBaseBackendBase> {
-                  IoUringBackend::Options options;
-                  options.setInitialProvidedBuffers(2048, 2000);
-                  return std::make_unique<IoUringBackend>(std::move(options));
+                  return std::make_unique<IoUringBackend>(
+                      ioUringOptionsWithProvidedBuffers());
                 }));
       } catch (IoUringBackend::NotAvailable const&) {
         GTEST_SKIP() << "IoUringBackend not available";
@@ -777,8 +789,7 @@ class AsyncSocketToSTest : public ::testing::TestWithParam<BackendType> {
         evb =
             std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
                 []() -> std::unique_ptr<EventBaseBackendBase> {
-                  IoUringBackend::Options options;
-                  return std::make_unique<IoUringBackend>(std::move(options));
+                  return std::make_unique<IoUringBackend>(ioUringOptions());
                 }));
       } catch (IoUringBackend::NotAvailable const&) {
         GTEST_SKIP() << "IoUringBackend not available";
@@ -4843,8 +4854,7 @@ TEST(
   try {
     evb = std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
         []() -> std::unique_ptr<EventBaseBackendBase> {
-          IoUringBackend::Options options;
-          return std::make_unique<IoUringBackend>(std::move(options));
+          return std::make_unique<IoUringBackend>(ioUringOptions());
         }));
   } catch (IoUringBackend::NotAvailable const&) {
     GTEST_SKIP() << "IoUringBackend not available";
@@ -8743,8 +8753,7 @@ TEST_F(AsyncSocketByteEventTest, EnableByteEventsThrowsWithIoUringBackend) {
   try {
     evb = std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
         []() -> std::unique_ptr<EventBaseBackendBase> {
-          IoUringBackend::Options options;
-          return std::make_unique<IoUringBackend>(std::move(options));
+          return std::make_unique<IoUringBackend>(ioUringOptions());
         }));
   } catch (IoUringBackend::NotAvailable const&) {
     GTEST_SKIP() << "IoUringBackend not available";
