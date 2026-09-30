@@ -181,6 +181,9 @@ class fbstring_core_model {
   // It is not guaranteed not to reallocate even if size() + delta <
   // capacity(), so all references to the buffer are invalidated.
   Char* expandNoinit(size_t delta, bool expGrowth);
+  // Optional hook for folly::resizeWithoutInitialization, for cores that
+  // can do it more efficiently than shrink()/expandNoinit().
+  void resizeNoinit(size_t n);
   // Expands the string by one character and sets the last character
   // to c.
   void push_back(Char c);
@@ -1240,6 +1243,9 @@ class basic_fbstring {
 
   void resize(size_type n, value_type c = value_type());
 
+  // Hook for folly::resizeWithoutInitialization; call that instead.
+  void resize_without_initialization(size_type n);
+
   size_type capacity() const { return store_.capacity(); }
 
   // Returns the reference count for this string's underlying data.
@@ -1860,6 +1866,26 @@ inline void basic_fbstring<E, T, A, S>::resize(
     auto const delta = n - size;
     auto pData = store_.expandNoinit(delta);
     fbstring_detail::podFill(pData, pData + delta, c);
+  }
+  assert(this->size() == n);
+}
+
+template <typename E, class T, class A, class S>
+inline void basic_fbstring<E, T, A, S>::resize_without_initialization(
+    const size_type n) {
+  Invariant checker(*this);
+
+  if constexpr (requires { store_.resizeNoinit(n); }) {
+    store_.resizeNoinit(n);
+  } else {
+    auto size = this->size();
+    if (n < size) {
+      store_.shrink(size - n);
+    } else if (n > size) {
+      store_.expandNoinit(n - size);
+    } else {
+      store_.mutableData();
+    }
   }
   assert(this->size() == n);
 }

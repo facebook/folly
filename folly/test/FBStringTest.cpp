@@ -16,6 +16,7 @@
 
 #include <folly/FBString.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdlib>
 #include <iomanip>
@@ -31,6 +32,8 @@
 #include <folly/Random.h>
 #include <folly/Utility.h>
 #include <folly/container/Foreach.h>
+#include <folly/memory/UninitializedMemoryHacks.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 
@@ -1442,6 +1445,95 @@ TEST(FBString, testFixedBugsD4355440) {
       goodMallocSize(3840) - sizeof(DummyRefCounted) - sizeof(char));
 }
 
+TEST(FBString, resizeWithoutInitialization) {
+  std::vector<size_t> sizes = {0, 1, 22, 23, 24, 253, 254, 255, 1000};
+  for (int i = 0; i < 50; ++i) {
+    sizes.push_back(random(0, 2000));
+  }
+  std::shuffle(sizes.begin(), sizes.end(), rng);
+
+  // Comparing against .resize()
+  fbstring withInit;
+  fbstring noInit;
+  for (auto n : sizes) {
+    for (int rep = 0; rep < 2; ++rep) {
+      auto const old = noInit.size();
+      withInit.resize(n);
+      folly::resizeWithoutInitialization(noInit, n);
+
+      ASSERT_EQ(n, noInit.size());
+      ASSERT_EQ(withInit.capacity(), noInit.capacity());
+
+      for (size_t i = old; i < n; ++i) {
+        withInit[i] = noInit[i] = char('a' + i % 26);
+      }
+      ASSERT_EQ(withInit, noInit) << "seed " << seed << ", size " << n;
+      ASSERT_EQ('\0', noInit.c_str()[n]);
+    }
+  }
+
+  // Checking that sharig is processed properly.
+  const fbstring shared(1337, 'f');
+  for (auto n : {size_t(1000), shared.size(), size_t(2000)}) {
+    fbstring cp = shared;
+    ASSERT_EQ(2u, cp.use_count());
+
+    folly::resizeWithoutInitialization(cp, n);
+    EXPECT_EQ(1u, cp.use_count());
+    EXPECT_EQ(n, cp.size());
+
+    std::fill(cp.data(), cp.data() + cp.size(), 'g');
+    EXPECT_EQ(fbstring(1337, 'f'), shared);
+  }
+}
+
+namespace {
+
+struct MockResizeNoinit {
+  MockResizeNoinit() { instance = this; }
+  ~MockResizeNoinit() { instance = nullptr; }
+
+  static inline MockResizeNoinit* instance = nullptr;
+
+  MOCK_METHOD(void, resizeNoinit, (size_t));
+};
+
+struct MockCore : fbstring_core<char> {
+  using fbstring_core<char>::fbstring_core;
+
+  void resizeNoinit(size_t n) {
+    MockResizeNoinit::instance->resizeNoinit(n);
+
+    auto const sz = size();
+    if (n < sz) {
+      shrink(sz - n);
+    } else if (n > sz) {
+      expandNoinit(n - sz);
+    } else {
+      mutableData();
+    }
+  }
+};
+
+using MockCoreString = basic_fbstring<
+    char,
+    std::char_traits<char>,
+    std::allocator<char>,
+    MockCore>;
+
+} // namespace
+
+TEST(FBString, resizeWithoutInitializationPrefersCoreHook) {
+  ::testing::StrictMock<MockResizeNoinit> mock;
+
+  MockCoreString str(1337, 'f');
+
+  EXPECT_CALL(mock, resizeNoinit(5));
+  folly::resizeWithoutInitialization(str, 5);
+
+  EXPECT_EQ(MockCoreString(5, 'f'), str);
+}
+
 TEST(FBString, findWithNpos) {
   fbstring fbstr("localhost:80");
   EXPECT_EQ(fbstring::npos, fbstr.find(":", fbstring::npos));
@@ -1550,10 +1642,10 @@ TEST(FBString, moveTerminator) {
 
 namespace {
 /*
- * t8968589: Clang 3.7 refused to compile w/ certain constructors (specifically
- * those that were "explicit" and had a defaulted parameter, if they were used
- * in structs which were default-initialized).  Exercise these just to ensure
- * they compile.
+ * t8968589: Clang 3.7 refused to compile w/ certain constructors
+ * (specifically those that were "explicit" and had a defaulted parameter, if
+ * they were used in structs which were default-initialized).  Exercise these
+ * just to ensure they compile.
  *
  * In diff D2632953 the old constructor:
  *   explicit basic_fbstring(const A& a = A()) noexcept;

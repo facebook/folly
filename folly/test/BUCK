@@ -587,6 +587,8 @@ fb_dirsync_cpp_unittest(
         "//folly:random",
         "//folly:utility",
         "//folly/container:foreach",
+        "//folly/memory:uninitialized_memory_hacks",
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],
 )
