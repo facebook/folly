@@ -24,8 +24,12 @@
 #include <folly/testing/TestUtil.h>
 
 using namespace folly;
+using testing::AllOf;
 using testing::Contains;
+using testing::ElementsAre;
 using testing::ElementsAreArray;
+using testing::Field;
+using testing::Ne;
 
 namespace {
 
@@ -105,6 +109,12 @@ class ArgsTest : public ::testing::Test {
           << "e={line=" << e.error_loc.e.line << ", col=" << e.error_loc.e.col
           << "}" << "}";
       }
+      // operator== compares these, so a mismatch must show them.
+      o << ", err=" << e.err.category().name() << ":" << e.err.value();
+      if (e.err) {
+        o << " (" << e.err.message() << ")";
+      }
+      o << ", canonical_path=\"" << e.canonical_path.string() << "\"";
       o << ", depth=" << e.depth << "}";
       return o;
     }
@@ -259,12 +269,6 @@ class ArgsTest : public ::testing::Test {
   Entry entry_file_error_no_such_file(
       size_t depth, const std::string& value, location loc) {
     auto error = std::make_error_code(std::errc::no_such_file_or_directory);
-    return entry_file_error(depth, value, loc, error);
-  }
-
-  Entry entry_file_error_is_a_directory(
-      size_t depth, const std::string& value, location loc) {
-    auto error = std::make_error_code(std::errc::is_a_directory);
     return entry_file_error(depth, value, loc, error);
   }
 
@@ -2093,11 +2097,11 @@ TEST_F(ArgsTest, BareAtInArgsFileTriggersFileError) {
           "final",
       }));
 
-  // Empty filename resolves to current directory, which fails with
-  // is_a_directory
+  // The empty filename resolves to a directory; the error for opening one is
+  // platform-specific (EISDIR on POSIX), so don't pin it.
   EXPECT_THAT(
       receiver.entries,
-      ElementsAreArray({
+      ElementsAre(
           entry_term(0, "prog", idx(0)),
           entry_file_found(0, "bare_at.args", idx(1)),
           entry_file_enter(0, "bare_at.args", idx(1)),
@@ -2107,15 +2111,21 @@ TEST_F(ArgsTest, BareAtInArgsFileTriggersFileError) {
               {.idx = 0, .off = 0, .len = 8, .b = {1, 1}, .e = {1, 8}}),
           entry_file_found(
               1, "", {.idx = 1, .off = 9, .len = 1, .b = {2, 1}, .e = {2, 1}}),
-          entry_file_error_is_a_directory(
-              1, "", {.idx = 1, .off = 9, .len = 1, .b = {2, 1}, .e = {2, 1}}),
+          AllOf(
+              Field(&Entry::type, Entry::FILE_ERROR),
+              Field(&Entry::value, ""),
+              Field(
+                  &Entry::loc,
+                  location{
+                      .idx = 1, .off = 9, .len = 1, .b = {2, 1}, .e = {2, 1}}),
+              Field(&Entry::depth, size_t{1}),
+              Field(&Entry::err, Ne(std::error_code{}))),
           entry_term(
               1,
               "--after",
               {.idx = 2, .off = 11, .len = 7, .b = {3, 1}, .e = {3, 7}}),
           entry_file_leave(0),
-          entry_term(0, "final", idx(2)),
-      }));
+          entry_term(0, "final", idx(2))));
 }
 
 TEST_F(ArgsTest, DirectCyclicalReference) {
