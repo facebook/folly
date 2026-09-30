@@ -272,16 +272,26 @@ TEST(Wait, waitWithDuration) {
 
 TEST(Wait, multipleWait) {
   folly::TestExecutor executor(1);
-  auto f = futures::sleep(milliseconds(100)).via(&executor);
+  Promise<Unit> p;
+  auto f = p.getSemiFuture().via(&executor);
+  // An unfulfilled promise is the only thing that can complete f, so the
+  // repeated short waits cannot race anything into fulfilling it. Timing the
+  // loop against a sleep instead made this fail whenever a loaded machine
+  // stretched the five 3ms waits past the sleep.
   for (size_t i = 0; i < 5; ++i) {
     EXPECT_FALSE(f.isReady());
     f.wait(milliseconds(3));
   }
   EXPECT_FALSE(f.isReady());
+  // Fulfilled from another thread so the untimed wait below still blocks on
+  // someone else completing the future, which is what this test is for. An
+  // untimed wait has no deadline to miss, so it cannot fail spuriously.
+  std::thread t([&] { p.setValue(); });
   f.wait();
   EXPECT_TRUE(f.isReady());
   f.wait();
   EXPECT_TRUE(f.isReady());
+  t.join();
 }
 
 TEST(Wait, WaitPlusThen) {
