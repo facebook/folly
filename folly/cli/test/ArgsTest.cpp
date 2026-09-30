@@ -205,7 +205,7 @@ class ArgsTest : public ::testing::Test {
   void write_file(const std::string& filename, const std::string& content) {
     auto path = tempDir_.path() / filename;
 
-    std::ofstream file(path.string());
+    std::ofstream file(path.string(), std::ios::binary);
     file << folly::stripLeftMargin(content);
     file.close();
   }
