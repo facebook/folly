@@ -19,6 +19,7 @@
 
 #include <folly/FileUtil.h>
 #include <folly/Function.h>
+#include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <folly/init/Init.h>
 #include <folly/io/async/AsyncUDPServerSocket.h>
@@ -30,6 +31,7 @@
 #include <folly/io/async/test/EventBaseTestLib.h>
 #include <folly/io/async/test/IoTestTempFileUtil.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/SysResource.h>
 
 #ifndef RESOLVE_IN_ROOT
 #define RESOLVE_IN_ROOT 0x10
@@ -281,6 +283,45 @@ TEST(IoUringBackend, SuccessCreateRetry) {
     bSuccess = false;
   }
   CHECK(bSuccess);
+}
+
+// Unreliable: whether a zero RLIMIT_MEMLOCK makes ring setup fail with ENOMEM
+// depends on the environment, so this test skips when setup succeeds anyway.
+// * Capabilities: the kernel does not charge rings created with CAP_IPC_LOCK
+//   in the thread's effective set, as is typical when running as root.
+// * User: charges accrue per user, so other processes running as the same
+//   user can exhaust the budget and make even the unrestricted setup below
+//   fail.
+// * Kernel version: which io_uring memory is charged against RLIMIT_MEMLOCK,
+//   rather than against the memory cgroup or nothing, has varied.
+TEST(IoUringBackend, FailCreateOutOfMemory) {
+  auto makeOptions = [] {
+    folly::IoUringOptions options;
+    options.setCapacity(32);
+    options.setMaxSubmit(16);
+    return options;
+  };
+  try {
+    folly::IoUringBackend backend(makeOptions());
+  } catch (const folly::IoUringBackend::NotAvailable&) {
+    GTEST_SKIP() << "IoUringBackend not available";
+  }
+
+  struct rlimit original{};
+  PCHECK(::getrlimit(RLIMIT_MEMLOCK, &original) == 0);
+  struct rlimit exhausted = original;
+  exhausted.rlim_cur = 0;
+  PCHECK(::setrlimit(RLIMIT_MEMLOCK, &exhausted) == 0);
+  SCOPE_EXIT {
+    PCHECK(::setrlimit(RLIMIT_MEMLOCK, &original) == 0);
+  };
+
+  try {
+    folly::IoUringBackend backend(makeOptions());
+  } catch (const folly::IoUringBackend::OutOfMemory&) {
+    return;
+  }
+  GTEST_SKIP() << "io_uring memory is not charged against RLIMIT_MEMLOCK";
 }
 
 TEST(IoUringBackend, OpenAt) {

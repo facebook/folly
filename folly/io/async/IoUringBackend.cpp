@@ -539,7 +539,7 @@ IoUringBackend::IoUringBackend(Options options)
                  << ":\"" << folly::errnoStr(ret) << "\" " << this;
 
       if (ret == -ENOMEM) {
-        throw std::runtime_error("io_uring_queue_init error out of memory");
+        throw OutOfMemory("io_uring_queue_init error out of memory");
       }
       throw NotAvailable("io_uring_queue_init error");
     }

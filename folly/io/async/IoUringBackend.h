@@ -65,6 +65,14 @@ class IoUringBackend : public EventBaseBackendBase {
     using std::runtime_error::runtime_error;
   };
 
+  // Thrown when io_uring setup fails with ENOMEM, typically because the
+  // RLIMIT_MEMLOCK budget is exhausted. Deliberately not a NotAvailable: the
+  // condition may be transient, so callers should not permanently fall back.
+  class FOLLY_EXPORT OutOfMemory : public std::runtime_error {
+   public:
+    using std::runtime_error::runtime_error;
+  };
+
   // Type aliases for backwards compatibility
   using Options = IoUringOptions;
 
