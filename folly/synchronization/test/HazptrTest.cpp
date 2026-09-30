@@ -1009,6 +1009,128 @@ void cohort_safe_list_children_test() {
   DCHECK_EQ(sum, 4000);
 }
 
+/* Gives the default domain a blank slate, and runs passes inline
+   rather than in its executor. hazptr_cleanup skips the tagged shards
+   that a concurrent pass holds locked, but waits for every pass
+   scheduled to the executor, which runs nothing else. So the first
+   call drains the executor and the second finds no concurrent pass. */
+struct InlineReclamationGuard {
+  InlineReclamationGuard() {
+    default_hazptr_domain().clear_executor();
+    hazptr_cleanup();
+    hazptr_cleanup();
+  }
+  ~InlineReclamationGuard() { folly::enable_hazptr_thread_pool_executor(); }
+};
+
+void cohort_reregister_test() {
+  InlineReclamationGuard guard;
+  c_.clear();
+  hazard_pointer<> h = make_hazard_pointer<>();
+  {
+    hazptr_obj_cohort<> cohort;
+    auto retire = [&](Node<>* p) {
+      p->set_cohort_tag(&cohort);
+      p->retire();
+    };
+    /* The cohort pushes its tagged objects to the domain in batches
+       of 20. The pass leaves the cohort with no tagged objects in the
+       domain. The next batch includes a protected object, which the
+       next pass leaves in the domain. */
+    for (int i = 0; i < 20; ++i) {
+      retire(new Node<>);
+    }
+    hazptr_cleanup();
+    auto p = new Node<>;
+    h.reset_protection(p);
+    retire(p); // reclaims the safe list
+    ASSERT_EQ(c_.dtors(), 20);
+    for (int i = 1; i < 20; ++i) {
+      retire(new Node<>);
+    }
+    hazptr_cleanup();
+    retire(new Node<>); // reclaims the safe list
+    ASSERT_EQ(c_.dtors(), 39);
+    h.reset_protection();
+  }
+  ASSERT_EQ(c_.dtors(), 41);
+}
+
+void cohort_many_lists_test() {
+  /* More cohorts than domain shards, with different numbers of
+     tagged objects in the domain, half with a protected object. */
+  int num = 12;
+  InlineReclamationGuard guard;
+  c_.clear();
+  std::vector<hazard_pointer<>> hs;
+  {
+    std::vector<hazptr_obj_cohort<>> cohorts(num);
+    int retired = 0;
+    for (int i = 0; i < num; ++i) {
+      int n = 20 * (1 + i % 4); // whole batches, all pushed to the domain
+      for (int j = 0; j < n; ++j) {
+        auto p = new Node<>;
+        if (i % 2 == 0 && j == n / 2) {
+          hs.push_back(make_hazard_pointer<>());
+          hs.back().reset_protection(p);
+        }
+        p->set_cohort_tag(&cohorts[i]);
+        p->retire();
+      }
+      retired += n;
+    }
+    hazptr_cleanup();
+    for (auto& cohort : cohorts) {
+      auto p = new Node<>;
+      p->set_cohort_tag(&cohort);
+      p->retire(); // reclaims the safe list
+    }
+    ASSERT_EQ(c_.dtors(), retired - num / 2);
+    for (auto& h : hs) {
+      h.reset_protection();
+    }
+  }
+  ASSERT_EQ(c_.dtors(), c_.ctors());
+}
+
+void cohort_concurrent_lifecycle_test() {
+  /* Cohorts are destroyed while other threads run passes, which may
+     find their objects protected and push them back. */
+  InlineReclamationGuard guard;
+  c_.clear();
+  std::atomic<bool> stop{false};
+  std::thread cleaner([&] {
+    while (!stop.load()) {
+      hazptr_cleanup();
+    }
+  });
+  std::vector<std::thread> threads(FLAGS_num_threads);
+  for (int tid = 0; tid < FLAGS_num_threads; ++tid) {
+    threads[tid] = std::thread([&, tid] {
+      hazard_pointer<> h = make_hazard_pointer<>();
+      for (int i = tid; i < FLAGS_num_ops; i += FLAGS_num_threads) {
+        hazptr_obj_cohort<> cohort;
+        int n = 1 + i % 61; // up to three batches of 20
+        for (int j = 0; j < n; ++j) {
+          auto p = new Node<>;
+          if (j == n / 2) {
+            h.reset_protection(p);
+          }
+          p->set_cohort_tag(&cohort);
+          p->retire();
+        }
+        h.reset_protection();
+      }
+    });
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+  stop.store(true);
+  cleaner.join();
+  ASSERT_EQ(c_.dtors(), c_.ctors());
+}
+
 #ifndef _WIN32
 
 void fork_test() {
@@ -1347,6 +1469,18 @@ TEST(HazptrTest, dsched_cohort_recursive_destruction) {
 
 TEST(HazptrTest, cohort_safe_list_children) {
   cohort_safe_list_children_test();
+}
+
+TEST(HazptrTest, cohort_reregister) {
+  cohort_reregister_test();
+}
+
+TEST(HazptrTest, cohort_many_lists) {
+  cohort_many_lists_test();
+}
+
+TEST(HazptrTest, cohort_concurrent_lifecycle) {
+  cohort_concurrent_lifecycle_test();
 }
 
 #ifndef _WIN32
