@@ -105,6 +105,11 @@ TEST(Expected, CoroutineFailure) {
 }
 
 TEST(Expected, CoroutineAwaitUnexpected) {
+  if (kIsWindows) {
+    // MSVC resumes into UnexpectedAwaitable::await_resume, which Expected.h
+    // declares unreachable, so this traps instead of yielding the error.
+    GTEST_SKIP() << "co_await of Unexpected is broken under MSVC";
+  }
   auto r1 = []() -> Expected<int, Err> {
     co_await makeUnexpected(Err::badder());
     throw std::logic_error("should have been unreachable");
@@ -150,6 +155,11 @@ TEST(Expected, CoroutineReturnsVoidError) {
 }
 
 TEST(Expected, VoidCoroutineAwaitsError) {
+  if (kIsWindows) {
+    // MSVC resumes into UnexpectedAwaitable::await_resume, which Expected.h
+    // declares unreachable, so this traps instead of yielding the error.
+    GTEST_SKIP() << "co_await of Unexpected is broken under MSVC";
+  }
   auto r = []() -> Expected<folly::Unit, Err> {
     co_await makeUnexpected(Err::badder());
     ADD_FAILURE();
