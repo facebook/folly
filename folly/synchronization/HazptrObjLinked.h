@@ -224,6 +224,12 @@ class hazptr_obj_linked : public hazptr_obj<Atom> {
  *   the visited child. for_each_link must therefore read each child
  *   pointer before invoking f on it, and must not access that child
  *   again after the call.
+ *
+ *   A child whose link count drops to 0 when the object is reclaimed
+ *   is retired in a list with the other such children, which is not
+ *   split by cohort. The child must therefore belong to the same
+ *   cohort as the object, and be tagged (set_cohort_tag) or untagged
+ *   (set_cohort_no_tag) as the object is.
  */
 template <typename T, template <typename> class Atom, typename D>
 class hazptr_obj_base_linked
