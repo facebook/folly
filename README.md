@@ -72,10 +72,10 @@ Folly is published on GitHub at https://github.com/facebook/folly.
 Because folly does not provide any ABI compatibility guarantees from commit to
 commit, we generally recommend building folly as a static library.
 
-folly supports gcc (5.1+), clang, or MSVC. It should run on Linux (x86-32,
-x86-64, and ARM), iOS, macOS, and Windows (x86-64). The CMake build is only
-tested on some of these platforms; at a minimum, we aim to support macOS and
-Linux (on the latest Ubuntu LTS release or newer.)
+folly supports gcc, clang, or MSVC with C++20 support. It should run on Linux
+(x86-32, x86-64, and ARM), iOS, macOS, and Windows (x86-64). The CMake build is
+only tested on some of these platforms; at a minimum, we aim to support macOS
+and Linux (on the latest Ubuntu LTS release or newer.)
 
 ## Build with CMake
 
@@ -90,7 +90,7 @@ two commands are enough:
 Anything already on the system is used as-is. Alternatively, install the system
 packages first:
 
-    sudo ./build/fbcode_builder/getdeps.py install-system-deps --recursive
+    sudo build/fbcode_builder/getdeps.py install-system-deps --recursive
 
 Tests are not part of the `all` target. Configure with `-DBUILD_TESTS=ON` to
 build them, which also fetches googletest if it is not installed:
@@ -106,8 +106,8 @@ An installed folly expects its dependencies on the consumer's system instead;
 
 ## `getdeps.py`
 
-This is what CI uses, and it also builds folly's sibling projects. Prefer the
-CMake build above unless you need that.
+`getdeps.py` also builds folly's sibling projects. Prefer the CMake build above
+unless you need that.
 
 This script is used by many of Meta's OSS tools.  It will download and build all of the necessary dependencies first, and will then invoke cmake etc to build folly.  This will help ensure that you build with relevant versions of all of the dependent libraries, taking into account what versions are installed locally on your system.
 
@@ -123,40 +123,33 @@ If on Linux or MacOS (with homebrew installed) you can install system dependenci
     git clone https://github.com/facebook/folly
     # Install dependencies
     cd folly
-    sudo ./build/fbcode_builder/getdeps.py install-system-deps --recursive
+    sudo build/fbcode_builder/getdeps.py install-system-deps --recursive
 
 If you'd like to see the packages before installing them:
 
-    ./build/fbcode_builder/getdeps.py install-system-deps --dry-run --recursive
+    build/fbcode_builder/getdeps.py install-system-deps --dry-run --recursive
 
 On other platforms or if on Linux and without system dependencies `getdeps.py` will mostly download and build them for you during the build step.
 
 Some of the dependencies `getdeps.py` uses and installs are:
 
-  * a version of boost compiled with C++14 support.
+  * boost.
   * googletest is required to build and run folly's tests.
 
 ### Build
-
-This script will download and build all of the necessary dependencies first,
-and will then invoke cmake etc to build folly.  This will help ensure that you build with relevant versions of all of the dependent libraries, taking into account what versions are installed locally on your system.
-
-`getdeps.py` currently requires python 3.6+ to be on your path.
-
-`getdeps.py` will invoke cmake etc.
 
     # Clone the repo
     git clone https://github.com/facebook/folly
     cd folly
     # Build, using system dependencies if available
-    python3 ./build/fbcode_builder/getdeps.py --allow-system-packages build
+    python3 build/fbcode_builder/getdeps.py --allow-system-packages build
 
 It puts output in its scratch area:
 
   * `installed/folly/lib/libfolly.a`: Library
 
 You can also specify a `--scratch-path` argument to control
-the location of the scratch directory used for the build. You can find the default scratch install location from logs or with `python3 ./build/fbcode_builder/getdeps.py show-inst-dir`.
+the location of the scratch directory used for the build. You can find the default scratch install location from logs or with `python3 build/fbcode_builder/getdeps.py show-inst-dir`.
 
 There are also
 `--install-dir` and `--install-prefix` arguments to provide some more
@@ -167,29 +160,25 @@ then pointing your project's build at this temporary location, rather than
 installing folly in the traditional system installation directories. e.g., if you are building with CMake you can use the `CMAKE_PREFIX_PATH` variable to allow CMake to find folly in this temporary installation directory when
 building your project.
 
-If you want to invoke `cmake` again to iterate, there is a helpful `run_cmake.py` script output in the scratch build directory.  You can find the scratch build directory from logs or with `python3 ./build/fbcode_builder/getdeps.py show-build-dir`.
-
 ### Run tests
 
 By default `getdeps.py` will build the tests for folly. To run them:
 
     cd folly
-    python3 ./build/fbcode_builder/getdeps.py --allow-system-packages test
+    python3 build/fbcode_builder/getdeps.py --allow-system-packages test
 
 ### Iterating on a `getdeps.py` build
 
-To invoke `cmake` again against a build getdeps made, there is a helpful `run_cmake.py` script output in the scratch-path build directory. You can find the scratch build directory from logs or with `python3 ./build/fbcode_builder/getdeps.py show-build-dir`.
+To invoke `cmake` again against a build getdeps made, there is a helpful `run_cmake.py` script output in the scratch-path build directory. You can find the scratch build directory from logs or with `python3 build/fbcode_builder/getdeps.py show-build-dir`.
 
 Running tests with ctests also works if you cd to the build dir, e.g.
-`(cd $(python3 ./build/fbcode_builder/getdeps.py show-build-dir) && ctest)`
+`(cd $(python3 build/fbcode_builder/getdeps.py show-build-dir) && ctest)`
 
 ## Ubuntu LTS, CentOS Stream, Fedora
 
 Either build approach works. We test in CI on Ubuntu LTS, and occasionally on other distros.
 
 If you find the set of system packages is not quite right for your chosen distro, you can specify distro version specific overrides in the dependency manifests (e.g. https://github.com/facebook/folly/blob/main/build/fbcode_builder/manifests/boost ). You could probably make it work on most recent Ubuntu/Debian or Fedora/Redhat derived distributions.
-
-At time of writing (Dec 2021) there is a build break on GCC 11.x based systems in lang_badge_test.  If you don't need badge functionality you can work around by commenting it out from CMakeLists.txt (unfortunately fbthrift does need it)
 
 ## Windows (Vcpkg)
 
@@ -212,7 +201,7 @@ folly is available as a Formula and releases may be built via `brew install foll
 You may also use `folly/build/bootstrap-osx-homebrew.sh` to build against `main`:
 
 ```
-  ./folly/build/bootstrap-osx-homebrew.sh
+  folly/build/bootstrap-osx-homebrew.sh
 ```
 
 This will create a build directory `_build` in the top-level.
