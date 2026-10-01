@@ -28,6 +28,8 @@ static constexpr size_t kb(size_t kilos) {
   return kilos * 1024;
 }
 
+#if !defined(FOLLY_SANITIZE) || !FOLLY_SANITIZE
+
 static constexpr size_t mb(size_t megs) {
   return kb(megs * 1024);
 }
@@ -57,6 +59,8 @@ TEST(IOBufArenaFactoryTest, JemallocHugePageAllocator) {
   ASSERT_NE(nullptr, buf);
   EXPECT_TRUE(jha::addressInArena(buf->writableBuffer()));
 }
+
+#endif
 
 TEST(IOBufArenaFactoryTest, ThrowsWhenNotInitialized) {
   struct UninitializedAllocator {
