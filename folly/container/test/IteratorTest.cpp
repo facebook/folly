@@ -17,25 +17,28 @@
 #include <folly/container/Iterator.h>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <deque>
 #include <functional>
 #include <iterator>
 #include <list>
 #include <map>
+#include <memory>
 #include <numeric>
+#include <ranges>
 #include <set>
+#include <span>
+#include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 #include <folly/portability/GTest.h>
-
-#if defined(__cpp_lib_concepts)
-#include <concepts>
-#endif
 
 class IteratorTest : public testing::Test {};
 
@@ -969,3 +972,384 @@ TEST(IndexIterator, NoOperatorIntegration) {
   ASSERT_EQ((std::pair{2, 5}), cit[1]);
   ASSERT_EQ((std::pair{3, 6}), cit[2]);
 }
+// reverse_iterator -------------
+
+namespace reverse_iterator_type_tests {
+namespace {
+
+template <typename Iter>
+concept has_arrow = requires(const Iter i) { i.operator->(); };
+
+template <typename Iter>
+void validate_traits_against_std_type() {
+  using folly_rev = folly::reverse_iterator<Iter>;
+  using std_rev = std::reverse_iterator<Iter>;
+
+  static_assert(
+      std::same_as<
+          typename folly_rev::iterator_type,
+          typename std_rev::iterator_type>);
+  static_assert(
+      std::same_as<
+          typename folly_rev::iterator_category,
+          typename std_rev::iterator_category>);
+  static_assert(
+      std::same_as<
+          typename folly_rev::iterator_concept,
+          typename std_rev::iterator_concept>);
+  static_assert(
+      std::same_as<
+          typename folly_rev::value_type,
+          typename std_rev::value_type>);
+  static_assert(
+      std::same_as<
+          typename folly_rev::difference_type,
+          typename std_rev::difference_type>);
+  static_assert(
+      std::same_as<typename folly_rev::pointer, typename std_rev::pointer>);
+  static_assert(
+      std::same_as<typename folly_rev::reference, typename std_rev::reference>);
+  static_assert(has_arrow<folly_rev> == has_arrow<std_rev>);
+  static_assert(
+      std::sized_sentinel_for<folly_rev, folly_rev> ==
+      std::sized_sentinel_for<std_rev, std_rev>);
+  static_assert(
+      std::three_way_comparable<folly_rev> ==
+      std::three_way_comparable<std_rev>);
+  static_assert(
+      std::totally_ordered<folly_rev> == std::totally_ordered<std_rev>);
+  static_assert(
+      std::same_as<
+          std::iter_rvalue_reference_t<folly_rev>,
+          std::iter_rvalue_reference_t<std_rev>>);
+  static_assert(
+      std::bidirectional_iterator<folly_rev> ==
+      std::bidirectional_iterator<std_rev>);
+  static_assert(
+      std::random_access_iterator<folly_rev> ==
+      std::random_access_iterator<std_rev>);
+  static_assert(
+      std::contiguous_iterator<folly_rev> == std::contiguous_iterator<std_rev>);
+}
+
+struct recursive_node {
+  using reverse_iterator = folly::reverse_iterator<recursive_node*>;
+};
+
+} // namespace
+
+TEST(ReverseIterator, Types) {
+  std::vector<int> ints;
+  std::list<int> ints_list;
+
+  auto ints_iota = std::views::iota(0, 1);
+  auto ints_transformed = ints | std::views::transform([](int i) { return i; });
+  auto ints_filtered =
+      ints_list | std::views::filter([](int i) { return i > 0; });
+
+  validate_traits_against_std_type<int*>();
+  validate_traits_against_std_type<const int*>();
+  validate_traits_against_std_type<std::array<int, 4>::iterator>();
+  validate_traits_against_std_type<std::vector<int>::iterator>();
+  validate_traits_against_std_type<std::vector<int>::const_iterator>();
+  validate_traits_against_std_type<std::vector<bool>::iterator>();
+  validate_traits_against_std_type<std::deque<int>::iterator>();
+  validate_traits_against_std_type<std::list<int>::iterator>();
+  validate_traits_against_std_type<std::set<int>::iterator>();
+  validate_traits_against_std_type<std::map<int, int>::iterator>();
+  validate_traits_against_std_type<std::string::iterator>();
+  validate_traits_against_std_type<std::string_view::iterator>();
+  validate_traits_against_std_type<std::span<int>::iterator>();
+  validate_traits_against_std_type<std::reverse_iterator<int*>>();
+  validate_traits_against_std_type<folly::index_iterator<std::vector<int>>>();
+  validate_traits_against_std_type<decltype(ints_iota.begin())>();
+  validate_traits_against_std_type<decltype(ints_transformed.begin())>();
+  validate_traits_against_std_type<decltype(ints_filtered.begin())>();
+}
+
+TEST(ReverseIterator, ConstructionAndAssignment) {
+  using rev = folly::reverse_iterator<int*>;
+  using crev = folly::reverse_iterator<const int*>;
+
+  static_assert(std::is_trivially_copy_constructible_v<rev>);
+  static_assert(std::is_trivially_destructible_v<rev>);
+
+  static_assert(!std::is_convertible_v<int*, rev>);
+  static_assert(std::is_convertible_v<rev, crev>);
+  static_assert(!std::is_convertible_v<crev, rev>);
+  static_assert(!std::is_assignable_v<rev&, crev>);
+
+  static_assert(
+      std::same_as<
+          decltype(folly::reverse_iterator(std::declval<int*>())),
+          rev>);
+  static_assert(
+      std::same_as<
+          decltype(folly::reverse_iterator(std::declval<const rev&>())),
+          rev>);
+
+  constexpr auto checks = [] {
+    int ints[] = {1, 2, 3};
+    int* const p = ints + 1;
+
+    // the standard requires the default constructor to value-initialize
+    const rev value_initialized;
+    if (std::to_address(value_initialized.base()) != nullptr) {
+      return false;
+    }
+
+    const rev it{p};
+    if (it.base() != p || *it != ints[0]) {
+      return false;
+    }
+
+    const rev copied = it;
+    if (copied.base() != p || *copied != ints[0]) {
+      return false;
+    }
+
+    const crev converted = it;
+    static_assert(std::same_as<decltype(*converted), const int&>);
+    if (converted.base() != p || *converted != ints[0]) {
+      return false;
+    }
+
+    rev copy_assigned;
+    copy_assigned = it;
+    if (copy_assigned.base() != p || *copy_assigned != ints[0]) {
+      return false;
+    }
+
+    crev convert_assigned;
+    convert_assigned = it;
+    if (convert_assigned.base() != p || *convert_assigned != ints[0]) {
+      return false;
+    }
+
+    return true;
+  };
+  static_assert(checks());
+  EXPECT_TRUE(checks());
+}
+
+TEST(ReverseIterator, Access) {
+  constexpr auto checks = [] {
+    int ints[] = {1, 2, 3};
+    const folly::reverse_iterator<int*> it{std::end(ints)};
+
+    static_assert(std::same_as<decltype(*it), int&>);
+    static_assert(std::same_as<decltype(it[0]), int&>);
+
+    if (&*it != &ints[2]) {
+      return false;
+    }
+    if (std::to_address(it) != &ints[2]) {
+      return false;
+    }
+    if (*it != ints[2]) {
+      return false;
+    }
+    if (&it[0] != &ints[2]) {
+      return false;
+    }
+    if (&it[2] != &ints[0]) {
+      return false;
+    }
+
+    *it = 7;
+    if (ints[2] != 7) {
+      return false;
+    }
+
+    it[2] = 8;
+    if (ints[0] != 8) {
+      return false;
+    }
+
+    return true;
+  };
+  static_assert(checks());
+  EXPECT_TRUE(checks());
+
+  {
+    std::list<std::string> strs = {"a", "bc"};
+    const folly::reverse_iterator<std::list<std::string>::iterator> it{
+        strs.end()};
+
+    static_assert(std::same_as<decltype(*it), std::string&>);
+    EXPECT_EQ(&strs.back(), std::to_address(it));
+    EXPECT_EQ(&strs.back(), it.operator->());
+    EXPECT_EQ(2u, it->size());
+
+    it->push_back('z');
+    EXPECT_EQ("bcz", strs.back());
+  }
+
+  {
+    std::vector<bool> bits = {false, true};
+    const folly::reverse_iterator<std::vector<bool>::iterator> it{bits.end()};
+
+    static_assert(std::same_as<decltype(*it), std::vector<bool>::reference>);
+    static_assert(std::same_as<decltype(it[0]), std::vector<bool>::reference>);
+    EXPECT_EQ(bits[1], *it);
+    EXPECT_EQ(bits[0], it[1]);
+
+    *it = false;
+    EXPECT_FALSE(bits[1]);
+
+    it[1] = true;
+    EXPECT_TRUE(bits[0]);
+  }
+}
+
+TEST(ReverseIterator, Arithmetic) {
+  constexpr auto checks = [] {
+    using rev = folly::reverse_iterator<int*>;
+
+    int ints[] = {1, 2, 3};
+    int* const first = std::begin(ints);
+    int* const last = std::end(ints);
+
+    rev it{last};
+
+    // each step checks what the operator returned and where it left `it`
+    if ((++it).base() != last - 1 || it.base() != last - 1) {
+      return false;
+    }
+    if ((it++).base() != last - 1 || it.base() != last - 2) {
+      return false;
+    }
+    if ((--it).base() != last - 1 || it.base() != last - 1) {
+      return false;
+    }
+    if ((it--).base() != last - 1 || it.base() != last) {
+      return false;
+    }
+
+    if ((it + 3).base() != first || it.base() != last) {
+      return false;
+    }
+    if ((3 + it).base() != first || it.base() != last) {
+      return false;
+    }
+    if ((it += 3).base() != first || it.base() != first) {
+      return false;
+    }
+    if ((it - 3).base() != last || it.base() != first) {
+      return false;
+    }
+    if ((it -= 3).base() != last || it.base() != last) {
+      return false;
+    }
+
+    if (rev{first} - rev{last} != 3) {
+      return false;
+    }
+
+    const folly::reverse_iterator<const int*> const_rbegin{last};
+    if (rev{first} - const_rbegin != 3) {
+      return false;
+    }
+    if (const_rbegin - rev{first} != -3) {
+      return false;
+    }
+
+    auto ints_iota = std::views::iota(0, 3);
+    folly::reverse_iterator<decltype(ints_iota.begin())> iota_it{
+        ints_iota.end()};
+    if (*iota_it != 2 || *++iota_it != 1 || iota_it[1] != 0) {
+      return false;
+    }
+
+    return true;
+  };
+  static_assert(checks());
+  EXPECT_TRUE(checks());
+
+  {
+    std::vector<int> vec = {1, 2, 3};
+    const folly::reverse_iterator<std::vector<int>::iterator> vec_rend{
+        vec.begin()};
+    const folly::reverse_iterator<std::vector<int>::const_iterator> vec_rbegin{
+        vec.cend()};
+
+    EXPECT_EQ(3, vec_rend - vec_rbegin);
+
+    using rev_list = folly::reverse_iterator<std::list<int>::iterator>;
+    static_assert(std::sentinel_for<rev_list, rev_list>);
+    static_assert(!std::sized_sentinel_for<rev_list, rev_list>);
+  }
+}
+
+TEST(ReverseIterator, Comparisons) {
+  using rev = folly::reverse_iterator<int*>;
+  using crev = folly::reverse_iterator<const int*>;
+
+  static_assert(std::totally_ordered_with<rev, crev>);
+
+  static constexpr auto validate = [](const auto& lo, const auto& hi) {
+    return lo == lo && !(lo == hi) && lo != hi && //
+        lo < hi && !(hi < lo) && hi > lo && !(lo > hi) && //
+        lo <= hi && !(hi <= lo) && hi >= lo && !(lo >= hi) && //
+        (lo <=> hi) == std::strong_ordering::less &&
+        (hi <=> lo) == std::strong_ordering::greater &&
+        (lo <=> lo) == std::strong_ordering::equal;
+  };
+
+  // reverse iteration runs rbegin -> rend, so rbegin has to order first even
+  // though its base is the larger pointer
+  static constexpr int ints[] = {1, 2, 3};
+  constexpr crev rbegin{std::end(ints)};
+  constexpr crev rend{std::begin(ints)};
+
+  static_assert(rbegin < rend);
+  static_assert(validate(rbegin, rend));
+  EXPECT_TRUE(validate(rbegin, rend));
+
+  // mismatched types need a mutable array, so they need their own scope
+  constexpr auto mixed = [] {
+    int mut[] = {1, 2, 3};
+    return validate(rev{std::end(mut)}, crev{std::begin(mut)});
+  };
+  static_assert(mixed());
+  EXPECT_TRUE(mixed());
+}
+
+TEST(ReverseIterator, RangesHooks) {
+  constexpr auto checks = [] {
+    using rev = folly::reverse_iterator<int*>;
+
+    int ints[] = {1, 2, 3};
+    const rev rbegin{std::end(ints)};
+    const rev next{std::end(ints) - 1};
+
+    static_assert(
+        std::same_as<decltype(std::ranges::iter_move(rbegin)), int&&>);
+    if (std::ranges::iter_move(rbegin) != ints[2]) {
+      return false;
+    }
+
+    std::ranges::iter_swap(rbegin, next);
+    if (ints[2] != 2 || ints[1] != 3) {
+      return false;
+    }
+
+    return true;
+  };
+  static_assert(checks());
+  EXPECT_TRUE(checks());
+}
+
+TEST(ReverseIterator, IncompleteValueType) {
+  static_assert(std::random_access_iterator<recursive_node::reverse_iterator>);
+
+  constexpr auto checks = [] {
+    recursive_node nodes[2];
+    const recursive_node::reverse_iterator rbegin{std::end(nodes)};
+    return &*rbegin == &nodes[1];
+  };
+  static_assert(checks());
+  EXPECT_TRUE(checks());
+}
+
+} // namespace reverse_iterator_type_tests
