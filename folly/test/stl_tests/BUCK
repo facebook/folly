@@ -17,6 +17,5 @@ fb_dirsync_cpp_unittest(
         "//folly/lang:pretty",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
-        "//folly/test:test_utils",
     ],
 )
