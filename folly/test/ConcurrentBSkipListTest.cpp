@@ -6439,6 +6439,8 @@ TEST(BSkipPayload, RemoveAndGetPayloadReturnsDeletedPayload) {
   EXPECT_FALSE(list.removeAndGetPayload(7).has_value());
 }
 
+// Sentinel keys are caller UB checked by DCHECK in updatePayload().
+#ifndef NDEBUG
 TEST(BSkipPayloadDeathTest, UpdatePayloadSentinelDChecks) {
   BSkipPayload list;
   list.add(42, uint64_t{100});
@@ -6454,6 +6456,7 @@ TEST(BSkipPayloadDeathTest, UpdatePayloadSentinelDChecks) {
           [](const uint32_t&, uint64_t&) {}),
       "sentinel keys");
 }
+#endif // NDEBUG
 
 TEST(BSkipPayload, RemoveAndRevivePreservesPayload) {
   BSkipPayload list;
