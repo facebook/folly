@@ -100,6 +100,13 @@ Expected<IPAddressV6, IPAddressFormatError> IPAddressV6::tryFromString(
   std::copy(ip.begin(), ip.end(), ipBuffer.begin());
   ipBuffer[ip.size()] = '\0';
 
+  // Fast-path ordinary IPv6 literals with inet_pton(). On failure, continue to
+  // getaddrinfo() to handle scoped addresses and preserve existing behavior.
+  in6_addr addr{};
+  if (inet_pton(AF_INET6, ipBuffer.data(), &addr) == 1) {
+    return IPAddressV6(addr);
+  }
+
   struct addrinfo* result;
   struct addrinfo hints;
   memset(&hints, 0, sizeof(hints));
