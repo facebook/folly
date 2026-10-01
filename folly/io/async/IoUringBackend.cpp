@@ -810,9 +810,9 @@ size_t IoUringBackend::processTimers() {
     CHECK(td && e->getFreeFunction() == timerUserDataFreeFunction);
     td->iter = timers_.end();
     timers_.erase(it);
-    e->eb_ev_res(EV_TIMEOUT);
-    e->eb_ev_flags_reset();
-    // might change the lists
+    e->eb_set_ev_res(EV_TIMEOUT);
+    e->eb_clear_registration();
+    // NOTE: The callback might change the set of registered timers.
     e->eb_ev_invoke_callback();
     ++ret;
   }
@@ -859,10 +859,10 @@ size_t IoUringBackend::processSignals() {
       if (iter != signals_.end()) {
         auto& set = iter->second;
         for (auto& event : set) {
-          event->eb_ev_res(0);
-          event->eb_ev_flags_add(EVLIST_ACTIVE);
+          event->eb_set_ev_res(0);
+          event->eb_set_active(true);
           event->eb_ev_invoke_callback();
-          event->eb_ev_flags_remove(EVLIST_ACTIVE);
+          event->eb_set_active(false);
         }
       }
     }
@@ -914,22 +914,19 @@ void IoUringBackend::processPollIo(
       };
     }
 
-    // if this is not a persistent event
-    // remove the EVLIST_INSERTED flags
     if (!(ev->eb_ev_events() & EV_PERSIST)) {
-      ev->eb_ev_flags_remove(EVLIST_INSERTED);
+      ev->eb_set_registration(Event::Registration::kNone);
     }
 
-    if (ev->eb_ev_flags_any(EVLIST_INTERNAL)) {
+    if (ev->eb_internal()) {
       DCHECK_GT(numInternalEvents_, 0);
       --numInternalEvents_;
     }
 
-    // add it to the active list
-    ev->eb_ev_flags_add(EVLIST_ACTIVE);
+    ev->eb_set_active(true);
 
     // only clamp upper bound, as no error codes are smaller than short min
-    ev->eb_ev_res(
+    ev->eb_set_ev_res(
         static_cast<short>(
             std::min<int64_t>(res, std::numeric_limits<short>::max())));
 
@@ -952,13 +949,13 @@ size_t IoUringBackend::processActiveEvents() {
     ret++;
     auto* event = ioSqe->event_;
     if (event) {
-      // remove it from the active list
-      event->eb_ev_flags_remove(EVLIST_ACTIVE);
-      bool inserted = event->eb_ev_flags_any(EVLIST_INSERTED);
+      event->eb_set_active(false);
+      bool inserted =
+          event->eb_registration() == Event::Registration::kInserted;
       // prevent the callback from freeing the aioIoSqe
       ioSqe->useCount_++;
       // adjust the ev_res for the poll case
-      event->eb_ev_res(getPollEvents(ioSqe->res_, event->eb_ev_events()));
+      event->eb_set_ev_res(getPollEvents(ioSqe->res_, event->eb_ev_events()));
       // handle spurious poll events that return 0
       // this can happen during high load on process startup
       if (event->eb_ev_res()) {
@@ -966,7 +963,8 @@ size_t IoUringBackend::processActiveEvents() {
       }
       // get the event again
       event = ioSqe->event_;
-      if (event && inserted && event->eb_ev_flags_any(EVLIST_INSERTED) &&
+      if (event && inserted &&
+          event->eb_registration() == Event::Registration::kInserted &&
           !shuttingDown_) {
         release = false;
         eb_event_modify_inserted(*event, ioSqe);
@@ -1261,22 +1259,22 @@ int IoUringBackend::eb_event_base_loopbreak() {
 
 int IoUringBackend::eb_event_add(Event& event, const timeval* timeout) {
   VLOG(4) << "Add event " << &event;
-  CHECK(!event.eb_ev_flags_any(~EVLIST_ALL));
   // we do not support read/write timeouts
   if (timeout) {
-    event.eb_ev_flags_add(EVLIST_TIMEOUT);
+    event.eb_set_registration(Event::Registration::kTimeout);
     addTimerEvent(event, timeout);
     return 0;
   }
 
   if (event.eb_ev_events() & EV_SIGNAL) {
-    event.eb_ev_flags_add(EVLIST_INSERTED);
+    event.eb_set_registration(Event::Registration::kInserted);
     addSignalEvent(event);
     return 0;
   }
 
   if ((event.eb_ev_events() & (EV_READ | EV_WRITE)) &&
-      !event.eb_ev_flags_any(EVLIST_INSERTED | EVLIST_ACTIVE)) {
+      event.eb_registration() != Event::Registration::kInserted &&
+      !event.eb_active()) {
     auto* ioSqe = allocIoSqe();
     CHECK(ioSqe);
     ioSqe->event_ = &event;
@@ -1284,10 +1282,10 @@ int IoUringBackend::eb_event_add(Event& event, const timeval* timeout) {
 
     // just append it
     submitList_.push_back(*ioSqe);
-    if (event.eb_ev_flags_any(EVLIST_INTERNAL)) {
+    if (event.eb_internal()) {
       numInternalEvents_++;
     }
-    event.eb_ev_flags_add(EVLIST_INSERTED);
+    event.eb_set_registration(Event::Registration::kInserted);
     event.setUserData(ioSqe);
   }
 
@@ -1300,18 +1298,19 @@ int IoUringBackend::eb_event_del(Event& event) {
     return -1;
   }
 
-  if (event.eb_ev_flags_any(EVLIST_TIMEOUT)) {
-    event.eb_ev_flags_remove(EVLIST_TIMEOUT);
+  if (event.eb_registration() == Event::Registration::kTimeout) {
+    event.eb_set_registration(Event::Registration::kNone);
     removeTimerEvent(event);
     return 1;
   }
 
-  if (!event.eb_ev_flags_any(EVLIST_ACTIVE | EVLIST_INSERTED)) {
+  if (!event.eb_active() &&
+      event.eb_registration() != Event::Registration::kInserted) {
     return -1;
   }
 
   if (event.eb_ev_events() & EV_SIGNAL) {
-    event.eb_ev_flags_remove(EVLIST_INSERTED | EVLIST_ACTIVE);
+    event.eb_clear_registration();
     removeSignalEvent(event);
     return 0;
   }
@@ -1320,14 +1319,10 @@ int IoUringBackend::eb_event_del(Event& event) {
   bool wasLinked = ioSqe->is_linked();
   ioSqe->resetEvent();
 
-  // if the event is on the active list, we just clear the flags
-  // and reset the event_ ptr
-  if (event.eb_ev_flags_any(EVLIST_ACTIVE)) {
-    event.eb_ev_flags_remove(EVLIST_ACTIVE);
-  }
+  event.eb_set_active(false);
 
-  if (event.eb_ev_flags_any(EVLIST_INSERTED)) {
-    event.eb_ev_flags_remove(EVLIST_INSERTED);
+  if (event.eb_registration() == Event::Registration::kInserted) {
+    event.eb_set_registration(Event::Registration::kNone);
 
     // not in use  - we can cancel it
     if (!ioSqe->useCount_ && !wasLinked) {
@@ -1346,16 +1341,14 @@ int IoUringBackend::eb_event_del(Event& event) {
       }
     }
 
-    if (event.eb_ev_flags_any(EVLIST_INTERNAL)) {
+    if (event.eb_internal()) {
       DCHECK_GT(numInternalEvents_, 0);
       numInternalEvents_--;
     }
 
     return 0;
   } else {
-    // we can have an EVLIST_ACTIVE event
-    // which does not have the EVLIST_INSERTED flag set
-    // so we need to release it here
+    // an active event need not be inserted, so we release it here
     releaseIoSqe(ioSqe);
   }
 
@@ -1366,7 +1359,7 @@ int IoUringBackend::eb_event_modify_inserted(Event& event, IoSqe* ioSqe) {
   VLOG(4) << "Modify event " << &event;
   // unlink and append
   ioSqe->unlink();
-  if (event.eb_ev_flags_any(EVLIST_INTERNAL)) {
+  if (event.eb_internal()) {
     numInternalEvents_++;
   }
   submitList_.push_back(*ioSqe);

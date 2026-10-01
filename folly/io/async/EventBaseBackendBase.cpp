@@ -19,7 +19,7 @@
 #include <folly/io/async/EventBase.h>
 
 namespace folly {
-void EventBaseEvent::eb_ev_base(EventBase* evb) {
+void EventBaseEvent::eb_set_ev_base(EventBase* evb) {
   evb_ = evb;
   auto* backend = evb ? evb->getBackend() : nullptr;
   event_.ev_base = backend ? backend->getEventBase() : nullptr;

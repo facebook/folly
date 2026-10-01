@@ -272,13 +272,13 @@ int EpollBackend::eb_event_base_loop(int flags) {
       info->what_ = events_[i].events;
       // if not persistent we need to remove it
       if (~event->eb_ev_events() & EV_PERSIST) {
-        if (event->eb_ev_flags_any(EVLIST_INSERTED)) {
-          event->eb_ev_flags_remove(EVLIST_INSERTED);
+        if (event->eb_registration() == Event::Registration::kInserted) {
+          event->eb_set_registration(Event::Registration::kNone);
 
           DCHECK_GT(numInsertedEvents_, 0);
           numInsertedEvents_--;
 
-          if (event->eb_ev_flags_any(EVLIST_INTERNAL)) {
+          if (event->eb_internal()) {
             DCHECK_GT(numInternalEvents_, 0);
             numInternalEvents_--;
           }
@@ -289,7 +289,7 @@ int EpollBackend::eb_event_base_loop(int flags) {
         }
       }
 
-      event->eb_ev_flags_add(EVLIST_ACTIVE);
+      event->eb_set_active(true);
       infoList.push_back(*info);
     }
 
@@ -336,8 +336,8 @@ int EpollBackend::eb_event_base_loop(int flags) {
         }
       }
 
-      event->eb_ev_flags_remove(EVLIST_ACTIVE);
-      event->eb_ev_res(ev);
+      event->eb_set_active(false);
+      event->eb_set_ev_res(ev);
       if (event->eb_ev_res()) {
         event->eb_ev_invoke_callback();
       }
@@ -355,25 +355,24 @@ int EpollBackend::eb_event_base_loopbreak() {
 }
 
 int EpollBackend::eb_event_add(Event& event, const struct timeval* timeout) {
-  CHECK(!event.eb_ev_flags_any(~EVLIST_ALL));
   // we do not support read/write timeouts
   if (timeout) {
-    event.eb_ev_flags_add(EVLIST_TIMEOUT);
+    event.eb_set_registration(Event::Registration::kTimeout);
     addTimerEvent(event, timeout);
     return 0;
   }
 
   if (event.eb_ev_events() & EV_SIGNAL) {
-    event.eb_ev_flags_add(EVLIST_INSERTED);
+    event.eb_set_registration(Event::Registration::kInserted);
     addSignalEvent(event);
     return 0;
   }
 
-  if (event.eb_ev_flags_any(EVLIST_INTERNAL)) {
+  if (event.eb_internal()) {
     numInternalEvents_++;
   }
 
-  event.eb_ev_flags_add(EVLIST_INSERTED);
+  event.eb_set_registration(Event::Registration::kInserted);
   numInsertedEvents_++;
 
   EventInfo* info = static_cast<EventInfo*>(event.getUserData());
@@ -396,18 +395,19 @@ int EpollBackend::eb_event_del(Event& event) {
     return -1;
   }
 
-  if (event.eb_ev_flags_any(EVLIST_TIMEOUT)) {
-    event.eb_ev_flags_remove(EVLIST_TIMEOUT);
+  if (event.eb_registration() == Event::Registration::kTimeout) {
+    event.eb_set_registration(Event::Registration::kNone);
     return removeTimerEvent(event);
   }
 
-  if (!event.eb_ev_flags_any(EVLIST_ACTIVE | EVLIST_INSERTED)) {
+  if (!event.eb_active() &&
+      event.eb_registration() != Event::Registration::kInserted) {
     errno = EINVAL;
     return -1;
   }
 
   if (event.eb_ev_events() & EV_SIGNAL) {
-    event.eb_ev_flags_remove(EVLIST_INSERTED | EVLIST_ACTIVE);
+    event.eb_clear_registration();
     return removeSignalEvent(event);
   }
 
@@ -416,19 +416,15 @@ int EpollBackend::eb_event_del(Event& event) {
     info->resetEvent();
   }
 
-  // if the event is on the active list, we just clear the flags
-  // and reset the event_ ptr
-  if (event.eb_ev_flags_any(EVLIST_ACTIVE)) {
-    event.eb_ev_flags_remove(EVLIST_ACTIVE);
-  }
+  event.eb_set_active(false);
 
-  if (event.eb_ev_flags_any(EVLIST_INSERTED)) {
-    event.eb_ev_flags_remove(EVLIST_INSERTED);
+  if (event.eb_registration() == Event::Registration::kInserted) {
+    event.eb_set_registration(Event::Registration::kNone);
 
     DCHECK_GT(numInsertedEvents_, 0);
     numInsertedEvents_--;
 
-    if (event.eb_ev_flags_any(EVLIST_INTERNAL)) {
+    if (event.eb_internal()) {
       DCHECK_GT(numInternalEvents_, 0);
       numInternalEvents_--;
     }
@@ -530,8 +526,8 @@ void EpollBackend::processTimers() {
          timers_.top()->expiration <= std::chrono::steady_clock::now()) {
     auto* info = timers_.pop();
     auto* ev = info->ev;
-    ev->eb_ev_res(EV_TIMEOUT);
-    ev->eb_ev_flags_reset();
+    ev->eb_set_ev_res(EV_TIMEOUT);
+    ev->eb_clear_registration();
     // NOTE: The callback might change the set of registered timers.
     ev->eb_ev_invoke_callback();
   }
@@ -577,10 +573,10 @@ void EpollBackend::processSignals() {
       continue;
     }
     for (auto* ev : *events) {
-      ev->eb_ev_res(0);
-      ev->eb_ev_flags_add(EVLIST_ACTIVE);
+      ev->eb_set_ev_res(0);
+      ev->eb_set_active(true);
       ev->eb_ev_invoke_callback();
-      ev->eb_ev_flags_remove(EVLIST_ACTIVE);
+      ev->eb_set_active(false);
     }
   }
 }

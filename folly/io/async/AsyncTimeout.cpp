@@ -34,7 +34,7 @@ void AsyncTimeout::initEvent(InternalEnum internal) {
           ? &AsyncTimeout::libeventInternalCallback
           : &AsyncTimeout::libeventCallback,
       this);
-  event_.eb_ev_base(nullptr);
+  event_.eb_set_ev_base(nullptr);
 }
 
 AsyncTimeout::AsyncTimeout(

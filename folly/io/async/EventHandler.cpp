@@ -31,7 +31,7 @@ EventHandler::EventHandler(EventBase* eventBase, NetworkSocket fd) {
     // Callers must set the EventBase and fd before using this timeout.
     // Set event_->ev_base to nullptr to ensure that this happens.
     // (otherwise libevent will initialize it to the "default" event_base)
-    event_.eb_ev_base(nullptr);
+    event_.eb_set_ev_base(nullptr);
     eventBase_ = nullptr;
   }
 }
@@ -120,7 +120,7 @@ void EventHandler::attachEventBase(EventBase* eventBase) {
 
 void EventHandler::detachEventBase() {
   ensureNotRegistered(__func__);
-  event_.eb_ev_base(nullptr);
+  event_.eb_set_ev_base(nullptr);
 }
 
 void EventHandler::changeHandlerFD(NetworkSocket fd) {
@@ -128,7 +128,7 @@ void EventHandler::changeHandlerFD(NetworkSocket fd) {
   // event_set() resets event_base.ev_base, so manually restore it afterwards
   auto* evb = event_.eb_ev_base();
   event_.eb_event_set(fd.data, 0, &EventHandler::libeventCallback, this);
-  event_.eb_ev_base(
+  event_.eb_set_ev_base(
       evb); // don't use event_base_set(), since evb may be nullptr
 }
 

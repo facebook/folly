@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 
 #include <folly/io/IOBuf.h>
@@ -57,20 +58,44 @@ class EventBaseEvent {
 
   int eb_ev_res() const { return event_.ev_res; }
 
-  void eb_ev_res(int res) {
+  void eb_set_ev_res(int res) {
     event_.ev_res = static_cast<decltype(event_.ev_res)>(res);
   }
 
-  // Registration state, as libevent's EVLIST_* bitmask.
-  bool eb_ev_flags_any(int mask) const {
-    return (event_ref_flags(&event_) & mask) != 0;
+  enum class Registration : uint8_t {
+    kNone = 0,
+    kInserted, // Registered for I/O or for a signal.
+    kTimeout,
+  };
+
+  Registration eb_registration() const {
+    if (eb_flags_any(EVLIST_TIMEOUT)) {
+      return Registration::kTimeout;
+    }
+    return eb_flags_any(EVLIST_INSERTED)
+        ? Registration::kInserted
+        : Registration::kNone;
   }
 
-  void eb_ev_flags_add(int mask) { event_ref_flags(&event_) |= mask; }
+  void eb_set_registration(Registration registration) {
+    eb_flags_set(EVLIST_TIMEOUT, registration == Registration::kTimeout);
+    eb_flags_set(EVLIST_INSERTED, registration == Registration::kInserted);
+  }
 
-  void eb_ev_flags_remove(int mask) { event_ref_flags(&event_) &= ~mask; }
+  // Set between the backend noticing the event and dispatching its callback.
+  bool eb_active() const { return eb_flags_any(EVLIST_ACTIVE); }
+  void eb_set_active(bool active) { eb_flags_set(EVLIST_ACTIVE, active); }
 
-  void eb_ev_flags_reset() { event_ref_flags(&event_).get() = EVLIST_INIT; }
+  // An internal I/O event doesn't by itself keep the loop running.
+  bool eb_internal() const { return eb_flags_any(EVLIST_INTERNAL); }
+  void eb_set_internal(bool internal) {
+    eb_flags_set(EVLIST_INTERNAL, internal);
+  }
+
+  // Also clears the active marker but not the internal one.
+  void eb_clear_registration() {
+    eb_flags_set(EVLIST_INSERTED | EVLIST_TIMEOUT | EVLIST_ACTIVE, false);
+  }
 
   // The casts matter on libevent 1.4, where ev_fd and ev_res are int but the
   // callback takes (int, short, void*).
@@ -108,7 +133,7 @@ class EventBaseEvent {
     event_set(&event_, -1, 0, callback, arg);
   }
 
-  void eb_ev_base(EventBase* evb);
+  void eb_set_ev_base(EventBase* evb);
   EventBase* eb_ev_base() const { return evb_; }
 
   int eb_event_base_set(EventBase* evb);
@@ -120,6 +145,19 @@ class EventBaseEvent {
   bool eb_event_active(int res);
 
   bool setEdgeTriggered();
+
+ private:
+  bool eb_flags_any(int mask) const {
+    return (event_ref_flags(&event_) & mask) != 0;
+  }
+
+  void eb_flags_set(int mask, bool value) {
+    if (value) {
+      event_ref_flags(&event_) |= mask;
+    } else {
+      event_ref_flags(&event_) &= ~mask;
+    }
+  }
 
  protected:
   struct event event_;

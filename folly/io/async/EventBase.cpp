@@ -1179,7 +1179,7 @@ void EventBase::attachTimeoutManager(AsyncTimeout* obj, InternalEnum internal) {
 void EventBase::detachTimeoutManager(AsyncTimeout* obj) {
   cancelTimeout(obj);
   auto* ev = obj->getEvent();
-  ev->eb_ev_base(nullptr);
+  ev->eb_set_ev_base(nullptr);
 }
 
 bool EventBase::scheduleTimeout(
