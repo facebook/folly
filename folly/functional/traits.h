@@ -69,7 +69,7 @@ struct function_traits_cvref_ {
 //
 //        template <std::size_t Index>
 //        using argument = type_pack_element_t<Index, A...>;
-//        template <typename F>
+//        template <template <typename...> class F>
 //        using arguments = F<A...>;
 //        template <typename Model>
 //        using value_like = Model [const] [volatile] (|&|&&);
@@ -90,7 +90,7 @@ struct function_traits_cvref_ {
 //  volatile-, and reference-qualifiers using copy_cvref_t to transport all
 //  these qualifiers to a destination type which may then be queried:
 //
-//      constexpr bool is_rvalue_reference = std::is_rvalue_reverence_v<
+//      constexpr bool is_rvalue_reference = std::is_rvalue_reference_v<
 //          function_traits<S>::value_like<int>>;
 //
 //  Keep in mind that member types or type-aliases must be referenced with
@@ -98,7 +98,7 @@ struct function_traits_cvref_ {
 //  referenced with keyword template when in dependent:
 //
 //      template <typename... A>
-//      using get_size = index_constant<sizeof...(A);
+//      using get_size = index_constant<sizeof...(A)>;
 //      template <typename S>
 //      using arguments_size_t =
 //          typename function_traits<S>::template arguments<get_size>;
@@ -463,7 +463,7 @@ template <typename F>
 using function_arguments_size_t =
     typename function_traits<F>::template arguments<type_pack_size_t>;
 
-//  function_arguments_size_t
+//  function_arguments_size_v
 //
 //  The size of the arguments list of the given function type.
 template <typename F>
