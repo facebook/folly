@@ -1752,6 +1752,20 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
+fb_dirsync_cpp_benchmark(
+    name = "try_bench",
+    srcs = ["TryBench.cpp"],
+    args = [
+        "--json",
+    ],
+    deps = [
+        "//folly:benchmark",
+        "//folly:exception_wrapper",
+        "//folly:try",
+        "//folly/portability:gflags",
+    ],
+)
+
 fb_dirsync_cpp_unittest(
     name = "unit_test",
     srcs = ["UnitTest.cpp"],
