@@ -753,6 +753,31 @@ if (IS_X86_64_ARCH AND NOT MSVC)
   )
 endif()
 
+# aarch64 assembly memcpy implementation
+if (IS_AARCH64_ARCH)
+  folly_add_library(
+    NAME memcpy_aarch64
+    SRCS
+      external/aor/memcpy-advsimd.S
+      external/aor/memcpy-armv8.S
+      external/aor/memcpy-mops.S
+      external/aor/memcpy_sve.S
+      external/aor/memmove-mops.S
+    HEADERS
+      external/aor/asmdefs.h
+  )
+
+  folly_add_library(
+    NAME memset_aarch64
+    SRCS
+      external/aor/memset-advsimd.S
+      external/aor/memset-mops.S
+      external/aor/memset-sve.S
+    HEADERS
+      external/aor/asmdefs.h
+    )
+endif()
+
 folly_add_library(
   NAME memory
   HEADERS Memory.h

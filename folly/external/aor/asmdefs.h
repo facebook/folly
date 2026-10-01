@@ -61,6 +61,7 @@ GNU_PROPERTY (FEATURE_1_AND, FEATURE_1_BTI|FEATURE_1_PAC)
 
 #define ENTRY_ALIGN(name, alignment)	\
   .global name;		\
+  .hidden name;   \
   .type name,%function;	\
   .align alignment;		\
   name:			\
@@ -71,6 +72,7 @@ GNU_PROPERTY (FEATURE_1_AND, FEATURE_1_BTI|FEATURE_1_PAC)
 
 #define ENTRY_ALIAS(name)	\
   .global name;		\
+  .hidden name;   \
   .type name,%function;	\
   name:
 

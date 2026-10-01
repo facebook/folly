@@ -66,15 +66,23 @@
 
 extern "C" {
 
-void* __folly_memcpy_aarch64(void* dst, const void* src, std::size_t size);
-void* __folly_memcpy_aarch64_mops(void* dst, const void* src, std::size_t size);
-void* __folly_memcpy_aarch64_simd(void* dst, const void* src, std::size_t size);
-void* __folly_memcpy_aarch64_sve(void* dst, const void* src, std::size_t size);
+__attribute__((visibility("hidden"))) void* __folly_memcpy_aarch64(
+    void* dst, const void* src, std::size_t size);
+__attribute__((visibility("hidden"))) void* __folly_memcpy_aarch64_mops(
+    void* dst, const void* src, std::size_t size);
+__attribute__((visibility("hidden"))) void* __folly_memcpy_aarch64_simd(
+    void* dst, const void* src, std::size_t size);
+__attribute__((visibility("hidden"))) void* __folly_memcpy_aarch64_sve(
+    void* dst, const void* src, std::size_t size);
 
-void* __folly_memmove_aarch64(void* dst, const void* src, std::size_t len);
-void* __folly_memmove_aarch64_mops(void* dst, const void* src, std::size_t len);
-void* __folly_memmove_aarch64_simd(void* dst, const void* src, std::size_t len);
-void* __folly_memmove_aarch64_sve(void* dst, const void* src, std::size_t len);
+__attribute__((visibility("hidden"))) void* __folly_memmove_aarch64(
+    void* dst, const void* src, std::size_t len);
+__attribute__((visibility("hidden"))) void* __folly_memmove_aarch64_mops(
+    void* dst, const void* src, std::size_t len);
+__attribute__((visibility("hidden"))) void* __folly_memmove_aarch64_simd(
+    void* dst, const void* src, std::size_t len);
+__attribute__((visibility("hidden"))) void* __folly_memmove_aarch64_sve(
+    void* dst, const void* src, std::size_t len);
 
 [[gnu::no_sanitize_address]]
 decltype(&__folly_memcpy_aarch64) __folly_detail_memcpy_resolve(

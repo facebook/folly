@@ -2495,22 +2495,23 @@ fb_dirsync_cpp_library(
             "memset.S",
         ],
         "ovr_config//os:linux-arm64": [
+            "external/aor/memset-advsimd.S",
+            "external/aor/memset-mops.S",
+            "external/aor/memset-sve.S",
             "memset_select_aarch64.cpp",
         ],
     }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
+    private_headers = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux-arm64": ["external/aor/asmdefs.h"],
+    }),
     modular_headers = False,
     preprocessor_flags = select({
         "DEFAULT": [],
         "ovr_config//cpu:x86_64": [
             "-mavx2",
-        ],
-    }),
-    exported_deps = select({
-        "DEFAULT": [],
-        "ovr_config//os:linux-arm64": [
-            "//folly/external/aor:memset_aarch64",  # @manual
         ],
     }),
 )
@@ -2534,11 +2535,18 @@ fb_dirsync_cpp_library(
             "memset.S",
         ],
         "ovr_config//os:linux-arm64": [
+            "external/aor/memset-advsimd.S",
+            "external/aor/memset-mops.S",
+            "external/aor/memset-sve.S",
             "memset_select_aarch64.cpp",
         ],
     }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
+    private_headers = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux-arm64": ["external/aor/asmdefs.h"],
+    }),
     link_whole = True,  # Set link_whole to force linker to use __folly_memset
     modular_headers = False,
     preprocessor_flags = select({
@@ -2549,12 +2557,6 @@ fb_dirsync_cpp_library(
         "ovr_config//cpu:x86_64": [
             "-DFOLLY_MEMSET_IS_MEMSET",
             "-mavx2",
-        ],
-    }),
-    exported_deps = select({
-        "DEFAULT": [],
-        "ovr_config//os:linux-arm64": [
-            "//folly/external/aor:memset_aarch64-use",  # @manual
         ],
     }),
 )
@@ -2570,22 +2572,25 @@ fb_dirsync_cpp_library(
             "memcpy.S",
         ],
         "ovr_config//os:linux-arm64": [
+            "external/aor/memcpy-advsimd.S",
+            "external/aor/memcpy-armv8.S",
+            "external/aor/memcpy-mops.S",
+            "external/aor/memcpy_sve.S",
+            "external/aor/memmove-mops.S",
             "memcpy_select_aarch64.cpp",
         ],
     }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
+    private_headers = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux-arm64": ["external/aor/asmdefs.h"],
+    }),
     modular_headers = False,
     preprocessor_flags = select({
         "DEFAULT": [],
         "ovr_config//cpu:x86_64": [
             "-mavx2",
-        ],
-    }),
-    exported_deps = select({
-        "DEFAULT": [],
-        "ovr_config//os:linux-arm64": [
-            "//folly/external/aor:memcpy_aarch64",  # @manual
         ],
     }),
 )
@@ -2619,11 +2624,20 @@ fb_dirsync_cpp_library(
             "memcpy.S",
         ],
         "ovr_config//os:linux-arm64": [
+            "external/aor/memcpy-advsimd.S",
+            "external/aor/memcpy-armv8.S",
+            "external/aor/memcpy-mops.S",
+            "external/aor/memcpy_sve.S",
+            "external/aor/memmove-mops.S",
             "memcpy_select_aarch64.cpp",
         ],
     }),
     auto_headers = AutoHeaders.NONE,
     headers = [],
+    private_headers = select({
+        "DEFAULT": [],
+        "ovr_config//os:linux-arm64": ["external/aor/asmdefs.h"],
+    }),
     link_whole = True,  # Set link_whole to force linker to use __folly_memcpy
     modular_headers = False,
     preprocessor_flags = select({
@@ -2635,12 +2649,6 @@ fb_dirsync_cpp_library(
             "-DFOLLY_MEMCPY_IS_MEMCPY",
             "-mavx2",
             "-march=haswell",
-        ],
-    }),
-    exported_deps = select({
-        "DEFAULT": [],
-        "ovr_config//os:linux-arm64": [
-            "//folly/external/aor:memcpy_aarch64-use",  # @manual
         ],
     }),
 )
