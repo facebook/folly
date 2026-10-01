@@ -202,7 +202,8 @@ class BenchmarkAbTest(unittest.TestCase):
     @staticmethod
     def _golden_text(name: str) -> str:
         return (
-            importlib.resources.files("folly.tool.tests.testdata")
+            importlib.resources.files(__package__)
+            .joinpath("testdata")
             .joinpath(name)
             .read_text(encoding="utf-8")
         )
