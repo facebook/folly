@@ -1,6 +1,10 @@
 Folly: Facebook Open-source Library
 ===================================
 
+[![linux](https://github.com/facebook/folly/actions/workflows/linux.yml/badge.svg)](https://github.com/facebook/folly/actions/workflows/linux.yml)
+[![macos](https://github.com/facebook/folly/actions/workflows/macos.yml/badge.svg)](https://github.com/facebook/folly/actions/workflows/macos.yml)
+[![windows](https://github.com/facebook/folly/actions/workflows/windows.yml/badge.svg)](https://github.com/facebook/folly/actions/workflows/windows.yml)
+
 # What is `folly`?
 
 <img src="static/logo.svg" alt="Logo Folly" width="15%" align="right" />
