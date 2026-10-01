@@ -298,8 +298,15 @@ class CompressionCoreLocalContextPoolTest : public testing::Test {
 };
 
 TEST_F(CompressionCoreLocalContextPoolTest, testGet) {
+  EXPECT_EQ(pool_->local_size(), 0);
+  EXPECT_EQ(pool_->backing_size(), 0);
+  EXPECT_EQ(pool_->size(), 0);
+
   auto ptr = pool_->get();
   EXPECT_TRUE(ptr);
+  EXPECT_EQ(pool_->local_size(), 0);
+  EXPECT_EQ(pool_->backing_size(), 0);
+  EXPECT_EQ(pool_->size(), 0);
 }
 
 TEST_F(CompressionCoreLocalContextPoolTest, testSame) {
@@ -345,6 +352,31 @@ TEST_F(CompressionCoreLocalContextPoolTest, testFlush) {
   pool_->flush_deep();
   pool_->get();
   EXPECT_EQ(pool_->created_count(), 2);
+}
+
+TEST_F(CompressionCoreLocalContextPoolTest, testSizeBreakdown) {
+  auto ptr1 = pool_->get();
+  auto ptr2 = pool_->get();
+
+  ptr1.reset();
+  EXPECT_EQ(pool_->local_size(), 1);
+  EXPECT_EQ(pool_->backing_size(), 0);
+  EXPECT_EQ(pool_->size(), 1);
+
+  ptr2.reset();
+  EXPECT_EQ(pool_->local_size(), 1);
+  EXPECT_EQ(pool_->backing_size(), 1);
+  EXPECT_EQ(pool_->size(), 2);
+
+  pool_->flush_shallow();
+  EXPECT_EQ(pool_->local_size(), 0);
+  EXPECT_EQ(pool_->backing_size(), 2);
+  EXPECT_EQ(pool_->size(), 2);
+
+  pool_->flush_deep();
+  EXPECT_EQ(pool_->local_size(), 0);
+  EXPECT_EQ(pool_->backing_size(), 0);
+  EXPECT_EQ(pool_->size(), 0);
 }
 
 TEST_F(CompressionCoreLocalContextPoolTest, testMultithread) {

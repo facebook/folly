@@ -151,6 +151,20 @@ class CompressionCoreLocalContextPool
 
   size_t created_count() const { return pool_.created_count(); }
 
+  size_t local_size() const {
+    size_t count = 0;
+    for (const auto& cache : caches_) {
+      if (cache.ptr.load() != nullptr) {
+        ++count;
+      }
+    }
+    return count;
+  }
+
+  size_t backing_size() const { return pool_.size(); }
+
+  size_t size() const { return local_size() + backing_size(); }
+
   void flush_deep() {
     flush_shallow();
     pool_.flush_deep();

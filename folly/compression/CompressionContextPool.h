@@ -144,7 +144,7 @@ class CompressionContextPool {
 
   size_t created_count() const { return created_.load(); }
 
-  size_t size() {
+  size_t size() const {
     auto lock = state_.rlock();
 #if !FOLLY_COMPRESSION_HAS_CONSTEXPR_VECTOR
     if (!lock->stack_) {
