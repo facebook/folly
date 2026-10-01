@@ -6,7 +6,7 @@
 
 import os
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import call, MagicMock, patch
 
 from .. import builder as builder_module
 from ..builder import CMakeBuilder
@@ -113,6 +113,91 @@ class CMakeBuilderCompilerCacheTest(unittest.TestCase):
 
         launcher_args = self._launcher_args(define_args)
         self.assertEqual(len(launcher_args), 0)
+
+    def test_restart_sccache_server_starts_serially_under_memory_limit(self) -> None:
+        builder = make_cmake_builder()
+        env = Env()
+        preexec_fn = MagicMock()
+
+        with (
+            patch.object(
+                builder_module,
+                "path_search",
+                return_value="/usr/bin/sccache",
+            ),
+            patch.object(builder, "_run_cmd", return_value=0) as run_cmd,
+        ):
+            builder._restart_sccache_server(env, preexec_fn)
+
+        self.assertEqual(
+            run_cmd.call_args_list,
+            [
+                call(
+                    ["/usr/bin/sccache", "--stop-server"],
+                    env=env,
+                    allow_fail=True,
+                ),
+                call(
+                    ["/usr/bin/sccache", "--start-server"],
+                    env=env,
+                    preexec_fn=preexec_fn,
+                ),
+            ],
+        )
+
+    def test_restart_sccache_server_fails_when_start_fails(self) -> None:
+        builder = make_cmake_builder()
+        env = Env()
+
+        with (
+            patch.object(
+                builder_module,
+                "path_search",
+                return_value="/usr/bin/sccache",
+            ),
+            patch.object(builder, "_run_cmd", side_effect=[0, 1]),
+            self.assertRaisesRegex(RuntimeError, "Failure exit code 1"),
+        ):
+            builder._restart_sccache_server(env, MagicMock())
+
+    def test_restart_sccache_server_skipped_in_sandcastle(self) -> None:
+        builder = make_cmake_builder()
+        env = Env()
+
+        with (
+            patch.dict(os.environ, {"SANDCASTLE": "1"}),
+            patch.object(builder_module, "path_search") as path_search,
+            patch.object(builder, "_run_cmd") as run_cmd,
+        ):
+            builder._restart_sccache_server(env, MagicMock())
+
+        path_search.assert_not_called()
+        run_cmd.assert_not_called()
+
+    def test_restart_sccache_server_skipped_without_memory_limit(self) -> None:
+        builder = make_cmake_builder()
+        env = Env()
+
+        with (
+            patch.object(builder_module, "path_search") as path_search,
+            patch.object(builder, "_run_cmd") as run_cmd,
+        ):
+            builder._restart_sccache_server(env, None)
+
+        path_search.assert_not_called()
+        run_cmd.assert_not_called()
+
+    def test_restart_sccache_server_skipped_without_sccache(self) -> None:
+        builder = make_cmake_builder()
+        env = Env()
+
+        with (
+            patch.object(builder_module, "path_search", return_value=None),
+            patch.object(builder, "_run_cmd") as run_cmd,
+        ):
+            builder._restart_sccache_server(env, MagicMock())
+
+        run_cmd.assert_not_called()
 
     def test_z7_debug_info_on_windows(self) -> None:
         # On Windows, force MSVC embedded debug info (/Z7) so sccache can wrap
