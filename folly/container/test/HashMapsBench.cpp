@@ -527,6 +527,36 @@ void findColdCache(size_t iters, size_t n) {
 
 BENCHMARK_NAMED_PARAM(findColdCache, 1K, 1000)
 
+// Inserting the entries of a map, in iteration order, into a map with the same
+// chunk count makes consecutive insertions land in the same chunk, so each one
+// loads the tags just stored by the previous one. This is slow unless the store
+// can be forwarded to the load.
+namespace {
+void insertFromMap(size_t iters, size_t n, bool shuffle) {
+  BenchmarkSuspender braces;
+  prepare<uint64_t>(n);
+  F14ValueMap<uint64_t, uint64_t> src(n);
+  for (size_t i = 0; i < n; ++i) {
+    src.emplace(key<uint64_t>(static_cast<int>(i)), i);
+  }
+  std::vector<std::pair<uint64_t, uint64_t>> entries(src.begin(), src.end());
+  if (shuffle) {
+    std::shuffle(entries.begin(), entries.end(), getRNG());
+  }
+  while (iters-- > 0) {
+    F14ValueMap<uint64_t, uint64_t> m(n);
+    braces.dismissing([&] {
+      for (auto const& kv : entries) {
+        m.insert(kv);
+      }
+    });
+  }
+}
+} // namespace
+
+BENCHMARK_NAMED_PARAM(insertFromMap, 1K_shuffled, 1000, true)
+BENCHMARK_RELATIVE_NAMED_PARAM(insertFromMap, 1K_iteration_order, 1000, false)
+
 int main(int argc, char** argv) {
   folly::Init init(&argc, &argv);
   folly::gflags::SetCommandLineOptionWithMode(

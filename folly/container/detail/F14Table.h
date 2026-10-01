@@ -784,10 +784,28 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
 
   std::size_t tag(std::size_t index) const { return tags_[index]; }
 
-  void setTag(std::size_t index, std::size_t tag) {
-    FOLLY_SAFE_DCHECK(!isEmptyInstance(this) && tag >= 1 && tag <= 0xff, "");
+  void checkSetTag(std::size_t index, std::size_t tag) const {
+    FOLLY_SAFE_DCHECK(
+        !isEmptyInstance(this) && tag >= 1 && tag <= 0xff && index < kCapacity,
+        "");
     FOLLY_SAFE_CHECK(tags_[index] == 0, "");
+  }
+
+  void setTag(std::size_t index, std::size_t tag) {
+    checkSetTag(index, tag);
     tags_[index] = static_cast<uint8_t>(tag);
+  }
+
+  // Sets the tag of an empty slot given w, the header as it is in memory, so
+  // one load serves both the search and the store.  On the vector backends
+  // setTagImpl() rewrites all 16 header bytes rather than storing the one,
+  // which avoids a store-forwarding stall if the header is reloaded shortly
+  // after.  Callers with no word in hand keep using setTag() above; loading
+  // the header just to rewrite it would be slower.
+  void setTag(TagVector w, std::size_t index, std::size_t tag) {
+    checkSetTag(index, tag);
+    FOLLY_SAFE_DCHECK(std::memcmp(&w, &tags_[0], sizeof(w)) == 0, "");
+    setTagImpl(w, index, tag);
   }
 
   void clearTag(std::size_t index) {
@@ -852,11 +870,13 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     return false;
   }
 
-#else
+#endif
 
-  std::pair<SparseMaskIter, bool> tagMatchIter(uint8x16_t needleV) const {
-    uint8x16_t tagV = vld1q_u8(&tags_[0]);
-    auto eqV = vceqq_u8(tagV, needleV);
+  TagVector loadWord() const { return vld1q_u8(&tags_[0]); }
+
+  std::pair<SparseMaskIter, bool> tagMatchIter(
+      TagVector w, uint8x16_t needleV) const {
+    auto eqV = vceqq_u8(w, needleV);
     // get info from every byte into the bottom half of every uint16_t
     // by shifting right 4, then round to get it into a 64-bit vector
     uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(eqV), 4);
@@ -865,14 +885,24 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     return {iter, iter.hasNext()};
   }
 
-#endif
-
-  MaskType occupiedMask() const {
-    uint8x16_t tagV = vld1q_u8(&tags_[0]);
-    // Shortcut for tagV != 0.
-    auto occupiedV = vtstq_u8(tagV, tagV);
+  MaskType occupiedMask(TagVector w) const {
+    // Shortcut for w != 0.
+    auto occupiedV = vtstq_u8(w, w);
     uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(occupiedV), 4);
     return vget_lane_u64(vreinterpret_u64_u8(maskV), 0) & kFullMask;
+  }
+
+  unsigned outboundOverflowCount(TagVector w) const {
+    return vgetq_lane_u8(w, offsetof(F14Chunk, outboundOverflowCount_));
+  }
+
+  void setTagImpl(TagVector w, std::size_t index, std::size_t tag) {
+    static constexpr uint8_t kLaneIndex[16] = {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    auto laneV =
+        vceqq_u8(vld1q_u8(kLaneIndex), vdupq_n_u8(static_cast<uint8_t>(index)));
+    vst1q_u8(
+        &tags_[0], vbslq_u8(laneV, vdupq_n_u8(static_cast<uint8_t>(tag)), w));
   }
 #elif FOLLY_SSE >= 2
   ////////
@@ -882,10 +912,8 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     return static_cast<TagVector const*>(static_cast<void const*>(&tags_[0]));
   }
 
-  auto tagMatchIter(__m128i needleV) const {
-    auto tagV = _mm_load_si128(tagVector());
-
-    auto eqV = _mm_cmpeq_epi8(tagV, needleV);
+  auto tagMatchIter(TagVector w, __m128i needleV) const {
+    auto eqV = _mm_cmpeq_epi8(w, needleV);
     uint32_t mask = _mm_movemask_epi8(eqV);
     if constexpr (kIsArchAmd64) {
       BoundedMaskIter<kCapacity> iter{mask};
@@ -896,17 +924,40 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     }
   }
 
-  MaskType occupiedMask() const {
-    auto tagV = _mm_load_si128(tagVector());
-    auto zeroV = _mm_setzero_si128();
-    auto emptyV = _mm_cmpeq_epi8(tagV, zeroV);
+  TagVector loadWord() const { return _mm_load_si128(tagVector()); }
+
+  MaskType occupiedMask(TagVector w) const {
+    auto emptyV = _mm_cmpeq_epi8(w, _mm_setzero_si128());
     return (~_mm_movemask_epi8(emptyV)) & kFullMask;
+  }
+
+  unsigned outboundOverflowCount(TagVector w) const {
+    // The byte is the high half of the last 16-bit lane.
+    return static_cast<unsigned>(_mm_extract_epi16(
+               w, offsetof(F14Chunk, outboundOverflowCount_) / 2)) >>
+        8;
+  }
+
+  void setTagImpl(TagVector w, std::size_t index, std::size_t tag) {
+    auto laneV = _mm_cmpeq_epi8(
+        _mm_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15),
+        _mm_set1_epi8(static_cast<char>(index)));
+    auto tagV = _mm_set1_epi8(static_cast<char>(tag));
+#if FOLLY_SSE_PREREQ(4, 1)
+    auto tagsV = _mm_blendv_epi8(w, tagV, laneV);
+#else
+    // The slot is empty, so splicing the tag in is an or.
+    auto tagsV = _mm_or_si128(w, _mm_and_si128(laneV, tagV));
+#endif
+    _mm_store_si128(
+        static_cast<TagVector*>(static_cast<void*>(&tags_[0])), tagsV);
   }
 #elif FOLLY_HAVE_INT128_T
   ////////
   // Tag filtering using plain C/C++
 
-  std::pair<SparseMaskIter, bool> tagMatchIter(std::size_t needle) const {
+  std::pair<SparseMaskIter, bool> tagMatchIter(
+      TagVector, std::size_t needle) const {
     FOLLY_SAFE_DCHECK(needle >= 1 && needle < 0x100, "");
     auto tagV = static_cast<uint8_t const*>(&tags_[0]);
     MaskType mask = 0;
@@ -918,7 +969,13 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
     return {iter, iter.hasNext()};
   }
 
-  MaskType occupiedMask() const {
+  TagVector loadWord() const {
+    TagVector w;
+    std::memcpy(&w, &tags_[0], sizeof(w));
+    return w;
+  }
+
+  MaskType occupiedMask(TagVector) const {
     auto tagV = static_cast<uint8_t const*>(&tags_[0]);
     MaskType mask = 0;
     FOLLY_PRAGMA_UNROLL_N(16)
@@ -926,6 +983,14 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
       mask |= (tagV[i] ? 1 : 0) << i;
     }
     return mask & kFullMask;
+  }
+
+  unsigned outboundOverflowCount(TagVector) const {
+    return outboundOverflowCount();
+  }
+
+  void setTagImpl(TagVector, std::size_t index, std::size_t tag) {
+    tags_[index] = static_cast<uint8_t>(tag);
   }
 #endif
 
@@ -935,7 +1000,7 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
   // returns true; the return value is whether it stopped early.
   template <typename N, typename F>
   FOLLY_ALWAYS_INLINE bool forEachTagMatch(N needleV, F func) const {
-    auto [hits, nonzero] = tagMatchIter(needleV);
+    auto [hits, nonzero] = tagMatchIter(loadWord(), needleV);
     if (nonzero) {
       do {
         if (func(hits.next())) {
@@ -947,6 +1012,8 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
   }
 
 #endif
+
+  MaskType occupiedMask() const { return occupiedMask(loadWord()); }
 
   auto occupiedIter() const {
     if constexpr (kIsArchAArch64) {
@@ -971,9 +1038,9 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
   // (mov z,p/z,#imm), which measured as a net loss on Neoverse-V2. Since
   // this call only needs a single index (or "none"), it can instead extract
   // one directly via BRKB+CNTP, the same technique forEachTagMatch uses.
-  ResolvedFirstEmpty firstEmpty() const {
+  ResolvedFirstEmpty firstEmpty(TagVector w) const {
     svbool_t pred = svwhilelt_b8_u32(0, kCapacity);
-    svuint8_t tagV = svset_neonq_u8(svundef_u8(), vld1q_u8(&tags_[0]));
+    svuint8_t tagV = svset_neonq_u8(svundef_u8(), w);
     svbool_t emptyPred = svcmpeq_n_u8(pred, tagV, 0);
     if (!svptest_any(pred, emptyPred)) {
       return {false, 0};
@@ -984,11 +1051,13 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
 
 #else
 
-  FirstEmptyInMask firstEmpty() const {
-    return FirstEmptyInMask{this->occupiedMask() ^ kFullMask};
+  FirstEmptyInMask firstEmpty(TagVector w) const {
+    return FirstEmptyInMask{this->occupiedMask(w) ^ kFullMask};
   }
 
 #endif
+
+  auto firstEmpty() const { return firstEmpty(loadWord()); }
 
   bool occupied(std::size_t index) const { return tags_[index] != 0; }
 
@@ -2600,7 +2669,8 @@ class F14Table : public Policy {
     rehashImpl(size(), cc, ss, cc, ss);
   }
 
-  FOLLY_ALWAYS_INLINE void debugModeBeforeInsert() {
+  // Returns whether it rehashed.
+  FOLLY_ALWAYS_INLINE bool debugModeBeforeInsert() {
     // When running under ASAN, we add a spurious rehash with 1/size()
     // probability before every insert.  This means that finding reference
     // stability problems for F14Value and F14Vector is much more likely.
@@ -2615,8 +2685,10 @@ class F14Table : public Policy {
       if (!tlsPendingSafeInserts() && size() > 0 &&
           tlsMinstdRand(size()) == 0) {
         debugModeSpuriousRehash();
+        return true;
       }
     }
+    return false;
   }
 
   FOLLY_ALWAYS_INLINE void debugModeAfterInsert() {
@@ -2655,7 +2727,9 @@ class F14Table : public Policy {
     }
   }
 
-  void reserveForInsert(size_t incoming = 1) {
+  // Returns whether it rehashed.  If it returns false, the table was not
+  // modified.
+  FOLLY_ALWAYS_INLINE bool reserveForInsert(size_t incoming = 1) {
     FOLLY_SAFE_DCHECK(incoming > 0, "");
 
     auto needed = size() + incoming;
@@ -2664,7 +2738,9 @@ class F14Table : public Policy {
     auto existing = computeCapacity(chunkCount_, scale);
     if (needed - 1 >= existing) {
       reserveForInsertImpl(needed - 1, chunkCount_, scale, existing);
+      return true;
     }
+    return false;
   }
 
   // Returns pos,true if construct, pos,false if found.  key is only used
@@ -2687,20 +2763,36 @@ class F14Table : public Policy {
   template <typename K, typename... Args>
   std::pair<ItemIter, bool> tryEmplaceValueImpl(
       HashPair hp, K const& key, Args&&... args) {
+    // In the common case the key lands in its home chunk and this is the only
+    // load of a chunk header: it serves the duplicate check below, the
+    // first-empty scan, and the tag store.
+    std::size_t index = hp.first;
+    ChunkPtr chunk = chunkAt(moduloByChunkCount(index));
+    auto word = chunk->loadWord();
+
     if (size() > 0) {
-      auto existing = findImpl(hp, key, Prefetch::ENABLED);
-      if (!existing.atEnd()) {
-        return std::make_pair(existing, false);
+      // Fast path for an absent key, the common case: if the home chunk holds
+      // no matching tag and never turned anyone away, findImpl() would stop
+      // after its first iteration, so skip it.
+      if (FOLLY_UNLIKELY(
+              chunk->tagMatchIter(word, loadNeedleV(hp.second)).second ||
+              chunk->outboundOverflowCount(word) != 0)) {
+        auto existing = findImpl(hp, key, Prefetch::ENABLED);
+        if (!existing.atEnd()) {
+          return std::make_pair(existing, false);
+        }
       }
     }
 
-    debugModeBeforeInsert();
+    // A rehash moves the chunks, so anything loaded above is stale.
+    const bool debugRehashed = debugModeBeforeInsert();
+    const bool grew = reserveForInsert();
+    if (FOLLY_UNLIKELY(debugRehashed || grew)) {
+      chunk = chunkAt(moduloByChunkCount(index));
+      word = chunk->loadWord();
+    }
 
-    reserveForInsert();
-
-    std::size_t index = hp.first;
-    ChunkPtr chunk = chunkAt(moduloByChunkCount(index));
-    auto firstEmpty = chunk->firstEmpty();
+    auto firstEmpty = chunk->firstEmpty(word);
 
     if (!firstEmpty.hasIndex()) {
       std::size_t delta = probeDelta(hp);
@@ -2711,12 +2803,13 @@ class F14Table : public Policy {
         firstEmpty = chunk->firstEmpty();
       } while (!firstEmpty.hasIndex());
       chunk->adjustHostedOverflowCount(Chunk::kIncrHostedOverflowCount);
+      word = chunk->loadWord(); // reload: the line above wrote the header
     }
     std::size_t itemIndex = firstEmpty.index();
 
     debugModePerturbSlotInsertOrder(chunk, itemIndex);
 
-    chunk->setTag(itemIndex, hp.second);
+    chunk->setTag(word, itemIndex, hp.second);
     ItemIter iter{chunk, itemIndex};
 
     // insertAtBlank will clear the tag if the constructor throws
