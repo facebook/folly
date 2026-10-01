@@ -1431,18 +1431,22 @@ TEST(FBString, testFixedBugsD3698862) {
 }
 
 TEST(FBString, testFixedBugsD4355440) {
-  SKIP_IF(!usingJEMalloc());
-
-  fbstring str(1337, 'f');
-  str.reserve(3840);
-  EXPECT_NE(str.capacity(), 3840);
-
   struct DummyRefCounted {
     std::atomic<size_t> refCount_;
   };
-  EXPECT_EQ(
-      str.capacity(),
-      goodMallocSize(3840) - sizeof(DummyRefCounted) - sizeof(char));
+
+  constexpr size_t requestedCapacity = 3840;
+  constexpr size_t allocationOverhead = sizeof(DummyRefCounted) + sizeof(char);
+  const auto allocationSize =
+      goodMallocSize(requestedCapacity + allocationOverhead);
+
+  if (usingJEMalloc()) {
+    EXPECT_GT(allocationSize, requestedCapacity + allocationOverhead);
+  }
+
+  fbstring str(1337, 'f');
+  str.reserve(requestedCapacity);
+  EXPECT_EQ(str.capacity(), allocationSize - allocationOverhead);
 }
 
 TEST(FBString, resizeWithoutInitialization) {
