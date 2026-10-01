@@ -272,16 +272,21 @@ TEST(Wait, waitWithDuration) {
 
 TEST(Wait, multipleWait) {
   folly::TestExecutor executor(1);
-  auto f = futures::sleep(milliseconds(100)).via(&executor);
+  Promise<Unit> p;
+  auto f = p.getSemiFuture().via(&executor);
+  // Nothing fulfills p yet, so these checks don't depend on timing.
   for (size_t i = 0; i < 5; ++i) {
     EXPECT_FALSE(f.isReady());
     f.wait(milliseconds(3));
   }
   EXPECT_FALSE(f.isReady());
+  // Fulfill from another thread so the untimed wait blocks on it.
+  std::thread t([&] { p.setValue(); });
   f.wait();
   EXPECT_TRUE(f.isReady());
   f.wait();
   EXPECT_TRUE(f.isReady());
+  t.join();
 }
 
 TEST(Wait, WaitPlusThen) {
