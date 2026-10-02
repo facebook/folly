@@ -225,6 +225,27 @@ Try<void>& Try<void>::operator=(const Try<void>& t) noexcept {
   return *this;
 }
 
+Try<void>& Try<void>::operator=(Try<void>&& t) noexcept {
+  // exception_wrapper's move-assigner requires this != &that.
+  if (this == &t) {
+    return *this;
+  }
+  if (t.hasException()) {
+    if (hasException()) {
+      this->e_ = std::move(t.e_);
+    } else {
+      new (&this->e_) exception_wrapper(std::move(t.e_));
+      hasValue_ = false;
+    }
+  } else {
+    if (hasException()) {
+      this->e_.~exception_wrapper();
+      hasValue_ = true;
+    }
+  }
+  return *this;
+}
+
 template <typename... Args>
 exception_wrapper& Try<void>::emplaceException(Args&&... args) noexcept(
     std::is_nothrow_constructible<exception_wrapper, Args&&...>::value) {

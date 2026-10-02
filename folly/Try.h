@@ -424,10 +424,20 @@ class Try<void> {
   // Copy assigner
   inline Try& operator=(const Try<void>& t) noexcept;
 
+  // Move assigner
+  inline Try& operator=(Try<void>&& t) noexcept;
+
   // Copy constructor
   Try(const Try<void>& t) noexcept : hasValue_(t.hasValue_) {
     if (t.hasException()) {
       new (&e_) exception_wrapper(t.e_);
+    }
+  }
+
+  // Move constructor
+  Try(Try<void>&& t) noexcept : hasValue_(t.hasValue_) {
+    if (t.hasException()) {
+      new (&e_) exception_wrapper(std::move(t.e_));
     }
   }
 

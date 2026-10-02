@@ -788,3 +788,57 @@ TEST(Try, CTAD) {
   folly::Try t1(folly::unit);
   folly::Try t2(42);
 }
+
+TEST(Try, voidMove) {
+  EXPECT_TRUE(std::is_move_constructible<Try<void>>::value);
+  EXPECT_TRUE(std::is_nothrow_move_constructible<Try<void>>::value);
+  EXPECT_TRUE(std::is_move_assignable<Try<void>>::value);
+  EXPECT_TRUE(std::is_nothrow_move_assignable<Try<void>>::value);
+  // Still copyable.
+  EXPECT_TRUE(std::is_copy_constructible<Try<void>>::value);
+  EXPECT_TRUE(std::is_copy_assignable<Try<void>>::value);
+
+  // Move-construct from a value.
+  Try<void> v;
+  Try<void> v2(std::move(v));
+  EXPECT_TRUE(v2.hasValue());
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  EXPECT_TRUE(v.hasValue());
+
+  // Move-construct from an exception: the exception transfers.
+  Try<void> e(make_exception_wrapper<int>(-3));
+  Try<void> e2(std::move(e));
+  EXPECT_TRUE(e2.hasException());
+  EXPECT_EQ(-3, *e2.exception().get_exception<int>());
+  // Like Try<T>, the source keeps its state (with a moved-from wrapper).
+  // The null type proves the wrapper moved rather than copied.
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  EXPECT_TRUE(e.hasException());
+  EXPECT_EQ(nullptr, e.exception().type());
+
+  // Move-assign, value to exception.
+  Try<void> a;
+  a = Try<void>(make_exception_wrapper<int>(-3));
+  EXPECT_TRUE(a.hasException());
+  EXPECT_EQ(-3, *a.exception().get_exception<int>());
+
+  // Move-assign, exception to exception.
+  Try<void> b(make_exception_wrapper<int>(-4));
+  Try<void> bsrc(make_exception_wrapper<int>(-3));
+  b = std::move(bsrc);
+  EXPECT_TRUE(b.hasException());
+  EXPECT_EQ(-3, *b.exception().get_exception<int>());
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  EXPECT_EQ(nullptr, bsrc.exception().type());
+
+  // Move-assign, exception to value.
+  Try<void> c(make_exception_wrapper<int>(-3));
+  c = Try<void>();
+  EXPECT_TRUE(c.hasValue());
+
+  // Self-move-assign is a no-op.
+  Try<void> s(make_exception_wrapper<int>(-3));
+  s = std::move(std::move(s)); // suppress self-move warning
+  EXPECT_TRUE(s.hasException());
+  EXPECT_EQ(-3, *s.exception().get_exception<int>());
+}
