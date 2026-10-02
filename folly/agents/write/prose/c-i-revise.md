@@ -22,5 +22,8 @@ fallback, or exposes a deciding correctness assumption, reapply
 `design-vetting.md` before editing. Pure presentation or citation changes do not
 trigger this.
 
+Treat findings as diagnoses, not patch instructions. Resolve accepted findings
+through a coherent whole-candidate revision, not one-by-one patches.
+
 Record dispositions only in the accountability artifact; summarize
 `SCOPE_EXPANSION` items in the final debrief.
