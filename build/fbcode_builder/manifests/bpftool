@@ -1,0 +1,22 @@
+[manifest]
+name = bpftool
+
+[git]
+repo_url = https://github.com/libbpf/bpftool.git
+rev = v7.4.0
+
+# BPF only builds on Linux, so make it a NOP on other platforms.
+[build.not(os=linux)]
+builder = nop
+
+[build.os=linux]
+builder = make
+subdir = src
+patchfile = bpftool_install_to_bin.patch
+
+[make.install_args]
+install-bin
+
+[dependencies]
+libelf
+zlib

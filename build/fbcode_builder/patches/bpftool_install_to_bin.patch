@@ -1,0 +1,13 @@
+diff --git a/src/Makefile b/src/Makefile
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -284,7 +284,7 @@ clean: $(LIBBPF)-clean $(LIBBPF_BOOTSTRAP)-clean feature-detect-clean
+ 
+ install-bin: $(OUTPUT)bpftool
+ 	$(call QUIET_INSTALL, bpftool)
+-	$(Q)$(INSTALL) -m 0755 -d $(DESTDIR)$(prefix)/sbin
+-	$(Q)$(INSTALL) $(OUTPUT)bpftool $(DESTDIR)$(prefix)/sbin/bpftool
++	$(Q)$(INSTALL) -m 0755 -d $(DESTDIR)$(prefix)/bin
++	$(Q)$(INSTALL) $(OUTPUT)bpftool $(DESTDIR)$(prefix)/bin/bpftool
+ 
+ install: install-bin
