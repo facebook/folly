@@ -291,6 +291,32 @@ BENCHMARK(hazptr_protect_combined_default, iters) {
   do_hazptr_protect<true>(braces, domain, iters);
 }
 
+/// benchmark ending protection of a modified object while beginning protection
+/// of another, isolating the release-light fence and relaxed hazptr store
+BENCHMARK(hazptr_reset_retarget, iters) {
+  BenchmarkSuspender braces;
+
+  hazptr_domain<> domain;
+  TestObj first{0};
+  TestObj second{0};
+  TestObj* objects[] = {&first, &second};
+
+  auto holder = make_hazard_pointer(domain);
+  holder.reset_protection(objects[(iters - 1) & 1]);
+
+  braces.dismissing([&] {
+    while (iters != 0) {
+      --iters;
+      auto const index = iters & 1;
+      ++objects[index]->value;
+      holder.reset_protection(objects[index ^ 1]);
+    }
+  });
+
+  folly::compiler_must_not_elide(first.value);
+  folly::compiler_must_not_elide(second.value);
+}
+
 BENCHMARK_DRAW_LINE();
 
 /// benchmark creating a hazard pointer (aka a hazptr-holder) without using it,
