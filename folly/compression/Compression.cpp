@@ -324,15 +324,6 @@ bool StreamCodec::uncompressStream(
   return done;
 }
 
-static std::unique_ptr<IOBuf> addOutputBuffer(
-    MutableByteRange& output, uint64_t size) {
-  DCHECK(output.empty());
-  auto buffer = IOBuf::create(size);
-  buffer->append(buffer->capacity());
-  output = {buffer->writableData(), buffer->length()};
-  return buffer;
-}
-
 std::unique_ptr<IOBuf> StreamCodec::doCompress(IOBuf const* data) {
   uint64_t const uncompressedLength = data->computeChainDataLength();
   resetStream(uncompressedLength);
@@ -342,7 +333,7 @@ std::unique_ptr<IOBuf> StreamCodec::doCompress(IOBuf const* data) {
   auto constexpr kDefaultBufferLength = uint64_t(4) << 20; // 4 MB
 
   MutableByteRange output;
-  auto buffer = addOutputBuffer(
+  auto buffer = detail::addOutputBuffer(
       output,
       maxCompressedLen <= kMaxSingleStepLength
           ? maxCompressedLen
@@ -363,7 +354,8 @@ std::unique_ptr<IOBuf> StreamCodec::doCompress(IOBuf const* data) {
       flushOp = StreamCodec::FlushOp::END;
     }
     if (output.empty()) {
-      buffer->prependChain(addOutputBuffer(output, kDefaultBufferLength));
+      buffer->prependChain(
+          detail::addOutputBuffer(output, kDefaultBufferLength));
     }
     done = compressStream(input, output, flushOp);
     if (done) {
@@ -376,60 +368,22 @@ std::unique_ptr<IOBuf> StreamCodec::doCompress(IOBuf const* data) {
   return buffer;
 }
 
-static uint64_t computeBufferLength(
-    uint64_t const compressedLength, uint64_t const blockSize) {
-  uint64_t constexpr kMaxBufferLength = uint64_t(4) << 20; // 4 MiB
-  uint64_t const goodBufferSize = 4 * std::max(blockSize, compressedLength);
-  return std::min(goodBufferSize, kMaxBufferLength);
-}
-
 std::unique_ptr<IOBuf> StreamCodec::doUncompress(
     IOBuf const* data, Optional<uint64_t> uncompressedLength) {
-  auto constexpr kMaxSingleStepLength = uint64_t(64) << 20; // 64 MB
-  auto constexpr kBlockSize = uint64_t(128) << 10;
-  auto const defaultBufferLength =
-      computeBufferLength(data->computeChainDataLength(), kBlockSize);
-
   uncompressedLength = getUncompressedLength(data, uncompressedLength);
-  resetStream(uncompressedLength);
-
-  MutableByteRange output;
-  auto buffer = addOutputBuffer(
-      output,
-      (uncompressedLength && *uncompressedLength <= kMaxSingleStepLength
-           ? *uncompressedLength
-           : defaultBufferLength));
-
-  // Uncompress the entire IOBuf chain into the IOBuf chain pointed to by buffer
-  IOBuf const* current = data;
-  ByteRange input{current->data(), current->length()};
-  StreamCodec::FlushOp flushOp = StreamCodec::FlushOp::NONE;
-  bool done = false;
-  while (!done) {
-    while (input.empty() && current->next() != data) {
-      current = current->next();
-      input = {current->data(), current->length()};
-    }
-    if (current->next() == data) {
-      // Tell the uncompressor there is no more input (it may optimize)
-      flushOp = StreamCodec::FlushOp::END;
-    }
-    if (output.empty()) {
-      buffer->prependChain(addOutputBuffer(output, defaultBufferLength));
-    }
-    done = uncompressStream(input, output, flushOp);
-  }
-  if (!input.empty()) {
-    throw std::runtime_error("Codec: Junk after end of data");
-  }
-
-  buffer->prev()->trimEnd(output.size());
+  io::Cursor cursor(data);
+  std::unique_ptr<IOBuf> result;
+  detail::uncompressStream(
+      *this,
+      cursor,
+      data->computeChainDataLength(),
+      uncompressedLength,
+      result);
   if (uncompressedLength &&
-      *uncompressedLength != buffer->computeChainDataLength()) {
+      *uncompressedLength != result->computeChainDataLength()) {
     throw std::runtime_error("Codec: invalid uncompressed length");
   }
-
-  return buffer;
+  return result;
 }
 
 namespace {

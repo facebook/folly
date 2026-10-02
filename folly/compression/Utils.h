@@ -16,7 +16,12 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cstdint>
+#include <memory>
+#include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 #include <folly/compression/Compression.h>
 #include <folly/io/Cursor.h>
@@ -143,6 +148,80 @@ bool chunkedStream(
 // Rather than allow 4GB inputs / outputs, which nearly never happens, limit to
 // 4MB, so we don't have complex logic that almost never runs.
 constexpr size_t kDefaultChunkSizeFor32BitSizes = size_t(4) << 20;
+
+inline uint64_t computeBufferLength(
+    uint64_t const compressedLength, uint64_t const blockSize) {
+  uint64_t constexpr kMaxBufferLength = uint64_t(4) << 20; // 4 MiB
+  uint64_t const goodBufferSize = 4 * std::max(blockSize, compressedLength);
+  return std::min(goodBufferSize, kMaxBufferLength);
+}
+
+inline std::unique_ptr<IOBuf> addOutputBuffer(
+    MutableByteRange& output, uint64_t size) {
+  DCHECK(output.empty());
+  auto buffer = IOBuf::create(size);
+  buffer->append(buffer->capacity());
+  output = {buffer->writableData(), buffer->length()};
+  return buffer;
+}
+
+template <typename Output>
+void appendOutputBuffer(Output& output, std::unique_ptr<IOBuf> buffer) {
+  if constexpr (std::is_same_v<Output, std::unique_ptr<IOBuf>>) {
+    if (output) {
+      output->prependChain(std::move(buffer));
+    } else {
+      output = std::move(buffer);
+    }
+  } else if (!buffer->empty()) {
+    output.append(std::move(buffer));
+  }
+}
+
+template <typename Cursor, typename Output>
+void uncompressStream(
+    StreamCodec& codec,
+    Cursor& cursor,
+    uint64_t compressedLength,
+    Optional<uint64_t> uncompressedLength,
+    Output& result) {
+  auto constexpr kMaxSingleStepLength = uint64_t(64) << 20; // 64 MB
+  auto constexpr kBlockSize = uint64_t(128) << 10;
+  auto const defaultBufferLength =
+      computeBufferLength(compressedLength, kBlockSize);
+
+  codec.resetStream(uncompressedLength);
+
+  MutableByteRange output;
+  auto buffer = addOutputBuffer(
+      output,
+      uncompressedLength && *uncompressedLength <= kMaxSingleStepLength
+          ? *uncompressedLength
+          : defaultBufferLength);
+
+  ByteRange input;
+  StreamCodec::FlushOp flushOp = StreamCodec::FlushOp::NONE;
+  bool done = false;
+  while (!done) {
+    input = cursor.peekBytes();
+    const auto inputLength = input.size();
+    if (cursor.getCurrentPosition() + inputLength == compressedLength) {
+      flushOp = StreamCodec::FlushOp::END;
+    }
+    if (output.empty()) {
+      appendOutputBuffer(result, std::move(buffer));
+      buffer = addOutputBuffer(output, defaultBufferLength);
+    }
+    done = codec.uncompressStream(input, output, flushOp);
+    cursor.skipNoAdvance(inputLength - input.size());
+  }
+  if (!input.empty()) {
+    throw std::runtime_error("Codec: Junk after end of data");
+  }
+
+  buffer->trimEnd(output.size());
+  appendOutputBuffer(result, std::move(buffer));
+}
 
 } // namespace detail
 } // namespace compression
