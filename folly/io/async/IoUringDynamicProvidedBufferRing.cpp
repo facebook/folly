@@ -454,6 +454,9 @@ void IoUringDynamicProvidedBufferRing::initialRegister() {
         sizePerBuffer_,
         ", bgid: ",
         gid_);
+    if (ret == -ENOMEM) {
+      throw OutOfMemory("unable to register provided buffer ring");
+    }
     throw LibUringCallError("unable to register provided buffer ring");
   }
 }

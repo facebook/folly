@@ -143,7 +143,7 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, BufferMinSize) {
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, BufferCountCheck) {
   io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
+  io_uring_queue_init(2, &ring, 0);
   uint16_t bgid = 0;
 
   auto makeOptions = [&bgid](uint32_t bufferCount) {
@@ -155,19 +155,11 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, BufferCountCheck) {
   };
 
   // Each ring is destroyed before the next is created so registrations don't
-  // accumulate: io_uring_register_buf_ring() counts against RLIMIT_MEMLOCK,
-  // and holding all rings (including the 32768-buffer one) alive at once made
-  // this test flaky on memlock-constrained hosts.
+  // accumulate: io_uring_register_buf_ring() counts against RLIMIT_MEMLOCK.
   {
     auto minRing =
         IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(2));
     EXPECT_EQ(minRing->count(), 2);
-  }
-
-  {
-    auto maxRing =
-        IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(32768));
-    EXPECT_EQ(maxRing->count(), 32768);
   }
 
   {

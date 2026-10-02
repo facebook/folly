@@ -43,6 +43,13 @@ class IoUringDynamicProvidedBufferRing {
     using std::runtime_error::runtime_error;
   };
 
+  // Thrown when provided-buffer registration fails with ENOMEM, typically
+  // because the per-user RLIMIT_MEMLOCK budget is transiently exhausted.
+  class OutOfMemory : public LibUringCallError {
+   public:
+    using LibUringCallError::LibUringCallError;
+  };
+
   struct Deleter {
     void operator()(IoUringDynamicProvidedBufferRing* ring) {
       if (ring) {
