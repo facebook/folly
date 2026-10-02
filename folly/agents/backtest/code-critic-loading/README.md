@@ -1,7 +1,7 @@
-# Exercise conditional code-critic loading
+# Exercise conditional code-review loading
 
 This diagnostic asks for a small but nontrivial C++ correctness fix. It exists
-to show that a code `c-i-0` run loads `code/c-i-critic.md`, applies its author
+to show that a code `c-i-0` run loads `code/c-i-review.md`, applies its author
 pass, and does not start external review.
 
 The source contains one adjacent-deduplication bug. `output.md` is the complete

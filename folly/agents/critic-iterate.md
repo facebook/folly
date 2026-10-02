@@ -356,7 +356,7 @@ delegating writing, follow `{FA}/critic-iterate/delegated-author.md`.
 
 ## Code Specialization
 
-For code changes and reviews, follow `{FA}/code/c-i-critic.md`.
+For code changes and reviews, follow `{FA}/code/c-i-review.md`.
 
 ## Writing Specialization
 
