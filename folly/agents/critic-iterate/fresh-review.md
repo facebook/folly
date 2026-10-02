@@ -1,8 +1,8 @@
 # Prepare a fresh review
 
 For non-prose, require the fresh reviewer to apply the same evidence and design
-checks before opening the artifact, then verify material claims introduced by
-it and return an alternative or findings.
+checks before opening the artifact, then verify material claims introduced by it
+and return an alternative or findings.
 
 **Fresh reviewer inputs.** Build its prompt from only:
 

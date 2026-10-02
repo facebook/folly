@@ -153,9 +153,9 @@ author passes inline in the chat, with each finding marked:
 - ❌ REJECTED — quote the affected text/element, state why kept.
 
 When prose requires Fresh Review, use the `MUST_TAKE` / `MINOR` / `REJECTED`
-classes under "Revision and closure" for reviewer and author findings. Quote
-the affected text and state the applied change or why it was rejected. For
-`MINOR`, also say why the candidate was acceptable without it.
+classes under "Revision and closure" for reviewer and author findings. Quote the
+affected text and state the applied change or why it was rejected. For `MINOR`,
+also say why the candidate was acceptable without it.
 
 In either format, list each `SCOPE_EXPANSION` separately.
 
