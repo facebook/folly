@@ -195,7 +195,7 @@ def _prompt_for_run(manifest: Manifest, install_rules: bool) -> PurePosixPath:
 
 def _checkpoint_instruction() -> str:
     return (
-        "After writing the initial draft, immediately run "
+        "Immediately after writing the initial draft, run exactly "
         "`backtest-checkpoint 0` and follow its stdout.\n\n"
     )
 

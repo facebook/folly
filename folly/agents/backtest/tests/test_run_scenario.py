@@ -613,7 +613,7 @@ class RunScenarioTest(unittest.TestCase):
     def test_checkpoint_instruction_names_only_the_first_command(self) -> None:
         instruction = runner._checkpoint_instruction()
 
-        self.assertIn("`backtest-checkpoint 0`", instruction)
+        self.assertIn("run exactly `backtest-checkpoint 0`", instruction)
         self.assertNotIn("backtest-checkpoint 1", instruction)
         self.assertNotIn("external review", instruction)
 
