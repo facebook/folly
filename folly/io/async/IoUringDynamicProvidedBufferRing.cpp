@@ -253,9 +253,10 @@ void IoUringDynamicProvidedBufferRing::ringRefill() noexcept {
   auto freeEntries = ringFreeEntries();
   while (freeEntries--) {
     uint16_t bid = ringIndex(ringTail_);
+    BufferState& state = bufferRefillArea_->states[bid];
     if (useIncremental_) {
-      bufferRefillArea_->states[bid].offset = 0;
-      bufferRefillArea_->states[bid].refCount.store(1);
+      state.offset = 0;
+      state.refCount.store(1);
     }
 
     auto* r = ringBuf(ringTail_);
