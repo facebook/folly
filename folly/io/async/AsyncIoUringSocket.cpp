@@ -1535,7 +1535,10 @@ void AsyncIoUringSocket::WriteSqe::callback(const io_uring_cqe* cqe) noexcept {
         VLOG(2) << "write error! " << res;
         callback_->writeErr(
             0,
-            AsyncSocketException(AsyncSocketException::UNKNOWN, "write error"));
+            AsyncSocketException(
+                AsyncSocketException::UNKNOWN,
+                "AsyncIoUringSocket: write error",
+                -res));
       }
     }
     if (parent_) {

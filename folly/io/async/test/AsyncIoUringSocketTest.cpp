@@ -18,6 +18,7 @@
 #include <chrono>
 #include <map>
 #include <random>
+#include <string_view>
 #include <vector>
 
 #include <folly/FileUtil.h>
@@ -34,6 +35,8 @@
 #include <folly/io/async/test/AsyncSocketTest.h>
 #include <folly/io/async/test/AsyncSocketTest2.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/Sockets.h>
+#include <folly/portability/Unistd.h>
 #include <folly/system/Shell.h>
 #include <folly/test/SocketAddressTestHelper.h>
 
@@ -1323,6 +1326,70 @@ TEST(AsyncIoUringSocketTest, RemoveNonBlockFlag) {
   int newFlags = fcntl(fd.toFd(), F_GETFL, 0);
   ASSERT_GE(newFlags, 0);
   EXPECT_EQ(newFlags & O_NONBLOCK, 0);
+}
+
+namespace {
+
+std::unique_ptr<EventBase> makeIoUringEventBase() {
+  return std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
+      []() -> std::unique_ptr<EventBaseBackendBase> {
+        IoUringBackend::Options options;
+        options.setInitialProvidedBuffers(64, 8);
+        return std::make_unique<IoUringBackend>(std::move(options));
+      }));
+}
+
+// cb must outlive socket: on timeout the write is still in flight and the
+// socket calls back into cb when it is destroyed.
+FutureWriteCallback::TResult writeAndWait(
+    EventBase& evb,
+    AsyncIoUringSocket& socket,
+    FutureWriteCallback& cb,
+    std::string_view data) {
+  socket.write(&cb, data.data(), data.size());
+  auto& [promise, future] = cb.promiseContract;
+  return std::move(future).within(kTimeout).via(&evb).getVia(&evb);
+}
+
+} // namespace
+
+TEST(AsyncIoUringSocketTest, ZeroCopyWriteErrorKeepsErrno) {
+  if (!IoUringBackend::isAvailable()) {
+    GTEST_SKIP() << "io_uring not available";
+  }
+  auto evb = makeIoUringEventBase();
+  // AF_UNIX sockets don't support zc, returning EOPNOTSUPP or EINVAL
+  std::array<int, 2> fds{};
+  ASSERT_EQ(0, ::socketpair(AF_UNIX, SOCK_STREAM, 0, fds.data()));
+  AsyncIoUringSocket::Options options;
+  options.zeroCopyEnable = [](auto&&) { return true; };
+  FutureWriteCallback cb;
+  AsyncIoUringSocket::UniquePtr socket(new AsyncIoUringSocket(
+      evb.get(), NetworkSocket::fromFd(fds[0]), std::move(options)));
+
+  auto res = writeAndWait(*evb, *socket, cb, "hello");
+
+  ASSERT_TRUE(res.hasError());
+  EXPECT_NE(0, res.error().second.getErrno()) << res.error().second.what();
+  ::close(fds[1]);
+}
+
+TEST(AsyncIoUringSocketTest, WriteErrorKeepsErrno) {
+  if (!IoUringBackend::isAvailable()) {
+    GTEST_SKIP() << "io_uring not available";
+  }
+  auto evb = makeIoUringEventBase();
+  std::array<int, 2> fds{};
+  ASSERT_EQ(0, ::socketpair(AF_UNIX, SOCK_STREAM, 0, fds.data()));
+  ::close(fds[1]);
+  FutureWriteCallback cb;
+  AsyncIoUringSocket::UniquePtr socket(
+      new AsyncIoUringSocket(evb.get(), NetworkSocket::fromFd(fds[0])));
+
+  auto res = writeAndWait(*evb, *socket, cb, "hello");
+
+  ASSERT_TRUE(res.hasError());
+  EXPECT_EQ(EPIPE, res.error().second.getErrno()) << res.error().second.what();
 }
 
 } // namespace folly

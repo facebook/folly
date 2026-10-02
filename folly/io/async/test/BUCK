@@ -1168,6 +1168,8 @@ fbcode_target(
         "//folly/io/async:io_uring_event",
         "//folly/io/async:server_socket",
         "//folly/portability:gtest",
+        "//folly/portability:sockets",
+        "//folly/portability:unistd",
         "//folly/system:shell",
         "//folly/test:socket_address_test_helper",
     ],
