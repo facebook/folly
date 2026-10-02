@@ -492,7 +492,13 @@ class FlatCombining {
 
   size_t nextIndex(size_t idx) { return recsPool_[idx].getNext(); }
 
-  void clearPending() { pending_.reset(); }
+  void clearPending() {
+    pending_.reset();
+    // Pair with the fence in SaturatingSemaphore::postSlowWaiterMayBlock:
+    // either the loads after the reset observe the stores preceding a coalesced
+    // post, or the poster observes the reset and posts again.
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+  }
 
   void setPending() { pending_.post(); }
 
