@@ -40,9 +40,9 @@ Default-on for:
 Routine conversation, status updates, debriefs, working notes, and context dumps
 trigger only through another condition above.
 
-Purely mechanical changes do not trigger by default, regardless of line count.
-Examples are typos, broken links, formatting, and repeating an already-approved
-rename or rephrase.
+Purely mechanical changes do not trigger by default. Examples are typos, broken
+links, formatting, generated-output updates, and user-specified mechanical
+edits, including batch changes.
 
 Accountability artifacts and delegated-review reports produced by this workflow
 do not themselves trigger another critic-iterate cycle.
@@ -264,7 +264,10 @@ history the reader does not need invents motivation and adds noise.
 
 To prepare a fresh review, follow `{FA}/critic-iterate/fresh-review.md`.
 
-After the author-side cycle converges, format the prose candidate.
+After the author-side cycle converges, run available, applicable checks that are
+inexpensive relative to fresh review, such as formatting, text checks, lint,
+compilation, or focused unit tests. Fix failures and reconverge. Only then
+launch fresh review.
 
 Do not edit the candidate while either reviewer runs. If it changes after a
 round starts, that round no longer covers the revision. In that case, after the
