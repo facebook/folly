@@ -29,7 +29,5 @@ candidate, and mark its source inputs as required.
 Include the exact nested cold-review command and its prompt path. The path is
 execution-only, not a readable input.
 
-A requested addition must name the reader task or required relationship it
-serves. A requested cut must show that the artifact's purpose does not need that
-fact. Truth, relatedness, or hypothetical usefulness is not enough to keep it;
-"shorter" alone is not enough to cut it.
+Fresh reviewer must get `{FA}/write/prose/c-i-review.md` as a separate required
+input.
