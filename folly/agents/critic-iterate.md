@@ -153,9 +153,9 @@ author passes inline in the chat, with each finding marked:
 - ❌ REJECTED — quote the affected text/element, state why kept.
 
 When prose requires Fresh Review, use the `MUST_TAKE` / `MINOR` / `REJECTED`
-classes under "Revision and closure" for reviewer and author findings. Quote the
-affected text and state the applied change or why it was rejected. For `MINOR`,
-also say why the candidate was acceptable without it.
+classes under "Revision and closure" for reviewer and author findings. Quote
+the affected text and state the applied change or why it was rejected. For
+`MINOR`, also say why the candidate was acceptable without it.
 
 In either format, list each `SCOPE_EXPANSION` separately.
 
@@ -215,52 +215,13 @@ failure. "Fresh" means unprimed by the author's diagnosis, not context-free.
 a complete independent message, including its Test Plan, in `REVIEW FRAME:`.
 Then follow the general comparison, triage, and closure rules.
 
-**Context packet discipline (commit messages).** The author or orchestrator
-still builds a context packet for commit messages. For fresh review, pass only
-the short task note defined in `{FA}/critic-iterate/fresh-review.md`, not the
-whole packet. Structure the author-side packet into three named sections so the
-author can scan it predictably:
+**Context packet discipline (commit messages).** Before drafting a commit or
+diff message, the author or orchestrator must follow
+`{FA}/write/commit-summary/c-i-author.md`.
 
-Before constructing the author packet or reviewer task note, reread the active
-workstream ledger when one exists. Build the author packet from current task
-inputs relevant to Stack context, Reader must know, or Decision trail, including
-any ledger goal and unsuperseded requirements or rationale. Before the author
-uses or dispatches the packet, treat every input as a claim or requirement, not
-approved wording. Apply "Evidence" when a false claim could change the message,
-then check each input against the intended reader's starting knowledge. Keep
-code identifiers when they anchor a fact or help find the relevant code. Explain
-the concrete actor, condition, action, or outcome hidden by unfamiliar
-shorthand, and define unavoidable technical terms on first use. Raw input may be
-overcomplete, but not opaque.
-
-Never pass ledger paths or raw ledger contents to the fresh-review task note.
-
-- **Stack context** — for diffs in a stack: what predecessors covered and what
-  follow-ons will do. Include review-affecting predecessor framing or follow-on
-  plans in the task note; omit mechanics not needed to understand the current
-  diff.
-- **Reader must know** — the few facts whose absence would make a reader act
-  wrongly or misunderstand the change, plus the artifact goal and intended
-  readers. Past three or four facts, reapply that test to each; do not merge
-  distinct causal facts into an abstract label. The final message may compress
-  detail and wording only while preserving the reader's needed model. Put a fact
-  in the fresh-review task note only when the reviewer needs it to verify
-  correctness and cannot derive it from the sources it may read.
-- **Decision trail** — for a design choice not mechanically forced by the spec
-  or bug, collect only the choices, constraints, or reversals needed to explain
-  the final shape. Typical candidates are a rejected alternative whose trade-off
-  is not clear from the diff, a constraint that pinned the choice, or a reversal
-  that explains a surprising result. Do not inventory the rest of the
-  discussion.
-
-The Decision trail is RAW input — the inner loop selects only the facts needed
-for the reader's task, then applies the cut test (typically the load-bearing
-constraint or rejected alternative; see `write.md` "## What evergreen context
-means"). The packet-vs-final-message split is input-vs-keep, not a different
-taxonomy. Omitting a decision the reader needs starves the loop; forcing process
-history the reader does not need invents motivation and adds noise.
-
-To prepare a fresh review, follow `{FA}/critic-iterate/fresh-review.md`.
+To prepare a fresh review, follow `{FA}/critic-iterate/fresh-review.md`. For a
+commit or diff message, extend it with
+`{FA}/write/commit-summary/c-i-fresh-review.md`.
 
 After the author-side cycle converges, run available, applicable checks that are
 inexpensive relative to fresh review, such as formatting, text checks, lint,
