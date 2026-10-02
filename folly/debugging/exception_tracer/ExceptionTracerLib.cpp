@@ -51,13 +51,13 @@ void __cxa_end_catch(void);
 
 #ifdef FOLLY_INSTALL_STD_RETHROW_EXCEPTION_WRAPPER
 extern "C" {
-#if __GLIBCXX__
+#if defined(__GLIBCXX__) && __GLIBCXX__
 [[noreturn]] void
 __real__ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE(
     std::exception_ptr ep);
 #endif
 
-#if _LIBCPP_VERSION
+#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION
 [[noreturn]] void __real__ZSt17rethrow_exceptionSt13exception_ptr(
     std::exception_ptr ep);
 #endif

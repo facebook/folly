@@ -24,11 +24,11 @@
 #define FOLLY_DETAIL_EXN_TRACER_CXX_STDLIB_COMPATIBLE 0
 #endif // (defined(__GLIBCXX__) || defined(_LIBCPP_VERSION))
 
-#if (!defined(__FreeBSD__) && !_WIN32)
+#if (!defined(__FreeBSD__) && (!defined(_WIN32) || !_WIN32))
 #define FOLLY_DETAIL_EXN_TRACER_OS_CXX_ABI_COMPATIBLE 1
 #else
 #define FOLLY_DETAIL_EXN_TRACER_OS_CXX_ABI_COMPATIBLE 0
-#endif // (!defined(__FreeBSD__) && ! _WIN32)
+#endif // (!defined(__FreeBSD__) && (!defined(_WIN32) || !_WIN32))
 
 #if FOLLY_DETAIL_EXN_TRACER_CXX_STDLIB_COMPATIBLE && \
     FOLLY_DETAIL_EXN_TRACER_OS_CXX_ABI_COMPATIBLE
