@@ -155,9 +155,9 @@ author passes inline in the chat, with each finding marked:
 - ❌ REJECTED — quote the affected text/element, state why kept.
 
 When prose requires Fresh Review, use the `MUST_TAKE` / `MINOR` / `REJECTED`
-classes under "Integration and closure" for reviewer and author findings. Quote
-the affected text and state the applied change or why it was rejected. For
-`MINOR`, also say why the candidate was acceptable without it.
+classes under "Revision and closure" for reviewer and author findings. Quote the
+affected text and state the applied change or why it was rejected. For `MINOR`,
+also say why the candidate was acceptable without it.
 
 In either format, list each `SCOPE_EXPANSION` separately.
 
@@ -219,7 +219,7 @@ Then follow the general comparison, triage, and closure rules.
 
 **Context packet discipline (commit messages).** The author or orchestrator
 still builds a context packet for commit messages. For fresh review, pass only
-the short task note defined in `{FA}/critic-iterate/review-task.md`, not the
+the short task note defined in `{FA}/critic-iterate/fresh-review.md`, not the
 whole packet. Structure the author-side packet into three named sections so the
 author can scan it predictably:
 
@@ -262,18 +262,18 @@ means"). The packet-vs-final-message split is input-vs-keep, not a different
 taxonomy. Omitting a decision the reader needs starves the loop; forcing process
 history the reader does not need invents motivation and adds noise.
 
-To build external-review inputs, follow `{FA}/critic-iterate/review-task.md`.
+To prepare a fresh review, follow `{FA}/critic-iterate/fresh-review.md`.
 
 After the author-side cycle converges, format the prose candidate.
 
 Do not edit the candidate while either reviewer runs. If it changes after a
 round starts, that round no longer covers the revision. In that case, after the
-reviewers finish, resume at step 2 under “Integration and closure” below.
+reviewers finish, resume at step 2 under “Revision and closure” below.
 
 **Run external review:** follow `{FA}/critic-iterate/run-review.md`.
 
-**Integration and closure.** To integrate a usable review, follow
-`{FA}/critic-iterate/integrate-review.md`.
+**Revision and closure.** To revise after a usable review, follow
+`{FA}/critic-iterate/revise.md`.
 
 A successful fresh review and its cold read count as 1 review round. The review
 budget defaults to 1 round. A personal rule can set a different default with

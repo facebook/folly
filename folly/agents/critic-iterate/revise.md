@@ -1,4 +1,4 @@
-# Integrate a fresh review
+# Revise after fresh review
 
 The General Cycle's no-edit rule governs author-side passes. Before acting on
 review, mark any useful proposal outside the user's agreed task as

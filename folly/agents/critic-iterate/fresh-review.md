@@ -1,4 +1,4 @@
-# Build a fresh-review task
+# Prepare a fresh review
 
 Before the first prose review, derive a **cold-reader brief** from the request
 and artifact destination. In 2–3 short sentences, normally 60 words or fewer,
@@ -26,9 +26,9 @@ prose, give the cold reader only the whole candidate. The fresh reviewer returns
 one coherent set of candidate findings after comparing its independent frame,
 the candidate, and the cold account.
 
-For non-prose, the fresh reviewer applies the same evidence and design checks
-before opening the artifact, then verifies material claims introduced by it and
-returns an alternative or findings.
+For non-prose, require the fresh reviewer to apply the same evidence and design
+checks before opening the artifact, then verify material claims introduced by it
+and return an alternative or findings.
 
 **Fresh reviewer inputs.** Build its prompt from only:
 
