@@ -579,7 +579,7 @@ auto collectAnyRange(InputRange awaitables) -> folly::coro::Task<std::pair<
 // aware of the coroutine starting behavior described in collectAll()
 // documentation.
 //
-// The result of the first successful SemiAwaitable, or the the exception from
+// The result of the first successful SemiAwaitable, or the exception from
 // the last SemiAwaitable is returned if none are successful. Any result of the
 // remaining SemiAwaitables will be discarded, independently of whether it's a
 // value or an exception.

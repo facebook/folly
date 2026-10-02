@@ -95,7 +95,7 @@
 // 1. PopBatch could be 0 or a positive integer.
 // If it is 0, only pop one node at a time.
 // This is the strict implementation. It guarantees the return
-// priority is alway the highest.  If it is > 0, we keep
+// priority is always the highest.  If it is > 0, we keep
 // up to that number of nodes in a shared buffer to be consumed by
 // subsequent pop operations.
 //
@@ -1046,7 +1046,7 @@ class RelaxedConcurrentPriorityQueue {
     }
   }
 
-  // This could guarentee the Mound is empty
+  // This could guarantee the Mound is empty
   FOLLY_ALWAYS_INLINE bool isMoundEmpty() {
     Position pos;
     pos.level = pos.index = 0;

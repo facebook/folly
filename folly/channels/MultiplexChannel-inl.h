@@ -179,7 +179,7 @@ class MultiplexChannelProcessor : public IChannelCallback {
         pendingAsyncCalls_(0) {}
 
   /**
-   * Starts multiplexing values from the input receiver to to one or more keyed
+   * Starts multiplexing values from the input receiver to one or more keyed
    * subscriptions.
    */
   void start(Receiver<InputValueType> inputReceiver) {
