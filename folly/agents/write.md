@@ -4,7 +4,8 @@ Resolve package paths relative to this file's directory.
 
 ## Critic-iterate
 
-To author prose under critic-iterate, follow `{FA}/write/prose/c-i-author.md`.
+To author prose under critic-iterate, follow `{FA}/write/prose/c-i-review.md`,
+then `{FA}/write/prose/c-i-author.md`.
 
 To prepare a prose fresh review, follow the generic base
 `{FA}/critic-iterate/fresh-review.md`, then the prose extension
