@@ -219,9 +219,7 @@ Then follow the general comparison, triage, and closure rules.
 diff message, the author or orchestrator must follow
 `{FA}/write/commit-summary/c-i-author.md`.
 
-To prepare a fresh review, follow `{FA}/critic-iterate/fresh-review.md`. For a
-commit or diff message, extend it with
-`{FA}/write/commit-summary/c-i-fresh-review.md`.
+To prepare a fresh review, follow `{FA}/critic-iterate/fresh-review.md`.
 
 After the author-side cycle converges, run available, applicable checks that are
 inexpensive relative to fresh review, such as formatting, text checks, lint,

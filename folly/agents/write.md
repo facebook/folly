@@ -2,7 +2,14 @@
 
 Resolve package paths relative to this file's directory.
 
+## Critic-iterate
+
 To author prose under critic-iterate, follow `{FA}/write/prose/c-i-author.md`.
+
+To prepare a prose fresh review, follow the generic base
+`{FA}/critic-iterate/fresh-review.md`, then the prose extension
+`{FA}/write/prose/c-i-fresh-review.md`. For a commit or diff message, then
+follow `{FA}/write/commit-summary/c-i-fresh-review.md`.
 
 ## General maxims (apply to all prose)
 

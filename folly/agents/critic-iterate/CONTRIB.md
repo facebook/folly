@@ -11,7 +11,7 @@ the delegation rule.
 
 - `run-review.md` owns the normal launch and validation procedure.
 - `review-failures.md` owns external-review launch, output, and trace failures.
-- `fresh-review.md` owns external-review task and input construction.
+- `fresh-review.md` owns generic external-review task and input construction.
 - `revise.md` owns how authors evaluate and apply review findings.
 - `delegated-author.md` owns the conditional writing-author handoff.
 

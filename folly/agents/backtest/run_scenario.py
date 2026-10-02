@@ -48,6 +48,7 @@ CRITIC_ITERATE_SUPPORT_FILES = (
     PurePosixPath("critic-iterate/review-failures.md"),
     PurePosixPath("critic-iterate/delegated-author.md"),
     PurePosixPath("write/prose/c-i-author.md"),
+    PurePosixPath("write/prose/c-i-fresh-review.md"),
     PurePosixPath("write/commit-summary/c-i-author.md"),
     PurePosixPath("write/commit-summary/c-i-fresh-review.md"),
     PurePosixPath("code/c-i-review.md"),

@@ -9,6 +9,7 @@ only when they apply:
   criteria, and commit messages.
 - `concise-rules.md` adds the editing checks used for rule documents.
 - `prose/c-i-author.md` owns prose critic dimensions and self-dogfooding.
+- `prose/c-i-fresh-review.md` owns prose fresh-review preparation.
 - `commit-summary/c-i-author.md` owns the context packet used to draft commit
   and diff messages.
 - `commit-summary/c-i-fresh-review.md` selects context for their fresh review.
