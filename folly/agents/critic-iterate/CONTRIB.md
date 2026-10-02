@@ -16,8 +16,8 @@ the delegation rule.
 - `delegated-author.md` owns the conditional writing-author handoff.
 
 `critic-iterate.md` is loaded on the common path, so unused guidance there
-consumes context on every run. Keep writing, code, test, and design guidance in
-their `{FA}` packages; put reviewer machinery and conditional author flows in
+consumes context on every run. Keep content-specific policy in its `{FA}`
+package; put generic reviewer machinery and conditional flows in
 `{FA}/critic-iterate/` children loaded only when needed.
 
 Having ambient GPT Luna delegate code authorship to another model might improve

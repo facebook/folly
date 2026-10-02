@@ -3,9 +3,12 @@
 # Writing rules
 
 These files give all prose the same core guidance while loading extra checks
-only when they apply. `../write.md` covers general prose, author revision, long
-documents, review criteria, and commit messages. `concise-rules.md` adds the
-editing checks used for rule documents.
+only when they apply:
+
+- `../write.md` covers general prose, author revision, long documents, review
+  criteria, and commit messages.
+- `concise-rules.md` adds the editing checks used for rule documents.
+- `prose/c-i-author.md` owns prose critic dimensions and self-dogfooding.
 
 `../critic-iterate.md` handles repeated review, delegation, and reviewer roles.
 Code quality and repository-specific mechanics belong elsewhere.

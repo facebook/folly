@@ -2,6 +2,8 @@
 
 Resolve package paths relative to this file's directory.
 
+To author prose under critic-iterate, follow `{FA}/write/prose/c-i-author.md`.
+
 ## General maxims (apply to all prose)
 
 Commit messages get the specialized loop in "## Iterate — inner loop, until
