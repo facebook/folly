@@ -11,6 +11,10 @@ To prepare a prose fresh review, follow the generic base
 `{FA}/write/prose/c-i-fresh-review.md`. For a commit or diff message, then
 follow `{FA}/write/commit-summary/c-i-fresh-review.md`.
 
+To revise prose after a usable review, follow the generic base
+`{FA}/critic-iterate/revise.md`, then the prose extension
+`{FA}/write/prose/c-i-revise.md`.
+
 ## General maxims (apply to all prose)
 
 Commit messages get the specialized loop in "## Iterate — inner loop, until
