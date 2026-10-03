@@ -65,6 +65,105 @@ TEST(AtomicSharedPtr, exchange) {
   EXPECT_EQ(*b, 1);
 }
 
+TEST(AtomicSharedPtr, PointerBlockVarieties) {
+  // shared_ptr(new T) control blocks must be read directly rather than
+  // wrapped: wrapping breaks owner comparison, so a compare_exchange
+  // against the original owner only succeeds when the block is read.
+  atomic_shared_ptr<int> asp;
+  auto check = [&](std::shared_ptr<int> s, int expect, bool direct) {
+    asp.store(s);
+    auto loaded = asp.load();
+    EXPECT_EQ(loaded.get(), s.get());
+    EXPECT_EQ(*loaded, expect);
+    auto desired = std::make_shared<int>(expect + 1);
+    if (direct) {
+      EXPECT_TRUE(asp.compare_exchange_strong(s, desired));
+    } else {
+      asp.store(desired);
+    }
+    EXPECT_EQ(asp.load().get(), desired.get());
+  };
+  // NOLINTNEXTLINE(facebook-hte-SharedPtrFromNew)
+  check(std::shared_ptr<int>(new int(1)), 1, true);
+  check(std::shared_ptr<int>(new int(2), std::default_delete<int>()), 2, true);
+  // Whether a block with a stateful deleter is read directly or wrapped
+  // depends on the library's block layout; either way the value and the
+  // deleter must survive.
+  int tag = 0;
+  auto deleter = [&tag](int* p) {
+    ++tag;
+    delete p;
+  };
+  check(std::shared_ptr<int>(new int(3), deleter), 3, false);
+  EXPECT_EQ(tag, 1);
+}
+
+struct IncompleteType; // Deliberately never defined in this TU.
+
+TEST(AtomicSharedPtr, IncompleteType) {
+  atomic_shared_ptr<IncompleteType> asp;
+  asp.store(std::shared_ptr<IncompleteType>{});
+  EXPECT_EQ(asp.load(), nullptr);
+}
+
+#if FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED
+TEST(AtomicSharedPtr, BlockDecodingIgnoresT) {
+  // One atomic_shared_ptr<T> can be stored from a TU where T is complete and
+  // loaded from one where it is only forward-declared, so a control block
+  // must decode to the same object whatever T it is read as.
+  struct Polymorphic {
+    virtual ~Polymorphic() = default;
+  };
+  using internals = folly::detail::shared_ptr_internals;
+  auto check = [](const std::shared_ptr<Polymorphic>& s) {
+    auto* base = internals::get_counted_base(s);
+    EXPECT_EQ(internals::get_shared_ptr<Polymorphic>(base), s.get());
+    EXPECT_EQ(
+        static_cast<const void*>(
+            internals::get_shared_ptr<IncompleteType>(base)),
+        s.get());
+  };
+  check(std::make_shared<Polymorphic>());
+  // NOLINTNEXTLINE(facebook-hte-SharedPtrFromNew)
+  check(std::shared_ptr<Polymorphic>(new Polymorphic()));
+}
+#endif
+
+TEST(AtomicSharedPtr, OverAlignedMakeShared) {
+  // An over-aligned make_shared object does not sit right after the control
+  // block base; the store path must notice and wrap it.
+  struct alignas(64) OverAligned {
+    int value = 7;
+  };
+  atomic_shared_ptr<OverAligned> asp;
+  auto s = std::make_shared<OverAligned>();
+  asp.store(s);
+  EXPECT_EQ(asp.load().get(), s.get());
+  EXPECT_EQ(asp.load()->value, 7);
+}
+
+TEST(AtomicSharedPtr, AbstractType) {
+  struct Base {
+    virtual ~Base() = default;
+    virtual int f() const = 0;
+  };
+  struct Derived : Base {
+    int f() const override { return 7; }
+  };
+  // Abstract T can never name a make_shared block; stores must still work
+  // and loads must unwrap. No compare_exchange here: wrapped values never
+  // compare equal (pre-existing, both STLs).
+  atomic_shared_ptr<Base> asp;
+  auto s = std::shared_ptr<Base>(std::make_shared<Derived>());
+  asp.store(s);
+  EXPECT_EQ(asp.load()->f(), 7);
+  // NOLINTNEXTLINE(facebook-hte-SharedPtrFromNew)
+  auto s2 = std::shared_ptr<Base>(new Derived());
+  auto prev = asp.exchange(s2);
+  EXPECT_EQ(prev->f(), 7);
+  EXPECT_EQ(asp.load()->f(), 7);
+}
+
 TEST(AtomicSharedPtr, foo) {
   c_count = 0;
   d_count = 0;
@@ -186,6 +285,8 @@ TEST(AtomicSharedPtr, AliasingWithNoControlBlockConstructorTest) {
 }
 
 TEST(AtomicSharedPtr, AliasingWithNullptrConstructorTest) {
+  c_count = 0;
+  d_count = 0;
   atomic_shared_ptr<foo> ptr{shared_ptr<foo>{std::make_shared<foo>(), nullptr}};
   EXPECT_EQ(ptr.load().get(), nullptr);
   // Verify that atomic_shared_ptr is holding the underlying object.

@@ -16,9 +16,9 @@
 
 #include <folly/portability/Config.h>
 
-// AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
-// other vendors
-#if defined(__GLIBCXX__)
+// The benchmarked implementation lives in AtomicSharedPtr-detail.h, which
+// supports libstdc++ and libc++, so skip this suite for other vendors
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
 
 #include <folly/concurrency/AtomicSharedPtr.h>
 
@@ -245,10 +245,10 @@ int main(int, char**) {
   return 0;
 }
 
-#else // defined(__GLIBCXX__)
+#else // defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
 
 int main(int, char**) {
   return 1;
 }
 
-#endif // defined(__GLIBCXX__)
+#endif // defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)

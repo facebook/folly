@@ -21,13 +21,15 @@
 #include <thread>
 
 #include <folly/PackedSyncPtr.h>
+#include <folly/Portability.h>
 #include <folly/concurrency/detail/AtomicSharedPtr-detail.h>
 #include <folly/memory/SanitizeLeak.h>
 #include <folly/synchronization/AtomicStruct.h>
 #include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/detail/AtomicUtils.h>
 
-#if defined(__GLIBCXX__) && FOLLY_HAS_PACKED_SYNC_PTR
+#if (defined(__GLIBCXX__) || FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED_LIBCXX) && \
+    FOLLY_HAS_PACKED_SYNC_PTR
 #define FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED 1
 #else
 #define FOLLY_HAS_ATOMIC_SHARED_PTR_HOOKED 0
