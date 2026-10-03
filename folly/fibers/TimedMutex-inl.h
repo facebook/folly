@@ -556,7 +556,11 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_until(
       if (write_waiters_.empty() && (slock2.state() & kHasWriteWaiters)) {
         slock2.state() &= ~kHasWriteWaiters;
       }
-      slock2.unlock();
+      if (write_waiters_.empty() && !(slock2.state() & kWriteLocked)) {
+        wake_readers_and_unlock(slock2);
+      } else {
+        slock2.unlock();
+      }
       waiter.wake(); // Ensure that destruction doesn't block.
       return false;
     }
@@ -594,7 +598,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
         ((slock.state() >> kReadersShift) == 0) &&
         "read waiters can only accumulate while write locked");
     slock.state() &= ~kWriteLocked;
-    wake_readers_(slock);
+    wake_readers_and_unlock(slock);
     return;
   }
 
@@ -624,9 +628,8 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
 }
 
 template <bool ReaderPriority, typename BatonType>
-void TimedRWMutexImpl<ReaderPriority, BatonType>::wake_readers_(
+void TimedRWMutexImpl<ReaderPriority, BatonType>::wake_readers_and_unlock(
     StateLock& slock) {
-  assert(!read_waiters_.empty());
   std::vector<MutexWaiter*> waiters_to_wake;
   waiters_to_wake.reserve(read_waiters_.size());
   slock.state() += read_waiters_.size() * kReadersInc;
@@ -652,10 +655,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_and_lock_shared() {
       ((slock.state() >> kReadersShift) == 0));
   slock.state() &= ~kWriteLocked;
   slock.state() += kReadersInc;
-
-  if (!read_waiters_.empty()) {
-    wake_readers_(slock);
-  }
+  wake_readers_and_unlock(slock);
 }
 } // namespace fibers
 } // namespace folly

@@ -3340,6 +3340,133 @@ TEST(TimedRWMutex, SharedTimeoutBeforeHandoffWritePriority) {
   testTimedRWMutexSharedTimeoutBeforeHandoff<false>();
 }
 
+TEST(TimedRWMutex, ExclusiveTimeoutWithQueuedReaderWritePriority) {
+  TimedRWMutexImpl<false, TimedRWMutexTestBaton> mutex;
+  TimedRWMutexWaitState writer;
+  TimedRWMutexWaitState reader;
+  bool writerAcquired = true;
+  bool readerAcquired = false;
+
+  mutex.lock_shared();
+  std::thread writerThread([&] {
+    timedRWMutexWaitState = &writer;
+    writerAcquired =
+        mutex.try_lock_until(std::chrono::steady_clock::time_point::min());
+  });
+  writer.waiting.wait();
+  std::thread readerThread([&] {
+    timedRWMutexWaitState = &reader;
+    readerAcquired = mutex.try_lock_shared_until(
+        std::chrono::steady_clock::time_point::min());
+    if (readerAcquired) {
+      mutex.unlock_shared();
+    }
+  });
+  reader.waiting.wait();
+  writer.expire.post();
+  writerThread.join();
+  mutex.unlock_shared();
+  {
+    std::unique_lock blocked(mutex, std::try_to_lock);
+    EXPECT_FALSE(blocked.owns_lock());
+  }
+  reader.expire.post();
+  readerThread.join();
+
+  EXPECT_FALSE(writerAcquired);
+  EXPECT_TRUE(readerAcquired);
+  std::unique_lock lock(mutex, std::try_to_lock);
+  ASSERT_TRUE(lock.owns_lock());
+}
+
+TEST(TimedRWMutex, ExclusiveTimeoutWithQueuedWriterAndReaderWritePriority) {
+  TimedRWMutexImpl<false, TimedRWMutexTestBaton> mutex;
+  TimedRWMutexWaitState timedOutWriter;
+  TimedRWMutexWaitState writer;
+  TimedRWMutexWaitState reader;
+  std::atomic<int> order = 0;
+  bool timedOutWriterAcquired = true;
+  int writerOrder = 0;
+  int readerOrder = 0;
+
+  mutex.lock_shared();
+  std::thread timedOutWriterThread([&] {
+    timedRWMutexWaitState = &timedOutWriter;
+    timedOutWriterAcquired =
+        mutex.try_lock_until(std::chrono::steady_clock::time_point::min());
+  });
+  timedOutWriter.waiting.wait();
+  std::thread writerThread([&] {
+    timedRWMutexWaitState = &writer;
+    std::unique_lock lock(mutex);
+    writerOrder = ++order;
+  });
+  writer.waiting.wait();
+  std::thread readerThread([&] {
+    timedRWMutexWaitState = &reader;
+    std::shared_lock lock(mutex);
+    readerOrder = ++order;
+  });
+  reader.waiting.wait();
+  timedOutWriter.expire.post();
+  timedOutWriterThread.join();
+  mutex.unlock_shared();
+  writerThread.join();
+  readerThread.join();
+
+  EXPECT_FALSE(timedOutWriterAcquired);
+  EXPECT_LT(writerOrder, readerOrder);
+  std::unique_lock lock(mutex, std::try_to_lock);
+  ASSERT_TRUE(lock.owns_lock());
+}
+
+namespace {
+
+template <bool ReaderPriority>
+void testTimedRWMutexExclusiveTimeoutWhileWriteLocked() {
+  TimedRWMutexImpl<ReaderPriority, TimedRWMutexTestBaton> mutex;
+  TimedRWMutexWaitState timedOutWriter;
+  TimedRWMutexWaitState reader;
+  std::atomic<int> order = 0;
+  bool timedOutWriterAcquired = true;
+  int unlockOrder = 0;
+  int readerWakeOrder = 0;
+
+  reader.onPost = [&] { readerWakeOrder = ++order; };
+  mutex.lock();
+  std::thread timedOutWriterThread([&] {
+    timedRWMutexWaitState = &timedOutWriter;
+    timedOutWriterAcquired =
+        mutex.try_lock_until(std::chrono::steady_clock::time_point::min());
+  });
+  timedOutWriter.waiting.wait();
+  std::thread readerThread([&] {
+    timedRWMutexWaitState = &reader;
+    std::shared_lock lock(mutex);
+  });
+  reader.waiting.wait();
+  timedOutWriter.expire.post();
+  timedOutWriterThread.join();
+  unlockOrder = ++order;
+  mutex.unlock();
+  readerThread.join();
+
+  EXPECT_FALSE(timedOutWriterAcquired);
+  EXPECT_LT(unlockOrder, readerWakeOrder);
+  std::unique_lock lock(mutex, std::try_to_lock);
+  ASSERT_TRUE(lock.owns_lock());
+}
+
+} // namespace
+
+TEST(TimedRWMutex, ExclusiveTimeoutWhileWriteLockedReadPriority) {
+  testTimedRWMutexExclusiveTimeoutWhileWriteLocked<true>();
+}
+
+TEST(TimedRWMutex, ExclusiveTimeoutWhileWriteLockedWritePriority) {
+  testTimedRWMutexExclusiveTimeoutWhileWriteLocked<false>();
+}
+
 namespace {
 // Checks whether stackHighWatermark is set for non-ASAN builds,
 // and not set for ASAN builds.
