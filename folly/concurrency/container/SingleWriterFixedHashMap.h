@@ -135,16 +135,18 @@ class SingleWriterFixedHashMap {
       elem_ = std::make_unique<Elem[]>(capacity_);
     }
     DCHECK_LT(used_, capacity_);
-    if (writer_find(key) < capacity_) {
-      return false;
-    }
     size_t index = hash(key);
     auto attempts = capacity_;
     size_t mask = capacity_ - 1;
     while (attempts--) {
       Elem& e = elem_[index];
       auto state = e.state();
-      if (state == State::EMPTY ||
+      if (state == State::VALID) {
+        if (e.key() == key) {
+          return false;
+        }
+      } else if (
+          state == State::EMPTY ||
           (state == State::TOMBSTONE && e.key() == key)) {
         if (state == State::EMPTY) {
           e.setKey(key);
