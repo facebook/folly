@@ -493,6 +493,55 @@ TEST(Checksum, crc32cEqAcrossDispatchThreshold) {
   }
 }
 
+// Which fold a CRC-32 call gets. All three return the same checksum, so no
+// output comparison can catch a call going to the wrong one.
+TEST(Checksum, crc32FoldChoice) {
+  using folly::detail::Crc32Fold;
+  const auto pick = folly::detail::crc32_fold_for;
+  constexpr size_t kAmd = folly::detail::kCrc32Vpclmul512MinVectorsAmd;
+  constexpr size_t kIntel = folly::detail::kCrc32Vpclmul512MinVectorsIntel;
+  static_assert(kAmd < kIntel, "Intel waits longer for the fold, not less");
+
+  // Below the lower floor a part with both folds takes the 256-bit one,
+  // never the 128-bit one, on either vendor. The floor chooses between the
+  // two widest folds the part has; it must not drop a call two widths.
+  for (size_t vecs : {size_t(0), size_t(1), size_t(8), kAmd - 1}) {
+    EXPECT_EQ(Crc32Fold::kVpclmul256, pick(vecs, true, true, false)) << vecs;
+    EXPECT_EQ(Crc32Fold::kVpclmul256, pick(vecs, true, true, true)) << vecs;
+  }
+
+  // 32 vectors is 512 bytes, a common request size, and one where the two
+  // AMD parts measured disagree about which fold is faster. It is under
+  // both floors, and this pins that rather than leaving it to the constants.
+  EXPECT_EQ(Crc32Fold::kVpclmul256, pick(32, true, true, false));
+  EXPECT_EQ(Crc32Fold::kVpclmul256, pick(32, true, true, true));
+
+  // AMD takes the 512-bit fold from its own floor up. Intel gains nothing
+  // there, so it keeps the 256-bit fold until its floor.
+  EXPECT_EQ(Crc32Fold::kVpclmul512, pick(kAmd, true, true, false));
+  EXPECT_EQ(Crc32Fold::kVpclmul256, pick(kAmd, true, true, true));
+  EXPECT_EQ(Crc32Fold::kVpclmul256, pick(kIntel - 1, true, true, true));
+  EXPECT_EQ(Crc32Fold::kVpclmul512, pick(kIntel, true, true, true));
+
+  // Above the higher floor both vendors take it, at every size.
+  EXPECT_EQ(Crc32Fold::kVpclmul512, pick(size_t(1) << 20, true, true, true));
+  EXPECT_EQ(Crc32Fold::kVpclmul512, pick(size_t(1) << 20, true, true, false));
+
+  // Without the 512-bit fold, the 256-bit one runs at every size.
+  EXPECT_EQ(Crc32Fold::kVpclmul256, pick(kIntel, false, true, true));
+  EXPECT_EQ(Crc32Fold::kVpclmul256, pick(size_t(1) << 20, false, true, false));
+
+  // A part with neither folds 128 bits at a time, at every size.
+  EXPECT_EQ(Crc32Fold::kScalar, pick(0, false, false, false));
+  EXPECT_EQ(Crc32Fold::kScalar, pick(size_t(1) << 20, false, false, true));
+
+  // AVX-512 without the 256-bit fold is not a part that ships, but the
+  // choice still has to be defined: a short call falls to scalar rather
+  // than to a fold the part cannot run.
+  EXPECT_EQ(Crc32Fold::kScalar, pick(0, true, false, false));
+  EXPECT_EQ(Crc32Fold::kVpclmul512, pick(kAmd, true, false, false));
+}
+
 TEST(Checksum, crc32) {
   if (folly::detail::crc32_hw_supported()) {
     // Just check that sw and hw match

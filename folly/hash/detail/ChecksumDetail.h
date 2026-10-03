@@ -165,6 +165,48 @@ constexpr Crc32cWideFold crc32c_wide_fold_for(
   return avx2Usable ? Crc32cWideFold::kWide256Avx2 : Crc32cWideFold::kNone;
 }
 
+/**
+ * Shortest call the 512-bit fold takes, in 16-byte vectors. The loop needs
+ * eight. Both floors are higher, and set where the fold is measured to win
+ * rather than where it merely runs.
+ *
+ * On AMD that is 64 vectors: below 32 the two parts measured disagree about
+ * the sign and one loses about 4%. Intel gains nothing until 256 vectors,
+ * so it waits.
+ */
+inline constexpr size_t kCrc32Vpclmul512MinVectorsAmd = 64;
+inline constexpr size_t kCrc32Vpclmul512MinVectorsIntel = 256;
+
+enum class Crc32Fold {
+  kScalar,
+  kVpclmul256,
+  kVpclmul512,
+};
+
+/**
+ * Which fold a call of this many 16-byte vectors gets. Split out from
+ * crc32_hw() and kept free of any CPU query so the choice can be tested on
+ * any host, which a runtime dispatch cannot be: every fold returns the same
+ * checksum, so comparing output says nothing about which one ran.
+ *
+ * A call below the floor still takes the widest fold the part can run. The
+ * floor chooses between the two widest folds, and never drops a call two
+ * widths at once.
+ */
+constexpr Crc32Fold crc32_fold_for(
+    size_t vec_count,
+    bool vpclmul512Usable,
+    bool vpclmulUsable,
+    bool vendorIntel) {
+  const size_t least = vendorIntel
+      ? kCrc32Vpclmul512MinVectorsIntel
+      : kCrc32Vpclmul512MinVectorsAmd;
+  if (vpclmul512Usable && vec_count >= least) {
+    return Crc32Fold::kVpclmul512;
+  }
+  return vpclmulUsable ? Crc32Fold::kVpclmul256 : Crc32Fold::kScalar;
+}
+
 #if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
 uint32_t crc32_hw_aligned(
     uint32_t remainder, const __m128i* p, size_t vec_count);
@@ -190,6 +232,13 @@ bool crc32_vpclmul_usable();
 
 /** crc32_hw_aligned, folding 256 bits at a time. Bit-identical output. */
 uint32_t crc32_hw_aligned_vpclmul(
+    uint32_t remainder, const __m128i* p, size_t vec_count);
+
+/** Whether the 512-bit fold below can be used on this CPU. */
+bool crc32_vpclmul512_usable();
+
+/** crc32_hw_aligned, folding 512 bits at a time. Bit-identical output. */
+uint32_t crc32_hw_aligned_vpclmul512(
     uint32_t remainder, const __m128i* p, size_t vec_count);
 
 /**

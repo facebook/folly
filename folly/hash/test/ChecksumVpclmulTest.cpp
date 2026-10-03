@@ -89,6 +89,32 @@ std::vector<Fold> runnableFolds() {
   return folds;
 }
 
+#if FOLLY_X64 && FOLLY_HAS_CRC32_VPCLMUL
+void crc32WideFoldMatchesNarrowerFolds(const uint8_t* aligned) {
+  const auto* p = reinterpret_cast<const __m128i*>(aligned);
+  for (uint32_t remainder : {0U, ~0U, 0x12345678U}) {
+    static_assert(
+        folly::detail::kCrc32Vpclmul512MinVectorsAmd < 72,
+        "the sweep below must cross the fold's minimum vector count");
+    for (size_t vecs = 0; vecs <= 72; ++vecs) {
+      SCOPED_TRACE(
+          testing::Message() << "remainder=" << remainder << " vecs=" << vecs);
+      const uint32_t ref = folly::detail::crc32_hw_aligned(remainder, p, vecs);
+      ASSERT_EQ(
+          ref, folly::detail::crc32_hw_aligned_vpclmul(remainder, p, vecs));
+      ASSERT_EQ(
+          ref, folly::detail::crc32_hw_aligned_vpclmul512(remainder, p, vecs));
+    }
+    for (size_t vecs : {size_t(256), size_t(512), size_t(4096)}) {
+      const uint32_t ref = folly::detail::crc32_hw_aligned(remainder, p, vecs);
+      ASSERT_EQ(
+          ref, folly::detail::crc32_hw_aligned_vpclmul512(remainder, p, vecs))
+          << vecs;
+    }
+  }
+}
+#endif
+
 } // namespace
 
 // What the two capability predicates require. A part that fails one of
@@ -172,6 +198,44 @@ TEST(Checksum, crc32cWideFoldsMatchAvx512) {
     const uint32_t sw = folly::detail::crc32c_sw(buffer, length, 0);
     for (const auto& fold : folds) {
       ASSERT_EQ(sw, fold.fn(buffer, length, 0)) << fold.name << " " << length;
+    }
+  }
+}
+
+// The 512-bit fold must agree with the 256-bit one it was derived from and
+// with the 128-bit scalar fold, at every vector count across the 8-vector
+// boundary its loop keys on, and on both sides of the 4-vector tail. The
+// sweep also has to cross the kernel's own guard, where the fold hands
+// short calls to a narrower kernel, so both sides of that are checked.
+TEST(Checksum, crc32WideFoldMatches) {
+  alignas(16) static uint8_t aligned[64 * 1024];
+  for (size_t i = 0; i < sizeof(aligned); ++i) {
+    aligned[i] = static_cast<uint8_t>((i * 1103515245ull) >> 16);
+  }
+#if FOLLY_X64 && FOLLY_HAS_CRC32_VPCLMUL
+  if (folly::detail::crc32_vpclmul512_usable()) {
+    crc32WideFoldMatchesNarrowerFolds(aligned);
+    return;
+  }
+#endif
+  LOG(WARNING) << "512-bit CRC-32 fold cannot run here; testing folly::crc32 "
+               << "instead";
+  for (uint32_t startingChecksum : {0U, ~0U, 0x12345678U}) {
+    for (size_t vecs :
+         {size_t(0),
+          size_t(1),
+          size_t(7),
+          size_t(8),
+          size_t(63),
+          size_t(64),
+          size_t(72),
+          size_t(256),
+          size_t(4096)}) {
+      const size_t nbytes = vecs * 16;
+      ASSERT_EQ(
+          folly::detail::crc32_sw(aligned, nbytes, startingChecksum),
+          folly::crc32(aligned, nbytes, startingChecksum))
+          << "startingChecksum=" << startingChecksum << " vecs=" << vecs;
     }
   }
 }
