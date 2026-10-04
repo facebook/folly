@@ -600,6 +600,7 @@ TEST(AsyncFileWriter, discard) {
   std::thread reader(readThread, std::move(readPipe), &readStats);
   {
     AsyncFileWriter writer{std::move(writePipe)};
+    writer.setMaxBufferSize(16384);
 
     std::vector<std::thread> writeThreads;
     size_t numThreads = FLAGS_async_discard_num_normal_writers +
