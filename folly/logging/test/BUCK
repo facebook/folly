@@ -300,8 +300,10 @@ fb_dirsync_cpp_library(
         "XlogHeader1.h",
         "XlogHeader2.h",
     ],
-    xplat_compiler_flags = [
-        '-DFOLLY_XLOG_STRIP_PREFIXES="xplat"',
+    # Override the fbcode default for source paths and mapped header paths.
+    compiler_flags = [
+        "-UFOLLY_XLOG_STRIP_PREFIXES",
+        '-DFOLLY_XLOG_STRIP_PREFIXES="fbcode:fbsource:xplat"',
     ],
     exported_deps = [
         "//folly:range",
@@ -327,8 +329,10 @@ fb_dirsync_cpp_binary(
 fb_dirsync_cpp_unittest(
     name = "xlog_test",
     srcs = ["XlogTest.cpp"],
-    xplat_compiler_flags = [
-        '-DFOLLY_XLOG_STRIP_PREFIXES="xplat"',
+    # Inline logging in the helper headers needs the same prefixes as the library.
+    compiler_flags = [
+        "-UFOLLY_XLOG_STRIP_PREFIXES",
+        '-DFOLLY_XLOG_STRIP_PREFIXES="fbcode:fbsource:xplat"',
     ],
     deps = [
         ":test_handler",

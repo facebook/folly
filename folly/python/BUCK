@@ -125,6 +125,12 @@ fb_dirsync_cpp_library(
             "-DFOLLY_PYTHON_WIN_SHAREDLIB",
         ],
     }),
+    # Share the executor registry in fbcode Windows; preserve ARVR linkage.
+    force_static = select({
+        "DEFAULT": True,
+        "ovr_config//os:windows": False,
+        "ovr_config//os:windows-arvr": True,
+    }),
     platforms = CYTHON_DEFAULT_PLATFORMS,
     preferred_linkage = select({
         "DEFAULT": None,
@@ -365,6 +371,12 @@ fb_dirsync_cpp_library(
         "ovr_config//os:windows": [
             "-DFOLLY_PYTHON_WIN_SHAREDLIB",
         ],
+    }),
+    # Share Python runtime state in fbcode Windows; preserve ARVR linkage.
+    force_static = select({
+        "DEFAULT": True,
+        "ovr_config//os:windows": False,
+        "ovr_config//os:windows-arvr": True,
     }),
     platforms = CYTHON_DEFAULT_PLATFORMS,
     preferred_linkage = select({
