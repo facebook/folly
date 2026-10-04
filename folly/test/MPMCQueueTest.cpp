@@ -304,9 +304,9 @@ TEST(MPMCQueue, mtTryEnqDeq) {
 }
 
 TEST(MPMCQueue, mtTryEnqDeqDynamic) {
-  int nts[] = {1, 3, 100};
+  int nts[] = {1, 3, folly::kIsSanitizeThread ? 32 : 100};
 
-  int n = 100000;
+  int n = 100000 / (folly::kIsSanitizeThread ? 10 : 1);
   for (int nt : nts) {
     runTryEnqDeqTest<std::atomic, /* Dynamic = */ true>(nt, n);
   }
@@ -322,9 +322,9 @@ TEST(MPMCQueue, mtTryEnqDeqEmulatedFutex) {
 }
 
 TEST(MPMCQueue, mtTryEnqDeqEmulatedFutexDynamic) {
-  int nts[] = {1, 3, 100};
+  int nts[] = {1, 3, folly::kIsSanitizeThread ? 32 : 100};
 
-  int n = 100000;
+  int n = 100000 / (folly::kIsSanitizeThread ? 10 : 1);
   for (int nt : nts) {
     runTryEnqDeqTest<EmulatedFutexAtomic, /* Dynamic = */ true>(nt, n);
   }
