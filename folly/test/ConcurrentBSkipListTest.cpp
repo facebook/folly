@@ -1098,7 +1098,7 @@ TEST(ConcurrentBSkipList, MultipleSplits) {
 TEST(ConcurrentBSkipList, StressInsertAndVerify) {
   LargeNodeList list;
 
-  constexpr int kCount = 50000;
+  constexpr int kCount = folly::kIsSanitizeThread ? 5000 : 50000;
 
   std::vector<int64_t> keys;
   keys.reserve(kCount);

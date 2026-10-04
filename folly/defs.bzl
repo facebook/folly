@@ -261,6 +261,7 @@ def folly_xplat_cxx_test(name, srcs, raw_headers = [], headers = [], deps = [], 
     # TODO(T188948036): Fix xplat/folly:folly-futures-test and folly_xplat_cxx_test
     resources = kwargs.get("resources", [])
     env = kwargs.get("env", None)
+    labels = kwargs.get("labels", None)
     modifiers = kwargs.get("modifiers", None)
     compiler_flags = kwargs.get("compiler_flags", None)
 
@@ -269,6 +270,8 @@ def folly_xplat_cxx_test(name, srcs, raw_headers = [], headers = [], deps = [], 
         extra_kwargs["oncall"] = oncall
     if env != None:
         extra_kwargs["env"] = env
+    if labels != None:
+        extra_kwargs["labels"] = labels
     if modifiers != None:
         extra_kwargs["modifiers"] = modifiers
     if compiler_flags != None:
