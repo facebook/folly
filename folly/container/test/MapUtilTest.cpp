@@ -44,6 +44,37 @@ TEST(MapUtil, getDefaultFunction) {
   EXPECT_EQ(0, get_default(m, 3));
 }
 
+TEST(MapUtil, getDefaultPointer) {
+  std::map<int, int> m;
+  m[1] = 2;
+  const auto* pm = &m;
+  const std::map<int, int>* nullMap = nullptr;
+  // No-default overload.
+  EXPECT_EQ(2, get_default(pm, 1));
+  EXPECT_EQ(0, get_default(pm, 3));
+  // Explicit-default overload.
+  EXPECT_EQ(2, get_default(pm, 1, 42));
+  EXPECT_EQ(42, get_default(pm, 2, 42));
+  // Lazy-default overload.
+  EXPECT_EQ(2, get_default(pm, 1, [] { return 42; }));
+  EXPECT_EQ(42, get_default(pm, 2, [] { return 42; }));
+  // Null map returns the default in all forms.
+  EXPECT_EQ(0, get_default(nullMap, 1));
+  EXPECT_EQ(42, get_default(nullMap, 1, 42));
+  EXPECT_EQ(42, get_default(nullMap, 1, [] { return 42; }));
+}
+
+TEST(MapUtil, getDefaultPathPointer) {
+  using std::map;
+  map<int, map<int, int>> m;
+  m[4][2] = 42;
+  const auto* pm = &m;
+  const map<int, map<int, int>>* nullMap = nullptr;
+  EXPECT_EQ(42, get_default(pm, 4, 2, 0));
+  EXPECT_EQ(0, get_default(pm, 1, 3, 0));
+  EXPECT_EQ(0, get_default(nullMap, 4, 2, 0));
+}
+
 TEST(MapUtil, getOrThrow) {
   std::map<int, int> m;
   m[1] = 2;

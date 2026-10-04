@@ -44,6 +44,17 @@ typename Map::mapped_type get_default(const Map& map, const Key& key) {
   auto pos = map.find(key);
   return (pos != map.end()) ? (pos->second) : (typename Map::mapped_type{});
 }
+
+template <typename Map, typename Key = typename Map::key_type>
+typename Map::mapped_type get_default(
+    const Map* FOLLY_NULLABLE map, const Key& key) {
+  if (map == nullptr) {
+    return (typename Map::mapped_type{});
+  }
+  auto pos = map->find(key);
+  return (pos != map->end()) ? (pos->second) : (typename Map::mapped_type{});
+}
+
 template <
     class Map,
     typename Key = typename Map::key_type,
@@ -58,6 +69,23 @@ typename Map::mapped_type get_default(
       : static_cast<M>(static_cast<Value&&>(dflt));
 }
 
+template <
+    class Map,
+    typename Key = typename Map::key_type,
+    typename Value = typename Map::mapped_type>
+  requires(!std::is_invocable_v<Value>)
+typename Map::mapped_type get_default(
+    const Map* FOLLY_NULLABLE map, const Key& key, Value&& dflt) {
+  using M = typename Map::mapped_type;
+  if (map == nullptr) {
+    return static_cast<M>(static_cast<Value&&>(dflt));
+  }
+  auto pos = map->find(key);
+  return (pos != map->end())
+      ? pos->second
+      : static_cast<M>(static_cast<Value&&>(dflt));
+}
+
 /**
  * Give a map and a key, return the value corresponding to the key in the map,
  * or a given default value if the key doesn't exist in the map.
@@ -68,6 +96,17 @@ typename Map::mapped_type get_default(
     const Map& map, const Key& key, Func&& dflt) {
   auto pos = map.find(key);
   return pos != map.end() ? pos->second : dflt();
+}
+
+template <class Map, typename Key = typename Map::key_type, typename Func>
+  requires(is_invocable_r_v<typename Map::mapped_type, Func>)
+typename Map::mapped_type get_default(
+    const Map* FOLLY_NULLABLE map, const Key& key, Func&& dflt) {
+  if (map == nullptr) {
+    return dflt();
+  }
+  auto pos = map->find(key);
+  return pos != map->end() ? pos->second : dflt();
 }
 
 /**
@@ -402,6 +441,20 @@ template <class Map, class Key1, class Key2, class... KeysDefault>
   requires(sizeof...(KeysDefault) != 0)
 auto get_default(
     const Map& map,
+    const Key1& key1,
+    const Key2& key2,
+    const KeysDefault&... keysDefault) ->
+    typename detail::NestedMapType<Map, 1 + sizeof...(KeysDefault)>::type {
+  if (const auto* ptr = get_ptr(map, key1)) {
+    return get_default(*ptr, key2, keysDefault...);
+  }
+  return detail::extract_default(keysDefault...);
+}
+
+template <class Map, class Key1, class Key2, class... KeysDefault>
+  requires(sizeof...(KeysDefault) != 0)
+auto get_default(
+    const Map* FOLLY_NULLABLE map,
     const Key1& key1,
     const Key2& key2,
     const KeysDefault&... keysDefault) ->
