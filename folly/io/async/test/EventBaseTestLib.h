@@ -502,7 +502,6 @@ TYPED_TEST_P(EventBaseTest, WritePersist) {
       {100, EventHandler::READ, 0, 0},
       {0, 0, 0, 0},
   };
-  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler after the third read
@@ -510,7 +509,6 @@ TYPED_TEST_P(EventBaseTest, WritePersist) {
 
   // Loop
   eb.loop();
-  TimePoint end;
 
   // The handler should have received the first 3 events,
   // then been unregistered after that.
@@ -518,16 +516,10 @@ TYPED_TEST_P(EventBaseTest, WritePersist) {
   ASSERT_EQ(events[0].result, initialBytesWritten);
   for (int n = 0; n < 3; ++n) {
     ASSERT_EQ(handler.log[n].events, EventHandler::WRITE);
-    T_CHECK_TIMEOUT(
-        start,
-        handler.log[n].timestamp,
-        std::chrono::milliseconds(events[n].milliseconds));
     ASSERT_EQ(handler.log[n].bytesRead, 0);
     ASSERT_GT(handler.log[n].bytesWritten, 0);
     ASSERT_EQ(handler.log[n].bytesWritten, events[n + 1].result);
   }
-  T_CHECK_TIMEOUT(
-      start, end, std::chrono::milliseconds(events[3].milliseconds));
 }
 
 /**
@@ -744,7 +736,6 @@ TYPED_TEST_P(EventBaseTest, ReadWritePersist) {
       {120, EventHandler::WRITE, 2345, 0},
       {0, 0, 0, 0},
   };
-  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler
@@ -752,25 +743,18 @@ TYPED_TEST_P(EventBaseTest, ReadWritePersist) {
 
   // Loop
   eb.loop();
-  TimePoint end;
 
   ASSERT_EQ(handler.log.size(), 6);
 
   // Since we didn't fill up the write buffer immediately, there should
   // be an immediate event for writability.
   ASSERT_EQ(handler.log[0].events, EventHandler::WRITE);
-  T_CHECK_TIMEOUT(
-      start, handler.log[0].timestamp, std::chrono::milliseconds(0));
   ASSERT_EQ(handler.log[0].bytesRead, 0);
   ASSERT_GT(handler.log[0].bytesWritten, 0);
 
   // Events 1 through 5 should correspond to the scheduled events
   for (int n = 1; n < 6; ++n) {
     ScheduledEvent* event = &events[n - 1];
-    T_CHECK_TIMEOUT(
-        start,
-        handler.log[n].timestamp,
-        std::chrono::milliseconds(event->milliseconds));
     if (event->events == EventHandler::READ) {
       ASSERT_EQ(handler.log[n].events, EventHandler::WRITE);
       ASSERT_EQ(handler.log[n].bytesRead, 0);

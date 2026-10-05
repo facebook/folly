@@ -34,8 +34,9 @@ void TimerFDTimeoutManager::onTimeout() noexcept {
 void TimerFDTimeoutManager::scheduleTimeout(
     Callback* callback, std::chrono::microseconds timeout) {
   cancelTimeout(callback);
-  // we cannot schedule a timeout of 0 - this will stop the timer
-  if (FOLLY_UNLIKELY(!timeout.count())) {
+  // Non-positive timeouts should fire as soon as possible. A zero timeout
+  // disarms timerfd, while a negative timeout is rejected with EINVAL.
+  if (FOLLY_UNLIKELY(timeout.count() <= 0)) {
     timeout = std::chrono::microseconds(1);
   }
   auto expirationTime = getCurTime() + timeout;
