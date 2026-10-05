@@ -16,6 +16,8 @@
 
 #include <folly/io/async/Request.h>
 
+#include <stdexcept>
+
 #include <folly/Demangle.h>
 #include <folly/GLog.h>
 #include <folly/concurrency/container/SingleWriterFixedHashMap.h>
@@ -382,6 +384,14 @@ RequestContext::State::doSetContextDataHelper(
       replaced};
 }
 
+namespace {
+[[noreturn]] FOLLY_NOINLINE void throwNonClearable(const RequestToken& token) {
+  throw std::invalid_argument(
+      "Cannot clear or overwrite non-clearable RequestData for token " +
+      token.getDebugString());
+}
+} // namespace
+
 FOLLY_ALWAYS_INLINE
 RequestContext::State::Combined* FOLLY_NULLABLE
 RequestContext::State::eraseOldData(
@@ -389,6 +399,10 @@ RequestContext::State::eraseOldData(
     const RequestToken& token,
     RequestData* olddata,
     bool safe) {
+  // Non-clearable data can only be removed from a context that is not shared.
+  if (olddata && !safe && !olddata->clearable()) {
+    throwNonClearable(token);
+  }
   Combined* newCombined = nullptr;
   // Call onUnset, if any.
   if (olddata && olddata->hasCallback()) {
@@ -526,6 +540,9 @@ void RequestContext::State::clearContextData(const RequestToken& token) {
       bool erased = cur->requestData_.erase(token);
       DCHECK(erased);
       return;
+    }
+    if (!data->clearable()) {
+      throwNonClearable(token);
     }
     if (data->hasCallback()) {
       data->onUnset();

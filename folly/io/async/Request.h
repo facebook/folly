@@ -103,6 +103,18 @@ class RequestData {
   // derived classes. There may be concurrent executions of onSet()
   // and onUnset() with that of onClear().
   virtual void onClear() {}
+  // If false, the data cannot be removed from a context that may be shared:
+  // clearContextData, a duplicate setContextData, and overwriteContextData with
+  // safe = false throw std::invalid_argument. It can still be replaced or
+  // removed by the ShallowCopyRequestContextScopeGuard constructors.
+  //
+  // clearContextData() is a flawed primitive, since there is no safe
+  // way of accessing a pointer returned by getContextData() if there
+  // is a chance that the data is cleared concurrently. Support is
+  // only kept for legacy reasons; new RequestData implementations
+  // should set this to false, and instead use the shallow-copy
+  // pattern to remove or replace the object.
+  virtual bool clearable() { return true; }
   // For debugging
   int refCount() { return keepAliveCounter_.load(std::memory_order_acquire); }
 

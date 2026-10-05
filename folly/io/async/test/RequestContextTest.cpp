@@ -198,6 +198,48 @@ TEST_F(RequestContextTest, setIfAbsentTest) {
   EXPECT_TRUE(nullptr != RequestContext::get());
 }
 
+namespace {
+class NonClearableData : public TestData {
+ public:
+  using TestData::TestData;
+  bool clearable() override { return false; }
+};
+} // namespace
+
+TEST_F(RequestContextTest, nonClearableThrowsOnClear) {
+  RequestContextScopeGuard g;
+  auto& ctx = getContext();
+  ctx.setContextData("test", std::make_unique<NonClearableData>(1));
+
+  EXPECT_THROW(ctx.clearContextData("test"), std::invalid_argument);
+  EXPECT_THROW(
+      ctx.setContextData("test", std::make_unique<NonClearableData>(2)),
+      std::invalid_argument);
+  EXPECT_THROW(
+      ctx.overwriteContextData("test", std::make_unique<NonClearableData>(2)),
+      std::invalid_argument);
+  EXPECT_FALSE(ctx.setContextDataIfAbsent(
+      "test", std::make_unique<NonClearableData>(2)));
+  EXPECT_EQ(1, getData().data_);
+}
+
+TEST_F(RequestContextTest, nonClearableShallowCopyOverwrite) {
+  RequestContextScopeGuard g0;
+  getContext().setContextData("test", std::make_unique<NonClearableData>(123));
+  {
+    ShallowCopyRequestContextScopeGuard g1(
+        "test", std::make_unique<NonClearableData>(789));
+    EXPECT_EQ(789, getData().data_);
+  }
+  {
+    ShallowCopyRequestContextScopeGuard g1("test", nullptr);
+    EXPECT_EQ(nullptr, getContext().getContextData("test"));
+  }
+  EXPECT_EQ(123, getData().data_);
+  EXPECT_EQ(3, getData().set_);
+  EXPECT_EQ(2, getData().unset_);
+}
+
 TEST_F(RequestContextTest, testSetUnset) {
   RequestContext::create();
   auto ctx1 = RequestContext::saveContext();
