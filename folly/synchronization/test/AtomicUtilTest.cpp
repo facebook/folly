@@ -41,6 +41,13 @@ static_assert(
 static_assert(
     std::is_same_v<int, folly::atomic_value_type<std::atomic<int>>::type>);
 
+struct AtomicValueTypeLoadOnly {
+  int load() const;
+};
+
+static_assert(
+    std::is_same_v<int, folly::atomic_value_type_t<AtomicValueTypeLoadOnly>>);
+
 namespace folly {
 
 class MemoryOrderTest : public testing::Test {};

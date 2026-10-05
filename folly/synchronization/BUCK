@@ -28,12 +28,22 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "atomic_traits",
+    headers = ["AtomicTraits.h"],
+    exported_deps = [
+        "//folly:portability",
+        "//folly:traits",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "atomic_util",
     headers = [
         "AtomicUtil.h",
         "AtomicUtil-inl.h",
     ],
     exported_deps = [
+        ":atomic_traits",
         "//folly:constexpr_math",
         "//folly:likely",
         "//folly:portability",

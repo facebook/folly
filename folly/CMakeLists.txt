@@ -1092,6 +1092,7 @@ folly_add_library(
     folly_lang_assume
     folly_likely
     folly_portability_asm
+    folly_synchronization_atomic_traits
     folly_synchronization_lock
     folly_synchronization_relaxed_atomic
     folly_synchronization_sanitize_thread

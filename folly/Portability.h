@@ -115,6 +115,12 @@ constexpr bool kHasUnalignedAccess = false;
 #define FOLLY_AARCH64 0
 #endif
 
+#if defined(__aarch64__) && defined(__ARM_FEATURE_ATOMICS)
+#define FOLLY_AARCH64_LSE 1
+#else
+#define FOLLY_AARCH64_LSE 0
+#endif
+
 #if defined(__powerpc64__)
 #define FOLLY_PPC64 1
 #else
@@ -131,6 +137,24 @@ constexpr bool kHasUnalignedAccess = false;
 #define FOLLY_RISCV64 1
 #else
 #define FOLLY_RISCV64 0
+#endif
+
+#if defined(__riscv_xlen)
+#define FOLLY_RISCV_XLEN __riscv_xlen
+#else
+#define FOLLY_RISCV_XLEN 0
+#endif
+
+#if defined(__riscv) && (defined(__riscv_zaamo) || defined(__riscv_atomic))
+#define FOLLY_RISCV_ZAAMO 1
+#else
+#define FOLLY_RISCV_ZAAMO 0
+#endif
+
+#if defined(__riscv) && defined(__riscv_zabha)
+#define FOLLY_RISCV_ZABHA 1
+#else
+#define FOLLY_RISCV_ZABHA 0
 #endif
 
 //  The riscv Zbb (basic bit-manipulation) extension.
@@ -163,9 +187,13 @@ constexpr bool kIsArchArm = FOLLY_ARM == 1;
 constexpr bool kIsArchX86 = FOLLY_X86 == 1;
 constexpr bool kIsArchAmd64 = FOLLY_X64 == 1;
 constexpr bool kIsArchAArch64 = FOLLY_AARCH64 == 1;
+constexpr bool kIsArchAArch64Lse = FOLLY_AARCH64_LSE == 1;
 constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
 constexpr bool kIsArchS390X = FOLLY_S390X == 1;
 constexpr bool kIsArchRISCV64 = FOLLY_RISCV64 == 1;
+constexpr unsigned kArchRISCVXlen = FOLLY_RISCV_XLEN;
+constexpr bool kIsArchRISCVZaamo = FOLLY_RISCV_ZAAMO == 1;
+constexpr bool kIsArchRISCVZabha = FOLLY_RISCV_ZABHA == 1;
 constexpr bool kIsArchRISCVZbb = FOLLY_RISCV_ZBB == 1;
 constexpr bool kIsArchWasm = FOLLY_WASM == 1;
 constexpr bool kIsArchWasm32 = FOLLY_WASM32 == 1;

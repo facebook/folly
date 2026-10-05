@@ -1221,6 +1221,7 @@ fb_dirsync_cpp_library(
         "//folly/detail:futex",
         "//folly/lang:assume",
         "//folly/portability:asm",
+        "//folly/synchronization:atomic_traits",
         "//folly/synchronization:lock",
         "//folly/synchronization:relaxed_atomic",
         "//folly/synchronization:sanitize_thread",

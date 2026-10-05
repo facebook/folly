@@ -18,6 +18,7 @@
 
 #include <stdlib.h>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -82,6 +83,11 @@ struct SharedMutexHookPolicy : SharedMutexPolicyDefault {
 struct SharedMutexHookTag;
 using HookedSharedMutex = SharedMutexImpl<
     false,
+    SharedMutexHookTag,
+    std::atomic,
+    SharedMutexHookPolicy>;
+using HookedSharedMutexReadPriority = SharedMutexImpl<
+    true,
     SharedMutexHookTag,
     std::atomic,
     SharedMutexHookPolicy>;
@@ -151,6 +157,339 @@ class SharedMutexHookRecorder : public SharedMutexHookObserver {
   std::array<bool, kEventCount> blocked_{};
   bool timedOut_{false};
 };
+
+constexpr auto kLifetimeTestTimeout = std::chrono::seconds(10);
+
+class LifetimeTestState : public SharedMutexHookObserver {
+ public:
+  LifetimeTestState(bool blockWaiters, bool pauseRelease)
+      : releaser_(std::this_thread::get_id()),
+        blockWaiters_(blockWaiters),
+        pauseRelease_(pauseRelease) {}
+
+  void on_event(HookEvent event) noexcept override {
+    switch (event) {
+      case HookEvent::BeforeParkExclusive:
+      case HookEvent::BeforeParkUpgrade:
+      case HookEvent::BeforeParkShared:
+      case HookEvent::BeforeParkReadersToDrain:
+        afterWaiterRegistered();
+        return;
+      case HookEvent::AfterReleaseExclusive:
+      case HookEvent::AfterReleaseUpgrade:
+      case HookEvent::AfterReleaseShared:
+        afterRelease();
+        return;
+      case HookEvent::BeforeDestroy:
+        beforeDestroy();
+        return;
+    }
+  }
+
+  void afterWaiterRegistered() {
+    std::unique_lock lock(mutex_);
+    auto id = std::this_thread::get_id();
+    if (std::find(waiters_.begin(), waiters_.end(), id) == waiters_.end()) {
+      waiters_.push_back(id);
+      cv_.notify_all();
+    }
+    const bool didTimeOut = blockWaiters_ &&
+        !cv_.wait_for(lock, kLifetimeTestTimeout, [&] { return released_; });
+    if (didTimeOut) {
+      timedOut_ = true;
+    }
+  }
+
+  void afterRelease() {
+    std::unique_lock lock(mutex_);
+    if (std::this_thread::get_id() != releaser_) {
+      return;
+    }
+    released_ = true;
+    cv_.notify_all();
+    const bool didTimeOut =
+        pauseRelease_ && !cv_.wait_for(lock, kLifetimeTestTimeout, [&] {
+          return releaseMayFinish_;
+        });
+    if (didTimeOut) {
+      timedOut_ = true;
+    }
+  }
+
+  void beforeDestroy() {
+    std::lock_guard lock(mutex_);
+    destructorWaiting_ = true;
+    cv_.notify_all();
+  }
+
+  void setReleaser(std::thread::id releaser) {
+    std::lock_guard lock(mutex_);
+    releaser_ = releaser;
+  }
+
+  void ownerReady() {
+    std::lock_guard lock(mutex_);
+    ownerReady_ = true;
+    cv_.notify_all();
+  }
+
+  bool waitForOwner() {
+    std::unique_lock lock(mutex_);
+    return cv_.wait_for(lock, kLifetimeTestTimeout, [&] {
+      return ownerReady_;
+    });
+  }
+
+  void requestRelease() {
+    std::lock_guard lock(mutex_);
+    releaseRequested_ = true;
+    cv_.notify_all();
+  }
+
+  void waitForReleaseRequest() {
+    std::unique_lock lock(mutex_);
+    const bool didTimeOut = !cv_.wait_for(lock, kLifetimeTestTimeout, [&] {
+      return releaseRequested_;
+    });
+    if (didTimeOut) {
+      timedOut_ = true;
+    }
+  }
+
+  bool waitForWaiters(size_t count) {
+    std::unique_lock lock(mutex_);
+    return cv_.wait_for(lock, kLifetimeTestTimeout, [&] {
+      return waiters_.size() >= count;
+    });
+  }
+
+  bool waitForRelease() {
+    std::unique_lock lock(mutex_);
+    return cv_.wait_for(lock, kLifetimeTestTimeout, [&] { return released_; });
+  }
+
+  bool waitForDestructor() {
+    std::unique_lock lock(mutex_);
+    return cv_.wait_for(lock, kLifetimeTestTimeout, [&] {
+      return destructorWaiting_;
+    });
+  }
+
+  void allowReleaseToFinish() {
+    std::lock_guard lock(mutex_);
+    releaseMayFinish_ = true;
+    cv_.notify_all();
+  }
+
+  void objectDeleted() {
+    std::lock_guard lock(mutex_);
+    deleted_ = true;
+    releaseMayFinish_ = true;
+    cv_.notify_all();
+  }
+
+  bool completedWithoutTimeout() {
+    std::lock_guard lock(mutex_);
+    return released_ && deleted_ && !timedOut_;
+  }
+
+ private:
+  std::thread::id releaser_;
+  const bool blockWaiters_;
+  const bool pauseRelease_;
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  std::vector<std::thread::id> waiters_;
+  bool released_{false};
+  bool deleted_{false};
+  bool releaseMayFinish_{false};
+  bool destructorWaiting_{false};
+  bool ownerReady_{false};
+  bool releaseRequested_{false};
+  bool timedOut_{false};
+};
+
+using LifetimeTestRegistration = SharedMutexHookRegistration;
+
+enum class LifetimeReleaseMode { Exclusive, Shared, Upgrade };
+
+template <LifetimeReleaseMode Mode, typename Mutex>
+void acquireInitialOwnership(Mutex& mutex) {
+  if constexpr (Mode == LifetimeReleaseMode::Exclusive) {
+    mutex.lock();
+  } else if constexpr (Mode == LifetimeReleaseMode::Shared) {
+    mutex.lock_shared();
+  } else {
+    mutex.lock_upgrade();
+  }
+}
+
+template <LifetimeReleaseMode Mode, typename Mutex>
+void releaseInitialOwnership(Mutex& mutex) {
+  if constexpr (Mode == LifetimeReleaseMode::Exclusive) {
+    mutex.unlock();
+  } else if constexpr (Mode == LifetimeReleaseMode::Shared) {
+    mutex.unlock_shared();
+  } else {
+    mutex.unlock_upgrade();
+  }
+}
+
+template <typename Mutex, LifetimeReleaseMode Mode>
+void runSelfDestructionAfterReleaseTest() {
+  auto* mutex = new Mutex;
+  acquireInitialOwnership<Mode>(*mutex);
+
+  LifetimeTestState state(/* blockWaiters */ true, /* pauseRelease */ true);
+  LifetimeTestRegistration registration(state);
+  std::thread deleter([&] {
+    mutex->lock();
+    mutex->unlock();
+    delete mutex;
+    state.objectDeleted();
+  });
+
+  const bool didWaiterPark = state.waitForWaiters(1);
+  releaseInitialOwnership<Mode>(*mutex);
+  deleter.join();
+
+  ASSERT_TRUE(didWaiterPark);
+  ASSERT_TRUE(state.completedWithoutTimeout());
+}
+
+template <typename Mutex, LifetimeReleaseMode Mode>
+void runSaturatedExclusiveWaitersTest() {
+  constexpr size_t kWaiters = 8;
+  Mutex mutex;
+  acquireInitialOwnership<Mode>(mutex);
+
+  LifetimeTestState state(/* blockWaiters */ false, /* pauseRelease */ false);
+  LifetimeTestRegistration registration(state);
+  std::atomic<size_t> acquired{0};
+  std::vector<std::thread> waiters;
+  waiters.reserve(kWaiters);
+  for (size_t i = 0; i < kWaiters; ++i) {
+    waiters.emplace_back([&] {
+      if (mutex.try_lock_for(3 * kLifetimeTestTimeout)) {
+        ++acquired;
+        mutex.unlock();
+      }
+    });
+  }
+
+  const bool didWaitersPark = state.waitForWaiters(kWaiters);
+  releaseInitialOwnership<Mode>(mutex);
+  for (auto& waiter : waiters) {
+    waiter.join();
+  }
+
+  ASSERT_TRUE(didWaitersPark);
+  ASSERT_EQ(kWaiters, acquired.load());
+}
+
+template <typename Mutex>
+void runSelfDestructionDuringSaturatedReleaseTest() {
+  constexpr size_t kWaiters = 2;
+  auto* mutex = new Mutex;
+
+  LifetimeTestState state(/* blockWaiters */ false, /* pauseRelease */ true);
+  LifetimeTestRegistration registration(state);
+  std::thread releaser([&] {
+    mutex->lock();
+    state.setReleaser(std::this_thread::get_id());
+    state.ownerReady();
+    state.waitForReleaseRequest();
+    mutex->unlock();
+  });
+  const bool didOwnerBecomeReady = state.waitForOwner();
+
+  std::vector<std::thread> waiters;
+  waiters.reserve(kWaiters);
+  for (size_t i = 0; i < kWaiters; ++i) {
+    waiters.emplace_back([&] {
+      if (mutex->try_lock_for(kLifetimeTestTimeout / 10)) {
+        mutex->unlock();
+      }
+    });
+  }
+  const bool didWaitersPark = state.waitForWaiters(kWaiters);
+
+  state.requestRelease();
+  const bool didReleaseStart = state.waitForRelease();
+  for (auto& waiter : waiters) {
+    waiter.join();
+  }
+
+  constexpr size_t kSuccessors = 8;
+  std::atomic<size_t> successorReleases{0};
+  std::vector<std::thread> successors;
+  successors.reserve(kSuccessors);
+  for (size_t i = 0; i < kSuccessors; ++i) {
+    successors.emplace_back([&] {
+      mutex->lock();
+      mutex->unlock();
+      ++successorReleases;
+    });
+  }
+  for (auto& successor : successors) {
+    successor.join();
+  }
+  const bool didAllSuccessorsRelease = successorReleases.load() == kSuccessors;
+
+  std::atomic<bool> deleted{false};
+  std::thread deleter([&] {
+    mutex->lock();
+    mutex->unlock();
+    delete mutex;
+    deleted = true;
+    state.objectDeleted();
+  });
+
+  const bool didDestructorStart = state.waitForDestructor();
+  const bool deletedBeforeReleaseFinished = deleted.load();
+  state.allowReleaseToFinish();
+  releaser.join();
+  deleter.join();
+
+  ASSERT_TRUE(didOwnerBecomeReady);
+  ASSERT_TRUE(didWaitersPark);
+  ASSERT_TRUE(didReleaseStart);
+  ASSERT_TRUE(didAllSuccessorsRelease);
+  ASSERT_TRUE(didDestructorStart);
+  ASSERT_FALSE(deletedBeforeReleaseFinished);
+  ASSERT_TRUE(deleted.load());
+  ASSERT_TRUE(state.completedWithoutTimeout());
+}
+
+enum class ExclusiveConversion { Upgrade, Shared };
+
+template <typename Mutex, ExclusiveConversion Conversion>
+void runReaderDrainWaitBitConversionTest() {
+  SharedMutexHookRecorder events;
+  SharedMutexHookRegistration registration(events);
+  Mutex mutex;
+  mutex.lock_shared();
+
+  std::thread writer([&] {
+    mutex.lock();
+    if constexpr (Conversion == ExclusiveConversion::Upgrade) {
+      mutex.unlock_and_lock_upgrade();
+      mutex.unlock_upgrade();
+    } else {
+      mutex.unlock_and_lock_shared();
+      mutex.unlock_shared();
+      mutex.lock_upgrade();
+      mutex.unlock_upgrade();
+    }
+  });
+
+  const bool didWriterPark =
+      events.waitFor(HookEvent::BeforeParkReadersToDrain);
+  mutex.unlock_shared();
+  writer.join();
+
+  ASSERT_TRUE(didWriterPark);
+}
 
 } // namespace
 
@@ -294,6 +633,111 @@ TEST(SharedMutex, lifecycleHooksStressConcurrentSharedRelease) {
   ASSERT_EQ(kReaders, events.count(HookEvent::AfterReleaseShared));
   ASSERT_EQ(1, events.count(HookEvent::BeforeDestroy));
   ASSERT_TRUE(events.completedWithoutTimeout());
+}
+
+TEST(SharedMutex, selfDestructionAfterExclusiveRelease) {
+  {
+    SCOPED_TRACE("write priority");
+    runSelfDestructionAfterReleaseTest<
+        HookedSharedMutex,
+        LifetimeReleaseMode::Exclusive>();
+  }
+  {
+    SCOPED_TRACE("reader priority");
+    runSelfDestructionAfterReleaseTest<
+        HookedSharedMutexReadPriority,
+        LifetimeReleaseMode::Exclusive>();
+  }
+}
+
+TEST(SharedMutex, selfDestructionAfterLastSharedRelease) {
+  {
+    SCOPED_TRACE("write priority");
+    runSelfDestructionAfterReleaseTest<
+        HookedSharedMutex,
+        LifetimeReleaseMode::Shared>();
+  }
+  {
+    SCOPED_TRACE("reader priority");
+    runSelfDestructionAfterReleaseTest<
+        HookedSharedMutexReadPriority,
+        LifetimeReleaseMode::Shared>();
+  }
+}
+
+TEST(SharedMutex, selfDestructionAfterUpgradeRelease) {
+  {
+    SCOPED_TRACE("write priority");
+    runSelfDestructionAfterReleaseTest<
+        HookedSharedMutex,
+        LifetimeReleaseMode::Upgrade>();
+  }
+  {
+    SCOPED_TRACE("reader priority");
+    runSelfDestructionAfterReleaseTest<
+        HookedSharedMutexReadPriority,
+        LifetimeReleaseMode::Upgrade>();
+  }
+}
+
+TEST(SharedMutex, saturatedExclusiveWaitersAfterExclusiveRelease) {
+  {
+    SCOPED_TRACE("write priority");
+    runSaturatedExclusiveWaitersTest<
+        HookedSharedMutex,
+        LifetimeReleaseMode::Exclusive>();
+  }
+  {
+    SCOPED_TRACE("reader priority");
+    runSaturatedExclusiveWaitersTest<
+        HookedSharedMutexReadPriority,
+        LifetimeReleaseMode::Exclusive>();
+  }
+}
+
+TEST(SharedMutex, saturatedExclusiveWaitersAfterUpgradeRelease) {
+  {
+    SCOPED_TRACE("write priority");
+    runSaturatedExclusiveWaitersTest<
+        HookedSharedMutex,
+        LifetimeReleaseMode::Upgrade>();
+  }
+  {
+    SCOPED_TRACE("reader priority");
+    runSaturatedExclusiveWaitersTest<
+        HookedSharedMutexReadPriority,
+        LifetimeReleaseMode::Upgrade>();
+  }
+}
+
+TEST(SharedMutex, selfDestructionDuringSaturatedRelease) {
+  {
+    SCOPED_TRACE("write priority");
+    runSelfDestructionDuringSaturatedReleaseTest<HookedSharedMutex>();
+  }
+  {
+    SCOPED_TRACE("reader priority");
+    runSelfDestructionDuringSaturatedReleaseTest<
+        HookedSharedMutexReadPriority>();
+  }
+}
+
+TEST(SharedMutex, readerDrainWaitBitClearedByExclusiveToUpgradeConversion) {
+  runReaderDrainWaitBitConversionTest<
+      HookedSharedMutex,
+      ExclusiveConversion::Upgrade>();
+  runReaderDrainWaitBitConversionTest<
+      HookedSharedMutexReadPriority,
+      ExclusiveConversion::Upgrade>();
+}
+
+TEST(SharedMutex, readerDrainWaitBitClearedByExclusiveToSharedConversion) {
+  runReaderDrainWaitBitConversionTest<
+      HookedSharedMutex,
+      ExclusiveConversion::Shared>();
+  runReaderDrainWaitBitConversionTest<
+      HookedSharedMutexReadPriority,
+      ExclusiveConversion::Shared>();
 }
 
 template <typename Lock>
@@ -1882,6 +2326,53 @@ TEST(SharedMutex, sharedLockLockAlreadyHeld) {
   EXPECT_THROW(lock.lock(), std::system_error);
 }
 
+static void upgrade_lock_unlock_with_readers(size_t iters, size_t numReaders) {
+  SharedMutex mutex;
+  std::atomic<bool> go{false};
+  std::atomic<bool> stop{false};
+  std::atomic<size_t> ready{0};
+  std::atomic<size_t> started{0};
+  std::vector<std::thread> readers;
+
+  BENCHMARK_SUSPEND {
+    readers.reserve(numReaders);
+    for (size_t i = 0; i < numReaders; ++i) {
+      readers.emplace_back([&] {
+        ++ready;
+        while (!go.load(std::memory_order_acquire)) {
+          std::this_thread::yield();
+        }
+        mutex.lock_shared();
+        mutex.unlock_shared();
+        ++started;
+        while (!stop.load(std::memory_order_acquire)) {
+          mutex.lock_shared();
+          mutex.unlock_shared();
+        }
+      });
+    }
+    while (ready.load(std::memory_order_acquire) != numReaders) {
+      std::this_thread::yield();
+    }
+    go.store(true, std::memory_order_release);
+    while (started.load(std::memory_order_acquire) != numReaders) {
+      std::this_thread::yield();
+    }
+  }
+
+  for (size_t i = 0; i < iters; ++i) {
+    mutex.lock_upgrade();
+    mutex.unlock_upgrade();
+  }
+
+  BENCHMARK_SUSPEND {
+    stop.store(true, std::memory_order_release);
+    for (auto& reader : readers) {
+      reader.join();
+    }
+  }
+}
+
 // This is here so you can tell how much of the runtime reported by the
 // more complex harnesses is due to the harness, although due to the
 // magic of compiler optimization it may also be slower
@@ -1903,6 +2394,10 @@ BENCHMARK(single_thread_lock_unlock, iters) {
     lock.unlock();
   }
 }
+
+BENCHMARK_DRAW_LINE();
+BENCHMARK_NAMED_PARAM(upgrade_lock_unlock_with_readers, 1reader, 1)
+BENCHMARK_NAMED_PARAM(upgrade_lock_unlock_with_readers, 4readers, 4)
 
 #define BENCH_BASE(...) FB_VA_GLUE(BENCHMARK_NAMED_PARAM, (__VA_ARGS__))
 #define BENCH_REL(...) FB_VA_GLUE(BENCHMARK_RELATIVE_NAMED_PARAM, (__VA_ARGS__))

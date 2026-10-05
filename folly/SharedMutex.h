@@ -36,6 +36,7 @@
 #include <folly/detail/Futex.h>
 #include <folly/lang/Assume.h>
 #include <folly/portability/Asm.h>
+#include <folly/synchronization/AtomicTraits.h>
 #include <folly/synchronization/Lock.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 #include <folly/synchronization/SanitizeThread.h>
@@ -381,15 +382,21 @@ class SharedMutexImpl
 
   // It is an error to destroy an SharedMutex that still has
   // any outstanding locks.  This is checked if NDEBUG isn't defined.
-  // SharedMutex's exclusive mode can be safely used to guard the lock's
-  // own destruction.  If, for example, you acquire the lock in exclusive
-  // mode and then observe that the object containing the lock is no longer
-  // needed, you can unlock() and then immediately destroy the lock.
+  // SharedMutex's exclusive mode can be safely used to guard the lock's own
+  // destruction.  If, for example, one thread releases the last ownership
+  // needed by a waiting exclusive lock, the new exclusive owner may unlock()
+  // and immediately destroy the lock, even before the earlier release call
+  // returns.  A release path either makes that state transition its last
+  // access to mutex storage, or marks its remaining wake work in state_ so a
+  // destructor waits for that work before reclaiming the storage.
   // See https://sourceware.org/bugzilla/show_bug.cgi?id=13690 for a
   // description about why this property needs to be explicitly mentioned.
   ~SharedMutexImpl() {
     invokeHook(HookEvent::BeforeDestroy);
-    auto state = state_.load(std::memory_order_relaxed);
+    auto state = state_.load(std::memory_order_acquire);
+    if (FOLLY_UNLIKELY((state & kReleaseInProgress) != 0)) {
+      state = waitForPendingRelease(state);
+    }
     if (FOLLY_UNLIKELY((state & kHasS) != 0)) {
       cleanupTokenlessSharedDeferred(state);
     }
@@ -402,6 +409,7 @@ class SharedMutexImpl
       // if a futexWait fails to go to sleep because the value has been
       // changed, we don't necessarily clean up the wait bits, so it is
       // possible they will be set here in a correct system
+      assert((state & (kWaitingNotS | kHasE | kBegunE)) != kWaitingNotS);
       assert((state & ~(kWaitingAny | kMayDefer | kAnnotationCreated)) == 0);
       if ((state & kMayDefer) != 0) {
         const uint32_t maxDeferredReaders =
@@ -427,14 +435,15 @@ class SharedMutexImpl
     // without affecting the wakeup.  kBegunE is also okay for a similar
     // reason.
     auto state = state_.load(std::memory_order_relaxed);
-    return (state & (kHasS | kMayDefer | kHasE | kHasU)) == 0;
+    return (state & (kHasS | kMayDefer | kHasE | kHasU | kReleaseInProgress)) ==
+        0;
   }
 
   // Checks if an upgrade lock could succeed so that lock elision could be
   // enabled.
   bool eligible_for_lock_upgrade_elision() const {
     auto state = state_.load(std::memory_order_relaxed);
-    return (state & (kHasE | kHasU)) == 0;
+    return (state & (kHasE | kHasU | kReleaseInProgress)) == 0;
   }
 
   // Checks if a shared lock could succeed so that lock elision could be
@@ -442,7 +451,7 @@ class SharedMutexImpl
   bool eligible_for_lock_shared_elision() const {
     // No need to honor kBegunE because a transaction doesn't block anybody
     auto state = state_.load(std::memory_order_relaxed);
-    return (state & kHasE) == 0;
+    return (state & (kHasE | kReleaseInProgress)) == 0;
   }
 
   void lock() {
@@ -482,22 +491,7 @@ class SharedMutexImpl
   void unlock() {
     annotateReleased(annotate_rwlock_level::wrlock);
     OwnershipTrackerBase::endThreadOwnership();
-    // Keep this as one result-returning RMW.  Replacing it with a
-    // result-discarding bit-clear (C++26 atomic::store_and) plus a separate
-    // load emits a single lock-and rather than a cmpxchg retry loop, but
-    // breaks two things: the reload may observe a later lock generation, so
-    // the waiter bits it reports no longer describe the waiters this release
-    // owes a wakeup to; and when the RMW result shows no waiters, unlock must
-    // not read state_ again at all, because the release may already have let
-    // another thread destroy this mutex (see the destructor contract above).
-    //
-    // It is possible that we have a left-over kWaitingNotS if the last
-    // unlock_shared() that let our matching lock() complete finished
-    // releasing before lock()'s futexWait went to sleep.  Clean it up now
-    auto state = (state_ &= ~(kWaitingNotS | kPrevDefer | kHasE));
-    assert((state & ~(kWaitingAny | kAnnotationCreated)) == 0);
-    invokeHook(HookEvent::AfterReleaseExclusive);
-    wakeRegisteredWaiters(state, kWaitingE | kWaitingU | kWaitingS);
+    unlockExclusiveImpl();
   }
 
   // Managing the token yourself makes unlock_shared a bit faster. If the
@@ -647,10 +641,11 @@ class SharedMutexImpl
     // doesn't block the beginning of a transition to E (writer priority
     // can cut off new S, reader priority grabs BegunE and blocks deferred
     // S) we need to wake E as well.
+    [[maybe_unused]] constexpr uint32_t kAssertMask =
+        kWaitingAny | kPrevDefer | kAnnotationCreated | kReleaseInProgress;
     auto state = state_.load(std::memory_order_acquire);
     do {
-      assert(
-          (state & ~(kWaitingAny | kPrevDefer | kAnnotationCreated)) == kHasE);
+      assert((state & ~kAssertMask) == kHasE);
     } while (!state_.compare_exchange_strong(
         state, (state & ~(kWaitingAny | kPrevDefer | kHasE)) + kIncrHasS));
     if ((state & (kWaitingE | kWaitingU | kWaitingS)) != 0) {
@@ -702,10 +697,7 @@ class SharedMutexImpl
   void unlock_upgrade() {
     annotateReleased(annotate_rwlock_level::rdlock);
     OwnershipTrackerBase::endThreadOwnership();
-    auto state = (state_ -= kHasU);
-    assert((state & (kWaitingNotS | kHasSolo)) == 0);
-    invokeHook(HookEvent::AfterReleaseUpgrade);
-    wakeRegisteredWaiters(state, kWaitingE | kWaitingU);
+    unlockUpgradeImpl();
   }
 
   void unlock_upgrade_and_lock() {
@@ -736,10 +728,11 @@ class SharedMutexImpl
     // We can't use state_ -=, because we need to clear 2 bits (1 of
     // which has an uncertain initial state) and set 1 other.  We might
     // as well clear the relevant wake bits at the same time.
+    [[maybe_unused]] constexpr uint32_t kAssertMask =
+        kWaitingAny | kPrevDefer | kAnnotationCreated | kReleaseInProgress;
     auto state = state_.load(std::memory_order_acquire);
     while (true) {
-      assert(
-          (state & ~(kWaitingAny | kPrevDefer | kAnnotationCreated)) == kHasE);
+      assert((state & ~kAssertMask) == kHasE);
       auto after =
           (state & ~(kWaitingNotS | kWaitingS | kPrevDefer | kHasE)) + kHasU;
       if (state_.compare_exchange_strong(state, after)) {
@@ -795,6 +788,170 @@ class SharedMutexImpl
   FOLLY_ALWAYS_INLINE static void invokeBeforeParkHook(uint32_t waitMask) {
     if constexpr (has_hook) {
       invokeHook(hookEventForWaitMask(waitMask));
+    }
+  }
+
+  static void wakeDetachedWaiters(const Futex* futex, uint32_t wakeMask) {
+    if (wakeMask != 0) {
+      // The releasing RMW is the last access to mutex storage.  futexWake()
+      // uses this previously captured address only as a kernel/parking-lot key
+      // and is explicitly safe if the mutex has since been destroyed or
+      // reused.  Waiters always validate state after waking.
+      detail::futexWake(futex, std::numeric_limits<int>::max(), wakeMask);
+    }
+  }
+
+  FOLLY_NOINLINE uint32_t waitForPendingRelease(uint32_t state) {
+    // There is deliberately no timeout: reclaiming the storage while the
+    // earlier release may still access it cannot be made safe by giving up.
+    // In production the marked tail contains only futexWake() and one final
+    // RMW, with no user code.  This has the same scheduler-progress
+    // requirement as waiting for a thread that still owns a mutex.
+    const auto start = hardware_timestamp();
+    while ((state & kReleaseInProgress) != 0) {
+      const auto elapsed = hardware_timestamp() - start;
+      if (elapsed < kMaxSpinCycles) {
+        asm_volatile_pause();
+      } else {
+        std::this_thread::yield();
+      }
+      state = state_.load(std::memory_order_acquire);
+    }
+    return state;
+  }
+
+  void finishWakeOne(const Futex* futex) {
+    auto woken = detail::futexWake(futex, 1, kWaitingE);
+    if (woken != 0) {
+      state_.fetch_and(~kReleaseInProgress, std::memory_order_release);
+      return;
+    }
+    // Zero means that no matching waiter was queued at the instant of the
+    // wake, not that no logical waiter exists.  Clear the registration bits,
+    // then wake-all: a waiter racing into futexWait either observes the state
+    // change and never sleeps, or is covered by the wake-all.  Native,
+    // emulated/ParkingLot, and deterministic futex backends all report the
+    // number of wait nodes actually removed from their wait set.
+    auto previous = state_.fetch_and(
+        ~(kReleaseInProgress | kWaitingE), std::memory_order_release);
+    wakeDetachedWaiters(futex, previous & kWaitingE);
+  }
+
+  void unlockExclusiveImpl() {
+    constexpr uint32_t kWakeMask = kWaitingE | kWaitingU | kWaitingS;
+    constexpr uint32_t kClearMask =
+        kWaitingNotS | kPrevDefer | kHasE | kWakeMask;
+    [[maybe_unused]] constexpr uint32_t kAssertMask =
+        kWaitingAny | kPrevDefer | kAnnotationCreated | kReleaseInProgress;
+    auto state = state_.load(std::memory_order_relaxed);
+    assert((state & ~kAssertMask) == kHasE);
+
+    const auto after = state & ~kClearMask;
+    if (FOLLY_LIKELY((state & (kWakeMask | kReleaseInProgress)) == 0) &&
+        state_.compare_exchange_strong(
+            state, after, std::memory_order_release)) {
+      invokeHook(HookEvent::AfterReleaseExclusive);
+      return;
+    }
+    unlockExclusiveSlow(state);
+  }
+
+  FOLLY_NOINLINE void unlockExclusiveSlow(uint32_t state) {
+    constexpr uint32_t kWakeMask = kWaitingE | kWaitingU | kWaitingS;
+    constexpr uint32_t kClearMask =
+        kWaitingNotS | kPrevDefer | kHasE | kWakeMask;
+    [[maybe_unused]] constexpr uint32_t kAssertMask =
+        kWaitingAny | kPrevDefer | kAnnotationCreated | kReleaseInProgress;
+    auto* const futex = &state_;
+
+    while (true) {
+      assert((state & ~kAssertMask) == kHasE);
+
+      // Preserve the wake-one chain for saturated exclusive contention.  The
+      // release-in-progress bit lets a successor acquire and release
+      // immediately; a destructor waits until our waiter cleanup is finished.
+      if ((state & (kWakeMask | kReleaseInProgress)) == kWaitingE) {
+        auto after =
+            (state & ~(kWaitingNotS | kPrevDefer | kHasE)) | kReleaseInProgress;
+        if (state_.compare_exchange_weak(
+                state, after, std::memory_order_release)) {
+          invokeHook(HookEvent::AfterReleaseExclusive);
+          finishWakeOne(futex);
+          return;
+        }
+        continue;
+      }
+
+      auto after = state & ~kClearMask;
+      if (state_.compare_exchange_weak(
+              state, after, std::memory_order_release)) {
+        auto registered = state & kWakeMask;
+        invokeHook(HookEvent::AfterReleaseExclusive);
+        wakeDetachedWaiters(futex, registered);
+        return;
+      }
+    }
+  }
+
+  void unlockUpgradeImpl() {
+    constexpr uint32_t kWakeMask = kWaitingE | kWaitingU;
+    constexpr uint32_t kClearMask = kHasU | kWakeMask;
+    auto state = state_.load(std::memory_order_relaxed);
+    assert((state & (kWaitingNotS | kHasE | kBegunE)) == 0);
+    assert((state & kHasU) != 0);
+
+    if constexpr (atomic_fetch_bitwise_is_native_v<Futex>) {
+      if (FOLLY_LIKELY((state & (kWakeMask | kReleaseInProgress)) == 0)) {
+        auto* const futex = &state_;
+        // Fast path where value-returning fetch_and is not a CAS loop.
+        auto previous =
+            futex->fetch_and(~kClearMask, std::memory_order_release);
+        assert((previous & (kWaitingNotS | kHasE | kBegunE)) == 0);
+        assert((previous & kHasU) != 0);
+        invokeHook(HookEvent::AfterReleaseUpgrade);
+        wakeDetachedWaiters(futex, previous & kWakeMask);
+        return;
+      }
+    } else {
+      const auto after = state & ~kClearMask;
+      if (FOLLY_LIKELY((state & (kWakeMask | kReleaseInProgress)) == 0) &&
+          state_.compare_exchange_strong(
+              state, after, std::memory_order_release)) {
+        invokeHook(HookEvent::AfterReleaseUpgrade);
+        return;
+      }
+    }
+    unlockUpgradeSlow(state);
+  }
+
+  FOLLY_NOINLINE void unlockUpgradeSlow(uint32_t state) {
+    constexpr uint32_t kWakeMask = kWaitingE | kWaitingU;
+    constexpr uint32_t kClearMask = kHasU | kWakeMask;
+    auto* const futex = &state_;
+
+    while (true) {
+      assert((state & (kWaitingNotS | kHasE | kBegunE)) == 0);
+      assert((state & kHasU) != 0);
+
+      if ((state & (kWakeMask | kReleaseInProgress)) == kWaitingE) {
+        auto after = (state & ~kHasU) | kReleaseInProgress;
+        if (state_.compare_exchange_weak(
+                state, after, std::memory_order_release)) {
+          invokeHook(HookEvent::AfterReleaseUpgrade);
+          finishWakeOne(futex);
+          return;
+        }
+        continue;
+      }
+
+      auto after = state & ~kClearMask;
+      if (state_.compare_exchange_weak(
+              state, after, std::memory_order_release)) {
+        auto registered = state & kWakeMask;
+        invokeHook(HookEvent::AfterReleaseUpgrade);
+        wakeDetachedWaiters(futex, registered);
+        return;
+      }
     }
   }
 
@@ -927,8 +1084,18 @@ class SharedMutexImpl
   // the first unlock_shared() is scanning.  The former case is cleaned
   // up before we finish applying the locks.  The latter case can persist
   // until destruction, when it is cleaned up.
-  static constexpr uint32_t kIncrHasS = 1 << 11;
+  // Twenty high bits remain for the inline reader count, allowing 1,048,575
+  // simultaneous shared holders.  That is well above supported process thread
+  // counts; exceeding it remains an application error as before.
+  static constexpr uint32_t kIncrHasS = 1 << 12;
   static constexpr uint32_t kHasS = ~(kIncrHasS - 1);
+
+  // Set while an unlock() or unlock_upgrade() has published availability but
+  // may still update waiter bits.  A successor may acquire and release while
+  // this is set, but its release uses the wake-all path without touching
+  // state_ afterward.  The destructor waits for the bit to clear, bounding
+  // post-release state_ access to one thread and keeping the storage alive.
+  static constexpr uint32_t kReleaseInProgress = 1 << 11;
 
   // Set if annotation has been completed for this instance.  That annotation
   // (and setting this bit afterward) must be guarded by one of the mutexes in
@@ -1404,7 +1571,7 @@ class SharedMutexImpl
     assert((state & (kHasE | kBegunE)) != 0);
 
     // if state + kIncrHasS overflows (off the end of state) then either
-    // we have 2^(32-9) readers (almost certainly an application bug)
+    // we already have 2^20 - 1 readers (almost certainly an application bug)
     // or we had an underflow (also a bug)
     assert(state < state + kIncrHasS);
   }
@@ -1465,6 +1632,7 @@ class SharedMutexImpl
   }
 
   uint32_t unlockSharedInline() {
+    auto* const futex = &state_;
     uint32_t state = (state_ -= kIncrHasS);
     assert(
         (state & (kHasE | kBegunE | kMayDefer)) != 0 ||
@@ -1472,8 +1640,15 @@ class SharedMutexImpl
     invokeHook(HookEvent::AfterReleaseShared);
     if ((state & kHasS) == 0) {
       // Only the second half of lock() can be blocked by a non-zero
-      // reader count, so that's the only thing we need to wake
-      wakeRegisteredWaiters(state, kWaitingNotS);
+      // reader count, so that's the only thing we need to wake.  Keep the
+      // permitted stale kWaitingNotS bit for the exclusive owner to clear so
+      // the decrement above remains the last access to mutex storage.  The
+      // matching exclusive unlock clears it unconditionally, so it survives
+      // for at most that ownership generation and is not publicly observable.
+      // It cannot reach an upgrade owner: kHasE or kBegunE remains set until
+      // the writer either clears all three bits on timeout or completes as the
+      // exclusive owner.
+      wakeDetachedWaiters(futex, state & kWaitingNotS);
     }
     return state;
   }

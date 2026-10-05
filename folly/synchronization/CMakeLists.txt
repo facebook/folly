@@ -57,6 +57,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME atomic_traits
+  HEADERS AtomicTraits.h
+  EXPORTED_DEPS
+    folly_portability
+    folly_traits
+)
+
+folly_add_library(
   NAME atomic_util
   HEADERS
     AtomicUtil-inl.h
@@ -65,6 +73,7 @@ folly_add_library(
     folly_constexpr_math
     folly_likely
     folly_portability
+    folly_synchronization_atomic_traits
     folly_traits
 )
 
