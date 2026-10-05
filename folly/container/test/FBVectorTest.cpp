@@ -21,6 +21,7 @@
 #include <memory>
 #include <numeric>
 
+#include <ranges>
 #include <folly/FBString.h>
 #include <folly/Random.h>
 #include <folly/Traits.h>
@@ -190,9 +191,9 @@ TEST(FBVector, task858056) {
   cycle.push_back("bar");
   cycle.push_back("baz");
   fbstring message("Cycle detected: ");
-  FOR_EACH_R (node_name, cycle) {
+  for (const auto& node_name : cycle | views::reverse) {
     message += "[";
-    message += *node_name;
+    message += node_name;
     message += "] ";
   }
   EXPECT_EQ("Cycle detected: [baz] [bar] [foo] ", message);

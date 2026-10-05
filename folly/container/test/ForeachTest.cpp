@@ -346,20 +346,6 @@ TEST(ForEach, LargeTuple) {
   EXPECT_EQ(0, s);
 }
 
-TEST(Foreach, ForEachRvalue) {
-  const char* const hello = "hello";
-  int n = 0;
-  FOR_EACH (it, std::string(hello)) {
-    ++n;
-  }
-  EXPECT_EQ(strlen(hello), n);
-  FOR_EACH_R (it, std::string(hello)) {
-    --n;
-    EXPECT_EQ(hello[n], *it);
-  }
-  EXPECT_EQ(0, n);
-}
-
 TEST(Foreach, ForEachNested) {
   const std::string hello = "hello";
   size_t n = 0;

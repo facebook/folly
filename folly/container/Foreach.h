@@ -146,19 +146,6 @@ constexpr decltype(auto) fetch(Sequence&& sequence, Index&& index);
     for (auto&& _FE_ANON(s2_) = (c); !_FE_ANON(s1_); _FE_ANON(s1_) = true) \
       for (auto i = _FE_ANON(s2_).begin(); i != _FE_ANON(s2_).end(); ++i)
 
-/*
- * If you just want the element values, please use this (ranges-v3) construct:
- *
- *    for (auto&& element : collection | views::reverse)
- *
- * If you need access to the iterators please write an explicit iterator loop
- */
-#define FOR_EACH_R(i, c)                                                   \
-  if (bool _FE_ANON(s1_) = false) {                                        \
-  } else                                                                   \
-    for (auto&& _FE_ANON(s2_) = (c); !_FE_ANON(s1_); _FE_ANON(s1_) = true) \
-      for (auto i = _FE_ANON(s2_).rbegin(); i != _FE_ANON(s2_).rend(); ++i)
-
 namespace folly {
 namespace detail {
 
