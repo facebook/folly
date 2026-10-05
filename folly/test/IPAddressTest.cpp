@@ -18,6 +18,8 @@
 #include <sys/types.h>
 #include <folly/IPAddress.h>
 
+#include <cstring>
+#include <random>
 #include <string>
 
 #include <fmt/core.h>
@@ -796,6 +798,58 @@ TEST_P(IPAddressCtorBinaryTest, InvalidBinary) {
   EXPECT_TRUE(IPAddress::tryFromBinary(byteRange).hasError());
   EXPECT_TRUE(IPAddressV4::tryFromBinary(byteRange).hasError());
   EXPECT_TRUE(IPAddressV6::tryFromBinary(byteRange).hasError());
+}
+
+// fastIpv6CompressedToBufferUnsafe, and therefore IPAddressV6::str(), must
+// reproduce inet_ntop(AF_INET6, ...) output byte-for-byte.
+TEST(IPAddressV6, StrMatchesInetNtop) {
+  auto check = [](const in6_addr& addr) {
+    char expected[INET6_ADDRSTRLEN];
+    ASSERT_NE(nullptr, inet_ntop(AF_INET6, &addr, expected, sizeof(expected)));
+    char actual[sizeof("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255")];
+    auto len = detail::fastIpv6CompressedToBufferUnsafe(addr, actual);
+    EXPECT_EQ(string(expected), string(actual, len));
+    EXPECT_EQ(string(expected), IPAddressV6(addr).str());
+  };
+
+  for (const char* str : {
+           "::",
+           "::1",
+           "::1.2.3.4",
+           "::ffff:1.2.3.4",
+           "::ffff:0:0",
+           "1::",
+           "1::2",
+           "0:0:1::1",
+           "1:0:0:1:0:0:0:1", // tie-break: first of two equal-length runs
+           "2001:db8::",
+           "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+       }) {
+    in6_addr addr;
+    ASSERT_EQ(1, inet_pton(AF_INET6, str, &addr)) << str;
+    check(addr);
+  }
+
+  // Sweep every "::X" address; these straddle the IPv4-compatible branch.
+  for (uint32_t i = 0; i <= 0xffff; ++i) {
+    in6_addr addr{};
+    auto word = htons(uint16_t(i));
+    std::memcpy(reinterpret_cast<char*>(&addr) + 14, &word, sizeof(word));
+    check(addr);
+  }
+
+  // Randomized coverage, biased toward zero words so that "::" compression and
+  // its tie-breaking are exercised.
+  std::mt19937_64 rng(0xC0FFEE);
+  for (int i = 0; i < 20000; ++i) {
+    uint16_t words[8];
+    for (auto& word : words) {
+      word = rng() % 3 == 0 ? 0 : uint16_t(rng());
+    }
+    in6_addr addr{};
+    std::memcpy(&addr, words, sizeof(words));
+    check(addr);
+  }
 }
 
 TEST(IPAddressSource, ToHex) {

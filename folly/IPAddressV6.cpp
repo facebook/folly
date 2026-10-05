@@ -454,17 +454,10 @@ IPAddressV6 IPAddressV6::mask(size_t numBits) const {
 string IPAddressV6::str() const {
   char buffer[INET6_ADDRSTRLEN + IFNAMSIZ + 1];
 
-  if (!inet_ntop(AF_INET6, toAddr().s6_addr, buffer, INET6_ADDRSTRLEN)) {
-    throw IPAddressFormatException(
-        fmt::format(
-            "Invalid address with hex '{}' with error {}",
-            detail::Bytes::toHex(bytes(), 16),
-            errnoStr(errno)));
-  }
+  size_t len = detail::fastIpv6CompressedToBufferUnsafe(toAddr(), buffer);
 
   auto scopeId = getScopeId();
   if (scopeId != 0) {
-    auto len = strlen(buffer);
     buffer[len] = '%';
 
     auto errsv = errno;
@@ -474,9 +467,10 @@ string IPAddressV6::str() const {
       snprintf(buffer + len + 1, IFNAMSIZ, "%u", scopeId);
     }
     errno = errsv;
+    return string(buffer);
   }
 
-  return string(buffer);
+  return string(buffer, len);
 }
 
 // public

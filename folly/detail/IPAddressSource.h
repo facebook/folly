@@ -266,6 +266,83 @@ inline size_t fastIpv6ToBufferUnsafe(const in6_addr& in6Addr, char* str) {
   return buf - str;
 }
 
+// Produces the RFC 5952 compressed IPv6 representation, byte-for-byte
+// identical to glibc's inet_ntop(AF_INET6, ...): the longest run of two or
+// more consecutive zero 16-bit words is collapsed to "::", and IPv4-mapped
+// (::ffff:a.b.c.d) and IPv4-compatible (::a.b.c.d) addresses embed the low
+// 32 bits in dotted-decimal form. Does not null-terminate; returns the number
+// of bytes written. The buffer must hold at least
+// sizeof("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255") bytes.
+inline size_t fastIpv6CompressedToBufferUnsafe(
+    const in6_addr& in6Addr, char* str) {
+#ifdef _MSC_VER
+  const uint16_t* raw = reinterpret_cast<const uint16_t*>(&in6Addr.u.Word);
+#else
+  const uint16_t* raw = reinterpret_cast<const uint16_t*>(&in6Addr.s6_addr16);
+#endif
+  uint16_t words[8];
+  for (int i = 0; i < 8; ++i) {
+    words[i] = ntohs(raw[i]);
+  }
+
+  // Find the first longest run of consecutive zero words (length >= 2).
+  int bestBase = -1;
+  int bestLen = 0;
+  int curBase = -1;
+  int curLen = 0;
+  for (int i = 0; i < 8; ++i) {
+    if (words[i] == 0) {
+      if (curBase == -1) {
+        curBase = i;
+        curLen = 1;
+      } else {
+        ++curLen;
+      }
+      if (curLen > bestLen) {
+        bestBase = curBase;
+        bestLen = curLen;
+      }
+    } else {
+      curBase = -1;
+    }
+  }
+  if (bestLen < 2) {
+    bestBase = -1;
+  }
+
+  const uint8_t* octets = reinterpret_cast<const uint8_t*>(&in6Addr);
+  char* buf = str;
+  for (int i = 0; i < 8; ++i) {
+    // Skip the words covered by the collapsed "::" run.
+    if (bestBase != -1 && i >= bestBase && i < bestBase + bestLen) {
+      if (i == bestBase) {
+        *(buf++) = ':';
+      }
+      continue;
+    }
+    if (i != 0) {
+      *(buf++) = ':';
+    }
+    // Embed IPv4 for mapped/compatible addresses. glibc also guards on
+    // bestLen == 7 here, but that case cannot reach this point: it implies
+    // words[0..6] are zero, so the skip above already consumed i == 6.
+    if (i == 6 && bestBase == 0 &&
+        (bestLen == 6 || (bestLen == 5 && words[5] == 0xffff))) {
+      in_addr v4{};
+      std::memcpy(&v4.s_addr, octets + 12, sizeof(v4.s_addr));
+      buf += fastIpV4ToBufferUnsafe(v4, buf);
+      break;
+    }
+    writeIntegerString<uint16_t, 4, 16, false>(words[i], &buf);
+  }
+  // Was it a trailing run of zeros?
+  if (bestBase != -1 && bestBase + bestLen == 8) {
+    *(buf++) = ':';
+  }
+
+  return buf - str;
+}
+
 inline std::string fastIpv6ToString(const in6_addr& in6Addr) {
   char str[sizeof("2001:0db8:0000:0000:0000:ff00:0042:8329")];
   return std::string(str, fastIpv6ToBufferUnsafe(in6Addr, str));
