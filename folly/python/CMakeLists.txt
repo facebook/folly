@@ -59,7 +59,8 @@ set(BindingFiles
     "${CMAKE_CURRENT_SOURCE_DIR}/ProactorExecutor.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/request_context.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/ScopedGILRelease.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/Weak.h")
+    "${CMAKE_CURRENT_SOURCE_DIR}/Weak.h"
+)
 file(MAKE_DIRECTORY "${_cybld}/folly/")
 file(MAKE_DIRECTORY "${_cybld}/folly/python/")
 # Create __init__.py for folly package.
@@ -73,8 +74,13 @@ foreach (_src ${BindingFiles})
   add_custom_command(
     TARGET create_binding_symlink
     PRE_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink "${_src}"
-            "${_cybld}/folly/${_target_file}")
+    COMMAND
+      ${CMAKE_COMMAND}
+      -E
+      create_symlink
+      "${_src}"
+      "${_cybld}/folly/${_target_file}"
+  )
 endforeach ()
 
 # Tell setup.py where to find includes and libfolly.so
@@ -87,24 +93,44 @@ set(libs "-L${CMAKE_CURRENT_BINARY_DIR}:${CMAKE_BINARY_DIR}:${glog_lib}")
 # Generate API headers only (no linking)
 add_custom_command(
   OUTPUT ${_cybld}/folly/iobuf_api.h
-  COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py --api-only
+  COMMAND
+    python3
+    ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
+    --api-only
   DEPENDS create_binding_symlink
-  WORKING_DIRECTORY ${_cybld})
+  WORKING_DIRECTORY ${_cybld}
+)
 
-add_custom_target(folly_python_api_headers ALL
-                  DEPENDS ${_cybld}/folly/iobuf_api.h)
+add_custom_target(
+  folly_python_api_headers
+  ALL
+  DEPENDS ${_cybld}/folly/iobuf_api.h
+)
 
 add_custom_command(
   OUTPUT ${_cybld}/folly/python/iobuf_api.h
-  COMMAND ${CMAKE_COMMAND} -E create_symlink "${_cybld}/folly/iobuf_api.h"
-          "${_cybld}/folly/python/iobuf_api.h"
-  DEPENDS ${_cybld}/folly/iobuf_api.h)
+  COMMAND
+    ${CMAKE_COMMAND}
+    -E
+    create_symlink
+    "${_cybld}/folly/iobuf_api.h"
+    "${_cybld}/folly/python/iobuf_api.h"
+  DEPENDS ${_cybld}/folly/iobuf_api.h
+)
 
-add_custom_target(create_post_binding_symlink ALL
-                  DEPENDS ${_cybld}/folly/python/iobuf_api.h)
+add_custom_target(
+  create_post_binding_symlink
+  ALL
+  DEPENDS ${_cybld}/folly/python/iobuf_api.h
+)
 
-add_library(folly_python_cpp AsyncioExecutor.cpp error.cpp executor.cpp
-                             iobuf.cpp)
+add_library(
+  folly_python_cpp
+  AsyncioExecutor.cpp
+  error.cpp
+  executor.cpp
+  iobuf.cpp
+)
 
 target_include_directories(folly_python_cpp PRIVATE ${Python3_INCLUDE_DIRS})
 target_link_libraries(folly_python_cpp PRIVATE Python3::Python)
@@ -117,45 +143,67 @@ apply_folly_compile_options_to_target(folly_python_cpp)
 
 # Build Python extensions after C++ library is ready
 add_custom_target(
-  folly_python_bindings ALL
-  DEPENDS folly_python_cpp folly_python_api_headers
-  WORKING_DIRECTORY ${_cybld})
+  folly_python_bindings
+  ALL
+  DEPENDS
+    folly_python_cpp
+    folly_python_api_headers
+  WORKING_DIRECTORY ${_cybld}
+)
 
 add_custom_command(
   TARGET folly_python_bindings
   POST_BUILD
   COMMAND
-    ${CMAKE_COMMAND} -E env "CFLAGS=${CMAKE_C_FLAGS}"
-    "CXXFLAGS=${CMAKE_CXX_FLAGS}" "CC=${CMAKE_C_COMPILER}"
-    "CXX=${CMAKE_CXX_COMPILER}" python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
-    build_ext -f ${incs} ${libs}
-  WORKING_DIRECTORY ${_cybld})
+    ${CMAKE_COMMAND}
+    -E
+    env
+    "CFLAGS=${CMAKE_C_FLAGS}"
+    "CXXFLAGS=${CMAKE_CXX_FLAGS}"
+    "CC=${CMAKE_C_COMPILER}"
+    "CXX=${CMAKE_CXX_COMPILER}"
+    python3
+    ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
+    build_ext
+    -f
+    ${incs}
+    ${libs}
+  WORKING_DIRECTORY ${_cybld}
+)
 
-install(
-  TARGETS folly_python_cpp
-  EXPORT folly
-  DESTINATION ${LIB_INSTALL_DIR})
+install(TARGETS folly_python_cpp EXPORT folly DESTINATION ${LIB_INSTALL_DIR})
 
 # Install .pxd files for downstream Cython code that imports folly
 install(
-  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
+  DIRECTORY
+  ${CMAKE_CURRENT_SOURCE_DIR}/
   DESTINATION ${INCLUDE_INSTALL_DIR}/folly/
   FILES_MATCHING
-  PATTERN "*.pxd")
+  PATTERN "*.pxd"
+)
 
 add_custom_command(
   TARGET folly_python_bindings
   COMMAND
-    ${CMAKE_COMMAND} -E env "CFLAGS=${CMAKE_C_FLAGS}"
-    "CXXFLAGS=${CMAKE_CXX_FLAGS}" "CC=${CMAKE_C_COMPILER}"
-    "CXX=${CMAKE_CXX_COMPILER}" python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
+    ${CMAKE_COMMAND}
+    -E
+    env
+    "CFLAGS=${CMAKE_C_FLAGS}"
+    "CXXFLAGS=${CMAKE_CXX_FLAGS}"
+    "CC=${CMAKE_C_COMPILER}"
+    "CXX=${CMAKE_CXX_COMPILER}"
+    python3
+    ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
     bdist_wheel
-  WORKING_DIRECTORY ${_cybld})
+  WORKING_DIRECTORY ${_cybld}
+)
 
 install(
-  FILES ${_cybld}/folly/iobuf_api.h
+  FILES
+  ${_cybld}/folly/iobuf_api.h
   DESTINATION ${INCLUDE_INSTALL_DIR}/folly/python
-  COMPONENT dev)
+  COMPONENT dev
+)
 
 # Install Folly Python bindings
 set(INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
@@ -164,7 +212,8 @@ if (NOT "${PYTHON_PACKAGE_INSTALL_DIR}" STREQUAL "")
 endif ()
 
 install(
-  CODE "
+  CODE
+  "
   file(GLOB _folly_wheel \"${_cybld}/dist/folly-*.whl\")
   if(_folly_wheel)
     execute_process(
@@ -177,4 +226,5 @@ install(
   else()
     message(FATAL_ERROR \"No folly wheel found in ${_cybld}/dist/\")
   endif()
-")
+"
+)

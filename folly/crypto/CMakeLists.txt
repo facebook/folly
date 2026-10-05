@@ -17,84 +17,84 @@
 # crypto targets require libsodium
 if (LIBSODIUM_FOUND)
 
-folly_add_library(
-  NAME blake2xb
-  SRCS Blake2xb.cpp
-  HEADERS Blake2xb.h
-  DEPS folly_lang_bits
-  EXPORTED_DEPS
-    ${LIBSODIUM_LIBRARIES}
-    folly_range
-)
+  folly_add_library(
+    NAME blake2xb
+    SRCS Blake2xb.cpp
+    HEADERS Blake2xb.h
+    DEPS folly_lang_bits
+    EXPORTED_DEPS
+      ${LIBSODIUM_LIBRARIES}
+      folly_range
+  )
 
-folly_add_library(
-  NAME lt_hash
-  SRCS LtHash.cpp
-  HEADERS
-    LtHash-inl.h
-    LtHash.h
-  DEPS
-    folly_cpu_id
-    folly_memory
-  EXPORTED_DEPS
-    ${LIBSODIUM_LIBRARIES}
-    folly_crypto_blake2xb
-    folly_crypto_detail_lt_hash_internal
-    folly_crypto_detail_math_operation_avx2_disable
-    folly_crypto_detail_math_operation_simple
-    folly_crypto_detail_math_operation_sse2_disable
-    folly_io_iobuf
-    folly_lang_bits
-    folly_optional
-    folly_range
-)
+  folly_add_library(
+    NAME lt_hash
+    SRCS LtHash.cpp
+    HEADERS
+      LtHash-inl.h
+      LtHash.h
+    DEPS
+      folly_cpu_id
+      folly_memory
+    EXPORTED_DEPS
+      ${LIBSODIUM_LIBRARIES}
+      folly_crypto_blake2xb
+      folly_crypto_detail_lt_hash_internal
+      folly_crypto_detail_math_operation_avx2_disable
+      folly_crypto_detail_math_operation_simple
+      folly_crypto_detail_math_operation_sse2_disable
+      folly_io_iobuf
+      folly_lang_bits
+      folly_optional
+      folly_range
+  )
 
-folly_add_library(
-  NAME lt_hash_avx2
-  EXCLUDE_FROM_MONOLITH
-  SRCS LtHash.cpp
-  HEADERS
-    LtHash-inl.h
-    LtHash.h
-  DEPS
-    folly_cpu_id
-    folly_memory
-  EXPORTED_DEPS
-    ${LIBSODIUM_LIBRARIES}
-    folly_crypto_blake2xb
-    folly_crypto_detail_lt_hash_internal
-    folly_crypto_detail_math_operation_avx2
-    folly_crypto_detail_math_operation_simple
-    folly_crypto_detail_math_operation_sse2
-    folly_io_iobuf
-    folly_lang_bits
-    folly_optional
-    folly_range
-)
+  folly_add_library(
+    NAME lt_hash_avx2
+    EXCLUDE_FROM_MONOLITH
+    SRCS LtHash.cpp
+    HEADERS
+      LtHash-inl.h
+      LtHash.h
+    DEPS
+      folly_cpu_id
+      folly_memory
+    EXPORTED_DEPS
+      ${LIBSODIUM_LIBRARIES}
+      folly_crypto_blake2xb
+      folly_crypto_detail_lt_hash_internal
+      folly_crypto_detail_math_operation_avx2
+      folly_crypto_detail_math_operation_simple
+      folly_crypto_detail_math_operation_sse2
+      folly_io_iobuf
+      folly_lang_bits
+      folly_optional
+      folly_range
+  )
 
-folly_add_library(
-  NAME lt_hash_sse2
-  EXCLUDE_FROM_MONOLITH
-  SRCS LtHash.cpp
-  HEADERS
-    LtHash-inl.h
-    LtHash.h
-  DEPS
-    folly_cpu_id
-    folly_memory
-  EXPORTED_DEPS
-    ${LIBSODIUM_LIBRARIES}
-    folly_crypto_blake2xb
-    folly_crypto_detail_lt_hash_internal
-    folly_crypto_detail_math_operation_avx2_disable
-    folly_crypto_detail_math_operation_simple
-    folly_crypto_detail_math_operation_sse2
-    folly_io_iobuf
-    folly_lang_bits
-    folly_optional
-    folly_range
-)
+  folly_add_library(
+    NAME lt_hash_sse2
+    EXCLUDE_FROM_MONOLITH
+    SRCS LtHash.cpp
+    HEADERS
+      LtHash-inl.h
+      LtHash.h
+    DEPS
+      folly_cpu_id
+      folly_memory
+    EXPORTED_DEPS
+      ${LIBSODIUM_LIBRARIES}
+      folly_crypto_blake2xb
+      folly_crypto_detail_lt_hash_internal
+      folly_crypto_detail_math_operation_avx2_disable
+      folly_crypto_detail_math_operation_simple
+      folly_crypto_detail_math_operation_sse2
+      folly_io_iobuf
+      folly_lang_bits
+      folly_optional
+      folly_range
+  )
 
-add_subdirectory(detail)
+  add_subdirectory(detail)
 
 endif () # LIBSODIUM_FOUND

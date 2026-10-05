@@ -24,7 +24,13 @@ folly_add_library(
     folly_portability_windows
   EXPORTED_DEPS Boost::filesystem
 )
-set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::filesystem)
+set_property(
+  GLOBAL
+  APPEND
+  PROPERTY
+    FOLLY_MONOLITHIC_EXTERNAL_DEPS
+    Boost::filesystem
+)
 
 folly_add_library(
   NAME global_shutdown_socket_set

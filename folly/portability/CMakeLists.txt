@@ -190,10 +190,17 @@ if (WIN32)
   # rejects it.
   folly_localize_deps(folly_boost_thread Boost::thread)
   target_link_libraries(
-    folly_portability_pthread_obj PUBLIC ${folly_boost_thread}
+    folly_portability_pthread_obj
+    PUBLIC ${folly_boost_thread}
   )
   target_link_libraries(folly_portability_pthread PUBLIC ${folly_boost_thread})
-  set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::thread)
+  set_property(
+    GLOBAL
+    APPEND
+    PROPERTY
+      FOLLY_MONOLITHIC_EXTERNAL_DEPS
+      Boost::thread
+  )
 endif ()
 
 folly_add_library(

@@ -20,7 +20,11 @@ folly_add_library(
 
 set(FOLLY_PORTABILITY_PROVIDE_LIBUNWIND_SELECT_DEPS)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  list(APPEND FOLLY_PORTABILITY_PROVIDE_LIBUNWIND_SELECT_DEPS folly_portability_provide_libunwind-linux)
+  list(
+    APPEND
+    FOLLY_PORTABILITY_PROVIDE_LIBUNWIND_SELECT_DEPS
+    folly_portability_provide_libunwind-linux
+  )
 endif ()
 
 folly_add_library(

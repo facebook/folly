@@ -61,7 +61,13 @@ folly_add_library(
     Boost::context
     folly_function
 )
-set_property(GLOBAL APPEND PROPERTY FOLLY_MONOLITHIC_EXTERNAL_DEPS Boost::context)
+set_property(
+  GLOBAL
+  APPEND
+  PROPERTY
+    FOLLY_MONOLITHIC_EXTERNAL_DEPS
+    Boost::context
+)
 
 folly_add_library(
   NAME core
