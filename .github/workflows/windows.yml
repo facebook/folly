@@ -68,8 +68,12 @@ jobs:
         -DCMAKE_POLICY_DEFAULT_CMP0141=NEW
         -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded
 
+    # A bare -j leaves it to Ninja, which runs cores + 2 jobs. On this 4-vCPU,
+    # 16 GB runner that is 6 MSVC processes, some taking 1-2 GB on folly's
+    # template-heavy files, and a cold cache can exhaust memory and lose the
+    # runner.
     - name: Build
-      run: cmake --build _build -j
+      run: cmake --build _build -j 4
 
     - name: Test
       run: ctest --test-dir _build --output-on-failure
