@@ -19,56 +19,25 @@
 #include <chrono>
 #include <memory>
 
-#include <folly/Function.h>
-#include <folly/Range.h>
-#include <folly/Synchronized.h>
+#include <folly/small_vector.h>
 
 namespace folly::detail {
 
 /**
- * EventBasePoller centralizes the blocking wait for events across multiple
- * EventBases in a process. The singleton calls the provided ReadyCallback on
- * ready EventBases, so they can be driven without blocking. This enables
- * control over which threads drive the EventBases, as opposed to the standard
- * blocking loop that requires one thread per EventBase.
+ * EventBasePoller multiplexes the pollable fds of multiple EventBases, so that
+ * a pool of threads can drive them without one thread per EventBase.
  *
- * EventBases' pollable fds are registered in groups, so that the callback can
- * batch processing of ready EventBases that belong to the same group.
+ * wait() blocks until some fds are ready and returns their handles. A ready
+ * EventBase can be driven until it would block; then handoff() must be called
+ * to resume polling it.
  *
- * When the EventBase is ready it can be driven until it would block again, and
- * then handoff() must be called to resume polling the fd. Neither the driving
- * of the EventBase or the call to handoff() should happen inline in the
- * callback, but delegated to another thread without blocking; the callback must
- * return control quickly, as it executes in the main polling loop and can slow
- * down the handling of all other registered EventBases.
- *
- * Note that none of the implementation is specific to EventBases, in fact this
- * is a lightweight implementation of an event loop specialized on polling read
- * events, and which supports grouping of the fds for batch-handling. The class
- * could be easily generalized if other applications arise.
+ * At most one thread can be in wait() at any time; consecutive calls may come
+ * from different threads if ordered by happens-before. Other methods are
+ * thread-safe. With io_uring, a thread that has called wait() must not exit
+ * while handles are registered, as its in-flight polls would be cancelled.
  */
 class EventBasePoller {
  public:
-  struct Stats {
-    using Duration = std::chrono::steady_clock::duration;
-
-    // Track number of loop wake-ups and number of events returned.
-    int minNumEvents{std::numeric_limits<int>::max()};
-    int maxNumEvents{std::numeric_limits<int>::min()};
-    size_t totalNumEvents{0};
-    size_t totalWakeups{0};
-
-    Duration totalWait{0};
-    Duration minWait{Duration::max()};
-    Duration maxWait{Duration::min()};
-
-    Duration totalBusy{0};
-    Duration minBusy{Duration::max()};
-    Duration maxBusy{Duration::min()};
-
-    void update(int numEvents, Duration wait, Duration busy);
-  };
-
   class Handle {
    public:
     virtual ~Handle();
@@ -78,42 +47,48 @@ class EventBasePoller {
       return reinterpret_cast<T*>(userData_);
     }
 
-    // If done is set to true, the handle is not re-armed and can be reclaimed
-    // with reclaim().
+    // Re-arms the fd for polling (done=false) or marks the handle as finished
+    // so it can be reclaimed (done=true).
     virtual void handoff(bool done) = 0;
 
    protected:
-    friend class EventBasePoller;
-
     explicit Handle(void* userData) : userData_(userData) {}
 
     void* userData_;
   };
 
-  // FdGroup method invocations must be serialized.
-  class FdGroup {
-   public:
-    virtual ~FdGroup();
+  // epoll with inline rearm is the simplest configuration and the preferred
+  // one; the other backends and modes exist for experimentation.
+  struct Options {
+    enum class Backend { kEpoll, kIoUring };
 
-    // All added handles must be reclaimed before the group is destroyed.
-    virtual std::unique_ptr<Handle> add(int fd, void* userData) = 0;
-    // Blocks until handoff(true) is called on the handle.
-    virtual void reclaim(std::unique_ptr<Handle> handle) = 0;
+    // Must be user-provided for create()'s default argument to compile.
+    Options() {}
+
+    Backend backend{Backend::kEpoll};
+    bool epollRearmInline{true};
+    std::chrono::microseconds spinTimeout{10};
+    std::chrono::microseconds sleepBeforeBlock{0};
+    size_t epollMaxEvents{64};
+    size_t ioUringSqEntries{128};
   };
 
-  using ReadyCallback =
-      Function<void(Range<Handle**> readyHandles) const noexcept>;
-
-  static EventBasePoller& get();
+  static std::unique_ptr<EventBasePoller> create(Options options = {});
 
   virtual ~EventBasePoller();
 
-  virtual std::unique_ptr<FdGroup> makeFdGroup(ReadyCallback readyCallback) = 0;
+  virtual std::unique_ptr<Handle> add(int fd, void* userData) = 0;
 
-  Stats getStats() { return stats_.copy(); }
+  // Blocks until handoff(true) is called on the handle.
+  virtual void reclaim(std::unique_ptr<Handle> handle) = 0;
 
- protected:
-  folly::Synchronized<Stats> stats_;
+  // Blocks until at least one handle is ready. Returns ready handles.
+  // Returns empty only after shutdown().
+  virtual small_vector<Handle*, 4> wait() = 0;
+
+  // Makes a blocking wait() call return, empty unless some handles were ready.
+  // Subsequent wait() calls return empty.
+  virtual void shutdown() = 0;
 };
 
 } // namespace folly::detail

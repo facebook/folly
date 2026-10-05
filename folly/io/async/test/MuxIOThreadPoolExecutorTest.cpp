@@ -19,7 +19,9 @@
 #if FOLLY_HAS_EPOLL
 
 #include <thread>
+#include <vector>
 
+#include <folly/Function.h>
 #include <folly/executors/test/IOThreadPoolExecutorBaseTestLib.h>
 #include <folly/io/async/MuxIOThreadPoolExecutor.h>
 #include <folly/portability/GTest.h>
@@ -66,6 +68,36 @@ TEST(MuxIOThreadPoolExecutor, SingleEpollLoopRun) {
   ex.setNumThreads(kNumEventBases);
   EXPECT_EQ(ex.numThreads(), kNumEventBases);
   testEvbs();
+}
+
+TEST(MuxIOThreadPoolExecutor, PollerRingMigration) {
+  // Few threads and many EventBases with short timers, so polls armed on one
+  // thread are routinely completed on another.
+  static constexpr size_t kNumThreads = 2;
+  static constexpr size_t kNumEventBases = 64;
+  static constexpr size_t kIterationsPerEvb = 20;
+
+  folly::MuxIOThreadPoolExecutor::Options options;
+  options.setNumEventBases(kNumEventBases);
+  folly::MuxIOThreadPoolExecutor ex(kNumThreads, options);
+
+  const auto evbs = ex.getAllEventBases();
+  folly::Latch latch(kNumEventBases * kIterationsPerEvb);
+  std::vector<size_t> remaining(kNumEventBases, kIterationsPerEvb);
+
+  // Each EventBase's callbacks run serially on its own loop, so remaining[i]
+  // needs no extra synchronization. count_down() is the last shared access, so
+  // no worker touches these locals once latch.wait() returns.
+  folly::Function<void(size_t)> tick = [&](size_t i) {
+    if (--remaining[i] > 0) {
+      evbs[i]->runAfterDelay([&tick, i] { tick(i); }, /* milliseconds */ 1);
+    }
+    latch.count_down();
+  };
+  for (size_t i = 0; i < kNumEventBases; ++i) {
+    evbs[i]->runInEventBaseThread([&tick, i] { tick(i); });
+  }
+  latch.wait();
 }
 
 TEST(MuxIOThreadPoolExecutor, SingleEpollLoopTimers) {

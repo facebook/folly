@@ -17,19 +17,21 @@
 #include <folly/io/async/EventBasePoller.h>
 
 #include <atomic>
+#include <cerrno>
+#include <cstring>
+#include <limits>
 #include <stdexcept>
+#include <thread>
+#include <utility>
+#include <vector>
 
-#include <boost/polymorphic_cast.hpp>
-#include <fmt/format.h>
 #include <glog/logging.h>
 #include <folly/FileUtil.h>
 #include <folly/String.h>
 #include <folly/io/async/Epoll.h>
 #include <folly/io/async/Liburing.h>
 #include <folly/lang/Align.h>
-#include <folly/portability/GFlags.h>
 #include <folly/synchronization/Baton.h>
-#include <folly/system/ThreadName.h>
 
 #if FOLLY_HAS_EPOLL
 // @lint-ignore CLANGTIDY facebook-hte-PortabilityInclude-poll.h
@@ -41,38 +43,6 @@
 #if FOLLY_HAS_LIBURING
 #include <liburing.h> // @manual
 #endif
-
-FOLLY_GFLAGS_DEFINE_string(
-    folly_event_base_poller_backend,
-    "epoll",
-    "Available EventBasePoller backends: \"epoll\", \"io_uring\"");
-FOLLY_GFLAGS_DEFINE_uint64(
-    folly_event_base_poller_spin_us,
-    10,
-    "Spin-wait for events up to this amount before blocking wait");
-FOLLY_GFLAGS_DEFINE_uint64(
-    folly_event_base_poller_sleep_us,
-    0,
-    "Sleep for this amount before doing a blocking wait for events");
-
-// Epoll backend.
-FOLLY_GFLAGS_DEFINE_uint64(
-    folly_event_base_poller_epoll_max_events,
-    64,
-    "Maximum number of events to process in one iteration when "
-    "using the epoll EventBasePoller backend");
-FOLLY_GFLAGS_DEFINE_bool(
-    folly_event_base_poller_epoll_rearm_inline,
-    true,
-    "When using epoll backend, re-arm events inline in handoff() instead of "
-    "returning them to the poller thread");
-
-// io_uring backend.
-FOLLY_GFLAGS_DEFINE_uint64(
-    folly_event_base_poller_io_uring_sq_entries,
-    128,
-    "Minimum number of entries to allocate for the submission queue when "
-    "using the io_uring EventBasePoller backend");
 
 namespace folly::detail {
 
@@ -123,57 +93,59 @@ class Queue {
 #if FOLLY_HAS_EPOLL
 
 class EventBasePollerImpl : public EventBasePoller {
-  class FdGroupImpl;
-
  public:
-  explicit EventBasePollerImpl(bool rearmInline)
-      : rearmInline_(rearmInline),
+  EventBasePollerImpl(Options options, bool rearmInline)
+      : options_(options),
+        rearmInline_(rearmInline),
         notificationEv_(
             Event::NotificationFd{}, ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)) {
     PCHECK(notificationEv_.fd >= 0);
   }
 
-  ~EventBasePollerImpl() override {
-    CHECK_EQ(numGroups_.load(), 0)
-        << "All groups must be destroyed before EventBasePoller";
-    fileops::close(notificationEv_.fd);
+  EventBasePollerImpl(const EventBasePollerImpl&) = delete;
+  EventBasePollerImpl& operator=(const EventBasePollerImpl&) = delete;
+  EventBasePollerImpl(EventBasePollerImpl&&) = delete;
+  EventBasePollerImpl& operator=(EventBasePollerImpl&&) = delete;
+
+  ~EventBasePollerImpl() override { fileops::close(notificationEv_.fd); }
+
+  std::unique_ptr<Handle> add(int fd, void* userData) override {
+    auto handle = std::make_unique<Event>(*this, fd, userData);
+    handle->handoff(false);
+    return handle;
   }
 
-  std::unique_ptr<FdGroup> makeFdGroup(ReadyCallback readyCallback) override;
-
- protected:
-  void startLoop() {
-    Baton<> started;
-    loopThread_ = std::make_unique<std::thread>([this, &started]() {
-      loop(started);
-    });
-    started.wait();
+  void reclaim(std::unique_ptr<Handle> handle) override {
+    static_cast<Event*>(handle.get())->join();
   }
 
-  void stopLoop() {
+  small_vector<Handle*, 4> wait() final;
+
+  void shutdown() override {
     stop_ = true;
     notifyEvfd();
-    loopThread_->join();
   }
 
+ protected:
   struct Event final : public Handle {
     struct NotificationFd {};
 
-    Event(FdGroupImpl& group_, int fd_, void* userData)
-        : Handle(userData), group(&group_), fd(fd_) {}
+    Event(EventBasePollerImpl& parent_, int fd_, void* userData)
+        : Handle(userData), parent(&parent_), fd(fd_) {}
     // Special internal event to poll the notification eventfd.
-    Event(NotificationFd, int fd_) : Handle(nullptr), group(nullptr), fd(fd_) {}
+    Event(NotificationFd, int fd_)
+        : Handle(nullptr), parent(nullptr), fd(fd_) {}
 
     ~Event() override {
       CHECK(isNotificationFd() || joined_.ready())
           << "Handle must be reclaimed before destruction";
     }
 
-    bool isNotificationFd() const { return group == nullptr; }
+    bool isNotificationFd() const { return parent == nullptr; }
 
-    // TSAN is not able to recognize the happens-before relationship between
-    // rearming (epoll_ctl) and handling ready events, so use a fake mutex to
-    // introduce the expected relationships and at the same time check them.
+    // TSAN does not recognize the happens-before relationship between rearming
+    // (e.g. epoll_ctl(EPOLL_CTL_MOD)) and handling the ready event, so use a
+    // fake mutex to introduce it and at the same time check it.
     FOLLY_ALWAYS_INLINE void markReady() {
 #ifdef FOLLY_SANITIZE_THREAD
       CHECK(!ready_.exchange(true, std::memory_order_acq_rel));
@@ -190,7 +162,7 @@ class EventBasePollerImpl : public EventBasePoller {
     void handleHandoff();
     void join();
 
-    FdGroupImpl* group;
+    EventBasePollerImpl* parent;
     const int fd;
     bool registered = false; // Managed by addEvent()/delEvent().
     Event* next{nullptr}; // Managed by Queue.
@@ -203,90 +175,47 @@ class EventBasePollerImpl : public EventBasePoller {
 #endif
   };
 
- private:
-  virtual void setup() = 0;
-  virtual void teardown() = 0;
   virtual void addEvent(Event* event) = 0;
   virtual void delEvent(Event* event) = 0;
-  virtual bool waitForEvents(
-      std::chrono::steady_clock::time_point loopStart) = 0;
+  // Appends the ready events to readyEvents; returns false if there are none.
+  virtual bool waitForEvents(std::vector<Event*>& readyEvents) = 0;
 
+  void handleNotification();
+
+  const Options options_;
+
+ private:
   void notifyEvfd();
   void returnEvent(Event* event);
 
-  void handleNotification();
-  void handleReadyEvents();
-  void loop(folly::Baton<>& started);
-
- protected:
   const bool rearmInline_;
   std::vector<Event*> readyEvents_;
-
- private:
-  std::atomic<size_t> numGroups_{0};
-  Event notificationEv_;
-  std::vector<std::unique_ptr<Event>> events_;
-  std::unique_ptr<std::thread> loopThread_;
-  std::vector<Handle*> readyHandles_; // Cache allocation.
   std::atomic<bool> stop_{false};
+  Event notificationEv_;
   Queue<Event> returnQueue_;
-};
-
-class EventBasePollerImpl::FdGroupImpl final : public FdGroup {
- public:
-  FdGroupImpl(EventBasePollerImpl& parent_, ReadyCallback readyCallback_)
-      : parent(parent_), readyCallback(std::move(readyCallback_)) {
-    ++parent.numGroups_;
-  }
-
-  ~FdGroupImpl() override {
-    CHECK_EQ(numHandles_, 0)
-        << "All EventBases must be reclaimed before group destruction";
-    --parent.numGroups_;
-  }
-
-  std::unique_ptr<Handle> add(int fd, void* userData) override {
-    auto handle = std::make_unique<Event>(*this, fd, userData);
-    ++numHandles_;
-    // Run the first iteration to register the fd.
-    Handle* handlePtr = handle.get();
-    readyCallback({&handlePtr, 1});
-    return handle;
-  }
-
-  void reclaim(std::unique_ptr<Handle> handle) override {
-    boost::polymorphic_downcast<Event*>(handle.get())->join();
-    --numHandles_;
-  }
-
-  EventBasePollerImpl& parent;
-  const ReadyCallback readyCallback;
-
- private:
-  size_t numHandles_ = 0;
 };
 
 void EventBasePollerImpl::Event::handoff(bool done) {
   DCHECK(!isNotificationFd());
   CHECK(!joining_);
   joining_ = done;
-  if (group->parent.rearmInline_) {
+  if (parent->rearmInline_) {
     handleHandoff();
   } else {
-    group->parent.returnEvent(this);
+    parent->returnEvent(this);
   }
 }
 
 void EventBasePollerImpl::Event::handleHandoff() {
   DCHECK(!isNotificationFd());
   if (joining_) {
-    group->parent.delEvent(this);
+    parent->delEvent(this);
     joined_.post();
     return;
   }
 
   markProcessed();
-  group->parent.addEvent(this);
+  parent->addEvent(this);
 }
 
 void EventBasePollerImpl::Event::join() {
@@ -306,11 +235,6 @@ void EventBasePollerImpl::returnEvent(Event* event) {
   }
 }
 
-std::unique_ptr<EventBasePoller::FdGroup> EventBasePollerImpl::makeFdGroup(
-    ReadyCallback readyCallback) {
-  return std::make_unique<FdGroupImpl>(*this, std::move(readyCallback));
-}
-
 void EventBasePollerImpl::handleNotification() {
   while (auto* event = returnQueue_.arm()) {
     while (event) {
@@ -323,79 +247,47 @@ void EventBasePollerImpl::handleNotification() {
   addEvent(&notificationEv_);
 }
 
-void EventBasePollerImpl::handleReadyEvents() {
-  CHECK(!readyEvents_.empty());
-  // Sort by group so we can call readyCallback on each group.
-  std::sort(
-      readyEvents_.begin(),
-      readyEvents_.end(),
-      [](const Event* lhs, const Event* rhs) {
-        // Sort backwards so the notification event (group == nullptr) is
-        // processed last.
-        return std::greater<>{}(lhs->group, rhs->group);
-      });
+small_vector<EventBasePoller::Handle*, 4> EventBasePollerImpl::wait() {
+  small_vector<Handle*, 4> result;
 
-  auto it = readyEvents_.begin();
-  FdGroupImpl* curGroup = (*it)->group;
   while (true) {
-    if (it == readyEvents_.end() || (*it)->group != curGroup) {
-      if (curGroup == nullptr) {
-        // There can only be one notification event.
-        CHECK_EQ(readyHandles_.size(), 1);
-        CHECK_EQ(readyHandles_[0], &notificationEv_);
-        handleNotification();
-      } else {
-        curGroup->readyCallback(folly::range(readyHandles_));
-      }
-      readyHandles_.clear();
-      if (it == readyEvents_.end()) {
-        break;
-      }
-      curGroup = (*it)->group;
+    if (stop_.load(std::memory_order_relaxed)) {
+      return result;
     }
-    (*it)->markReady();
-    readyHandles_.push_back(*it++);
-  }
 
-  readyEvents_.clear();
-}
-
-void EventBasePollerImpl::loop(folly::Baton<>& started) {
-  setThreadName("EventBasePoller");
-
-  setup();
-  handleNotification(); // Nothing to handle, but arm notificationEv_.
-  started.post();
-
-  auto lastLoopTs = std::chrono::steady_clock::now();
-  while (!stop_.load()) {
-    if (!waitForEvents(lastLoopTs)) {
+    if (!waitForEvents(readyEvents_)) {
+      // Spurious wake-up or signal interruption; retry.
       continue;
     }
-    auto waitEndTs = std::chrono::steady_clock::now();
-    handleReadyEvents();
-    auto busyEndTs = std::chrono::steady_clock::now();
-    stats_.wlock()->update(
-        readyEvents_.size(), waitEndTs - lastLoopTs, busyEndTs - waitEndTs);
-    lastLoopTs = busyEndTs;
+
+    for (auto* event : readyEvents_) {
+      event->markReady();
+      if (event->isNotificationFd()) {
+        handleNotification();
+      } else {
+        result.push_back(event);
+      }
+    }
+    readyEvents_.clear();
+
+    if (!result.empty()) {
+      return result;
+    }
+    // Only the notification fd was ready; wait again.
   }
 }
 
 class EventBasePollerEpoll final : public EventBasePollerImpl {
  public:
-  EventBasePollerEpoll()
-      : EventBasePollerImpl(FLAGS_folly_event_base_poller_epoll_rearm_inline) {
-    startLoop();
+  explicit EventBasePollerEpoll(Options options)
+      : EventBasePollerImpl(options, options.epollRearmInline),
+        epFd_(::epoll_create1(EPOLL_CLOEXEC)),
+        epollEvents_(options_.epollMaxEvents) {
+    PCHECK(epFd_ >= 0);
+    handleNotification(); // Arm notificationEv_.
   }
 
-  ~EventBasePollerEpoll() override { stopLoop(); }
-
-  void setup() override {
-    epFd_ = ::epoll_create1(EPOLL_CLOEXEC);
-    PCHECK(epFd_ > 0);
-  }
-
-  void teardown() override { fileops::close(epFd_); }
+  ~EventBasePollerEpoll() override { fileops::close(epFd_); }
 
   void addEvent(Event* event) override {
     if (event->isNotificationFd() && event->registered) {
@@ -434,100 +326,68 @@ class EventBasePollerEpoll final : public EventBasePollerImpl {
     PCHECK(ret == 0);
   }
 
-  bool waitForEvents(std::chrono::steady_clock::time_point loopStart) override {
+  bool waitForEvents(std::vector<Event*>& readyEvents) override {
+    const int maxEvents = static_cast<int>(epollEvents_.size());
     int ret;
 
-    auto spinUntil = loopStart +
-        std::chrono::microseconds{FLAGS_folly_event_base_poller_spin_us};
+    auto spinUntil = std::chrono::steady_clock::now() + options_.spinTimeout;
     do {
-      ret = ::epoll_wait(epFd_, epollEvents_.data(), kMaxEvents, 0);
+      ret = ::epoll_wait(epFd_, epollEvents_.data(), maxEvents, 0);
     } while (ret <= 0 && std::chrono::steady_clock::now() < spinUntil);
 
     if (ret <= 0) {
-      if (auto sleepUs = FLAGS_folly_event_base_poller_sleep_us) {
+      if (auto sleepUs = options_.sleepBeforeBlock.count(); sleepUs > 0) {
         /* sleep override */
-        std::this_thread::sleep_for(std::chrono::microseconds{sleepUs});
+        std::this_thread::sleep_for(options_.sleepBeforeBlock);
       }
-      ret = ::epoll_wait(epFd_, epollEvents_.data(), kMaxEvents, -1);
+      ret = ::epoll_wait(epFd_, epollEvents_.data(), maxEvents, -1);
     }
 
     if (ret <= 0) {
+      PCHECK(ret == 0 || errno == EINTR);
       return false;
     }
 
     for (int i = 0; i < ret; ++i) {
-      readyEvents_.push_back(
+      readyEvents.push_back(
           CHECK_NOTNULL(reinterpret_cast<Event*>(epollEvents_[i].data.ptr)));
     }
     return true;
   }
 
  private:
-  const size_t kMaxEvents = FLAGS_folly_event_base_poller_epoll_max_events;
-  int epFd_{-1};
-  std::vector<struct epoll_event> epollEvents_{kMaxEvents};
+  const int epFd_;
+  std::vector<struct epoll_event> epollEvents_;
 };
 
 #if FOLLY_HAS_LIBURING
 
-namespace {
-
-void enableFlagsIfSupported(
-    struct io_uring_params& params, uint32_t desiredFlags, const char* msg) {
-  struct io_uring_params tmpParams;
-  ::memset(&params, 0, sizeof(tmpParams));
-  tmpParams.flags = desiredFlags;
-  int fd = ::io_uring_setup(1, &tmpParams);
-  if (fd >= 0) {
-    fileops::close(fd);
-    VLOG(1) << "io_uring flags " << msg << " supported";
-    params.flags |= desiredFlags;
-  } else if (fd == -EINVAL) {
-    VLOG(1) << "io_uring flags " << msg << " NOT supported";
-  } else {
-    LOG(ERROR) << "Unexpected error " << folly::errnoStr(-fd)
-               << " while probing supported io_uring flags";
-  }
-}
-
-#define ENABLE_FLAGS_IF_SUPPORTED(params, desiredFlags) \
-  enableFlagsIfSupported(params, desiredFlags, #desiredFlags)
-
-} // namespace
-
 class EventBasePollerIoUring final : public EventBasePollerImpl {
  public:
-  EventBasePollerIoUring()
+  explicit EventBasePollerIoUring(Options options)
       // io_uring does not support concurrent submissions.
-      : EventBasePollerImpl(/* rearmInline */ false) {
-    startLoop();
-  }
-
-  ~EventBasePollerIoUring() override { stopLoop(); }
-
-  void setup() override {
+      : EventBasePollerImpl(options, /* rearmInline */ false) {
     ::memset(&ring_, 0, sizeof(ring_));
     struct io_uring_params params;
     ::memset(&params, 0, sizeof(params));
-
-    ENABLE_FLAGS_IF_SUPPORTED(
-        params, IORING_SETUP_SINGLE_ISSUER | IORING_SETUP_DEFER_TASKRUN);
-    ENABLE_FLAGS_IF_SUPPORTED(
-        params, IORING_SETUP_COOP_TASKRUN | IORING_SETUP_TASKRUN_FLAG);
+    // Consecutive wait() calls may come from different threads, so
+    // SINGLE_ISSUER and DEFER_TASKRUN cannot be used, and COOP_TASKRUN would
+    // delay completions until the submitting thread enters the kernel.
     int ret = ::io_uring_queue_init_params(
-        FLAGS_folly_event_base_poller_io_uring_sq_entries, &ring_, &params);
-    CHECK(ret == 0) << "Error creating io_uring: " << folly::errnoStr(-ret);
+        options_.ioUringSqEntries, &ring_, &params);
+    CHECK_EQ(ret, 0) << "Error creating io_uring: " << folly::errnoStr(-ret);
+    handleNotification(); // Arm notificationEv_.
   }
 
-  void teardown() override { ::io_uring_queue_exit(&ring_); }
+  ~EventBasePollerIoUring() override { ::io_uring_queue_exit(&ring_); }
 
   void addEvent(Event* event) override {
     auto* sqe = ::io_uring_get_sqe(&ring_);
     if (sqe == nullptr) {
       submitPendingSqes();
       sqe = ::io_uring_get_sqe(&ring_);
-      // Single issuer, so if we can't get a sqe after a submit we have a
-      // problem.
+      // Only the thread in wait() touches the ring, so the SQ is empty after a
+      // submit.
       CHECK(sqe != nullptr);
     }
     ++numPendingSqes_;
@@ -545,7 +405,7 @@ class EventBasePollerIoUring final : public EventBasePollerImpl {
     // Nothing to do, no events are persistent.
   }
 
-  bool waitForEvents(std::chrono::steady_clock::time_point loopStart) override {
+  bool waitForEvents(std::vector<Event*>& readyEvents) override {
     if (numPendingSqes_ > 0) {
       submitPendingSqes();
     }
@@ -553,13 +413,12 @@ class EventBasePollerIoUring final : public EventBasePollerImpl {
     int ret;
     struct io_uring_cqe* cqe = nullptr;
 
-    auto spinUntil = loopStart +
-        std::chrono::microseconds{FLAGS_folly_event_base_poller_spin_us};
+    auto spinUntil = std::chrono::steady_clock::now() + options_.spinTimeout;
     do {
       ret = ::io_uring_peek_cqe(&ring_, &cqe);
     } while (ret != 0 && std::chrono::steady_clock::now() < spinUntil);
 
-    if (auto sleepUs = FLAGS_folly_event_base_poller_sleep_us;
+    if (auto sleepUs = options_.sleepBeforeBlock.count();
         ret != 0 && sleepUs > 0) {
       // Simulate a sleep + peek by waiting for infinite events with a timeout.
       struct __kernel_timespec timeout;
@@ -579,10 +438,11 @@ class EventBasePollerIoUring final : public EventBasePollerImpl {
     }
 
     if (ret != 0 || cqe == nullptr) {
+      CHECK(ret == 0 || ret == -EINTR) << errnoStr(-ret);
       return false;
     }
 
-    DCHECK_EQ(readyEvents_.size(), 0);
+    DCHECK(readyEvents.empty());
     unsigned head;
     io_uring_for_each_cqe(&ring_, head, cqe) {
       auto* event =
@@ -592,9 +452,9 @@ class EventBasePollerIoUring final : public EventBasePollerImpl {
       } else {
         CHECK_GE(cqe->res, 0) << errnoStr(-cqe->res);
       }
-      readyEvents_.push_back(event);
+      readyEvents.push_back(event);
     }
-    ::io_uring_cq_advance(&ring_, readyEvents_.size());
+    ::io_uring_cq_advance(&ring_, readyEvents.size());
 
     return true;
   }
@@ -617,46 +477,27 @@ class EventBasePollerIoUring final : public EventBasePollerImpl {
 
 } // namespace
 
-void EventBasePoller::Stats::update(
-    int numEvents, Duration wait, Duration busy) {
-  minNumEvents = std::min(minNumEvents, numEvents);
-  maxNumEvents = std::max(maxNumEvents, numEvents);
-  totalNumEvents += static_cast<size_t>(numEvents);
-  totalWakeups += 1;
-
-  totalWait += wait;
-  minWait = std::min(minWait, wait);
-  maxWait = std::max(maxWait, wait);
-
-  totalBusy += busy;
-  minBusy = std::min(minBusy, busy);
-  maxBusy = std::max(maxBusy, busy);
-}
-
 EventBasePoller::Handle::~Handle() = default;
-
-EventBasePoller::FdGroup::~FdGroup() = default;
 
 EventBasePoller::~EventBasePoller() = default;
 
-/* static */ EventBasePoller& EventBasePoller::get() {
-  static auto instance = []() -> std::unique_ptr<EventBasePoller> {
+/* static */ std::unique_ptr<EventBasePoller> EventBasePoller::create(
+    Options options) {
 #if FOLLY_HAS_EPOLL
-    if (FLAGS_folly_event_base_poller_backend == "epoll") {
-      return std::make_unique<EventBasePollerEpoll>();
+  if (options.backend == Options::Backend::kEpoll) {
+    if (options.epollMaxEvents == 0 ||
+        options.epollMaxEvents > std::numeric_limits<int>::max()) {
+      throw std::invalid_argument("epollMaxEvents must be in [1, INT_MAX]");
     }
+    return std::make_unique<EventBasePollerEpoll>(options);
+  }
 #endif
 #if FOLLY_HAS_EPOLL && FOLLY_HAS_LIBURING
-    if (FLAGS_folly_event_base_poller_backend == "io_uring") {
-      return std::make_unique<EventBasePollerIoUring>();
-    }
+  if (options.backend == Options::Backend::kIoUring) {
+    return std::make_unique<EventBasePollerIoUring>(options);
+  }
 #endif
-    throw std::invalid_argument(
-        fmt::format(
-            "Unsupported EventBasePoller backend: {}",
-            FLAGS_folly_event_base_poller_backend));
-  }();
-  return *instance;
+  throw std::invalid_argument("Unsupported EventBasePoller backend");
 }
 
 } // namespace folly::detail

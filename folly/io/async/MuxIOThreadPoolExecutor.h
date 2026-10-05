@@ -18,6 +18,7 @@
 
 #include <chrono>
 #include <limits>
+#include <optional>
 
 #include <folly/Portability.h>
 #include <folly/concurrency/UnboundedQueue.h>
@@ -82,12 +83,19 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
       return *this;
     }
 
+    Options& setPollerOptions(detail::EventBasePoller::Options opts) {
+      pollerOptions = opts;
+      return *this;
+    }
+
     bool enableThreadIdCollection{false};
     // If 0, the number of EventBases is set to the number of threads.
     size_t numEventBases{0};
     std::chrono::nanoseconds wakeUpInterval{std::chrono::microseconds{100}};
     // Max spin for an idle thread waiting for work before going to sleep.
     std::chrono::nanoseconds idleSpinMax = std::chrono::microseconds{10};
+    // If not set, defaults are read from gflags.
+    std::optional<detail::EventBasePoller::Options> pollerOptions;
   };
 
   explicit MuxIOThreadPoolExecutor(
@@ -135,6 +143,10 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
     EvbState* curEvbState; // Only accessed inside the worker thread.
   };
 
+  static EventBasePoller::Handle* kWaitSentinel() {
+    return reinterpret_cast<EventBasePoller::Handle*>(1);
+  }
+
   void maybeUnregisterEventBases(Observer* o);
 
   void prepareSetNumThreads(size_t numThreads) override;
@@ -148,15 +160,18 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   const size_t numEventBases_;
   folly::EventBaseManager* eventBaseManager_;
 
-  std::unique_ptr<EventBasePoller::FdGroup> fdGroup_;
+  std::unique_ptr<EventBasePoller> poller_;
   std::vector<std::unique_ptr<EvbState>> evbStates_;
   std::vector<Executor::KeepAlive<EventBase>> keepAlives_;
 
   relaxed_atomic<size_t> nextEvb_{0};
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
   std::unique_ptr<ThreadIdWorkerProvider> threadIdCollector_;
-  std::atomic<size_t> pendingTasks_{0};
 
+  // Single producer: only the sentinel holder enqueues, and the sentinel is the
+  // last element it enqueues, so consecutive holders are ordered. Poison pills
+  // are only enqueued after all handles are reclaimed: from then on wait() only
+  // returns empty, so the sentinel holder no longer enqueues.
   USPMCQueue<EventBasePoller::Handle*, /* MayBlock */ false> readyQueue_;
   folly::ThrottledLifoSem readyQueueSem_;
 };

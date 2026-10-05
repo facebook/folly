@@ -423,20 +423,13 @@ folly_add_library(
   HEADERS EventBasePoller.h
   DEPS
     ${GLOG_LIBRARIES}
-    Boost::headers
-    fmt::fmt
     folly_file_util
     folly_io_async_epoll
     folly_io_async_liburing
     folly_lang_align
-    folly_portability_gflags
     folly_string
     folly_synchronization_baton
-    folly_system_thread_name
-  EXPORTED_DEPS
-    folly_function
-    folly_range
-    folly_synchronized
+  EXPORTED_DEPS folly_small_vector
 )
 
 folly_add_library(
@@ -665,9 +658,9 @@ folly_add_library(
   HEADERS MuxIOThreadPoolExecutor.h
   DEPS
     fmt::fmt
-    folly_container_enumerate
     folly_io_async_epoll_backend
     folly_lang_align
+    folly_portability_gflags
     folly_synchronization_latch
   EXPORTED_DEPS
     folly_concurrency_unbounded_queue

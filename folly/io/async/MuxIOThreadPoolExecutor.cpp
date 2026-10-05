@@ -19,10 +19,35 @@
 #include <stdexcept>
 
 #include <fmt/format.h>
-#include <folly/container/Enumerate.h>
 #include <folly/io/async/EpollBackend.h>
 #include <folly/lang/Align.h>
+#include <folly/portability/GFlags.h>
 #include <folly/synchronization/Latch.h>
+
+FOLLY_GFLAGS_DEFINE_string(
+    folly_mux_io_thread_pool_executor_poller_backend,
+    "epoll",
+    "Default EventBasePoller backend: \"epoll\", \"io_uring\"");
+FOLLY_GFLAGS_DEFINE_uint64(
+    folly_mux_io_thread_pool_executor_poller_spin_us,
+    10,
+    "Spin-wait for events up to this amount (us) before blocking wait");
+FOLLY_GFLAGS_DEFINE_uint64(
+    folly_mux_io_thread_pool_executor_poller_sleep_us,
+    0,
+    "Sleep for this amount (us) before doing a blocking wait for events");
+FOLLY_GFLAGS_DEFINE_uint64(
+    folly_mux_io_thread_pool_executor_poller_epoll_max_events,
+    64,
+    "Maximum number of events to process in one epoll_wait iteration");
+FOLLY_GFLAGS_DEFINE_bool(
+    folly_mux_io_thread_pool_executor_poller_epoll_rearm_inline,
+    true,
+    "When using epoll backend, re-arm events inline in handoff()");
+FOLLY_GFLAGS_DEFINE_uint64(
+    folly_mux_io_thread_pool_executor_poller_io_uring_sq_entries,
+    128,
+    "Minimum number of io_uring submission queue entries");
 
 namespace folly {
 
@@ -32,6 +57,30 @@ ThrottledLifoSem::Options throttledLifoSemOptions(
     std::chrono::nanoseconds wakeUpInterval) {
   ThrottledLifoSem::Options opts;
   opts.wakeUpInterval = wakeUpInterval;
+  return opts;
+}
+
+detail::EventBasePoller::Options pollerOptionsFromGFlags() {
+  detail::EventBasePoller::Options opts;
+  const auto& backend = FLAGS_folly_mux_io_thread_pool_executor_poller_backend;
+  if (backend == "epoll") {
+    opts.backend = detail::EventBasePoller::Options::Backend::kEpoll;
+  } else if (backend == "io_uring") {
+    opts.backend = detail::EventBasePoller::Options::Backend::kIoUring;
+  } else {
+    throw std::invalid_argument(
+        fmt::format("Unsupported EventBasePoller backend: {}", backend));
+  }
+  opts.epollRearmInline =
+      FLAGS_folly_mux_io_thread_pool_executor_poller_epoll_rearm_inline;
+  opts.spinTimeout = std::chrono::microseconds{
+      FLAGS_folly_mux_io_thread_pool_executor_poller_spin_us};
+  opts.sleepBeforeBlock = std::chrono::microseconds{
+      FLAGS_folly_mux_io_thread_pool_executor_poller_sleep_us};
+  opts.epollMaxEvents =
+      FLAGS_folly_mux_io_thread_pool_executor_poller_epoll_max_events;
+  opts.ioUringSqEntries =
+      FLAGS_folly_mux_io_thread_pool_executor_poller_io_uring_sq_entries;
   return opts;
 }
 
@@ -69,16 +118,13 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
       numEventBases_(
           options_.numEventBases == 0 ? numThreads : options_.numEventBases),
       eventBaseManager_(ebm),
-      readyQueueSem_(throttledLifoSemOptions(options.wakeUpInterval)) {
-  setNumThreads(numThreads);
+      readyQueueSem_(throttledLifoSemOptions(options_.wakeUpInterval)) {
+  poller_ = EventBasePoller::create(
+      options_.pollerOptions
+          ? *options_.pollerOptions
+          : pollerOptionsFromGFlags());
 
-  fdGroup_ = EventBasePoller::get().makeFdGroup(
-      [this](Range<EventBasePoller::Handle**> readyHandles) noexcept {
-        for (auto* handle : readyHandles) {
-          readyQueue_.enqueue(handle);
-        }
-        readyQueueSem_.post(readyHandles.size());
-      });
+  setNumThreads(numThreads);
 
   evbStates_.reserve(numEventBases_);
   Latch allEvbsRunning(numEventBases_);
@@ -90,8 +136,14 @@ MuxIOThreadPoolExecutor::MuxIOThreadPoolExecutor(
     keepAlives_.emplace_back(&evbState->evb);
     auto fd = evbState->evb.getBackend()->getPollableFd();
     CHECK_GE(fd, 0);
-    evbState->handle = fdGroup_->add(fd, evbState.get());
+    evbState->handle = poller_->add(fd, evbState.get());
   }
+
+  // Must be posted before allEvbsRunning.wait(): no thread polls until the
+  // sentinel is dequeued.
+  readyQueue_.enqueue(kWaitSentinel());
+  readyQueueSem_.post();
+
   allEvbsRunning.wait();
 
   registerThreadPoolExecutor(this);
@@ -186,10 +238,29 @@ void MuxIOThreadPoolExecutor::threadRun(ThreadPtr thread) {
 
   while (true) {
     readyQueueSem_.wait(WaitOptions{}.spin_max(options_.idleSpinMax));
-    auto handle = readyQueue_.dequeue();
+    auto* handle = readyQueue_.dequeue();
+
     if (handle == nullptr) {
-      break;
+      break; // Shutdown poison.
     }
+
+    if (handle == kWaitSentinel()) {
+      auto readyHandles = poller_->wait();
+      if (readyHandles.empty()) {
+        // Interrupted by shutdown. Don't re-enqueue sentinel.
+        continue;
+      }
+      // Process one handle (any would do) inline, after enqueuing the others
+      // and the sentinel.
+      handle = readyHandles.back();
+      readyHandles.pop_back();
+      for (auto* h : readyHandles) {
+        readyQueue_.enqueue(h);
+      }
+      readyQueue_.enqueue(kWaitSentinel());
+      readyQueueSem_.post(static_cast<uint32_t>(readyHandles.size() + 1));
+    }
+
     auto* evbState = handle->getUserData<EvbState>();
     auto* evb = &evbState->evb;
 
@@ -288,16 +359,24 @@ void MuxIOThreadPoolExecutor::join() {
     }
   }
 
-  for (auto&& [i, evbState] : folly::enumerate(evbStates_)) {
-    // Release the keepalive so the loop can complete and the handle be
-    // reclaimed.
-    keepAlives_[i].reset();
-    fdGroup_->reclaim(std::move(evbState->handle));
+  // Release keepalives so the loops can complete and handles be reclaimed.
+  for (auto& keepAlive : keepAlives_) {
+    keepAlive.reset();
   }
-  fdGroup_.reset();
-  evbStates_.clear();
+
+  // Reclaim all handles (blocks until each handoff(true) completes).
+  for (auto& evbState : evbStates_) {
+    poller_->reclaim(std::move(evbState->handle));
+  }
+
+  // No handle can become ready anymore; wake up the thread in wait() so it can
+  // consume a poison pill.
+  poller_->shutdown();
 
   stopAndJoinAllThreads(/* isJoin */ true);
+
+  poller_.reset();
+  evbStates_.clear();
 }
 
 } // namespace folly

@@ -1447,6 +1447,7 @@ fbcode_target(
     srcs = ["MuxIOThreadPoolExecutorTest.cpp"],
     link_whole = True,
     deps = [
+        "//folly:function",
         "//folly/executors/test:IOThreadPoolExecutorBaseTestLib",
         "//folly/io/async:epoll",
         "//folly/io/async:mux_io_thread_pool_executor",
@@ -1459,8 +1460,8 @@ fbcode_target(
     _kind = cpp_unittest,
     name = "mux_io_thread_pool_executor_test_epoll",
     args = [
-        "--folly_event_base_poller_backend=epoll",
-        "--folly_event_base_poller_epoll_rearm_inline=false",
+        "--folly_mux_io_thread_pool_executor_poller_backend=epoll",
+        "--folly_mux_io_thread_pool_executor_poller_epoll_rearm_inline=false",
     ],
     supports_static_listing = False,
     deps = [
@@ -1472,8 +1473,8 @@ fbcode_target(
     _kind = cpp_unittest,
     name = "mux_io_thread_pool_executor_test_epoll_rearm_inline",
     args = [
-        "--folly_event_base_poller_backend=epoll",
-        "--folly_event_base_poller_epoll_rearm_inline=true",
+        "--folly_mux_io_thread_pool_executor_poller_backend=epoll",
+        "--folly_mux_io_thread_pool_executor_poller_epoll_rearm_inline=true",
     ],
     supports_static_listing = False,
     deps = [
@@ -1485,7 +1486,7 @@ fbcode_target(
     _kind = cpp_unittest,
     name = "mux_io_thread_pool_executor_test_io_uring",
     args = [
-        "--folly_event_base_poller_backend=io_uring",
+        "--folly_mux_io_thread_pool_executor_poller_backend=io_uring",
     ],
     supports_static_listing = False,
     deps = [
