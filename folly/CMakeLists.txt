@@ -1089,12 +1089,14 @@ folly_add_library(
     folly_concurrency_cache_locality
     folly_cpp_attributes
     folly_detail_futex
+    folly_lang_assume
     folly_likely
     folly_portability_asm
     folly_synchronization_lock
     folly_synchronization_relaxed_atomic
     folly_synchronization_sanitize_thread
     folly_system_thread_id
+    folly_traits
 )
 
 set(FOLLY_SINGLETON_SELECT_DEPS)

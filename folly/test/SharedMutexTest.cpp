@@ -18,7 +18,10 @@
 
 #include <stdlib.h>
 
+#include <array>
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <mutex>
 #include <optional>
 #include <random>
@@ -53,6 +56,245 @@ using DSharedMutexReadPriority =
     SharedMutexImpl<true, void, DeterministicAtomic, DSharedMutexPolicy>;
 using DSharedMutexWritePriority =
     SharedMutexImpl<false, void, DeterministicAtomic, DSharedMutexPolicy>;
+
+namespace {
+
+constexpr auto kLifecycleHookTestTimeout = std::chrono::seconds(10);
+using HookEvent = SharedMutexHookEvent;
+
+class SharedMutexHookObserver {
+ public:
+  virtual ~SharedMutexHookObserver() = default;
+  virtual void on_event(HookEvent event) noexcept = 0;
+};
+
+std::atomic<SharedMutexHookObserver*> sharedMutexHookObserver{nullptr};
+
+struct SharedMutexHookPolicy : SharedMutexPolicyDefault {
+  static void on_event(HookEvent event) noexcept {
+    if (auto* observer =
+            sharedMutexHookObserver.load(std::memory_order_acquire)) {
+      observer->on_event(event);
+    }
+  }
+};
+
+struct SharedMutexHookTag;
+using HookedSharedMutex = SharedMutexImpl<
+    false,
+    SharedMutexHookTag,
+    std::atomic,
+    SharedMutexHookPolicy>;
+
+class SharedMutexHookRegistration {
+ public:
+  explicit SharedMutexHookRegistration(SharedMutexHookObserver& observer) {
+    sharedMutexHookObserver.store(&observer, std::memory_order_release);
+  }
+
+  ~SharedMutexHookRegistration() {
+    sharedMutexHookObserver.store(nullptr, std::memory_order_release);
+  }
+};
+
+class SharedMutexHookRecorder : public SharedMutexHookObserver {
+ public:
+  void on_event(HookEvent event) noexcept override {
+    auto index = static_cast<size_t>(event);
+    std::unique_lock lock(mutex_);
+    ++counts_[index];
+    cv_.notify_all();
+    const bool didTimeOut =
+        blocked_[index] && !cv_.wait_for(lock, kLifecycleHookTestTimeout, [&] {
+          return !blocked_[index];
+        });
+    if (didTimeOut) {
+      timedOut_ = true;
+    }
+  }
+
+  void block(HookEvent event) {
+    std::lock_guard lock(mutex_);
+    blocked_[static_cast<size_t>(event)] = true;
+  }
+
+  void unblock(HookEvent event) {
+    std::lock_guard lock(mutex_);
+    blocked_[static_cast<size_t>(event)] = false;
+    cv_.notify_all();
+  }
+
+  bool waitFor(HookEvent event, size_t count = 1) {
+    auto index = static_cast<size_t>(event);
+    std::unique_lock lock(mutex_);
+    return cv_.wait_for(lock, kLifecycleHookTestTimeout, [&] {
+      return counts_[index] >= count;
+    });
+  }
+
+  size_t count(HookEvent event) {
+    std::lock_guard lock(mutex_);
+    return counts_[static_cast<size_t>(event)];
+  }
+
+  bool completedWithoutTimeout() {
+    std::lock_guard lock(mutex_);
+    return !timedOut_;
+  }
+
+ private:
+  static constexpr size_t kEventCount =
+      static_cast<size_t>(HookEvent::BeforeDestroy) + 1;
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  std::array<size_t, kEventCount> counts_{};
+  std::array<bool, kEventCount> blocked_{};
+  bool timedOut_{false};
+};
+
+} // namespace
+
+static_assert(sizeof(SharedMutex) == sizeof(uint32_t));
+static_assert(alignof(SharedMutex) == alignof(uint32_t));
+
+TEST(SharedMutex, lifecycleHooksReportReleaseAndDestroy) {
+  SharedMutexHookRecorder events;
+  SharedMutexHookRegistration registration(events);
+  {
+    HookedSharedMutex mutex;
+    mutex.lock();
+    mutex.unlock();
+    mutex.lock_upgrade();
+    mutex.unlock_upgrade();
+
+    SharedMutexToken inlineToken;
+    SharedMutexToken deferredToken;
+    mutex.lock_shared(inlineToken);
+    mutex.lock_shared(deferredToken);
+    EXPECT_EQ(
+        SharedMutexToken::State::LockedDeferredShared, deferredToken.state_);
+    mutex.unlock_shared(deferredToken);
+    mutex.unlock_shared(inlineToken);
+  }
+
+  EXPECT_EQ(1, events.count(HookEvent::AfterReleaseExclusive));
+  EXPECT_EQ(1, events.count(HookEvent::AfterReleaseUpgrade));
+  EXPECT_EQ(2, events.count(HookEvent::AfterReleaseShared));
+  EXPECT_EQ(1, events.count(HookEvent::BeforeDestroy));
+  ASSERT_TRUE(events.completedWithoutTimeout());
+}
+
+TEST(SharedMutex, lifecycleHooksReportContendedParks) {
+  SharedMutexHookRecorder events;
+  SharedMutexHookRegistration registration(events);
+  HookedSharedMutex mutex;
+  mutex.lock();
+
+  constexpr std::array kParkEvents{
+      HookEvent::BeforeParkExclusive,
+      HookEvent::BeforeParkUpgrade,
+      HookEvent::BeforeParkShared,
+  };
+  for (auto event : kParkEvents) {
+    events.block(event);
+  }
+
+  std::thread exclusive([&] {
+    mutex.lock();
+    mutex.unlock();
+  });
+  std::thread upgrade([&] {
+    mutex.lock_upgrade();
+    mutex.unlock_upgrade();
+  });
+  std::thread shared([&] {
+    mutex.lock_shared();
+    mutex.unlock_shared();
+  });
+  std::array<bool, kParkEvents.size()> didPark{};
+  for (size_t i = 0; i < kParkEvents.size(); ++i) {
+    didPark[i] = events.waitFor(kParkEvents[i]);
+  }
+
+  mutex.unlock();
+  for (auto event : kParkEvents) {
+    events.unblock(event);
+  }
+  exclusive.join();
+  upgrade.join();
+  shared.join();
+
+  for (size_t i = 0; i < kParkEvents.size(); ++i) {
+    ASSERT_TRUE(didPark[i]);
+    ASSERT_GE(events.count(kParkEvents[i]), 1);
+  }
+  ASSERT_TRUE(events.completedWithoutTimeout());
+}
+
+TEST(SharedMutex, lifecycleHooksReportReaderDrainPark) {
+  SharedMutexHookRecorder events;
+  SharedMutexHookRegistration registration(events);
+  HookedSharedMutex mutex;
+  mutex.lock_shared();
+  events.block(HookEvent::BeforeParkReadersToDrain);
+
+  std::thread writer([&] {
+    mutex.lock();
+    mutex.unlock();
+  });
+  const bool didPark = events.waitFor(HookEvent::BeforeParkReadersToDrain);
+  mutex.unlock_shared();
+  events.unblock(HookEvent::BeforeParkReadersToDrain);
+  writer.join();
+
+  ASSERT_TRUE(didPark);
+  ASSERT_GE(events.count(HookEvent::BeforeParkReadersToDrain), 1);
+  ASSERT_TRUE(events.completedWithoutTimeout());
+}
+
+TEST(SharedMutex, lifecycleHooksStressConcurrentSharedRelease) {
+  constexpr size_t kReaders = 32;
+  SharedMutexHookRecorder events;
+  SharedMutexHookRegistration registration(events);
+  bool allReadersReady = false;
+  {
+    HookedSharedMutex mutex;
+    std::mutex gateMutex;
+    std::condition_variable gateCv;
+    size_t ready = 0;
+    bool release = false;
+    std::vector<std::thread> readers;
+    readers.reserve(kReaders);
+    for (size_t i = 0; i < kReaders; ++i) {
+      readers.emplace_back([&] {
+        mutex.lock_shared();
+        {
+          std::unique_lock lock(gateMutex);
+          ++ready;
+          gateCv.notify_all();
+          gateCv.wait(lock, [&] { return release; });
+        }
+        mutex.unlock_shared();
+      });
+    }
+    {
+      std::unique_lock lock(gateMutex);
+      allReadersReady = gateCv.wait_for(lock, kLifecycleHookTestTimeout, [&] {
+        return ready == kReaders;
+      });
+      release = true;
+      gateCv.notify_all();
+    }
+    for (auto& reader : readers) {
+      reader.join();
+    }
+  }
+
+  ASSERT_TRUE(allReadersReady);
+  ASSERT_EQ(kReaders, events.count(HookEvent::AfterReleaseShared));
+  ASSERT_EQ(1, events.count(HookEvent::BeforeDestroy));
+  ASSERT_TRUE(events.completedWithoutTimeout());
+}
 
 template <typename Lock>
 void runBasicTest() {

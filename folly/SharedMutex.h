@@ -30,9 +30,11 @@
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
 #include <folly/Likely.h>
+#include <folly/Traits.h>
 #include <folly/chrono/Hardware.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/Futex.h>
+#include <folly/lang/Assume.h>
 #include <folly/portability/Asm.h>
 #include <folly/synchronization/Lock.h>
 #include <folly/synchronization/RelaxedAtomic.h>
@@ -262,6 +264,17 @@ struct SharedMutexPolicyDefault {
   static constexpr bool skip_annotate_rwlock = false;
 };
 
+enum class SharedMutexHookEvent : uint8_t {
+  BeforeParkExclusive,
+  BeforeParkUpgrade,
+  BeforeParkShared,
+  BeforeParkReadersToDrain,
+  AfterReleaseExclusive,
+  AfterReleaseUpgrade,
+  AfterReleaseShared,
+  BeforeDestroy,
+};
+
 namespace shared_mutex_detail {
 
 struct PolicyTracked : SharedMutexPolicyDefault {
@@ -375,6 +388,7 @@ class SharedMutexImpl
   // See https://sourceware.org/bugzilla/show_bug.cgi?id=13690 for a
   // description about why this property needs to be explicitly mentioned.
   ~SharedMutexImpl() {
+    invokeHook(HookEvent::BeforeDestroy);
     auto state = state_.load(std::memory_order_relaxed);
     if (FOLLY_UNLIKELY((state & kHasS) != 0)) {
       cleanupTokenlessSharedDeferred(state);
@@ -482,6 +496,7 @@ class SharedMutexImpl
     // releasing before lock()'s futexWait went to sleep.  Clean it up now
     auto state = (state_ &= ~(kWaitingNotS | kPrevDefer | kHasE));
     assert((state & ~(kWaitingAny | kAnnotationCreated)) == 0);
+    invokeHook(HookEvent::AfterReleaseExclusive);
     wakeRegisteredWaiters(state, kWaitingE | kWaitingU | kWaitingS);
   }
 
@@ -564,12 +579,14 @@ class SharedMutexImpl
     // lock() strips kMayDefer immediately, but then copies it to
     // kPrevDefer so we can tell if the pre-lock() lock_shared() might
     // have deferred
-    if ((state & (kMayDefer | kPrevDefer)) == 0 ||
-        !tryUnlockTokenlessSharedDeferred()) {
-      // Matching lock_shared() couldn't have deferred, or the deferred
-      // lock has already been inlined by applyDeferredReaders()
-      unlockSharedInline();
+    if ((state & (kMayDefer | kPrevDefer)) != 0 &&
+        tryUnlockTokenlessSharedDeferred()) {
+      invokeHook(HookEvent::AfterReleaseShared);
+      return;
     }
+    // Matching lock_shared() couldn't have deferred, or the deferred lock has
+    // already been inlined by applyDeferredReaders().
+    unlockSharedInline();
   }
 
   void unlock_shared(Token& token) {
@@ -587,8 +604,10 @@ class SharedMutexImpl
         token.state_ == Token::State::LockedInlineShared ||
         token.state_ == Token::State::LockedDeferredShared);
 
-    if (token.state_ != Token::State::LockedDeferredShared ||
-        !tryUnlockSharedDeferred(token.slot_)) {
+    if (token.state_ == Token::State::LockedDeferredShared &&
+        tryUnlockSharedDeferred(token.slot_)) {
+      invokeHook(HookEvent::AfterReleaseShared);
+    } else {
       unlockSharedInline();
     }
     if (folly::kIsDebug) {
@@ -685,6 +704,7 @@ class SharedMutexImpl
     OwnershipTrackerBase::endThreadOwnership();
     auto state = (state_ -= kHasU);
     assert((state & (kWaitingNotS | kHasSolo)) == 0);
+    invokeHook(HookEvent::AfterReleaseUpgrade);
     wakeRegisteredWaiters(state, kWaitingE | kWaitingU);
   }
 
@@ -733,6 +753,50 @@ class SharedMutexImpl
 
  private:
   using Futex = typename folly::detail::Futex<Atom>;
+  using HookEvent = SharedMutexHookEvent;
+
+  template <typename HookPolicy>
+  using detect_shared_mutex_hook = decltype(HookPolicy::on_event(HookEvent{}));
+
+  static constexpr bool has_hook =
+      is_detected_v<detect_shared_mutex_hook, Policy>;
+  static constexpr bool kHookIsNoexcept = [] {
+    if constexpr (has_hook) {
+      return noexcept(Policy::on_event(HookEvent{}));
+    }
+    return false;
+  }();
+
+  static_assert(
+      !has_hook || kHookIsNoexcept,
+      "SharedMutex policy on_event hook must be noexcept");
+
+  FOLLY_ALWAYS_INLINE static void invokeHook(HookEvent event) {
+    if constexpr (has_hook) {
+      Policy::on_event(event);
+    }
+  }
+
+  static HookEvent hookEventForWaitMask(uint32_t waitMask) {
+    switch (waitMask) {
+      case kWaitingE:
+        return HookEvent::BeforeParkExclusive;
+      case kWaitingU:
+        return HookEvent::BeforeParkUpgrade;
+      case kWaitingS:
+        return HookEvent::BeforeParkShared;
+      case kWaitingNotS:
+        return HookEvent::BeforeParkReadersToDrain;
+      default:
+        folly::assume_unreachable();
+    }
+  }
+
+  FOLLY_ALWAYS_INLINE static void invokeBeforeParkHook(uint32_t waitMask) {
+    if constexpr (has_hook) {
+      invokeHook(hookEventForWaitMask(waitMask));
+    }
+  }
 
   // Internally we use four kinds of wait contexts.  These are structs
   // that provide a doWait method that returns true if a futex wake
@@ -1197,6 +1261,8 @@ class SharedMutexImpl
         continue;
       }
 
+      invokeBeforeParkHook(waitMask);
+
       if (!ctx.doWait(state_, after, waitMask)) {
         // timed out
         return false;
@@ -1403,6 +1469,7 @@ class SharedMutexImpl
     assert(
         (state & (kHasE | kBegunE | kMayDefer)) != 0 ||
         state < state + kIncrHasS);
+    invokeHook(HookEvent::AfterReleaseShared);
     if ((state & kHasS) == 0) {
       // Only the second half of lock() can be blocked by a non-zero
       // reader count, so that's the only thing we need to wake
