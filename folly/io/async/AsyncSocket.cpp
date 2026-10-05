@@ -774,7 +774,9 @@ AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
     // recvs complete into a DetachedReadCallback. The detached handle is
     // transferred to the new socket and passed to IoUringRecvHandle::clone()
     // in setReadCB(), which inherits any queued data and pending reads.
-    oldAsyncSocket->iouRecvHandle_->detachEventBase();
+    if (!oldAsyncSocket->iouRecvHandleDetached_) {
+      oldAsyncSocket->iouRecvHandle_->detachEventBase();
+    }
     iouRecvHandle_ = std::move(oldAsyncSocket->iouRecvHandle_);
     iouRecvHandleDetached_ = true;
   }
@@ -2277,8 +2279,11 @@ void AsyncSocket::closeNow() {
   }
 
   if (iouRecvHandle_) {
-    iouRecvHandle_->cancel();
+    if (!iouRecvHandleDetached_) {
+      iouRecvHandle_->cancel();
+    }
     iouRecvHandle_.reset();
+    iouRecvHandleDetached_ = false;
   }
 
   switch (state_) {
@@ -2546,6 +2551,7 @@ void AsyncSocket::attachEventBase(EventBase* eventBase) {
       CHECK(readCallback_ != nullptr);
       iouRecvHandle_ = IoUringRecvHandle::clone(
           eventBase, fd_, addr_, this, std::move(iouRecvHandle_));
+      iouRecvHandleDetached_ = false;
     }
     if (iouSendHandle_) {
       iouSendHandle_ =
@@ -2589,8 +2595,9 @@ void AsyncSocket::detachEventBase() {
   eventBase_ = nullptr;
 
   if (useIoUring_) {
-    if (iouRecvHandle_) {
+    if (iouRecvHandle_ && !iouRecvHandleDetached_) {
       iouRecvHandle_->detachEventBase();
+      iouRecvHandleDetached_ = true;
     }
 
     if (iouSendHandle_) {
