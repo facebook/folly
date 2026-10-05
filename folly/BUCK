@@ -807,6 +807,7 @@ fb_dirsync_cpp_library(
         ":cpp_attributes",
         ":portability",
         ":traits",
+        ":utility",
         "//folly/functional:invoke",
         "//folly/lang:align",
         "//folly/lang:exception",

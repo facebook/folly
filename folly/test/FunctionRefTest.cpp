@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <concepts>
 #include <list>
 
 #include <folly/Function.h>
@@ -23,6 +24,16 @@ namespace {
 int func_int_int_add_25(int x) {
   return x + 25;
 }
+
+struct AddN {
+  int n;
+  constexpr int operator()(int x) const { return x + n; }
+};
+
+struct Port {
+  int value = 22;
+  int get() const { return value; }
+};
 } // namespace
 
 namespace folly {
@@ -286,6 +297,34 @@ TEST(FunctionRef, Emptiness) {
   EXPECT_NE(nullptr, FunctionRef<void()>(noopfun));
   EXPECT_EQ(FunctionRef<void()>(nullptr), nullptr);
   EXPECT_NE(FunctionRef<void()>(noopfun), nullptr);
+}
+
+TEST(FunctionRef, CompileTimeCallable) {
+  FunctionRef<int(int)> function = nontype<&func_int_int_add_25>;
+  EXPECT_TRUE(function);
+  EXPECT_NE(function, nullptr);
+  EXPECT_EQ(125, function(100));
+
+  FunctionRef<int(int)> lambda = nontype<[](int x) { return x + 1; }>;
+  EXPECT_TRUE(lambda);
+  EXPECT_EQ(43, lambda(42));
+
+  FunctionRef<int(int)> generic = nontype<[](auto x) { return x * 2; }>;
+  EXPECT_EQ(84, generic(42));
+
+  FunctionRef<int(int)> stateful = nontype<AddN{10}>;
+  EXPECT_EQ(52, stateful(42));
+
+  Port port;
+  FunctionRef<int(const Port&)> member = nontype<&Port::get>;
+  EXPECT_EQ(22, member(port));
+
+  FunctionRef<long(int)> converting = nontype<[](long x) { return x; }>;
+  EXPECT_EQ(7, converting(7));
+
+  using WrongSignature = nontype_t<[] { return 0; }>;
+  static_assert(
+      !std::constructible_from<FunctionRef<int(int)>, WrongSignature>);
 }
 
 } // namespace folly

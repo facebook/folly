@@ -219,6 +219,25 @@ constexpr sorted_unique_t sorted_unique{};
 struct sorted_equivalent_t {};
 constexpr sorted_equivalent_t sorted_equivalent{};
 
+/// nontype_t
+/// nontype
+///
+/// A tag type and value carrying a value as a non-type template argument, for
+/// passing a callable known at compile time to a function wrapper which then
+/// need not reference it.
+///
+/// Example:
+///
+///   folly::FunctionRef<int()> f = folly::nontype<[] { return 42; }>;
+///
+/// mimic: std::nontype_t, std::nontype, p0792r14
+template <auto V>
+struct nontype_t {
+  explicit nontype_t() = default;
+};
+template <auto V>
+inline constexpr nontype_t<V> nontype{};
+
 template <typename T>
 struct transparent : T {
   using is_transparent = void;

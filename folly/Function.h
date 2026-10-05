@@ -210,6 +210,7 @@
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
+#include <folly/Utility.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
@@ -1110,7 +1111,8 @@ class FunctionRef<ReturnType(Args...)> final {
               std::negation<std::is_same<FunctionRef, std::decay_t<Fun>>>,
               is_invocable_r<ReturnType, Fun&&, Args&&...>>,
           int> = 0>
-  constexpr /* implicit */ FunctionRef(Fun&& fun) noexcept {
+  constexpr /* implicit */ FunctionRef(
+      Fun&& fun [[FOLLY_ATTR_CLANG_LIFETIMEBOUND]]) noexcept {
     // `Fun` may be a const type, in which case we have to do a const_cast
     // to store the address in a `void*`. This is safe because the `void*`
     // will be cast back to `Fun*` (which is a const pointer whenever `Fun`
@@ -1139,6 +1141,28 @@ class FunctionRef<ReturnType(Args...)> final {
     if (fun) {
       object_ = const_cast<void*>(reinterpret_cast<void const*>(fun));
       call_ = &FunctionRef::template call<Fun*>;
+    }
+  }
+
+  /**
+   * Constructs a FunctionRef from a callable known at compile time. Nothing is
+   * referenced, so it cannot dangle:
+   *
+   *   FunctionRef<int()> f = nontype<[] { return 42; }>;
+   *
+   * Mirrors the `std::nontype_t` constructor of `std::function_ref`.
+   */
+  template <auto Fn>
+  constexpr /* implicit */ FunctionRef(nontype_t<Fn>) noexcept
+    requires is_invocable_r_v<ReturnType, decltype(Fn) const&, Args&&...>
+      : FunctionRef(+[](Args&&... args) -> ReturnType {
+          return static_cast<ReturnType>(
+              std::invoke(Fn, static_cast<Args&&>(args)...));
+        }) {
+    if constexpr (
+        std::is_pointer_v<decltype(Fn)> ||
+        std::is_member_pointer_v<decltype(Fn)>) {
+      static_assert(Fn != nullptr);
     }
   }
 

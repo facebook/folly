@@ -594,6 +594,7 @@ folly_add_library(
     folly_lang_new
     folly_portability
     folly_traits
+    folly_utility
 )
 
 folly_add_library(
