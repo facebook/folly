@@ -61,11 +61,8 @@ TEST(MuxIOThreadPoolExecutor, SingleEpollLoopRun) {
 
   testEvbs();
 
-  ex.setNumThreads(1);
-  EXPECT_EQ(ex.numThreads(), 1);
-  EXPECT_EQ(ex.numActiveThreads(), 1);
-  testEvbs();
-
+  // Downsizing is not supported; exercise upsizing from the many-EventBases,
+  // few-threads steady state.
   ex.setNumThreads(kNumEventBases);
   EXPECT_EQ(ex.numThreads(), kNumEventBases);
   testEvbs();
@@ -95,6 +92,7 @@ TEST(MuxIOThreadPoolExecutor, InvalidSetNumThreads) {
   ex.setNumThreads(16); // No-op.
   EXPECT_THROW(ex.setNumThreads(0), std::invalid_argument);
   EXPECT_THROW(ex.setNumThreads(17), std::invalid_argument);
+  EXPECT_THROW(ex.setNumThreads(8), std::invalid_argument); // No downsizing.
 
   EXPECT_THROW(folly::MuxIOThreadPoolExecutor(0), std::invalid_argument);
   folly::MuxIOThreadPoolExecutor::Options options;

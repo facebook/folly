@@ -325,7 +325,11 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   void runTask(const ThreadPtr& thread, Task&& task);
 
-  virtual void validateNumThreads(size_t /* numThreads */) {}
+  // Called by setNumThreads() while holding threadListLock_, before any
+  // thread-count state is modified. Subclasses may reject the new value (by
+  // throwing) and/or pre-adjust related state atomically with the update. Must
+  // not block or re-enter the executor.
+  virtual void prepareSetNumThreads(size_t /* numThreads */) {}
 
   // The function that will be bound to pool threads. It must call
   // thread->initBaton.post() once alive, then thread->readyBaton.wait()

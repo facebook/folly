@@ -228,10 +228,10 @@ void ThreadPoolExecutor::setNumThreads(size_t numThreads) {
      all thread creation (see tests for an example of this)
   */
 
-  validateNumThreads(numThreads);
   size_t numThreadsToJoin = 0;
   {
     std::unique_lock w{threadListLock_};
+    prepareSetNumThreads(numThreads);
     auto pending = getPendingTaskCountImpl();
     auto active = activeThreads_.load(std::memory_order_relaxed);
 

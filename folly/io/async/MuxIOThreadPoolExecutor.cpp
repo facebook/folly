@@ -129,7 +129,7 @@ void MuxIOThreadPoolExecutor::add(
   evbState.evb.runInEventBaseThread(std::move(wrappedFunc));
 }
 
-void MuxIOThreadPoolExecutor::validateNumThreads(size_t numThreads) {
+void MuxIOThreadPoolExecutor::prepareSetNumThreads(size_t numThreads) {
   if (numThreads == 0 || numThreads > numEventBases_) {
     throw std::invalid_argument(
         fmt::format(
@@ -137,6 +137,22 @@ void MuxIOThreadPoolExecutor::validateNumThreads(size_t numThreads) {
             numThreads,
             numEventBases_));
   }
+  // Threads may only be stopped at shutdown: with io_uring, the pending
+  // operations a thread submitted are cancelled when it exits.
+  // This runs under threadListLock_, so the check and the minThreads_ update
+  // are atomic with setNumThreads()'s mutation: concurrent calls serialize, and
+  // any that would reduce the count throws.
+  const auto currentMax = maxThreads_.load(std::memory_order_relaxed);
+  if (numThreads < currentMax) {
+    throw std::invalid_argument(
+        fmt::format(
+            "Reducing the number of threads is not supported: {} < {}",
+            numThreads,
+            currentMax));
+  }
+  // Force minThreads_ == maxThreads_ so the pool's timeout machinery can never
+  // reduce the thread count on its own (the base only ever lowers minThreads_).
+  minThreads_.store(numThreads, std::memory_order_relaxed);
 }
 
 std::shared_ptr<ThreadPoolExecutor::Thread>

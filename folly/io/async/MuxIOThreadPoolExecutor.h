@@ -137,7 +137,7 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
 
   void maybeUnregisterEventBases(Observer* o);
 
-  void validateNumThreads(size_t numThreads) override;
+  void prepareSetNumThreads(size_t numThreads) override;
   ThreadPtr makeThread() override;
   EvbState& pickEvbState();
   void threadRun(ThreadPtr thread) override;
