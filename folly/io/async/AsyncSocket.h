@@ -626,6 +626,25 @@ class AsyncSocket
   virtual NetworkSocket detachNetworkSocket();
 
   /**
+   * Switch from native io_uring socket operations to EventHandler I/O.
+   *
+   * This is a no-op if native io_uring I/O is not enabled. Otherwise, on
+   * success the read callback is removed immediately. The returned future
+   * completes after an in-flight receive has been cancelled and contains any
+   * bytes that were consumed from the socket while cancellation was in
+   * progress. The socket must not be read, moved, or re-armed until the future
+   * completes.
+   *
+   * The descriptor's blocking mode is unchanged. The caller must put it in
+   * non-blocking mode after the future completes and before using EventHandler
+   * I/O, as AsyncSSLSocket does when adopting the socket.
+   *
+   * Fails with INVALID_STATE if the socket is not established or a connect or
+   * write is pending. On failure the socket is left unchanged.
+   */
+  SemiFuture<std::unique_ptr<IOBuf>> asyncSwitchToEventHandlerMode();
+
+  /**
    * Initiate a connection.
    *
    * @param callback  The callback to inform when the connection attempt

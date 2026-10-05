@@ -190,6 +190,18 @@ void connectWriteReadClose(
 }
 } // namespace
 
+TEST(AsyncSSLSocketTest, InitializesSSLContextModes) {
+  EventBase eventBase;
+  auto sslContext = std::make_shared<SSLContext>();
+  constexpr auto requiredModes =
+      SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_ENABLE_PARTIAL_WRITE;
+  SSL_CTX_clear_mode(sslContext->getSSLCtx(), requiredModes);
+
+  auto socket = AsyncSSLSocket::newSocket(sslContext, &eventBase);
+  EXPECT_EQ(
+      SSL_CTX_get_mode(sslContext->getSSLCtx()) & requiredModes, requiredModes);
+}
+
 /**
  * Test connecting to, writing to, reading from, and closing the
  * connection to the SSL server.

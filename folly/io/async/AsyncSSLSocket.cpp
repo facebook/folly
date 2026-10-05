@@ -348,6 +348,20 @@ void AsyncSSLSocket::init() {
   static const auto sslBioMethodInitializer = initsslBioMethod();
   (void)sslBioMethodInitializer;
 
+  if (useIoUring_) {
+    CHECK(!iouRecvHandle_)
+        << "AsyncSSLSocket cannot adopt a socket with a native io_uring receive";
+    iouSendHandle_.reset();
+    useIoUring_ = false;
+
+    if (fd_ != NetworkSocket() && netops_->set_socket_non_blocking(fd_) != 0) {
+      auto errnoCopy = errno;
+      throw AsyncSocketException(
+          AsyncSocketException::INTERNAL_ERROR,
+          withAddr("failed to put SSL socket in non-blocking mode"),
+          errnoCopy);
+    }
+  }
   setup_SSL_CTX(ctx_->getSSLCtx());
 }
 

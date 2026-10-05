@@ -66,6 +66,7 @@ class IoUringRecvHandle : public DelayedDestruction {
   void drainCompletedReads();
 
   void detachEventBase();
+  PendingRead takeDetachedData();
   void cancel();
 
  private:

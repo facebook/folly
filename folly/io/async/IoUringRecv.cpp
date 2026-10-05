@@ -334,6 +334,33 @@ void IoUringRecvHandle::detachEventBase() {
   backend_ = nullptr;
 }
 
+IoUringRecvHandle::PendingRead IoUringRecvHandle::takeDetachedData() {
+  CHECK_EQ(backend_, nullptr);
+  CHECK(!request_)
+      << "detached receive handle must not own a request: "
+         "detachEventBase() releases an in-flight request for cancellation "
+         "or resets an idle request";
+
+  auto queuedData = std::move(queuedReceivedData_);
+  if (!pendingRead_) {
+    return makeSemiFuture(std::move(queuedData));
+  }
+
+  auto pendingRead = std::move(*pendingRead_);
+  pendingRead_.reset();
+  return std::move(pendingRead)
+      .deferValue([queuedData = std::move(queuedData)](
+                      std::unique_ptr<IOBuf> pendingData) mutable {
+        if (!queuedData) {
+          return pendingData;
+        }
+        if (pendingData) {
+          queuedData->appendToChain(std::move(pendingData));
+        }
+        return std::move(queuedData);
+      });
+}
+
 void IoUringRecvHandle::cancel() {
   if (request_->inFlight()) {
     request_->setEventBase(nullptr);
@@ -501,6 +528,10 @@ void IoUringRecvHandle::drainCompletedReads() {
 }
 
 void IoUringRecvHandle::detachEventBase() {
+  folly::terminate_with<std::runtime_error>("io_uring not supported");
+}
+
+IoUringRecvHandle::PendingRead IoUringRecvHandle::takeDetachedData() {
   folly::terminate_with<std::runtime_error>("io_uring not supported");
 }
 

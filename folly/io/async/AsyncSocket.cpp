@@ -883,6 +883,51 @@ NetworkSocket AsyncSocket::detachNetworkSocket() {
   return fd;
 }
 
+SemiFuture<std::unique_ptr<IOBuf>>
+AsyncSocket::asyncSwitchToEventHandlerMode() {
+  eventBase_->dcheckIsInEventBaseThread();
+
+  using PendingData = std::unique_ptr<IOBuf>;
+  if (!useIoUring_) {
+    return makeSemiFuture(PendingData{});
+  }
+
+  const bool isEstablished = state_ == StateEnum::ESTABLISHED;
+  const bool hasPendingConnect = iouConnectHandle_ != nullptr;
+  const bool pendingWrites = hasPendingWrites();
+  if (!isEstablished || hasPendingConnect || pendingWrites) {
+    return makeSemiFuture<PendingData>(AsyncSocketException(
+        AsyncSocketException::INVALID_STATE,
+        withAddr(
+            fmt::format(
+                "cannot switch I/O mode: established={}, pending connect={}, "
+                "pending writes={}",
+                isEstablished,
+                hasPendingConnect,
+                pendingWrites))));
+  }
+
+  setReadCB(nullptr);
+  useIoUring_ = false;
+  iouSendHandle_.reset();
+
+  if (!iouRecvHandle_) {
+    return makeSemiFuture(PendingData{});
+  }
+
+  if (!iouRecvHandleDetached_) {
+    iouRecvHandle_->detachEventBase();
+  }
+  iouRecvHandleDetached_ = false;
+  auto recvHandle = std::move(iouRecvHandle_);
+  auto pendingData = recvHandle->takeDetachedData();
+  return std::move(pendingData)
+      .deferValue([recvHandle = std::move(recvHandle)](PendingData data) {
+        static_cast<void>(recvHandle);
+        return data;
+      });
+}
+
 void AsyncSocket::setShutdownSocketSet(
     const std::weak_ptr<ShutdownSocketSet>& wNewSS) {
   const auto newSS = wNewSS.lock();
