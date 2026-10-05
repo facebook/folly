@@ -107,6 +107,7 @@ fb_dirsync_rule(
         "//folly:cancellation_token",
     ],
     fbcode_rule = cython_library,
+    package = "folly/python/test",
     types = ["simplebridgecoro.pyi"],
     deps = [
         "//folly/python:coro",
@@ -306,6 +307,7 @@ fb_dirsync_rule(
         "//folly/io/async:request_context",
     ],
     fbcode_rule = cython_library,
+    package = "folly/python/test",
     types = ["request_context_helper.pyi"],
     deps = [
         "//folly/python:request_context",
