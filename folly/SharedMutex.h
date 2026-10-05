@@ -1324,7 +1324,10 @@ class SharedMutexImpl
         // a deferred read to avoid atomicity problems between the state_
         // CAS and applyDeferredReader's reads of deferredReaders[].
         if (FOLLY_UNLIKELY((before & kMayDefer) != 0)) {
-          applyDeferredReaders(state, ctx);
+          const auto slot = spinForDeferredReaders();
+          if (slot != shared_mutex_detail::kMaxDeferredReadersAllocated) {
+            applyDeferredReaders(state, ctx, slot);
+          }
         }
         while (true) {
           assert((state & (kHasE | kBegunE)) != 0 && (state & kHasU) == 0);
@@ -1501,12 +1504,10 @@ class SharedMutexImpl
     return (slotValue & ~kTokenless) == tokenfulSlotValue();
   }
 
-  // Clears any deferredReaders[] that point to this, adjusting the inline
-  // shared lock count to compensate.  Does some spinning and yielding
-  // to avoid the work.  Always finishes the application, even if ctx
-  // times out.
-  template <class WaitContext>
-  void applyDeferredReaders(uint32_t& state, WaitContext& ctx) {
+  // Waits briefly for outstanding deferred readers to release themselves.
+  // Returns the first slot that needs active application, or the allocated
+  // slot count as a sentinel if no deferred readers remain.
+  FOLLY_NOINLINE uint32_t spinForDeferredReaders() {
     uint32_t slot = 0;
 
     const uint32_t maxDeferredReaders =
@@ -1515,20 +1516,22 @@ class SharedMutexImpl
       while (!slotValueIsThis(
           deferredReader(slot)->load(std::memory_order_acquire))) {
         if (++slot == maxDeferredReaders) {
-          return;
+          return shared_mutex_detail::kMaxDeferredReadersAllocated;
         }
       }
       const uint64_t elapsed = hardware_timestamp() - start;
       // NOTE: This is also true if hardware_timestamp() goes back in time, as
       // elapsed underflows.
       if (FOLLY_UNLIKELY(elapsed >= kMaxSpinCycles)) {
-        applyDeferredReaders(state, ctx, slot);
-        return;
+        return slot;
       }
       asm_volatile_pause();
     }
   }
 
+  // Clears any remaining deferredReaders[] that point to this, adjusting the
+  // inline shared lock count to compensate.  Does some yielding to avoid the
+  // work.  Always finishes the application, even if ctx times out.
   template <class WaitContext>
   void applyDeferredReaders(uint32_t& state, WaitContext& ctx, uint32_t slot) {
     long thread_nivcsw = 0;
