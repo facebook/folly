@@ -1456,8 +1456,15 @@ class SharedMutexImpl
     }
   }
 
+#if !defined(__ANDROID__)
   [[FOLLY_ATTR_GNU_USED]]
+#endif
   void wakeRegisteredWaitersImpl(uint32_t& state, uint32_t wakeMask) {
+    wakeRegisteredWaitersImplBody(state, wakeMask);
+  }
+
+  FOLLY_ALWAYS_INLINE void wakeRegisteredWaitersImplBody(
+      uint32_t& state, uint32_t wakeMask) {
     // If there are multiple lock() pending only one of them will actually
     // get to wake up, so issuing futexWakeAll will make a thundering herd.
     // There's nothing stopping us from issuing futexWake(1) instead,
@@ -1674,6 +1681,16 @@ class SharedMutexImpl
     return true;
   }
 };
+
+#if defined(__ANDROID__)
+template <>
+FOLLY_EXPORT void SharedMutexImpl<true>::wakeRegisteredWaitersImpl(
+    uint32_t& state, uint32_t wakeMask);
+
+template <>
+FOLLY_EXPORT void SharedMutexImpl<false>::wakeRegisteredWaitersImpl(
+    uint32_t& state, uint32_t wakeMask);
+#endif
 
 using SharedMutexReadPriority = SharedMutexImpl<true>;
 using SharedMutexWritePriority = SharedMutexImpl<false>;
