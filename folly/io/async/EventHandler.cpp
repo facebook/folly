@@ -47,9 +47,7 @@ bool EventHandler::registerImpl(uint16_t events, bool internal) {
   if (isHandlerRegistered()) {
     // If the new events are the same are the same as the already registered
     // flags, we don't have to do anything.  Just return.
-    auto flags = folly::event_ref_flags(event_.getEvent());
-    if (events == event_.eb_ev_events() &&
-        static_cast<bool>(flags & EVLIST_INTERNAL) == internal) {
+    if (events == event_.eb_ev_events() && event_.eb_internal() == internal) {
       return true;
     }
 
@@ -69,9 +67,9 @@ bool EventHandler::registerImpl(uint16_t events, bool internal) {
       this);
   event_.eb_event_base_set(evb);
 
-  // Set EVLIST_INTERNAL if this is an internal event
+  // Mark it internal, which eb_event_set() above cleared.
   if (internal) {
-    folly::event_ref_flags(event_.getEvent()) |= EVLIST_INTERNAL;
+    event_.eb_set_internal(true);
   }
 
   // Add the event.
@@ -179,12 +177,7 @@ void EventHandler::setEventBase(EventBase* eventBase) {
 }
 
 bool EventHandler::isPending() const {
-  if (folly::event_ref_flags(event_.getEvent()) & EVLIST_ACTIVE) {
-    if (event_.eb_ev_res() & EV_READ) {
-      return true;
-    }
-  }
-  return false;
+  return event_.eb_active() && (event_.eb_ev_res() & EV_READ);
 }
 
 } // namespace folly

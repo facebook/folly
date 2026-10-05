@@ -83,6 +83,8 @@ class EventBaseEvent {
   }
 
   // Set between the backend noticing the event and dispatching its callback.
+  // STTimerFDTimeoutManager, which has no backend, instead holds it for as
+  // long as a timeout is scheduled so that isScheduled() reports it.
   bool eb_active() const { return eb_flags_any(EVLIST_ACTIVE); }
   void eb_set_active(bool active) { eb_flags_set(EVLIST_ACTIVE, active); }
 

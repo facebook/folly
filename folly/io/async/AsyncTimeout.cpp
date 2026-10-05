@@ -138,10 +138,8 @@ void AsyncTimeout::libeventCallback(libevent_fd_t fd, short events, void* arg) {
   (void)fd;
   (void)events;
 
-  // double check that ev_flags gets reset when the timeout is not running
-  assert(
-      (event_ref_flags(timeout->event_.getEvent()) & ~EVLIST_INTERNAL) ==
-      EVLIST_INIT);
+  // double check that the registration is dropped before the timeout runs
+  assert(!timeout->event_.isEventRegistered());
 
   // this can't possibly fire if timeout->eventBase_ is nullptr
   timeout->timeoutManager_->bumpHandlingTime();
