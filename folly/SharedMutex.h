@@ -394,11 +394,8 @@ class SharedMutexImpl
   ~SharedMutexImpl() {
     invokeHook(HookEvent::BeforeDestroy);
     auto state = state_.load(std::memory_order_acquire);
-    if (FOLLY_UNLIKELY((state & kReleaseInProgress) != 0)) {
-      state = waitForPendingRelease(state);
-    }
-    if (FOLLY_UNLIKELY((state & kHasS) != 0)) {
-      cleanupTokenlessSharedDeferred(state);
+    if (FOLLY_UNLIKELY((state & (kReleaseInProgress | kHasS)) != 0)) {
+      state = prepareForDestroySlow(state);
     }
 
     if (folly::kIsDebug) {
@@ -816,6 +813,16 @@ class SharedMutexImpl
         std::this_thread::yield();
       }
       state = state_.load(std::memory_order_acquire);
+    }
+    return state;
+  }
+
+  FOLLY_NOINLINE uint32_t prepareForDestroySlow(uint32_t state) noexcept {
+    if ((state & kReleaseInProgress) != 0) {
+      state = waitForPendingRelease(state);
+    }
+    if ((state & kHasS) != 0) {
+      cleanupTokenlessSharedDeferred(state);
     }
     return state;
   }
@@ -1607,7 +1614,7 @@ class SharedMutexImpl
 
   // Updates the state in/out argument as if the locks were made inline,
   // but does not update state_
-  void cleanupTokenlessSharedDeferred(uint32_t& state) {
+  FOLLY_NOINLINE void cleanupTokenlessSharedDeferred(uint32_t& state) {
     const uint32_t maxDeferredReaders =
         shared_mutex_detail::getMaxDeferredReaders();
     for (uint32_t i = 0; i < maxDeferredReaders; ++i) {
