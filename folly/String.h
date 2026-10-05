@@ -29,6 +29,7 @@
 
 #include <cstdarg>
 #include <exception>
+#include <span>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -338,6 +339,14 @@ template <class InputString, class OutputString>
 bool hexlify(
     const InputString& input, OutputString& output, bool append = false);
 
+template <class OutputString, size_t Extent>
+bool hexlify(
+    std::span<const uint8_t, Extent> input,
+    OutputString& output,
+    bool append = false) {
+  return hexlify(ByteRange{input.data(), input.size()}, output, append);
+}
+
 template <class OutputString = std::string>
 OutputString hexlify(ByteRange input) {
   OutputString output;
@@ -346,6 +355,11 @@ OutputString hexlify(ByteRange input) {
     throw_exception<std::runtime_error>("hexlify failed");
   }
   return output;
+}
+
+template <class OutputString = std::string, size_t Extent>
+OutputString hexlify(std::span<const uint8_t, Extent> input) {
+  return hexlify<OutputString>(ByteRange{input.data(), input.size()});
 }
 
 template <class OutputString = std::string>

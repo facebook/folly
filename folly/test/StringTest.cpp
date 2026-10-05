@@ -1342,6 +1342,11 @@ TEST(String, hexlify) {
   EXPECT_EQ("666f6f626172", hexlify("foobar"));
   auto bytes = folly::make_array<uint8_t>(1, 2, 3, 4);
   EXPECT_EQ("01020304", hexlify(ByteRange{bytes.data(), bytes.size()}));
+  std::span<const uint8_t> byteSpan = bytes;
+  EXPECT_EQ("01020304", hexlify(byteSpan));
+  string spanOutput;
+  EXPECT_TRUE(hexlify(byteSpan, spanOutput));
+  EXPECT_EQ("01020304", spanOutput);
 }
 
 TEST(String, unhexlify) {
