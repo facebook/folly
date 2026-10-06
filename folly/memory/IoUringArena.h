@@ -17,11 +17,15 @@
 #pragma once
 
 #include <cstddef>
+#include <limits>
 
 namespace folly {
 
 class IoUringArena {
  public:
+  static constexpr unsigned kFixedRegionArenaIndex =
+      std::numeric_limits<unsigned>::max();
+
   static bool init(size_t size);
 
   static void* allocate(size_t size);
@@ -29,6 +33,8 @@ class IoUringArena {
   static void* reallocate(void* p, size_t size);
 
   static void deallocate(void* p, size_t size = 0);
+
+  static void deallocateOwnedBuffer(void* p, void*) noexcept;
 
   static bool initialized();
 
@@ -40,14 +46,13 @@ class IoUringArena {
 
   static size_t freeSpace();
 
+  /**
+   * Returns 0 before initialization, the jemalloc arena index when jemalloc is
+   * used, or kFixedRegionArenaIndex for the fixed-region fallback.
+   */
   static unsigned arenaIndex();
 
   static int flags();
-
-  static bool ioUringArenaSupported();
-
- private:
-  static int flags_;
 };
 
 template <typename T>

@@ -62,7 +62,9 @@ folly_add_library(
     ${GLOG_LIBRARIES}
     folly_c_portability
     folly_conv
+    folly_detail_static_singleton_manager
     folly_lang_align
+    folly_memory_fixed_region_allocator
     folly_memory_malloc
     folly_portability_string
     folly_portability_sys_mman

@@ -31,6 +31,11 @@ concept IOBufSingletonAllocator = requires(size_t sz) {
   { T::allocate(sz) } -> std::same_as<void*>;
 };
 
+template <typename T>
+concept IOBufSingletonDeallocator = requires(void* ptr) {
+  { T::deallocate(ptr) } -> std::same_as<void>;
+};
+
 template <IOBufSingletonAllocator Allocator>
 IOBufFactory makeIOBufArenaFactory() {
   return [](size_t capacity) -> std::unique_ptr<IOBuf> {
@@ -41,7 +46,14 @@ IOBufFactory makeIOBufArenaFactory() {
     if (!data) {
       throw std::bad_alloc();
     }
-    return IOBuf::takeOwnership(IOBuf::SIZED_FREE, data, capacity, 0, 0);
+    if constexpr (IOBufSingletonDeallocator<Allocator>) {
+      return IOBuf::takeOwnership(
+          data, capacity, 0, 0, [](void* ptr, void*) noexcept {
+            Allocator::deallocate(ptr);
+          });
+    } else {
+      return IOBuf::takeOwnership(IOBuf::SIZED_FREE, data, capacity, 0, 0);
+    }
   };
 }
 

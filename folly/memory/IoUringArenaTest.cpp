@@ -20,6 +20,8 @@
 
 #include <folly/portability/GTest.h>
 
+#include <array>
+#include <thread>
 #include <vector>
 
 using iua = folly::IoUringArena;
@@ -40,9 +42,25 @@ TEST(IoUringArenaTest, Basic) {
   EXPECT_NE(nullptr, ptr);
   iua::deallocate(ptr, kb(1));
 
-  bool initialized = iua::init(mb(4));
+  std::array<bool, 8> initResults{};
+  std::vector<std::thread> initThreads;
+  initThreads.reserve(initResults.size());
+  for (size_t i = 0; i < initResults.size(); ++i) {
+    initThreads.emplace_back([&, i] { initResults[i] = iua::init(mb(4)); });
+  }
+  for (auto& thread : initThreads) {
+    thread.join();
+  }
+  const bool initialized = initResults.front();
+  for (bool result : initResults) {
+    EXPECT_EQ(result, initialized);
+  }
   if (initialized) {
     EXPECT_NE(0, iua::freeSpace());
+    EXPECT_NE(0, iua::arenaIndex());
+#if defined(FOLLY_SANITIZE) && FOLLY_SANITIZE
+    EXPECT_EQ(iua::kFixedRegionArenaIndex, iua::arenaIndex());
+#endif
   }
 
   ptr = iua::allocate(kb(1));
@@ -51,6 +69,11 @@ TEST(IoUringArenaTest, Basic) {
   if (initialized) {
     EXPECT_TRUE(iua::addressInArena(ptr));
   }
+
+  static_cast<char*>(ptr)[0] = 42;
+  ptr = iua::reallocate(ptr, kb(2));
+  ASSERT_NE(nullptr, ptr);
+  EXPECT_EQ(42, static_cast<char*>(ptr)[0]);
 
   // Allocate some arrays on the arena
   auto array_of_arrays = new (ptr) std::array<int, 100>[5];
@@ -61,7 +84,7 @@ TEST(IoUringArenaTest, Basic) {
     EXPECT_TRUE(iua::addressInArena(&array_of_arrays[0][0]));
   }
 
-  iua::deallocate(ptr, kb(1));
+  EXPECT_EQ(nullptr, iua::reallocate(ptr, 0));
 }
 
 TEST(IoUringArenaTest, LargeAllocations) {
@@ -70,6 +93,8 @@ TEST(IoUringArenaTest, LargeAllocations) {
 
   // 4MB arena
   bool initialized = iua::init(mb(4));
+  const bool usingFixedRegion =
+      initialized && iua::arenaIndex() == iua::kFixedRegionArenaIndex;
   if (initialized) {
     EXPECT_NE(0, iua::freeSpace());
   }
@@ -88,26 +113,33 @@ TEST(IoUringArenaTest, LargeAllocations) {
 
   EXPECT_FALSE(iua::addressInArena(ptr2));
 
-  // Free and reuse arena area
+  // Free and reuse allocations
   iua::deallocate(ptr2, mb(4));
   iua::deallocate(ptr0, kb(1));
   ptr2 = iua::allocate(kb(64));
-
-  // No memory in the arena was freed - ptr0 was allocated
-  // before init and ptr2 didn't fit
-  EXPECT_FALSE(iua::addressInArena(ptr2));
+  EXPECT_NE(nullptr, ptr2);
+  if (!usingFixedRegion) {
+    // No arena allocation was freed: ptr0 predates init and ptr2 did not fit.
+    EXPECT_FALSE(iua::addressInArena(ptr2));
+  }
 
   iua::deallocate(ptr1, mb(2));
   void* ptr3 = iua::allocate(mb(1) + kb(512));
   EXPECT_NE(nullptr, ptr3);
 
   if (initialized) {
-    EXPECT_EQ(ptr1, ptr3);
+    if (!usingFixedRegion) {
+      EXPECT_EQ(ptr1, ptr3);
+    }
     EXPECT_TRUE(iua::addressInArena(ptr3));
   }
 
-  // Just using free works equally well
-  free(ptr3);
+  if (usingFixedRegion) {
+    iua::deallocate(ptr3);
+  } else {
+    // jemalloc arena allocations can also be released with free().
+    free(ptr3);
+  }
   ptr3 = iua::allocate(mb(1) + kb(512));
   EXPECT_NE(nullptr, ptr3);
 
@@ -122,7 +154,11 @@ TEST(IoUringArenaTest, LargeAllocations) {
 TEST(IoUringArenaTest, MemoryUsageTest) {
   bool initialized = iua::init(mb(160));
   if (initialized) {
-    EXPECT_GE(iua::freeSpace(), mb(160));
+    if (iua::arenaIndex() == iua::kFixedRegionArenaIndex) {
+      EXPECT_GT(iua::freeSpace(), 0);
+    } else {
+      EXPECT_GE(iua::freeSpace(), mb(160));
+    }
   }
 
   struct c32 {

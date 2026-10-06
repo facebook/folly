@@ -28,8 +28,6 @@ static constexpr size_t kb(size_t kilos) {
   return kilos * 1024;
 }
 
-#if !defined(FOLLY_SANITIZE) || !FOLLY_SANITIZE
-
 static constexpr size_t mb(size_t megs) {
   return kb(megs * 1024);
 }
@@ -46,6 +44,8 @@ TEST(IOBufArenaFactoryTest, IoUringArena) {
   ASSERT_NE(nullptr, buf);
   EXPECT_TRUE(iua::addressInArena(buf->writableBuffer()));
 }
+
+#if !defined(FOLLY_SANITIZE) || !FOLLY_SANITIZE
 
 TEST(IOBufArenaFactoryTest, JemallocHugePageAllocator) {
   bool initialized = jha::init(2);
