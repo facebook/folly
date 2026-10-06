@@ -45,6 +45,16 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME fixed_region_allocator
+  SRCS FixedRegionAllocator.cpp
+  HEADERS FixedRegionAllocator.h
+  DEPS
+    folly_lang_align
+    folly_memory_sanitize_address
+    folly_synchronized
+)
+
+folly_add_library(
   NAME io_uring_arena
   SRCS IoUringArena.cpp
   HEADERS IoUringArena.h

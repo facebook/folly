@@ -20,6 +20,16 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
+    name = "fixed_region_allocator_test",
+    srcs = ["FixedRegionAllocatorTest.cpp"],
+    deps = [
+        "//folly/memory:fixed_region_allocator",
+        "//folly/memory:sanitize_address",
+        "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
     name = "mallctl_helper_test",
     srcs = ["MallctlHelperTest.cpp"],
     allocator = "jemalloc_debug",
