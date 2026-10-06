@@ -1396,6 +1396,7 @@ void IoUringBackend::internalSubmit(IoSqeBase& ioSqe) noexcept {
   ioSqe.internalSubmit(sqe);
   if (ioSqe.type() == IoSqeBase::Type::Write) {
     numSendEvents_++;
+    numSendEventsSinceReap_++;
   }
   doneSubmitting();
 }
@@ -1439,7 +1440,41 @@ int IoUringBackend::cancelOne(IoSqe* ioSqe) {
   return ret;
 }
 
+int IoUringBackend::waitForRequestBatch(uint32_t numSendEvents) noexcept {
+  const auto timeoutSeconds =
+      std::chrono::duration_cast<std::chrono::seconds>(options_.timeout);
+  struct __kernel_timespec timeout{};
+  timeout.tv_sec = timeoutSeconds.count();
+  timeout.tv_nsec =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          options_.timeout - timeoutSeconds)
+          .count();
+
+  io_uring_cqe* batchCqe = nullptr;
+  const int res = ::io_uring_wait_cqes(
+      &ioRing_,
+      &batchCqe,
+      static_cast<uint32_t>(options_.batchSize) + numSendEvents,
+      &timeout,
+      nullptr);
+  FOLLY_SDT(
+      folly,
+      folly_io_uring_backend_pre_submit_and_wait_timeout,
+      options_.timeout,
+      options_.batchSize,
+      numSendEvents,
+      res);
+
+  // The first CQE is still available, so an interrupted batching wait should
+  // process it instead of restarting the timeout.
+  return res == -EINTR ? 0 : res;
+}
+
 int IoUringBackend::doInnerWait(io_uring_cqe*& cqe) noexcept {
+  if (options_.batchTimeoutAfterFirstCompletion) {
+    return waitForFirstCompletionThenBatch(cqe);
+  }
+
   if (waitingToSubmit_) {
     submitBusyCheck(waitingToSubmit_, WaitForEventsMode::WAIT);
     return ::io_uring_peek_cqe(&ioRing_, &cqe);
@@ -1452,6 +1487,27 @@ int IoUringBackend::doInnerWait(io_uring_cqe*& cqe) noexcept {
   } else {
     return ::io_uring_wait_cqe(&ioRing_, &cqe);
   }
+}
+
+int IoUringBackend::waitForFirstCompletionThenBatch(
+    io_uring_cqe*& cqe) noexcept {
+  const uint32_t numSendEvents = numSendEventsSinceReap_;
+  int ret;
+  if (waitingToSubmit_) {
+    ret = submitBusyCheck(waitingToSubmit_, WaitForEventsMode::WAIT);
+    if (ret < 0) {
+      return ret;
+    }
+    ret = ::io_uring_peek_cqe(&ioRing_, &cqe);
+  } else {
+    ret = ::io_uring_wait_cqe(&ioRing_, &cqe);
+  }
+
+  if (ret != 0 || !useReqBatching()) {
+    return ret;
+  }
+
+  return waitForRequestBatch(numSendEvents);
 }
 
 int IoUringBackend::doWait(io_uring_cqe*& cqe) {
@@ -1550,6 +1606,7 @@ unsigned int IoUringBackend::internalProcessCqe(
   unsigned int count = 0;
   unsigned int count_send = 0;
 
+  numSendEventsSinceReap_ = 0;
   checkLogOverflow(&ioRing_);
   do {
     unsigned int head;
@@ -1639,7 +1696,7 @@ int IoUringBackend::submitBusyCheck(
       if (options_.flags & Options::Flags::POLL_CQ) {
         res = ::io_uring_submit(&ioRing_);
       } else {
-        if (useReqBatching()) {
+        if (useReqBatching() && !options_.batchTimeoutAfterFirstCompletion) {
           io_uring_cqe* cqe;
           struct __kernel_timespec timeout{};
           timeout.tv_sec = 0;

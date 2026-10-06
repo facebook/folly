@@ -842,6 +842,8 @@ class IoUringBackend : public EventBaseBackendBase {
   io_uring_sqe* getSqe();
 
   // Wait helpers
+  int waitForRequestBatch(uint32_t numSendEvents) noexcept;
+  int waitForFirstCompletionThenBatch(io_uring_cqe*& cqe) noexcept;
   int doInnerWait(io_uring_cqe*& cqe) noexcept;
   int doWait(io_uring_cqe*& cqe);
   int doPeek(io_uring_cqe*& cqe) noexcept;
@@ -889,6 +891,9 @@ class IoUringBackend : public EventBaseBackendBase {
   uint32_t numInsertedEvents_{0};
   uint32_t numInternalEvents_{0};
   uint32_t numSendEvents_{0};
+  // Sends submitted since the last CQ reap. Older sends that are blocked on
+  // socket writability must not inflate the request batch target.
+  uint32_t numSendEventsSinceReap_{0};
 
   // io_uring related
   io_uring_params params_{};

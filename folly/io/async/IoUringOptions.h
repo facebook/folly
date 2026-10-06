@@ -206,6 +206,12 @@ struct IoUringOptions {
     return *this;
   }
 
+  IoUringOptions& setBatchTimeoutAfterFirstCompletion(bool v) {
+    batchTimeoutAfterFirstCompletion = v;
+
+    return *this;
+  }
+
   IoUringOptions& setZeroCopyRx(bool v) {
     zeroCopyRx = v;
 
@@ -324,6 +330,12 @@ struct IoUringOptions {
   // Both timeout _and_ batchSize must be set for io_uring_enter wait_nr to be
   // set!
   std::chrono::microseconds timeout{0};
+
+  // Request batching only: wait without a deadline for the first completion,
+  // then up to `timeout` for the rest of the batch. Idle loops then sleep
+  // instead of waking every `timeout`, but a lone completion waits the full
+  // `timeout`. When false, `timeout` bounds each whole wait.
+  bool batchTimeoutAfterFirstCompletion{false};
   std::chrono::milliseconds sqIdle{0};
   std::chrono::milliseconds cqIdle{0};
 

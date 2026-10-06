@@ -15,6 +15,7 @@
  */
 
 #include <sys/eventfd.h>
+#include <sys/timerfd.h>
 #include <numeric>
 
 #include <folly/FileUtil.h>
@@ -167,6 +168,82 @@ class EventFD : public folly::EventHandler {
   int fd_{-1};
   bool persist_;
 };
+
+class TimerFD : public folly::EventHandler {
+ public:
+  explicit TimerFD(folly::EventBase* eventBase)
+      : TimerFD(eventBase, createFd()) {}
+
+  ~TimerFD() override {
+    unregisterHandler();
+    folly::fileops::close(fd_);
+  }
+
+  void arm(std::chrono::microseconds delay) {
+    const auto seconds =
+        std::chrono::duration_cast<std::chrono::seconds>(delay);
+    itimerspec timer{};
+    timer.it_value.tv_sec = seconds.count();
+    timer.it_value.tv_nsec =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(delay - seconds)
+            .count();
+    CHECK_EQ(::timerfd_settime(fd_, 0, &timer, nullptr), 0);
+  }
+
+  uint64_t getNum() const { return num_; }
+
+  void handlerReady(uint16_t /*events*/) noexcept override {
+    uint64_t expirations = 0;
+    CHECK_EQ(
+        folly::readNoInt(fd_, &expirations, sizeof(expirations)),
+        sizeof(expirations));
+    ++num_;
+  }
+
+ private:
+  static int createFd() {
+    const int fd = ::timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
+    CHECK_GE(fd, 0);
+    return fd;
+  }
+
+  TimerFD(folly::EventBase* eventBase, int fd)
+      : EventHandler(eventBase, folly::NetworkSocket::fromFd(fd)), fd_(fd) {
+    registerHandler(folly::EventHandler::READ);
+  }
+
+  uint64_t num_{0};
+  int fd_;
+};
+
+struct PollLoopStats {
+  int preHookCalls{0};
+  int postHookCalls{0};
+  int lastEventCount{-1};
+  int emptyPollCount{0};
+  folly::Function<void()> firstPreLoop;
+};
+
+folly::EventBaseBackendBase::PollLoopHook makePollLoopHook(
+    PollLoopStats& stats) {
+  folly::EventBaseBackendBase::PollLoopHook hook;
+  hook.preLoopHook = [](void* ctx) {
+    auto& hookStats = *static_cast<PollLoopStats*>(ctx);
+    if (hookStats.preHookCalls++ == 0) {
+      hookStats.firstPreLoop();
+    }
+  };
+  hook.postLoopHook = [](void* ctx, int numEvents) {
+    auto& hookStats = *static_cast<PollLoopStats*>(ctx);
+    ++hookStats.postHookCalls;
+    hookStats.lastEventCount = numEvents;
+    if (numEvents == 0) {
+      ++hookStats.emptyPollCount;
+    }
+  };
+  hook.hookCtx = &stats;
+  return hook;
+}
 
 std::unique_ptr<folly::EventBase> getEventBase(folly::IoUringOptions opts) {
   try {
@@ -322,6 +399,87 @@ TEST(IoUringBackend, FailCreateOutOfMemory) {
     return;
   }
   GTEST_SKIP() << "io_uring memory is not charged against RLIMIT_MEMLOCK";
+}
+
+TEST(IoUringBackend, RequestBatchTimeoutStartsAfterFirstCompletion) {
+  PollLoopStats stats;
+  folly::IoUringOptions options;
+  options.setBatchSize(4)
+      .setTimeout(std::chrono::milliseconds(5))
+      .setBatchTimeoutAfterFirstCompletion(true)
+      .setUseRegisteredFds(0);
+  auto evbPtr = getEventBase(std::move(options));
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  evbPtr->loopOnce(EVLOOP_NONBLOCK);
+  TimerFD timer(evbPtr.get());
+  evbPtr->loopOnce(EVLOOP_NONBLOCK);
+
+  stats.firstPreLoop = [&] { timer.arm(std::chrono::milliseconds(30)); };
+  evbPtr->getBackend()->setPollLoopHook(makePollLoopHook(stats));
+  evbPtr->loopOnce();
+
+  EXPECT_EQ(timer.getNum(), 1);
+  EXPECT_EQ(stats.preHookCalls, 1);
+  EXPECT_EQ(stats.postHookCalls, 1);
+  EXPECT_GE(stats.lastEventCount, 1);
+}
+
+TEST(IoUringBackend, RequestBatchTimeoutBoundsWholeWaitByDefault) {
+  PollLoopStats stats;
+  folly::IoUringOptions options;
+  options.setBatchSize(4)
+      .setTimeout(std::chrono::milliseconds(5))
+      .setUseRegisteredFds(0);
+  auto evbPtr = getEventBase(std::move(options));
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  evbPtr->loopOnce(EVLOOP_NONBLOCK);
+  TimerFD timer(evbPtr.get());
+  evbPtr->loopOnce(EVLOOP_NONBLOCK);
+
+  // Without the opt-in, each wait gives up after the timeout even when idle,
+  // so the loop polls empty several times before the 30ms timer fires.
+  stats.firstPreLoop = [&] { timer.arm(std::chrono::milliseconds(30)); };
+  evbPtr->getBackend()->setPollLoopHook(makePollLoopHook(stats));
+  evbPtr->loopOnce();
+
+  EXPECT_EQ(timer.getNum(), 1);
+  EXPECT_GE(stats.emptyPollCount, 2);
+}
+
+TEST(IoUringBackend, RequestBatchCompletesAtBatchSize) {
+  PollLoopStats stats;
+  folly::IoUringOptions options;
+  options.setBatchSize(4)
+      .setTimeout(std::chrono::milliseconds(100))
+      .setBatchTimeoutAfterFirstCompletion(true)
+      .setUseRegisteredFds(0);
+  auto evbPtr = getEventBase(std::move(options));
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  std::vector<std::unique_ptr<TimerFD>> timers;
+  timers.reserve(4);
+  for (size_t i = 0; i < 4; ++i) {
+    timers.push_back(std::make_unique<TimerFD>(evbPtr.get()));
+  }
+  evbPtr->loopOnce(EVLOOP_NONBLOCK);
+
+  stats.firstPreLoop = [&] {
+    timers.front()->arm(std::chrono::milliseconds(10));
+    for (size_t i = 1; i < timers.size(); ++i) {
+      timers[i]->arm(std::chrono::milliseconds(30));
+    }
+  };
+  evbPtr->getBackend()->setPollLoopHook(makePollLoopHook(stats));
+  evbPtr->loopOnce();
+
+  for (const auto& timer : timers) {
+    EXPECT_EQ(timer->getNum(), 1);
+  }
+  EXPECT_EQ(stats.preHookCalls, 1);
+  EXPECT_EQ(stats.postHookCalls, 1);
+  EXPECT_EQ(stats.lastEventCount, 4);
 }
 
 TEST(IoUringBackend, OpenAt) {
