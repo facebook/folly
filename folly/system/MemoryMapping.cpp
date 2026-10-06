@@ -76,9 +76,9 @@ off64_t getAndroidSharedMemorySize(int fd) {
   static const auto getSize =
       reinterpret_cast<GetSizeFn>(dlsym(RTLD_DEFAULT, "ASharedMemory_getSize"));
   const auto size = getSize != nullptr
-      ? getSize(fd)
-      : static_cast<size_t>(ioctl(fd, kAshmemGetSizeIoctl, 0));
-  return size > 0 ? static_cast<off64_t>(size) : -1;
+      ? static_cast<off64_t>(getSize(fd))
+      : static_cast<off64_t>(ioctl(fd, kAshmemGetSizeIoctl, 0));
+  return size > 0 ? size : -1;
 }
 #endif
 
