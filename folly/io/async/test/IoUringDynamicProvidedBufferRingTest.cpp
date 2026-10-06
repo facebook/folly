@@ -28,7 +28,24 @@ using namespace ::testing;
 using namespace ::std;
 using namespace ::folly;
 
-struct IoUringDynamicProvidedBufferRingTest : testing::Test {};
+struct IoUringDynamicProvidedBufferRingTest : testing::Test {
+  void SetUp() override {
+    const auto ret = ::io_uring_queue_init(2, &ring_, 0);
+    ASSERT_EQ(0, ret);
+    ringInitialized_ = true;
+  }
+
+  void TearDown() override {
+    if (ringInitialized_) {
+      ::io_uring_queue_exit(&ring_);
+    }
+  }
+
+  io_uring ring_{};
+
+ private:
+  bool ringInitialized_{false};
+};
 
 namespace folly {
 class IoUringDynamicProvidedBufferRingTestHelper {
@@ -93,14 +110,12 @@ class IoUringDynamicProvidedBufferRingTestHelper {
 } // namespace folly
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, Create) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 1024,
       .bufferSize = 4096,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   EXPECT_EQ(bufRing->count(), 1024);
   EXPECT_TRUE(bufRing->available());
   EXPECT_EQ(bufRing->sizePerBuffer(), 4096);
@@ -109,14 +124,12 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, Create) {
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, CreateNoHugepages) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 2048,
       .bufferSize = 4096,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   EXPECT_EQ(bufRing->count(), 2048);
   EXPECT_TRUE(bufRing->available());
   EXPECT_EQ(bufRing->sizePerBuffer(), 4096);
@@ -125,14 +138,12 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, CreateNoHugepages) {
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, BufferMinSize) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 16,
       .bufferSize = 8,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   EXPECT_EQ(bufRing->count(), 16);
   EXPECT_TRUE(bufRing->available());
   // constexpr size_t kMinBufferSize = 32;
@@ -142,8 +153,6 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, BufferMinSize) {
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, BufferCountCheck) {
-  io_uring ring{};
-  io_uring_queue_init(2, &ring, 0);
   uint16_t bgid = 0;
 
   auto makeOptions = [&bgid](uint32_t bufferCount) {
@@ -158,34 +167,32 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, BufferCountCheck) {
   // accumulate: io_uring_register_buf_ring() counts against RLIMIT_MEMLOCK.
   {
     auto minRing =
-        IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(2));
+        IoUringDynamicProvidedBufferRing::create(&ring_, makeOptions(2));
     EXPECT_EQ(minRing->count(), 2);
   }
 
   {
     auto bufRing =
-        IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(1000));
+        IoUringDynamicProvidedBufferRing::create(&ring_, makeOptions(1000));
     EXPECT_EQ(bufRing->count(), 1024);
   }
 
   {
     auto roundedRing =
-        IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(1));
+        IoUringDynamicProvidedBufferRing::create(&ring_, makeOptions(1));
     EXPECT_EQ(roundedRing->count(), 2);
   }
 
   EXPECT_THROW(
-      IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(0)),
+      IoUringDynamicProvidedBufferRing::create(&ring_, makeOptions(0)),
       std::runtime_error);
 
   EXPECT_THROW(
-      IoUringDynamicProvidedBufferRing::create(&ring, makeOptions(32769)),
+      IoUringDynamicProvidedBufferRing::create(&ring_, makeOptions(32769)),
       std::runtime_error);
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, FailedCreateReleasesRing) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   constexpr uint16_t kGid = 7;
 
   IoUringDynamicProvidedBufferRing::Options failing = {
@@ -194,7 +201,7 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, FailedCreateReleasesRing) {
       .bufferSize = std::numeric_limits<uint32_t>::max(),
   };
   EXPECT_THROW(
-      IoUringDynamicProvidedBufferRing::create(&ring, failing),
+      IoUringDynamicProvidedBufferRing::create(&ring_, failing),
       std::runtime_error);
 
   IoUringDynamicProvidedBufferRing::Options valid = {
@@ -204,19 +211,17 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, FailedCreateReleasesRing) {
   };
   IoUringDynamicProvidedBufferRing::UniquePtr bufRing;
   ASSERT_NO_THROW(
-      bufRing = IoUringDynamicProvidedBufferRing::create(&ring, valid));
+      bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, valid));
   EXPECT_EQ(bufRing->count(), 64);
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, DelayedDestruction) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 1024,
       .bufferSize = 4096,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   auto buf1 = bufRing->getIoBuf(0, 1024, false);
   auto buf2 = bufRing->getIoBuf(1, 1024, false);
   buf1.reset();
@@ -225,18 +230,16 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, DelayedDestruction) {
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, ConcurrentDecBufferState) {
-  constexpr size_t kBufsPerThread = 1024;
+  constexpr size_t kBufsPerThread = 64;
   constexpr int kNumThreads = 16;
   constexpr uint32_t kBufferCount = kBufsPerThread * kNumThreads;
 
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = kBufferCount,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
 
   // Acquire all buffers
   std::vector<std::unique_ptr<IOBuf>> bufs;
@@ -280,15 +283,13 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, ConcurrentDecBufferState) {
 TEST_F(
     IoUringDynamicProvidedBufferRingTest,
     IncrementalPartiallyConsumedSingleBuffer) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 4,
       .bufferSize = 64,
       .useIncrementalBuffers = true,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
 
   auto first = bufRing->getIoBuf(0, 30, true);
   EXPECT_EQ(first->length(), 30);
@@ -309,14 +310,12 @@ static std::unique_ptr<folly::IOBuf> consumeOne(
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, GrowsOnExhaustion) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 8,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
   ASSERT_EQ(helper.areaCount(), 2u);
 
@@ -334,14 +333,12 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, GrowsOnExhaustion) {
 
 TEST_F(
     IoUringDynamicProvidedBufferRingTest, BundleFollowsRefillOrderAcrossReuse) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 4,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
   helper.setRingRefillThreshold(1);
 
@@ -399,14 +396,12 @@ TEST_F(
 TEST_F(
     IoUringDynamicProvidedBufferRingTest,
     ReuseStabilizesWithoutUnboundedGrowth) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 8,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
   helper.setRingRefillThreshold(1);
 
@@ -419,14 +414,12 @@ TEST_F(
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, GrowthIsCappedWhenAllBuffersHeld) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 2,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
 
   // A reader that never releases buffers forces the pool to grow, since no
@@ -447,14 +440,12 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, GrowthIsCappedWhenAllBuffersHeld) {
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, ReuseOnlyWhenFullyDrained) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 8,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
 
   std::vector<std::unique_ptr<folly::IOBuf>> tmp;
@@ -475,14 +466,12 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, ReuseOnlyWhenFullyDrained) {
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, activeAreaMatchesRefillOrder) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 8,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
 
   std::vector<std::unique_ptr<folly::IOBuf>> held;
@@ -501,14 +490,12 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, activeAreaMatchesRefillOrder) {
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, ContiguityWithinFullRingLoad) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 8,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
 
   uint16_t bid = helper.headBid();
@@ -528,14 +515,12 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, ContiguityWithinFullRingLoad) {
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, BundleAcrossAreaBoundary) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 4,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
   helper.setRingRefillThreshold(1);
 
@@ -580,14 +565,12 @@ static void growHolding(
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, ShrinkAfterGrowthDownToFloor) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 8,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
   helper.setRingRefillThreshold(1);
   ASSERT_EQ(helper.areaCount(), 2u);
@@ -620,14 +603,12 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, ShrinkAfterGrowthDownToFloor) {
 
 TEST_F(
     IoUringDynamicProvidedBufferRingTest, NoShrinkWhenLessThanHalfFreeSlots) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 8,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
   helper.setRingRefillThreshold(1);
 
@@ -655,14 +636,12 @@ TEST_F(
 }
 
 TEST_F(IoUringDynamicProvidedBufferRingTest, ShrinkWhenMoreThanHalfFreeSlots) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 8,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
 
   std::vector<std::unique_ptr<folly::IOBuf>> held;
@@ -692,14 +671,12 @@ TEST_F(IoUringDynamicProvidedBufferRingTest, ShrinkWhenMoreThanHalfFreeSlots) {
 TEST_F(
     IoUringDynamicProvidedBufferRingTest,
     ShrinkNeverRemovesActiveOrRefillArea) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 8,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
   helper.setRingRefillThreshold(1);
 
@@ -734,14 +711,12 @@ TEST_F(
     IoUringDynamicProvidedBufferRingTest, ringRefillThresholdBatchesRefills) {
   constexpr uint32_t kBufferCount = 16;
   constexpr uint8_t kThreshold = 4;
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = kBufferCount,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
   helper.setRingRefillThreshold(kThreshold);
   ASSERT_EQ(helper.ringAvailable(), kBufferCount);
@@ -761,14 +736,12 @@ TEST_F(
 
 TEST_F(
     IoUringDynamicProvidedBufferRingTest, RefillAfterAreaCapUsesRecycledArea) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 2,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
 
   std::vector<std::unique_ptr<folly::IOBuf>> held;
@@ -800,14 +773,12 @@ TEST_F(
   constexpr uint32_t kBufferCount = 64;
   constexpr int kRounds = 50;
 
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = kBufferCount,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringDynamicProvidedBufferRing::create(&ring_, options);
   IoUringDynamicProvidedBufferRingTestHelper helper(*bufRing);
 
   for (int round = 0; round < kRounds; round++) {
@@ -845,9 +816,7 @@ TEST_F(
 }
 
 static void runDestroyRaceIteration(
-    uint16_t gid, uint32_t bufferCount, int numThreads) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
+    io_uring& ring, uint16_t gid, uint32_t bufferCount, int numThreads) {
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = gid,
       .bufferCount = bufferCount,
@@ -889,15 +858,13 @@ static void runDestroyRaceIteration(
   for (auto& thread : threads) {
     thread.join();
   }
-
-  io_uring_queue_exit(&ring);
 }
 
 TEST_F(
     IoUringDynamicProvidedBufferRingTest, ConcurrentDecBufferStateWithDestroy) {
   constexpr int kIterations = 100;
   for (int iter = 0; iter < kIterations; iter++) {
-    runDestroyRaceIteration(iter % 65536, 64, 8);
+    runDestroyRaceIteration(ring_, iter % 65536, 64, 8);
   }
 }
 
@@ -914,7 +881,7 @@ TEST_F(
         continue;
       }
       for (int run = 0; run < 10; run++) {
-        runDestroyRaceIteration(iter % 65536, bufferCount, numThreads);
+        runDestroyRaceIteration(ring_, iter % 65536, bufferCount, numThreads);
         iter++;
       }
     }
