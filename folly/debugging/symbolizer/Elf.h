@@ -162,9 +162,11 @@ class ElfFile {
   const char* getSectionName(const ElfShdr& section) const noexcept;
 
   /** Get the actual section body */
-  folly::StringPiece getSectionBody(const ElfShdr& section) const noexcept;
+  std::span<const uint8_t> getSectionBody(
+      const ElfShdr& section) const noexcept;
 
-  folly::StringPiece getSegmentBody(const ElfPhdr& segment) const noexcept;
+  std::span<const uint8_t> getSegmentBody(
+      const ElfPhdr& segment) const noexcept;
 
   /** Retrieve a string from a string table section */
   const char* getString(
@@ -613,11 +615,11 @@ class ElfFile {
   }
 
   // Helper to iterate notes in a section or segment.
-  // Takes in a StringPiece of the body of the section or segment, and iterates
-  // over the notes in that body.
+  // Takes in the body of the section or segment, and iterates over the notes in
+  // that body.
   template <class Fn>
   folly::Expected<Note, FindNoteError> iterateNotesInBodyHelper(
-      folly::StringPiece body, Fn& fn) const
+      std::span<const uint8_t> body, Fn& fn) const
       noexcept(is_nothrow_invocable_v<Fn&, const Note&>);
 
   static constexpr size_t kFilepathMaxLen = 512;

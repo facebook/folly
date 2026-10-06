@@ -48,7 +48,9 @@ folly::StringPiece getElfSection(const ElfFile* elf, const char* name) {
     return {};
   }
 #endif
-  return elf->getSectionBody(*elfSection);
+  auto body = elf->getSectionBody(*elfSection);
+  return folly::StringPiece(
+      reinterpret_cast<const char*>(body.data()), body.size());
 }
 
 // Read (bitwise) an unsigned number of N bytes (N in 1, 2, 3, 4).

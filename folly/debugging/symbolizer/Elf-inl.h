@@ -171,7 +171,7 @@ const ElfSym* ElfFile::iterateSymbolsWithTypes(const ElfShdr& section, Fn fn)
 
 template <class Fn>
 folly::Expected<ElfFile::Note, ElfFile::FindNoteError>
-ElfFile::iterateNotesInBodyHelper(folly::StringPiece body, Fn& fn) const
+ElfFile::iterateNotesInBodyHelper(std::span<const uint8_t> body, Fn& fn) const
     noexcept(is_nothrow_invocable_v<Fn&, const Note&>) {
   static_assert(alignof(ElfNhdr) >= 4);
   if (uintptr_t(body.data()) % alignof(ElfNhdr) != 0) {
@@ -179,9 +179,7 @@ ElfFile::iterateNotesInBodyHelper(folly::StringPiece body, Fn& fn) const
   }
 
   while (body.size() > 0) {
-    std::span<const uint8_t> noteBody =
-        std::span(reinterpret_cast<const uint8_t*>(body.data()), body.size());
-    auto noteMaybe = Note::parse(noteBody);
+    auto noteMaybe = Note::parse(body);
     if (!noteMaybe) {
       return noteMaybe;
     }
@@ -192,7 +190,7 @@ ElfFile::iterateNotesInBodyHelper(folly::StringPiece body, Fn& fn) const
       return note;
     }
 
-    body.advance(note.alignedSize());
+    body = body.subspan(note.alignedSize());
   }
 
   return Unexpected(FindNoteError(FindNoteFailureCode::NoteNotFound));

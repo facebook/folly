@@ -146,14 +146,19 @@ ElfFile::OpenResult ElfFile::openAndFollow(
   // The section starts with the filename, with any leading directory
   // components removed, followed by a zero byte.
   auto debugFileName = getSectionBody(*debuginfo);
-  auto debugFileLen = strlen(debugFileName.begin());
+  auto debugFileEnd =
+      std::find(debugFileName.begin(), debugFileName.end(), uint8_t{0});
+  if (debugFileEnd == debugFileName.end()) {
+    return result;
+  }
+  auto debugFileLen = std::distance(debugFileName.begin(), debugFileEnd);
   if (dirlen + debugFileLen >= PATH_MAX) {
     return result;
   }
 
   char linkname[PATH_MAX];
   memcpy(linkname, name, dirlen);
-  memcpy(linkname + dirlen, debugFileName.begin(), debugFileLen + 1);
+  memcpy(linkname + dirlen, debugFileName.data(), debugFileLen + 1);
   reset();
   result = openNoThrow(linkname, options);
   if (result == kSuccess) {
@@ -347,14 +352,18 @@ const ElfShdr* ElfFile::getSectionByIndex(size_t idx) const noexcept {
   return &at<ElfShdr>(elfHeader().e_shoff + idx * sizeof(ElfShdr));
 }
 
-folly::StringPiece ElfFile::getSectionBody(
+std::span<const uint8_t> ElfFile::getSectionBody(
     const ElfShdr& section) const noexcept {
-  return folly::StringPiece(file_ + section.sh_offset, section.sh_size);
+  return std::span(
+      reinterpret_cast<const uint8_t*>(file_ + section.sh_offset),
+      section.sh_size);
 }
 
-folly::StringPiece ElfFile::getSegmentBody(
+std::span<const uint8_t> ElfFile::getSegmentBody(
     const ElfPhdr& segment) const noexcept {
-  return folly::StringPiece(file_ + segment.p_offset, segment.p_filesz);
+  return std::span(
+      reinterpret_cast<const uint8_t*>(file_ + segment.p_offset),
+      segment.p_filesz);
 }
 
 void ElfFile::validateStringTable(const ElfShdr& stringTable) const noexcept {
