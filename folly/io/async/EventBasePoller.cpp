@@ -119,7 +119,7 @@ class EventBasePollerImpl : public EventBasePoller {
     static_cast<Event*>(handle.get())->join();
   }
 
-  small_vector<Handle*, 4> wait() final;
+  ReadyHandles wait() final;
 
   void shutdown() override {
     stop_ = true;
@@ -247,8 +247,8 @@ void EventBasePollerImpl::handleNotification() {
   addEvent(&notificationEv_);
 }
 
-small_vector<EventBasePoller::Handle*, 4> EventBasePollerImpl::wait() {
-  small_vector<Handle*, 4> result;
+EventBasePoller::ReadyHandles EventBasePollerImpl::wait() {
+  ReadyHandles result;
 
   while (true) {
     if (stop_.load(std::memory_order_relaxed)) {

@@ -57,6 +57,8 @@ class EventBasePoller {
     void* userData_;
   };
 
+  using ReadyHandles = small_vector<Handle*, 4>;
+
   // epoll with inline rearm is the simplest configuration and the preferred
   // one; the other backends and modes exist for experimentation.
   struct Options {
@@ -84,7 +86,7 @@ class EventBasePoller {
 
   // Blocks until at least one handle is ready. Returns ready handles.
   // Returns empty only after shutdown().
-  virtual small_vector<Handle*, 4> wait() = 0;
+  virtual ReadyHandles wait() = 0;
 
   // Makes a blocking wait() call return, empty unless some handles were ready.
   // Subsequent wait() calls return empty.
