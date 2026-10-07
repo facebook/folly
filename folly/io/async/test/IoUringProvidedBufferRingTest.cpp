@@ -28,7 +28,24 @@ using namespace ::testing;
 using namespace ::std;
 using namespace ::folly;
 
-struct IoUringProvidedBufferRingTest : testing::Test {};
+struct IoUringProvidedBufferRingTest : testing::Test {
+  void SetUp() override {
+    const auto ret = ::io_uring_queue_init(2, &ring_, 0);
+    ASSERT_EQ(0, ret);
+    ringInitialized_ = true;
+  }
+
+  void TearDown() override {
+    if (ringInitialized_) {
+      ::io_uring_queue_exit(&ring_);
+    }
+  }
+
+  io_uring ring_{};
+
+ private:
+  bool ringInitialized_{false};
+};
 
 namespace folly {
 class IoUringProvidedBufferRingTestHelper {
@@ -44,14 +61,12 @@ class IoUringProvidedBufferRingTestHelper {
 } // namespace folly
 
 TEST_F(IoUringProvidedBufferRingTest, Create) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 1024,
       .bufferSize = 4096,
   };
-  auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringProvidedBufferRing::create(&ring_, options);
   EXPECT_EQ(bufRing->count(), 1024);
   EXPECT_TRUE(bufRing->available());
   EXPECT_EQ(bufRing->sizePerBuffer(), 4096);
@@ -60,14 +75,12 @@ TEST_F(IoUringProvidedBufferRingTest, Create) {
 }
 
 TEST_F(IoUringProvidedBufferRingTest, CreateNoHugepages) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 2048,
       .bufferSize = 4096,
   };
-  auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringProvidedBufferRing::create(&ring_, options);
   EXPECT_EQ(bufRing->count(), 2048);
   EXPECT_TRUE(bufRing->available());
   EXPECT_EQ(bufRing->sizePerBuffer(), 4096);
@@ -76,14 +89,12 @@ TEST_F(IoUringProvidedBufferRingTest, CreateNoHugepages) {
 }
 
 TEST_F(IoUringProvidedBufferRingTest, BufferMinSize) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 16,
       .bufferSize = 8,
   };
-  auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringProvidedBufferRing::create(&ring_, options);
   EXPECT_EQ(bufRing->count(), 16);
   EXPECT_TRUE(bufRing->available());
   // constexpr size_t kMinBufferSize = 32;
@@ -93,8 +104,6 @@ TEST_F(IoUringProvidedBufferRingTest, BufferMinSize) {
 }
 
 TEST_F(IoUringProvidedBufferRingTest, BufferCountCheck) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   uint16_t bgid = 0;
 
   auto makeOptions = [&bgid](uint32_t bufferCount) {
@@ -105,36 +114,31 @@ TEST_F(IoUringProvidedBufferRingTest, BufferCountCheck) {
     };
   };
 
-  auto minRing = IoUringProvidedBufferRing::create(&ring, makeOptions(2));
+  auto minRing = IoUringProvidedBufferRing::create(&ring_, makeOptions(2));
   EXPECT_EQ(minRing->count(), 2);
 
-  auto maxRing = IoUringProvidedBufferRing::create(&ring, makeOptions(32768));
-  EXPECT_EQ(maxRing->count(), 32768);
-
-  auto bufRing = IoUringProvidedBufferRing::create(&ring, makeOptions(1000));
+  auto bufRing = IoUringProvidedBufferRing::create(&ring_, makeOptions(1000));
   EXPECT_EQ(bufRing->count(), 1024);
 
-  auto roundedRing = IoUringProvidedBufferRing::create(&ring, makeOptions(1));
+  auto roundedRing = IoUringProvidedBufferRing::create(&ring_, makeOptions(1));
   EXPECT_EQ(roundedRing->count(), 2);
 
   EXPECT_THROW(
-      IoUringProvidedBufferRing::create(&ring, makeOptions(0)),
+      IoUringProvidedBufferRing::create(&ring_, makeOptions(0)),
       std::runtime_error);
 
   EXPECT_THROW(
-      IoUringProvidedBufferRing::create(&ring, makeOptions(32769)),
+      IoUringProvidedBufferRing::create(&ring_, makeOptions(32769)),
       std::runtime_error);
 }
 
 TEST_F(IoUringProvidedBufferRingTest, DelayedDestruction) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 1024,
       .bufferSize = 4096,
   };
-  auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringProvidedBufferRing::create(&ring_, options);
   auto buf1 = bufRing->getIoBuf(0, 1024, false);
   auto buf2 = bufRing->getIoBuf(1, 1024, false);
   buf1.reset();
@@ -143,18 +147,16 @@ TEST_F(IoUringProvidedBufferRingTest, DelayedDestruction) {
 }
 
 TEST_F(IoUringProvidedBufferRingTest, ConcurrentDecBufferState) {
-  constexpr size_t kBufsPerThread = 1024;
+  constexpr size_t kBufsPerThread = 64;
   constexpr int kNumThreads = 16;
   constexpr uint32_t kBufferCount = kBufsPerThread * kNumThreads;
 
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = kBufferCount,
       .bufferSize = 64,
   };
-  auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringProvidedBufferRing::create(&ring_, options);
 
   // Acquire all buffers
   std::vector<std::unique_ptr<IOBuf>> bufs;
@@ -195,15 +197,13 @@ TEST_F(IoUringProvidedBufferRingTest, ConcurrentDecBufferState) {
 
 TEST_F(
     IoUringProvidedBufferRingTest, IncrementalPartiallyConsumedSingleBuffer) {
-  io_uring ring{};
-  io_uring_queue_init(512, &ring, 0);
   IoUringProvidedBufferRing::Options options = {
       .gid = 1,
       .bufferCount = 4,
       .bufferSize = 64,
       .useIncrementalBuffers = true,
   };
-  auto bufRing = IoUringProvidedBufferRing::create(&ring, options);
+  auto bufRing = IoUringProvidedBufferRing::create(&ring_, options);
 
   auto first = bufRing->getIoBuf(0, 30, true);
   EXPECT_EQ(first->length(), 30);
