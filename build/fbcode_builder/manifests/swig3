@@ -1,0 +1,21 @@
+[manifest]
+name = swig3
+
+# Some vendor SAI SDKs generate Python wrappers that require SWIG 3; distro
+# packages are SWIG 4. No [rpms]/[debs] so this is always built from source.
+# The patch backports the Python 3 fixes upstream only shipped in SWIG 4.
+
+[download]
+url = https://downloads.sourceforge.net/project/swig/swig/swig-3.0.12/swig-3.0.12.tar.gz
+sha256 = 7cf9f447ae7ed1c51722efc45e7f14418d15d7a1e143ac9f09a668999f4fc94d
+
+[build]
+builder = autoconf
+subdir = swig-3.0.12
+patchfile = swig_3_0_12_python3.patch
+
+# PCRE only backs SWIG's regex renames; the language flags only affect which
+# languages SWIG's own test suite runs, not which wrappers it can generate.
+[autoconf.args]
+--without-pcre
+--without-alllang

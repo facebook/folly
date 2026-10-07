@@ -1,0 +1,39 @@
+--- a/Lib/python/builtin.swg
++++ b/Lib/python/builtin.swg
+@@ -120,7 +120,7 @@
+ 
+ SWIGINTERN void
+ SwigPyStaticVar_dealloc(PyDescrObject *descr) {
+-  _PyObject_GC_UNTRACK(descr);
++  PyObject_GC_UnTrack(descr);
+   Py_XDECREF(PyDescr_TYPE(descr));
+   Py_XDECREF(PyDescr_NAME(descr));
+   PyObject_GC_Del(descr);
+--- a/Lib/python/pyinit.swg
++++ b/Lib/python/pyinit.swg
+@@ -155,7 +155,11 @@
+       sizeof(swig_varlinkobject),         /* tp_basicsize */
+       0,                                  /* tp_itemsize */
+       (destructor) swig_varlink_dealloc,  /* tp_dealloc */
++#if PY_VERSION_HEX >= 0x03000000
++      0,                                  /* tp_print */
++#else
+       (printfunc) swig_varlink_print,     /* tp_print */
++#endif
+       (getattrfunc) swig_varlink_getattr, /* tp_getattr */
+       (setattrfunc) swig_varlink_setattr, /* tp_setattr */
+       0,                                  /* tp_compare */
+--- a/Lib/python/pyrun.swg
++++ b/Lib/python/pyrun.swg
+@@ -959,7 +959,11 @@
+       sizeof(SwigPyPacked),                 /* tp_basicsize */
+       0,                                    /* tp_itemsize */
+       (destructor)SwigPyPacked_dealloc,     /* tp_dealloc */
++#if PY_VERSION_HEX>=0x03000000
++      0,                                    /* tp_print */
++#else
+       (printfunc)SwigPyPacked_print,        /* tp_print */
++#endif
+       (getattrfunc)0,                       /* tp_getattr */
+       (setattrfunc)0,                       /* tp_setattr */
+ #if PY_VERSION_HEX>=0x03000000
