@@ -317,6 +317,26 @@ INSTANTIATE_TEST_SUITE_P(
           : "DefaultBackend";
     });
 
+class AsyncSocketIoUringTest : public AsyncSocketTest {};
+
+INSTANTIATE_TEST_SUITE_P(
+    AsyncSocketIoUringTests,
+    AsyncSocketIoUringTest,
+    ::testing::Values(BackendType::IO_URING),
+    [](const ::testing::TestParamInfo<BackendType>&) {
+      return "IoUringBackend";
+    });
+
+class AsyncSocketDefaultBackendTest : public AsyncSocketTest {};
+
+INSTANTIATE_TEST_SUITE_P(
+    AsyncSocketDefaultBackendTests,
+    AsyncSocketDefaultBackendTest,
+    ::testing::Values(BackendType::DEFAULT),
+    [](const ::testing::TestParamInfo<BackendType>&) {
+      return "DefaultBackend";
+    });
+
 /**
  * Test constructing with an existing fd.
  */
@@ -1082,11 +1102,7 @@ TEST_P(AsyncSocketConnectTFOZeroCopyTest, ConnectWriteZeroCopyFastOpen) {
  * IORING_OP_SENDMSG_ZC fast path directly -- no TFO/FAST_OPEN involved, so the
  * zero-copy flag is not stripped.
  */
-TEST_P(AsyncSocketTest, ConnectWriteZeroCopy) {
-  if (GetParam() != BackendType::IO_URING) {
-    GTEST_SKIP() << "SEND_ZC fast path is io_uring-only";
-  }
-
+TEST_P(AsyncSocketIoUringTest, ConnectWriteZeroCopy) {
   TestServer server;
   EventBase& evb = getEventBase();
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
@@ -1117,11 +1133,7 @@ TEST_P(AsyncSocketTest, ConnectWriteZeroCopy) {
  * Move AsyncSocket between EVBs while a SEND_ZC write is in
  * flight, validating IoUringSendHandle's detach/clone two-CQE path.
  */
-TEST_P(AsyncSocketTest, MoveEventBaseWithInflightZeroCopyWrite) {
-  if (GetParam() != BackendType::IO_URING) {
-    GTEST_SKIP() << "SEND_ZC + EventBase move is io_uring-only";
-  }
-
+TEST_P(AsyncSocketIoUringTest, MoveEventBaseWithInflightZeroCopyWrite) {
   TestServer server;
   EventBase& evb = getEventBase();
   auto evb2 = makeEventBase();
@@ -1161,11 +1173,7 @@ TEST_P(AsyncSocketTest, MoveEventBaseWithInflightZeroCopyWrite) {
  * the double writeStarting() that aborted RocketServerConnection's DCHECK on
  * the native AsyncSocket + io_uring send path.
  */
-TEST_P(AsyncSocketTest, PartialWriteFiresWriteStartingOnce) {
-  if (GetParam() != BackendType::IO_URING) {
-    GTEST_SKIP() << "IoUringSendHandle send path is io_uring-only";
-  }
-
+TEST_P(AsyncSocketIoUringTest, PartialWriteFiresWriteStartingOnce) {
   // Small socket buffers so a large write can't complete in one shot.
   constexpr size_t kSockBufSize = 8 * 1024;
   TestServer server(false, kSockBufSize);
@@ -10344,11 +10352,8 @@ class TrackingMovableReadCallback : public ReadCallback {
   size_t maxReadBufferSize{0};
 };
 
-TEST_P(AsyncSocketTest, IoUringMovableCallbackHandsOffToMovableCallback) {
-  if (GetParam() != BackendType::IO_URING) {
-    GTEST_SKIP() << "native io_uring recv behavior";
-  }
-
+TEST_P(
+    AsyncSocketIoUringTest, IoUringMovableCallbackHandsOffToMovableCallback) {
   TestServer server;
   EventBase& evb = getEventBase();
   auto socket = AsyncSocket::newSocket(&evb);
@@ -10392,11 +10397,9 @@ TEST_P(AsyncSocketTest, IoUringMovableCallbackHandsOffToMovableCallback) {
   acceptedSocket->close();
 }
 
-TEST_P(AsyncSocketTest, SwitchToEventHandlerModeWithoutIoUringIsNoOp) {
-  if (GetParam() == BackendType::IO_URING) {
-    GTEST_SKIP() << "readiness-based I/O behavior";
-  }
-
+TEST_P(
+    AsyncSocketDefaultBackendTest,
+    SwitchToEventHandlerModeWithoutIoUringIsNoOp) {
   TestServer server;
   EventBase& evb = getEventBase();
   auto socket = AsyncSocket::newSocket(&evb);
@@ -10423,11 +10426,9 @@ TEST_P(AsyncSocketTest, SwitchToEventHandlerModeWithoutIoUringIsNoOp) {
   acceptedSocket->close();
 }
 
-TEST_P(AsyncSocketTest, IoUringSwitchToEventHandlerModeRejectsInvalidState) {
-  if (GetParam() != BackendType::IO_URING) {
-    GTEST_SKIP() << "native io_uring I/O behavior";
-  }
-
+TEST_P(
+    AsyncSocketIoUringTest,
+    IoUringSwitchToEventHandlerModeRejectsInvalidState) {
   TestServer server(false, 4096);
   EventBase& evb = getEventBase();
   auto socket = AsyncSocket::newSocket(&evb);
@@ -10474,11 +10475,8 @@ TEST_P(AsyncSocketTest, IoUringSwitchToEventHandlerModeRejectsInvalidState) {
   evb.loop();
 }
 
-TEST_P(AsyncSocketTest, IoUringSwitchToEventHandlerModeKeepsInFlightBytes) {
-  if (GetParam() != BackendType::IO_URING) {
-    GTEST_SKIP() << "native io_uring recv behavior";
-  }
-
+TEST_P(
+    AsyncSocketIoUringTest, IoUringSwitchToEventHandlerModeKeepsInFlightBytes) {
   TestServer server;
   EventBase& evb = getEventBase();
   auto socket = AsyncSocket::newSocket(&evb);
