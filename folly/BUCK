@@ -1,5 +1,4 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
-load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "non_fbcode_target")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
@@ -2505,7 +2504,6 @@ fb_dirsync_cpp_library(
             "memset_select_aarch64.cpp",
         ],
     }),
-    auto_headers = AutoHeaders.NONE,
     headers = [],
     private_headers = select({
         "DEFAULT": [],
@@ -2545,7 +2543,6 @@ fb_dirsync_cpp_library(
             "memset_select_aarch64.cpp",
         ],
     }),
-    auto_headers = AutoHeaders.NONE,
     headers = [],
     private_headers = select({
         "DEFAULT": [],
@@ -2584,7 +2581,6 @@ fb_dirsync_cpp_library(
             "memcpy_select_aarch64.cpp",
         ],
     }),
-    auto_headers = AutoHeaders.NONE,
     headers = [],
     private_headers = select({
         "DEFAULT": [],
@@ -2636,7 +2632,6 @@ fb_dirsync_cpp_library(
             "memcpy_select_aarch64.cpp",
         ],
     }),
-    auto_headers = AutoHeaders.NONE,
     headers = [],
     private_headers = select({
         "DEFAULT": [],
