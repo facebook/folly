@@ -749,10 +749,12 @@ folly_add_library(
   SRCS SimpleAsyncIO.cpp
   HEADERS SimpleAsyncIO.h
   DEPS
+    folly_conv
     folly_coro_baton
     folly_io_async_async_io
     folly_io_async_io_uring
     folly_io_async_liburing
+    folly_lang_exception
     folly_portability_sockets
     folly_string
   EXPORTED_DEPS

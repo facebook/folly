@@ -16,11 +16,16 @@
 
 #include <folly/io/async/SimpleAsyncIO.h>
 
+#include <stdexcept>
+#include <string>
+
+#include <folly/Conv.h>
 #include <folly/String.h>
 #include <folly/coro/Baton.h>
 #include <folly/io/async/AsyncIO.h>
 #include <folly/io/async/IoUring.h>
 #include <folly/io/async/Liburing.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/Sockets.h>
 
 namespace folly {
@@ -83,13 +88,27 @@ SimpleAsyncIO::SimpleAsyncIO(Config cfg)
   }
 
   if (cfg.evb_) {
-    initHandler(cfg.evb_, NetworkSocket::fromFd(asyncIO_->pollFd()));
+    eventBase_ = cfg.evb_;
   } else {
     evb_ = std::make_unique<ScopedEventBaseThread>("SimpleAsyncIO");
-    initHandler(
-        evb_->getEventBase(), NetworkSocket::fromFd(asyncIO_->pollFd()));
+    eventBase_ = evb_->getEventBase();
   }
-  registerHandler(EventHandler::READ | EventHandler::PERSIST);
+  initHandler(eventBase_, NetworkSocket::fromFd(asyncIO_->pollFd()));
+  // libevent is not thread-safe: registering from this thread while another
+  // thread runs the loop can corrupt its fd table and leave the poll fd
+  // unarmed, so no completion is ever delivered.
+  bool registered = false;
+  eventBase_->runImmediatelyOrRunInEventBaseThreadAndWait([this, &registered] {
+    registered = registerHandler(EventHandler::READ | EventHandler::PERSIST);
+  });
+  if (!registered) {
+    // Without a registered handler no completion is ever delivered, and every
+    // op would hang. Thrown here, not in the callback above: that may run on
+    // the loop thread, where an exception would terminate the process.
+    throw_exception<std::runtime_error>(to<std::string>(
+        "SimpleAsyncIO: failed to register the completion handler for fd ",
+        asyncIO_->pollFd()));
+  }
 }
 
 SimpleAsyncIO::~SimpleAsyncIO() {
@@ -104,7 +123,17 @@ SimpleAsyncIO::~SimpleAsyncIO() {
 
   drainedBaton_.wait();
 
-  unregisterHandler();
+  // A destroyed EventBase has already unregistered the handler (libevent
+  // deletes every registered event when the base is freed), so check before
+  // touching eventBase_: some callers let a provided EventBase die first.
+  if (isHandlerRegistered()) {
+    // On the loop thread for the same reason as registration; this also waits
+    // out a handlerReady() that is still polling asyncIO_ after the last op
+    // was returned.
+    eventBase_->runImmediatelyOrRunInEventBaseThreadAndWait([this] {
+      unregisterHandler();
+    });
+  }
 }
 
 void SimpleAsyncIO::handlerReady(uint16_t events) noexcept {

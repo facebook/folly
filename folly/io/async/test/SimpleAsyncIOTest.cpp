@@ -16,13 +16,23 @@
 
 #include <folly/io/async/SimpleAsyncIO.h>
 
+#include <array>
+#include <atomic>
 #include <bitset>
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <thread>
+#include <vector>
 
 #include <folly/File.h>
 #include <folly/Random.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Collect.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/async/EventBase.h>
+#include <folly/io/async/EventBaseBackendBase.h>
+#include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
@@ -158,6 +168,136 @@ TEST_P(SimpleAsyncIOTest, DestroyWithPendingIO) {
 
   // Destructor should have blocked until all IO was done.
   ASSERT_EQ(completed, numWrites);
+}
+
+TEST_P(SimpleAsyncIOTest, FreshInstancesReapTheirFirstCompletion) {
+  // Each instance registers its completion fd on, and later unregisters it
+  // from, a freshly started event loop thread. Racing the loop from the
+  // calling thread used to leave the fd unarmed (the write's completion was
+  // never delivered) or corrupt libevent so the loop thread hung on exit.
+  auto tmpfile = File::temporary();
+  const int fd = tmpfile.fd();
+  constexpr int kThreads = 8;
+  constexpr int kInstancesPerThread = 250;
+  auto config = config_;
+  config.setMaxRequests(1);
+
+  std::atomic<int> lost = 0;
+  std::atomic<int> setupFailures = 0;
+  std::vector<std::thread> threads;
+  for (int t = 0; t < kThreads; ++t) {
+    threads.emplace_back([&] {
+      for (int i = 0; i < kInstancesPerThread; ++i) {
+        // An exception escaping this thread would abort the whole binary, so
+        // count setup failures and fail the test cleanly instead.
+        std::unique_ptr<SimpleAsyncIO> aio;
+        try {
+          aio = std::make_unique<SimpleAsyncIO>(config);
+        } catch (const std::exception& ex) {
+          LOG(ERROR) << "SimpleAsyncIO setup failed: " << ex.what();
+          ++setupFailures;
+          continue;
+        }
+        auto buffer = std::make_unique<std::array<uint8_t, 512>>();
+        auto done = std::make_unique<Baton<>>();
+        aio->pwrite(
+            fd, buffer->data(), buffer->size(), 0, [done = done.get()](int) {
+              done->post();
+            });
+        if (!done->try_wait_for(std::chrono::seconds(10))) {
+          // The kernel may still own the write: leak rather than free.
+          ++lost;
+          (void)aio.release();
+          (void)buffer.release();
+          (void)done.release();
+        }
+      }
+    });
+  }
+  for (auto& thread : threads) {
+    thread.join();
+  }
+  EXPECT_EQ(setupFailures, 0);
+  EXPECT_EQ(lost, 0);
+}
+
+namespace {
+// Delegates to the default backend, but once armed fails event_add for any
+// fd it has not registered before, so only a newly registered handler fails.
+class FailNewRegistrationsBackend : public EventBaseBackendBase {
+ public:
+  explicit FailNewRegistrationsBackend(const std::atomic<bool>& armed)
+      : inner_(EventBase::getDefaultBackend()), armed_(armed) {}
+
+  event_base* getEventBase() override { return inner_->getEventBase(); }
+  int eb_event_base_loop(int flags) override {
+    return inner_->eb_event_base_loop(flags);
+  }
+  int eb_event_base_loopbreak() override {
+    return inner_->eb_event_base_loopbreak();
+  }
+  int eb_event_add(Event& event, const struct timeval* timeout) override {
+    const auto fd = event.eb_ev_fd();
+    if (armed_.load() && !knownFds_.contains(fd)) {
+      errno = EINVAL;
+      return -1;
+    }
+    knownFds_.insert(fd);
+    return inner_->eb_event_add(event, timeout);
+  }
+  int eb_event_del(Event& event) override {
+    return inner_->eb_event_del(event);
+  }
+  bool eb_event_active(Event& event, int res) override {
+    return inner_->eb_event_active(event, res);
+  }
+
+ private:
+  std::unique_ptr<EventBaseBackendBase> inner_;
+  const std::atomic<bool>& armed_;
+  // Only touched on the loop thread.
+  std::set<libevent_fd_t> knownFds_;
+};
+} // namespace
+
+TEST_P(SimpleAsyncIOTest, ThrowsWhenTheHandlerCannotBeRegistered) {
+  std::atomic<bool> armed = false;
+  ScopedEventBaseThread evbThread(
+      EventBase::Options().setBackendFactory([&armed] {
+        return std::make_unique<FailNewRegistrationsBackend>(armed);
+      }),
+      nullptr,
+      "FailingBackend");
+  auto config = config_;
+  config.setEventBase(evbThread.getEventBase());
+
+  armed = true;
+  EXPECT_THROW(SimpleAsyncIO{config}, std::runtime_error);
+  armed = false;
+
+  SimpleAsyncIO aio(config);
+  EXPECT_TRUE(aio.isHandlerRegistered());
+}
+
+TEST_P(SimpleAsyncIOTest, OutlivesProvidedEventBase) {
+  // The header asks callers to keep a provided EventBase alive, but existing
+  // users (e.g. a thread-local instance bound to an IO executor's EventBase)
+  // destroy the EventBase first. Destruction must not touch it then.
+  auto tmpfile = File::temporary();
+  auto evbThread = std::make_unique<ScopedEventBaseThread>();
+  auto config = config_;
+  config.setEventBase(evbThread->getEventBase());
+  auto aio = std::make_unique<SimpleAsyncIO>(config);
+
+  Baton done;
+  const std::string data("Outlived");
+  aio->pwrite(tmpfile.fd(), data.data(), data.size(), 0, [&done](int) {
+    done.post();
+  });
+  ASSERT_TRUE(done.try_wait_for(std::chrono::seconds(10)));
+
+  evbThread.reset();
+  aio.reset();
 }
 
 #if FOLLY_HAS_COROUTINES

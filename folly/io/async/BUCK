@@ -713,11 +713,13 @@ fb_dirsync_cpp_library(
     enable_static_variant = False,
     use_raw_headers = True,
     deps = [
+        "//folly:conv",
         "//folly:string",
         "//folly/coro:baton",
         "//folly/io/async:async_io",
         "//folly/io/async:io_uring",
         "//folly/io/async:liburing",
+        "//folly/lang:exception",
         "//folly/portability:sockets",
     ],
     exported_deps = [

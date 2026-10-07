@@ -1400,6 +1400,8 @@ fbcode_target(
         "//folly/coro:blocking_wait",
         "//folly/coro:collect",
         "//folly/io:iobuf",
+        "//folly/io/async:async_base",
+        "//folly/io/async:scoped_event_base_thread",
         "//folly/io/async:simple_async_io",
         "//folly/portability:gtest",
         "//folly/synchronization:baton",

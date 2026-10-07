@@ -123,6 +123,10 @@ class SimpleAsyncIO : public EventHandler {
     friend class SimpleAsyncIO;
   };
 
+  /**
+   * @throws std::runtime_error if the completion handler cannot be registered
+   * with the EventBase; such an instance could never complete an operation.
+   */
   explicit SimpleAsyncIO(Config cfg = Config());
   virtual ~SimpleAsyncIO() override;
 
@@ -207,6 +211,7 @@ class SimpleAsyncIO : public EventHandler {
   std::unique_ptr<AsyncBase> asyncIO_;
   Synchronized<std::queue<std::unique_ptr<AsyncBaseOp>>> opsFreeList_;
   std::unique_ptr<ScopedEventBaseThread> evb_;
+  EventBase* eventBase_{nullptr};
   bool terminating_;
   Baton<> drainedBaton_;
 };
