@@ -18,6 +18,7 @@
 
 #ifndef _WIN32
 #include <dlfcn.h>
+#include <signal.h>
 #include <sys/wait.h>
 #endif
 
@@ -25,25 +26,28 @@
 
 #include <array>
 #include <atomic>
+#include <cerrno>
 #include <chrono>
-#include <climits>
 #include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <set>
 #include <thread>
-#include <unordered_map>
+#include <vector>
 
 #include <glog/logging.h>
 #include <folly/synchronization/Latch.h>
 
 #include <folly/Memory.h>
+#include <folly/ScopeGuard.h>
+#include <folly/SharedMutex.h>
 #include <folly/io/FsUtil.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/system/AtFork.h>
 #include <folly/system/ThreadId.h>
 #include <folly/testing/TestUtil.h>
 
@@ -674,6 +678,111 @@ int totalValue() {
 } // namespace
 
 #ifdef FOLLY_HAVE_PTHREAD_ATFORK
+TEST(ThreadLocal, ForkWithUnusedSlot) {
+  struct Tag {};
+  using Meta = threadlocal_detail::StaticMeta<Tag, void>;
+  auto& meta = Meta::instance();
+  // Repeated in-process runs must not reuse an already annotated slot.
+  const auto nextId = meta.nextId_.load();
+  std::vector<Meta::EntryID> reservedIds(meta.freeIds_.size() + 1);
+  uint32_t unusedId = 0;
+  for (auto& id : reservedIds) {
+    unusedId = id.getOrAllocate(meta);
+  }
+  ASSERT_EQ(nextId, unusedId);
+  ASSERT_NE(0, unusedId);
+
+  ThreadLocalPtr<int, Tag> populated;
+  populated.reset(new int(1));
+  const auto sets = meta.getThreadEntrySetsPtrSpan();
+  ASSERT_LT(unusedId, sets.size());
+  auto& unusedSet = *sets[unusedId];
+  for (auto* set : sets) {
+    if (set != &unusedSet) {
+      const auto locked = set->wlock();
+    }
+  }
+  // Warm every Folly parent handler without running any child handler.
+  ASSERT_EQ(pid_t{-1}, AtFork::forkInstrumented([] { return pid_t{-1}; }));
+
+  Baton<> ready;
+  std::mutex releaseMutex;
+  std::condition_variable releaseCondition;
+  bool released = false;
+  std::atomic<bool> holderExpired{false};
+  std::thread holder([&] {
+    populated.reset(new int(2));
+    auto guard =
+        shared_mutex_detail::annotationGuard(&unusedSet.unsafeGetMutex());
+    std::unique_lock lock(releaseMutex);
+    ready.post();
+    holderExpired = !releaseCondition.wait_for(
+        lock, std::chrono::seconds(60), [&] { return released; });
+  });
+  SCOPE_EXIT {
+    {
+      std::lock_guard lock(releaseMutex);
+      released = true;
+    }
+    releaseCondition.notify_one();
+    holder.join();
+  };
+  ASSERT_TRUE(ready.try_wait_for(std::chrono::seconds(30)));
+
+  const auto waitForChild = [](pid_t pid, int& status, auto timeout) {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    do {
+      const auto result = waitpid(pid, &status, WNOHANG);
+      if (result != 0 && !(result == -1 && errno == EINTR)) {
+        return result;
+      }
+      // waitpid has no timed wait; poll completion within the deadline.
+      // NOLINTNEXTLINE(facebook-hte-BadCall-sleep_for)
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    } while (std::chrono::steady_clock::now() < deadline);
+    return pid_t{0};
+  };
+
+  // Keep the annotation bucket held across both forks, including in the child.
+  for (int attempt = 0; attempt != 2; ++attempt) {
+    // FAIL() returns from the test when fork fails.
+    // NOLINTNEXTLINE(facebook-hte-UncheckedFork)
+    const auto pid = fork();
+    if (pid == -1) {
+      FAIL() << "fork failed with errno " << errno;
+    }
+    if (pid == 0) {
+      int count = 0;
+      int sum = 0;
+      for (const auto& value : populated.accessAllThreads()) {
+        ++count;
+        sum += value;
+      }
+      _exit(count == 1 && sum == 1 ? 0 : 1);
+    }
+
+    int status = 0;
+    const auto result = waitForChild(pid, status, std::chrono::seconds(10));
+    if (result == 0) {
+      const auto killed = kill(pid, SIGKILL);
+      const auto reaped = waitForChild(pid, status, std::chrono::seconds(5));
+      EXPECT_EQ(0, killed);
+      EXPECT_EQ(pid, reaped);
+      FAIL() << "fork child did not finish with an unused thread-local slot";
+    }
+    ASSERT_EQ(pid, result);
+    ASSERT_TRUE(WIFEXITED(status));
+    ASSERT_EQ(0, WEXITSTATUS(status));
+
+    std::set<int> values;
+    for (const auto& value : populated.accessAllThreads()) {
+      values.insert(value);
+    }
+    EXPECT_EQ((std::set<int>{1, 2}), values);
+  }
+  EXPECT_FALSE(holderExpired.load());
+}
+
 TEST(ThreadLocal, Fork) {
   EXPECT_EQ(1, ptr->value()); // ensure created
   EXPECT_EQ(1, totalValue());

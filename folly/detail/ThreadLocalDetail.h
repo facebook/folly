@@ -710,6 +710,11 @@ struct FOLLY_EXPORT StaticMeta final : StaticMetaBase {
     // Evict all of the ThreadEntry* from other threads.
     for (const auto ptr : meta.getThreadEntrySetsPtrSpan()) {
       auto& set = *ptr;
+      // forkHandlerLock_ excludes mutations. Empty sets need no cleanup, and
+      // their first lock could wait on an inherited TSan annotation mutex.
+      if (set.unsafeGetUnlocked().threadElements.empty()) {
+        continue;
+      }
       auto wlockedSet = set.wlock();
       auto slot = wlockedSet->getIndexFor(threadEntry);
       if (slot >= 0) {

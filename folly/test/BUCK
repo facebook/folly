@@ -1695,6 +1695,8 @@ fb_dirsync_cpp_unittest(
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:memory",
+        "//folly:scope_guard",
+        "//folly:shared_mutex",
         "//folly:thread_local",
         "//folly/io:fs_util",
         "//folly/lang:keep",
@@ -1702,6 +1704,7 @@ fb_dirsync_cpp_unittest(
         "//folly/portability:unistd",
         "//folly/synchronization:baton",
         "//folly/synchronization:latch",
+        "//folly/system:at_fork",
         "//folly/system:thread_id",
         "//folly/testing:test_util",
     ],
