@@ -241,6 +241,14 @@ template <class Value>
 class Optional : private detail::OptionalCopyAssignBase<Value> {
   using Base = detail::OptionalCopyAssignBase<Value>;
 
+  static constexpr inline bool kIsCopyAssignable =
+      std::is_copy_constructible_v<Value> && std::is_copy_assignable_v<Value>;
+  static constexpr inline bool kIsMoveAssignable =
+      std::is_move_constructible_v<Value> && std::is_move_assignable_v<Value>;
+  static constexpr inline bool kIsNothrowMoveAssignable =
+      std::is_nothrow_move_constructible_v<Value> &&
+      std::is_nothrow_move_assignable_v<Value>;
+
  public:
   using value_type = Value;
 
@@ -256,10 +264,13 @@ class Optional : private detail::OptionalCopyAssignBase<Value> {
   /// Default-constructed Optionals are None.
   constexpr Optional() noexcept {}
 
-  Optional(const Optional&) = default;
+  Optional(const Optional&) //
+    requires std::is_copy_constructible_v<Value>
+  = default;
 
-  Optional(Optional&& src) noexcept(
-      std::is_nothrow_move_constructible<Value>::value) {
+  Optional(Optional&& src) noexcept(std::is_nothrow_move_constructible_v<Value>)
+    requires std::is_move_constructible_v<Value>
+  {
     if (src.hasValue()) {
       this->construct(std::move(src.value()));
       src.reset();
@@ -418,13 +429,16 @@ class Optional : private detail::OptionalCopyAssignBase<Value> {
     return *this;
   }
 
-  Optional& operator=(Optional&& other) noexcept(
-      std::is_nothrow_move_assignable<Value>::value) {
+  Optional& operator=(Optional&& other) noexcept(kIsNothrowMoveAssignable)
+    requires kIsMoveAssignable
+  {
     assign(std::move(other));
     return *this;
   }
 
-  Optional& operator=(const Optional&) = default;
+  Optional& operator=(const Optional&)
+    requires kIsCopyAssignable
+  = default;
 
   /// Construct a new value in the Optional, in-place.
   /// @methodset Modifiers

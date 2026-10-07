@@ -34,6 +34,23 @@
 using std::shared_ptr;
 using std::unique_ptr;
 
+namespace {
+
+// Optional move assignment may move-assign or move-construct its value,
+// depending on whether the destination is engaged. Its noexcept condition
+// must therefore cover both operations.
+struct MixedNoexceptMove {
+  explicit MixedNoexceptMove(int) {}
+  MixedNoexceptMove(MixedNoexceptMove&&) noexcept(false) {}
+  MixedNoexceptMove& operator=(MixedNoexceptMove&&) noexcept { return *this; }
+};
+
+using MoveOnlyOptional = folly::Optional<std::unique_ptr<int>>;
+using ConstOptional = folly::Optional<const int>;
+using MixedNoexceptOptional = folly::Optional<MixedNoexceptMove>;
+
+} // namespace
+
 // Verify that Optional is trivially copyable for trivial types.
 static_assert(std::is_trivially_copy_constructible_v<folly::Optional<int32_t>>);
 static_assert(std::is_trivially_copy_assignable_v<folly::Optional<int32_t>>);
@@ -55,6 +72,16 @@ static_assert(
     !std::is_trivially_move_constructible_v<folly::Optional<int32_t>>);
 static_assert(
     !std::is_trivially_move_constructible_v<folly::Optional<std::string>>);
+static_assert(!std::is_copy_constructible_v<MoveOnlyOptional>);
+static_assert(!std::is_copy_assignable_v<MoveOnlyOptional>);
+static_assert(std::is_move_constructible_v<MoveOnlyOptional>);
+static_assert(std::is_move_assignable_v<MoveOnlyOptional>);
+static_assert(std::is_copy_constructible_v<ConstOptional>);
+static_assert(!std::is_copy_assignable_v<ConstOptional>);
+static_assert(std::is_move_constructible_v<ConstOptional>);
+static_assert(!std::is_move_assignable_v<ConstOptional>);
+static_assert(std::is_move_assignable_v<MixedNoexceptOptional>);
+static_assert(!std::is_nothrow_move_assignable_v<MixedNoexceptOptional>);
 
 namespace {
 
@@ -729,6 +756,20 @@ TEST(Optional, SelfAssignment) {
   Optional<int> b = 23333333;
   b = std::move(std::move(b)); // suppress self-move warning
   ASSERT_TRUE(b.has_value() && b.value() == 23333333);
+}
+
+TEST(Optional, MoveAssignmentHandlesBothEngagementStates) {
+  using Value = MixedNoexceptMove;
+
+  Optional<Value> engagedSource{std::in_place, 1};
+  Optional<Value> engagedDestination{std::in_place, 2};
+  engagedDestination = std::move(engagedSource);
+  EXPECT_TRUE(engagedDestination.has_value());
+
+  Optional<Value> constructSource{std::in_place, 3};
+  Optional<Value> emptyDestination;
+  emptyDestination = std::move(constructSource);
+  EXPECT_TRUE(emptyDestination.has_value());
 }
 
 namespace {
