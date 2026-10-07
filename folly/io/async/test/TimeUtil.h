@@ -54,9 +54,7 @@ class TimePoint {
     return timeStart_;
   }
 
-  std::chrono::steady_clock::time_point getTimeEnd() const {
-    return timeStart_;
-  }
+  std::chrono::steady_clock::time_point getTimeEnd() const { return timeEnd_; }
 
   std::chrono::nanoseconds getTimeWaiting() const { return timeWaiting_; }
 

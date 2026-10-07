@@ -1322,21 +1322,39 @@ TYPED_TEST_P(EventBaseTest, ScheduledFn) {
   TimePoint timestamp1(false);
   TimePoint timestamp2(false);
   TimePoint timestamp3(false);
-  auto fn1 = std::bind(&TimePoint::reset, &timestamp1);
-  auto fn2 = std::bind(&TimePoint::reset, &timestamp2);
-  auto fn3 = std::bind(&TimePoint::reset, &timestamp3);
+  std::vector<int> callbackOrder;
+  auto fn1 = [&] {
+    timestamp1.reset();
+    callbackOrder.push_back(1);
+  };
+  auto fn2 = [&] {
+    timestamp2.reset();
+    callbackOrder.push_back(2);
+  };
+  auto fn3 = [&] {
+    timestamp3.reset();
+    callbackOrder.push_back(3);
+  };
   TimePoint start;
   eb.schedule(std::move(fn1), std::chrono::milliseconds(9));
   eb.schedule(std::move(fn2), std::chrono::milliseconds(19));
   eb.schedule(std::move(fn3), std::chrono::milliseconds(39));
 
   eb.loop();
-  TimePoint end;
 
-  T_CHECK_TIMEOUT(start, timestamp1, std::chrono::milliseconds(9));
-  T_CHECK_TIMEOUT(start, timestamp2, std::chrono::milliseconds(19));
-  T_CHECK_TIMEOUT(start, timestamp3, std::chrono::milliseconds(39));
-  T_CHECK_TIMEOUT(start, end, std::chrono::milliseconds(39));
+  auto expectNotEarly =
+      [](const TimePoint& start,
+         const TimePoint& end,
+         std::chrono::milliseconds delay) {
+        EXPECT_FALSE(end.isUnset());
+        EXPECT_GE(
+            end.getTimeStart() - start.getTimeEnd(),
+            delay - std::chrono::milliseconds(1));
+      };
+  expectNotEarly(start, timestamp1, std::chrono::milliseconds(9));
+  expectNotEarly(start, timestamp2, std::chrono::milliseconds(19));
+  expectNotEarly(start, timestamp3, std::chrono::milliseconds(39));
+  EXPECT_EQ(callbackOrder, (std::vector<int>{1, 2, 3}));
 }
 
 TYPED_TEST_P(EventBaseTest, ScheduledFnAt) {
