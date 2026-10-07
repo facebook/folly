@@ -245,6 +245,7 @@ fb_dirsync_cpp_unittest(
         "AsyncSocketTest2.cpp",
     ],
     labels = ["case-isolation-failure"],
+    source_headers = ["AsyncSocketTest.h", "AsyncSocketTest2.h"],
     supports_static_listing = False,
     deps = [
         "fbsource//third-party/glibc:rt",
@@ -936,6 +937,9 @@ fbcode_target(
         "certs/tests-cert.pem": ":tests-cert.pem",
         "certs/tests-key.pem": ":tests-key.pem",
     },
+    source_headers = [
+        "AsyncSSLSocketTest.h",
+    ],
     supports_static_listing = False,
     deps = [
         "fbsource//third-party/glibc:dl",
