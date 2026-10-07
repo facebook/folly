@@ -41,19 +41,40 @@ TryBase<T>::TryBase(TryBase<T>&& t) noexcept(
 template <class T>
 TryBase<T>& TryBase<T>::operator=(TryBase<T>&& t) noexcept(
     std::is_nothrow_move_constructible<T>::value) {
-  if (this == &t) {
+  auto constructFrom = [&] {
+    if (t.contains_ == Contains::VALUE) {
+      ::new (static_cast<void*>(std::addressof(value_))) T(std::move(t.value_));
+    } else if (t.contains_ == Contains::EXCEPTION) {
+      new (&e_) exception_wrapper(std::move(t.e_));
+    }
+    contains_ = t.contains_;
+  };
+
+  // Benchmarks favor empty-destination/value-source first, then value/value.
+  // Keep the empty path separate from self-move and destruction checks.
+  if (contains_ == Contains::NOTHING) {
+    constructFrom();
     return *this;
+  }
+  if (this == &t) { // self-move
+    return *this;
+  }
+  if (contains_ == t.contains_) {
+    // Preserve this function's move-construction-based noexcept contract.
+    if constexpr (std::is_nothrow_move_assignable<T>::value) {
+      if (contains_ == Contains::VALUE) {
+        value_ = std::move(t.value_);
+        return *this;
+      }
+    }
+    if (contains_ == Contains::EXCEPTION) {
+      e_ = std::move(t.e_);
+      return *this;
+    }
   }
 
   destroy();
-
-  if (t.contains_ == Contains::VALUE) {
-    ::new (static_cast<void*>(std::addressof(value_))) T(std::move(t.value_));
-  } else if (t.contains_ == Contains::EXCEPTION) {
-    new (&e_) exception_wrapper(std::move(t.e_));
-  }
-
-  contains_ = t.contains_;
+  constructFrom();
 
   return *this;
 }
@@ -226,13 +247,13 @@ Try<void>& Try<void>::operator=(const Try<void>& t) noexcept {
 }
 
 Try<void>& Try<void>::operator=(Try<void>&& t) noexcept {
-  // exception_wrapper's move-assigner requires this != &that.
-  if (this == &t) {
-    return *this;
-  }
+  // Success covers both common destination cases. Benchmarks favor keeping the
+  // value-source path free of the self-move check.
   if (t.hasException()) {
     if (hasException()) {
-      this->e_ = std::move(t.e_);
+      if (this != &t) { // self-move
+        this->e_ = std::move(t.e_);
+      }
     } else {
       new (&this->e_) exception_wrapper(std::move(t.e_));
       hasValue_ = false;

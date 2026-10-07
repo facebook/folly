@@ -166,6 +166,43 @@ TEST(Try, assignmentWithThrowingMoveConstructor) {
   EXPECT_EQ(0, counter);
 }
 
+TEST(Try, assignmentUsesNothrowMoveAssignmentForValues) {
+  struct TrackedMove {
+    int value;
+    int& constructions;
+    int& assignments;
+
+    TrackedMove(int value_, int& constructions_, int& assignments_)
+        : value(value_),
+          constructions(constructions_),
+          assignments(assignments_) {}
+
+    TrackedMove(TrackedMove&& other) noexcept
+        : value(other.value),
+          constructions(other.constructions),
+          assignments(other.assignments) {
+      ++constructions;
+    }
+
+    TrackedMove& operator=(TrackedMove&& other) noexcept {
+      value = other.value;
+      ++assignments;
+      return *this;
+    }
+  };
+
+  int constructions = 0;
+  int assignments = 0;
+  Try<TrackedMove> source{std::in_place, 2, constructions, assignments};
+  Try<TrackedMove> destination{std::in_place, 1, constructions, assignments};
+
+  destination = std::move(source);
+
+  EXPECT_EQ(2, destination.value().value);
+  EXPECT_EQ(0, constructions);
+  EXPECT_EQ(1, assignments);
+}
+
 TEST(Try, emplace) {
   Try<A> t;
   A& t_a = t.emplace(10);
