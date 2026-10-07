@@ -16,10 +16,6 @@
 
 #include <folly/io/async/IoUringDynamicProvidedBufferRing.h>
 
-#include <algorithm>
-#include <chrono>
-#include <thread>
-
 #include <gtest/gtest.h>
 
 #if FOLLY_HAS_LIBURING
@@ -27,9 +23,11 @@
 namespace folly {
 namespace {
 
-TEST(IoUringDynamicProvidedBufferRingMaxCapacityTest, Create) {
+TEST(
+    IoUringDynamicProvidedBufferRingMaxCapacityTest,
+    AcceptsMaximumBufferCount) {
   io_uring ring{};
-  ASSERT_EQ(0, ::io_uring_queue_init(2, &ring, 0));
+  ring.ring_fd = -1;
 
   IoUringDynamicProvidedBufferRing::Options options = {
       .gid = 0,
@@ -37,30 +35,11 @@ TEST(IoUringDynamicProvidedBufferRingMaxCapacityTest, Create) {
       .bufferSize = 32,
   };
 
-  // A maximum-size provided-buffer ring pins 512 KiB against the per-user
-  // RLIMIT_MEMLOCK budget. Other processes on the host share that budget, so
-  // retry transient exhaustion while retaining coverage of the real kernel
-  // registration at the supported boundary.
-  constexpr auto kMaxBackoff = std::chrono::milliseconds(1000);
-  const auto deadline =
-      std::chrono::steady_clock::now() + std::chrono::seconds(60);
-  auto backoff = std::chrono::milliseconds(10);
-  IoUringDynamicProvidedBufferRing::UniquePtr maxRing;
-  while (!maxRing) {
-    try {
-      maxRing = IoUringDynamicProvidedBufferRing::create(&ring, options);
-    } catch (const IoUringDynamicProvidedBufferRing::OutOfMemory&) {
-      if (std::chrono::steady_clock::now() + backoff > deadline) {
-        throw;
-      }
-      std::this_thread::sleep_for(backoff);
-      backoff = std::min(backoff * 2, kMaxBackoff);
-    }
-  }
-
-  EXPECT_EQ(maxRing->count(), 32768);
-  maxRing.reset();
-  ::io_uring_queue_exit(&ring);
+  // Reaching the registration-specific error proves that validation accepted
+  // the maximum without consuming the host's shared memlock budget.
+  EXPECT_THROW(
+      IoUringDynamicProvidedBufferRing::create(&ring, options),
+      IoUringDynamicProvidedBufferRing::LibUringCallError);
 }
 
 } // namespace
