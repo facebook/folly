@@ -562,6 +562,14 @@ TEST_F(IoUringZeroCopyTest, ZeroCopyWriteGetsNotifications) {
   EXPECT_GT(ioUringStats(*evb).cqe.zeroCopyNotifCount, 0);
 }
 
+TEST_F(IoUringZeroCopyTest, EnableFuncMakesPlainWritesZeroCopy) {
+  auto evb = makeIoUringEventBase(ioUringOptions);
+  sendToPeer(*evb, makePayload(1024 * 1024), WriteFlags::NONE, [](const auto&) {
+    return true;
+  });
+  EXPECT_GT(ioUringStats(*evb).cqe.zeroCopyNotifCount, 0);
+}
+
 TEST_F(IoUringZeroCopyTest, CopyWriteGetsNoNotifications) {
   auto evb = makeIoUringEventBase(ioUringOptions);
   sendToPeer(*evb, makePayload(1024 * 1024), WriteFlags::NONE);

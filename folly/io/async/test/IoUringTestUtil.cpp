@@ -120,10 +120,17 @@ void receiveFromPeer(
   writer.join();
 }
 
-void sendToPeer(EventBase& evb, const std::string& payload, WriteFlags flags) {
+void sendToPeer(
+    EventBase& evb,
+    const std::string& payload,
+    WriteFlags flags,
+    AsyncWriter::ZeroCopyEnableFunc enableFunc) {
   TestServer server;
   auto socket = AsyncSocket::newSocket(&evb);
   ASSERT_TRUE(socket->setZeroCopy(true));
+  if (enableFunc) {
+    socket->setZeroCopyEnableFunc(std::move(enableFunc));
+  }
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
   evb.loop();

@@ -73,7 +73,11 @@ void receiveFromPeer(
     AsyncTransport::ReadCallback& rcb,
     const std::string& payload);
 
-void sendToPeer(EventBase& evb, const std::string& payload, WriteFlags flags);
+void sendToPeer(
+    EventBase& evb,
+    const std::string& payload,
+    WriteFlags flags,
+    AsyncWriter::ZeroCopyEnableFunc enableFunc = nullptr);
 
 } // namespace folly::test
 
