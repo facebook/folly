@@ -3,6 +3,10 @@
 include(FBCMakeParseArgs)
 include(FBPythonBinary)
 
+set(_FB_THRIFT_PYTHON_REMOVE_PATH_SCRIPT
+  "${CMAKE_CURRENT_LIST_DIR}/FBThriftPythonRemovePath.cmake"
+)
+
 # ---------------------------------------------------------------------------
 # thrift-python runtime discovery
 # ---------------------------------------------------------------------------
@@ -20,8 +24,43 @@ include(FBPythonBinary)
 # instead of add_fb_python_executable() for targets that import thrift_types.
 # ---------------------------------------------------------------------------
 
+macro(_fb_probe_thrift_python_runtime)
+  if(DEFINED ENV{PYTHONPATH})
+    set(_fb_thrift_python_saved_pythonpath "$ENV{PYTHONPATH}")
+    set(_fb_thrift_python_had_pythonpath TRUE)
+  else()
+    set(_fb_thrift_python_had_pythonpath FALSE)
+  endif()
+
+  # Avoid a legacy thrift package on PYTHONPATH shadowing fbthrift-python.
+  # Manipulate the environment directly because `cmake -E env --unset` is not
+  # available at the oldest CMake versions supported by fbcode_builder.
+  unset(ENV{PYTHONPATH})
+  execute_process(
+    COMMAND "${Python3_EXECUTABLE}" -c
+      "import pathlib, thrift.python.types; print(pathlib.Path(thrift.python.types.__file__).parents[2])"
+    OUTPUT_VARIABLE THRIFT_PYTHON_SITE_PACKAGES
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+    RESULT_VARIABLE _thrift_result
+  )
+
+  if(_fb_thrift_python_had_pythonpath)
+    set(ENV{PYTHONPATH} "${_fb_thrift_python_saved_pythonpath}")
+  else()
+    unset(ENV{PYTHONPATH})
+  endif()
+  unset(_fb_thrift_python_had_pythonpath)
+  unset(_fb_thrift_python_saved_pythonpath)
+endmacro()
+
 macro(fb_find_thrift_python_runtime)
-  if(NOT DEFINED _FB_THRIFT_PYTHON_RUNTIME_FOUND)
+  if(
+    NOT _FB_THRIFT_PYTHON_RUNTIME_FOUND OR
+    NOT EXISTS "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/python" OR
+    NOT EXISTS "${THRIFT_PYTHON_SITE_PACKAGES}/thrift.libs" OR
+    NOT EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}/folly"
+  )
     # Ensure Python3 is found so we can use ${Python3_EXECUTABLE}
     if(NOT Python3_EXECUTABLE)
       find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -39,15 +78,11 @@ macro(fb_find_thrift_python_runtime)
     # --- thrift.python (from pip-installed fbthrift-python wheel) ---
     # Detect via import thrift.python.types — this module only exists in
     # fbthrift-python, not in Apache Thrift, so it's an unambiguous check.
+    # Use the concrete extension module to locate site-packages because the
+    # top-level thrift namespace package does not have a __file__.  Ignore
+    # PYTHONPATH so a legacy thrift installation cannot shadow the wheel.
     # If not available, auto-install the wheel from getdeps build output.
-    execute_process(
-      COMMAND "${Python3_EXECUTABLE}" -c
-        "import thrift.python.types; import thrift, os; print(os.path.dirname(os.path.dirname(thrift.__file__)))"
-      OUTPUT_VARIABLE THRIFT_PYTHON_SITE_PACKAGES
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      ERROR_QUIET
-      RESULT_VARIABLE _thrift_result
-    )
+    _fb_probe_thrift_python_runtime()
     if(NOT _thrift_result EQUAL 0 OR NOT THRIFT_PYTHON_SITE_PACKAGES)
       # Not pip-installed yet — auto-install from getdeps build output
       file(GLOB _fbthrift_wheels
@@ -58,29 +93,31 @@ macro(fb_find_thrift_python_runtime)
         message(STATUS "Auto-installing fbthrift-python wheel: ${_fbthrift_whl}")
         execute_process(
           COMMAND "${Python3_EXECUTABLE}" -m pip install --no-deps "${_fbthrift_whl}"
-          RESULT_VARIABLE _pip_result
         )
-        if(_pip_result EQUAL 0)
-          execute_process(
-            COMMAND "${Python3_EXECUTABLE}" -c
-              "import thrift.python.types; import thrift, os; print(os.path.dirname(os.path.dirname(thrift.__file__)))"
-            OUTPUT_VARIABLE THRIFT_PYTHON_SITE_PACKAGES
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            ERROR_QUIET
-            RESULT_VARIABLE _thrift_result
-          )
-        endif()
+        # Re-probe even after a non-zero pip result: installation may have
+        # completed before a later wheel step failed.
+        _fb_probe_thrift_python_runtime()
       endif()
     endif()
 
-    if(THRIFT_PYTHON_SITE_PACKAGES)
-      message(STATUS "Found thrift-python runtime: ${THRIFT_PYTHON_SITE_PACKAGES}")
-    endif()
     if(NOT THRIFT_PYTHON_SITE_PACKAGES)
       message(WARNING
         "thrift-python runtime not found.  "
         "Searched: ${_getdeps_root}/fbthrift-python/share/thrift/wheels/*.whl  "
         "pip install the fbthrift-python wheel before configuring the project.")
+    elseif(NOT EXISTS "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/python")
+      message(WARNING
+        "fbthrift-python was found at ${THRIFT_PYTHON_SITE_PACKAGES}, but "
+        "its thrift/python runtime package is missing.")
+      unset(THRIFT_PYTHON_SITE_PACKAGES)
+    elseif(NOT EXISTS "${THRIFT_PYTHON_SITE_PACKAGES}/thrift.libs")
+      message(WARNING
+        "fbthrift-python was found at ${THRIFT_PYTHON_SITE_PACKAGES}, but "
+        "thrift.libs is missing. Install an auditwheel-repaired "
+        "fbthrift-python wheel before configuring the project.")
+      unset(THRIFT_PYTHON_SITE_PACKAGES)
+    else()
+      message(STATUS "Found thrift-python runtime: ${THRIFT_PYTHON_SITE_PACKAGES}")
     endif()
 
     # --- folly (from folly-python site-packages) ---
@@ -118,9 +155,17 @@ macro(fb_find_thrift_python_runtime)
       message(STATUS "Found folly-python runtime: ${FOLLY_PYTHON_SITE_PACKAGES}")
     endif()
 
-    set(_FB_THRIFT_PYTHON_RUNTIME_FOUND TRUE CACHE INTERNAL "thrift-python runtime discovery completed")
-    set(THRIFT_PYTHON_SITE_PACKAGES "${THRIFT_PYTHON_SITE_PACKAGES}" CACHE INTERNAL "thrift-python site-packages path")
-    set(FOLLY_PYTHON_SITE_PACKAGES "${FOLLY_PYTHON_SITE_PACKAGES}" CACHE INTERNAL "folly-python site-packages path")
+    if(THRIFT_PYTHON_SITE_PACKAGES AND FOLLY_PYTHON_SITE_PACKAGES)
+      set(_FB_THRIFT_PYTHON_RUNTIME_FOUND TRUE CACHE INTERNAL "thrift-python runtime discovery completed" FORCE)
+      set(THRIFT_PYTHON_SITE_PACKAGES "${THRIFT_PYTHON_SITE_PACKAGES}" CACHE INTERNAL "thrift-python site-packages path" FORCE)
+      set(FOLLY_PYTHON_SITE_PACKAGES "${FOLLY_PYTHON_SITE_PACKAGES}" CACHE INTERNAL "folly-python site-packages path" FORCE)
+    else()
+      # Do not persist a failed discovery. A subsequent configure should retry
+      # automatically after the runtime installation has been repaired.
+      unset(_FB_THRIFT_PYTHON_RUNTIME_FOUND CACHE)
+      unset(THRIFT_PYTHON_SITE_PACKAGES CACHE)
+      unset(FOLLY_PYTHON_SITE_PACKAGES CACHE)
+    endif()
   endif()
 endmacro()
 
@@ -259,9 +304,9 @@ endfunction()
 #
 # Differences from add_fb_python_executable():
 #   1. Forces TYPE dir (C extensions cannot load from zip archives)
-#   2. Post-build: symlinks thrift/python/ from the pip-installed
-#      fbthrift-python wheel into the bundled thrift/ directory so that
-#      both thrift.Thrift (legacy) and thrift.python (new) coexist
+#   2. Post-build: symlinks thrift/python/ and thrift.libs/ from the
+#      pip-installed fbthrift-python wheel.  The latter contains auditwheel's
+#      renamed native dependencies, including Folly.
 #   3. Post-build: symlinks folly/ from folly-python site-packages
 #
 # Usage is identical to add_fb_python_executable():
@@ -298,20 +343,32 @@ function(add_fb_thrift_python_executable TARGET)
   # Since we no longer depend on FBThrift::thrift_py (the legacy pure-Python
   # runtime), there may be no bundled thrift/ directory yet.  Create it
   # with an __init__.py so that "import thrift.python" works.
-  if(THRIFT_PYTHON_SITE_PACKAGES AND EXISTS "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/python")
+  if(
+    THRIFT_PYTHON_SITE_PACKAGES AND
+    EXISTS "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/python" AND
+    EXISTS "${THRIFT_PYTHON_SITE_PACKAGES}/thrift.libs"
+  )
     add_custom_command(
       TARGET ${TARGET}.GEN_PY_EXE POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory "${target_dir}/thrift"
       COMMAND ${CMAKE_COMMAND} -E touch "${target_dir}/thrift/__init__.py"
+      COMMAND ${CMAKE_COMMAND}
+        "-DFB_REMOVE_PATH=${target_dir}/thrift/python"
+        -P "${_FB_THRIFT_PYTHON_REMOVE_PATH_SCRIPT}"
+      COMMAND ${CMAKE_COMMAND}
+        "-DFB_REMOVE_PATH=${target_dir}/thrift.libs"
+        -P "${_FB_THRIFT_PYTHON_REMOVE_PATH_SCRIPT}"
       COMMAND ${CMAKE_COMMAND} -E create_symlink
         "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/python"
         "${target_dir}/thrift/python"
-      COMMENT "Symlinking thrift.python C extensions into ${TARGET}"
+      COMMAND ${CMAKE_COMMAND} -E create_symlink
+        "${THRIFT_PYTHON_SITE_PACKAGES}/thrift.libs"
+        "${target_dir}/thrift.libs"
+      COMMENT "Symlinking thrift.python and its native dependencies into ${TARGET}"
     )
   else()
     message(WARNING
-      "${TARGET}: thrift.python not found at "
-      "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/python — "
+      "${TARGET}: thrift.python runtime is unavailable — "
       "thrift_types.py imports will fail at runtime")
   endif()
 
@@ -319,6 +376,9 @@ function(add_fb_thrift_python_executable TARGET)
   if(FOLLY_PYTHON_SITE_PACKAGES AND EXISTS "${FOLLY_PYTHON_SITE_PACKAGES}/folly")
     add_custom_command(
       TARGET ${TARGET}.GEN_PY_EXE POST_BUILD
+      COMMAND ${CMAKE_COMMAND}
+        "-DFB_REMOVE_PATH=${target_dir}/folly"
+        -P "${_FB_THRIFT_PYTHON_REMOVE_PATH_SCRIPT}"
       COMMAND ${CMAKE_COMMAND} -E create_symlink
         "${FOLLY_PYTHON_SITE_PACKAGES}/folly"
         "${target_dir}/folly"
