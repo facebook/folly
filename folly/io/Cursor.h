@@ -1663,7 +1663,7 @@ class Appender : public Writable<Appender> {
     // with a null source pointer.
     size_t available = length();
     if (FOLLY_UNLIKELY(available == 0)) {
-      if (!tryGrowChain()) {
+      if (!tryGrowChain(len)) {
         return 0;
       }
       available = length();
@@ -1681,11 +1681,11 @@ class Appender : public Writable<Appender> {
       memcpy(writableData(), buf, available);
       append(available);
       copied += available;
-      if (FOLLY_UNLIKELY(!tryGrowChain())) {
-        return copied;
-      }
       buf += available;
       len -= available;
+      if (FOLLY_UNLIKELY(!tryGrowChain(len))) {
+        return copied;
+      }
       available = length();
     }
   }
@@ -1730,13 +1730,13 @@ class Appender : public Writable<Appender> {
   void operator()(StringPiece sp) { push(ByteRange(sp)); }
 
  private:
-  bool tryGrowChain() {
+  bool tryGrowChain(std::size_t minSize) {
     assert(crtBuf_->next() == buffer_);
     if (growth_ == 0) {
       return false;
     }
 
-    buffer_->prependChain(IOBuf::create(growth_));
+    buffer_->prependChain(IOBuf::create(std::max(minSize, growth_)));
     crtBuf_ = buffer_->prev();
     return true;
   }
