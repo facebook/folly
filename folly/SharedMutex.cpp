@@ -23,22 +23,6 @@
 #include <folly/portability/SysResource.h>
 
 namespace folly {
-#if defined(__ANDROID__)
-template <>
-[[FOLLY_ATTR_GNU_USED, FOLLY_ATTR_GNU_RETAIN]]
-FOLLY_EXPORT void SharedMutexImpl<true>::wakeRegisteredWaitersImpl(
-    uint32_t& state, uint32_t wakeMask) {
-  wakeRegisteredWaitersImplBody(state, wakeMask);
-}
-
-template <>
-[[FOLLY_ATTR_GNU_USED, FOLLY_ATTR_GNU_RETAIN]]
-FOLLY_EXPORT void SharedMutexImpl<false>::wakeRegisteredWaitersImpl(
-    uint32_t& state, uint32_t wakeMask) {
-  wakeRegisteredWaitersImplBody(state, wakeMask);
-}
-#endif
-
 // Explicitly instantiate SharedMutex here:
 template class SharedMutexImpl<true>;
 template class SharedMutexImpl<false>;
