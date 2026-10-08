@@ -1540,6 +1540,9 @@ TEST(IoUringBackend, ProvidedBuffers) {
       "12", toString(bufferProvider->getIoBuf(cqes[0].second >> 16, 2, false)));
   EXPECT_EQ(
       "34", toString(bufferProvider->getIoBuf(cqes[1].second >> 16, 2, false)));
+  EXPECT_EQ(
+      (folly::IoUringBackend::CqeStats{.providedBufferCount = 2}),
+      backend->getStats().cqe);
 
   // now the buffers should be back
   readers.clear();
@@ -1550,6 +1553,59 @@ TEST(IoUringBackend, ProvidedBuffers) {
   EXPECT_EQ(2, cqes[0].first);
   EXPECT_EQ(
       "56", toString(bufferProvider->getIoBuf(cqes[0].second >> 16, 2, false)));
+  EXPECT_EQ(
+      (folly::IoUringBackend::CqeStats{.providedBufferCount = 1}),
+      backend->getStats().cqe);
+}
+
+TEST(IoUringBackend, IncrementalProvidedBuffersReportBufMore) {
+  auto evbPtr = getEventBase();
+  std::unique_ptr<folly::IoUringBackend> backend;
+  try {
+    folly::IoUringOptions options;
+    options.setInitialProvidedBuffers(8, 2).setEnableIncrementalBuffers(true);
+    backend = std::make_unique<folly::IoUringBackend>(std::move(options));
+  } catch (folly::IoUringBackend::NotAvailable const&) {
+  }
+  SKIP_IF(!backend) << "Backend not available";
+
+  struct Reader : folly::IoSqeBase {
+    Reader(int fd, uint16_t bgid) : fd_(fd), bgid_(bgid) {}
+
+    void processSubmit(struct io_uring_sqe* sqe) noexcept override {
+      io_uring_prep_read(sqe, fd_, nullptr, 2, 0);
+      sqe->flags |= IOSQE_BUFFER_SELECT;
+      sqe->buf_group = bgid_;
+    }
+
+    void callback(const io_uring_cqe* cqe) noexcept override {
+      res_ = cqe->res;
+    }
+
+    void callbackCancelled(const io_uring_cqe*) noexcept override { FAIL(); }
+
+    int fd_;
+    uint16_t bgid_;
+    int res_{0};
+  };
+
+  int fds[2];
+  ASSERT_EQ(0, folly::fileops::pipe(fds));
+  SCOPE_EXIT {
+    folly::fileops::close(fds[0]);
+    folly::fileops::close(fds[1]);
+  };
+
+  Reader reader(fds[0], backend->bufferProvider()->gid());
+  backend->submit(reader);
+  ASSERT_EQ(2, folly::fileops::write(fds[1], "12", 2));
+  backend->eb_event_base_loop(EVLOOP_ONCE);
+  ASSERT_EQ(2, reader.res_);
+
+  EXPECT_EQ(
+      (folly::IoUringBackend::CqeStats{
+          .providedBufferCount = 1, .bufMoreCount = 1}),
+      backend->getStats().cqe);
 }
 
 TEST(IoUringBackend, DynamicProvidedBuffers) {

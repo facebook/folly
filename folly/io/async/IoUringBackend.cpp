@@ -1626,6 +1626,9 @@ unsigned int IoUringBackend::internalProcessCqe(
         if (sqe->type() == IoSqeBase::Type::Write) {
           count_send++;
         }
+        cqeStats_.providedBufferCount += !!(cqe->flags & IORING_CQE_F_BUFFER);
+        cqeStats_.bufMoreCount += !!(cqe->flags & IORING_CQE_F_BUF_MORE);
+        cqeStats_.zeroCopyNotifCount += !!(cqe->flags & IORING_CQE_F_NOTIF);
         if (FOLLY_UNLIKELY(mode == InternalProcessCqeMode::CANCEL_ALL)) {
           sqe->markCancelled();
         }

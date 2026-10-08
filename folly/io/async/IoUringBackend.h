@@ -21,6 +21,7 @@
 #include <chrono>
 #include <map>
 #include <set>
+#include <utility>
 #include <vector>
 
 #include <boost/intrusive/list.hpp>
@@ -233,15 +234,25 @@ class IoUringBackend : public EventBaseBackendBase {
     return IoUringZeroCopyBufferPool::kernelZeroCopyRxSupported();
   }
 
+  struct CqeStats {
+    uint64_t providedBufferCount{0};
+    uint64_t bufMoreCount{0};
+    uint64_t zeroCopyNotifCount{0};
+
+    auto operator<=>(const CqeStats&) const = default;
+  };
+
   struct IoUringStats {
     IoUringZeroCopyBufferPool::Stats zcrx;
     IoUringBufferProvider::Stats providedBuffer;
+    CqeStats cqe;
 
     auto operator<=>(const IoUringStats&) const = default;
   };
 
   IoUringStats getStats() {
     IoUringStats stats;
+    stats.cqe = std::exchange(cqeStats_, {});
     if (zcBufferPool_) {
       zcBufferPool_->getStats(stats.zcrx);
     }
@@ -894,6 +905,7 @@ class IoUringBackend : public EventBaseBackendBase {
   // Sends submitted since the last CQ reap. Older sends that are blocked on
   // socket writability must not inflate the request batch target.
   uint32_t numSendEventsSinceReap_{0};
+  CqeStats cqeStats_;
 
   // io_uring related
   io_uring_params params_{};
