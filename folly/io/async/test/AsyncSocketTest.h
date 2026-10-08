@@ -201,10 +201,10 @@ class ReadCallback : public folly::AsyncTransport::ReadCallback {
    public:
     Buffer() : buffer(nullptr), length(0) {}
     Buffer(char* buf, size_t len) : buffer(buf), length(len) {}
-    explicit Buffer(std::unique_ptr<IOBuf> ioBuf)
-        : buffer((char*)ioBuf->writableData()),
-          length(ioBuf->length()),
-          ioBuf(std::move(ioBuf)) {}
+    explicit Buffer(std::unique_ptr<IOBuf> buf)
+        : buffer((char*)buf->writableData()),
+          length(buf->length()),
+          ioBuf(std::move(buf)) {}
 
     void reset() {
       buffer = nullptr;
