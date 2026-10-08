@@ -17,9 +17,13 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
+#include <folly/io/IOBufQueue.h>
+#include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/IoUringBackend.h>
+#include <folly/portability/GTest.h>
 
 #if FOLLY_HAS_LIBURING
 
@@ -35,6 +39,41 @@ IoUringBackend::Options ioUringOptionsWithProvidedBuffers();
 // budget, so retry until they release their rings.
 std::unique_ptr<EventBase> makeIoUringEventBase(
     IoUringBackend::Options (*makeOptions)());
+
+class IoUringTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    if (!IoUringBackend::isAvailable()) {
+      GTEST_SKIP() << "IoUringBackend not available";
+    }
+  }
+};
+
+IoUringBackend::IoUringStats ioUringStats(EventBase& evb);
+
+std::string makePayload(size_t len);
+
+class RetainingReadCallback : public AsyncTransport::ReadCallback {
+ public:
+  void getReadBuffer(void** buf, size_t* len) override;
+  void readDataAvailable(size_t len) noexcept override;
+  bool isBufferMovable() noexcept override { return true; }
+  void readBufferAvailable(std::unique_ptr<IOBuf> buf) noexcept override;
+  void readEOF() noexcept override {}
+  void readErr(const AsyncSocketException& ex) noexcept override;
+
+  std::string data() const;
+
+ private:
+  IOBufQueue received_{IOBufQueue::cacheChainLength()};
+};
+
+void receiveFromPeer(
+    EventBase& evb,
+    AsyncTransport::ReadCallback& rcb,
+    const std::string& payload);
+
+void sendToPeer(EventBase& evb, const std::string& payload, WriteFlags flags);
 
 } // namespace folly::test
 

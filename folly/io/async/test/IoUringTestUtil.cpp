@@ -19,6 +19,11 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <tuple>
+
+#include <glog/logging.h>
+#include <folly/io/async/AsyncSocket.h>
+#include <folly/io/async/test/AsyncSocketTest.h>
 
 #if FOLLY_HAS_LIBURING
 
@@ -57,6 +62,82 @@ std::unique_ptr<EventBase> makeIoUringEventBase(
     std::this_thread::sleep_for(backoff);
     backoff = std::min(backoff * 2, kMaxBackoff);
   }
+}
+
+IoUringBackend::IoUringStats ioUringStats(EventBase& evb) {
+  return CHECK_NOTNULL(dynamic_cast<IoUringBackend*>(evb.getBackend()))
+      ->getStats();
+}
+
+std::string makePayload(size_t len) {
+  std::string payload(len, '\0');
+  for (size_t i = 0; i < len; ++i) {
+    payload[i] = static_cast<char>(i % 251);
+  }
+  return payload;
+}
+
+void RetainingReadCallback::getReadBuffer(void** buf, size_t* len) {
+  std::tie(*buf, *len) = received_.preallocate(4096, 65536);
+}
+
+void RetainingReadCallback::readDataAvailable(size_t len) noexcept {
+  received_.postallocate(len);
+}
+
+void RetainingReadCallback::readBufferAvailable(
+    std::unique_ptr<IOBuf> buf) noexcept {
+  received_.append(std::move(buf));
+}
+
+void RetainingReadCallback::readErr(const AsyncSocketException& ex) noexcept {
+  ADD_FAILURE() << ex.what();
+}
+
+std::string RetainingReadCallback::data() const {
+  return received_.empty() ? "" : received_.front()->to<std::string>();
+}
+
+void receiveFromPeer(
+    EventBase& evb,
+    AsyncTransport::ReadCallback& rcb,
+    const std::string& payload) {
+  TestServer server;
+  auto socket = AsyncSocket::newSocket(&evb);
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+  evb.loop();
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+
+  auto peer = server.accept();
+  std::thread writer([&] {
+    peer->write(
+        reinterpret_cast<const uint8_t*>(payload.data()), payload.size());
+    peer->close();
+  });
+  socket->setReadCB(&rcb);
+  evb.loop();
+  writer.join();
+}
+
+void sendToPeer(EventBase& evb, const std::string& payload, WriteFlags flags) {
+  TestServer server;
+  auto socket = AsyncSocket::newSocket(&evb);
+  ASSERT_TRUE(socket->setZeroCopy(true));
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+  evb.loop();
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+
+  std::thread reader([&] {
+    server.verifyConnection(payload.data(), payload.size());
+  });
+  WriteCallback wcb(true /*enableReleaseIOBufCallback*/);
+  socket->writeChain(&wcb, IOBuf::copyBuffer(payload), flags);
+  evb.loop();
+  socket->close();
+  reader.join();
+  ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
 }
 
 } // namespace folly::test

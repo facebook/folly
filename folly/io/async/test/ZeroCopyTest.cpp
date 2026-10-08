@@ -23,6 +23,7 @@
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/test/IoUringTestUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 
@@ -31,6 +32,7 @@
 #endif
 
 using namespace folly;
+using namespace folly::test;
 
 static auto constexpr kMaxLoops = 20;
 static auto constexpr kBufferSize = 4096;
@@ -68,7 +70,7 @@ class ZeroCopyEnableThresholdCallback
   folly::WriteFlags getLastWriteFlags() const { return lastWriteFlags_; }
 
  private:
-  folly::WriteFlags lastWriteFlags_{folly::WriteFlags::NONE};
+  folly::WriteFlags lastWriteFlags_{WriteFlags::NONE};
 };
 
 class ZeroCopyEnableThresholdServer {
@@ -547,3 +549,21 @@ TEST(ZeroCopyStateTransferTest, MoveFromSocketThatStillOwnsFdAborts) {
   EXPECT_DEATH(dst->moveZeroCopyStateFrom(*src), "still owns its fd");
 }
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
+
+namespace {
+
+class IoUringZeroCopyTest : public IoUringTest {};
+
+} // namespace
+
+TEST_F(IoUringZeroCopyTest, ZeroCopyWriteGetsNotifications) {
+  auto evb = makeIoUringEventBase(ioUringOptions);
+  sendToPeer(*evb, makePayload(1024 * 1024), WriteFlags::WRITE_MSG_ZEROCOPY);
+  EXPECT_GT(ioUringStats(*evb).cqe.zeroCopyNotifCount, 0);
+}
+
+TEST_F(IoUringZeroCopyTest, CopyWriteGetsNoNotifications) {
+  auto evb = makeIoUringEventBase(ioUringOptions);
+  sendToPeer(*evb, makePayload(1024 * 1024), WriteFlags::NONE);
+  EXPECT_EQ(0, ioUringStats(*evb).cqe.zeroCopyNotifCount);
+}

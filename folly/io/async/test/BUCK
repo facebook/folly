@@ -836,9 +836,28 @@ fb_dirsync_cpp_library(
     srcs = ["IoUringTestUtil.cpp"],
     headers = ["IoUringTestUtil.h"],
     use_raw_headers = True,
+    deps = [
+        "fbsource//third-party/glog:glog",
+        ":async_socket_test_lib",
+        "//folly/io/async:async_socket",
+    ],
     exported_deps = [
+        "//folly/io:iobuf",
         "//folly/io/async:async_base",
+        "//folly/io/async:async_transport",
         "//folly/io/async:io_uring_backend",
+        "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "async_socket_provided_buffer_test",
+    srcs = ["AsyncSocketProvidedBufferTest.cpp"],
+    headers = [],
+    deps = [
+        ":io_uring_test_util",
+        "//folly/io/async:async_socket",
+        "//folly/portability:gtest",
     ],
 )
 
@@ -862,6 +881,7 @@ fb_dirsync_cpp_unittest(
     srcs = ["ZeroCopyTest.cpp"],
     headers = [],
     deps = [
+        ":io_uring_test_util",
         ":zero_copy_lib",
         "//folly/portability:gtest",
     ],
