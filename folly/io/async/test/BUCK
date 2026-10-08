@@ -253,6 +253,7 @@ fb_dirsync_cpp_unittest(
         ":blocking_socket",
         ":callback_state_enum",
         ":conn_callback",
+        ":io_uring_test_util",
         ":mocks",
         ":tfo_util",
         ":util",
@@ -827,6 +828,17 @@ fb_dirsync_cpp_unittest(
     deps = [
         "//folly/io/async:async_transport",
         "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "io_uring_test_util",
+    srcs = ["IoUringTestUtil.cpp"],
+    headers = ["IoUringTestUtil.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/io/async:async_base",
+        "//folly/io/async:io_uring_backend",
     ],
 )
 

@@ -35,6 +35,7 @@
 #include <folly/io/async/IoUringBackend.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
+#include <folly/io/async/test/IoUringTestUtil.h>
 #include <folly/io/async/test/MockAsyncSocketLegacyObserver.h>
 #include <folly/io/async/test/MockAsyncSocketObserver.h>
 #include <folly/io/async/test/TFOUtil.h>
@@ -234,45 +235,6 @@ std::vector<ConnectTestParam> getBackendTFOTestingValues() {
   vals.emplace_back(BackendType::IO_URING, TFOState::ENABLED);
 #endif
   return vals;
-}
-
-// io_uring rings are charged to RLIMIT_MEMLOCK, a budget shared by all
-// processes of the same user on the host, so keep them small. The charge scales
-// with the ring capacity and the provided-buffer count, not the buffer size.
-IoUringBackend::Options ioUringOptions() {
-  IoUringBackend::Options options;
-  options.setCapacity(64).setMaxSubmit(32);
-  return options;
-}
-
-IoUringBackend::Options ioUringOptionsWithProvidedBuffers() {
-  auto options = ioUringOptions();
-  options.setInitialProvidedBuffers(2048, 256);
-  return options;
-}
-
-// Under CI load, other processes can transiently exhaust the RLIMIT_MEMLOCK
-// budget, so retry until they release their rings.
-std::unique_ptr<EventBase> makeIoUringEventBase(
-    IoUringBackend::Options (*makeOptions)()) {
-  constexpr auto kMaxBackoff = std::chrono::milliseconds(1000);
-  const auto deadline =
-      std::chrono::steady_clock::now() + std::chrono::seconds(60);
-  auto backoff = std::chrono::milliseconds(10);
-  while (true) {
-    try {
-      return std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
-          [makeOptions]() -> std::unique_ptr<EventBaseBackendBase> {
-            return std::make_unique<IoUringBackend>(makeOptions());
-          }));
-    } catch (IoUringBackend::OutOfMemory const&) {
-      if (std::chrono::steady_clock::now() + backoff > deadline) {
-        throw;
-      }
-    }
-    std::this_thread::sleep_for(backoff);
-    backoff = std::min(backoff * 2, kMaxBackoff);
-  }
 }
 
 ///////////////////////////////////////////////////////////////////////////
