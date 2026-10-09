@@ -1464,7 +1464,7 @@ std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator>(
 }
 
 /**
- * operator< through conversion for Range<const char*>
+ * operator<= through conversion for Range<const char*>
  */
 template <class T, class U>
 std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator<=(
@@ -1473,7 +1473,7 @@ std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator<=(
 }
 
 /**
- * operator> through conversion for Range<const char*>
+ * operator>= through conversion for Range<const char*>
  */
 template <class T, class U>
 std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator>=(
