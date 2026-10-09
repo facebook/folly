@@ -340,6 +340,29 @@ TEST(DynamicBoundedQueue, enqDeq) {
   enq_deq_test<false, false, true>(10, 10);
 }
 
+TEST(DynamicBoundedQueue, mpsc_try_enqueue_when_is_empty_test) {
+  for (int repeat = 0; repeat < 10; repeat++) {
+    folly::DynamicBoundedQueue<int, false, true, true, 1> q(10);
+    const int capacity = 11;
+    for (int i = 0 ; i < capacity; i++) {
+      ASSERT_EQ(q.try_enqueue(0), true);
+      ASSERT_EQ(q.try_dequeue().has_value(), true);
+    }
+    ASSERT_EQ(q.empty(), true);
+
+    auto prod = [&](int tid) {
+      ASSERT_EQ(q.try_enqueue(1), true);
+    };
+
+    auto cons = [&](int tid) {
+    };
+
+    auto endfn = [&] {
+    };
+    run_once(5, 1, prod, cons, endfn);
+  }
+}
+
 template <typename RepFunc>
 uint64_t runBench(const std::string& name, int ops, const RepFunc& repFn) {
   int reps = FLAGS_reps;
