@@ -21,7 +21,7 @@
 
 ///
 /// Implements the bindings semantics of `safe_closure()`.  In this example, it
-/// is responsible for for the "pass by" portion of the logic -- by the time we
+/// is responsible for the "pass by" portion of the logic -- by the time we
 /// invoke `bind_as_argument`, the input ref was already stored as a value
 /// inside the `safe_closure`.
 ///
