@@ -28,7 +28,6 @@ glog
 katran
 libbpf
 libelf
-numa
 zlib
 
 [dependencies.test=on]
@@ -36,6 +35,7 @@ googletest
 
 [debs]
 clang
+llvm
 
 [rpms]
 clang
