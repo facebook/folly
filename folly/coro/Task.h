@@ -22,7 +22,6 @@
 
 #include <exception>
 #include <functional>
-#include <new>
 #include <type_traits>
 
 #include <glog/logging.h>
@@ -700,11 +699,7 @@ class FOLLY_CORO_TASK_ATTRS Task {
   void setExecutor(folly::Executor::KeepAlive<>&& e) noexcept {
     DCHECK(coro_);
     DCHECK(e);
-    auto& executor = coro_.promise().executor_;
-    // `executor_` is always empty here, so construct over it instead of
-    // move-assigning, which would redundantly `reset()` it.
-    DCHECK(!executor);
-    ::new (&executor) folly::Executor::KeepAlive<>(std::move(e));
+    coro_.promise().executor_ = std::move(e);
   }
 
   // `co_withExecutor` implementation detail -- this works around the fact that
