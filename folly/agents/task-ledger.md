@@ -24,6 +24,9 @@ Otherwise, skip them for a direct, tool-free answer.
 - Edit ledgers only to change tracked state, using narrow patches. Never format
   them.
 - Adding tasks doesn't interrupt ongoing work.
+- As in all prose, write plainly. Use simpler words and short sentences when
+  possible. Avoid abstract labels and legalese. Keep clear user wording; clean
+  up rough wording, but never complexify.
 
 ## Track the next final response
 
@@ -43,8 +46,8 @@ direct messages and artifacts; ask the user if ambiguity remains.
 
 Immediately before the final response:
 
-- Draft the final from the response sidecar. “Self-contained” adds only
-  context needed to understand the response, not a recap of prior turns.
+- Draft the final from the response sidecar. “Self-contained” adds only context
+  needed to understand the response, not a recap of prior turns.
 - Prune tasks fully delivered in this final.
 - Delete the sidecar.
 - Send the final.

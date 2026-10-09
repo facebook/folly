@@ -12,6 +12,9 @@ several tasks or goals advance independently.
 Another agent should be able to resume from the ledger and current artifacts
 without guessing which summarized tasks remain active.
 
+Agents reread ledgers often, so ledger wording can shape their later prose. Keep
+it plain and preserve clear wording from the user's input.
+
 In long or interleaved conversations, an agent can complete the work but send a
 final response about stale or unrelated tasks. The ledger tracks the workstream;
 a disposable sidecar tracks only what the next response must cover.
