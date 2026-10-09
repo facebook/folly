@@ -7,7 +7,10 @@ process also leaves evidence that each required check ran.
 `{FA}/critic-iterate.md` coordinates author passes and external review. The
 fresh- and cold-review preambles define the reviewer roles. `codex-reviewer.py`
 runs them; `session_current_model_id.py` identifies the ambient model used by
-the delegation rule.
+the authoring delegation rule.
+
+Review uses `gpt-6.1-sol/high`. In a review benchmark, it was better and cheaper
+than `5.6-sol/high`. The default context window usually suffices for review.
 
 - `run-review.md` owns the normal launch and validation procedure.
 - `review-failures.md` owns external-review launch, output, and trace failures.

@@ -166,7 +166,6 @@ class RetryTest(unittest.TestCase):
 
         with (
             mock.patch.object(codex_reviewer.isolated_agent, "CODEX") as codex,
-            mock.patch.object(codex_reviewer, "_review_model", return_value="model"),
             mock.patch.object(codex_reviewer, "_retry", side_effect=retry_without_wait),
             mock.patch("sys.stdout", io.StringIO()),
             errors_path.open("w", encoding="utf-8") as errors,

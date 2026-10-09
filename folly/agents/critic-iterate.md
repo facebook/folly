@@ -279,14 +279,12 @@ count an omitted required reviewer check as a pass.
 
 ## Delegation
 
-Any subagent driving a critic-iterate loop must be at least as capable as the
-parent: same model, same or larger context window, or stronger. Weaker driver →
-weaker convergence gate → weaker output. When in doubt: newer generation >
-older; within a generation, Opus > Sonnet > Haiku.
+Any authoring subagent driving a critic-iterate loop must be at least as capable
+as the parent. Default to the same model; use `session_current_model_id.py`
+below when unsure.
 
-Default the Agent-tool `model` parameter to inherit for any subagent whose
-output feeds convergence. Downgrade only for pure-mechanical work (file moves,
-grep-and-report, ID renames).
+Pure mechanical work (file moves, grep-and-report, ID renames) should still be
+delegated to cheaper workers.
 
 Never substitute self-assessment for a required delegated check (Codex reviewer
 calls required by Fresh Review, or any subagent call this file mandates).

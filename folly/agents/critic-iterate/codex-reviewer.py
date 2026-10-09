@@ -26,14 +26,13 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Callable, Optional, Sequence, TextIO
+from typing import Callable, Sequence, TextIO
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import isolated_agent  # noqa: E402
 
-REVIEW_MODEL_ENV = "CODEX_REVIEW_MODEL"
+REVIEW_MODEL = "gpt-6.1-sol"
 REVIEW_EFFORT = "high"
-UNKNOWN_MODEL = "UNKNOWN-NOTIFY-USER"
 
 
 REVIEW_PROFILES = {
@@ -110,27 +109,6 @@ def _install_cold_review_policy(
     )
 
 
-def _review_model(wrapper_executable: Path) -> Optional[str]:
-    """Return the invoking model; None lets Codex choose its default."""
-    session_id = os.environ.get("CODEX_THREAD_ID") or os.environ.get("CODEX_SESSION_ID")
-    if session_id:
-        helper = wrapper_executable.with_name("session_current_model_id.py")
-        result = subprocess.run(
-            [str(helper), session_id],
-            check=False,
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            text=True,
-        )
-        model = result.stdout.strip()
-        if result.returncode == 0 and model and model != UNKNOWN_MODEL:
-            return model
-    inherited_model = os.environ.get(REVIEW_MODEL_ENV)
-    if inherited_model:
-        return inherited_model
-    return None
-
-
 def _review_environment_additions() -> dict[str, str]:
     return {
         name: os.environ[name]
@@ -174,17 +152,10 @@ def _run_review(
         except (OSError, isolated_agent.IsolationError) as error:
             print(f"could not create private Codex workspace: {error}", file=errors)
             return 2
-        model = _review_model(wrapper_executable)
-        if model is None:
-            print(
-                "IMPORTANT FALLBACK: report in the final debrief that the "
-                "caller model was unavailable and Codex used its default.",
-                file=sys.stderr,
-            )
         (output_dir / "metadata.json").write_text(
             json.dumps(
                 {
-                    "model": model or "Codex default",
+                    "model": REVIEW_MODEL,
                     "reasoning_effort": REVIEW_EFFORT,
                 },
                 indent=2,
@@ -219,7 +190,7 @@ def _run_review(
                     # Fresh review must launch its nested reviewer; cold review
                     # has no such write and stays read-only.
                     isolated_agent.Request(
-                        model=model,
+                        model=REVIEW_MODEL,
                         effort=REVIEW_EFFORT,
                         access=sandbox or "default",
                         ephemeral=True,
