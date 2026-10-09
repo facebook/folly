@@ -4,6 +4,7 @@ name = bpftool
 [git]
 repo_url = https://github.com/libbpf/bpftool.git
 rev = v7.4.0
+branch = v7.4.0
 
 # BPF only builds on Linux, so make it a NOP on other platforms.
 [build.not(os=linux)]
