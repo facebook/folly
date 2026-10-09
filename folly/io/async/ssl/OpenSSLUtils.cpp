@@ -122,9 +122,11 @@ bool OpenSSLUtils::validatePeerCertNames(
   for (int i = 0; i < sk_GENERAL_NAME_num(altNames); i++) {
     auto name = sk_GENERAL_NAME_value(altNames, i);
     if ((addr4 != nullptr || addr6 != nullptr) && name->type == GEN_IPADD) {
-      // Extra const-ness for paranoia
-      unsigned char const* const rawIpStr = name->d.iPAddress->data;
-      auto const rawIpLen = size_t(name->d.iPAddress->length);
+      // ASN1_STRING is opaque since OpenSSL 4.0; use the accessors, which
+      // work on all supported versions.
+      unsigned char const* const rawIpStr =
+          ASN1_STRING_get0_data(name->d.iPAddress);
+      auto const rawIpLen = size_t(ASN1_STRING_length(name->d.iPAddress));
 
       if (rawIpLen == 4 && addr4 != nullptr) {
         if (::memcmp(rawIpStr, &addr4->sin_addr, rawIpLen) == 0) {
@@ -285,7 +287,9 @@ std::string OpenSSLUtils::getCommonName(X509* x509) {
   if (x509 == nullptr) {
     return "";
   }
-  X509_NAME* subject = X509_get_subject_name(x509);
+  // X509_get_subject_name() returns const X509_NAME* since OpenSSL 4.0;
+  // auto keeps this compiling on older versions too.
+  auto subject = X509_get_subject_name(x509);
   char buf[ub_common_name + 1];
   int length =
       X509_NAME_get_text_by_NID(subject, NID_commonName, buf, sizeof(buf));
