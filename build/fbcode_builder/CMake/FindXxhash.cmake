@@ -18,6 +18,7 @@
 # Xxhash_FOUND
 # Xxhash_INCLUDE_DIR
 # Xxhash_LIBRARY
+# Xxhash::xxhash (imported target)
 #
 
 find_path(Xxhash_INCLUDE_DIR NAMES xxhash.h)
@@ -35,6 +36,15 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(
 
 if (Xxhash_FOUND)
   message(STATUS "Found xxhash: ${Xxhash_LIBRARY}")
+endif()
+
+if (Xxhash_FOUND AND NOT TARGET Xxhash::xxhash)
+  add_library(Xxhash::xxhash UNKNOWN IMPORTED)
+  set_target_properties(
+    Xxhash::xxhash
+    PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES "C"
+               IMPORTED_LOCATION "${Xxhash_LIBRARY}"
+               INTERFACE_INCLUDE_DIRECTORIES "${Xxhash_INCLUDE_DIR}")
 endif()
 
 mark_as_advanced(Xxhash_INCLUDE_DIR Xxhash_LIBRARY)
