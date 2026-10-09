@@ -25,8 +25,7 @@ The loop ends with:
 
 The default budget is 1 round, but critical issues auto-extend it.
 
-The loop runs automatically for durable prose or code, reviews, and
-consequential decisions. Control it with:
+Control review effort with:
 
 - `c-i-K`: budget `K` external-review rounds; `c-i+K` adds more.
 - `c-i-0`: use author review only.

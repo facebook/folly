@@ -3,9 +3,19 @@
 Purpose: improve durable work through repeated self-critique and independent
 review, with visible evidence that each pass was completed.
 
-Review costs time and context. Spend it on lasting prose and consequential
-judgment, where another pass can change the result. Direct lookups and repeated
-mechanical edits do not justify the loop.
+Review costs time and context. Real-time investigations and single-use,
+low-stakes reports often need a quick answer.
+
+Reserve automatic review for lasting work and broad readership. Suggest review
+for other work where correctness or readability may matter.
+
+Keep the human-use boundary: substantial agent-internal reports are not human
+deliverables.
+
+Commit messages in personal notes repos are often backups for 1 reader.
+
+The loader decides when to load the process. The Trigger section selects each
+artifact, so loading the process for one does not turn review on for the rest.
 
 Review budgets guard cost; they are ceilings, not quotas. Exhausting a positive
 budget does not allow a materially misleading late edit to ship unreviewed.
@@ -19,9 +29,11 @@ Authors tend to accept their first workable answer.
 
 Trying different wording that preserves the meaning can expose weaknesses.
 Simply deciding whether to keep or delete the sentence cannot. One alternative
-is enough. Revisions can also drop a needed cause or sequence, or make claims
-the evidence does not support. Skipping required context or evidence makes these
-mistakes easier.
+is enough.
+
+Revisions can also drop a needed cause or sequence, or make claims the evidence
+does not support. Skipping required context or evidence makes these mistakes
+easier.
 
 `critic-iterate.md` defines the shared review process. Writing, code, testing,
 and design rules supply the checks for the work being reviewed.

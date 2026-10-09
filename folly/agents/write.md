@@ -18,9 +18,6 @@ To revise prose after a usable review, follow the generic base
 
 ## General maxims (apply to all prose)
 
-Commit messages get the specialized loop in "## Iterate — inner loop, until
-convergence" below. The maxims here apply to all prose (docs, posts, comments).
-
 - **Set the reader before the outline.** Before drafting durable prose,
   establish:
   - its primary reader;
@@ -285,8 +282,8 @@ below — don't re-enumerate here.
 
 ## Iterate — inner loop, until convergence
 
-When `{FA}/critic-iterate.md` "Fresh Review" applies, run it after this
-iterative inner loop converges.
+Run this loop only for commit messages selected for c-i. After convergence, run
+any required Fresh Review from `{FA}/critic-iterate.md`.
 
 Per round: explanation → shape → cut (including the test plan) → plain language
 → cold re-read. Converge when a full round makes no edit.

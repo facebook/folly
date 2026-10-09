@@ -23,44 +23,61 @@ preamble defines the role-specific rules.
 
 ## Trigger
 
-Default-on for:
+Choose separately for each artifact. Explicit c-i requests and user rule files
+override these defaults.
 
-- Prose meant for human use outside the current conversation: commit messages,
-  docs, guidelines, posts, code comments, and personal or project rule
-  documents.
-- Code changes intended to persist. Draft first if useful, but run the critic
-  loop, apply fixes, and emit each pass's accountability artifact promptly
-  before continuing with material work.
+Take the first behavior that applies. If none applies, skip the loop and
+reminder.
+
+### c-i-off: skip the loop and reminder
+
+- Routine conversation, status updates, debriefs, working notes, and context
+  dumps.
+- Purely mechanical changes. Examples are typos, broken links, formatting,
+  generated-output updates, and user-specified mechanical edits, including batch
+  changes.
+- Real-time investigations.
+- Commit messages in personal notes repos.
+- Brief single-use, low-stakes reports.
+- Accountability artifacts and delegated-review reports produced by this
+  workflow.
+
+### c-i-on: run the loop
+
+- Prose meant for human use outside the current conversation, for repeated use
+  or broad readership: commit messages, docs, guidelines, posts, code comments,
+  and personal or project rule documents.
+- Persistent code changes. Draft first if useful, but run the loop, apply fixes,
+  and promptly emit each pass's accountability artifact before continuing
+  material work.
+- Code reviews.
+
+### c-i-remind: skip the loop and offer review
+
 - Investigations or recommendations where the answer is not a direct lookup and
   will guide a costly, risky, or hard-to-reverse decision.
 - Other artifacts kept for later human use that record substantive design or
   correctness choices.
-- Code reviews.
 
-Routine conversation, status updates, debriefs, working notes, and context dumps
-trigger only through another condition above.
+In the turn's final response, name all eligible artifacts in 1 reminder:
 
-Purely mechanical changes do not trigger by default. Examples are typos, broken
-links, formatting, generated-output updates, and user-specified mechanical
-edits, including batch changes.
-
-Accountability artifacts and delegated-review reports produced by this workflow
-do not themselves trigger another critic-iterate cycle.
+> <artifact names> have not had c-i review, which may catch defects. Reply
+> `c-i-1` to run 1 round.
 
 ## Explicit user controls
 
-Apply these only to the current task, and only when the user explicitly requests
-them:
+These controls apply only to the current task, when explicitly requested:
 
 - `no c-i`: skip critic-iterate without stopping the task.
 - `draft-only` or `initial draft`: stop after the first complete artifact,
   before author critique.
 - `c-i-0`: run the General Cycle to convergence, with no external review.
 
-In these bullets, `K > 0` is a review budget, not a required round count. Finish
-when the closure rules permit, even if rounds remain.
+Here, `K > 0` is a fresh-review budget, not a required round count; finish when
+the closure rules permit, even if rounds remain:
 
-- `c-i-K` or `critic-iterate-K`: set the external-review budget to `K` rounds.
+- `c-i-K` or `critic-iterate-K`: run the loop with Fresh Review and a budget of
+  `K` rounds.
 - `c-i+K`: after an `OutOfBudget` stop, add `K` rounds to that budget.
 
 ## Evidence
