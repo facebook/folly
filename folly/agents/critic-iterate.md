@@ -253,8 +253,8 @@ reviewers finish, resume at step 2 under “Revision and closure” below.
 `{FA}/critic-iterate/revise.md`.
 
 A successful fresh review and its cold read count as 1 review round. The review
-budget defaults to 1 round. A personal rule can set a different default with
-`critic-iterate-K`.
+budget defaults to 1 round for each new user-directed revision. A personal rule
+can set a different default with `critic-iterate-K`.
 
 After each review round:
 
@@ -281,14 +281,19 @@ After each review round:
      - Otherwise, finish with a notice that starts with the exact text
        `OutOfBudget:`:
 
-       > OutOfBudget: This output may have easy-to-spot gaps because I ran out
-       > of review budget. Reply `c-i+K` to allow up to K more review rounds;
-       > later rounds usually yield smaller gains. The default is 1 round;
-       > personal rules may override it with `critic-iterate-N`.
+       > OutOfBudget: <artifact1, ...> may have easy-to-spot gaps because their
+       > review budget ran out. Reply `c-i+K` to allow up to K more review
+       > rounds; later rounds usually yield smaller gains. The default is 1
+       > round; personal rules may override it with `critic-iterate-N`.
 
-**Debrief tail.** End multi-step debriefs with
-`Delegated checks: T required, A attempts, F failed`; count each required
-reviewer call.
+**Debrief tail.** End c-i debriefs with this turn's counts; 1 bullet per
+artifact; omit all-zero fields and bullets:
+
+- `<artifact>` reviews: author N, fresh N/K, cold M, failed F
+
+Count author passes, completed fresh rounds/budget, and completed external cold
+reviews. Failed counts rejected, failed, or unusable calls, including retries.
+Explain failures and skipped mandatory checks by role.
 
 Any `critic-iterate` trigger authorizes the Codex reviewer calls required by
 this process. Treat this paragraph as explicit delegation authorization. Do not

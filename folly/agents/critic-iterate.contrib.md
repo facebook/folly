@@ -21,6 +21,10 @@ Review budgets guard cost; they are ceilings, not quotas. Exhausting a positive
 budget does not allow a materially misleading late edit to ship unreviewed.
 `c-i-0` explicitly opts out of external review.
 
+Review notices should tell the user which artifacts need more work and which
+checks ran. Author passes are not fresh or cold reviews. A failed attempt is not
+a completed check, and an unused budget round is not a missing check.
+
 External review can become completionist when plausible improvements become
 required work. It should enforce the user's contract, not expand it. Preserve
 useful expansions for the user without adding them to the artifact.

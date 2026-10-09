@@ -30,8 +30,7 @@ For the saved README:
   opening or phase list.
 - Keep the applicable `Review`, `Evaluation`, `Cost vs impact`, and `Problems`
   sections unchanged.
-- Omit `Comparisons`, live artifact quotes, and critic-iterate's
-  `Delegated checks` tail.
+- Omit `Comparisons`, live artifact quotes, and critic-iterate's debrief tail.
 
 The header preserves the `Generation`, `Review`, and `Evaluation` details from
 `Result`, using full generation and evaluator source revisions. Also record

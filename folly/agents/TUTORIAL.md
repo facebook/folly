@@ -27,7 +27,7 @@ The default budget is 1 round, but critical issues auto-extend it.
 
 Control review effort with:
 
-- `c-i-K`: budget `K` external-review rounds; `c-i+K` adds more.
+- `c-i-K`: budget up to `K` external-review rounds; `c-i+K` adds more.
 - `c-i-0`: use author review only.
 - `draft-only`: pause before self-review to align cheaply on purpose and shape,
   then use `c-i-K` for review.

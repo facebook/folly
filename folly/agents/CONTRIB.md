@@ -35,6 +35,13 @@ two versions are equally correct and easy to understand, use the shorter one.
 Do not count words or treat abstraction as always good or always bad. Choose the
 form that is easiest to understand.
 
+`TUTORIAL.md` is special -- it's a new user's first impression. Therefore it
+explains **only** each feature's purpose and otherwise-invisible workflow. Use
+brief, plain wording that assumes no prior reader context. Add text only when
+critically necessary for new users, never just "potentially helpful". Do not add
+usage details or caveats users learn through experience or the associated UX. Do
+not rework unrelated text to enforce this standard.
+
 ## Before you edit
 
 Read the nearest `CONTRIB.md` first. When editing a rule package identified by
