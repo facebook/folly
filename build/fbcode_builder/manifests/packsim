@@ -22,18 +22,16 @@ repo_url = https://github.com/facebook/ai_simulation.git
 [build]
 builder = cmake
 
-# The generator's fallback is 60 minutes, which is what this job ran with until
-# now and is not a figure anyone chose for packsim. One run has to build boost,
-# openssl, folly and fbthrift from source, then compile every unit-test
-# executable (the configure prints the live count as `packsim: N test
-# executables`), then run them -- and each test process defaults to 4 PDES
-# worker threads
-# while ctest is already running jobs in parallel, so the test phase
-# oversubscribes a two-core runner several times over. 180 is a ceiling rather
-# than an estimate: nothing is known about the real wall clock, because the
-# workflow has never executed. Lower it once a green run has reported one.
+# The generator's fallback is 60 minutes, which is not a figure anyone chose
+# for packsim. One run builds boost, folly and fbthrift from source, then
+# compiles every unit-test executable (the configure prints the live count as
+# `packsim: N test executables`) and runs all but the heavy ones, and each test
+# process defaults to 4 PDES worker threads while ctest runs tests in parallel.
+# Scaled from local build times, a cold run on a 2-core runner is estimated at
+# 2 to 3 hours, so 300 leaves room under GitHub's 360-minute job limit. Lower
+# it once green runs have reported real figures.
 [github.actions]
-timeout_minutes = 180
+timeout_minutes = 300
 
 [cmake.defines.test=on]
 BUILD_TESTS=ON
