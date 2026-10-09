@@ -16,6 +16,8 @@
 
 #include <folly/portability/GTest.h>
 
+#include <gtest/gtest-spi.h>
+
 #include <folly/coro/GtestHelpers.h>
 
 using namespace ::testing;
@@ -123,6 +125,58 @@ CO_TEST(GtestHelpersTest, testCoAssertThrow) {
   };
   CO_ASSERT_THROW(co_await co_throwInvalidArgument(), std::invalid_argument);
   CO_ASSERT_ANY_THROW(co_await co_throwInvalidArgument());
+}
+
+CO_TEST(GtestHelpersTest, testCoAssertBooleans) {
+  CO_ASSERT_TRUE(true);
+  CO_ASSERT_FALSE(false);
+  CO_ASSERT_TRUE(AssertionSuccess());
+  CO_ASSERT_FALSE(AssertionFailure() << "predicate message");
+}
+
+CO_TEST(GtestHelpersTest, testCoAssertBooleansEvaluateOnce) {
+  int count = 0;
+  CO_ASSERT_TRUE(++count == 1);
+  CO_ASSERT_FALSE(++count == 1);
+  EXPECT_EQ(count, 2);
+
+  if (count == 2)
+    CO_ASSERT_FALSE(false);
+  else
+    ADD_FAILURE() << "Assertion must not capture the outer else";
+}
+
+folly::coro::Task<> co_assertFalseFailure() {
+  CO_ASSERT_FALSE(true);
+  ADD_FAILURE() << "Execution continued after a fatal assertion";
+}
+
+folly::coro::Task<> co_assertTrueFailure() {
+  CO_ASSERT_TRUE(false);
+  ADD_FAILURE() << "Execution continued after a fatal assertion";
+}
+
+folly::coro::Task<> co_assertFalseFailureWithMessage() {
+  CO_ASSERT_FALSE(AssertionSuccess() << "predicate message") << "user message";
+  ADD_FAILURE() << "Execution continued after a fatal assertion";
+}
+
+TEST(GtestHelpersTest, testCoAssertFalseFailure) {
+  EXPECT_FATAL_FAILURE(
+      folly::coro::blockingWait(co_assertFalseFailure()),
+      "Value of: true\n  Actual: true\nExpected: false");
+}
+
+TEST(GtestHelpersTest, testCoAssertTrueFailure) {
+  EXPECT_FATAL_FAILURE(
+      folly::coro::blockingWait(co_assertTrueFailure()),
+      "Value of: false\n  Actual: false\nExpected: true");
+}
+
+TEST(GtestHelpersTest, testCoAssertFalseFailureWithMessage) {
+  EXPECT_FATAL_FAILURE(
+      folly::coro::blockingWait(co_assertFalseFailureWithMessage()),
+      "predicate message)\nExpected: false\nuser message");
 }
 
 } // namespace
