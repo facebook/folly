@@ -17,6 +17,8 @@
 #include <folly/memory/Malloc.h>
 
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <limits>
 #include <new>
 
@@ -25,6 +27,17 @@
 #include <folly/test/TestUtils.h>
 
 namespace folly {
+
+TEST(MallocTest, standardAllocationAndSizedFree) {
+  for (size_t requested : {1, 64, 4096, 65536}) {
+    size_t size = goodMallocSize(requested);
+    ASSERT_GE(size, requested);
+    void* ptr = std::malloc(size);
+    ASSERT_NE(ptr, nullptr);
+    std::memset(ptr, 0xA5, size);
+    sizedFree(ptr, size);
+  }
+}
 
 TEST(MallocTest, getJEMallocMallctlArenasAll) {
   SKIP_IF(!usingJEMalloc());
