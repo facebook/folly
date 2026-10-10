@@ -88,10 +88,12 @@ TEST_F(HHWheelTimerTest, FireOnce) {
 
   ASSERT_EQ(t.count(), 0);
 
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(20));
-  T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(20));
-  T_CHECK_TIMEOUT(start, t3.timestamps[0], milliseconds(40));
-  T_CHECK_TIMEOUT(start, end, milliseconds(40));
+  T_CHECK_NOT_EARLY(start, t1.timestamps[0], milliseconds(20));
+  T_CHECK_NOT_EARLY(start, t2.timestamps[0], milliseconds(20));
+  T_CHECK_NOT_EARLY(start, t3.timestamps[0], milliseconds(40));
+  T_CHECK_NOT_EARLY(start, end, milliseconds(40));
+  T_CHECK_BEFORE(t1.timestamps[0], t3.timestamps[0]);
+  T_CHECK_BEFORE(t2.timestamps[0], t3.timestamps[0]);
 }
 
 TEST_F(HHWheelTimerTest, NoRequestContextLeak) {
@@ -229,16 +231,21 @@ TEST_F(HHWheelTimerTest, CancelTimeout) {
   TimePoint end;
 
   ASSERT_EQ(t5_1.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t5_1.timestamps[0], milliseconds(5));
+  T_CHECK_NOT_EARLY(start, t5_1.timestamps[0], milliseconds(5));
 
   ASSERT_EQ(t5_3.timestamps.size(), 2);
-  T_CHECK_TIMEOUT(start, t5_3.timestamps[0], milliseconds(5));
-  T_CHECK_TIMEOUT(t5_3.timestamps[0], t5_3.timestamps[1], milliseconds(5));
+  T_CHECK_NOT_EARLY(start, t5_3.timestamps[0], milliseconds(5));
+  T_CHECK_NOT_EARLY(t5_3.timestamps[0], t5_3.timestamps[1], milliseconds(5));
 
   ASSERT_EQ(t10_1.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t10_1.timestamps[0], milliseconds(10));
+  T_CHECK_NOT_EARLY(start, t10_1.timestamps[0], milliseconds(10));
   ASSERT_EQ(t10_3.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t10_3.timestamps[0], milliseconds(10));
+  T_CHECK_NOT_EARLY(start, t10_3.timestamps[0], milliseconds(10));
+
+  T_CHECK_BEFORE(t5_1.timestamps[0], t10_1.timestamps[0]);
+  T_CHECK_BEFORE(t5_1.timestamps[0], t10_3.timestamps[0]);
+  T_CHECK_BEFORE(t5_3.timestamps[0], t10_1.timestamps[0]);
+  T_CHECK_BEFORE(t5_3.timestamps[0], t10_3.timestamps[0]);
 
   // Cancelled timeouts
   ASSERT_EQ(t5_2.timestamps.size(), 0);
@@ -248,7 +255,7 @@ TEST_F(HHWheelTimerTest, CancelTimeout) {
   ASSERT_EQ(t20_1.timestamps.size(), 0);
   ASSERT_EQ(t20_2.timestamps.size(), 0);
 
-  T_CHECK_TIMEOUT(start, end, milliseconds(10));
+  T_CHECK_NOT_EARLY(start, end, milliseconds(10));
 }
 
 /*
@@ -282,15 +289,15 @@ TEST_F(HHWheelTimerTest, DestroyTimeoutSet) {
   TimePoint end;
 
   ASSERT_EQ(t5_1.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t5_1.timestamps[0], milliseconds(5));
+  T_CHECK_NOT_EARLY(start, t5_1.timestamps[0], milliseconds(5));
   ASSERT_EQ(t5_2.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t5_2.timestamps[0], milliseconds(5));
+  T_CHECK_NOT_EARLY(start, t5_2.timestamps[0], milliseconds(5));
 
   ASSERT_EQ(t5_3.timestamps.size(), 0);
   ASSERT_EQ(t10_1.timestamps.size(), 0);
   ASSERT_EQ(t10_2.timestamps.size(), 0);
 
-  T_CHECK_TIMEOUT(start, end, milliseconds(5));
+  T_CHECK_NOT_EARLY(start, end, milliseconds(5));
 }
 
 /*
@@ -317,8 +324,9 @@ TEST_F(HHWheelTimerTest, SlowFast) {
   ASSERT_EQ(t2.timestamps.size(), 1);
   ASSERT_EQ(t.count(), 0);
 
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(10));
-  T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(5));
+  T_CHECK_NOT_EARLY(start, t1.timestamps[0], milliseconds(10));
+  T_CHECK_NOT_EARLY(start, t2.timestamps[0], milliseconds(5));
+  T_CHECK_BEFORE(t2.timestamps[0], t1.timestamps[0]);
 }
 
 TEST_F(HHWheelTimerTest, ReschedTest) {
@@ -347,8 +355,8 @@ TEST_F(HHWheelTimerTest, ReschedTest) {
   ASSERT_EQ(t2.timestamps.size(), 1);
   ASSERT_EQ(t.count(), 0);
 
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(128));
-  T_CHECK_TIMEOUT(start2, t2.timestamps[0], milliseconds(255));
+  T_CHECK_NOT_EARLY(start, t1.timestamps[0], milliseconds(128));
+  T_CHECK_NOT_EARLY(start2, t2.timestamps[0], milliseconds(255));
 }
 
 TEST_F(HHWheelTimerTest, DeleteWheelInTimeout) {
@@ -375,7 +383,7 @@ TEST_F(HHWheelTimerTest, DeleteWheelInTimeout) {
   ASSERT_EQ(t1.timestamps.size(), 1);
   ASSERT_EQ(t2.timestamps.size(), 0);
 
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(128));
+  T_CHECK_NOT_EARLY(start, t1.timestamps[0], milliseconds(128));
 }
 
 /*
@@ -409,9 +417,10 @@ TEST_F(HHWheelTimerTest, DefaultTimeout) {
 
   ASSERT_EQ(t.count(), 0);
 
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], defaultTimeout);
-  T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(10));
-  T_CHECK_TIMEOUT(start, end, milliseconds(10));
+  T_CHECK_NOT_EARLY(start, t1.timestamps[0], defaultTimeout);
+  T_CHECK_NOT_EARLY(start, t2.timestamps[0], milliseconds(10));
+  T_CHECK_NOT_EARLY(start, end, milliseconds(10));
+  T_CHECK_BEFORE(t1.timestamps[0], t2.timestamps[0]);
 }
 
 TEST_F(HHWheelTimerTest, lambda) {
@@ -480,10 +489,12 @@ TEST_F(HHWheelTimerTest, IntrusivePtr) {
 
   ASSERT_EQ(s->count(), 0);
 
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(5));
-  T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(5));
-  T_CHECK_TIMEOUT(start, t3.timestamps[0], milliseconds(10));
-  T_CHECK_TIMEOUT(start, end, milliseconds(10));
+  T_CHECK_NOT_EARLY(start, t1.timestamps[0], milliseconds(5));
+  T_CHECK_NOT_EARLY(start, t2.timestamps[0], milliseconds(5));
+  T_CHECK_NOT_EARLY(start, t3.timestamps[0], milliseconds(10));
+  T_CHECK_NOT_EARLY(start, end, milliseconds(10));
+  T_CHECK_BEFORE(t1.timestamps[0], t3.timestamps[0]);
+  T_CHECK_BEFORE(t2.timestamps[0], t3.timestamps[0]);
 }
 
 TEST_F(HHWheelTimerTest, GetTimeRemaining) {
@@ -507,7 +518,7 @@ TEST_F(HHWheelTimerTest, GetTimeRemaining) {
   ASSERT_EQ(t1.getTimeRemaining(), milliseconds(0));
 
   ASSERT_EQ(t.count(), 0);
-  T_CHECK_TIMEOUT(start, end, milliseconds(10));
+  T_CHECK_NOT_EARLY(start, end, milliseconds(10));
 }
 
 TEST_F(HHWheelTimerTest, prematureTimeout) {
@@ -539,7 +550,7 @@ TEST_F(HHWheelTimerTest, Level1) {
   eventBase.loop();
   TimePoint end;
   ASSERT_EQ(tt.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, end, milliseconds(500));
+  T_CHECK_NOT_EARLY(start, end, milliseconds(500));
 }
 
 // Test that we handle negative timeouts properly (i.e. treat them as 0)
@@ -557,7 +568,7 @@ TEST_F(HHWheelTimerTest, NegativeTimeout) {
   eventBase.loop();
   TimePoint end;
   ASSERT_EQ(tt2.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, end, milliseconds(1));
+  T_CHECK_NOT_EARLY(start, end, milliseconds(1));
 }
 
 TEST(HHWheelTimerDetailsTest, Divider) {

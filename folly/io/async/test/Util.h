@@ -49,6 +49,29 @@
   }
 
 /**
+ * Check that a timeout did not fire early: at least expectedMS after start,
+ * less 1ms for rounding.
+ *
+ * Unlike T_CHECK_TIMEOUT, there is no upper bound, since the time a loaded host
+ * takes to run a due callback is unbounded.
+ */
+#define T_CHECK_NOT_EARLY(start, end, expectedMS)                             \
+  do {                                                                        \
+    EXPECT_FALSE((end).isUnset());                                            \
+    EXPECT_GE(                                                                \
+        (end).getTimeStart() - (start).getTimeEnd(),                          \
+        std::chrono::nanoseconds(expectedMS) - std::chrono::milliseconds(1)); \
+  } while (false)
+
+/**
+ * Check that the TimePoint first was set before second. Comparing the end of
+ * one with the start of the other holds even when the clock does not advance
+ * between them.
+ */
+#define T_CHECK_BEFORE(first, second) \
+  EXPECT_LE((first).getTimeEnd(), (second).getTimeStart())
+
+/**
  * Verify that an event took less than a specified amount of time.
  *
  * This is similar to T_CHECK_TIMEOUT, but does not fail if the event took less

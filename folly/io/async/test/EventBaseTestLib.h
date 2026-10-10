@@ -1342,18 +1342,9 @@ TYPED_TEST_P(EventBaseTest, ScheduledFn) {
 
   eb.loop();
 
-  auto expectNotEarly =
-      [](const TimePoint& start,
-         const TimePoint& end,
-         std::chrono::milliseconds delay) {
-        EXPECT_FALSE(end.isUnset());
-        EXPECT_GE(
-            end.getTimeStart() - start.getTimeEnd(),
-            delay - std::chrono::milliseconds(1));
-      };
-  expectNotEarly(start, timestamp1, std::chrono::milliseconds(9));
-  expectNotEarly(start, timestamp2, std::chrono::milliseconds(19));
-  expectNotEarly(start, timestamp3, std::chrono::milliseconds(39));
+  T_CHECK_NOT_EARLY(start, timestamp1, std::chrono::milliseconds(9));
+  T_CHECK_NOT_EARLY(start, timestamp2, std::chrono::milliseconds(19));
+  T_CHECK_NOT_EARLY(start, timestamp3, std::chrono::milliseconds(39));
   EXPECT_EQ(callbackOrder, (std::vector<int>{1, 2, 3}));
 }
 
