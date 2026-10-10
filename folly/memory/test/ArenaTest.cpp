@@ -36,7 +36,9 @@ static_assert(AllocatorHasTrivialDeallocate<SysArena>::value);
 void* alloc(SysArena& arena, size_t size) {
   void* const mem = arena.allocate(size);
   // Fill with garbage to detect heap corruption.
-  memset(mem, 0xff, size);
+  if (size != 0) {
+    memset(mem, 0xff, size);
+  }
   return mem;
 }
 
