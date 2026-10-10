@@ -50,6 +50,13 @@ extern "C" FOLLY_KEEP long check_folly_hazptr_protect(
   return ptr ? *ptr : 0;
 }
 
+extern "C" FOLLY_KEEP bool check_folly_hazptr_try_protect(
+    folly::hazptr_holder<std::atomic>& holder,
+    hazptr_obj_of<long>*& ptr,
+    std::atomic<hazptr_obj_of<long>*>& channel) {
+  return holder.try_protect(ptr, channel);
+}
+
 extern "C" FOLLY_KEEP long check_folly_hazptr_local_protect_default(
     std::atomic<hazptr_obj_of<long>*>& channel) {
   hazptr_local<1> local;
