@@ -34,6 +34,8 @@ Control review effort with:
 - `no c-i`: complete a multi-step task without review; normal drafting rules
   still apply.
 
+Use `customize c-i` to choose what gets reviewed by default.
+
 `c-i-1` typically takes 2–5× as long and uses more tokens than running without
 these rules, in exchange for substantially higher quality. You can define
 "quality"; by default, `folly/agents` optimizes for reader effort.

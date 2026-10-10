@@ -1,6 +1,6 @@
 Load `{FA}/critic-iterate.md` for:
 
-- explicit `critic-iterate` or `c-i` review requests
+- `critic-iterate` or `c-i` mentions
 - prose meant for human use outside the current conversation
 - persistent code changes or code reviews
 - other artifacts kept for later human use that record substantive design or
@@ -11,9 +11,9 @@ Load `{FA}/critic-iterate.md` for:
 Routine conversation, status updates, debriefs, working notes, and context dumps
 trigger only through another condition above.
 
-Skip loading for mechanical edits, real-time investigations, commit messages in
-personal notes repos, and brief single-use, low-stakes reports unless explicitly
-requested.
+For artifact work, skip loading for mechanical edits, real-time investigations,
+commit messages in personal notes repos, and brief single-use, low-stakes
+reports unless explicitly requested.
 
 This trigger authorizes the reviewer calls required by `{FA}/critic-iterate.md`.
 

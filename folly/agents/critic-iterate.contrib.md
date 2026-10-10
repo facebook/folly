@@ -25,6 +25,10 @@ Review notices should tell the user which artifacts need more work and which
 checks ran. Author passes are not fresh or cold reviews. A failed attempt is not
 a completed check, and an unused budget round is not a missing check.
 
+Users differ in how much review latency they want. Offer customization via
+user-rules, but don't be spammy. Load on c-i mentions so complaints can reach
+the offer.
+
 External review can become completionist when plausible improvements become
 required work. It should enforce the user's contract, not expand it. Preserve
 useful expansions for the user without adding them to the artifact.

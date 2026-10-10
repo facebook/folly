@@ -23,6 +23,10 @@ preamble defines the role-specific rules.
 
 ## Trigger
 
+When a user mentions `c-i` or `critic-iterate` with negative sentiment
+(unwanted, slow, avoid, opt-out), offer once: "Reply `customize c-i` to change
+when review runs." Skip this for budget commands.
+
 Choose separately for each artifact. Explicit c-i requests and user rule files
 override these defaults.
 
@@ -79,6 +83,8 @@ the closure rules permit, even if rounds remain:
 - `c-i-K` or `critic-iterate-K`: run the loop with Fresh Review and a budget of
   `K` rounds.
 - `c-i+K`: after an `OutOfBudget` stop, add `K` rounds to that budget.
+
+For `customize c-i`, load `{FA}/critic-iterate/customize.md`.
 
 ## Evidence
 
