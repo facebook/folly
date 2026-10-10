@@ -291,17 +291,21 @@ TEST_F(TimerFDTimeoutManagerTest, ReschedTest) {
   t1.fn = [&]() {
     t.scheduleTimeout(&t2, microseconds(255)); // WHEEL_SIZE - 1
     start2.reset();
-    ASSERT_EQ(t.count(), 2); // we scheduled et
+    ASSERT_EQ(t.count(), 1);
   };
+  t2.fn = [&] { evb.terminateLoopSoon(); };
 
   ASSERT_EQ(t.count(), 1);
 
-  TestTimeout et(&t, microseconds(1000));
-  et.fn = [&] { evb.terminateLoopSoon(); };
+  evb.runAfterDelay(
+      [&] {
+        ADD_FAILURE() << "rescheduled timeout did not fire";
+        evb.terminateLoopSoon();
+      },
+      1000);
 
   TimePoint start;
   evb.loop();
-  TimePoint end;
 
   ASSERT_EQ(t1.timestamps.size(), 1);
   ASSERT_EQ(t2.timestamps.size(), 1);
