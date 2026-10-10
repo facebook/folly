@@ -1796,14 +1796,14 @@ TEST(SharedMutex, deterministicMixedMostlyReadWritePrio) {
 TEST(SharedMutex, mixedMostlyReadReadPrio) {
   for (int pass = 0; pass < 5; ++pass) {
     runMixed<atomic, SharedMutexReadPriority, TokenLocker>(
-        10000, 32, 0.1, false);
+        adjustReps(10000), adjustReps(32), 0.1, false);
   }
 }
 
 TEST(SharedMutex, mixedMostlyReadWritePrio) {
   for (int pass = 0; pass < 5; ++pass) {
     runMixed<atomic, SharedMutexWritePriority, TokenLocker>(
-        10000, 32, 0.1, false);
+        adjustReps(10000), adjustReps(32), 0.1, false);
   }
 }
 
