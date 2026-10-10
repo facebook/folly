@@ -18,6 +18,7 @@
 #include <atomic>
 #include <cassert>
 #include <random>
+#include <vector>
 
 #include <boost/thread.hpp>
 #include <glog/logging.h>
@@ -201,19 +202,19 @@ TEST(FunctionScheduler, AddCancelInitialDelayStress) {
   std::vector<int64_t> indices(numFunctions);
   std::iota(indices.begin(), indices.end(), 1);
 
-  int64_t lastIndexRan{0};
+  std::vector<bool> expectedToRun(numFunctions + 1);
+  std::vector<int64_t> indicesRan;
+  indicesRan.reserve(numFunctions);
   auto addFunction = [&](int64_t index, bool removeBeforeAdding) {
     std::string name = fmt::format("f{}", index);
     if (removeBeforeAdding) {
-      fs.cancelFunction(name);
+      EXPECT_TRUE(fs.cancelFunction(name));
     }
     fs.addFunctionOnce(
-        [&, index = index] {
-          EXPECT_LT(lastIndexRan, index);
-          lastIndexRan = index;
-        },
+        [&, index = index] { indicesRan.push_back(index); },
         name,
         std::chrono::milliseconds(index * 50));
+    expectedToRun[index] = true;
   };
 
   std::shuffle(indices.begin(), indices.end(), rng);
@@ -226,7 +227,8 @@ TEST(FunctionScheduler, AddCancelInitialDelayStress) {
       addFunction(idx, true);
     }
     if (folly::Random::oneIn(7, rng)) {
-      fs.cancelFunction(fmt::format("f{}", idx));
+      EXPECT_TRUE(fs.cancelFunction(fmt::format("f{}", idx)));
+      expectedToRun[idx] = false;
     }
   }
   folly::Baton<> finishTest;
@@ -237,6 +239,15 @@ TEST(FunctionScheduler, AddCancelInitialDelayStress) {
   startTest.post();
   finishTest.wait();
   fs.shutdown();
+
+  std::sort(indicesRan.begin(), indicesRan.end());
+  std::vector<int64_t> expectedIndices;
+  for (size_t index = 1; index < expectedToRun.size(); ++index) {
+    if (expectedToRun[index]) {
+      expectedIndices.push_back(static_cast<int64_t>(index));
+    }
+  }
+  EXPECT_EQ(expectedIndices, indicesRan);
 }
 
 TEST(FunctionScheduler, AddMultiple) {
