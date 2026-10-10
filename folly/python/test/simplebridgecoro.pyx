@@ -27,7 +27,12 @@ cdef extern from "folly/python/test/simplecoro.h" namespace "folly::python::test
     cdef cFollyCoroTask[uint64_t] coro_sleepThenEcho(uint32_t sleep_ms, uint64_t echo_val)
     cdef cFollyCoroTask[uint64_t] coro_blockingTask(uint32_t block_ms, uint64_t echo_val)
     cdef cNotificationQueueAsyncioExecutor* getNotificationQueueAsyncioExecutor()
+    cdef uint32_t getAsyncioExecutorDriveTimeSliceMs()
     cdef void setAsyncioExecutorDriveTimeSliceMs(uint32_t time_slice_ms)
+
+
+def get_drive_time_slice_ms():
+    return getAsyncioExecutorDriveTimeSliceMs()
 
 
 def set_drive_time_slice_ms(int time_slice_ms):

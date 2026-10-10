@@ -39,8 +39,13 @@ class FuturesTest(unittest.IsolatedAsyncioTestCase):
         return await task
 
     async def _test_executor_stats(
-        self, task_count: int, block_ms: int, drive_count: int
+        self, task_count: int, block_ms: int, time_slice_ms: int, drive_count: int
     ) -> None:
+        previous_time_slice_ms = simplebridgecoro.get_drive_time_slice_ms()
+        simplebridgecoro.set_drive_time_slice_ms(time_slice_ms)
+        self.addCleanup(
+            simplebridgecoro.set_drive_time_slice_ms, previous_time_slice_ms
+        )
         initial_stats = simplebridgecoro.get_executor_stats()
         # Some compilation mode (libcxx) injects a different executor
         if initial_stats is None:
@@ -62,25 +67,33 @@ class FuturesTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_executor_stats(self) -> None:
         task_count = 4
-        # 4 * 1, less than 5ms default
+        # 4 * 1, comfortably less than the explicit test time slice
         block_ms = 1
+        time_slice_ms = 100
         # Drive called once
         drive_count = 1
-        await self._test_executor_stats(task_count, block_ms, drive_count)
+        await self._test_executor_stats(
+            task_count, block_ms, time_slice_ms, drive_count
+        )
 
     async def test_executor_stats_timeslice_0(self) -> None:
-        simplebridgecoro.set_drive_time_slice_ms(0)
         task_count = 4
         # Irrelevant, no time slice
         block_ms = 1
+        time_slice_ms = 0
         # Drive called twice per task (schedule, process result)
         drive_count = 8
-        await self._test_executor_stats(task_count, block_ms, drive_count)
+        await self._test_executor_stats(
+            task_count, block_ms, time_slice_ms, drive_count
+        )
 
     async def test_executor_stats_blocking(self) -> None:
         task_count = 3
-        # More than 5ms default
+        # More than the explicit 5ms time slice
         block_ms = 6
+        time_slice_ms = 5
         # Drive called many times because we time slice
         drive_count = task_count
-        await self._test_executor_stats(task_count, block_ms, drive_count)
+        await self._test_executor_stats(
+            task_count, block_ms, time_slice_ms, drive_count
+        )

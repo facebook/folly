@@ -68,6 +68,10 @@ inline coro::Task<uint64_t> coro_blockingTask(
   co_return echoVal;
 }
 
+inline uint32_t getAsyncioExecutorDriveTimeSliceMs() {
+  return FLAGS_folly_asyncio_executor_drive_time_slice_ms;
+}
+
 inline void setAsyncioExecutorDriveTimeSliceMs(uint32_t timeSliceMs) {
   FLAGS_folly_asyncio_executor_drive_time_slice_ms = timeSliceMs;
 }
