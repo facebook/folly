@@ -1,0 +1,588 @@
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dirsync_cpp_benchmark")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fb_dirsync_cpp_library(
+    # @autodeps-skip
+    # Autodeps keeps forcing exported_external_deps onto this target, which is
+    # incorrect and broken.
+    name = "benchmark_helpers",
+    headers = ["BenchmarkHelpers.h"],
+    exported_deps = [
+        "fbsource//third-party/ctre:ctre",
+        "fbsource//third-party/pcre2:pcre2-8",
+        "fbsource//third-party/re2:re2",
+        "//folly:benchmark",
+        "//folly:benchmark_util",
+        "//folly/regex:regex",
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//runtime:fbcode": [
+            "third-party//boost:boost_regex",
+            "third-party//pcre:pcre",
+        ],
+    }),
+)
+
+fb_dirsync_cpp_unittest(
+    name = "parser_test",
+    srcs = ["ParserTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex/detail:ast",
+        "//folly/regex/detail:ast_optimizer",
+        "//folly/regex/detail:char_class",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "lookaround_test",
+    srcs = ["LookaroundTest.cpp"],
+    deps = [
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_complexity_test",
+    srcs = ["RegexComplexityTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:nfa",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "nfa_test",
+    srcs = ["NfaTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:ast",
+        "//folly/regex/detail:ast_optimizer",
+        "//folly/regex/detail:nfa",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_error_test",
+    srcs = ["RegexErrorTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    # @autodeps-skip
+    # Autodeps keeps forcing exported_external_deps onto this target, which is
+    # incorrect and broken.
+    name = "cross_engine_test_helpers",
+    headers = ["CrossEngineTestHelpers.h"],
+    exported_deps = [
+        "fbsource//third-party/re2:re2",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//runtime:fbcode": [
+            "third-party//pcre:pcre",
+        ],
+    }),
+)
+
+fb_dirsync_cpp_library(
+    name = "ast_test_helpers",
+    headers = ["AstTestHelpers.h"],
+    exported_deps = [
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_core_test",
+    srcs = ["RegexCoreTest.cpp"],
+    deps = [
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_template_test",
+    srcs = ["RegexTemplateTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_anchor_flag_test",
+    srcs = ["RegexAnchorFlagTest.cpp"],
+    deps = [
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_possessive_atomic_test",
+    srcs = ["RegexPossessiveAtomicTest.cpp"],
+    deps = [
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_greedy_lazy_test",
+    srcs = ["RegexGreedyLazyTest.cpp"],
+    deps = [
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_posix_class_test",
+    srcs = ["RegexPosixClassTest.cpp"],
+    deps = [
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_dispatch_search_test",
+    srcs = ["RegexDispatchSearchTest.cpp"],
+    deps = [
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_api_test",
+    srcs = ["RegexAPITest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_backtracker_only_test",
+    srcs = ["RegexBacktrackerOnlyTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_long_pattern_test",
+    srcs = ["RegexLongPatternTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "constexpr_switch_test",
+    srcs = ["ConstexprSwitchTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex/detail:constexpr_switch",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "input_view_test",
+    srcs = ["InputViewTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex/detail:direction",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_optimizer_prefix_test",
+    srcs = ["RegexOptimizerPrefixTest.cpp"],
+    deps = [
+        ":ast_test_helpers",
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_optimizer_alternation_test",
+    srcs = ["RegexOptimizerAlternationTest.cpp"],
+    deps = [
+        ":ast_test_helpers",
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_optimizer_simplification_test",
+    srcs = ["RegexOptimizerSimplificationTest.cpp"],
+    deps = [
+        ":ast_test_helpers",
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_optimizer_inference_test",
+    srcs = ["RegexOptimizerInferenceTest.cpp"],
+    deps = [
+        ":ast_test_helpers",
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "case_insensitive_behavior_test",
+    srcs = ["RegexCaseInsensitiveBehaviorTest.cpp"],
+    deps = [
+        ":ast_test_helpers",
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "case_insensitive_scope_test",
+    srcs = ["RegexCaseInsensitiveScopeTest.cpp"],
+    deps = [
+        ":ast_test_helpers",
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "named_group_test",
+    srcs = ["RegexNamedGroupTest.cpp"],
+    deps = [
+        ":ast_test_helpers",
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "utf8_test",
+    srcs = ["RegexUtf8Test.cpp"],
+    deps = [
+        ":ast_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "inline_flags_extended_test",
+    srcs = ["RegexInlineFlagsExtendedTest.cpp"],
+    deps = [
+        ":ast_test_helpers",
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "backref_test",
+    srcs = ["RegexBackrefTest.cpp"],
+    deps = [
+        ":ast_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "regex_backtrack_benchmark",
+    srcs = ["RegexBacktrackBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":benchmark_helpers",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "regex_budget_benchmark",
+    srcs = ["RegexBudgetBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":benchmark_helpers",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "regex_benchmark",
+    srcs = ["RegexBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":benchmark_helpers",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "regex_search_scale_benchmark",
+    srcs = ["RegexSearchScaleBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":benchmark_helpers",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "regex_nomatch_scale_benchmark",
+    srcs = ["RegexNoMatchScaleBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":benchmark_helpers",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "regex_match_scale_benchmark",
+    srcs = ["RegexMatchScaleBenchmark.cpp"],
+    headers = [],
+    deps = [
+        ":benchmark_helpers",
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "charclass_benchmark",
+    srcs = ["CharClassBenchmark.cpp"],
+    headers = [],
+    deps = [
+        "//folly:benchmark",
+        "//folly:benchmark_util",
+        "//folly/regex:regex",
+        "//folly/regex/detail:char_class",
+    ],
+)
+
+fb_dirsync_cpp_binary(
+    name = "compile_time_folly_benchmark",
+    srcs = ["CompileTimeFollyBenchmark.cpp"],
+    deps = [
+        "//folly:benchmark_util",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_binary(
+    name = "compile_time_ctre_benchmark",
+    srcs = ["CompileTimeCtreBenchmark.cpp"],
+    deps = [
+        "fbsource//third-party/ctre:ctre",
+        "//folly:benchmark_util",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "dynamic_bitset_test",
+    srcs = ["DynamicBitsetTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex/detail:dynamic_bitset",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "chunked_buffer_test",
+    srcs = ["ChunkedBufferTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex/detail:chunked_buffer",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "fixed_bitset_test",
+    srcs = ["FixedBitsetTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex/detail:fixed_bitset",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "constexpr_copy_n_test",
+    srcs = ["ConstexprCopyNTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex/detail:constexpr_copy_n",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "char_class_test",
+    srcs = ["CharClassTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex/detail:char_class",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "executor_helpers_test",
+    srcs = ["ExecutorHelpersTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:executor",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "flags_test",
+    srcs = ["FlagsTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:flags",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "dfa_test",
+    srcs = ["DfaTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "dfa_executor_test",
+    srcs = ["DfaExecutorTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "nfa_executor_test",
+    srcs = ["NfaExecutorTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "backtrack_executor_test",
+    srcs = ["BacktrackExecutorTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "reverse_execution_test",
+    srcs = ["ReverseExecutionTest.cpp"],
+    deps = [
+        ":ast_test_helpers",
+        ":cross_engine_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "match_iterator_test",
+    srcs = ["MatchIteratorTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "discriminator_test",
+    srcs = ["DiscriminatorTest.cpp"],
+    deps = [
+        ":ast_test_helpers",
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_syntax_preset_test",
+    srcs = ["RegexSyntaxPresetTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "regex_syntax_override_test",
+    srcs = ["RegexSyntaxOverrideTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:regex",
+        "//folly/regex/detail:parser",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "serialized_syntax_test",
+    srcs = ["SerializedSyntaxTest.cpp"],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/regex:flags",
+        "//folly/regex:regex",
+        "//folly/regex/detail:ast",
+        "//folly/regex/detail:ast_optimizer",
+        "//folly/regex/detail:ast_serializer",
+        "//folly/regex/detail:parser",
+    ],
+)

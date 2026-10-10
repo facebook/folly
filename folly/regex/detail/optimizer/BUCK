@@ -1,0 +1,71 @@
+load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
+
+oncall("fbcode_entropy_wardens_folly")
+
+fb_dirsync_cpp_library(
+    name = "ast_helpers",
+    headers = ["AstHelpers.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/regex/detail:ast",
+        "//folly/regex/detail:ast_concepts",
+        "//folly/regex/detail:char_class",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "alternation_factoring",
+    headers = ["AlternationFactoring.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast_helpers",
+        ":literal_optimizer",
+        "//folly/regex/detail:ast",
+        "//folly/regex/detail:ast_concepts",
+        "//folly/regex/detail:fixed_bitset",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "possessive_promotion",
+    headers = ["PossessivePromotion.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast_helpers",
+        "//folly/regex/detail:ast",
+        "//folly/regex/detail:ast_concepts",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "literal_optimizer",
+    headers = ["LiteralOptimizer.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast_helpers",
+        "//folly/regex/detail:ast",
+        "//folly/regex/detail:ast_concepts",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "discriminator_dispatch",
+    headers = ["DiscriminatorDispatch.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        "//folly/regex/detail:ast",
+        "//folly/regex/detail:ast_concepts",
+        "//folly/regex/detail:char_class",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "reverse_ast",
+    headers = ["ReverseAst.h"],
+    use_raw_headers = True,
+    exported_deps = [
+        ":ast_helpers",
+        "//folly/regex/detail:ast",
+        "//folly/regex/detail:ast_concepts",
+    ],
+)
