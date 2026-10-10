@@ -877,8 +877,8 @@ TEST(ConcurrentBSkipList, SkipperToEndAndBeyond) {
 
 TEST(ConcurrentBSkipList, ConcurrentInsert) {
   LargeNodeList list;
-  constexpr int kNumThreads = 12;
-  constexpr int kKeysPerThread = 10000;
+  constexpr int kNumThreads = folly::kIsSanitizeThread ? 4 : 12;
+  constexpr int kKeysPerThread = folly::kIsSanitizeThread ? 1000 : 10000;
 
   std::vector<std::thread> threads;
   threads.reserve(kNumThreads);
