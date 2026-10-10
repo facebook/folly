@@ -42,7 +42,7 @@ p dynamic_null
 
 p dynamic_array
 # CHECK: length 6
-# CHECK_SAME: "A string", 1, 2, 3, 4, 5
+# CHECK-SAME: "A string", 1, 2, 3, 4, 5
 
 p dynamic_bool
 # CHECK: true
@@ -58,8 +58,8 @@ p dynamic_string
 
 p dynamic_object
 # CHECK: 2 elements
-# CHECK_DAG: ["one"] = "two"
-# CHECK_DAG: ["eight"] = "ten"
+# CHECK-DAG: ["one"] = "two"
+# CHECK-DAG: ["eight"] = "ten"
 
 
 #### IPAddress Tests ####

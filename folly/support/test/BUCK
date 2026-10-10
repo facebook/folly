@@ -1,7 +1,7 @@
+# @fb-only[end= ]: load("@fbcode//gdb/scripts/tests/common:gdb_unittest.bzl", "gdb_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
-# @fb-only[end= ]: load("@fbcode//gdb/scripts/tests/common:gdb_unittest.bzl", "gdb_unittest")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -16,6 +16,15 @@ fb_dirsync_cpp_library(
 fb_dirsync_cpp_binary(
     name = "main",
     srcs = ["main.cpp"],
+    compiler_flags = [
+        "-fno-debug-types-section",
+        "-fstandalone-debug",
+        "-g",
+        "-gdwarf-4",
+        "-gno-simple-template-names",
+        "-gno-split-dwarf",
+    ],
+    default_strip_mode = "none",
     modules = False,
     deps = [
         ":gdb_util",
@@ -32,12 +41,13 @@ fb_dirsync_cpp_binary(
 # Test all of the printers in the folly gdb extension
 # @fb-only[end= ]: fb_dirsync_rule(
     # @fb-only[end= ]: name = "test",
+    # @fb-only[end= ]: binary = "main",
     # @fb-only[end= ]: fbcode_only = True,
     # @fb-only[end= ]: fbcode_rule = gdb_unittest,
-    # @fb-only[end= ]: binary = "main",
     # @fb-only[end= ]: script = "runtest.gdb",
     # @fb-only[end= ]: skip_modes = [
         # @fb-only[end= ]: "dev",
+        # @fb-only[end= ]: "libcxx",
         # @fb-only[end= ]: "opt*",
     # @fb-only[end= ]: ],
 # @fb-only[end= ]: )

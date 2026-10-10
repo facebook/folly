@@ -46,6 +46,15 @@ def repr_string(v, length):
     return '"' + "".join(escape_byte(b) for b in byte_string) + '"'
 
 
+def first_field(value, *names):
+    for name in names:
+        try:
+            return value[name]
+        except gdb.error:
+            pass
+    raise gdb.error("none of the expected fields were found: {}".format(names))
+
+
 class FBStringPrinter:
     """Print an FBString."""
 
@@ -137,7 +146,7 @@ class DynamicPrinter:
             return u["string"]
         elif type_ == "folly::dynamic::OBJECT":
             t = gdb.lookup_type("folly::dynamic::ObjectImpl").pointer()
-            raw_v = u["objectBuffer"]["__data"]
+            raw_v = first_field(u["objectBuffer"], "data", "__data", "__data_")
             ptr = raw_v.address.reinterpret_cast(t)
             return ptr.dereference()
         else:
@@ -178,16 +187,20 @@ class SocketAddressPrinter:
         self.val = val
 
     def to_string(self):
-        result = ""
-        if self.val["external_"] != 0:
+        storage_printer = gdb.default_visualizer(self.val["storage_"])
+        if storage_printer is None:
+            return "unknown SocketAddress storage"
+        children = list(storage_printer.children())
+        if len(children) != 1:
+            return "unknown SocketAddress storage"
+        address = children[0][1]
+        if not str(address.type).endswith("::IPAddr"):
             return "unix address, printer TBD"
-        else:
-            ipPrinter = IPAddressPrinter(self.val["storage_"]["addr"])
-            if self.val["storage_"]["addr"]["family_"] == socket.AF_INET6:
-                result += "[" + ipPrinter.to_string() + "]"
-            else:
-                result += ipPrinter.to_string()
-            result += ":{}".format(self.val["port_"])
+        ip_printer = IPAddressPrinter(address["ip"])
+        result = ip_printer.to_string()
+        if address["ip"]["family_"] == socket.AF_INET6:
+            result = "[" + result + "]"
+        result += ":{}".format(address["port"])
         return result
 
     def display_hint(self):
@@ -206,7 +219,18 @@ class F14HashtableIterator:
             chunk_count = 1 << pair["chunkShift_"]
         else:
             chunk_count = 1 << (pair["packedSizeAndChunkShift_"] & ((1 << 8) - 1))
-        self.chunk_end = self.chunk_ptr + chunk_count
+        self.chunks_remaining = chunk_count
+        chunk = self.chunk_ptr.dereference()
+        self.chunk_stride = int(chunk["kChunkStride"])
+        self.items_offset = int(chunk["kItemsOffset"])
+        if chunk_count == 1:
+            if int(chunk["kCapacityScaleBits"]) == 4:
+                self.slots_per_chunk = int(chunk["control_"]) & 0xF
+            else:
+                tags = chunk["tags_"]["_M_elems"]
+                self.slots_per_chunk = int(tags[12]) | (int(tags[13]) << 8)
+        else:
+            self.slots_per_chunk = int(chunk["kCapacity"])
         self.current_chunk = self.chunk_iter(self.chunk_ptr)
         self.is_node_container = is_node_container
 
@@ -217,13 +241,16 @@ class F14HashtableIterator:
     def chunk_iter(self, chunk_ptr):
         chunk = chunk_ptr.dereference()
         tags = chunk["tags_"]["_M_elems"]
-        raw_items = chunk["rawItems_"]["_M_elems"]
+        char_ptr = gdb.lookup_type("char").pointer()
+        items = chunk.address.cast(char_ptr) + self.items_offset
 
         # Enumerate over slots in the chunk
-        for i in range(tags.type.sizeof):
-            # full items have the top bit set in the tag
-            if tags[i] & 0x80:
-                item_ptr = raw_items[i]["__data"].cast(self.item_ptr_type)
+        for i in range(self.slots_per_chunk):
+            # Zero denotes an empty slot; every other tag holds an item.
+            if tags[i] != 0:
+                item_ptr = (items + i * self.item_ptr_type.target().sizeof).cast(
+                    self.item_ptr_type
+                )
                 item = item_ptr.dereference()
                 # node containers stores a pointer to value_type whereas value
                 # containers store values inline
@@ -236,9 +263,13 @@ class F14HashtableIterator:
                 return next(self.current_chunk)
             except StopIteration:
                 # find the next chunk
-                self.chunk_ptr += 1
-                if self.chunk_ptr == self.chunk_end:
+                self.chunks_remaining -= 1
+                if self.chunks_remaining == 0:
                     raise StopIteration
+                char_ptr = gdb.lookup_type("char").pointer()
+                self.chunk_ptr = (
+                    self.chunk_ptr.cast(char_ptr) + self.chunk_stride
+                ).cast(self.chunk_ptr.type)
                 self.current_chunk = self.chunk_iter(self.chunk_ptr)
                 pass
 
@@ -356,7 +387,9 @@ class SmallVectorPrinter:
 
     def children(self):
         heapPtr = self.val["u"]["pdata_"]["heap_"]
-        inlinePtr = self.val["u"]["storage_"]["__data"].address
+        inlinePtr = first_field(
+            self.val["u"]["storage_"], "data", "__data", "__data_"
+        ).address
         ptr = inlinePtr if self.is_inline else heapPtr
 
         value_type = self.val.type.template_argument(0)
