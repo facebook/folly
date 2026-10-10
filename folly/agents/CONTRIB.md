@@ -14,8 +14,9 @@ or push an agent toward the wrong work.
   one-off incident.
 - Say the rule in the fewest plain words that still tell an agent what to do.
 - "Every rule is written in blood." Learn why a rule exists before changing it.
-  Record its goal, important requirements, and background in the nearest
-  `.contrib.md`.
+  Update the nearest `.contrib.md` only to fix stale notes or preserve new
+  goals, constraints, or reasons not clear from the rule. Do not repeat rules or
+  log routine fixes.
 - When a task needs several kinds of guidance, combine small, focused rules
   instead of growing one file to cover everything.
 - Load only rules that help with the current task. Use `write/concise-rules.md`
@@ -60,7 +61,6 @@ It stops if a loader or referenced rule is unavailable.
 
 Each loader says when to load its package's rules. Keep loaders small because
 agents read all of them up front. Use `{FA}` for package paths, and update a
-loader when its trigger or loading behavior changes. Explain the reason in
-maintainer notes; do not copy the loader text there.
+loader when its trigger or loading behavior changes.
 
 README.md shows how users can install the loaders into their rule file.
