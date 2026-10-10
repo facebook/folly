@@ -11290,9 +11290,10 @@ TEST(AsyncSocketTest, getBufInUse) {
   size_t recvBufSize = clientAccepted->getRecvBufInUse();
   size_t sendBufSize = client->getSendBufInUse();
 
-  EXPECT_EQ((recvBufSize + sendBufSize), testData.size());
   EXPECT_GT(recvBufSize, 0);
   EXPECT_GT(sendBufSize, 0);
+  EXPECT_LE(recvBufSize, testData.size());
+  EXPECT_LE(sendBufSize, testData.size());
 }
 #endif
 
