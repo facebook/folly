@@ -3562,19 +3562,22 @@ TEST(MakeUnorderedAsyncGeneratorTest, GeneratorEarlyDestroy) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::coro::AsyncScope scope;
     folly::CPUThreadPoolExecutor executor(2);
+    folly::coro::Baton blockedTaskStarted;
+    folly::coro::Baton releaseBlockedTask;
 
     std::vector<folly::coro::TaskWithExecutor<int>> tasks;
 
     tasks.push_back(co_withExecutor(
-        &executor, folly::coro::co_invoke([]() -> folly::coro::Task<int> {
+        &executor, folly::coro::co_invoke([&]() -> folly::coro::Task<int> {
           co_await folly::coro::co_reschedule_on_current_executor;
-          std::this_thread::sleep_for(std::chrono::seconds{2});
+          blockedTaskStarted.post();
+          co_await releaseBlockedTask;
           co_return 42;
         })));
     tasks.push_back(co_withExecutor(
-        &executor, folly::coro::co_invoke([]() -> folly::coro::Task<int> {
+        &executor, folly::coro::co_invoke([&]() -> folly::coro::Task<int> {
           co_await folly::coro::co_reschedule_on_current_executor;
-          std::this_thread::sleep_for(std::chrono::seconds{1});
+          co_await blockedTaskStarted;
           co_return 43;
         })));
 
@@ -3584,6 +3587,7 @@ TEST(MakeUnorderedAsyncGeneratorTest, GeneratorEarlyDestroy) {
       EXPECT_EQ(43, *(co_await gen.next()));
     }
 
+    releaseBlockedTask.post();
     co_await scope.joinAsync();
   }());
 }
