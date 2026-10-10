@@ -86,6 +86,9 @@ class TDigest {
 
   explicit TDigest(size_t maxSize = kDefaultMaxSize) : maxSize_(maxSize) {}
 
+  /// Discards all samples, retaining centroid storage and the maximum size.
+  void clear() noexcept;
+
   explicit TDigest(
       std::vector<Centroid> centroids,
       double sum,

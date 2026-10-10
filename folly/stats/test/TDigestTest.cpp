@@ -101,6 +101,42 @@ TEST(TDigest, Basic) {
   EXPECT_EQ(0.995, digest.estimateCdf(100));
 }
 
+TEST(TDigest, ClearRetainsStorageAndMaxSize) {
+  TDigest digest(37);
+  TDigest::MergeWorkingBuffer workingBuffer;
+  const std::vector<double> values{-8, -1, 0, 3, 9};
+  digest.merge(sorted_equivalent, values, workingBuffer);
+  const auto* storage = digest.getCentroids().data();
+  const auto capacity = digest.getCentroids().capacity();
+  ASSERT_GT(capacity, 0);
+
+  digest.clear();
+  digest.clear();
+  EXPECT_TRUE(digest.empty());
+  EXPECT_EQ(0, digest.count());
+  EXPECT_EQ(0, digest.sum());
+  EXPECT_EQ(0, digest.mean());
+  EXPECT_TRUE(std::isnan(digest.min()));
+  EXPECT_TRUE(std::isnan(digest.max()));
+  EXPECT_EQ(0.0, digest.estimateQuantile(0.5));
+  EXPECT_EQ(37, digest.maxSize());
+  EXPECT_EQ(storage, digest.getCentroids().data());
+  EXPECT_EQ(capacity, digest.getCentroids().capacity());
+
+  for (int round = 0; round < 20; ++round) {
+    SCOPED_TRACE(round);
+    const std::vector<double> next{100.0 + round, 200.0 + round};
+    const auto expected = TDigest(37).merge(next);
+    digest.merge(sorted_equivalent, next, workingBuffer);
+    EXPECT_EQ(expected.count(), digest.count());
+    EXPECT_EQ(expected.sum(), digest.sum());
+    EXPECT_EQ(expected.min(), digest.min());
+    EXPECT_EQ(expected.max(), digest.max());
+    EXPECT_EQ(expected.estimateQuantile(0.5), digest.estimateQuantile(0.5));
+    digest.clear();
+  }
+}
+
 TEST(TDigest, Cdf) {
   TDigest digest(100);
   // Throw on invalid inputs

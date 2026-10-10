@@ -240,6 +240,14 @@ TDigest::TDigest(
   }
 }
 
+void TDigest::clear() noexcept {
+  centroids_.clear();
+  sum_ = 0.0;
+  count_ = 0.0;
+  max_ = std::numeric_limits<double>::quiet_NaN();
+  min_ = std::numeric_limits<double>::quiet_NaN();
+}
+
 // Merge unsorted values by first sorting them.
 TDigest TDigest::merge(Range<const double*> unsortedValues) const {
   constexpr size_t kRadixSortThreshold = 700;
@@ -345,7 +353,8 @@ void TDigest::merge(
     return;
   }
 
-  workingBuffer.buf.reserve(maxSize_);
+  workingBuffer.buf.reserve(
+      std::min(maxSize_, centroids_.size() + sortedValues.size()));
   mergeValues(*this, sortedValues, workingBuffer.buf);
 }
 
