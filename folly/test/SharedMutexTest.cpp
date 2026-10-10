@@ -1866,7 +1866,7 @@ TEST(SharedMutex, deterministicAllOpsWritePrio) {
 
 TEST(SharedMutex, allOpsReadPrio) {
   for (int pass = 0; pass < 5; ++pass) {
-    runAllAndValidate<SharedMutexReadPriority, atomic>(100000, 32);
+    runAllAndValidate<SharedMutexReadPriority, atomic>(adjustReps(100000), 32);
   }
 }
 
