@@ -16,7 +16,9 @@
 
 #include <folly/io/async/IoUringDynamicProvidedBufferRing.h>
 
+#include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <thread>
 #include <vector>
 
@@ -30,7 +32,17 @@ using namespace ::folly;
 
 struct IoUringDynamicProvidedBufferRingTest : testing::Test {
   void SetUp() override {
-    const auto ret = ::io_uring_queue_init(2, &ring_, 0);
+    constexpr auto kMaxBackoff = std::chrono::milliseconds(1000);
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(60);
+    auto backoff = std::chrono::milliseconds(10);
+    auto ret = ::io_uring_queue_init(2, &ring_, 0);
+    while (ret == -ENOMEM &&
+           std::chrono::steady_clock::now() + backoff <= deadline) {
+      /* sleep override */ std::this_thread::sleep_for(backoff);
+      backoff = std::min(backoff * 2, kMaxBackoff);
+      ret = ::io_uring_queue_init(2, &ring_, 0);
+    }
     ASSERT_EQ(0, ret);
     ringInitialized_ = true;
   }
