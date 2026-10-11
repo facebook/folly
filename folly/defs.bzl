@@ -278,8 +278,10 @@ def folly_xplat_cxx_test(name, srcs, raw_headers = [], headers = [], deps = [], 
         extra_kwargs["modifiers"] = modifiers
     if compiler_flags != None:
         extra_kwargs["compiler_flags"] = compiler_flags
-    if linker_flags != None:
-        extra_kwargs["linker_flags"] = linker_flags
+    extra_kwargs["linker_flags"] = (linker_flags if linker_flags != None else []) + select({
+        "DEFAULT": [],
+        "ovr_config//compiler:cl-windows": ["/INCLUDE:main"],
+    })
     if link_style != None:
         extra_kwargs["link_style"] = link_style
 
