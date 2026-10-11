@@ -37,10 +37,18 @@
 using namespace folly;
 
 namespace folly {
+template <typename Value, bool BaseLast = false>
+struct hazptr_obj_of;
+
 template <typename Value>
-struct hazptr_obj_of
+struct hazptr_obj_of<Value, false>
+    : hazptr_obj_base<hazptr_obj_of<Value, false>>,
+      detail::inheritable<Value> {};
+
+template <typename Value>
+struct hazptr_obj_of<Value, true>
     : detail::inheritable<Value>,
-      hazptr_obj_base<hazptr_obj_of<Value>> {};
+      hazptr_obj_base<hazptr_obj_of<Value, true>> {};
 } // namespace folly
 
 extern "C" FOLLY_KEEP long check_folly_hazptr_protect(
@@ -55,6 +63,30 @@ extern "C" FOLLY_KEEP bool check_folly_hazptr_try_protect(
     hazptr_obj_of<long>*& ptr,
     std::atomic<hazptr_obj_of<long>*>& channel) {
   return holder.try_protect(ptr, channel);
+}
+
+extern "C" FOLLY_KEEP void check_folly_hazptr_unprotect(
+    folly::hazptr_holder<std::atomic>& holder) {
+  holder.reset_protection();
+}
+
+extern "C" FOLLY_KEEP long check_folly_hazptr_protect_adjusted(
+    folly::hazptr_holder<std::atomic>& holder,
+    std::atomic<hazptr_obj_of<long, true>*>& channel) {
+  auto ptr = holder.protect(channel);
+  return ptr ? *ptr : 0;
+}
+
+extern "C" FOLLY_KEEP bool check_folly_hazptr_try_protect_adjusted(
+    folly::hazptr_holder<std::atomic>& holder,
+    hazptr_obj_of<long, true>*& ptr,
+    std::atomic<hazptr_obj_of<long, true>*>& channel) {
+  return holder.try_protect(ptr, channel);
+}
+
+extern "C" FOLLY_KEEP void check_folly_hazptr_unprotect_adjusted(
+    folly::hazptr_holder<std::atomic>& holder) {
+  holder.reset_protection();
 }
 
 extern "C" FOLLY_KEEP long check_folly_hazptr_local_protect_default(
