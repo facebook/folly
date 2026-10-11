@@ -1,7 +1,9 @@
+load("@fbsource//tools/build_defs:fbsource_utils.bzl", "is_arvr_mode")
 load(
     "@fbsource//tools/build_defs:platform_defs.bzl",
     "ALL_APPLE_SDKS",
 )
+load("@fbsource//tools/build_defs:selects.bzl", "selects")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load(
     "@fbsource//xplat/folly:defs.bzl",
@@ -125,6 +127,11 @@ fb_dirsync_cpp_library(
     ],
 )
 
+# because certain arvr builds duplicate gflags and do this in an exec dependency, we need this until we fix that behavior.
+_GFLAGS_DEPS = [
+    "fbsource//arvr/third-party/gflags:gflags" if is_arvr_mode() else "fbsource//third-party/gflags:gflags",
+]
+
 fb_dirsync_cpp_library(
     # @autodeps-skip
     name = "gflags",
@@ -144,13 +151,16 @@ fb_dirsync_cpp_library(
         "ovr_config//runtime:fbcode": ["-DFOLLY_HAVE_LIBGFLAGS=1"],
     }),
     use_raw_headers = True,
-    exported_deps = [":config"] + select({
-        "DEFAULT": ["fbsource//arvr/third-party/gflags:gflags"] if should_enable_gflags() else [],
-        "fbsource//xplat/folly/buck_config:folly-gflags-enabled": ["fbsource//arvr/third-party/gflags:gflags"],
-        "ovr_config//os:linux": ["fbsource//arvr/third-party/gflags:gflags"],
-        "ovr_config//os:macos": ["fbsource//arvr/third-party/gflags:gflags"],
-        "ovr_config//os:windows": ["fbsource//arvr/third-party/gflags:gflags"],
-        "ovr_config//runtime:fbcode": ["fbsource//arvr/third-party/gflags:gflags"],
+    exported_deps = [":config"]
+    + selects.with_or({
+        "DEFAULT": _GFLAGS_DEPS if should_enable_gflags() else [],
+        (
+            "fbsource//xplat/folly/buck_config:folly-gflags-enabled",
+            "ovr_config//os:linux",
+            "ovr_config//os:macos",
+            "ovr_config//os:windows",
+            "ovr_config//runtime:fbcode",
+        ): _GFLAGS_DEPS,
     }),
 )
 
