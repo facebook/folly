@@ -19,8 +19,3 @@ Identify these critic dimensions before inspecting the current draft:
   labels with concrete actors, actions, conditions, or outcomes. Restore any
   needed cause, condition, or sequence, and state how the parts connect. Remove
   qualifiers that do not change the instruction.
-
-## Self-dog-fooding gate
-
-When the edit adds or modifies a rule, the edit's own prose must comply with
-that rule. Apply during the cycle, not after.

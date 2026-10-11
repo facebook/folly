@@ -14,7 +14,7 @@ Author and orchestrator sessions load these package files:
   durable explanation, reread the active workstream ledger.
 - `rule-conflicts.md`: before deciding whether a broader rule or skill applies.
 - `write.md`: before drafting or revising prose.
-- `write/concise-rules.md`: before editing a rule document.
+- `rule-design.md`: before agent-rule work.
 - `design-vetting.md`: before choosing a substantive design or correctness fix.
 
 If a required file is unavailable, stop and report the missing dependency.
@@ -337,9 +337,11 @@ delegating writing, follow `{FA}/critic-iterate/delegated-author.md`.
   exhaustion means token count within the window limit's warning band or tools
   returning truncation errors — otherwise, run it.
 
-## Code Specialization
+## Specializations
 
 For code changes and reviews, follow `{FA}/code/c-i-review.md`.
+
+For agent-rule changes and reviews, follow `{FA}/rule-design.md`.
 
 ## Fresh Review Thresholds
 

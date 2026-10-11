@@ -19,8 +19,8 @@ or push an agent toward the wrong work.
   Do not repeat rules or log routine fixes.
 - When a task needs several kinds of guidance, combine small, focused rules
   instead of growing one file to cover everything.
-- Load only rules that help with the current task. Use `write/concise-rules.md`
-  and careful editing to keep every loaded word useful.
+- Load only rules that help with the current task. Use `rule-design.md` and
+  careful editing to keep every loaded word useful.
 - Keep general rules free of assumptions about one user, company, repository,
   agent tool, or filesystem. Put Meta-only rules under `facebook/`; Folly's
   open-source export omits that directory.

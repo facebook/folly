@@ -7,8 +7,9 @@ only when they apply:
 
 - `../write.md` covers general prose, author revision, long documents, review
   criteria, and commit messages.
-- `concise-rules.md` adds the editing checks used for rule documents.
-- `prose/c-i-author.md` owns prose critic dimensions and self-dogfooding.
+- `../rule-design.md` owns agent-rule editing checks, including
+  self-application.
+- `prose/c-i-author.md` owns prose critic dimensions.
 - `prose/c-i-fresh-review.md` owns prose fresh-review preparation.
 - `prose/c-i-review.md` owns prose review scope and priorities shared by author
   and fresh-review passes.
