@@ -883,15 +883,7 @@ TEST(ThreadLocal, Fork2) {
   }
 }
 
-// We cannot run this test unless folly was compiled with PIC support, since we
-// cannot build thread_local_test_lib.so without PIC.
-#if !defined FOLLY_SUPPORT_SHARED_LIBRARY
-#define SHARED_LIBRARY_TEST_NAME DISABLED_SharedLibrary
-#else
-#define SHARED_LIBRARY_TEST_NAME SharedLibrary
-#endif
-
-TEST(ThreadLocal, SHARED_LIBRARY_TEST_NAME) {
+TEST(ThreadLocal, SharedLibrary) {
   auto const lib =
       folly::test::find_resource("folly/test/thread_local_test_lib.so");
   auto handle = dlopen(lib.string().c_str(), RTLD_LAZY);

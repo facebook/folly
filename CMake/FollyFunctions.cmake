@@ -373,6 +373,120 @@ function (folly_define_tests)
   endwhile ()
 endfunction ()
 
+# Defines a module whose Folly and sanitizer symbols are provided by HOST.
+# RESOURCE_SUBDIR defaults to folly/test. COMPILE_DEPS add compile usage
+# requirements without adding link dependencies.
+function (folly_add_test_module)
+  cmake_parse_arguments(
+    FOLLY_TEST_MODULE
+    ""
+    "NAME;HOST;RESOURCE_SUBDIR"
+    "SOURCES;COMPILE_DEPS"
+    ${ARGN}
+  )
+
+  if (FOLLY_TEST_MODULE_UNPARSED_ARGUMENTS)
+    message(
+      FATAL_ERROR
+        "Unknown folly_add_test_module arguments: "
+        "${FOLLY_TEST_MODULE_UNPARSED_ARGUMENTS}"
+    )
+  endif ()
+  foreach (required_arg NAME HOST SOURCES)
+    if (NOT FOLLY_TEST_MODULE_${required_arg})
+      message(
+        FATAL_ERROR "folly_add_test_module requires ${required_arg}"
+      )
+    endif ()
+  endforeach ()
+
+  if (WIN32)
+    return()
+  endif ()
+  if (NOT TARGET ${FOLLY_TEST_MODULE_HOST})
+    message(
+      FATAL_ERROR
+        "folly_add_test_module host does not exist: "
+        "${FOLLY_TEST_MODULE_HOST}"
+    )
+  endif ()
+
+  if (NOT FOLLY_TEST_MODULE_RESOURCE_SUBDIR)
+    set(FOLLY_TEST_MODULE_RESOURCE_SUBDIR "folly/test")
+  elseif (IS_ABSOLUTE "${FOLLY_TEST_MODULE_RESOURCE_SUBDIR}")
+    message(
+      FATAL_ERROR "folly_add_test_module RESOURCE_SUBDIR must be relative"
+    )
+  endif ()
+
+  set(resource_dir
+      "${CMAKE_BINARY_DIR}/${FOLLY_TEST_MODULE_RESOURCE_SUBDIR}")
+  get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+  if (is_multi_config)
+    set(resource_dir
+        "${CMAKE_BINARY_DIR}/$<CONFIG>/${FOLLY_TEST_MODULE_RESOURCE_SUBDIR}")
+  endif ()
+
+  add_library(
+    ${FOLLY_TEST_MODULE_NAME}
+    MODULE ${FOLLY_TEST_MODULE_SOURCES}
+  )
+  set_target_properties(
+    ${FOLLY_TEST_MODULE_NAME}
+    PROPERTIES
+      PREFIX
+      ""
+      LIBRARY_OUTPUT_DIRECTORY
+      "${resource_dir}"
+  )
+  apply_folly_compile_options_to_target(${FOLLY_TEST_MODULE_NAME})
+  target_include_directories(
+    ${FOLLY_TEST_MODULE_NAME}
+    PRIVATE ${TOP_DIR} ${CMAKE_CURRENT_BINARY_DIR}
+            ${FOLLY_INCLUDE_DIRECTORIES}
+  )
+
+  set(compile_deps fmt::fmt glog::glog ${FOLLY_TEST_MODULE_COMPILE_DEPS})
+  list(REMOVE_DUPLICATES compile_deps)
+  foreach (compile_dep IN LISTS compile_deps)
+    if (NOT TARGET ${compile_dep})
+      message(
+        FATAL_ERROR
+          "folly_add_test_module compile dependency does not exist: "
+          "${compile_dep}"
+      )
+    endif ()
+    target_include_directories(
+      ${FOLLY_TEST_MODULE_NAME}
+      PRIVATE $<TARGET_PROPERTY:${compile_dep},INTERFACE_INCLUDE_DIRECTORIES>
+    )
+    target_compile_definitions(
+      ${FOLLY_TEST_MODULE_NAME}
+      PRIVATE $<TARGET_PROPERTY:${compile_dep},INTERFACE_COMPILE_DEFINITIONS>
+    )
+    target_compile_options(
+      ${FOLLY_TEST_MODULE_NAME}
+      PRIVATE $<TARGET_PROPERTY:${compile_dep},INTERFACE_COMPILE_OPTIONS>
+    )
+  endforeach ()
+
+  if (APPLE)
+    target_link_options(
+      ${FOLLY_TEST_MODULE_NAME}
+      PRIVATE "LINKER:-undefined,dynamic_lookup"
+    )
+  endif ()
+
+  set_target_properties(
+    ${FOLLY_TEST_MODULE_HOST}
+    PROPERTIES ENABLE_EXPORTS ON
+  )
+  add_dependencies(
+    ${FOLLY_TEST_MODULE_HOST}
+    ${FOLLY_TEST_MODULE_NAME}
+  )
+endfunction ()
+
 # Initialize global property to track all granular component targets
 define_property(
   GLOBAL
