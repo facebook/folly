@@ -1403,6 +1403,8 @@ fb_dirsync_cpp_binary(
     name = "singleton_thread_local_overload.so",
     srcs = ["SingletonThreadLocalTestOverload.cpp"],
     dlopen_enabled = True,
+    overridden_link_style = "shared",
+    sanitizer_runtime_provided_by_host = True,
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly:singleton_thread_local",
@@ -1412,10 +1414,13 @@ fb_dirsync_cpp_binary(
 fb_dirsync_cpp_unittest(
     name = "singleton_thread_local_test",
     srcs = ["SingletonThreadLocalTest.cpp"],
+    linker_flags = ["--export-dynamic"],
+    overridden_link_style = "shared",
     resources = [
         ":singleton_thread_local_overload.so",
     ],
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    xplat_linker_flags_override = ["-Wl,--export-dynamic"],
     deps = [
         ":singleton_thread_local_overload.so",  # @manual
         "//folly:singleton_thread_local",
@@ -1679,6 +1684,8 @@ fb_dirsync_cpp_binary(
     srcs = ["ThreadLocalTestLib.cpp"],
     headers = [],
     dlopen_enabled = True,
+    overridden_link_style = "shared",
+    sanitizer_runtime_provided_by_host = True,
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
     deps = [
         "//folly:thread_local",
@@ -1688,10 +1695,13 @@ fb_dirsync_cpp_binary(
 fb_dirsync_cpp_unittest(
     name = "thread_local_test",
     srcs = ["ThreadLocalTest.cpp"],
+    linker_flags = ["--export-dynamic"],
+    overridden_link_style = "shared",
     resources = [
         ":thread_local_test_lib.so",
     ],
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    xplat_linker_flags_override = ["-Wl,--export-dynamic"],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:memory",

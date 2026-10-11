@@ -883,14 +883,9 @@ TEST(ThreadLocal, Fork2) {
   }
 }
 
-// Disable the SharedLibrary test when using any sanitizer. Otherwise, the
-// dlopen'ed code would end up running without e.g., ASAN-initialized data
-// structures and failing right away.
-//
-// We also cannot run this test unless folly was compiled with PIC support,
-// since we cannot build thread_local_test_lib.so without PIC.
-#if defined FOLLY_SANITIZE_ADDRESS || defined FOLLY_SANITIZE_THREAD || \
-    !defined FOLLY_SUPPORT_SHARED_LIBRARY
+// We cannot run this test unless folly was compiled with PIC support, since we
+// cannot build thread_local_test_lib.so without PIC.
+#if !defined FOLLY_SUPPORT_SHARED_LIBRARY
 #define SHARED_LIBRARY_TEST_NAME DISABLED_SharedLibrary
 #else
 #define SHARED_LIBRARY_TEST_NAME SharedLibrary

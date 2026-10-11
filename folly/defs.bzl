@@ -264,6 +264,8 @@ def folly_xplat_cxx_test(name, srcs, raw_headers = [], headers = [], deps = [], 
     labels = kwargs.get("labels", None)
     modifiers = kwargs.get("modifiers", None)
     compiler_flags = kwargs.get("compiler_flags", None)
+    linker_flags = kwargs.get("linker_flags", None)
+    link_style = kwargs.get("link_style", None)
 
     extra_kwargs = {}
     if oncall != None:
@@ -276,6 +278,10 @@ def folly_xplat_cxx_test(name, srcs, raw_headers = [], headers = [], deps = [], 
         extra_kwargs["modifiers"] = modifiers
     if compiler_flags != None:
         extra_kwargs["compiler_flags"] = compiler_flags
+    if linker_flags != None:
+        extra_kwargs["linker_flags"] = linker_flags
+    if link_style != None:
+        extra_kwargs["link_style"] = link_style
 
     fb_xplat_cxx_test(
         name = name,
@@ -298,6 +304,8 @@ def folly_xplat_cxx_binary(name, srcs, raw_headers = [], deps = [], oncall = Non
     if dlopen_enabled:
         extra_kwargs["linker_flags"] = kwargs.get("linker_flags", [])
         extra_kwargs["link_style"] = kwargs.get("link_style")
+        if kwargs.get("cxx__sanitizer_runtime_provided_by_host", False):
+            extra_kwargs["cxx__sanitizer_runtime_provided_by_host"] = True
 
     fb_xplat_cxx_binary(
         name = name, srcs = srcs, raw_headers = raw_headers, include_directories = _compute_include_directories(), deps = deps, platforms = (CXX,), **extra_kwargs
