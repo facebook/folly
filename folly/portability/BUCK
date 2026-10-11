@@ -145,12 +145,12 @@ fb_dirsync_cpp_library(
     }),
     use_raw_headers = True,
     exported_deps = [":config"] + select({
-        "DEFAULT": ["fbsource//third-party/gflags:gflags"] if should_enable_gflags() else [],
-        "fbsource//xplat/folly/buck_config:folly-gflags-enabled": ["fbsource//third-party/gflags:gflags"],
-        "ovr_config//os:linux": ["fbsource//third-party/gflags:gflags"],
-        "ovr_config//os:macos": ["fbsource//third-party/gflags:gflags"],
-        "ovr_config//os:windows": ["fbsource//third-party/gflags:gflags"],
-        "ovr_config//runtime:fbcode": ["fbsource//third-party/gflags:gflags"],
+        "DEFAULT": ["fbsource//arvr/third-party/gflags:gflags"] if should_enable_gflags() else [],
+        "fbsource//xplat/folly/buck_config:folly-gflags-enabled": ["fbsource//arvr/third-party/gflags:gflags"],
+        "ovr_config//os:linux": ["fbsource//arvr/third-party/gflags:gflags"],
+        "ovr_config//os:macos": ["fbsource//arvr/third-party/gflags:gflags"],
+        "ovr_config//os:windows": ["fbsource//arvr/third-party/gflags:gflags"],
+        "ovr_config//runtime:fbcode": ["fbsource//arvr/third-party/gflags:gflags"],
     }),
 )
 
