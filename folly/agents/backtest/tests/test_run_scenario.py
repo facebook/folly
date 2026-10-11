@@ -315,6 +315,8 @@ class RunScenarioTest(unittest.TestCase):
         )
         self.assertIn("agents/backtest/checkpoint.py", commands[0])
         self.assertIn("checkpoint_accounting.py", commands[0])
+        self.assertIn("agents/rule-design.md", commands[0])
+        self.assertIn("agents/critic-iterate/customize.md", commands[0])
 
     def test_generation_revision_rejects_dirty_or_untracked_inputs(self) -> None:
         (self.root / ".hg").mkdir()
@@ -730,6 +732,28 @@ class RunScenarioTest(unittest.TestCase):
         )
         for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
             self.assertFalse((without_critic_workdir / "rules" / support).exists())
+
+    def test_stage_allows_explicit_critic_support_rules(self) -> None:
+        workdir = self.root / "workdir"
+        workdir.mkdir()
+        write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
+        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
+            write(self.rules_root / support, support.name)
+        manifest = self.manifest(
+            rules=["critic-iterate.md", "rule-design.md", "critic-iterate/customize.md"]
+        )
+
+        runner.stage(self.scenario, manifest, self.rules_root, workdir)
+
+        self.assertEqual(
+            (workdir / "rules/rule-design.md").read_text(), "rule-design.md"
+        )
+        self.assertEqual(
+            (workdir / "rules/critic-iterate/customize.md").read_text(), "customize.md"
+        )
+        inventory = (workdir / "rules/rules-inventory.md").read_text()
+        self.assertIn("2. `rule-design.md`", inventory)
+        self.assertIn("3. `critic-iterate/customize.md`", inventory)
 
     def test_stage_rejects_hidden_policy_inside_an_input_tree(self) -> None:
         workdir = self.root / "workdir"

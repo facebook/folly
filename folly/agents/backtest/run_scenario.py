@@ -39,6 +39,8 @@ CommandRunner = Callable[..., subprocess.CompletedProcess[bytes]]
 
 CRITIC_ITERATE_RULE = PurePosixPath("critic-iterate.md")
 CRITIC_ITERATE_SUPPORT_FILES = (
+    PurePosixPath("rule-design.md"),
+    PurePosixPath("critic-iterate/customize.md"),
     PurePosixPath("critic-iterate/cold-review-preamble.md"),
     PurePosixPath("critic-iterate/fresh-review-preamble.md"),
     PurePosixPath("critic-iterate/fresh-review.md"),
@@ -452,7 +454,7 @@ def stage(
             if CRITIC_ITERATE_RULE in manifest.rules
             else ()
         )
-        for rule in (*manifest.rules, *support_files, *runtime_files):
+        for rule in dict.fromkeys((*manifest.rules, *support_files, *runtime_files)):
             destination = PurePosixPath("rules") / rule
             _claim(destinations, destination)
             source = _resolve_below(rules_root, rule, "rule")

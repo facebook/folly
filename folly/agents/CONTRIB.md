@@ -10,13 +10,13 @@ or push an agent toward the wrong work.
 
 ## Principles
 
-- Solve general problems. Add a rule only for a real, recurring failure, not a
-  one-off incident.
+- Solve general problems. Use `rule-design.md` to decide what earns a rule.
 - Say the rule in the fewest plain words that still tell an agent what to do.
-- "Every rule is written in blood." Learn why a rule exists before changing it.
-  Update the nearest `.contrib.md` only to fix stale notes or preserve new
-  goals, constraints, or reasons not clear from the rule. Do not repeat rules or
-  log routine fixes.
+- "Every rule is written in blood." Ground new rules in real incidents. Before
+  changing an existing rule, understand the failure it was meant to prevent and
+  preserve that protection. Update the nearest `.contrib.md` only to fix stale
+  notes or preserve new goals, constraints, or reasons not clear from the rule.
+  Do not repeat rules or log routine fixes.
 - When a task needs several kinds of guidance, combine small, focused rules
   instead of growing one file to cover everything.
 - Load only rules that help with the current task. Use `write/concise-rules.md`
