@@ -1404,8 +1404,8 @@ fb_dirsync_cpp_binary(
     srcs = ["SingletonThreadLocalTestOverload.cpp"],
     dlopen_enabled = True,
     overridden_link_style = "shared",
-    sanitizer_runtime_provided_by_host = True,
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    xplat_sanitizer_runtime = "host",
     deps = [
         "//folly:singleton_thread_local",
     ],
@@ -1684,8 +1684,8 @@ fb_dirsync_cpp_binary(
     headers = [],
     dlopen_enabled = True,
     overridden_link_style = "shared",
-    sanitizer_runtime_provided_by_host = True,
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    xplat_sanitizer_runtime = "host",
     deps = [
         "//folly:thread_local",
     ],

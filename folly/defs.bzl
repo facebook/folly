@@ -300,15 +300,23 @@ def folly_xplat_cxx_test(name, srcs, raw_headers = [], headers = [], deps = [], 
         **extra_kwargs,
     )
 
-def folly_xplat_cxx_binary(name, srcs, raw_headers = [], deps = [], oncall = None, dlopen_enabled = False, **kwargs):
+def folly_xplat_cxx_binary(name, srcs, raw_headers = [], deps = [], oncall = None, dlopen_enabled = False, xplat_sanitizer_runtime = "self", **kwargs):
+    if xplat_sanitizer_runtime == "host" and not dlopen_enabled:
+        fail("xplat_sanitizer_runtime = 'host' requires dlopen_enabled")
+
     extra_kwargs = {"oncall": oncall} if oncall != None else {}
 
     if dlopen_enabled:
         extra_kwargs["linker_flags"] = kwargs.get("linker_flags", [])
         extra_kwargs["link_style"] = kwargs.get("link_style")
-        if kwargs.get("cxx__sanitizer_runtime_provided_by_host", False):
-            extra_kwargs["cxx__sanitizer_runtime_provided_by_host"] = True
 
     fb_xplat_cxx_binary(
-        name = name, srcs = srcs, raw_headers = raw_headers, include_directories = _compute_include_directories(), deps = deps, platforms = (CXX,), **extra_kwargs
+        name = name,
+        srcs = srcs,
+        raw_headers = raw_headers,
+        include_directories = _compute_include_directories(),
+        deps = deps,
+        platforms = (CXX,),
+        xplat_sanitizer_runtime = xplat_sanitizer_runtime,
+        **extra_kwargs,
     )
