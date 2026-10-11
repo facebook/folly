@@ -1420,7 +1420,6 @@ fb_dirsync_cpp_unittest(
         ":singleton_thread_local_overload.so",
     ],
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
-    xplat_linker_flags_override = ["-Wl,--export-dynamic"],
     deps = [
         ":singleton_thread_local_overload.so",  # @manual
         "//folly:singleton_thread_local",
@@ -1701,7 +1700,6 @@ fb_dirsync_cpp_unittest(
         ":thread_local_test_lib.so",
     ],
     target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
-    xplat_linker_flags_override = ["-Wl,--export-dynamic"],
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:memory",
