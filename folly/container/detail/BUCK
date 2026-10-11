@@ -21,7 +21,7 @@ fb_dirsync_cpp_library(
     headers = [
         "F14IntrinsicsAvailability.h",
     ],
-    exported_preprocessor_flags = select({
+    propagated_pp_flags = select({
         "DEFAULT": [],
         "fbsource//xplat/folly/buck_config:folly-f14-fallback-disabled": [
             "-DFOLLY_F14_FALLBACK_DISABLED=1",

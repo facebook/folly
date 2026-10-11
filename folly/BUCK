@@ -683,6 +683,9 @@ fb_dirsync_cpp_library(
     # @fb-only[end= ]: fbandroid_exported_preprocessor_flags = FBANDROID_CPPFLAGS,
     propagated_pp_flags = select({
         "DEFAULT": [],
+        "ovr_config//os:windows": CPPFLAGS,
+    }) + select({
+        "DEFAULT": [],
         # The `liblz4.so` in the default conda channel doesn't *publicly* export
         # symbols used for fast reset support (although they are availabel as
         # "internal" symbols and would link statically).
