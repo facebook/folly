@@ -139,7 +139,7 @@ class AlignedSysAllocator : private Align {
 
   using Align::Align;
 
-  // TODO: remove this ctor, which is is no longer required as of under gcc7
+  // TODO: remove this ctor, which is no longer required as of under gcc7
   template <
       typename S = Align,
       std::enable_if_t<std::is_default_constructible<S>::value, int> = 0>
