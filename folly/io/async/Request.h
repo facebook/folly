@@ -206,6 +206,18 @@ class RequestContext {
 
   intptr_t getRootId() const { return rootId_; }
 
+  // Returns a non-zero, process-unique identifier for this context's stored
+  // RequestData objects. Copies receive a distinct version. Set, overwrite,
+  // and clear operations publish a new version after their changes are visible;
+  // a reader that observes the version also observes those changes. The version
+  // does not change when a stored RequestData mutates its own state, and may
+  // change when an operation makes no change. Only equality within this process
+  // is meaningful; do not persist, order, or compare versions across processes.
+  //
+  // To cache a derived value, read the version before computing the value and
+  // associate the result with that snapshot. This method is thread-safe.
+  uint64_t getContextDataVersion() const noexcept;
+
   struct RootIdInfo {
     intptr_t id;
     std::thread::id tid;
@@ -508,13 +520,13 @@ class RequestContext {
     struct Combined;
     hazptr_obj_cohort<> cohort_; // For destruction order
     std::atomic<Combined*> combined_{nullptr};
-    // Version used to invalidate getThreadCachedContextData() caches on
-    // modifications. A process-wide unique id is used (instead of, for example,
-    // a local counter) so that it is not necessary to compare the request
-    // context pointer as well. This saves one word of TLS and one comparison.
+    // Version used to invalidate caches of values derived from context data. A
+    // process-wide unique id is used (instead of, for example, a local counter)
+    // so that it is not necessary to compare the request context pointer as
+    // well. This saves one word of TLS and one comparison.
     std::atomic<uint64_t> version_{processLocalUniqueId()};
-    // This should never be used directly. Use LockGuard so that thread caches
-    // are invalidated at the end of the critical section.
+    // This should never be used directly. Locked mutations must use LockGuard;
+    // caller-synchronized mutations must use VersionGuard.
     mutable folly::SharedMutex mutex_; // small exclusive mutex
 
     State();
@@ -533,6 +545,7 @@ class RequestContext {
       Combined* replaced; // The combined structure was replaced
     };
 
+    class VersionGuard;
     class LockGuard;
 
     Combined* combined() const;
@@ -747,6 +760,11 @@ RequestContext::getThreadCachedContextData() {
   cachedData = getContextData(Traits::kToken);
   cachedVersion = curVersion;
   return cachedData;
+}
+
+FOLLY_ALWAYS_INLINE uint64_t
+RequestContext::getContextDataVersion() const noexcept {
+  return state_.version_.load(std::memory_order_acquire);
 }
 
 } // namespace folly

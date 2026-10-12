@@ -255,17 +255,31 @@ RequestContext::State::~State() {
   }
 }
 
+class [[nodiscard]] RequestContext::State::VersionGuard {
+ public:
+  explicit VersionGuard(RequestContext::State& state) : state_(state) {}
+
+  ~VersionGuard() {
+    state_.version_.store(processLocalUniqueId(), std::memory_order_release);
+  }
+
+ private:
+  VersionGuard(const VersionGuard&) = delete;
+  VersionGuard(VersionGuard&&) = delete;
+  VersionGuard& operator=(const VersionGuard&) = delete;
+  VersionGuard& operator=(VersionGuard&&) = delete;
+
+  RequestContext::State& state_;
+};
+
 class [[nodiscard]] RequestContext::State::LockGuard {
  public:
   explicit LockGuard(RequestContext::State& state)
       : state_(state), lock_(state.mutex_) {}
 
   ~LockGuard() {
-    // The state is only locked on modifications, so we can invalidate the
-    // thread caches every time the lock is released. In some cases no actual
-    // changes to the state may have been performed, but we conservatively
-    // invalidate anyway, as any modification operations are infrequent compared
-    // to reads.
+    // Publish while holding the lock so versions follow mutex order. Otherwise
+    // an earlier writer could publish after a later writer has completed.
     state_.version_.store(processLocalUniqueId(), std::memory_order_release);
   }
 
@@ -308,6 +322,7 @@ bool RequestContext::State::doSetContextData(
     bool safe) {
   SetContextDataResult result;
   if (safe) {
+    VersionGuard versionGuard{*this};
     result = doSetContextDataHelper(token, data, behaviour, safe);
   } else {
     LockGuard lock{*this};

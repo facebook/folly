@@ -774,6 +774,11 @@ TEST_F(RequestContextTest, GetThreadCachedContextData) {
   EXPECT_EQ(getData(KeyATraits{})->value(), 3);
   EXPECT_EQ(getData(KeyBTraits{})->value(), 2);
 
+  RequestContext::try_get()->overwriteContextData(
+      KeyATraits::kToken, makeData(4), /*safe=*/true);
+  EXPECT_EQ(getData(KeyATraits{})->value(), 4);
+  EXPECT_EQ(getData(KeyBTraits{})->value(), 2);
+
   RequestContext::try_get()->clearContextData(KeyATraits::kToken);
   EXPECT_TRUE(
       RequestContext::try_get()->getThreadCachedContextData<KeyATraits>() ==
@@ -783,9 +788,9 @@ TEST_F(RequestContextTest, GetThreadCachedContextData) {
   // Invalidations are delivered from other threads too.
   std::thread([&, ctx = RequestContext::saveContext()] {
     RequestContextScopeGuard guard2(ctx);
-    RequestContext::try_get()->setContextData(KeyATraits::kToken, makeData(4));
+    RequestContext::try_get()->setContextData(KeyATraits::kToken, makeData(5));
   }).join();
-  EXPECT_EQ(getData(KeyATraits{})->value(), 4);
+  EXPECT_EQ(getData(KeyATraits{})->value(), 5);
   EXPECT_EQ(getData(KeyBTraits{})->value(), 2);
 
   // Caches are not leaked when switching request context.
@@ -798,6 +803,40 @@ TEST_F(RequestContextTest, GetThreadCachedContextData) {
         RequestContext::try_get()->getThreadCachedContextData<KeyBTraits>() ==
         nullptr);
   }
+}
+
+TEST_F(RequestContextTest, ContextDataVersion) {
+  RequestContextScopeGuard guard;
+  auto* context = RequestContext::try_get();
+  const auto initialVersion = context->getContextDataVersion();
+  EXPECT_NE(initialVersion, 0);
+
+  context->setContextData(
+      "version-test", std::make_unique<ImmutableRequestData<int>>(1));
+  const auto setVersion = context->getContextDataVersion();
+  EXPECT_NE(initialVersion, setVersion);
+
+  context->overwriteContextData(
+      "version-test", std::make_unique<ImmutableRequestData<int>>(2));
+  const auto overwriteVersion = context->getContextDataVersion();
+  EXPECT_NE(setVersion, overwriteVersion);
+
+  context->overwriteContextData(
+      "version-test",
+      std::make_unique<ImmutableRequestData<int>>(3),
+      /*safe=*/true);
+  const auto safeOverwriteVersion = context->getContextDataVersion();
+  EXPECT_NE(overwriteVersion, safeOverwriteVersion);
+
+  context->clearContextData("version-test");
+  const auto clearVersion = context->getContextDataVersion();
+  EXPECT_NE(safeOverwriteVersion, clearVersion);
+
+  {
+    ShallowCopyRequestContextScopeGuard nestedGuard;
+    EXPECT_NE(clearVersion, RequestContext::try_get()->getContextDataVersion());
+  }
+  EXPECT_EQ(clearVersion, context->getContextDataVersion());
 }
 
 TEST(RequestContextTryGetTest, TryGetTest) {
