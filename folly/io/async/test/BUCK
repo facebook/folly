@@ -840,6 +840,7 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/glog:glog",
         ":async_socket_test_lib",
         "//folly/io/async:async_socket",
+        "//folly/io/async:io_uring_setup_retry",
     ],
     exported_deps = [
         "//folly/io:iobuf",
@@ -1407,6 +1408,7 @@ fbcode_target(
     srcs = ["IoUringDynamicProvidedBufferRingTest.cpp"],
     deps = [
         "//folly/io/async:io_uring_dynamic_provided_buffer_ring",
+        "//folly/io/async:io_uring_setup_retry",
     ],
 )
 

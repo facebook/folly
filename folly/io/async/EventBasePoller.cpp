@@ -18,10 +18,10 @@
 
 #include <atomic>
 #include <cerrno>
+#include <chrono>
 #include <cstring>
 #include <limits>
 #include <stdexcept>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -29,6 +29,7 @@
 #include <folly/FileUtil.h>
 #include <folly/String.h>
 #include <folly/io/async/Epoll.h>
+#include <folly/io/async/IoUringSetupRetry.h>
 #include <folly/io/async/Liburing.h>
 #include <folly/lang/Align.h>
 #include <folly/synchronization/Baton.h>
@@ -367,14 +368,17 @@ class EventBasePollerIoUring final : public EventBasePollerImpl {
   explicit EventBasePollerIoUring(Options options)
       // io_uring does not support concurrent submissions.
       : EventBasePollerImpl(options, /* rearmInline */ false) {
-    ::memset(&ring_, 0, sizeof(ring_));
-    struct io_uring_params params;
-    ::memset(&params, 0, sizeof(params));
+    struct io_uring_params params{};
     // Consecutive wait() calls may come from different threads, so
     // SINGLE_ISSUER and DEFER_TASKRUN cannot be used, and COOP_TASKRUN would
     // delay completions until the submitting thread enters the kernel.
-    int ret = ::io_uring_queue_init_params(
-        options_.ioUringSqEntries, &ring_, &params);
+    CHECK_LE(options_.ioUringSqEntries, std::numeric_limits<unsigned>::max());
+    const auto ret = retryTransientIoUringSetup([&] {
+      ::memset(&ring_, 0, sizeof(ring_));
+      ::memset(&params, 0, sizeof(params));
+      return ::io_uring_queue_init_params(
+          static_cast<unsigned>(options_.ioUringSqEntries), &ring_, &params);
+    });
     CHECK_EQ(ret, 0) << "Error creating io_uring: " << folly::errnoStr(-ret);
     handleNotification(); // Arm notificationEv_.
   }

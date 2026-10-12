@@ -16,13 +16,12 @@
 
 #include <folly/io/async/test/IoUringTestUtil.h>
 
-#include <algorithm>
-#include <chrono>
 #include <thread>
 #include <tuple>
 
 #include <glog/logging.h>
 #include <folly/io/async/AsyncSocket.h>
+#include <folly/io/async/IoUringSetupRetry.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
 
 #if FOLLY_HAS_LIBURING
@@ -43,25 +42,14 @@ IoUringBackend::Options ioUringOptionsWithProvidedBuffers() {
 
 std::unique_ptr<EventBase> makeIoUringEventBase(
     IoUringBackend::Options (*makeOptions)()) {
-  constexpr auto kMaxBackoff = std::chrono::milliseconds(1000);
-  const auto deadline =
-      std::chrono::steady_clock::now() + std::chrono::seconds(60);
-  auto backoff = std::chrono::milliseconds(10);
-  while (true) {
-    try {
-      return std::make_unique<EventBase>(EventBase::Options{}.setBackendFactory(
-          [makeOptions]() -> std::unique_ptr<EventBaseBackendBase> {
-            return std::make_unique<IoUringBackend>(makeOptions());
-          }));
-    } catch (IoUringBackend::OutOfMemory const&) {
-      if (std::chrono::steady_clock::now() + backoff > deadline) {
-        throw;
-      }
-    }
-    // NOLINTNEXTLINE(facebook-hte-BadCall-sleep_for)
-    std::this_thread::sleep_for(backoff);
-    backoff = std::min(backoff * 2, kMaxBackoff);
-  }
+  return detail::retryTransientIoUringSetup<IoUringBackend::OutOfMemory>(
+      [makeOptions] {
+        return std::make_unique<EventBase>(
+            EventBase::Options{}.setBackendFactory(
+                [makeOptions]() -> std::unique_ptr<EventBaseBackendBase> {
+                  return std::make_unique<IoUringBackend>(makeOptions());
+                }));
+      });
 }
 
 IoUringBackend::IoUringStats ioUringStats(EventBase& evb) {

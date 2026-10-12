@@ -425,6 +425,7 @@ folly_add_library(
     ${GLOG_LIBRARIES}
     folly_file_util
     folly_io_async_epoll
+    folly_io_async_io_uring_setup_retry
     folly_io_async_liburing
     folly_lang_align
     folly_string
@@ -629,6 +630,11 @@ folly_add_library(
     folly_io_async_delayed_destruction
     folly_io_async_io_uring_backend
     folly_net_network_socket
+)
+
+folly_add_library(
+  NAME io_uring_setup_retry
+  HEADERS IoUringSetupRetry.h
 )
 
 folly_add_library(

@@ -667,6 +667,12 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "io_uring_setup_retry",
+    headers = ["IoUringSetupRetry.h"],
+    use_raw_headers = True,
+)
+
+fb_dirsync_cpp_library(
     name = "async_io_uring_socket",
     srcs = [
         "AsyncIoUringSocket.cpp",
@@ -773,6 +779,7 @@ fb_dirsync_cpp_library(
         "//folly:file_util",
         "//folly:string",
         "//folly/io/async:epoll",
+        "//folly/io/async:io_uring_setup_retry",
         "//folly/io/async:liburing",
         "//folly/lang:align",
         "//folly/synchronization:baton",
