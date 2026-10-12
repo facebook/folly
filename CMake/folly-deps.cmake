@@ -696,12 +696,10 @@ folly_localize_deps(folly_fmt_dep fmt::fmt)
 target_link_libraries(folly_deps INTERFACE ${folly_fmt_dep})
 
 list(REMOVE_DUPLICATES FOLLY_INCLUDE_DIRECTORIES)
+# A failed find_path() leaves <VAR>-NOTFOUND behind, which would reach the
+# compiler as a relative include directory.
+list(FILTER FOLLY_INCLUDE_DIRECTORIES EXCLUDE REGEX "-NOTFOUND$")
 foreach (_dir IN LISTS FOLLY_INCLUDE_DIRECTORIES)
-  # A failed find_path() leaves <VAR>-NOTFOUND behind, which would reach the
-  # compiler as a relative include directory.
-  if (_dir MATCHES "-NOTFOUND$")
-    continue()
-  endif ()
   # Wrap build-tree paths in BUILD_INTERFACE so they do not leak into an
   # install interface, whether folly is the top project or a subproject. An
   # installed folly re-finds these through folly-config.cmake.
