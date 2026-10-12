@@ -336,7 +336,8 @@ TDigest TDigest::merge(
   TDigest result(maxSize_);
 
   std::vector<Centroid> compressed;
-  compressed.reserve(maxSize_);
+  compressed.reserve(
+      std::min(maxSize_, centroids_.size() + sortedValues.size()));
 
   mergeValues(result, sortedValues, compressed);
 
@@ -439,7 +440,7 @@ template <class T>
   std::make_heap(cursors.begin(), cursors.end());
 
   std::vector<Centroid> workingBuffer;
-  workingBuffer.reserve(maxSize);
+  workingBuffer.reserve(std::min(maxSize, nCentroids));
   CentroidMerger merger(std::move(workingBuffer), maxSize, count);
   while (!cursors.empty()) {
     auto& top = cursors.front();
@@ -488,7 +489,8 @@ template <class T>
   }
 
   std::vector<Centroid> workingBuffer;
-  workingBuffer.reserve(maxSize);
+  workingBuffer.reserve(
+      std::min(maxSize, d1.centroids_.size() + d2.centroids_.size()));
   CentroidMerger merger(std::move(workingBuffer), maxSize, count);
 
   merge2Containers(
