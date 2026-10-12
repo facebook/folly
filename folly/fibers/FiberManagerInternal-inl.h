@@ -101,8 +101,12 @@ inline void FiberManager::deactivateFiber(Fiber* fiber) {
   DCHECK_EQ(activeFiber_, fiber);
 
 #ifdef FOLLY_SANITIZE_ADDRESS
-  DCHECK(fiber->asanMainStackBase_);
-  DCHECK(fiber->asanMainStackSize_);
+  // The hooks that report the main stack are null unless
+  // kIsLibrarySanitizeAddress, which HWASAN does not set.
+  if (kIsLibrarySanitizeAddress) {
+    DCHECK(fiber->asanMainStackBase_);
+    DCHECK(fiber->asanMainStackSize_);
+  }
 
   registerStartSwitchStackWithAsan(
       &fiber->asanFakeStack_,
