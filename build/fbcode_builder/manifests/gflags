@@ -20,5 +20,6 @@ gflags
 [debs]
 libgflags-dev
 
-[rpms.distro=fedora]
+# EPEL 10 ships this too; EL 8 and 9 do not have a usable version.
+[rpms.any(distro=fedora,all(distro_family=rhel,not(any(distro_vers=8,distro_vers=9))))]
 gflags-devel

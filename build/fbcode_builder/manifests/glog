@@ -24,9 +24,15 @@ patchfile = glog_default_visibility.patch
 gflags
 
 [cmake.defines]
-BUILD_SHARED_LIBS=ON
 BUILD_TESTING=NO
 WITH_PKGCONFIG=ON
+
+# Shared only when the consumer asks for it, as folly and fbthrift already
+# do. Forcing it on meant a static build still linked a libglog.so that
+# nothing installs: the Fedora/EPEL packages of cachelib and mcrouter, which
+# ship executables and no libraries, came out requiring libglog.so.1.
+[cmake.defines.feature_shared_libs=on]
+BUILD_SHARED_LIBS=ON
 
 [cmake.defines.os=freebsd]
 HAVE_TR1_UNORDERED_MAP=OFF

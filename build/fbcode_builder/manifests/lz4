@@ -6,8 +6,8 @@ lz4
 
 [rpms]
 lz4-devel
-# centos 8 and centos_stream 9 are missing this rpm
-[rpms.not(all(distro_family=rhel,any(distro_vers=8,distro_vers=9)))]
+# Only Fedora packages the static library; no EL version has it.
+[rpms.distro=fedora]
 lz4-static
 
 [debs]

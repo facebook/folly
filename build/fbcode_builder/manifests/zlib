@@ -7,11 +7,12 @@ zlib1g-dev
 [homebrew]
 zlib
 
-[rpms.not(distro=fedora)]
+[rpms.all(distro_family=rhel,any(distro_vers=8,distro_vers=9))]
 zlib-devel
 zlib-static
 
-[rpms.distro=fedora]
+# Fedora and EL 10 and later ship zlib-ng under the compat names.
+[rpms.any(distro=fedora,all(distro_family=rhel,not(any(distro_vers=8,distro_vers=9))))]
 zlib-ng-compat-devel
 zlib-ng-compat-static
 
