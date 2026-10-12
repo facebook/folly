@@ -28,19 +28,25 @@ Make the rule's decision function easy to find: put its trigger, scope, and
 required action or output before rationale or qualifications. A topic label is
 not enough.
 
-State an observable action or outcome instead of a vague admonition. Keep enough
-detail to apply the rule without encoding common syntax, framework basics, or
-standard advice. Keep non-obvious caveats needed for correct action. Retain a
-concrete callout or prohibition when a positive rule alone does not reliably
-prevent the relevant failure.
+State what a worker will do, not only the result it should reach. For a
+judgment, make clear where to start, what to inspect or compare, and how to
+decide. Keep enough detail to apply the rule without encoding common syntax,
+framework basics, or standard advice. Keep non-obvious caveats needed for
+correct action. Retain a concrete callout or prohibition when a positive rule
+alone does not reliably prevent the relevant failure.
 
-Resolve ambiguity by reframing, consolidating, or cutting. Add text only for a
-distinct behavior-changing decision with no shorter form.
+Resolve ambiguity by reframing, consolidating, or cutting. If successive fixes
+add qualifications for individual cases, check whether the current decision rule
+already gives the required answers. If so, consolidate the qualifications.
+Otherwise, try a different starting point or comparison and walk it through a
+different situation within the rule's purpose before refining wording. Add text
+only for a distinct behavior-changing decision with no shorter form.
 
 ## Place and compress
 
-Before editing, search for related rules and read them in full. Trace the
-loading path, then check the destination and adjacent headings.
+Before editing, search for rules that govern the decision being changed and read
+them in full. Trace the loading path, then check the destination and adjacent
+headings.
 
 Keep one owner for each decision. A parent may retain the decision and a
 one-line pointer while a child owns the detail. Put project-specific paths,
@@ -57,13 +63,19 @@ durable rationale, evidence, and design choices in its contributor note.
 
 Use evidence proportional to the change. Check intended, missed, and unintended
 triggers; compliance; whether the result serves the purpose; unintended behavior
-changes; loaded context; and execution cost. A rule-path trace can prove an
-unchanged move. For a claimed deduplication, compare each removed clause's
-trigger, action, output, boundaries, and exceptions with the surviving owners.
-Changed wording or guardrails may also need behavioral cases.
+changes; loaded context; and execution cost. For moved text, compare its loading
+path and what it governs before and after. For a claimed deduplication, compare
+each removed clause's trigger, action, output, boundaries, and exceptions with
+the surviving owners. Changed wording or guardrails may also need behavioral
+cases.
 
-After rewording a rule, compare what an agent would do before and after. Reject
-any unintended change or weakening to the trigger or required action.
+Read changed instructions as the worker, using only the context it will receive.
+Walk through an intended case and a harmless near-match. Identify what triggers
+the rule, what information the worker uses, and what it does. Look for an easy
+action that follows the words but misses the purpose. Find wording that leaves
+those choices unclear or invites a wrong action. Compare what the worker would
+do before and after; reject any unintended change or weakening to the trigger or
+required action.
 
 During critic iteration, check:
 
@@ -76,12 +88,12 @@ During critic iteration, check:
 - effectiveness and cost evidence; and
 - whether a new or changed rule complies with itself.
 
-In the pass artifact, name related rules by file and heading, or search terms
-that found none, the related files read in full, the destination and adjacent
-headings checked, and whether guidance was moved, merged, linked, or kept
-separate, with the reason.
+In the report for each edit or review pass, name related rules by file and
+heading, or search terms that found none, the related files read in full, the
+destination and adjacent headings checked, and whether guidance was moved,
+merged, linked, or kept separate, with the reason.
 
 After each edit pass, reread the full changed document. Reread directly related
-files when the edit changes cross-file ownership, loading, or behavior. Ask what
-agent behavior would change without each edited line; cut it if the answer is
-none.
+files when the edit changes cross-file ownership, loading, or behavior. In
+operational text, ask what agent behavior would change without each edited line;
+cut it if the answer is none.

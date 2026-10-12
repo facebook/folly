@@ -36,6 +36,18 @@ reliably changes behavior and retains a concrete prohibition when a positive
 principle alone does not reliably prevent the failure. Similar wording alone
 cannot establish redundancy.
 
+Useful abstraction preserves a reasoning operation across different situations.
+It does not merely replace concrete words with broader labels. A worker can
+follow a rule faithfully while examining the wrong subject or making the wrong
+comparison. Making that starting point clear can help more than adding
+exceptions around the resulting mistakes.
+
+Clear wording can still invite superficial compliance: a worker can report one
+easy comparison while skipping the consequential one. Predicting that shortcut
+helps improve the requested action instead of adding reporting ceremony.
+Likewise, moved words can govern a different decision even when loading is
+unchanged.
+
 Contributor notes record durable purpose, failure models, design choices, and
 evidence. Operational rules state current behavior. Transient rollout history
 belongs in plans or run records.
