@@ -36,17 +36,6 @@ namespace folly {
 
 namespace detail {
 
-#if FOLLY_X64
-namespace {
-// Answered once, but reading it still costs a guard check, so a call that
-// its size already settles must not reach it.
-bool vendor_intel() {
-  static const bool v = folly::CpuId().vendor_intel();
-  return v;
-}
-} // namespace
-#endif
-
 uint32_t crc32c_sw(
     const uint8_t* data, size_t nbytes, uint32_t startingChecksum);
 #if FOLLY_X64 && FOLLY_SSE_PREREQ(4, 2)
@@ -71,26 +60,9 @@ uint32_t crc32_hw(
   if (nbytes >= 16) {
     const __m128i* vec = (const __m128i*)(data + offset);
 #if FOLLY_HAS_CRC32_VPCLMUL
-    const size_t vecs = nbytes / 16;
-    // crc32_fold_for tests the sizes itself. Repeating them here
-    // short-circuits the two queries that do not inline: a call under the
-    // AMD floor reaches neither, and a call at or above the Intel floor
-    // never reads the vendor. The fold picked is the same either way.
-    switch (crc32_fold_for(
-        vecs,
-        vecs >= kCrc32Vpclmul512MinVectorsAmd && crc32_vpclmul512_usable(),
-        crc32_vpclmul_usable(),
-        vecs < kCrc32Vpclmul512MinVectorsIntel && vendor_intel())) {
-      case Crc32Fold::kVpclmul512:
-        sum = crc32_hw_aligned_vpclmul512(sum, vec, vecs);
-        break;
-      case Crc32Fold::kVpclmul256:
-        sum = crc32_hw_aligned_vpclmul(sum, vec, vecs);
-        break;
-      case Crc32Fold::kScalar:
-        sum = crc32_hw_aligned(sum, vec, vecs);
-        break;
-    }
+    sum = crc32_vpclmul_usable()
+        ? crc32_hw_aligned_vpclmul(sum, vec, nbytes / 16)
+        : crc32_hw_aligned(sum, vec, nbytes / 16);
 #else
     sum = crc32_hw_aligned(sum, vec, nbytes / 16);
 #endif
@@ -281,6 +253,11 @@ uint32_t crc32_sw(
 
 namespace {
 #if FOLLY_X64
+bool crc32c_vendor_intel() {
+  static const bool v = folly::CpuId().vendor_intel();
+  return v;
+}
+
 #if FOLLY_HAS_CRC32_VPCLMUL
 // Whether any wider fold exists for this part at all, answered once. A part
 // without VPCLMULQDQ never takes one, and this spares it the per-call tests.
@@ -311,7 +288,7 @@ bool crc32c_generated_size(size_t nbytes) {
     case detail::Crc32cGenerated::kIntelOnly:
       break;
   }
-  return detail::vendor_intel();
+  return crc32c_vendor_intel();
 }
 #endif
 } // namespace
@@ -336,7 +313,7 @@ uint32_t crc32c(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
         nbytes,
         detail::crc32c_wide_avx512_usable(),
         detail::crc32c_wide256_avx2_usable(),
-        detail::vendor_intel())) {
+        crc32c_vendor_intel())) {
       case detail::Crc32cWideFold::kWide512:
         return detail::crc32c_wide512(data, nbytes, startingChecksum);
       case detail::Crc32cWideFold::kWide256Avx512:
