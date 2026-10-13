@@ -851,10 +851,10 @@ class LeakySingleton {
 
     auto& entry = entryInstance();
     std::lock_guard lg(entry.mutex);
-    if (entry.ptr) {
-      lsan_ignore_object(std::atomic_exchange(&entry.ptr, (T*)nullptr));
+    entry.createFunc = std::move(createFunc);
+    if (auto* ptr = entry.ptr.exchange(nullptr, std::memory_order_relaxed)) {
+      lsan_ignore_object(ptr);
     }
-    entry.createFunc = createFunc;
     entry.state = State::Dead;
   }
 
@@ -877,27 +877,32 @@ class LeakySingleton {
 
   static T& instance() {
     auto& entry = entryInstance();
-    if (FOLLY_UNLIKELY(entry.state != State::Living)) {
-      createInstance();
+    // A pointer captured before make_mock() remains valid because old
+    // LeakySingleton instances are never destroyed.
+    auto* ptr = entry.ptr.load(std::memory_order_acquire);
+    if (FOLLY_UNLIKELY(ptr == nullptr)) {
+      ptr = createInstance();
     }
 
-    return *entry.ptr;
+    return *ptr;
   }
 
-  static void createInstance() {
+  static T* createInstance() {
     auto& entry = entryInstance();
 
     std::lock_guard lg(entry.mutex);
-    if (entry.state == State::Living) {
-      return;
+    if (auto* ptr = entry.ptr.load(std::memory_order_relaxed)) {
+      return ptr;
     }
 
     if (entry.state == State::NotRegistered) {
       detail::singletonWarnLeakyInstantiatingNotRegisteredAndAbort(entry.type_);
     }
 
-    entry.ptr = entry.createFunc();
+    auto* ptr = entry.createFunc();
+    entry.ptr.store(ptr, std::memory_order_release);
     entry.state = State::Living;
+    return ptr;
   }
 };
 } // namespace folly

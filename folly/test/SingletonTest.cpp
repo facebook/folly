@@ -1048,20 +1048,41 @@ TEST(Singleton, LeakySingletonLSAN) {
 TEST(Singleton, LeakySingletonTSAN) {
   struct PrivateTag {};
   static folly::LeakySingleton<int, PrivateTag> gPtr;
-  auto* ptr0 = &gPtr.get();
-  EXPECT_EQ(*ptr0, 0);
-  auto func = [&]() {
-    auto val = gPtr.get();
-    EXPECT_TRUE(val == 0 || val == 1);
-  };
+  constexpr size_t kThreads = 100;
+  constexpr size_t kIterations = 100;
+  folly::test::Barrier start{kThreads + 1};
+  folly::test::Barrier complete{kThreads + 1};
+  std::atomic<bool> valuesValid{true};
+
+  EXPECT_EQ(gPtr.get(), 0);
+
   std::vector<std::thread> threads;
-  for (int i = 0; i < 100; i++) {
-    threads.emplace_back(func);
+  threads.reserve(kThreads);
+  for (size_t i = 0; i < kThreads; ++i) {
+    threads.emplace_back([&] {
+      for (size_t j = 0; j < kIterations; ++j) {
+        start.wait();
+        const auto value = gPtr.get();
+        if (value != 0 && value != 1) {
+          valuesValid.store(false, std::memory_order_relaxed);
+        }
+        complete.wait();
+      }
+    });
   }
-  gPtr.make_mock([] { return new int(1); });
+
+  for (size_t i = 0; i < kIterations; ++i) {
+    const auto mockValue = static_cast<int>(i % 2);
+    start.wait();
+    gPtr.make_mock([mockValue] { return new int(mockValue); });
+    complete.wait();
+    EXPECT_EQ(gPtr.get(), mockValue);
+  }
+
   for (auto& t : threads) {
     t.join();
   }
+  EXPECT_TRUE(valuesValid.load(std::memory_order_relaxed));
 }
 
 // TSAN will SIGSEGV if the shutdown timer activates (it spawns a new thread,
