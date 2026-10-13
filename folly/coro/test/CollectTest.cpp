@@ -26,6 +26,7 @@
 #include <folly/coro/Promise.h>
 #include <folly/coro/Sleep.h>
 #include <folly/coro/Task.h>
+#include <folly/coro/detail/InlineTask.h>
 #include <folly/coro/safe/NowTask.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/ManualExecutor.h>
@@ -490,6 +491,101 @@ TEST_F(CollectAllTest, TaskWithExecutorUsage) {
 }
 
 class CollectAllTryTest : public testing::Test {};
+
+namespace {
+struct AwaitableWithTry {
+  folly::Try<int> result;
+  bool& usedTry;
+
+  bool await_ready() noexcept { return true; }
+  void await_suspend(folly::coro::coroutine_handle<>) noexcept {}
+  [[maybe_unused]] int await_resume();
+
+  folly::Try<int> await_resume_try() noexcept {
+    usedTry = true;
+    return std::move(result);
+  }
+};
+
+struct ThrowOnMove {
+  ThrowOnMove() {}
+  [[noreturn]] ThrowOnMove(ThrowOnMove&&) noexcept(false) { throw ErrorA{}; }
+  ThrowOnMove& operator=(ThrowOnMove&&) = delete;
+};
+
+struct ThrowOnMoveAwaitable {
+  bool await_ready() noexcept { return true; }
+  void await_suspend(folly::coro::coroutine_handle<>) noexcept {}
+  [[maybe_unused]] ThrowOnMove await_resume();
+  folly::Try<ThrowOnMove> await_resume_try() {
+    return folly::Try<ThrowOnMove>{std::in_place};
+  }
+};
+
+static_assert(!folly::coro::detail::collect_detail::can_co_awaitTry_v<
+              folly::coro::detail::InlineTask<int>>);
+static_assert(!folly::coro::detail::collect_detail::can_co_awaitTry_v<
+              folly::coro::detail::InlineTask<void>>);
+static_assert(
+    folly::coro::detail::collect_detail::can_co_awaitTry_v<AwaitableWithTry>);
+static_assert(folly::coro::detail::collect_detail::can_co_awaitTry_v<
+              folly::coro::now_task<int>>);
+} // namespace
+
+CO_TEST_F(CollectAllTryTest, UsesAwaitResumeTry) {
+  bool successUsedTry = false;
+  bool failureUsedTry = false;
+  auto [success, failure, voidFailure] = co_await folly::coro::collectAllTry(
+      AwaitableWithTry{folly::Try<int>{123}, successUsedTry},
+      AwaitableWithTry{
+          folly::Try<int>{folly::make_exception_wrapper<ErrorA>()},
+          failureUsedTry},
+      []() -> folly::coro::Task<void> {
+        co_yield folly::coro::co_error(ErrorB{});
+      }());
+  EXPECT_TRUE(successUsedTry);
+  EXPECT_TRUE(failureUsedTry);
+  EXPECT_EQ(123, success.value());
+  EXPECT_TRUE(failure.hasException<ErrorA>());
+  EXPECT_TRUE(voidFailure.hasException<ErrorB>());
+}
+
+CO_TEST_F(CollectAllTryTest, AwaitablesWithoutAwaitResumeTry) {
+  auto [value, voidValue, error, voidError, taskValue] =
+      co_await folly::coro::collectAllTry(
+          []() -> folly::coro::detail::InlineTask<int> { co_return 123; }(),
+          []() -> folly::coro::detail::InlineTask<void> { co_return; }(),
+          []() -> folly::coro::detail::InlineTask<int> {
+            co_await folly::coro::suspend_never{};
+            throw ErrorA{};
+          }(),
+          []() -> folly::coro::detail::InlineTask<void> {
+            co_await folly::coro::suspend_never{};
+            throw ErrorB{};
+          }(),
+          []() -> folly::coro::Task<int> { co_return 456; }());
+  EXPECT_EQ(123, value.value());
+  EXPECT_TRUE(voidValue.hasValue());
+  EXPECT_TRUE(error.hasException<ErrorA>());
+  EXPECT_TRUE(voidError.hasException<ErrorB>());
+  EXPECT_EQ(456, taskValue.value());
+}
+
+CO_TEST_F(CollectAllTryTest, MoveOnlyAndReferenceResults) {
+  int value = 123;
+  auto [owned, reference] = co_await folly::coro::collectAllTry(
+      []() -> folly::coro::Task<std::unique_ptr<int>> {
+        co_return std::make_unique<int>(456);
+      }(),
+      [&]() -> folly::coro::Task<int&> { co_return value; }());
+  EXPECT_EQ(456, *owned.value());
+  EXPECT_EQ(&value, &reference.value().get());
+}
+
+CO_TEST_F(CollectAllTryTest, CapturesExceptionsFromResultStorage) {
+  auto [result] = co_await folly::coro::collectAllTry(ThrowOnMoveAwaitable{});
+  EXPECT_TRUE(result.hasException<ErrorA>());
+}
 
 CO_TEST_F(CollectAllTryTest, NowTask) {
   auto [a, b] = co_await folly::coro::collectAllTry(
@@ -1182,6 +1278,36 @@ TEST_F(CollectAllRangeTest, GeneratorFromEmptyRange) {
 }
 
 class CollectAllTryRangeTest : public testing::Test {};
+
+CO_TEST_F(CollectAllTryRangeTest, AwaitablesWithoutAwaitResumeTry) {
+  std::vector<folly::coro::detail::InlineTask<int>> awaitables;
+  awaitables.push_back([]() -> folly::coro::detail::InlineTask<int> {
+    co_return 123;
+  }());
+  awaitables.push_back([]() -> folly::coro::detail::InlineTask<int> {
+    co_await folly::coro::suspend_never{};
+    throw ErrorA{};
+  }());
+  auto results =
+      co_await folly::coro::collectAllTryRange(std::move(awaitables));
+  CO_ASSERT_EQ(2, results.size());
+  EXPECT_EQ(123, results[0].value());
+  EXPECT_TRUE(results[1].hasException<ErrorA>());
+
+  std::vector<folly::coro::detail::InlineTask<void>> voidAwaitables;
+  voidAwaitables.push_back([]() -> folly::coro::detail::InlineTask<void> {
+    co_return;
+  }());
+  voidAwaitables.push_back([]() -> folly::coro::detail::InlineTask<void> {
+    co_await folly::coro::suspend_never{};
+    throw ErrorB{};
+  }());
+  auto voidResults =
+      co_await folly::coro::collectAllTryRange(std::move(voidAwaitables));
+  CO_ASSERT_EQ(2, voidResults.size());
+  EXPECT_TRUE(voidResults[0].hasValue());
+  EXPECT_TRUE(voidResults[1].hasException<ErrorB>());
+}
 
 TEST_F(CollectAllTryRangeTest, RangeOfVoidSomeFailing) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {

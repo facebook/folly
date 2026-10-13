@@ -16,8 +16,7 @@
 
 // Benchmark comparing co_awaitTry vs try/catch for collecting results from
 // multiple coroutines into folly::Try values. The try/catch baseline uses the
-// same barrier/scheduling machinery as the real collectAllTryRange, matching
-// the original implementation before it was converted to co_awaitTry.
+// production collectors with await_resume_try() hidden on the input tasks.
 
 #include <folly/Benchmark.h>
 #include <folly/Try.h>
@@ -25,12 +24,9 @@
 #include <folly/coro/Collect.h>
 #include <folly/coro/Task.h>
 #include <folly/coro/ViaIfAsync.h>
-#include <folly/coro/detail/Barrier.h>
-#include <folly/coro/detail/BarrierTask.h>
-#include <folly/coro/detail/CurrentAsyncFrame.h>
-#include <folly/coro/detail/Helpers.h>
-#include <folly/io/async/Request.h>
 
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #if FOLLY_HAS_COROUTINES
@@ -45,239 +41,208 @@ folly::coro::Task<int> failingTask() {
   co_yield folly::coro::co_error(BenchmarkError{});
 }
 
-// Old collectAllTryRange implementation using try/catch (before the
-// co_awaitTry conversion). Uses the same barrier machinery as the real
-// implementation for an apples-to-apples comparison.
-namespace folly::coro {
+namespace {
 
-namespace benchmark_detail {
-template <typename InputRange>
-auto collectAllTryRangeWithTryCatchImpl(InputRange awaitables)
-    -> Task<std::vector<detail::collect_all_try_range_component_t<
-        detail::range_reference_t<InputRange>>>> {
-  std::vector<detail::collect_all_try_range_component_t<
-      detail::range_reference_t<InputRange>>>
-      results;
+template <typename Awaitable>
+class WithoutTryAwaiter
+    : public folly::coro::detail::ValueOnlyAwaiterBase<Awaitable> {
+  using Base = folly::coro::detail::ValueOnlyAwaiterBase<Awaitable>;
 
-  const folly::Executor::KeepAlive<> executor =
-      folly::getKeepAliveToken(co_await co_current_executor);
+ public:
+  explicit WithoutTryAwaiter(Awaitable&& awaitable)
+      : Base(static_cast<Awaitable&&>(awaitable)) {}
 
-  const CancellationToken& cancelToken = co_await co_current_cancellation_token;
+  auto await_resume() FOLLY_DETAIL_FORWARD_BODY(this->awaiter_.await_resume())
+};
 
-  using awaitable_type = remove_cvref_t<detail::range_reference_t<InputRange>>;
-  auto makeTask = [&](awaitable_type semiAwaitable, std::size_t index)
-      -> detail::BarrierTask {
-    assert(index < results.size());
-    auto& result = results[index];
-    // Original try/catch pattern
-    try {
-      using await_result = semi_await_result_t<awaitable_type>;
-      if constexpr (std::is_void_v<await_result>) {
-        co_await co_viaIfAsync(
-            executor.get_alias(),
-            co_withCancellation(cancelToken, std::move(semiAwaitable)));
-        result.emplace();
-      } else {
-        result.emplace(
-            co_await co_viaIfAsync(
-                executor.get_alias(),
-                co_withCancellation(cancelToken, std::move(semiAwaitable))));
-      }
-    } catch (...) {
-      result.emplaceException(current_exception());
-    }
-  };
+template <typename Awaitable>
+class [[FOLLY_ATTR_CLANG_CORO_AWAIT_ELIDABLE]] WithoutTryAwaitable
+    : public folly::coro::detail::
+          CommutativeWrapperAwaitable<WithoutTryAwaitable, Awaitable> {
+ public:
+  using folly::coro::detail::CommutativeWrapperAwaitable<
+      WithoutTryAwaitable,
+      Awaitable>::CommutativeWrapperAwaitable;
 
-  auto tasks = detail::collectMakeInnerTaskVec(awaitables, makeTask);
-
-  results.resize(tasks.size());
-
-  const auto context = RequestContext::saveContext();
-  auto& asyncFrame = co_await detail::co_current_async_stack_frame;
-
+  auto operator co_await() &&
+    requires folly::coro::is_awaitable_v<Awaitable>
   {
-    detail::Barrier barrier{tasks.size() + 1};
-    for (auto&& task : tasks) {
-      task.start(&barrier, asyncFrame);
-      RequestContext::setContext(context);
-    }
-    co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
+    return WithoutTryAwaiter<Awaitable>{std::move(this->inner_)};
   }
+};
 
-  co_return results;
+using Task = folly::coro::Task<int>;
+using TaskWithoutTry = WithoutTryAwaitable<Task>;
+using Awaiter = folly::coro::semi_await_awaitable_t<Task>;
+using AwaiterWithoutTry = folly::coro::semi_await_awaitable_t<TaskWithoutTry>;
+
+static_assert(folly::coro::detail::collect_detail::can_co_awaitTry_v<Task>);
+static_assert(
+    !folly::coro::detail::collect_detail::can_co_awaitTry_v<TaskWithoutTry>);
+static_assert(std::is_same_v<
+              folly::coro::semi_await_result_t<TaskWithoutTry>,
+              folly::coro::semi_await_result_t<Task>>);
+static_assert(std::is_same_v<
+              decltype(folly::coro::co_withAsyncStack(
+                  std::declval<AwaiterWithoutTry>())),
+              AwaiterWithoutTry>);
+static_assert(sizeof(TaskWithoutTry) == sizeof(Task));
+static_assert(sizeof(AwaiterWithoutTry) == sizeof(Awaiter));
+static_assert(
+    sizeof(folly::coro::awaiter_type_t<AwaiterWithoutTry>) == sizeof(Awaiter));
+
+} // namespace
+
+template <bool UseTryCatch>
+auto makeBenchmarkTask(bool fail, int value) {
+  auto task = fail ? failingTask() : succeedingTask(value);
+  if constexpr (UseTryCatch) {
+    return TaskWithoutTry{std::move(task)};
+  } else {
+    return task;
+  }
 }
-} // namespace benchmark_detail
 
-// std::vector overload that wraps with MoveRange (mirrors the real API)
-template <typename SemiAwaitable>
-auto collectAllTryRangeWithTryCatch(std::vector<SemiAwaitable> awaitables)
-    -> decltype(benchmark_detail::collectAllTryRangeWithTryCatchImpl(
-        detail::MoveRange(awaitables))) {
-  co_return co_await benchmark_detail::collectAllTryRangeWithTryCatchImpl(
-      detail::MoveRange(awaitables));
+template <bool UseTryCatch, size_t Failures, size_t... Indices>
+void benchmarkCollectAllTry(size_t iters, std::index_sequence<Indices...>) {
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    for (size_t iter = 0; iter < iters; ++iter) {
+      auto results = co_await folly::coro::collectAllTry(
+          makeBenchmarkTask<UseTryCatch>(Indices < Failures, int(Indices))...);
+      folly::doNotOptimizeAway(results);
+    }
+  }());
 }
 
-} // namespace folly::coro
+BENCHMARK(coAwaitTry_VariadicAllSucceed_8, iters) {
+  benchmarkCollectAllTry<false, 0>(iters, std::make_index_sequence<8>{});
+}
+BENCHMARK_RELATIVE(tryCatch_VariadicAllSucceed_8, iters) {
+  benchmarkCollectAllTry<true, 0>(iters, std::make_index_sequence<8>{});
+}
+BENCHMARK_DRAW_LINE();
 
-// ---------------------------------------------------------------------------
-// All tasks succeed (100 tasks)
-// ---------------------------------------------------------------------------
+BENCHMARK(coAwaitTry_VariadicAllFail_8, iters) {
+  benchmarkCollectAllTry<false, 8>(iters, std::make_index_sequence<8>{});
+}
+BENCHMARK_RELATIVE(tryCatch_VariadicAllFail_8, iters) {
+  benchmarkCollectAllTry<true, 8>(iters, std::make_index_sequence<8>{});
+}
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(coAwaitTry_VariadicHalfFail_8, iters) {
+  benchmarkCollectAllTry<false, 4>(iters, std::make_index_sequence<8>{});
+}
+BENCHMARK_RELATIVE(tryCatch_VariadicHalfFail_8, iters) {
+  benchmarkCollectAllTry<true, 4>(iters, std::make_index_sequence<8>{});
+}
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(coAwaitTry_VariadicSingleSuccess, iters) {
+  benchmarkCollectAllTry<false, 0>(iters, std::make_index_sequence<1>{});
+}
+BENCHMARK_RELATIVE(tryCatch_VariadicSingleSuccess, iters) {
+  benchmarkCollectAllTry<true, 0>(iters, std::make_index_sequence<1>{});
+}
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(coAwaitTry_VariadicSingleFailure, iters) {
+  benchmarkCollectAllTry<false, 1>(iters, std::make_index_sequence<1>{});
+}
+BENCHMARK_RELATIVE(tryCatch_VariadicSingleFailure, iters) {
+  benchmarkCollectAllTry<true, 1>(iters, std::make_index_sequence<1>{});
+}
+BENCHMARK_DRAW_LINE();
+
+template <
+    bool UseTryCatch,
+    size_t TaskCount,
+    typename IsFailure,
+    typename Collect>
+void benchmarkCollectRange(size_t iters, IsFailure isFailure, Collect collect) {
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    for (size_t iter = 0; iter < iters; ++iter) {
+      std::vector<decltype(makeBenchmarkTask<UseTryCatch>(false, 0))> tasks;
+      tasks.reserve(TaskCount);
+      for (size_t i = 0; i < TaskCount; ++i) {
+        tasks.push_back(makeBenchmarkTask<UseTryCatch>(isFailure(i), int(i)));
+      }
+      auto results = co_await collect(std::move(tasks));
+      folly::doNotOptimizeAway(results);
+    }
+  }());
+}
+
+template <bool UseTryCatch, size_t Failures>
+void benchmarkCollectAllTryRange(size_t iters) {
+  benchmarkCollectRange<UseTryCatch, 100>(
+      iters,
+      [](size_t index) {
+        return Failures == 100 || (Failures == 50 && index % 2 != 0);
+      },
+      [](auto tasks) {
+        return folly::coro::collectAllTryRange(std::move(tasks));
+      });
+}
+
 BENCHMARK(coAwaitTry_AllSucceed_100, iters) {
-  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
-    for (size_t iter = 0; iter < iters; ++iter) {
-      std::vector<folly::coro::Task<int>> tasks;
-      tasks.reserve(100);
-      for (int i = 0; i < 100; ++i) {
-        tasks.push_back(succeedingTask(i));
-      }
-      auto results = co_await folly::coro::collectAllTryRange(std::move(tasks));
-      folly::doNotOptimizeAway(results);
-    }
-  }());
+  benchmarkCollectAllTryRange<false, 0>(iters);
 }
-
 BENCHMARK_RELATIVE(tryCatch_AllSucceed_100, iters) {
-  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
-    for (size_t iter = 0; iter < iters; ++iter) {
-      std::vector<folly::coro::Task<int>> tasks;
-      tasks.reserve(100);
-      for (int i = 0; i < 100; ++i) {
-        tasks.push_back(succeedingTask(i));
-      }
-      auto results = co_await folly::coro::collectAllTryRangeWithTryCatch(
-          std::move(tasks));
-      folly::doNotOptimizeAway(results);
-    }
-  }());
+  benchmarkCollectAllTryRange<true, 0>(iters);
 }
-
 BENCHMARK_DRAW_LINE();
 
-// ---------------------------------------------------------------------------
-// All tasks fail (100 tasks)
-// ---------------------------------------------------------------------------
 BENCHMARK(coAwaitTry_AllFail_100, iters) {
-  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
-    for (size_t iter = 0; iter < iters; ++iter) {
-      std::vector<folly::coro::Task<int>> tasks;
-      tasks.reserve(100);
-      for (int i = 0; i < 100; ++i) {
-        tasks.push_back(failingTask());
-      }
-      auto results = co_await folly::coro::collectAllTryRange(std::move(tasks));
-      folly::doNotOptimizeAway(results);
-    }
-  }());
+  benchmarkCollectAllTryRange<false, 100>(iters);
 }
-
 BENCHMARK_RELATIVE(tryCatch_AllFail_100, iters) {
-  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
-    for (size_t iter = 0; iter < iters; ++iter) {
-      std::vector<folly::coro::Task<int>> tasks;
-      tasks.reserve(100);
-      for (int i = 0; i < 100; ++i) {
-        tasks.push_back(failingTask());
-      }
-      auto results = co_await folly::coro::collectAllTryRangeWithTryCatch(
-          std::move(tasks));
-      folly::doNotOptimizeAway(results);
-    }
-  }());
+  benchmarkCollectAllTryRange<true, 100>(iters);
 }
-
 BENCHMARK_DRAW_LINE();
 
-// ---------------------------------------------------------------------------
-// 50% tasks fail (100 tasks)
-// ---------------------------------------------------------------------------
 BENCHMARK(coAwaitTry_HalfFail_100, iters) {
-  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
-    for (size_t iter = 0; iter < iters; ++iter) {
-      std::vector<folly::coro::Task<int>> tasks;
-      tasks.reserve(100);
-      for (int i = 0; i < 100; ++i) {
-        if (i % 2 == 0) {
-          tasks.push_back(succeedingTask(i));
-        } else {
-          tasks.push_back(failingTask());
-        }
-      }
-      auto results = co_await folly::coro::collectAllTryRange(std::move(tasks));
-      folly::doNotOptimizeAway(results);
-    }
-  }());
+  benchmarkCollectAllTryRange<false, 50>(iters);
 }
-
 BENCHMARK_RELATIVE(tryCatch_HalfFail_100, iters) {
-  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
-    for (size_t iter = 0; iter < iters; ++iter) {
-      std::vector<folly::coro::Task<int>> tasks;
-      tasks.reserve(100);
-      for (int i = 0; i < 100; ++i) {
-        if (i % 2 == 0) {
-          tasks.push_back(succeedingTask(i));
-        } else {
-          tasks.push_back(failingTask());
-        }
-      }
-      auto results = co_await folly::coro::collectAllTryRangeWithTryCatch(
-          std::move(tasks));
-      folly::doNotOptimizeAway(results);
-    }
-  }());
+  benchmarkCollectAllTryRange<true, 50>(iters);
 }
-
 BENCHMARK_DRAW_LINE();
 
-// ---------------------------------------------------------------------------
-// Single task (isolate per-task overhead)
-// ---------------------------------------------------------------------------
-BENCHMARK(coAwaitTry_SingleSuccess, iters) {
+template <bool UseTryCatch, bool Fail>
+void benchmarkSingleTask(size_t iters) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     for (size_t iter = 0; iter < iters; ++iter) {
-      auto result = co_await folly::coro::co_awaitTry(succeedingTask(42));
-      folly::doNotOptimizeAway(result);
-    }
-  }());
-}
-
-BENCHMARK_RELATIVE(tryCatch_SingleSuccess, iters) {
-  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
-    for (size_t iter = 0; iter < iters; ++iter) {
-      folly::Try<int> result;
-      try {
-        result.emplace(co_await succeedingTask(42));
-      } catch (...) {
-        result.emplaceException(folly::current_exception());
+      if constexpr (UseTryCatch) {
+        folly::Try<int> result;
+        try {
+          result.emplace(co_await makeBenchmarkTask<true>(Fail, 42));
+        } catch (...) {
+          result.emplaceException(folly::current_exception());
+        }
+        folly::doNotOptimizeAway(result);
+      } else {
+        auto result = co_await folly::coro::co_awaitTry(
+            makeBenchmarkTask<false>(Fail, 42));
+        folly::doNotOptimizeAway(result);
       }
-      folly::doNotOptimizeAway(result);
     }
   }());
 }
 
+BENCHMARK(coAwaitTry_SingleSuccess, iters) {
+  benchmarkSingleTask<false, false>(iters);
+}
+BENCHMARK_RELATIVE(tryCatch_SingleSuccess, iters) {
+  benchmarkSingleTask<true, false>(iters);
+}
 BENCHMARK_DRAW_LINE();
 
 BENCHMARK(coAwaitTry_SingleFailure, iters) {
-  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
-    for (size_t iter = 0; iter < iters; ++iter) {
-      auto result = co_await folly::coro::co_awaitTry(failingTask());
-      folly::doNotOptimizeAway(result);
-    }
-  }());
+  benchmarkSingleTask<false, true>(iters);
 }
-
 BENCHMARK_RELATIVE(tryCatch_SingleFailure, iters) {
-  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
-    for (size_t iter = 0; iter < iters; ++iter) {
-      folly::Try<int> result;
-      try {
-        result.emplace(co_await failingTask());
-      } catch (...) {
-        result.emplaceException(folly::current_exception());
-      }
-      folly::doNotOptimizeAway(result);
-    }
-  }());
+  benchmarkSingleTask<true, true>(iters);
 }
 
 #endif

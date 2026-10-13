@@ -72,13 +72,9 @@ std::vector<RTask> collectMakeInnerTaskVec(InputRange& awaitables, Make& make) {
 }
 
 namespace collect_detail {
-// Detection trait for whether co_awaitTry can be applied to a type
 template <typename T>
-using detect_co_awaitTry_t = decltype(co_awaitTry(std::declval<T>()));
-
-template <typename T>
-inline constexpr bool has_co_awaitTry_v =
-    folly::is_detected_v<detect_co_awaitTry_t, T>;
+inline constexpr bool can_co_awaitTry_v =
+    is_awaitable_try<semi_await_awaitable_t<T>>;
 } // namespace collect_detail
 
 template <typename SemiAwaitableMover, typename Result>
@@ -88,7 +84,13 @@ BarrierTask makeCollectAllTryTask(
     SemiAwaitableMover&& mover,
     Try<Result>& result) {
   try {
-    if constexpr (std::is_void_v<Result>) {
+    using awaitable_type = decltype(static_cast<SemiAwaitableMover&&>(mover)());
+    if constexpr (collect_detail::can_co_awaitTry_v<awaitable_type>) {
+      result = co_await co_awaitTry(co_viaIfAsync(
+          std::move(executor),
+          co_withCancellation(
+              cancelToken, static_cast<SemiAwaitableMover&&>(mover)())));
+    } else if constexpr (std::is_void_v<Result>) {
       co_await co_viaIfAsync(
           std::move(executor),
           co_withCancellation(
@@ -585,7 +587,7 @@ auto collectAllTryRange(InputRange awaitables)
       -> detail::BarrierTask {
     assert(index < results.size());
     auto& result = results[index];
-    if constexpr (detail::collect_detail::has_co_awaitTry_v<awaitable_type>) {
+    if constexpr (detail::collect_detail::can_co_awaitTry_v<awaitable_type>) {
       // Fast path: use co_awaitTry to avoid exception rethrow overhead
       result = co_await co_awaitTry(co_viaIfAsync(
           executor.get_alias(),
