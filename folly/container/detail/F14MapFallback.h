@@ -427,7 +427,14 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   }
 
  public:
-  using Super::equal_range;
+  std::pair<iterator, iterator> equal_range(key_type const& key) {
+    return Super::equal_range(key);
+  }
+
+  std::pair<const_iterator, const_iterator> equal_range(
+      key_type const& key) const {
+    return Super::equal_range(key);
+  }
 
   template <typename K2>
   EnableHeterogeneousFind<K2, std::pair<iterator, iterator>> equal_range(

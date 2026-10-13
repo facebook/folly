@@ -248,14 +248,16 @@ class F14BasicSet
   }
 
  public:
-  using Super::count;
+  size_type count(key_type const& key) const { return Super::count(key); }
 
   template <typename K>
   EnableHeterogeneousFind<K, size_type> count(K const& key) const {
     return contains(key) ? 1 : 0;
   }
 
-  using Super::find;
+  iterator find(key_type const& key) { return Super::find(key); }
+
+  const_iterator find(key_type const& key) const { return Super::find(key); }
 
   template <typename K>
   EnableHeterogeneousFind<K, iterator> find(K const& key) {
@@ -286,7 +288,14 @@ class F14BasicSet
   }
 
  public:
-  using Super::equal_range;
+  std::pair<iterator, iterator> equal_range(key_type const& key) {
+    return Super::equal_range(key);
+  }
+
+  std::pair<const_iterator, const_iterator> equal_range(
+      key_type const& key) const {
+    return Super::equal_range(key);
+  }
 
   template <typename K>
   EnableHeterogeneousFind<K, std::pair<iterator, iterator>> equal_range(
