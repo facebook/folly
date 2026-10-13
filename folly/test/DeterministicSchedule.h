@@ -593,11 +593,11 @@ namespace test {
 
 /* Futex extensions for DeterministicSchedule based Futexes */
 int futexWakeImpl(
-    const detail::Futex<test::DeterministicAtomic>* futex,
+    const folly::detail::Futex<test::DeterministicAtomic>* futex,
     int count,
     uint32_t wakeMask);
-detail::FutexResult futexWaitImpl(
-    const detail::Futex<test::DeterministicAtomic>* futex,
+folly::detail::FutexResult futexWaitImpl(
+    const folly::detail::Futex<test::DeterministicAtomic>* futex,
     uint32_t expected,
     std::chrono::system_clock::time_point const* absSystemTime,
     std::chrono::steady_clock::time_point const* absSteadyTime,
@@ -607,10 +607,10 @@ detail::FutexResult futexWaitImpl(
  * BufferedDeterministicAtomic.*/
 template <template <typename> class Atom>
 int deterministicFutexWakeImpl(
-    const detail::Futex<Atom>* futex,
+    const folly::detail::Futex<Atom>* futex,
     std::mutex& futexLock,
     std::unordered_map<
-        const detail::Futex<Atom>*,
+        const folly::detail::Futex<Atom>*,
         std::list<std::pair<uint32_t, bool*>>>& futexQueues,
     int count,
     uint32_t wakeMask) {
@@ -644,11 +644,11 @@ int deterministicFutexWakeImpl(
 }
 
 template <template <typename> class Atom>
-detail::FutexResult deterministicFutexWaitImpl(
-    const detail::Futex<Atom>* futex,
+folly::detail::FutexResult deterministicFutexWaitImpl(
+    const folly::detail::Futex<Atom>* futex,
     std::mutex& futexLock,
     std::unordered_map<
-        const detail::Futex<Atom>*,
+        const folly::detail::Futex<Atom>*,
         std::list<std::pair<uint32_t, bool*>>>& futexQueues,
     uint32_t expected,
     std::chrono::system_clock::time_point const* absSystemTimeout,
