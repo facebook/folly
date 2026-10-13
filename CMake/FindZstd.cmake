@@ -29,7 +29,7 @@ include(SelectLibraryConfigurations)
 select_library_configurations(ZSTD)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(ZSTD DEFAULT_MSG ZSTD_LIBRARY
+find_package_handle_standard_args(Zstd DEFAULT_MSG ZSTD_LIBRARY
                                   ZSTD_INCLUDE_DIR)
 
 if (ZSTD_FOUND)
