@@ -390,7 +390,7 @@ struct RegexMatchCacheTest : testing::Test {
       time_point const now) {
     keys.add(key);
     auto matcher = RegexMatchCache::compile(key);
-    return cache.initPrepareToFindMatches(key, std::move(matcher), now);
+    return cache.initPrepareToFindMatches(std::move(matcher), now);
   }
 
   RegexMatchCache::PrepareHandle initBuild(
@@ -675,22 +675,51 @@ TEST_F(RegexMatchCacheTest, matcher) {
   EXPECT_TRUE(matcher("bar"));
   EXPECT_FALSE(matcher("baz"));
 
-  //  Matcher is move-only and stays usable after being moved-from-into
-  auto const moved = std::move(matcher);
-  EXPECT_TRUE(moved("foo"));
-  EXPECT_FALSE(moved("qux"));
+  auto const movedTo = std::move(matcher);
+  EXPECT_TRUE(movedTo("foo"));
+  EXPECT_FALSE(movedTo("qux"));
 }
 
-TEST_F(RegexMatchCacheTest, init_rejects_matcher_from_another_pattern) {
+TEST_F(RegexMatchCacheTest, prepare_handles_retain_shared_compiled_state) {
+  auto const foo = "foo"s;
+  auto const bar = "bar"s;
+  constexpr auto xFooOrBar = "foo|bar"sv;
+  auto const key = RegexMatchCacheKeyAndView(xFooOrBar);
+  keys.add(key);
+
+  RegexMatchCache first;
+  RegexMatchCache second;
+  first.addString(&foo);
+  second.addString(&bar);
+
+  auto handles = [&] {
+    auto matcher = RegexMatchCache::compile(key);
+    return std::pair{
+        first.initPrepareToFindMatches(matcher, clock::now()),
+        second.initPrepareToFindMatches(matcher, clock::now())};
+  }();
+
+  first.finiPrepareToFindMatches(std::move(handles.first).evaluate());
+  second.finiPrepareToFindMatches(std::move(handles.second).evaluate());
+  checkConsistency(first);
+  checkConsistency(second);
+  EXPECT_THAT(
+      std::as_const(first).findMatches(key, time_point() + 5s),
+      testing::UnorderedElementsAre(&foo));
+  EXPECT_THAT(
+      std::as_const(second).findMatches(key, time_point() + 5s),
+      testing::UnorderedElementsAre(&bar));
+}
+
+TEST_F(RegexMatchCacheTest, init_rejects_moved_from_matcher) {
   constexpr auto xFoo = "foo"sv;
-  constexpr auto xBar = "bar"sv;
   RegexMatchCache cache;
 
-  auto const key = RegexMatchCacheKeyAndView(xFoo);
+  auto matcher = RegexMatchCache::compile(xFoo);
+  [[maybe_unused]] auto movedTo = std::move(matcher);
   EXPECT_DEATH(
-      cache.initPrepareToFindMatches(
-          key, RegexMatchCache::compile(xBar), clock::now()),
-      "matcher compiled from another pattern");
+      cache.initPrepareToFindMatches(std::move(matcher), clock::now()),
+      "matcher has no compiled pattern");
 }
 
 TEST_F(RegexMatchCacheTest, off_lock_build) {

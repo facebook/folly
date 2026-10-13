@@ -52,7 +52,7 @@ class RegexMatchCache::RegexObject {
 };
 
 RegexMatchCache::Matcher::Matcher(
-    regex_key key, std::unique_ptr<RegexObject> impl) noexcept
+    regex_key key, std::shared_ptr<RegexObject const> impl) noexcept
     : key_{key}, impl_{std::move(impl)} {}
 
 RegexMatchCache::Matcher::Matcher(Matcher&&) noexcept = default;
@@ -66,7 +66,7 @@ bool RegexMatchCache::Matcher::operator()(std::string_view const string) const {
 
 RegexMatchCache::Matcher RegexMatchCache::compile(
     std::string_view const regex) {
-  return Matcher{regex_key{regex}, std::make_unique<RegexObject>(regex)};
+  return Matcher{regex_key{regex}, std::make_shared<RegexObject const>(regex)};
 }
 
 RegexMatchCache::PrepareHandle::PrepareHandle(
@@ -117,12 +117,13 @@ size_t RegexMatchCache::numQueuedStringsFor(regex_key const& regex) const {
 }
 
 RegexMatchCache::PrepareHandle RegexMatchCache::initPrepareToFindMatches(
-    regex_key_and_view const& regex, Matcher matcher, time_point const now) {
-  CHECK(matcher.key_ == regex.key) << "matcher compiled from another pattern";
+    Matcher matcher, time_point const now) {
+  CHECK(matcher.impl_) << "matcher has no compiled pattern";
+  auto const regex = matcher.key_;
   addRegex(regex);
   markAccessed(regex, now);
   auto queue = getStringQueueFor(regex);
-  return PrepareHandle{regex.key, std::move(matcher), std::move(queue)};
+  return PrepareHandle{regex, std::move(matcher), std::move(queue)};
 }
 
 void RegexMatchCache::finiPrepareToFindMatches(PrepareResult result) {

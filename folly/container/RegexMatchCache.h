@@ -472,7 +472,7 @@ class RegexMatchCacheKeyAndView {
 ///
 ///    auto matcher = RegexMatchCache::compile(regex); // static
 ///    auto handle = // non-const
-///        cache.initPrepareToFindMatches(regex, std::move(matcher), now);
+///        cache.initPrepareToFindMatches(std::move(matcher), now);
 ///    auto result = std::move(handle).evaluate(); // no lock held
 ///    cache.finiPrepareToFindMatches(std::move(result)); // non-const
 ///    if (!cache.isReadyToFindMatches(regex)) { // const
@@ -643,24 +643,23 @@ class RegexMatchCache {
     auto end() const noexcept { return matches_.end(); }
   };
 
-  /// A compiled regex that evaluates strings with no lock held. Produced by
-  /// compile(); results publish back via finiPrepareToFindMatches(). Carries
-  /// the key of the pattern it was compiled from, which
-  /// initPrepareToFindMatches CHECKs against the regex being built -- a
-  /// matcher paired with the wrong regex aborts.
+  /// A compiled regex produced by compile(). Copies share immutable compiled
+  /// state. initPrepareToFindMatches() builds the pattern it was compiled from.
   ///
-  /// Move-assignment is deleted here and on PrepareHandle and PrepareResult:
+  /// Assignment is deleted here and on PrepareHandle and PrepareResult:
   /// each holds a regex_key, whose underlying data member is const.
   class Matcher {
    private:
     friend class RegexMatchCache;
 
     regex_key key_;
-    std::unique_ptr<RegexObject> impl_;
+    std::shared_ptr<RegexObject const> impl_;
 
-    Matcher(regex_key key, std::unique_ptr<RegexObject> impl) noexcept;
+    Matcher(regex_key key, std::shared_ptr<RegexObject const> impl) noexcept;
 
    public:
+    Matcher(Matcher const&) = default;
+    Matcher& operator=(Matcher const&) = delete;
     Matcher(Matcher&&) noexcept;
     Matcher& operator=(Matcher&&) = delete;
     ~Matcher();
@@ -760,13 +759,11 @@ class RegexMatchCache {
 
   size_t numQueuedStringsFor(regex_key const& regex) const;
 
-  /// Begins an off-lock build. Under the caller's lock, registers the regex,
-  /// stamps it accessed-at now, and snapshots its string-queue into the
-  /// returned handle, which the caller then evaluates with no lock held.
-  ///
-  /// matcher must have been compiled from the same pattern as regex.
-  PrepareHandle initPrepareToFindMatches(
-      regex_key_and_view const& regex, Matcher matcher, time_point now);
+  /// Begins an off-lock build of the pattern matcher was compiled from. Under
+  /// the caller's lock, registers the regex, stamps it accessed-at now, and
+  /// snapshots its string-queue into the returned handle, which the caller then
+  /// evaluates with no lock held.
+  PrepareHandle initPrepareToFindMatches(Matcher matcher, time_point now);
 
   /// Ends an off-lock build, publishing an evaluated result under the caller's
   /// lock. Publishes only the snapshotted strings, and must be called on the
