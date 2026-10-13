@@ -184,8 +184,10 @@ if (NOT LIBGFLAGS_FOUND)
   endif ()
   folly_fetch_from_manifest(gflags gflags)
   # FindGflags reports through variables; the subproject alias already carries
-  # the generated include directory, so only the library needs one.
+  # the generated include directory, so only the library needs one. Clear the
+  # failed find_path() result so it is not used as an include directory.
   set(LIBGFLAGS_LIBRARY gflags)
+  set(LIBGFLAGS_INCLUDE_DIR "")
   set(LIBGFLAGS_FOUND ON)
   set_property(
     GLOBAL APPEND PROPERTY FOLLY_BUILD_LOCAL_TARGETS gflags gflags_static
@@ -287,6 +289,9 @@ if (NOT LibEvent_FOUND)
   else ()
     set(LIBEVENT_LIB event_core_shared event_extra_shared)
   endif ()
+  # The targets carry the include directories; clear the failed find_path()
+  # result.
+  set(LIBEVENT_INCLUDE_DIR "")
   set_property(GLOBAL APPEND PROPERTY FOLLY_BUILD_LOCAL_TARGETS ${LIBEVENT_LIB})
 endif ()
 list(APPEND FOLLY_LINK_LIBRARIES ${LIBEVENT_LIB})
