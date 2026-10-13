@@ -12,10 +12,14 @@ relevant facts yet skip a needed comparison, mis-prioritize it, or repeat a
 failure under pressure. A rule earns its cost when it closes that gap, whether
 it enforces a policy or prevents a failure.
 
-Completeness and precise wording are useful only when they help the right tasks
-encounter the rule and produce the intended result. That is why reliability
-comes before brevity. The protection is the behavior, not the original wording;
-missing history does not show that the protection is unnecessary.
+A rule can also earn its cost by making already reliable behavior cheaper
+without weakening it.
+
+Reliability comes before brevity, but complexity is not evidence of reliability.
+Extra mechanism consumes attention and execution work even when it closes no
+gap. Steps can appear necessary because they support each other, even when the
+whole procedure serves no purpose. The protection is the behavior, not the
+original wording; missing history does not show that protection is unnecessary.
 
 ## [Specify the behavior](rule-design.md#specify-the-behavior)
 
@@ -26,19 +30,19 @@ The level of detail creates a tradeoff:
   competes with important instructions for attention. Details tied to one
   incident can hide the reasoning needed in other cases.
 
-Useful abstraction preserves a reasoning operation across situations. Replacing
-concrete words with broad labels does not do that. A worker can follow an
-instruction faithfully while examining the wrong subject or making the wrong
-comparison. An explicit starting point and comparison make the reasoning
-executable.
+A topic label can make workers infer different triggers or actions. Useful
+abstraction preserves a reasoning operation across situations. Replacing
+concrete words with broad labels does not do that. Even precise wording can
+direct a worker to the wrong subject or comparison. An explicit starting point
+and comparison make a judgment executable.
 
 For example, in writing guidance:
 
-- Goal: minimize reader effort.
+- Purpose: minimize reader effort.
 - Why: later points depend on context established earlier.
-- Instruction: open with the problem and make headings foreshadow the argument.
-- Review question: does the opening explain the problem, and do the sections
-  build the needed context in order?
+- Action: open with the problem and make headings foreshadow the argument.
+- Review: does the opening explain the problem, and do the sections build the
+  needed context in order?
 
 Repeated qualifications can be symptoms of one unclear decision. Consolidation
 helps when the underlying decision already gives the required answers. If the
@@ -63,6 +67,10 @@ only how it reads.
 
 ## [Validate and review](rule-design.md#validate-and-review)
 
+Checks earn their cost by covering a gap or uncertainty, not by repeating an
+inventory. Loading paths and removed clauses can contain differences the
+walkthrough's cases do not exercise.
+
 ### Literal compliance can miss the purpose
 
 > Look for an easy action that follows the words but misses the purpose.
@@ -80,14 +88,5 @@ decide which explanations survive, not just how to shorten them.
 
 ### Evidence must match the claim
 
-Recorded interpretation checks covered 4 rule-work triggers, 3 non-rule
-controls, and 3 design decisions. The model loaded the guide only for rule work,
-rejected a global rule based on one awkward answer, retained a negative
-guardrail for a recurring failure, and consolidated duplicate guidance under one
-owner.
-
-Those results support the intended interpretation in the tested cases, not
-quality gains or success rates in full tasks. This is why the guide permits a
-small proof for a move or consolidation that preserves behavior, but may require
-behavioral cases for changed instructions. The examples above explain the risks;
-they do not measure their frequency or the effectiveness of each check.
+The examples above explain the risks. They do not measure how often the failures
+occur or how well each check prevents them.
