@@ -18,6 +18,7 @@
 # ZSTD_FOUND
 # ZSTD_INCLUDE_DIR
 # ZSTD_LIBRARY
+# zstd::zstd (imported target)
 #
 
 find_path(ZSTD_INCLUDE_DIR NAMES zstd.h)
@@ -36,6 +37,24 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(
 
 if (ZSTD_FOUND)
     message(STATUS "Found Zstd: ${ZSTD_LIBRARY}")
+endif()
+
+# Not zstd::libzstd_shared or zstd::libzstd_static: those belong to zstd's own
+# package config, which may be present alongside this module.
+if (ZSTD_FOUND AND NOT TARGET zstd::zstd)
+  add_library(zstd::zstd UNKNOWN IMPORTED)
+  set_target_properties(
+    zstd::zstd
+    PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES "C"
+               INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_INCLUDE_DIR}")
+  foreach (config RELEASE DEBUG)
+    if (ZSTD_LIBRARY_${config})
+      set_property(TARGET zstd::zstd APPEND PROPERTY
+        IMPORTED_CONFIGURATIONS ${config})
+      set_target_properties(zstd::zstd PROPERTIES
+        IMPORTED_LOCATION_${config} "${ZSTD_LIBRARY_${config}}")
+    endif()
+  endforeach()
 endif()
 
 mark_as_advanced(ZSTD_INCLUDE_DIR ZSTD_LIBRARY)
