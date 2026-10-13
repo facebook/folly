@@ -193,16 +193,18 @@ void SimpleAsyncIO::submitOp(
         int rc = op_->result();
 
         auto completionExecutor = completionExecutor_;
+        auto completion = [rc, completor{std::move(completor)}]() mutable {
+          completor(rc);
+        };
 
         // make sure return opHolder before call completor: otherwise the caller
         // might start another IO assuming this one is completed. NB: the moment
         // we put the opHolder, the destructor might delete the current
         // instance. So do not access any member variables after this point!
-        // Also, obviously, do not access op_.
+        // Also, do not access op_ or captures: getOp() may reset the callback.
         putOp(std::move(opHolder));
 
-        completionExecutor->add(
-            [rc, completor{std::move(completor)}]() mutable { completor(rc); });
+        completionExecutor->add(std::move(completion));
       });
   asyncIO_->submit(op);
 }

@@ -1446,6 +1446,7 @@ fbcode_target(
         "//folly:random",
         "//folly/coro:blocking_wait",
         "//folly/coro:collect",
+        "//folly/executors:inline_executor",
         "//folly/io:iobuf",
         "//folly/io/async:async_base",
         "//folly/io/async:scoped_event_base_thread",

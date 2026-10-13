@@ -29,6 +29,7 @@
 #include <folly/Random.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Collect.h>
+#include <folly/executors/InlineExecutor.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseBackendBase.h>
@@ -84,6 +85,70 @@ TEST_P(SimpleAsyncIOTest, WriteAndReadBack) {
   ASSERT_TRUE(done.try_wait_for(std::chrono::seconds(10)));
   EXPECT_EQ(result, data.size());
   EXPECT_EQ(memcmp(buffer.data(), data.data(), data.size()), 0);
+}
+
+TEST_P(SimpleAsyncIOTest, MovesCompletorBeforeRecyclingOp) {
+  struct MoveAwareCompletor {
+    MoveAwareCompletor(
+        Function<void()>& onMove, Function<void(int)>& onComplete)
+        : onMove_(&onMove), onComplete_(&onComplete) {}
+    [[maybe_unused]] ~MoveAwareCompletor() = default;
+    MoveAwareCompletor(const MoveAwareCompletor&) = delete;
+    MoveAwareCompletor(MoveAwareCompletor&& other) noexcept
+        : onMove_(other.onMove_), onComplete_(other.onComplete_) {
+      (*onMove_)();
+    }
+    MoveAwareCompletor& operator=(const MoveAwareCompletor&) = delete;
+    MoveAwareCompletor& operator=(MoveAwareCompletor&&) = delete;
+    void operator()(int rc) { (*onComplete_)(rc); }
+
+    Function<void()>* onMove_;
+    Function<void(int)>* onComplete_;
+  };
+
+  auto tmpfile = File::temporary();
+  EventBase evb;
+  auto config = config_;
+  config.setMaxRequests(1).setEventBase(&evb).setCompletionExecutor(
+      getKeepAliveToken(InlineExecutor::instance()));
+  SimpleAsyncIO aio(config);
+  const std::string data("Completion lifetime");
+  bool armed = false;
+  int remaining = 2;
+  int nestedResult = 0;
+  auto completed = [&] {
+    if (--remaining == 0) {
+      evb.terminateLoopSoon();
+    }
+  };
+  Function<void()> onMove = [&] {
+    if (!armed) {
+      return;
+    }
+    armed = false;
+    aio.pwrite(tmpfile.fd(), data.data(), data.size(), 0, [&](int rc) {
+      nestedResult = rc;
+      completed();
+    });
+  };
+  Function<void(int)> onComplete = [&](int rc) {
+    EXPECT_EQ(rc, data.size());
+    completed();
+  };
+  aio.pwrite(
+      tmpfile.fd(),
+      data.data(),
+      data.size(),
+      0,
+      MoveAwareCompletor(onMove, onComplete));
+
+  // A nontrivial inline callable can re-enter submission while being moved.
+  // Its operation must not be reusable until that move has finished.
+  armed = true;
+  evb.runAfterDelay([&] { evb.terminateLoopSoon(); }, 10000);
+  evb.loopForever();
+  EXPECT_EQ(remaining, 0);
+  EXPECT_EQ(nestedResult, -EBUSY);
 }
 
 std::string makeRandomBinaryString(size_t size) {
@@ -185,6 +250,7 @@ TEST_P(SimpleAsyncIOTest, FreshInstancesReapTheirFirstCompletion) {
   std::atomic<int> lost = 0;
   std::atomic<int> setupFailures = 0;
   std::vector<std::thread> threads;
+  threads.reserve(kThreads);
   for (int t = 0; t < kThreads; ++t) {
     threads.emplace_back([&] {
       for (int i = 0; i < kInstancesPerThread; ++i) {
