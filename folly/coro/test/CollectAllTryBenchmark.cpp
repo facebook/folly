@@ -173,6 +173,56 @@ void benchmarkCollectRange(size_t iters, IsFailure isFailure, Collect collect) {
   }());
 }
 
+template <bool UseTryCatch, size_t TaskCount, size_t Failures>
+void benchmarkCollectAllTryWindowed(size_t iters) {
+  benchmarkCollectRange<UseTryCatch, TaskCount>(
+      iters,
+      [](size_t index) { return index < Failures; },
+      [](auto tasks) {
+        return folly::coro::collectAllTryWindowed(std::move(tasks), 8);
+      });
+}
+
+BENCHMARK(coAwaitTry_WindowedAllSucceed_100, iters) {
+  benchmarkCollectAllTryWindowed<false, 100, 0>(iters);
+}
+BENCHMARK_RELATIVE(tryCatch_WindowedAllSucceed_100, iters) {
+  benchmarkCollectAllTryWindowed<true, 100, 0>(iters);
+}
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(coAwaitTry_WindowedAllFail_100, iters) {
+  benchmarkCollectAllTryWindowed<false, 100, 100>(iters);
+}
+BENCHMARK_RELATIVE(tryCatch_WindowedAllFail_100, iters) {
+  benchmarkCollectAllTryWindowed<true, 100, 100>(iters);
+}
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(coAwaitTry_WindowedHalfFail_100, iters) {
+  benchmarkCollectAllTryWindowed<false, 100, 50>(iters);
+}
+BENCHMARK_RELATIVE(tryCatch_WindowedHalfFail_100, iters) {
+  benchmarkCollectAllTryWindowed<true, 100, 50>(iters);
+}
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(coAwaitTry_WindowedSingleSuccess, iters) {
+  benchmarkCollectAllTryWindowed<false, 1, 0>(iters);
+}
+BENCHMARK_RELATIVE(tryCatch_WindowedSingleSuccess, iters) {
+  benchmarkCollectAllTryWindowed<true, 1, 0>(iters);
+}
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(coAwaitTry_WindowedSingleFailure, iters) {
+  benchmarkCollectAllTryWindowed<false, 1, 1>(iters);
+}
+BENCHMARK_RELATIVE(tryCatch_WindowedSingleFailure, iters) {
+  benchmarkCollectAllTryWindowed<true, 1, 1>(iters);
+}
+BENCHMARK_DRAW_LINE();
+
 template <bool UseTryCatch, size_t Failures>
 void benchmarkCollectAllTryRange(size_t iters) {
   benchmarkCollectRange<UseTryCatch, 100>(

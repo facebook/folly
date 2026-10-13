@@ -1941,6 +1941,131 @@ TEST_F(CollectAllWindowedTest, VectorOfTaskWithExecutorUsage) {
 
 class CollectAllTryWindowedTest : public testing::Test {};
 
+CO_TEST_F(CollectAllTryWindowedTest, UsesAwaitResumeTry) {
+  bool successUsedTry = false;
+  bool failureUsedTry = false;
+  std::vector<AwaitableWithTry> awaitables;
+  awaitables.push_back({folly::Try<int>{123}, successUsedTry});
+  awaitables.push_back(
+      {folly::Try<int>{folly::make_exception_wrapper<ErrorA>()},
+       failureUsedTry});
+  auto results =
+      co_await folly::coro::collectAllTryWindowed(std::move(awaitables), 2);
+  CO_ASSERT_EQ(2, results.size());
+  EXPECT_TRUE(successUsedTry);
+  EXPECT_TRUE(failureUsedTry);
+  EXPECT_EQ(123, results[0].value());
+  EXPECT_TRUE(results[1].hasException<ErrorA>());
+}
+
+CO_TEST_F(CollectAllTryWindowedTest, AwaitablesWithoutAwaitResumeTry) {
+  std::vector<folly::coro::detail::InlineTask<int>> awaitables;
+  awaitables.push_back([]() -> folly::coro::detail::InlineTask<int> {
+    co_return 123;
+  }());
+  awaitables.push_back([]() -> folly::coro::detail::InlineTask<int> {
+    co_await folly::coro::suspend_never{};
+    throw ErrorA{};
+  }());
+  auto results =
+      co_await folly::coro::collectAllTryWindowed(std::move(awaitables), 2);
+  CO_ASSERT_EQ(2, results.size());
+  EXPECT_EQ(123, results[0].value());
+  EXPECT_TRUE(results[1].hasException<ErrorA>());
+
+  std::vector<folly::coro::detail::InlineTask<void>> voidAwaitables;
+  voidAwaitables.push_back([]() -> folly::coro::detail::InlineTask<void> {
+    co_return;
+  }());
+  voidAwaitables.push_back([]() -> folly::coro::detail::InlineTask<void> {
+    co_await folly::coro::suspend_never{};
+    throw ErrorB{};
+  }());
+  auto voidResults =
+      co_await folly::coro::collectAllTryWindowed(std::move(voidAwaitables), 2);
+  CO_ASSERT_EQ(2, voidResults.size());
+  EXPECT_TRUE(voidResults[0].hasValue());
+  EXPECT_TRUE(voidResults[1].hasException<ErrorB>());
+}
+
+CO_TEST_F(CollectAllTryWindowedTest, VoidResults) {
+  std::vector<folly::coro::Task<void>> awaitables;
+  awaitables.push_back([]() -> folly::coro::Task<void> { co_return; }());
+  awaitables.push_back([]() -> folly::coro::Task<void> {
+    co_yield folly::coro::co_error(ErrorA{});
+  }());
+  auto results =
+      co_await folly::coro::collectAllTryWindowed(std::move(awaitables), 2);
+  CO_ASSERT_EQ(2, results.size());
+  EXPECT_TRUE(results[0].hasValue());
+  EXPECT_TRUE(results[1].hasException<ErrorA>());
+}
+
+CO_TEST_F(CollectAllTryWindowedTest, MoveOnlyAndReferenceResults) {
+  std::vector<folly::coro::Task<std::unique_ptr<int>>> ownedTasks;
+  ownedTasks.push_back([]() -> folly::coro::Task<std::unique_ptr<int>> {
+    co_return std::make_unique<int>(123);
+  }());
+  auto owned =
+      co_await folly::coro::collectAllTryWindowed(std::move(ownedTasks), 1);
+  CO_ASSERT_EQ(1, owned.size());
+  EXPECT_EQ(123, *owned[0].value());
+
+  int value = 456;
+  std::vector<folly::coro::Task<int&>> referenceTasks;
+  referenceTasks.push_back([](int& ref) -> folly::coro::Task<int&> {
+    co_return ref;
+  }(value));
+  auto references =
+      co_await folly::coro::collectAllTryWindowed(std::move(referenceTasks), 1);
+  CO_ASSERT_EQ(1, references.size());
+  EXPECT_EQ(&value, &references[0].value().get());
+}
+
+CO_TEST_F(CollectAllTryWindowedTest, CapturesExceptionsFromResultStorage) {
+  auto results = co_await folly::coro::collectAllTryWindowed(
+      std::vector<ThrowOnMoveAwaitable>(1), 1);
+  CO_ASSERT_EQ(1, results.size());
+  EXPECT_TRUE(results[0].hasException<ErrorA>());
+}
+
+CO_TEST_F(CollectAllTryWindowedTest, RespectsConcurrencyAndResultOrder) {
+  int active = 0;
+  int started = 0;
+  auto makeTask = [&](int index) -> folly::coro::Task<int> {
+    ++started;
+    ++active;
+    EXPECT_LE(active, 3);
+    co_await folly::coro::co_reschedule_on_current_executor;
+    if (index % 2 == 0) {
+      co_await folly::coro::co_reschedule_on_current_executor;
+    }
+    --active;
+    if (index == 5) {
+      co_yield folly::coro::co_error(ErrorA{});
+    }
+    co_return index;
+  };
+  auto generateTasks =
+      [&]() -> folly::coro::Generator<folly::coro::Task<int>&&> {
+    for (int i = 0; i < 12; ++i) {
+      co_yield makeTask(i);
+    }
+  };
+  auto results =
+      co_await folly::coro::collectAllTryWindowed(generateTasks(), 3);
+  CO_ASSERT_EQ(12, results.size());
+  EXPECT_EQ(12, started);
+  EXPECT_EQ(0, active);
+  for (int i = 0; i < 12; ++i) {
+    if (i == 5) {
+      EXPECT_TRUE(results[i].hasException<ErrorA>());
+    } else {
+      EXPECT_EQ(i, results[i].value());
+    }
+  }
+}
+
 TEST_F(CollectAllTryWindowedTest, PartialFailure) {
   auto results = folly::coro::blockingWait(
       folly::coro::collectAllTryWindowed(

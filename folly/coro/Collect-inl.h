@@ -961,7 +961,11 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
           result;
 
       try {
-        if constexpr (std::is_void_v<result_t>) {
+        if constexpr (detail::collect_detail::can_co_awaitTry_v<awaitable_t>) {
+          result = co_await co_awaitTry(co_viaIfAsync(
+              executor.get_alias(),
+              co_withCancellation(cancelToken, std::move(*awaitable))));
+        } else if constexpr (std::is_void_v<result_t>) {
           co_await co_viaIfAsync(
               executor.get_alias(),
               co_withCancellation(cancelToken, std::move(*awaitable)));
