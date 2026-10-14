@@ -135,6 +135,7 @@ class IoUringSendHandle::SendRequest : public IoSqeBase {
   void processSubmit(struct io_uring_sqe* sqe) noexcept override {
     if (folly::isSet(flags_, WriteFlags::WRITE_MSG_ZEROCOPY)) {
       ::io_uring_prep_sendmsg_zc(sqe, fd_.toFd(), &msg_, flags() | MSG_WAITALL);
+      sqe->ioprio |= IORING_SEND_ZC_REPORT_USAGE;
     } else {
       ::io_uring_prep_sendmsg(sqe, fd_.toFd(), &msg_, flags());
     }

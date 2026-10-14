@@ -977,6 +977,7 @@ void AsyncIoUringSocket::WriteSqe::processSubmit(
   if (zcOptions_.zeroCopy) {
     ::io_uring_prep_sendmsg_zc(
         sqe, parent_->usedFd_, &msg_, sendMsgFlags() | MSG_WAITALL);
+    sqe->ioprio |= IORING_SEND_ZC_REPORT_USAGE;
     if (zcOptions_.fixedBuf) {
       sqe->ioprio |= IORING_RECVSEND_FIXED_BUF;
       sqe->buf_index = zcOptions_.fixedBufIndex;

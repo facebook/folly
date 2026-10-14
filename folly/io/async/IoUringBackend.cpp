@@ -1628,7 +1628,12 @@ unsigned int IoUringBackend::internalProcessCqe(
         }
         cqeStats_.providedBufferCount += !!(cqe->flags & IORING_CQE_F_BUFFER);
         cqeStats_.bufMoreCount += !!(cqe->flags & IORING_CQE_F_BUF_MORE);
-        cqeStats_.zeroCopyNotifCount += !!(cqe->flags & IORING_CQE_F_NOTIF);
+        const bool isZeroCopyNotif = cqe->flags & IORING_CQE_F_NOTIF;
+        cqeStats_.zeroCopyNotifCount += isZeroCopyNotif;
+        if (isZeroCopyNotif) {
+          cqeStats_.zeroCopyNotifCopiedCount += !!(
+              static_cast<uint32_t>(cqe->res) & IORING_NOTIF_USAGE_ZC_COPIED);
+        }
         if (FOLLY_UNLIKELY(mode == InternalProcessCqeMode::CANCEL_ALL)) {
           sqe->markCancelled();
         }

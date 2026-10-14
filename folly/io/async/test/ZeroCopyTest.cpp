@@ -559,7 +559,11 @@ class IoUringZeroCopyTest : public IoUringTest {};
 TEST_F(IoUringZeroCopyTest, ZeroCopyWriteGetsNotifications) {
   auto evb = makeIoUringEventBase(ioUringOptions);
   sendToPeer(*evb, makePayload(1024 * 1024), WriteFlags::WRITE_MSG_ZEROCOPY);
-  EXPECT_GT(ioUringStats(*evb).cqe.zeroCopyNotifCount, 0);
+  const auto stats = ioUringStats(*evb).cqe;
+  EXPECT_GT(stats.zeroCopyNotifCount, 0);
+  // Loopback cannot perform real TCP zero copy, so REPORT_USAGE must expose
+  // the kernel's copied fallback instead of treating the notification as ZC.
+  EXPECT_EQ(stats.zeroCopyNotifCopiedCount, stats.zeroCopyNotifCount);
 }
 
 TEST_F(IoUringZeroCopyTest, EnableFuncMakesPlainWritesZeroCopy) {
@@ -573,5 +577,7 @@ TEST_F(IoUringZeroCopyTest, EnableFuncMakesPlainWritesZeroCopy) {
 TEST_F(IoUringZeroCopyTest, CopyWriteGetsNoNotifications) {
   auto evb = makeIoUringEventBase(ioUringOptions);
   sendToPeer(*evb, makePayload(1024 * 1024), WriteFlags::NONE);
-  EXPECT_EQ(0, ioUringStats(*evb).cqe.zeroCopyNotifCount);
+  const auto stats = ioUringStats(*evb).cqe;
+  EXPECT_EQ(0, stats.zeroCopyNotifCount);
+  EXPECT_EQ(0, stats.zeroCopyNotifCopiedCount);
 }

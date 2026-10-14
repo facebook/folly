@@ -238,6 +238,7 @@ class IoUringBackend : public EventBaseBackendBase {
     uint64_t providedBufferCount{0};
     uint64_t bufMoreCount{0};
     uint64_t zeroCopyNotifCount{0};
+    uint64_t zeroCopyNotifCopiedCount{0};
 
     auto operator<=>(const CqeStats&) const = default;
   };
@@ -250,9 +251,11 @@ class IoUringBackend : public EventBaseBackendBase {
     auto operator<=>(const IoUringStats&) const = default;
   };
 
+  CqeStats getCqeStats() { return std::exchange(cqeStats_, {}); }
+
   IoUringStats getStats() {
     IoUringStats stats;
-    stats.cqe = std::exchange(cqeStats_, {});
+    stats.cqe = getCqeStats();
     if (zcBufferPool_) {
       zcBufferPool_->getStats(stats.zcrx);
     }
