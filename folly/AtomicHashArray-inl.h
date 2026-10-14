@@ -405,7 +405,7 @@ AtomicHashArray<
    * have an expensive default constructor for the value type this can
    * noticeably speed construction time for an AHA.
    */
-  FOR_EACH_RANGE (i, 0, map->capacity_) {
+  for (size_t i = 0; i < map->capacity_; ++i) {
     cellKeyPtr(map->cells_[i])
         ->store(map->kEmptyKey_, std::memory_order_relaxed);
   }
@@ -432,7 +432,7 @@ void AtomicHashArray<
 
   size_t sz = sizeof(AtomicHashArray) + sizeof(value_type) * p->capacity_;
 
-  FOR_EACH_RANGE (i, 0, p->capacity_) {
+  for (size_t i = 0; i < p->capacity_; ++i) {
     if (p->cells_[i].first != p->kEmptyKey_) {
       p->cells_[i].~value_type();
     }
@@ -459,7 +459,7 @@ void AtomicHashArray<
     Allocator,
     ProbeFcn,
     KeyConvertFcn>::clear() {
-  FOR_EACH_RANGE (i, 0, capacity_) {
+  for (size_t i = 0; i < capacity_; ++i) {
     if (cells_[i].first != kEmptyKey_) {
       cells_[i].~value_type();
       *const_cast<KeyT*>(&cells_[i].first) = kEmptyKey_;
