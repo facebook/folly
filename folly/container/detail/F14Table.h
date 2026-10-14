@@ -101,7 +101,9 @@
 // (BRKB + CNTP) instead of rebuilding a NEON nibble mask. Keyed off SVE2
 // because svmatch is the SVE2-only intrinsic involved; the rest of the sequence
 // is SVE1.
-#if FOLLY_NEON && FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE && FOLLY_ARM_FEATURE_SVE2
+// Off in unoptimized builds for the coroutine reason given at
+// FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE.
+#if FOLLY_NEON && FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE
 #define FOLLY_F14_SVE_PREDICATE_NATIVE_ACTIVE 1
 #else
 #define FOLLY_F14_SVE_PREDICATE_NATIVE_ACTIVE 0
