@@ -153,7 +153,8 @@ class F14BasicMap {
       key_equal const& eq = key_equal{},
       allocator_type const& alloc = allocator_type{})
       : table_{initialCapacity, hash, eq, alloc} {
-    initialInsert(std::move(first), std::move(last), initialCapacity);
+    bool autoReserve = initialCapacity == 0;
+    bulkInsert(std::move(first), std::move(last), autoReserve);
   }
 
   template <typename InputIt>
@@ -163,7 +164,8 @@ class F14BasicMap {
       std::size_t initialCapacity,
       allocator_type const& alloc)
       : table_{initialCapacity, hasher{}, key_equal{}, alloc} {
-    initialInsert(std::move(first), std::move(last), initialCapacity);
+    bool autoReserve = initialCapacity == 0;
+    bulkInsert(std::move(first), std::move(last), autoReserve);
   }
 
   template <typename InputIt>
@@ -174,7 +176,8 @@ class F14BasicMap {
       hasher const& hash,
       allocator_type const& alloc)
       : table_{initialCapacity, hash, key_equal{}, alloc} {
-    initialInsert(std::move(first), std::move(last), initialCapacity);
+    bool autoReserve = initialCapacity == 0;
+    bulkInsert(std::move(first), std::move(last), autoReserve);
   }
 
   F14BasicMap(F14BasicMap const& rhs) = default;
@@ -195,7 +198,8 @@ class F14BasicMap {
       key_equal const& eq = key_equal{},
       allocator_type const& alloc = allocator_type{})
       : table_{initialCapacity, hash, eq, alloc} {
-    initialInsert(init.begin(), init.end(), initialCapacity);
+    bool autoReserve = initialCapacity == 0;
+    bulkInsert(init.begin(), init.end(), autoReserve);
   }
 
   F14BasicMap(
@@ -203,7 +207,8 @@ class F14BasicMap {
       std::size_t initialCapacity,
       allocator_type const& alloc)
       : table_{initialCapacity, hasher{}, key_equal{}, alloc} {
-    initialInsert(init.begin(), init.end(), initialCapacity);
+    bool autoReserve = initialCapacity == 0;
+    bulkInsert(init.begin(), init.end(), autoReserve);
   }
 
   F14BasicMap(
@@ -212,7 +217,8 @@ class F14BasicMap {
       hasher const& hash,
       allocator_type const& alloc)
       : table_{initialCapacity, hash, key_equal{}, alloc} {
-    initialInsert(init.begin(), init.end(), initialCapacity);
+    bool autoReserve = initialCapacity == 0;
+    bulkInsert(init.begin(), init.end(), autoReserve);
   }
 
   F14BasicMap& operator=(F14BasicMap const&) = default;
@@ -369,7 +375,8 @@ class F14BasicMap {
   template <class InputIt>
   FOLLY_ALWAYS_INLINE void bulkInsert(
       InputIt first, InputIt last, bool autoReserve) {
-    if (autoReserve) {
+    if (autoReserve && std::random_access_iterator<InputIt>) {
+      // Will over-reserve if first..last contains duplicates
       auto n = std::distance(first, last);
       if (n == 0) {
         return;
@@ -382,20 +389,6 @@ class F14BasicMap {
     }
   }
 
-  template <class InputIt>
-  void initialInsert(InputIt first, InputIt last, std::size_t initialCapacity) {
-    FOLLY_SAFE_DCHECK(empty() && bucket_count() >= initialCapacity, "");
-
-    // It's possible that there are a lot of duplicates in first..last and
-    // so we will oversize ourself.  The common case, however, is that
-    // we can avoid a lot of rehashing if we pre-expand.  The behavior
-    // is easy to disable at a particular call site by asking for an
-    // initialCapacity of 1.
-    bool autoReserve =
-        std::random_access_iterator<InputIt> && initialCapacity == 0;
-    bulkInsert(std::move(first), std::move(last), autoReserve);
-  }
-
  public:
   /// Add elements
   template <class InputIt>
@@ -403,8 +396,7 @@ class F14BasicMap {
     // Bulk reserve is a heuristic choice, so it can backfire.  We restrict
     // ourself to situations that mimic bulk construction without an
     // explicit initialCapacity.
-    bool autoReserve =
-        std::random_access_iterator<InputIt> && bucket_count() == 0;
+    bool autoReserve = bucket_count() == 0;
     bulkInsert(std::move(first), std::move(last), autoReserve);
   }
 
