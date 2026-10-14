@@ -17,6 +17,7 @@
 #include <folly/container/F14Map.h>
 
 #include <algorithm>
+#include <list>
 #include <random>
 #include <string>
 #include <type_traits>
@@ -2515,6 +2516,35 @@ TEST(F14Map, copyAfterRemovedCollisions) {
   testCopyAfterRemovedCollisions<F14VectorMap>();
   testCopyAfterRemovedCollisions<F14NodeMap>();
   testCopyAfterRemovedCollisions<F14FastMap>();
+}
+
+TEST(F14Map, bulkInsertAutoReserve) {
+  constexpr std::size_t kRangeSize = 1000;
+  using Value = std::pair<int, int>;
+
+  std::vector<Value> randomAccessInput(kRangeSize, Value{1, 1});
+  std::list<Value> forwardInput(
+      randomAccessInput.begin(), randomAccessInput.end());
+
+  F14ValueMap<int, int> automatic(
+      randomAccessInput.begin(), randomAccessInput.end());
+  F14ValueMap<int, int> explicitCapacity(
+      randomAccessInput.begin(), randomAccessInput.end(), 8);
+  F14ValueMap<int, int> forward(forwardInput.begin(), forwardInput.end());
+  F14ValueMap<int, int> inserted;
+  inserted.insert(randomAccessInput.begin(), randomAccessInput.end());
+
+  EXPECT_EQ(automatic.size(), 1);
+  EXPECT_EQ(explicitCapacity.size(), 1);
+  EXPECT_EQ(forward.size(), 1);
+  EXPECT_EQ(inserted.size(), 1);
+  if (!kFallback) {
+    EXPECT_GE(automatic.bucket_count(), kRangeSize);
+    EXPECT_GE(explicitCapacity.bucket_count(), 8);
+    EXPECT_LT(explicitCapacity.bucket_count(), automatic.bucket_count());
+    EXPECT_LT(forward.bucket_count(), automatic.bucket_count());
+    EXPECT_GE(inserted.bucket_count(), kRangeSize);
+  }
 }
 
 template <template <class...> class TMap>

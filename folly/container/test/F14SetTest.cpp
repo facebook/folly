@@ -25,6 +25,7 @@ FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 #include <folly/container/F14Set.h>
 // clang-format on
 
+#include <list>
 #include <numeric>
 #include <random>
 #include <string>
@@ -1738,6 +1739,34 @@ TEST(F14Set, ExceptionOnInsert) {
   testExceptionOnInsert<F14NodeSet>();
   testExceptionOnInsert<F14VectorSet>();
   testExceptionOnInsert<F14FastSet>();
+}
+
+TEST(F14Set, bulkInsertAutoReserve) {
+  constexpr std::size_t kRangeSize = 1000;
+
+  std::vector<int> randomAccessInput(kRangeSize, 1);
+  std::list<int> forwardInput(
+      randomAccessInput.begin(), randomAccessInput.end());
+
+  F14ValueSet<int> automatic(
+      randomAccessInput.begin(), randomAccessInput.end());
+  F14ValueSet<int> explicitCapacity(
+      randomAccessInput.begin(), randomAccessInput.end(), 8);
+  F14ValueSet<int> forward(forwardInput.begin(), forwardInput.end());
+  F14ValueSet<int> inserted;
+  inserted.insert(randomAccessInput.begin(), randomAccessInput.end());
+
+  EXPECT_EQ(automatic.size(), 1);
+  EXPECT_EQ(explicitCapacity.size(), 1);
+  EXPECT_EQ(forward.size(), 1);
+  EXPECT_EQ(inserted.size(), 1);
+  if (!kFallback) {
+    EXPECT_GE(automatic.bucket_count(), kRangeSize);
+    EXPECT_GE(explicitCapacity.bucket_count(), 8);
+    EXPECT_LT(explicitCapacity.bucket_count(), automatic.bucket_count());
+    EXPECT_LT(forward.bucket_count(), automatic.bucket_count());
+    EXPECT_GE(inserted.bucket_count(), kRangeSize);
+  }
 }
 
 template <template <class...> class TSet>
