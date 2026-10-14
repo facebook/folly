@@ -56,7 +56,7 @@ AtomicHashMap<
       SubMap::create(finalSizeEst, config).release(),
       std::memory_order_relaxed);
   auto subMapCount = kNumSubMaps_;
-  FOR_EACH_RANGE (i, 1, subMapCount) {
+  for (uint32_t i = 1; i < subMapCount; ++i) {
     subMaps_[i].store(nullptr, std::memory_order_relaxed);
   }
   numMapsAllocated_.store(1, std::memory_order_relaxed);
@@ -140,7 +140,7 @@ beginInsertInternal:
   auto nextMapIdx = // this maintains our state
       numMapsAllocated_.load(std::memory_order_acquire);
   typename SubMap::SimpleRetT ret;
-  FOR_EACH_RANGE (i, 0, nextMapIdx) {
+  for (uint32_t i = 0; i < nextMapIdx; ++i) {
     // insert in each map successively.  If one succeeds, we're done!
     SubMap* subMap = subMaps_[i].load(std::memory_order_relaxed);
     ret = subMap->template insertInternal<
@@ -310,7 +310,7 @@ AtomicHashMap<
   }
   const unsigned int numMaps =
       numMapsAllocated_.load(std::memory_order_acquire);
-  FOR_EACH_RANGE (i, 1, numMaps) {
+  for (unsigned int i = 1; i < numMaps; ++i) {
     // Check each map successively.  If one succeeds, we're done!
     SubMap* thisMap = subMaps_[i].load(std::memory_order_relaxed);
     ret =
@@ -391,7 +391,7 @@ AtomicHashMap<
     ProbeFcn,
     KeyConvertFcn>::erase(const KeyT k) {
   int const numMaps = numMapsAllocated_.load(std::memory_order_acquire);
-  FOR_EACH_RANGE (i, 0, numMaps) {
+  for (auto i = 0; i < numMaps; ++i) {
     // Check each map successively.  If one succeeds, we're done!
     if (subMaps_[i].load(std::memory_order_relaxed)->erase(k)) {
       return 1;
@@ -420,7 +420,7 @@ size_t AtomicHashMap<
     KeyConvertFcn>::capacity() const {
   size_t totalCap(0);
   int const numMaps = numMapsAllocated_.load(std::memory_order_acquire);
-  FOR_EACH_RANGE (i, 0, numMaps) {
+  for (auto i = 0; i < numMaps; ++i) {
     totalCap += subMaps_[i].load(std::memory_order_relaxed)->capacity_;
   }
   return totalCap;
@@ -446,7 +446,7 @@ size_t AtomicHashMap<
     KeyConvertFcn>::spaceRemaining() const {
   size_t spaceRem(0);
   int const numMaps = numMapsAllocated_.load(std::memory_order_acquire);
-  FOR_EACH_RANGE (i, 0, numMaps) {
+  for (auto i = 0; i < numMaps; ++i) {
     SubMap* thisMap = subMaps_[i].load(std::memory_order_relaxed);
     spaceRem +=
         std::max(0, thisMap->maxEntries_ - &thisMap->numEntries_.readFull());
@@ -474,7 +474,7 @@ void AtomicHashMap<
     KeyConvertFcn>::clear() {
   subMaps_[0].load(std::memory_order_relaxed)->clear();
   int const numMaps = numMapsAllocated_.load(std::memory_order_relaxed);
-  FOR_EACH_RANGE (i, 1, numMaps) {
+  for (auto i = 1; i < numMaps; ++i) {
     SubMap* thisMap = subMaps_[i].load(std::memory_order_relaxed);
     DCHECK(thisMap);
     SubMap::destroy(thisMap);
@@ -502,7 +502,7 @@ size_t AtomicHashMap<
     KeyConvertFcn>::size() const {
   size_t totalSize(0);
   int const numMaps = numMapsAllocated_.load(std::memory_order_acquire);
-  FOR_EACH_RANGE (i, 0, numMaps) {
+  for (auto i = 0; i < numMaps; ++i) {
     totalSize += subMaps_[i].load(std::memory_order_relaxed)->size();
   }
   return totalSize;
