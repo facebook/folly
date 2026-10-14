@@ -21,8 +21,8 @@ glog
 folly
 rocksdb
 xxhash
-llvm
-clang
+llvm19
+clang19
 re2
 
 [build]

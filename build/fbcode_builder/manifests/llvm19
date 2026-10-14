@@ -1,0 +1,5 @@
+[manifest]
+name = llvm19
+
+[rpms]
+llvm19-devel
