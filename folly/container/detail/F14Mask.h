@@ -27,13 +27,8 @@
 #include <folly/lang/Assume.h>
 #include <folly/lang/SafeAssert.h>
 
-// The SVE2 paths keep svbool_t/svuint8_t locals in force-inlined code. In an
-// unoptimized build those stay allocas, and when they land in a coroutine
-// body clang's CoroSplit cannot size them ("Invalid size request on a
-// scalable vector", T292853960), so unoptimized builds use the NEON path.
 #ifndef FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE
-#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE && FOLLY_ARM_FEATURE_SVE2 && \
-    defined(__OPTIMIZE__)
+#if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE && FOLLY_ARM_FEATURE_SVE2
 #define FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE 1
 #else
 #define FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE 0
