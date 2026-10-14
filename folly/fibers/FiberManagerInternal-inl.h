@@ -34,7 +34,7 @@
 namespace folly {
 namespace fibers {
 
-namespace {
+namespace detail {
 
 inline FiberManager::Options preprocessOptions(FiberManager::Options opts) {
   /**
@@ -56,7 +56,7 @@ FOLLY_NOINLINE void tryEmplaceWithNoInline(
   folly::tryEmplaceWith(result, std::forward<F>(func));
 }
 
-} // namespace
+} // namespace detail
 
 inline void FiberManager::ensureLoopScheduled() {
   if (isLoopScheduled_) {
@@ -548,14 +548,14 @@ void FiberManager::addTaskFinallyEager(F&& func, G&& finally) {
 template <typename F>
 std::invoke_result_t<F> FiberManager::runInMainContext(F&& func) {
   if (FOLLY_UNLIKELY(activeFiber_ == nullptr)) {
-    return runNoInline(std::forward<F>(func));
+    return detail::runNoInline(std::forward<F>(func));
   }
 
   typedef std::invoke_result_t<F> Result;
 
   folly::Try<Result> result;
   auto f = [&func, &result]() mutable {
-    tryEmplaceWithNoInline(result, std::forward<F>(func));
+    detail::tryEmplaceWithNoInline(result, std::forward<F>(func));
   };
 
   immediateFunc_ = std::ref(f);
@@ -618,7 +618,7 @@ FiberManager::FiberManager(
     Options options)
     : loopController_(std::move(loopController__)),
       stackAllocator_(options.guardPagesPerStack),
-      options_(preprocessOptions(std::move(options))),
+      options_(detail::preprocessOptions(std::move(options))),
       exceptionCallback_(defaultExceptionCallback),
       fibersPoolResizer_(*this),
       localType_(typeid(LocalT)) {
@@ -637,7 +637,7 @@ template <typename F>
 std::invoke_result_t<F> inline runInMainContext(F&& func) {
   auto fm = FiberManager::getFiberManagerUnsafe();
   if (FOLLY_UNLIKELY(fm == nullptr)) {
-    return runNoInline(std::forward<F>(func));
+    return detail::runNoInline(std::forward<F>(func));
   }
   return fm->runInMainContext(std::forward<F>(func));
 }
