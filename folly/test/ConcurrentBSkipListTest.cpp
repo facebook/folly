@@ -987,7 +987,7 @@ TEST(ConcurrentBSkipList, ConcurrentMixedReadWrite) {
 TEST(ConcurrentBSkipList, LargeScale) {
   LargeNodeList list;
 
-  constexpr int64_t kCount = 100000;
+  constexpr int64_t kCount = folly::kIsSanitizeThread ? 10000 : 100000;
 
   for (int64_t i = 0; i < kCount; ++i) {
     list.add(i);
@@ -1003,7 +1003,7 @@ TEST(ConcurrentBSkipList, LargeScale) {
 TEST(ConcurrentBSkipList, LargeScaleRandom) {
   LargeNodeList list;
 
-  constexpr int64_t kCount = 100000;
+  constexpr int64_t kCount = folly::kIsSanitizeThread ? 10000 : 100000;
 
   std::vector<int64_t> keys;
   keys.reserve(kCount);
