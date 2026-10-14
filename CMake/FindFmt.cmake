@@ -19,10 +19,10 @@ find_library(LIBFMT_LIBRARY NAMES fmt fmtd)
 mark_as_advanced(LIBFMT_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(LIBFMT DEFAULT_MSG LIBFMT_LIBRARY
+find_package_handle_standard_args(Fmt DEFAULT_MSG LIBFMT_LIBRARY
                                   LIBFMT_INCLUDE_DIR)
 
-if (LIBFMT_FOUND)
+if (FMT_FOUND)
   set(LIBFMT_LIBRARIES ${LIBFMT_LIBRARY})
   set(LIBFMT_INCLUDE_DIRS ${LIBFMT_INCLUDE_DIR})
   message(STATUS "Found {fmt}: ${LIBFMT_LIBRARY}")

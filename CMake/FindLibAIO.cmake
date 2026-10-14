@@ -19,7 +19,7 @@ find_library(LIBAIO_LIBRARY NAMES aio)
 mark_as_advanced(LIBAIO_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(LIBAIO REQUIRED_VARS LIBAIO_LIBRARY
+find_package_handle_standard_args(LibAIO REQUIRED_VARS LIBAIO_LIBRARY
                                                        LIBAIO_INCLUDE_DIR)
 
 if (LIBAIO_FOUND)

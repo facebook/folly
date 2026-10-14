@@ -22,7 +22,7 @@ find_library(LIBIBERTY_LIBRARY NAMES iberty)
 mark_as_advanced(LIBIBERTY_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(LIBIBERTY REQUIRED_VARS LIBIBERTY_LIBRARY
+find_package_handle_standard_args(Libiberty REQUIRED_VARS LIBIBERTY_LIBRARY
                                                           LIBIBERTY_INCLUDE_DIR)
 
 if (LIBIBERTY_FOUND)

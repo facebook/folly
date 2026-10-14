@@ -68,7 +68,7 @@ else()
   # handle the QUIETLY and REQUIRED arguments and set LIBGFLAGS_FOUND to TRUE if
   # all listed variables are TRUE
   INCLUDE(FindPackageHandleStandardArgs)
-  FIND_PACKAGE_HANDLE_STANDARD_ARGS(gflags DEFAULT_MSG LIBGFLAGS_LIBRARY LIBGFLAGS_INCLUDE_DIR)
+  FIND_PACKAGE_HANDLE_STANDARD_ARGS(Gflags DEFAULT_MSG LIBGFLAGS_LIBRARY LIBGFLAGS_INCLUDE_DIR)
   # cmake module compat
   set(Gflags_FOUND ${GFLAGS_FOUND})
   # compat with some existing FindGflags consumers

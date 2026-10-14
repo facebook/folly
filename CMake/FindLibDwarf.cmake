@@ -27,7 +27,7 @@ find_library(LIBDWARF_LIBRARY NAMES dwarf)
 mark_as_advanced(LIBDWARF_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(LIBDWARF REQUIRED_VARS LIBDWARF_LIBRARY
+find_package_handle_standard_args(LibDwarf REQUIRED_VARS LIBDWARF_LIBRARY
                                                          LIBDWARF_INCLUDE_DIR)
 
 if (LIBDWARF_FOUND)

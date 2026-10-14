@@ -28,7 +28,7 @@ include(SelectLibraryConfigurations)
 select_library_configurations(SNAPPY)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(SNAPPY DEFAULT_MSG SNAPPY_LIBRARY
+find_package_handle_standard_args(Snappy DEFAULT_MSG SNAPPY_LIBRARY
                                   SNAPPY_INCLUDE_DIR)
 
 mark_as_advanced(SNAPPY_INCLUDE_DIR SNAPPY_LIBRARY)
