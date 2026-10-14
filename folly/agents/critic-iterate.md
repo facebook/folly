@@ -41,7 +41,7 @@ reminder.
   generated-output updates, and user-specified mechanical edits, including batch
   changes.
 - Real-time investigations.
-- Commit messages in personal notes repos.
+- Commit messages for temporary commits or commits in personal notes repos.
 - Brief single-use, low-stakes reports.
 - Accountability artifacts and delegated-review reports produced by this
   workflow.
