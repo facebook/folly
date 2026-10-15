@@ -765,8 +765,8 @@ TEST(Ahm, eraseFindRace) {
 // Erase right after insert race bug repro (t9130653)
 TEST(Ahm, eraseAfterInsertRace) {
   const uint64_t limit = 10000;
-  const size_t num_threads = 100;
-  const size_t num_iters = 500;
+  const size_t num_threads = folly::kIsSanitizeThread ? 10 : 100;
+  const size_t num_iters = folly::kIsSanitizeThread ? 50 : 500;
   AtomicHashMap<uint64_t, uint64_t> map(limit + 10);
 
   std::atomic<bool> go{false};
