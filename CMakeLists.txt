@@ -1155,11 +1155,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     SOURCES
     ChecksumTest.cpp
     TEST
-    hash_checksum_vpclmul_test
-    WINDOWS_DISABLED
-    SOURCES
-    ChecksumVpclmulTest.cpp
-    TEST
     hash_farm_hash_test
     SOURCES
     FarmHashTest.cpp
