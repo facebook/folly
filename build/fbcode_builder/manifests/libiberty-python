@@ -30,5 +30,8 @@ builder = nop
 # as we still want to use system linker and assembler etc
 [autoconf.args]
 --enable-install-libiberty
+# libiberty builds pic/libiberty.a, the archive that
+# libiberty_install_pic_lib.patch installs, only when shared is enabled.
+--enable-shared
 CFLAGS=-fPIC -O2
 PICFLAG=-fPIC

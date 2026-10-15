@@ -23,6 +23,9 @@ patchfile = glog_default_visibility.patch
 [dependencies]
 gflags
 
+[features]
+shared_libs =
+
 [cmake.defines]
 BUILD_TESTING=NO
 WITH_PKGCONFIG=ON

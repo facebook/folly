@@ -16,7 +16,9 @@ builder = nop
 
 [dependencies]
 gflags
-glog
+# folly-python's shared libraries and the binaries that load them must use one
+# copy of glog.
+glog = shared_libs
 googletest
 boost-python
 libdwarf-python
