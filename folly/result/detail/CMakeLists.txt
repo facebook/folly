@@ -46,6 +46,7 @@ folly_add_library(
   HEADERS result_promise.h
   EXPORTED_DEPS
     folly_coro_coroutine
+    folly_coro_detail_malloc
     folly_result_epitaph
     folly_result_result
 )

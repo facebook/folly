@@ -40,4 +40,25 @@ void folly_coro_async_free(void* ptr, std::size_t size) {
   // turning the call to operator delete() into a tailcall.
   folly::compiler_must_not_elide(size);
 }
+
+FOLLY_NOINLINE
+void* folly_coro_async_malloc_aligned(std::size_t size, std::size_t alignment) {
+  auto p = folly::operator_new(size, std::align_val_t{alignment});
+
+  // Add this after the call to prevent the compiler from
+  // turning the call to operator new() into a tailcall.
+  folly::compiler_must_not_elide(p);
+
+  return p;
+}
+
+FOLLY_NOINLINE
+void folly_coro_async_free_aligned(
+    void* ptr, std::size_t size, std::size_t alignment) {
+  folly::operator_delete(ptr, size, std::align_val_t{alignment});
+
+  // Add this after the call to prevent the compiler from
+  // turning the call to operator delete() into a tailcall.
+  folly::compiler_must_not_elide(alignment);
+}
 } // extern "C"

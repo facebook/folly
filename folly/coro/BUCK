@@ -392,6 +392,7 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     exported_deps = [
         "//folly/coro:coroutine",
+        "//folly/coro:detail_malloc",
         "//folly/coro:invoke",
         "//folly/lang:exception",
     ],
@@ -598,6 +599,7 @@ fb_dirsync_cpp_library(
         "//folly:executor",
         "//folly:scope_guard",
         "//folly/coro:coroutine",
+        "//folly/coro:detail_malloc",
         "//folly/coro:traits",
         "//folly/coro:via_if_async",
         "//folly/functional:invoke",
@@ -912,6 +914,7 @@ fb_dirsync_cpp_library(
     use_raw_headers = True,
     exported_deps = [
         "//folly/coro:coroutine",
+        "//folly/coro:detail_malloc",
         "//folly/coro:traits",
         "//folly/functional:invoke",
         "//folly/lang:assume",

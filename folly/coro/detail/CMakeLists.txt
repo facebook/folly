@@ -59,10 +59,10 @@ folly_add_library(
   NAME detail_malloc
   SRCS Malloc.cpp
   HEADERS Malloc.h
-  DEPS
-    folly_lang_hint
+  DEPS folly_lang_hint
+  EXPORTED_DEPS
+    folly_c_portability
     folly_lang_new
-  EXPORTED_DEPS folly_c_portability
 )
 
 folly_add_library(

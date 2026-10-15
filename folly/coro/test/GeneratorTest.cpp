@@ -22,6 +22,8 @@
 #include <folly/coro/Generator.h>
 #include <folly/portability/GTest.h>
 
+#include <cstdint>
+
 #if FOLLY_HAS_COROUTINES
 
 namespace folly {
@@ -47,6 +49,25 @@ TEST_F(GeneratorTest, NonRecursiveUse) {
   EXPECT_EQ(*iter, 2.0f);
   ++iter;
   EXPECT_EQ(iter, gen.end());
+}
+
+TEST_F(GeneratorTest, OverAlignedLocal) {
+  struct alignas(256) State {
+    int value = 1;
+  };
+
+  auto f = []() -> Generator<std::uintptr_t> {
+    State state;
+    co_yield reinterpret_cast<std::uintptr_t>(&state);
+    ++state.value;
+    co_yield reinterpret_cast<std::uintptr_t>(&state);
+  };
+
+  auto gen = f();
+  auto iter = gen.begin();
+  EXPECT_EQ(*iter % alignof(State), 0);
+  ++iter;
+  EXPECT_EQ(*iter % alignof(State), 0);
 }
 
 TEST_F(GeneratorTest, ThrowsBeforeYieldingFirstElement_RethrowsFromBegin) {

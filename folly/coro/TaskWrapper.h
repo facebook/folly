@@ -177,12 +177,8 @@ class TaskPromiseWrapperBase {
     return WrapperTask{promise_.get_return_object()};
   }
 
-  static void* operator new(std::size_t size) {
-    return ::folly_coro_async_malloc(size);
-  }
-  static void operator delete(void* ptr, std::size_t size) {
-    ::folly_coro_async_free(ptr, size);
-  }
+  FOLLY_CORO_DEFINE_FRAME_ALLOCATOR(
+      ::folly::coro::detail::CoroFrameAsyncAllocator)
 
   auto initial_suspend() noexcept { return promise_.initial_suspend(); }
   auto final_suspend() noexcept { return promise_.final_suspend(); }

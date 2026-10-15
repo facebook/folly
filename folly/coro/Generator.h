@@ -24,6 +24,7 @@
 
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/Invoke.h>
+#include <folly/coro/detail/Malloc.h>
 #include <folly/lang/Exception.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -36,6 +37,9 @@ class Generator {
  public:
   class promise_type final {
    public:
+    FOLLY_CORO_DEFINE_FRAME_ALLOCATOR_IF_SUPPORTED(
+        ::folly::coro::detail::CoroFrameDefaultAllocator)
+
     promise_type() noexcept
         : m_value(nullptr),
           m_exception(nullptr),

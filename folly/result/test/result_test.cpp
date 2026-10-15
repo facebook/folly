@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include <concepts>
+#include <cstdint>
 #include <functional>
 #include <utility>
 
@@ -42,6 +43,15 @@ using namespace folly::detail;
 class MyError : public std::runtime_error {
   using std::runtime_error::runtime_error;
 };
+
+struct alignas(256) OverAlignedResultArgument {
+  int value = 1;
+};
+
+FOLLY_NOINLINE result<std::uintptr_t> overAlignedResultCoroutine(
+    OverAlignedResultArgument arg) {
+  co_return reinterpret_cast<std::uintptr_t>(&arg);
+}
 
 template <typename Source>
 concept HasMemberGetPointer = requires(Source&& source) {
@@ -300,6 +310,12 @@ TEST(Result, resultOfVoid) {
     result<void> fail{convFail};
     ASSERT_EQ(std::string("failed"), get_exception<MyError>(fail)->what());
   }
+}
+
+TEST(Result, overAlignedCoroutineArgument) {
+  auto address =
+      overAlignedResultCoroutine(OverAlignedResultArgument{}).value_or_throw();
+  EXPECT_EQ(address % alignof(OverAlignedResultArgument), 0);
 }
 
 TEST(Result, getPointer) {

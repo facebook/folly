@@ -28,6 +28,7 @@
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/Traits.h>
 #include <folly/coro/ViaIfAsync.h>
+#include <folly/coro/detail/Malloc.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/CustomizationPoint.h>
@@ -85,6 +86,9 @@ class ScopeExitTask;
 
 class ScopeExitTaskPromiseBase {
  public:
+  FOLLY_CORO_DEFINE_FRAME_ALLOCATOR_IF_SUPPORTED(
+      ::folly::coro::detail::CoroFrameAsyncAllocator)
+
   class FinalAwaiter {
    public:
     bool await_ready() noexcept { return false; }

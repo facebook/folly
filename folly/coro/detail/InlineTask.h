@@ -70,13 +70,8 @@ class InlineTaskPromiseBase {
   InlineTaskPromiseBase& operator=(InlineTaskPromiseBase&&) = delete;
 
  public:
-  static void* operator new(std::size_t size) {
-    return ::folly_coro_async_malloc(size);
-  }
-
-  static void operator delete(void* ptr, std::size_t size) {
-    ::folly_coro_async_free(ptr, size);
-  }
+  FOLLY_CORO_DEFINE_FRAME_ALLOCATOR(
+      ::folly::coro::detail::CoroFrameAsyncAllocator)
 
   suspend_always initial_suspend() noexcept { return {}; }
 
@@ -243,13 +238,8 @@ struct InlineTaskDetached {
     };
 
    public:
-    static void* operator new(std::size_t size) {
-      return ::folly_coro_async_malloc(size);
-    }
-
-    static void operator delete(void* ptr, std::size_t size) {
-      ::folly_coro_async_free(ptr, size);
-    }
+    FOLLY_CORO_DEFINE_FRAME_ALLOCATOR(
+        ::folly::coro::detail::CoroFrameAsyncAllocator)
 
     promise_type() noexcept {
       asyncFrame_.setParentFrameUnsafe(folly::getDetachedRootAsyncStackFrame());

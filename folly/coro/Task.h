@@ -127,13 +127,8 @@ class TaskPromiseBase : public BasePromise<> {
   ~TaskPromiseBase() = default;
 
  public:
-  static void* operator new(std::size_t size) {
-    return ::folly_coro_async_malloc(size);
-  }
-
-  static void operator delete(void* ptr, std::size_t size) {
-    ::folly_coro_async_free(ptr, size);
-  }
+  FOLLY_CORO_DEFINE_FRAME_ALLOCATOR(
+      ::folly::coro::detail::CoroFrameAsyncAllocator)
 
   suspend_always initial_suspend() noexcept { return {}; }
 

@@ -305,6 +305,7 @@ folly_add_library(
   HEADERS Generator.h
   EXPORTED_DEPS
     folly_coro_coroutine
+    folly_coro_detail_malloc
     folly_coro_invoke
     folly_lang_exception
 )
@@ -445,6 +446,7 @@ folly_add_library(
   HEADERS ScopeExit.h
   EXPORTED_DEPS
     folly_coro_coroutine
+    folly_coro_detail_malloc
     folly_coro_traits
     folly_coro_via_if_async
     folly_exception_wrapper
@@ -685,6 +687,7 @@ folly_add_library(
   HEADERS WithAsyncStack.h
   EXPORTED_DEPS
     folly_coro_coroutine
+    folly_coro_detail_malloc
     folly_coro_traits
     folly_functional_invoke
     folly_lang_assume

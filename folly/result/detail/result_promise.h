@@ -18,6 +18,7 @@
 
 #include <folly/Utility.h>
 #include <folly/coro/Coroutine.h> // delete with clang-15 support
+#include <folly/coro/detail/Malloc.h>
 #include <folly/result/result.h>
 
 #if FOLLY_HAS_RESULT
@@ -72,6 +73,9 @@ void stack_epitaph_for_unhandled_exception(error_or_stopped& eos) noexcept;
 
 template <typename T>
 struct result_promise_base {
+  FOLLY_CORO_DEFINE_FRAME_ALLOCATOR_IF_SUPPORTED(
+      ::folly::coro::detail::CoroFrameDefaultAllocator)
+
   result<T>* value_ = nullptr;
 
   result_promise_base() = default;

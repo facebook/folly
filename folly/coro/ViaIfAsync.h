@@ -42,14 +42,6 @@ namespace detail {
 
 class ViaCoroutinePromiseBase {
  public:
-  static void* operator new(std::size_t size) {
-    return ::folly_coro_async_malloc(size);
-  }
-
-  static void operator delete(void* ptr, std::size_t size) {
-    ::folly_coro_async_free(ptr, size);
-  }
-
   suspend_always initial_suspend() noexcept { return {}; }
 
   void return_void() noexcept {}
@@ -101,7 +93,7 @@ class ViaCoroutinePromiseBase {
   }
 
  protected:
-  virtual ~ViaCoroutinePromiseBase() = default;
+  ~ViaCoroutinePromiseBase() = default;
 
   folly::Executor::KeepAlive<> executor_;
   ExtendedCoroutineHandle continuation_;
@@ -139,6 +131,9 @@ class ViaCoroutine {
     };
 
    public:
+    FOLLY_CORO_DEFINE_FRAME_ALLOCATOR(
+        ::folly::coro::detail::CoroFrameAsyncAllocator)
+
     ViaCoroutine get_return_object() noexcept {
       return ViaCoroutine{coroutine_handle<promise_type>::from_promise(*this)};
     }

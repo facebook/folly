@@ -18,6 +18,7 @@
 
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/Traits.h>
+#include <folly/coro/detail/Malloc.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/CustomizationPoint.h>
@@ -37,6 +38,9 @@ class WithAsyncStackCoroutine {
  public:
   class promise_type {
    public:
+    FOLLY_CORO_DEFINE_FRAME_ALLOCATOR_IF_SUPPORTED(
+        ::folly::coro::detail::CoroFrameAsyncAllocator)
+
     WithAsyncStackCoroutine get_return_object() noexcept {
       return WithAsyncStackCoroutine{
           coroutine_handle<promise_type>::from_promise(*this)};

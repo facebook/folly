@@ -21,6 +21,7 @@
 #include <folly/coro/Task.h>
 #include <folly/portability/GTest.h>
 
+#include <cstdint>
 #include <stdexcept>
 #include <type_traits>
 
@@ -114,6 +115,18 @@ TEST_F(ScopeExitTest, StatefulExitAction) {
     i *= i;
   }());
   EXPECT_EQ(count, 10);
+}
+
+TEST_F(ScopeExitTest, OverAlignedState) {
+  struct alignas(256) State {
+    int value = 1;
+  };
+
+  folly::coro::blockingWait([]() -> Task<> {
+    auto&& [state] = co_await co_scope_exit(
+        [](State&&) -> Task<void> { co_return; }, State{});
+    EXPECT_EQ(reinterpret_cast<std::uintptr_t>(&state) % alignof(State), 0);
+  }());
 }
 
 TEST_F(ScopeExitTest, NonMoveableState) {
