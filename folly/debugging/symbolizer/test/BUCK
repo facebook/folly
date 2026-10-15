@@ -11,6 +11,12 @@ load(":validate_folly_symbolizer.bzl", "SPLIT_DWARF_FLAGS", "customized_unittest
 
 oncall("fbcode_entropy_wardens_folly")
 
+WINDOWS_SIGNAL_HANDLER_TEST_DEPS = [
+    "//folly:c_portability",
+    "//folly/debugging/symbolizer:symbolizer",
+    "//folly/portability:windows",
+]
+
 fbcode_target(
     _kind = cpp_binary,
     name = "crash",
@@ -183,11 +189,12 @@ fb_dirsync_cpp_unittest(
     name = "signal_handler_windows_test",
     srcs = ["SignalHandlerWindowsTest.cpp"],
     deps = [
-        "//folly:c_portability",
-        "//folly/debugging/symbolizer:symbolizer",
         "//folly/portability:gtest",
-        "//folly/portability:windows",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": WINDOWS_SIGNAL_HANDLER_TEST_DEPS,
+        "ovr_config//os:windows-clang": WINDOWS_SIGNAL_HANDLER_TEST_DEPS,
+    }),
 )
 
 fbcode_target(
@@ -224,6 +231,7 @@ fbcode_target(
     deps = [
         "fbsource//third-party/boost:boost_regex",
         "fbsource//third-party/glog:glog",
+        "//folly:file_util",
         "//folly:scope_guard",
         "//folly/coro:blocking_wait",
         "//folly/coro:task",

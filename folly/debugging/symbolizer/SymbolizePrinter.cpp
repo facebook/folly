@@ -244,6 +244,9 @@ void FDSymbolizePrinter::doPrint(StringPiece sp) {
   } else {
     writeFull(fd_, sp.data(), sp.size());
   }
+  if (auto sink = outputSink_.load(std::memory_order_acquire)) {
+    sink(sp.data(), sp.size());
+  }
 }
 
 void FDSymbolizePrinter::flush() {

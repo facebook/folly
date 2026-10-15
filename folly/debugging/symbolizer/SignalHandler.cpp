@@ -716,5 +716,14 @@ bool fatalSignalReceived() {
   return gFatalSignalReceived.load(std::memory_order_relaxed);
 }
 
+bool setFatalSignalOutputSink(SignalOutputSink sink) {
+#if !defined(_WIN32) && defined(FOLLY_USE_SYMBOLIZER) && FOLLY_USE_SYMBOLIZER
+  return gStackTracePrinter && gStackTracePrinter->setOutputSink(sink);
+#else
+  (void)sink;
+  return false;
+#endif
+}
+
 } // namespace symbolizer
 } // namespace folly

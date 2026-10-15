@@ -272,6 +272,11 @@ class SafeStackTracePrinter {
   // Flush printer_, also fsync, in case we're about to crash again...
   void flush();
 
+  // Install one process-lifetime observer before this printer is used.
+  bool setOutputSink(FDSymbolizePrinter::OutputSink sink) {
+    return printer_.setOutputSink(sink);
+  }
+
  protected:
   virtual void printSymbolizedStackTrace();
   void printUnsymbolizedStackTrace();

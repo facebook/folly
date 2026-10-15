@@ -15,11 +15,13 @@
  */
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <limits>
 #include <new>
 
+#include <folly/FileUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Task.h>
@@ -735,6 +737,65 @@ TEST(StackTraceTest, SafeStackTracePrinter) {
   SafeStackTracePrinter printer{file.fd()};
 
   testStackTracePrinter<SafeStackTracePrinter>(printer, file.fd());
+}
+
+namespace {
+std::atomic<int> outputSinkFd{-1};
+
+void copyPrinterOutput(const char* data, size_t size) {
+  folly::writeFull(outputSinkFd.load(std::memory_order_relaxed), data, size);
+}
+
+void expectPrinterOutput(int fd, const std::string& expected) {
+  // One extra byte detects duplicated or otherwise unexpected trailing output.
+  std::string actual(expected.size() + 1, '\0');
+  ASSERT_EQ(
+      folly::preadFull(fd, actual.data(), actual.size(), 0),
+      static_cast<ssize_t>(expected.size()));
+  actual.resize(expected.size());
+  EXPECT_EQ(actual, expected);
+}
+} // namespace
+
+// A buffered printer overflows its buffer with a later output chunk.
+// Expected: the observer gets each original byte once, and a second observer
+// cannot replace it. Why interesting: fatal reports must reuse the original
+// diagnostic stream without duplicate buffered output or a second capture.
+TEST(StackTraceTest, OutputSinkPreservesPrimaryAndBufferedOutput) {
+  test::TemporaryFile original;
+  test::TemporaryFile copy;
+  outputSinkFd.store(copy.fd(), std::memory_order_relaxed);
+  SCOPE_EXIT {
+    outputSinkFd.store(-1, std::memory_order_relaxed);
+  };
+  {
+    FDSymbolizePrinter printer(original.fd(), 0, 4);
+    EXPECT_FALSE(printer.setOutputSink(nullptr));
+    ASSERT_TRUE(printer.setOutputSink(copyPrinterOutput));
+    EXPECT_FALSE(printer.setOutputSink(copyPrinterOutput));
+    printer.print("ab");
+    printer.print("cdefgh");
+    printer.print("ij");
+    printer.flush();
+  }
+  expectPrinterOutput(original.fd(), "abcdefghij");
+  expectPrinterOutput(copy.fd(), "abcdefghij");
+}
+
+// The observer attempts to write through an invalid descriptor.
+// Expected: the original printer still flushes its complete output.
+// Why interesting: optional local-report I/O must preserve the existing
+// stderr diagnostic path when its own output destination fails.
+TEST(StackTraceTest, OutputSinkFailurePreservesPrimaryOutput) {
+  test::TemporaryFile original;
+  outputSinkFd.store(-1, std::memory_order_relaxed);
+  {
+    FDSymbolizePrinter printer(original.fd(), 0, 4);
+    ASSERT_TRUE(printer.setOutputSink(copyPrinterOutput));
+    printer.print("original diagnostic");
+    printer.flush();
+  }
+  expectPrinterOutput(original.fd(), "original diagnostic");
 }
 
 TEST(StackTraceTest, FastStackTracePrinter) {

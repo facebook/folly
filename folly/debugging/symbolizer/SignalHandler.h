@@ -17,6 +17,7 @@
 #pragma once
 
 #include <bitset>
+#include <cstddef>
 #include <cstdint>
 
 namespace folly {
@@ -50,6 +51,16 @@ void installFatalSignalHandler(
  */
 using SignalCallback = void (*)();
 void addFatalSignalCallback(SignalCallback cb);
+
+/**
+ * Observe the bytes supplied to the original fatal diagnostic printer,
+ * including the signal banner and symbolized stack, without capturing again.
+ * Call once during startup after installFatalSignalHandler(), before a fatal
+ * signal can arrive. The process-lifetime sink must be async-signal-safe.
+ * Returns false when the printer is unavailable or already has an observer.
+ */
+using SignalOutputSink = void (*)(const char*, std::size_t);
+bool setFatalSignalOutputSink(SignalOutputSink sink);
 
 /**
  * Install the fatal signal callbacks; fatal signals will call these

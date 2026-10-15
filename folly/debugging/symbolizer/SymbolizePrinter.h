@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <atomic>
+
 #include <cstdint>
 
 #include <folly/FBString.h>
@@ -155,15 +157,33 @@ class OStreamSymbolizePrinter : public SymbolizePrinter {
  */
 class FDSymbolizePrinter : public SymbolizePrinter {
  public:
+  using OutputSink = void (*)(const char*, size_t);
+
   explicit FDSymbolizePrinter(int fd, int options = 0, size_t bufferSize = 0);
   ~FDSymbolizePrinter() override;
   virtual void flush() override;
+
+  /**
+   * Observe the same output chunks without a second stack capture or formatter.
+   * Set once before use; the sink must remain valid and be async-signal-safe.
+   * Returns false for a null or previously set sink.
+   */
+  bool setOutputSink(OutputSink sink) {
+    if (!sink) {
+      return false;
+    }
+    OutputSink previous = nullptr;
+    return outputSink_.compare_exchange_strong(
+        previous, sink, std::memory_order_release, std::memory_order_relaxed);
+  }
 
  private:
   void doPrint(StringPiece sp) override;
 
   const int fd_;
   std::unique_ptr<IOBuf> buffer_;
+  static_assert(std::atomic<OutputSink>::is_always_lock_free);
+  std::atomic<OutputSink> outputSink_{nullptr};
 };
 
 /**
