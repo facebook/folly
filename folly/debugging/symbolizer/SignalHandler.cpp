@@ -40,7 +40,7 @@ namespace symbolizer {
 
 #ifdef _WIN32
 
-const unsigned long kAllFatalSignals = 0;
+const unsigned long kAllFatalSignals = ~0UL;
 
 #else
 
@@ -654,6 +654,11 @@ std::atomic<bool> gAlreadyInstalled;
 }
 
 void installFatalSignalHandler(std::bitset<64> signals) {
+#ifdef _WIN32
+  if (signals.none()) {
+    return;
+  }
+#endif
   if (gAlreadyInstalled.exchange(true)) {
     // Already done.
     return;
@@ -665,7 +670,6 @@ void installFatalSignalHandler(std::bitset<64> signals) {
       getFatalSignalCallbackRegistry(), std::memory_order_release);
 
 #ifdef _WIN32
-  (void)signals; // bitset has no meaning under Windows VEH.
   detail::installFatalSignalHandlerWindows();
 #elif defined(FOLLY_USE_SYMBOLIZER) && FOLLY_USE_SYMBOLIZER
   // If a small sigaltstack is enabled (ex. Rust stdlib might use sigaltstack

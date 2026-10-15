@@ -35,6 +35,8 @@ extern const unsigned long kAllFatalSignals;
  * The signals parameter can be used to specify only specific fatal signals for
  * which the handler should be installed.  Only signals from kAllFatalSignals
  * are honored in this list, other signals are ignored.
+ * On Windows, an empty mask disables installation; any nonempty mask installs
+ * handlers for all fatal exceptions.
  */
 void installFatalSignalHandler(
     std::bitset<64> signals = std::bitset<64>(kAllFatalSignals));

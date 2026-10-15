@@ -17,6 +17,7 @@
 #include <folly/portability/GTest.h>
 
 #ifdef _WIN32
+#include <exception>
 #include <stdexcept>
 
 #include <folly/CPortability.h>
@@ -70,6 +71,24 @@ void setupAndCrash(void (*crashFn)()) {
 }
 
 } // namespace
+
+TEST(SignalHandlerWindows, EmptySignalMaskAllowsLaterInstallation) {
+  EXPECT_EXIT(
+      {
+        auto previousTerminate = std::get_terminate();
+        installFatalSignalHandler(std::bitset<64>{});
+        if (std::get_terminate() != previousTerminate) {
+          ::ExitProcess(1);
+        }
+        installFatalSignalHandler();
+        if (std::get_terminate() == previousTerminate) {
+          ::ExitProcess(2);
+        }
+        ::ExitProcess(0);
+      },
+      ::testing::ExitedWithCode(0),
+      "");
+}
 
 TEST(SignalHandlerWindows, AccessViolationRead) {
   EXPECT_DEATH(
