@@ -406,49 +406,19 @@ void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
 #elif defined(_GLIBCXX_VECTOR)
 // libstdc++
 
-template <typename T, typename Alloc>
-struct std_vector_layout_impl {
-  static_assert(!std::is_same<T, bool>::value, "bad instance");
-  template <typename A>
-  using alloc_traits_t = typename __gnu_cxx::__alloc_traits<A>;
-  using allocator_type = Alloc;
-  using allocator_traits = alloc_traits_t<allocator_type>;
-  using rebound_allocator_type =
-      typename allocator_traits::template rebind<T>::other;
-  using rebound_allocator_traits = alloc_traits_t<rebound_allocator_type>;
-  using pointer = typename rebound_allocator_traits::pointer;
-
-  struct impl_type : rebound_allocator_type {
-    pointer _M_start;
-    pointer _M_finish;
-    pointer _M_end_of_storage;
-  };
-};
-template <typename T, typename Alloc = std::allocator<T>>
-struct std_vector_layout : std_vector_layout_impl<T, Alloc>::impl_type {
-  using pointer = typename std_vector_layout_impl<T, Alloc>::pointer;
-};
-
-// Precompute the offset in a variable-template initializer. The clang-21
-// parser crashes (SIGSEGV) when offsetof is applied to a template-dependent
-// type inside a function-template body; std_vector_layout<T> is still
-// dependent here, but evaluating offsetof in this context sidesteps the crash.
+// std::vector<T>::_M_impl is protected, so a derived class may access it
+// through any std::vector<T>.
 template <typename T>
-inline constexpr std::size_t kVectorFinishOffset =
-    offsetof(std_vector_layout<T>, _M_finish);
+struct UnsafeVectorSetLargerSize : std::vector<T> {
+  static void apply(std::vector<T>& v, std::size_t n) {
+    // v._M_impl._M_finish += (n - v.size());
+    (v.*&UnsafeVectorSetLargerSize::_M_impl)._M_finish += (n - v.size());
+  }
+};
 
 template <typename T>
 void unsafeVectorSetLargerSize(std::vector<T>& v, std::size_t n) {
-  using real = std::vector<T>;
-  using fake = std_vector_layout<T>;
-  using pointer = typename fake::pointer;
-  static_assert(sizeof(fake) == sizeof(real), "mismatch");
-  static_assert(alignof(fake) == alignof(real), "mismatch");
-
-  auto const l = reinterpret_cast<unsigned char*>(&v);
-
-  auto& e = *reinterpret_cast<pointer*>(l + kVectorFinishOffset<T>);
-  e += (n - v.size());
+  UnsafeVectorSetLargerSize<T>::apply(v, n);
 }
 
 #define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE)
