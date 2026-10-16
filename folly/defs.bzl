@@ -17,6 +17,7 @@ load(
 load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
+load("@fbsource//tools/build_defs:sanitizers.bzl", "sanitizers")
 load("@fbsource//tools/build_defs:selects.bzl", "selects")
 load("@fbsource//tools/build_defs/dirsync:dirsync_redirect.bzl", "dirsync_redirect")
 load("@prelude//utils:buckconfig.bzl", "read_bool")
@@ -300,9 +301,11 @@ def folly_xplat_cxx_test(name, srcs, raw_headers = [], headers = [], deps = [], 
         **extra_kwargs,
     )
 
-def folly_xplat_cxx_binary(name, srcs, raw_headers = [], deps = [], oncall = None, dlopen_enabled = False, xplat_sanitizer_runtime = "self", **kwargs):
-    if xplat_sanitizer_runtime == "host" and not dlopen_enabled:
-        fail("xplat_sanitizer_runtime = 'host' requires dlopen_enabled")
+def folly_xplat_cxx_binary(
+    name, srcs, raw_headers = [], deps = [], oncall = None, dlopen_enabled = False, cxx_sanitizer_runtime_provider = sanitizers.RUNTIME_PROVIDER_TARGET, **kwargs
+):
+    if sanitizers.runtime_provider_includes_host(cxx_sanitizer_runtime_provider) and not dlopen_enabled:
+        fail("cxx_sanitizer_runtime_provider = 'host' requires dlopen_enabled")
 
     extra_kwargs = {"oncall": oncall} if oncall != None else {}
 
@@ -317,6 +320,6 @@ def folly_xplat_cxx_binary(name, srcs, raw_headers = [], deps = [], oncall = Non
         include_directories = _compute_include_directories(),
         deps = deps,
         platforms = (CXX,),
-        xplat_sanitizer_runtime = xplat_sanitizer_runtime,
+        cxx_sanitizer_runtime_provider = cxx_sanitizer_runtime_provider,
         **extra_kwargs,
     )
