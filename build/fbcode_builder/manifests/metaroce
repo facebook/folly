@@ -1,0 +1,75 @@
+[manifest]
+name = metaroce
+fbsource_path = fbcode/neteng/ai/rdma_gen
+shipit_project = facebookincubator/metaroce
+use_shipit = true
+shipit_fbcode_builder = true
+
+[build]
+builder = cmake
+job_weight_mib = 1024
+subdir = .
+
+[build.os=windows]
+builder = nop
+
+[dependencies.os=darwin]
+openssl
+
+[github.actions]
+# A cold run spends ~90 minutes rebuilding dependencies; sccache cannot
+# shorten an empty-cache build, so allow headroom over the 60-minute default.
+timeout_minutes = 180
+
+[cmake.defines.test=on]
+BUILD_TESTS = ON
+LSMR_BUILD_SAMPLES = ON
+LSMR_BUILD_RDMA_UNIT = ON
+LSMR_BUILD_PRELOAD = ON
+
+[cmake.defines.test=off]
+BUILD_TESTS = OFF
+
+[dependencies]
+# The preload interposer is a shared library: folly and fmt must be built
+# shared (their static archives are not PIC and cannot link into a .so).
+# glog must match folly: a static glog ends up linked into both libfolly.so
+# and our binaries, which aborts on duplicate flag registration.
+folly = shared_libs
+fmt = shared_libs
+fast_float
+re2
+fbthrift
+wangle
+libibverbs
+bz2
+xz
+gflags
+glog = shared_libs
+
+[dependencies.all(test=on, not(os=windows))]
+googletest
+glog = shared_libs
+
+[rpms.all(distro=centos_stream,distro_vers=8)]
+gcc-toolset-13-gcc-c++
+
+[cmake.defines.all(distro=centos_stream,distro_vers=8)]
+CMAKE_C_COMPILER=/opt/rh/gcc-toolset-13/root/usr/bin/gcc
+CMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-13/root/usr/bin/g++
+
+[rpms.all(distro=centos_stream,distro_vers=9)]
+gcc-toolset-14-gcc-c++
+
+[cmake.defines.all(distro=centos_stream,distro_vers=9)]
+CMAKE_C_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/gcc
+CMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
+
+[shipit.pathmap]
+fbcode/neteng/ai/rdma_gen/public_tld = .
+fbcode/neteng/ai/metaroce/public_tld = .
+fbcode/neteng/ai/rdma_gen = rdma_gen
+fbcode/neteng/ai/libsoftmetaroce = libsoftmetaroce
+
+[shipit.strip]
+^fbcode/neteng/ai/rdma_gen/meta/
