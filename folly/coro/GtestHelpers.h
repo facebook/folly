@@ -282,12 +282,25 @@ inline auto gtestLogCurrentException(Out&& out) {
 #define CO_ASSERT_PRED_FORMAT2(pred_format, v1, v2) \
   GTEST_PRED_FORMAT2_(pred_format, v1, v2, CO_GTEST_FATAL_FAILURE_)
 
+// Compare with the expected value ourselves: released GoogleTest versions only
+// test the expression in GTEST_TEST_BOOLEAN_, while newer versions compare it
+// with the expected value.
+#define CO_GTEST_TEST_BOOLEAN_(expression, text, actual, expected) \
+  GTEST_AMBIGUOUS_ELSE_BLOCKER_                                    \
+  if (const ::testing::AssertionResult co_gtest_ar_ =              \
+          ::testing::AssertionResult(expression);                  \
+      static_cast<bool>(co_gtest_ar_) == (expected))               \
+    ;                                                              \
+  else                                                             \
+    CO_GTEST_FATAL_FAILURE_(                                       \
+        ::testing::internal::GetBoolAssertionFailureMessage(       \
+            co_gtest_ar_, text, #actual, #expected)                \
+            .c_str())
+
 #define CO_ASSERT_TRUE(condition) \
-  GTEST_TEST_BOOLEAN_(            \
-      (condition), #condition, false, true, CO_GTEST_FATAL_FAILURE_)
+  CO_GTEST_TEST_BOOLEAN_((condition), #condition, false, true)
 #define CO_ASSERT_FALSE(condition) \
-  GTEST_TEST_BOOLEAN_(             \
-      (condition), #condition, true, false, CO_GTEST_FATAL_FAILURE_)
+  CO_GTEST_TEST_BOOLEAN_((condition), #condition, true, false)
 
 #if defined(GTEST_IS_NULL_LITERAL_)
 #define CO_ASSERT_EQ(val1, val2)                                            \
