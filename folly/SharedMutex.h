@@ -829,16 +829,16 @@ class SharedMutexImpl
 
   void finishWakeOne(const Futex* futex) {
     auto woken = detail::futexWake(futex, 1, kWaitingE);
-    if (woken != 0) {
+    if (woken > 0) {
       state_.fetch_and(~kReleaseInProgress, std::memory_order_release);
       return;
     }
-    // Zero means that no matching waiter was queued at the instant of the
-    // wake, not that no logical waiter exists.  Clear the registration bits,
-    // then wake-all: a waiter racing into futexWait either observes the state
-    // change and never sleeps, or is covered by the wake-all.  Native,
-    // emulated/ParkingLot, and deterministic futex backends all report the
-    // number of wait nodes actually removed from their wait set.
+    // A nonpositive result does not prove that a matching waiter was woken.
+    // Clear the registration bits, then wake-all: a waiter racing into
+    // futexWait either observes the state change and never sleeps, or is
+    // covered by the wake-all.  Native, emulated/ParkingLot, and deterministic
+    // futex backends all report the number of wait nodes actually removed from
+    // their wait set.
     auto previous = state_.fetch_and(
         ~(kReleaseInProgress | kWaitingE), std::memory_order_release);
     wakeDetachedWaiters(futex, previous & kWaitingE);
