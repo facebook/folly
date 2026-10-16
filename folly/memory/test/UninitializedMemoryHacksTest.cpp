@@ -389,6 +389,57 @@ TEST(UninitializedMemoryHacks, dispatchesToMember) {
   EXPECT_EQ(target.resizedTo, 42u);
 }
 
+// The libc++ std_vector_layout mirror stands in for the private vector
+// members. Check that its end pointer, and the offset folly writes, are at the
+// library's own member, which an explicit instantiation may name.
+#if defined(_LIBCPP_VECTOR)
+
+namespace {
+
+template <typename Vector, auto End>
+struct LibraryVectorEnd {
+  friend std::size_t libraryVectorEndOffset(Vector const& v) {
+    return reinterpret_cast<char const*>(&(v.*End)) -
+        reinterpret_cast<char const*>(&v);
+  }
+};
+
+std::size_t libraryVectorEndOffset(std::vector<char> const& v);
+std::size_t libraryVectorEndOffset(std::vector<double> const& v);
+template struct LibraryVectorEnd<std::vector<char>, &std::vector<char>::__end_>;
+template struct LibraryVectorEnd<
+    std::vector<double>,
+    &std::vector<double>::__end_>;
+
+// Offset of __end_ in folly's mirror, taken from an object rather than
+// offsetof, which warns when the allocator has state.
+template <typename Vector>
+std::size_t mirrorVectorEndOffset() {
+  folly::detail::std_vector_layout<
+      typename Vector::value_type,
+      typename Vector::allocator_type>
+      m;
+  return reinterpret_cast<char const*>(&m.__end_) -
+      reinterpret_cast<char const*>(&m);
+}
+
+template <typename Vector>
+void checkVectorEndOffset() {
+  auto const library = libraryVectorEndOffset(Vector());
+  EXPECT_EQ(library, mirrorVectorEndOffset<Vector>());
+  EXPECT_EQ(
+      library, folly::detail::kVectorEndOffset<typename Vector::value_type>);
+}
+
+} // namespace
+
+TEST(UninitializedMemoryHacks, vectorLayoutMatchesLibrary) {
+  checkVectorEndOffset<std::vector<char>>();
+  checkVectorEndOffset<std::vector<double>>();
+}
+
+#endif
+
 // We are deliberately putting this at the bottom to make sure it can follow use
 FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(char8_t)
 FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(int)
