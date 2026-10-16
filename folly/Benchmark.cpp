@@ -22,7 +22,6 @@
 #include <iostream>
 #include <limits>
 #include <map>
-#include <memory>
 #include <numeric>
 #include <sstream>
 #include <utility>
@@ -176,6 +175,13 @@ FOLLY_GFLAGS_DEFINE_bool(
 // === Output & comparison (mode-agnostic) ===
 
 FOLLY_GFLAGS_DEFINE_bool(json, false, "Print results in JSON format.");
+
+FOLLY_GFLAGS_DEFINE_string(
+    bm_time_unit,
+    "",
+    "Units for time per iteration in text output: "
+    "ns, us, ms, s, min, hr, days, years, ps, or fs. "
+    "Default: folly::detail::readableTime() chooses units based on duration.");
 
 FOLLY_GFLAGS_DEFINE_string(
     bm_json_verbose,
@@ -530,6 +536,29 @@ std::string headerContents(std::string_view file, size_t columns) {
       kUnitHeaders.data());
 }
 
+[[noreturn]] void fatalUsage(const std::string& msg);
+
+std::string formatBenchmarkTime(double seconds) {
+  auto unit = FLAGS_bm_time_unit;
+  if (unit.empty()) {
+    return detail::readableTime(seconds, 2);
+  }
+
+  toLowerAscii(unit);
+  for (const auto& scale : kTimeSuffixes) {
+    if (scale.suffix != nullptr && unit == scale.suffix) {
+      return std::isfinite(seconds)
+          ? stringPrintf("%.2f%s", seconds / scale.boundary, scale.suffix)
+          : detail::readableTime(seconds, 2);
+    }
+  }
+
+  fatalUsage(
+      fmt::format(
+          "Unknown --bm_time_unit='{}'. See --help for supported units.",
+          FLAGS_bm_time_unit));
+}
+
 class BenchmarkResultsPrinter {
  public:
   explicit BenchmarkResultsPrinter(
@@ -600,19 +629,19 @@ class BenchmarkResultsPrinter {
       std::string row;
       if (!useBaseline) {
         row = stringPrintf(
-            "%*s%8.8s  %9.9s  %8.8s",
+            "%*s%8.8s  %9s  %8.8s",
             static_cast<int>(s.size()),
             s.c_str(),
             "", // Padding for "relative" header.
-            detail::readableTime(secPerIter, 2).c_str(),
+            formatBenchmarkTime(secPerIter).c_str(),
             metricReadable(itersPerSec, 2).c_str());
       } else {
         row = stringPrintf(
-            "%*s%#7.5g%%  %9.9s  %8.8s",
+            "%*s%#7.5g%%  %9s  %8.8s",
             static_cast<int>(s.size()),
             s.c_str(),
             baselineNsPerIter_ / nsPerIter * 100.0,
-            detail::readableTime(secPerIter, 2).c_str(),
+            formatBenchmarkTime(secPerIter).c_str(),
             metricReadable(itersPerSec, 2).c_str());
       }
       for (auto const& name : counterNames_) {
@@ -778,7 +807,7 @@ void printResultComparison(
           "%*s           %9s  %7s\n",
           static_cast<int>(s.size()),
           s.c_str(),
-          detail::readableTime(secPerIter, 2).c_str(),
+          formatBenchmarkTime(secPerIter).c_str(),
           metricReadable(itersPerSec, 2).c_str());
     } else {
       // Print with baseline
@@ -788,7 +817,7 @@ void printResultComparison(
           static_cast<int>(s.size()),
           s.c_str(),
           rel,
-          detail::readableTime(secPerIter, 2).c_str(),
+          formatBenchmarkTime(secPerIter).c_str(),
           metricReadable(itersPerSec, 2).c_str());
     }
   }

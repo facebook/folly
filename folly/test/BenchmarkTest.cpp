@@ -85,6 +85,73 @@ struct BenchmarkingStateTest : ::testing::Test {
   folly::gflags::FlagSaver flagSaver;
 };
 
+TEST(BenchmarkFormattingTest, DefaultTimeUnit) {
+  folly::gflags::FlagSaver saver;
+  folly::gflags::SetCommandLineOption("bm_time_unit", "");
+  const std::vector<BenchmarkResult> results{
+      {"benchmark.cpp", "build", 330.6e9, {}},
+      {"benchmark.cpp", "long_build", 10 * 365.25 * 24 * 3600 * 1e9, {}}};
+  const auto output = benchmarkResultsToString(results);
+  EXPECT_THAT(output, ::testing::HasSubstr("5.51min"));
+  EXPECT_THAT(output, ::testing::HasSubstr("10.00years"));
+}
+
+TEST(BenchmarkFormattingTest, FixedTimeUnits) {
+  folly::gflags::FlagSaver saver;
+  const std::vector<BenchmarkResult> results{
+      {"benchmark.cpp",
+       "build",
+       126e6,
+       {{"elapsed", UserMetric(120, UserMetric::Type::TIME)}}},
+      {"benchmark.cpp", "%relative_build", 252e6, {}}};
+  struct TestCase {
+    const char* unit;
+    const char* buildTime;
+    const char* relativeTime;
+  };
+  const TestCase cases[]{
+      {"s", "0.13s", "0.25s"},
+      {"ms", "126.00ms", "252.00ms"},
+      {"us", "126000.00us", "252000.00us"},
+      {"ns", "126000000.00ns", "252000000.00ns"},
+      {"S", "0.13s", "0.25s"}};
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.unit);
+    folly::gflags::SetCommandLineOption("bm_time_unit", test.unit);
+    const auto output = benchmarkResultsToString(results);
+    EXPECT_THAT(output, ::testing::HasSubstr(test.buildTime));
+    EXPECT_THAT(output, ::testing::HasSubstr(test.relativeTime));
+    EXPECT_THAT(output, ::testing::HasSubstr("2.00min"));
+  }
+}
+
+TEST(BenchmarkFormattingTest, SecondsComparison) {
+  folly::gflags::FlagSaver saver;
+  folly::gflags::SetCommandLineOption("bm_time_unit", "s");
+  const std::vector<BenchmarkResult> base{
+      {"benchmark.cpp", "build", 661.2e9, {}}};
+  const std::vector<BenchmarkResult> results{
+      {"benchmark.cpp", "build", 330.6e9, {}},
+      {"benchmark.cpp", "new_build", 165.3e9, {}}};
+
+  ::testing::internal::CaptureStdout();
+  printResultComparison(base, results);
+  const auto output = ::testing::internal::GetCapturedStdout();
+  EXPECT_THAT(output, ::testing::HasSubstr("330.60s"));
+  EXPECT_THAT(output, ::testing::HasSubstr("165.30s"));
+}
+
+TEST(BenchmarkFormattingTest, InvalidTimeUnit) {
+  folly::gflags::FlagSaver saver;
+  folly::gflags::SetCommandLineOption("bm_time_unit", "seconds");
+  const std::vector<BenchmarkResult> results{
+      {"benchmark.cpp", "build", 1000, {}}};
+  EXPECT_EXIT(
+      (void)benchmarkResultsToString(results),
+      ::testing::ExitedWithCode(1),
+      "Unknown --bm_time_unit='seconds'");
+}
+
 TEST_F(BenchmarkingStateTest, Basic) {
   state.addBenchmark(__FILE__, "a1ns", [&] {
     doBaseline();
