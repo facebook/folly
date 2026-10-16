@@ -107,6 +107,18 @@
 #define FOLLY_F14_SVE_PREDICATE_NATIVE_ACTIVE 0
 #endif
 
+// For F14 functions with svbool_t/svuint8_t locals. At -O0, force-inlining
+// them puts scalable allocas into a calling coroutine's body, which clang's
+// CoroSplit cannot size ("Invalid size request on a scalable vector"). Only
+// the inlining may depend on the optimization level: the ISA path must be the
+// same in every TU, because the SVE2 and NEON paths differ in signatures (e.g.
+// firstEmpty()'s return type) under the same mangled names.
+#if defined(__OPTIMIZE__)
+#define FOLLY_F14_SVE_INLINE FOLLY_ALWAYS_INLINE
+#else
+#define FOLLY_F14_SVE_INLINE FOLLY_NOINLINE
+#endif
+
 namespace folly {
 
 struct F14TableStats {
@@ -848,7 +860,7 @@ struct alignas(constexpr_max(kRequiredVectorAlignment, alignof(ItemType)))
   // register, which lets the match index be derived without the round trip
   // through a NEON nibble mask that tagMatchIter above has to perform.
   template <typename F>
-  FOLLY_ALWAYS_INLINE bool forEachTagMatch(uint8x16_t needleV, F func) const {
+  FOLLY_F14_SVE_INLINE bool forEachTagMatch(uint8x16_t needleV, F func) const {
     svbool_t pred = svwhilelt_b8_u32(0, kCapacity);
     // Plain-NEON 16-byte load v.s. SVE predicated 12/14-byte load: see matching
     // line in tagMatchIter().

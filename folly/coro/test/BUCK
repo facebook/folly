@@ -190,6 +190,7 @@ fb_dirsync_cpp_unittest(
         "//folly:optional",
         "//folly:portability",
         "//folly:scope_guard",
+        "//folly/container:f14_hash",
         "//folly/coro:accumulate",
         "//folly/coro:async_generator",
         "//folly/coro:async_pipe",

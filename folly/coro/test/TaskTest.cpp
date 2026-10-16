@@ -16,6 +16,7 @@
 
 #include <folly/Conv.h>
 #include <folly/Portability.h>
+#include <folly/container/F14Map.h>
 
 #include <folly/coro/Baton.h>
 #include <folly/coro/BlockingWait.h>
@@ -213,6 +214,17 @@ static coro::Task<void> parentRequest(int id) {
 }
 
 class TaskTest : public testing::Test {};
+
+TEST_F(TaskTest, F14Lookup) {
+  const F14FastMap<int, int> map{{1, 42}};
+  auto lookup = [&](int key) -> coro::Task<int> {
+    auto it = map.find(key);
+    co_return it == map.end() ? -1 : it->second;
+  };
+
+  EXPECT_EQ(42, coro::blockingWait(lookup(1)));
+  EXPECT_EQ(-1, coro::blockingWait(lookup(2)));
+}
 
 TEST_F(TaskTest, RequestContextIsPreservedAcrossSuspendResume) {
   ManualExecutor executor;
