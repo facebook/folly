@@ -2847,7 +2847,7 @@ constexpr BasicFixedString<Char, sizeof...(Cs)> operator""_fs() noexcept {
 
 #ifndef NO_FIXED_STR_UDL
 #define FOLLY_DEFINE_FIXED_STRING_UDL(N)                     \
-  constexpr FixedString<N> operator""_fs##N(                 \
+  constexpr FixedString<N> operator"" _fs##N(                \
       const char* that, std::size_t count) noexcept(false) { \
     return {that, count};                                    \
   }                                                          \
