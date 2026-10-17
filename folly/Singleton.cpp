@@ -26,6 +26,8 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <exception>
+#include <mutex>
 #include <string>
 #include <fmt/chrono.h>
 #include <fmt/format.h>
@@ -76,6 +78,84 @@ SingletonVault::Type SingletonVault::defaultVaultType() {
 }
 
 namespace detail {
+
+struct SingletonVaultRegistrationCompleteHookState {
+  std::mutex mutex;
+  std::vector<SingletonVaultRegistrationCompleteHook> hooks;
+  bool defaultVaultComplete{false};
+};
+
+namespace {
+
+SingletonVaultRegistrationCompleteHookState& registrationCompleteHookState() {
+  return createGlobal<SingletonVaultRegistrationCompleteHookState, void>();
+}
+
+void runRegistrationCompleteHook(
+    SingletonVaultRegistrationCompleteHook hook) noexcept {
+  try {
+    hook();
+  } catch (const std::exception& e) {
+    RAW_LOG(
+        WARNING,
+        "SingletonVault registration-complete hook threw: %s",
+        e.what());
+  } catch (...) {
+    RAW_LOG(WARNING, "SingletonVault registration-complete hook threw");
+  }
+}
+
+void invokeSingletonVaultRegistrationCompleteHooks() noexcept {
+  auto& state = registrationCompleteHookState();
+  size_t count = 0;
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    if (state.defaultVaultComplete) {
+      return;
+    }
+    state.defaultVaultComplete = true;
+    count = state.hooks.size();
+  }
+  for (size_t i = 0; i < count; ++i) {
+    SingletonVaultRegistrationCompleteHook hook = nullptr;
+    {
+      std::lock_guard<std::mutex> lock(state.mutex);
+      hook = state.hooks[i];
+    }
+    runRegistrationCompleteHook(hook);
+  }
+}
+
+} // namespace
+
+bool addSingletonVaultRegistrationCompleteHook(
+    SingletonVaultRegistrationCompleteHook hook) noexcept {
+  if (hook == nullptr) {
+    return false;
+  }
+  auto& state = registrationCompleteHookState();
+  bool run = false;
+  {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    if (std::find(state.hooks.begin(), state.hooks.end(), hook) !=
+        state.hooks.end()) {
+      return true;
+    }
+    try {
+      state.hooks.push_back(hook);
+    } catch (...) {
+      RAW_LOG(
+          WARNING,
+          "SingletonVault registration-complete hook could not be registered");
+      return false;
+    }
+    run = state.defaultVaultComplete;
+  }
+  if (run) {
+    runRegistrationCompleteHook(hook);
+  }
+  return true;
+}
 
 std::string TypeDescriptor::name() const {
   auto ret = demangle(ti_.name());
@@ -317,6 +397,11 @@ void SingletonVault::registrationComplete() {
   }
 
   state->registrationComplete = true;
+  singletons.unlock();
+  state.unlock();
+  if (this == SingletonVault::singleton()) {
+    detail::invokeSingletonVaultRegistrationCompleteHooks();
+  }
 }
 
 void SingletonVault::doEagerInit() {

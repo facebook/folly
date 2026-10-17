@@ -200,6 +200,13 @@ class SingletonVault;
 
 namespace detail {
 
+using SingletonVaultRegistrationCompleteHook = void (*)();
+
+struct SingletonVaultRegistrationCompleteHookState;
+
+bool addSingletonVaultRegistrationCompleteHook(
+    SingletonVaultRegistrationCompleteHook hook) noexcept;
+
 // A TypeDescriptor is the unique handle for a given singleton.  It is
 // a combination of the type and of the optional name, and is used as
 // a key in unordered_maps.

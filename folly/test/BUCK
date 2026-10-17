@@ -1389,6 +1389,16 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
+fb_dirsync_cpp_unittest(
+    name = "singleton_vault_registration_complete_hook_test",
+    srcs = ["SingletonVaultRegistrationCompleteHookTest.cpp"],
+    deps = [
+        "//folly:singleton",
+        "//folly/portability:gtest",
+        "//folly/portability:unistd",
+    ],
+)
+
 fb_dirsync_cpp_library(
     name = "singleton_test_structs",
     srcs = ["SingletonTestStructs.cpp"],
