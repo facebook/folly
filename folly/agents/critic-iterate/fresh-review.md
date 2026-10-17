@@ -1,14 +1,24 @@
 # Prepare a fresh review
 
-For non-prose, require the fresh reviewer to apply the same evidence and design
-checks before opening the artifact, then verify material claims introduced by it
-and return an alternative or findings.
+## Classify the targets
+
+Select review rules separately for each target, using what it is for and what is
+being reviewed or changed. Distinguish substantive changes from mechanical
+changes, and targets from evidence sources.
+
+Follow the user's review requests, applicable rules, loader triggers, and review
+specializations. A target can need several kinds of review.
+
+## Compose the shared review
+
+Use one fresh task for all targets. For prose targets, also follow
+`{FA}/write/prose/c-i-fresh-review.md`.
 
 **Fresh reviewer inputs.** Build its prompt from only:
 
 - **A short task note:**
-  - For non-prose, identify it as non-prose and state its goal and intended
-    users.
+  - Identify each target's artifact and change types, goal, intended readers or
+    users, and applicable checks.
   - For an investigation, include the question the reviewer must answer unless
     the artifact's goal already states it.
   - Include external facts or requirements needed to verify correctness when
