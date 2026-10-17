@@ -9,6 +9,9 @@ Project rules refine this file. For gtest, also load `gtest.md`.
 
 ## Add or extend coverage
 
+Do not retest ordinary library or platform behavior merely because your code
+uses it. Tests must protect behavior your code implements or changes.
+
 Before adding a test, answer:
 
 - **Behavior:** What observable contract or failure mode does it protect?
@@ -70,8 +73,8 @@ failure still identifies the broken case.
 
 ## Prune
 
-Before materially editing or deleting an existing test, ask: **If this test were
-absent, which material regression could escape?**
+Before keeping a test, ask: **Which practically important bug could escape
+without it?** If none, omit or remove it.
 
 - Delete or merge a test when another catches the same material regression with
   an equally useful failure. Keep overlap only for a distinct material risk or
