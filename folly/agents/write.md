@@ -155,23 +155,7 @@ concision.
 
 ## Code comments
 
-Code comments are read beside the code. Explain the outside fact, invariant, or
-reason that the code alone does not show; do not narrate what the code already
-shows.
-
-- State the condition the reader should rely on, not the mechanism that checks
-  or produces it. For a side-effecting call or ignored return, "Check that every
-  X resolves" beats "Fetch every X"; name the mechanism only when the mechanism
-  is surprising.
-- When a comment's claim depends on facts outside the local expression, include
-  the shortest checkable proof. Name the outside source of truth and the
-  invariant it establishes; don't compress so far that a cold reader must infer
-  why the claim follows.
-- Apply the same standard to code-adjacent prose, including `static_assert`
-  messages: include text only when it adds information the expression does not
-  already carry.
-- `/*paramName=*/` inline comments: only for same-type parameter disambiguation.
-  Remove when parameter types already distinguish the arguments.
+For code comments, load `code.md` and apply its "Code comments" section.
 
 ## Explain intent of code changes
 
