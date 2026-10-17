@@ -74,8 +74,7 @@ The main rules target those gaps:
 - `<name>/` holds more focused files used by that package.
 - `backtest/` contains fixed tasks for measuring how rule changes affect an
   artifact. It is development tooling and is never loaded as task policy.
-- `CONTRIB.md` explains a directory's purpose and maintenance rules.
-- `<name>.contrib.md` records one current or proposed rule's purpose and
-  context.
+- `CONTRIB.md` and `<name>.contrib.md` keep maintainer context for a subtree and
+  a particular rule, respectively.
 
 See [CONTRIB.md](CONTRIB.md) for package principles, loading, and maintenance.
