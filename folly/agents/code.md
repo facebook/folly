@@ -109,11 +109,34 @@ actionable context; otherwise let it propagate.
   is not to handle OOM).
 - Systems programs must decide deliberately which failures are recoverable and
   which terminate the process.
-- Scripts, utilities, and config generators/validators should usually let rare
-  unexpected failures produce a native exception and stack trace. Handle
-  expected user mistakes, and add context to common failures only when it
-  preserves the original diagnosis and repays the extra code. `CHECK` and
-  `assert` are fine for internal invariants.
+
+### Minimize handling in scripts, utilities, and test/evaluation code
+
+First, simplify failure reporting without removing checked conditions.
+
+- For rare or should-not-happen failures, remove handling that only adds
+  diagnostics to a native exception, without changing program flow. Let such
+  exceptions propagate.
+
+- For internal invariants, use `CHECK` / `LOG(FATAL)` in C++, or bare `assert`
+  in Python (these scripts and tests do not run with `-O`).
+
+Then, consider removing or simplifying checks. Assume the failures they detect
+occur and follow the code without them, including side effects and recovery.
+
+Check the propagation path before changing an exception type, or making it
+fatal. If possible, also simplify downstream handling.
+
+Keep checks needed to prevent wrong results, protect required recovery, or make
+common failures easier to diagnose.
+
+Only keep messages or handling to:
+
+- help diagnose or report common, expected errors during normal use;
+- protect behavior still required after simplification.
+
+Handlers should preserve earlier failures. When reporting an invariant failure,
+keep its backtrace.
 
 ## Naming
 
