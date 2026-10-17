@@ -17,6 +17,8 @@
 #include <folly/synchronization/Hazptr.h>
 
 #include <atomic>
+#include <bit>
+#include <cstdint>
 #include <thread>
 
 #ifndef _WIN32
@@ -118,6 +120,57 @@ class Node : public hazptr_obj_base<Node<Atom>, Atom> {
 
   Atom<Node<Atom>*>* ptr_next() noexcept { return &next_; }
 }; // Node
+
+template <typename T, typename Func>
+concept SupportsHazptrFilter = requires(
+    hazptr_holder<std::atomic>& holder, T*& ptr, std::atomic<T*>& src, Func f) {
+  holder.try_protect(ptr, src, f);
+  holder.protect(src, f);
+};
+
+template <typename Src>
+concept SupportsHazptrSource = requires(
+    hazptr_holder<std::atomic>& holder, Node<>*& ptr, Src&& src) {
+  holder.try_protect(ptr, static_cast<Src&&>(src));
+};
+
+struct NothrowPointerSource {
+  Node<>* operator()() noexcept;
+};
+
+struct ThrowingPointerSource {
+  Node<>* operator()();
+};
+
+struct NothrowPointerFilter {
+  Node<>* operator()(Node<>*) const noexcept;
+};
+
+struct NothrowRvaluePointerFilter {
+  Node<>* operator()(Node<>*&&) const noexcept;
+};
+
+struct NothrowLvaluePointerFilter {
+  Node<>* operator()(Node<>*&) const noexcept;
+};
+
+struct ThrowingPointerFilter {
+  Node<>* operator()(Node<>*) const;
+};
+
+struct MemberPointerNode : hazptr_obj_base<MemberPointerNode> {
+  MemberPointerNode* link{nullptr};
+};
+
+static_assert(SupportsHazptrFilter<Node<>, NothrowPointerFilter>);
+static_assert(SupportsHazptrFilter<Node<>, NothrowRvaluePointerFilter>);
+static_assert(!SupportsHazptrFilter<Node<>, NothrowLvaluePointerFilter>);
+static_assert(!SupportsHazptrFilter<Node<>, ThrowingPointerFilter>);
+static_assert(!SupportsHazptrFilter< //
+    MemberPointerNode,
+    MemberPointerNode * MemberPointerNode::*>);
+static_assert(SupportsHazptrSource<NothrowPointerSource>);
+static_assert(!SupportsHazptrSource<ThrowingPointerSource>);
 
 /** NodeRC */
 template <bool Mutable, template <typename> class Atom = std::atomic>
@@ -385,6 +438,36 @@ void callable_source_try_protect_test() {
   h.reset_protection();
   hazptr_cleanup<Atom>();
   EXPECT_EQ(c_.dtors(), 2);
+}
+
+template <template <typename> class Atom = std::atomic>
+void tagged_pointer_try_protect_test() {
+  static_assert(alignof(Node<Atom>) >= 2);
+  c_.clear();
+  auto* obj = new Node<Atom>;
+  auto* const tagged = std::bit_cast<Node<Atom>*>(
+      std::bit_cast<std::uintptr_t>(obj) | std::uintptr_t{1});
+  auto untag = [](Node<Atom>* ptr) noexcept {
+    return std::bit_cast<Node<Atom>*>(
+        std::bit_cast<std::uintptr_t>(ptr) & ~std::uintptr_t{1});
+  };
+  Atom<Node<Atom>*> src{obj};
+  auto* ptr = obj;
+
+  hazptr_holder<Atom> h = make_hazard_pointer<Atom>();
+  ASSERT_TRUE(h.try_protect(ptr, src, untag));
+
+  src.store(tagged, std::memory_order_relaxed);
+  ASSERT_FALSE(h.try_protect(ptr, src, untag));
+  EXPECT_EQ(ptr, tagged);
+  ASSERT_TRUE(h.try_protect(ptr, src, untag));
+
+  obj->retire();
+  hazptr_cleanup<Atom>();
+  EXPECT_EQ(c_.dtors(), 0);
+  h.reset_protection();
+  hazptr_cleanup<Atom>();
+  EXPECT_EQ(c_.dtors(), 1);
 }
 
 template <template <typename> class Atom = std::atomic>
@@ -1287,6 +1370,10 @@ TEST(HazptrTest, callable_source_try_protect) {
   callable_source_try_protect_test();
 }
 
+TEST(HazptrTest, tagged_pointer_try_protect) {
+  tagged_pointer_try_protect_test();
+}
+
 TEST_F(HazptrPreInitTest, dsched_basic_protection) {
   DSched sched(DSched::uniform(0));
   basic_protection_test<DeterministicAtomic>();
@@ -1295,6 +1382,11 @@ TEST_F(HazptrPreInitTest, dsched_basic_protection) {
 TEST_F(HazptrPreInitTest, dsched_callable_source_try_protect) {
   DSched sched(DSched::uniform(0));
   callable_source_try_protect_test<DeterministicAtomic>();
+}
+
+TEST_F(HazptrPreInitTest, dsched_tagged_pointer_try_protect) {
+  DSched sched(DSched::uniform(0));
+  tagged_pointer_try_protect_test<DeterministicAtomic>();
 }
 
 TEST(HazptrTest, virtual) {

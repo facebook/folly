@@ -119,12 +119,13 @@ class hazptr_holder {
   }
 
   template <typename T, typename Src, typename Func>
-    requires std::is_invocable_r_v<T*, Src&>
-  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src&& src, Func f) noexcept(
-      noexcept(std::declval<Src&>()()) &&
-      noexcept(std::declval<Func&>()(std::declval<T*>()))) {
-    auto p = ptr;
-    reset_protection(f(p));
+    requires std::is_nothrow_invocable_r_v<T*, Src&> &&
+      std::is_nothrow_invocable_r_v<T*, Func&, T*> &&
+      (!std::is_member_pointer_v<Func>)
+  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src&& src, Func f) noexcept {
+    auto* const p = ptr;
+    T* const protectedPtr = f(static_cast<T*>(p));
+    reset_protection(protectedPtr);
     /*** Full fence ***/ folly::asymmetric_thread_fence_light(
         std::memory_order_seq_cst);
     ptr = src();
@@ -136,15 +137,16 @@ class hazptr_holder {
   }
 
   template <typename T, typename Src>
-    requires std::is_invocable_r_v<T*, Src&>
-  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src&& src) noexcept(
-      noexcept(src())) {
+    requires std::is_nothrow_invocable_r_v<T*, Src&>
+  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src&& src) noexcept {
     return try_protect(ptr, std::forward<Src>(src), [](T* t) noexcept {
       return t;
     });
   }
 
   template <typename T, typename Func>
+    requires std::is_nothrow_invocable_r_v<T*, Func&, T*> &&
+      (!std::is_member_pointer_v<Func>)
   FOLLY_ALWAYS_INLINE bool try_protect(
       T*& ptr, const Atom<T*>& src, Func f) noexcept {
     /* Filtering the protected pointer through function Func is useful
@@ -156,10 +158,12 @@ class hazptr_holder {
   /** protect */
   template <typename T>
   FOLLY_ALWAYS_INLINE T* protect(const Atom<T*>& src) noexcept {
-    return protect(src, [](T* t) { return t; });
+    return protect(src, [](T* t) noexcept { return t; });
   }
 
   template <typename T, typename Func>
+    requires std::is_nothrow_invocable_r_v<T*, Func&, T*> &&
+      (!std::is_member_pointer_v<Func>)
   FOLLY_ALWAYS_INLINE T* protect(const Atom<T*>& src, Func f) noexcept {
     T* ptr = src.load(std::memory_order_relaxed);
     while (!try_protect(ptr, src, f)) {
