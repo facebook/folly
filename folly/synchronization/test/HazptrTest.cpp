@@ -142,6 +142,16 @@ struct ThrowingPointerSource {
   Node<>* operator()();
 };
 
+struct MoveOnlyPointerSource {
+  MoveOnlyPointerSource() = default;
+  MoveOnlyPointerSource(const MoveOnlyPointerSource&) = delete;
+  MoveOnlyPointerSource& operator=(const MoveOnlyPointerSource&) = delete;
+  MoveOnlyPointerSource(MoveOnlyPointerSource&&) = default;
+  MoveOnlyPointerSource& operator=(MoveOnlyPointerSource&&) = default;
+
+  Node<>* operator()() noexcept;
+};
+
 struct NothrowPointerFilter {
   Node<>* operator()(Node<>*) const noexcept;
 };
@@ -171,6 +181,8 @@ static_assert(!SupportsHazptrFilter< //
     MemberPointerNode * MemberPointerNode::*>);
 static_assert(SupportsHazptrSource<NothrowPointerSource>);
 static_assert(!SupportsHazptrSource<ThrowingPointerSource>);
+static_assert(SupportsHazptrSource<MoveOnlyPointerSource>);
+static_assert(!SupportsHazptrSource<MoveOnlyPointerSource&>);
 
 /** NodeRC */
 template <bool Mutable, template <typename> class Atom = std::atomic>
@@ -438,6 +450,34 @@ void callable_source_try_protect_test() {
   h.reset_protection();
   hazptr_cleanup<Atom>();
   EXPECT_EQ(c_.dtors(), 2);
+}
+
+void callable_source_by_value_test() {
+  struct Source {
+    Node<>* ptr;
+    int calls{0};
+
+    Node<>* operator()() noexcept {
+      ++calls;
+      return ptr;
+    }
+  };
+
+  c_.clear();
+  auto* obj = new Node<>;
+  auto* ptr = obj;
+  Source src{obj};
+
+  hazptr_holder<std::atomic> h = make_hazard_pointer<std::atomic>();
+  ASSERT_TRUE(h.try_protect(ptr, src));
+  EXPECT_EQ(src.calls, 0);
+
+  obj->retire();
+  hazptr_cleanup();
+  EXPECT_EQ(c_.dtors(), 0);
+  h.reset_protection();
+  hazptr_cleanup();
+  EXPECT_EQ(c_.dtors(), 1);
 }
 
 template <template <typename> class Atom = std::atomic>
@@ -1368,6 +1408,10 @@ TEST(HazptrTest, basic_protection) {
 
 TEST(HazptrTest, callable_source_try_protect) {
   callable_source_try_protect_test();
+}
+
+TEST(HazptrTest, callable_source_by_value) {
+  callable_source_by_value_test();
 }
 
 TEST(HazptrTest, tagged_pointer_try_protect) {

@@ -122,7 +122,7 @@ class hazptr_holder {
     requires std::is_nothrow_invocable_r_v<T*, Src&> &&
       std::is_nothrow_invocable_r_v<T*, Func&, T*> &&
       (!std::is_member_pointer_v<Func>)
-  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src&& src, Func f) noexcept {
+  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src src, Func f) noexcept {
     auto* const p = ptr;
     T* const protectedPtr = f(static_cast<T*>(p));
     reset_protection(protectedPtr);
@@ -138,10 +138,8 @@ class hazptr_holder {
 
   template <typename T, typename Src>
     requires std::is_nothrow_invocable_r_v<T*, Src&>
-  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src&& src) noexcept {
-    return try_protect(ptr, std::forward<Src>(src), [](T* t) noexcept {
-      return t;
-    });
+  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src src) noexcept {
+    return try_protect(ptr, std::move(src), [](T* t) noexcept { return t; });
   }
 
   template <typename T, typename Func>
