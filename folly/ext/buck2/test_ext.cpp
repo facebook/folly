@@ -19,8 +19,6 @@
 #include <fstream>
 #include <sstream>
 
-#include <boost/filesystem.hpp>
-
 #include <folly/io/FsUtil.h>
 #include <folly/json/dynamic.h>
 #include <folly/json/json.h>

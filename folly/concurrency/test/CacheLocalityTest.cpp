@@ -315,7 +315,7 @@ static std::unordered_map<std::string, std::string> fakeSysfsTree = {
 TEST(CacheLocality, FakeSysfs) {
   folly::test::TemporaryDirectory tmpdir;
   for (const auto& [k, v] : fakeSysfsTree) {
-    auto path = tmpdir.path() / k;
+    auto path = tmpdir.path() / fs::path(k).relative_path();
     fs::create_directories(path.parent_path());
     std::ofstream(path.string()) << v << std::endl;
   }
