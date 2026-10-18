@@ -20,6 +20,7 @@
 #include <utility>
 
 #include <folly/Traits.h>
+#include <folly/Utility.h>
 #include <folly/synchronization/AsymmetricThreadFence.h>
 #include <folly/synchronization/Hazptr-fwd.h>
 #include <folly/synchronization/HazptrDomain.h>
@@ -110,19 +111,11 @@ class hazptr_holder {
   /** Hazard pointer operations */
 
   /** try_protect */
-  template <typename T>
-  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, const Atom<T*>& src) noexcept {
-    return try_protect(
-        ptr,
-        [&]() noexcept { return src.load(std::memory_order_acquire); },
-        [](T* t) noexcept { return t; });
-  }
-
-  template <typename T, typename Src, typename Func>
+  template <typename T, typename Src, typename Func = identity_fn>
     requires std::is_nothrow_invocable_r_v<T*, Src&> &&
       std::is_nothrow_invocable_r_v<T*, Func&, T*> &&
       (!std::is_member_pointer_v<Func>)
-  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src src, Func f) noexcept {
+  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src src, Func f = {}) noexcept {
     auto* const p = ptr;
     T* const protectedPtr = f(static_cast<T*>(p));
     reset_protection(protectedPtr);
@@ -136,17 +129,11 @@ class hazptr_holder {
     return true;
   }
 
-  template <typename T, typename Src>
-    requires std::is_nothrow_invocable_r_v<T*, Src&>
-  FOLLY_ALWAYS_INLINE bool try_protect(T*& ptr, Src src) noexcept {
-    return try_protect(ptr, std::move(src), [](T* t) noexcept { return t; });
-  }
-
-  template <typename T, typename Func>
+  template <typename T, typename Func = identity_fn>
     requires std::is_nothrow_invocable_r_v<T*, Func&, T*> &&
       (!std::is_member_pointer_v<Func>)
   FOLLY_ALWAYS_INLINE bool try_protect(
-      T*& ptr, const Atom<T*>& src, Func f) noexcept {
+      T*& ptr, const Atom<T*>& src, Func f = {}) noexcept {
     /* Filtering the protected pointer through function Func is useful
        for stealing bits of the pointer word */
     return try_protect(
@@ -154,15 +141,10 @@ class hazptr_holder {
   }
 
   /** protect */
-  template <typename T>
-  FOLLY_ALWAYS_INLINE T* protect(const Atom<T*>& src) noexcept {
-    return protect(src, [](T* t) noexcept { return t; });
-  }
-
-  template <typename T, typename Func>
+  template <typename T, typename Func = identity_fn>
     requires std::is_nothrow_invocable_r_v<T*, Func&, T*> &&
       (!std::is_member_pointer_v<Func>)
-  FOLLY_ALWAYS_INLINE T* protect(const Atom<T*>& src, Func f) noexcept {
+  FOLLY_ALWAYS_INLINE T* protect(const Atom<T*>& src, Func f = {}) noexcept {
     T* ptr = src.load(std::memory_order_relaxed);
     while (!try_protect(ptr, src, f)) {
       /* Keep trying */
