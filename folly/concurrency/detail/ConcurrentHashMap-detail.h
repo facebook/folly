@@ -1305,7 +1305,7 @@ class alignas(64) SIMDTable {
       uint64_t chunk_idx = chunk_idx_;
       uint64_t tag_idx = tag_idx_;
       Node* node = nullptr;
-      do {
+      while (true) {
         if (tag_idx >= Chunk::kCapacity) {
           tag_idx = 0;
           ++chunk_idx;
@@ -1313,14 +1313,27 @@ class alignas(64) SIMDTable {
         if (chunk_idx >= chunk_count) {
           break;
         }
-        // Note that iteration could also be implemented with tag filtering
-        node = hazptrs_[1].protect(
-            chunks->getChunk(chunk_idx, chunk_count)->item(tag_idx));
+        // Visit only occupied slots so hazptr protect() skips empty ones.
+        // occupiedIter() yields indices in ascending order, so skipping those
+        // below tag_idx resumes the scan where it left off.
+        Chunk* const chunk = chunks->getChunk(chunk_idx, chunk_count);
+        auto occupied = chunk->occupiedIter();
+        while (occupied.hasNext()) {
+          uint64_t cand = occupied.next();
+          if (cand < tag_idx) {
+            continue;
+          }
+          node = hazptrs_[1].protect(chunk->item(cand));
+          if (node) {
+            tag_idx = cand;
+            break;
+          }
+        }
         if (node) {
           break;
         }
-        ++tag_idx;
-      } while (true);
+        tag_idx = Chunk::kCapacity;
+      }
       node_ = node;
       chunk_idx_ = chunk_idx;
       tag_idx_ = tag_idx;
