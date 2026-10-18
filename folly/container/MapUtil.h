@@ -120,7 +120,7 @@ template <
 const typename Map::mapped_type& get_or_throw(
     Map&& map,
     const Key& key,
-    const StringPiece& exceptionStrPrefix = StringPiece())
+    const StringPiece exceptionStrPrefix = StringPiece())
   requires(!std::is_lvalue_reference_v<Map>)
 = delete; // disallow on temporary map to prevent dangling reference
 
@@ -131,7 +131,7 @@ template <
 const typename Map::mapped_type& get_or_throw(
     const Map& map,
     const Key& key,
-    const StringPiece& exceptionStrPrefix = StringPiece()) {
+    const StringPiece exceptionStrPrefix = StringPiece()) {
   auto pos = map.find(key);
   if (pos != map.end()) {
     return pos->second;
@@ -146,7 +146,7 @@ template <
 typename Map::mapped_type& get_or_throw(
     Map& map,
     const Key& key,
-    const StringPiece& exceptionStrPrefix = StringPiece()) {
+    const StringPiece exceptionStrPrefix = StringPiece()) {
   auto pos = map.find(key);
   if (pos != map.end()) {
     return pos->second;
