@@ -13,9 +13,9 @@ libnl-route-3-dev
 libnl
 
 [download]
-url = https://github.com/thom311/libnl/releases/download/libnl3_2_25/libnl-3.2.25.tar.gz
-sha256 = 8beb7590674957b931de6b7f81c530b85dc7c1ad8fbda015398bc1e8d1ce8ec5
+url = https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz
+sha256 = 2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d
 
 [build.os=linux]
 builder = autoconf
-subdir = libnl-3.2.25
+subdir = libnl-3.11.0
