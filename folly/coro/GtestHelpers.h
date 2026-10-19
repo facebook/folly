@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <type_traits>
+
+#include <folly/Traits.h>
 #include <folly/coro/BlockingWait.h>
 #include <folly/coro/Coroutine.h>
 #include <folly/coro/Task.h>
@@ -36,6 +39,35 @@ inline auto gtestLogCurrentException(Out&& out) {
 #else
   out << ew;
 #endif
+}
+
+// Supports googletest both before and after AddTestName() became AddTest().
+struct GtestRegisteredTestCompat {
+  const char* name;
+  const char* file;
+  int line;
+  void* next;
+};
+
+template <typename State>
+using gtest_registered_test_t = typename State::RegisteredTest;
+
+using GtestRegisteredTest = detected_or_t<
+    GtestRegisteredTestCompat,
+    gtest_registered_test_t,
+    ::testing::internal::TypedTestSuitePState>;
+
+inline constexpr bool kGtestHasAddTest =
+    !std::is_same_v<GtestRegisteredTest, GtestRegisteredTestCompat>;
+
+template <typename State>
+bool gtestAddTypedTest(
+    State& state, GtestRegisteredTest& test, const char* suiteName) {
+  if constexpr (kGtestHasAddTest) {
+    return state.AddTest(&test, suiteName);
+  } else {
+    return state.AddTestName(test.file, test.line, suiteName, test.name);
+  }
 }
 
 } // namespace detail
@@ -238,30 +270,32 @@ inline auto gtestLogCurrentException(Out&& out) {
  * The unwrap_body parameter controls how co_TestBody() is executed,
  * similar to how CO_TEST_ works for CO_TEST / CO_TEST_F.
  */
-#define CO_TYPED_TEST_P_(SuiteName, TestName, unwrap_body)    \
-  namespace GTEST_SUITE_NAMESPACE_(SuiteName) {               \
-  template <typename gtest_TypeParam_>                        \
-  class TestName : public SuiteName<gtest_TypeParam_> {       \
-   private:                                                   \
-    typedef SuiteName<gtest_TypeParam_> TestFixture;          \
-    typedef gtest_TypeParam_ TypeParam;                       \
-    void TestBody() override;                                 \
-    folly::coro::Task<> co_TestBody();                        \
-  };                                                          \
-  [[maybe_unused]] static bool gtest_##TestName##_defined_ =  \
-      GTEST_TYPED_TEST_SUITE_P_STATE_(SuiteName).AddTestName( \
-          __FILE__,                                           \
-          __LINE__,                                           \
-          GTEST_STRINGIFY_(SuiteName),                        \
-          GTEST_STRINGIFY_(TestName));                        \
-  }                                                           \
-  template <typename gtest_TypeParam_>                        \
-  void GTEST_SUITE_NAMESPACE_(                                \
-      SuiteName)::TestName<gtest_TypeParam_>::TestBody() {    \
-    unwrap_body(co_TestBody);                                 \
-  }                                                           \
-  template <typename gtest_TypeParam_>                        \
-  folly::coro::Task<void> GTEST_SUITE_NAMESPACE_(             \
+#define CO_TYPED_TEST_P_(SuiteName, TestName, unwrap_body)          \
+  namespace GTEST_SUITE_NAMESPACE_(SuiteName) {                     \
+  template <typename gtest_TypeParam_>                              \
+  class TestName : public SuiteName<gtest_TypeParam_> {             \
+   private:                                                         \
+    typedef SuiteName<gtest_TypeParam_> TestFixture;                \
+    typedef gtest_TypeParam_ TypeParam;                             \
+    void TestBody() override;                                       \
+    folly::coro::Task<> co_TestBody();                              \
+  };                                                                \
+  static ::folly::detail::GtestRegisteredTest                       \
+      gtest_##TestName##_registered_test_ = {                       \
+          GTEST_STRINGIFY_(TestName), __FILE__, __LINE__, nullptr}; \
+  [[maybe_unused]] static bool gtest_##TestName##_defined_ =        \
+      ::folly::detail::gtestAddTypedTest(                           \
+          GTEST_TYPED_TEST_SUITE_P_STATE_(SuiteName),               \
+          gtest_##TestName##_registered_test_,                      \
+          GTEST_STRINGIFY_(SuiteName));                             \
+  }                                                                 \
+  template <typename gtest_TypeParam_>                              \
+  void GTEST_SUITE_NAMESPACE_(                                      \
+      SuiteName)::TestName<gtest_TypeParam_>::TestBody() {          \
+    unwrap_body(co_TestBody);                                       \
+  }                                                                 \
+  template <typename gtest_TypeParam_>                              \
+  folly::coro::Task<void> GTEST_SUITE_NAMESPACE_(                   \
       SuiteName)::TestName<gtest_TypeParam_>::co_TestBody()
 
 /**
