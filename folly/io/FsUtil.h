@@ -30,6 +30,11 @@ namespace std_fs = std::filesystem;
 // boost::filesystem namespace into folly::fs.
 using namespace ::boost::filesystem;
 
+// TEMPORARY: lets callers that pass error codes to folly::fs functions compile
+// both before and after folly::fs switches to std::filesystem. Remove once the
+// switch has landed and callers use std::error_code.
+using error_code = ::boost::system::error_code;
+
 /**
  * Check whether "path" starts with "prefix".
  * That is, if prefix has n path elements, then the first n elements of
