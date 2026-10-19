@@ -654,7 +654,7 @@ class BenchmarkResultsPrinter {
                 row += stringPrintf(
                     "  %*s",
                     int(name.length()),
-                    detail::readableTime(value, 2).c_str());
+                    formatBenchmarkTime(value).c_str());
               });
               break;
             case UserMetric::Type::METRIC:

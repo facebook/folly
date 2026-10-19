@@ -108,20 +108,21 @@ TEST(BenchmarkFormattingTest, FixedTimeUnits) {
     const char* unit;
     const char* buildTime;
     const char* relativeTime;
+    const char* elapsed;
   };
   const TestCase cases[]{
-      {"s", "0.13s", "0.25s"},
-      {"ms", "126.00ms", "252.00ms"},
-      {"us", "126000.00us", "252000.00us"},
-      {"ns", "126000000.00ns", "252000000.00ns"},
-      {"S", "0.13s", "0.25s"}};
+      {"s", "0.13s", "0.25s", "120.00s"},
+      {"ms", "126.00ms", "252.00ms", "120000.00ms"},
+      {"us", "126000.00us", "252000.00us", "120000000.00us"},
+      {"ns", "126000000.00ns", "252000000.00ns", "120000000000.00ns"},
+      {"S", "0.13s", "0.25s", "120.00s"}};
   for (const auto& test : cases) {
     SCOPED_TRACE(test.unit);
     folly::gflags::SetCommandLineOption("bm_time_unit", test.unit);
     const auto output = benchmarkResultsToString(results);
     EXPECT_THAT(output, ::testing::HasSubstr(test.buildTime));
     EXPECT_THAT(output, ::testing::HasSubstr(test.relativeTime));
-    EXPECT_THAT(output, ::testing::HasSubstr("2.00min"));
+    EXPECT_THAT(output, ::testing::HasSubstr(test.elapsed));
   }
 }
 
