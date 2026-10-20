@@ -727,6 +727,78 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
+# f14_mixed_optimization_test links one binary from F14 code built at -O0 and
+# at -O2; see F14MixedOptimizationTest.cpp. It depends on this link order:
+# - the test's own object first, then :f14_mixed_optimization_o0, then
+#   :f14_mixed_optimization_o2 (the -O0 library depends on the -O2 one, so it
+#   links before it);
+# - a static link, so that the whole binary shares one copy of each inline
+#   function (with dev mode's shared libraries, each library keeps its own);
+# - no header units, so that each file reads the F14 headers with its own
+#   macros.
+# The -O flags are set only where ovr_config//compiler:clang matches.
+# Elsewhere the test passes without testing much.
+# BuildMixesOptimizationLevels fails if this setup stops working.
+fb_dirsync_cpp_library(
+    name = "f14_mixed_optimization_o0",
+    srcs = [
+        "F14MixedOptimizationOps.cpp",
+    ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//compiler:clang": ["-O0"],
+    }),
+    preprocessor_flags = ["-DFOLLY_F14_MIXED_OPT_NS=o0"],
+    use_header_units = False,
+    deps = [
+        ":f14_mixed_optimization_o2",  # @manual
+        "//folly:conv",
+        "//folly/container:f14_hash",
+        "//folly/container/detail:f14_hash_detail",
+    ],
+)
+
+fb_dirsync_cpp_library(
+    name = "f14_mixed_optimization_o2",
+    srcs = [
+        "F14MixedOptimizationOps.cpp",
+    ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//compiler:clang": ["-O2"],
+    }),
+    preprocessor_flags = ["-DFOLLY_F14_MIXED_OPT_NS=o2"],
+    use_header_units = False,
+    deps = [
+        "//folly:conv",
+        "//folly/container:f14_hash",
+        "//folly/container/detail:f14_hash_detail",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "f14_mixed_optimization_test",
+    srcs = [
+        "F14MixedOptimizationTest.cpp",
+    ],
+    compiler_flags = select({
+        "DEFAULT": [],
+        "ovr_config//compiler:clang": [
+            "-O2",
+            "-DFOLLY_F14_MIXED_OPT_FLAGS_SET=1",
+        ],
+    }),
+    extract_helper_lib = False,
+    overridden_link_style = "static",
+    use_header_units = False,
+    deps = [
+        ":f14_mixed_optimization_o0",  # @manual
+        ":f14_mixed_optimization_o2",  # @manual
+        "//folly/container/detail:f14_hash_detail",
+        "//folly/portability:gtest",
+    ],
+)
+
 fb_dirsync_cpp_benchmark(
     name = "foreach_benchmark",
     srcs = ["ForeachBenchmark.cpp"],
