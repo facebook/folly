@@ -1,24 +1,19 @@
 > NOT A RULE. If loaded as task policy, stop and ask the user.
 
-# Writing rules
+The writing rules help agents give readers the understanding their task needs.
+Shared standards keep writing and review consistent; specialized files add
+checks for particular artifacts.
 
-These files give all prose the same core guidance while loading extra checks
-only when they apply:
+- [write.md](../write.md) holds common prose standards, including titles and
+  Test Plans. Artifact-specific rules build on that guidance.
+- [rule-design.md](../rule-design.md) adds checks for agent rules, where clear
+  prose must also tell an agent how to decide and act.
+- [contributor-notes.md](contributor-notes.md) explains how maintainer notes
+  preserve purpose and reasons that operational text can omit.
 
-- `../write.md` covers general prose, author revision, long documents, review
-  criteria, and commit messages.
-- `../rule-design.md` owns agent-rule editing checks, including
-  self-application.
-- `contributor-notes.md` owns shared writing and maintenance criteria for
-  directory `CONTRIB.md` files and rule sidecars.
-- `prose/c-i-author.md` owns prose critic dimensions.
-- `prose/c-i-fresh-review.md` owns prose fresh-review preparation.
-- `prose/c-i-review.md` owns prose review scope and priorities shared by author
-  and fresh-review passes.
-- `prose/c-i-revise.md` owns prose finding triage and revision policy.
-- `commit-summary/c-i-author.md` owns the context packet used to draft commit
-  and diff messages.
-- `commit-summary/c-i-fresh-review.md` selects context for their fresh review.
-
-`../critic-iterate.md` handles repeated review, delegation, and reviewer roles.
-Code quality and repository-specific mechanics belong elsewhere.
+The `prose/` files apply the general review cycle to writing. Author and
+reviewer passes ask what the intended reader needs. Preparation gives the
+independent reviewer that context, and revision addresses its findings.
+Repetition, delegation, and reviewer roles belong to
+[critic-iterate](../critic-iterate.md), so prose checks can change without
+redefining the review process.
