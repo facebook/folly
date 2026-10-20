@@ -741,25 +741,60 @@ TEST(SharedMutex, readerDrainWaitBitClearedByExclusiveToSharedConversion) {
 }
 
 template <typename Lock>
+void expectLockState(const Lock& lock, bool unique, bool shared, bool upgrade) {
+  const auto state = lock.get_lock_state();
+  EXPECT_EQ(unique, state.unique);
+  EXPECT_EQ(shared, state.shared);
+  EXPECT_EQ(upgrade, state.upgrade);
+}
+
+template <typename Lock>
+void runLockStateTest() {
+  {
+    Lock lock;
+    expectLockState(lock, false, false, false);
+    lock.lock();
+    expectLockState(lock, true, false, false);
+    lock.unlock();
+  }
+  {
+    Lock lock;
+    lock.lock_shared();
+    expectLockState(lock, false, true, false);
+    lock.unlock_shared();
+  }
+  {
+    Lock lock;
+    lock.lock_upgrade();
+    expectLockState(lock, false, false, true);
+    lock.lock_shared();
+    expectLockState(lock, false, true, true);
+    lock.unlock_shared();
+    lock.unlock_upgrade();
+  }
+}
+
+TEST(SharedMutex, lockState) {
+  runLockStateTest<SharedMutexReadPriority>();
+  runLockStateTest<SharedMutexWritePriority>();
+  runLockStateTest<SharedMutexSuppressTSAN>();
+  runLockStateTest<SharedMutexTracked>();
+}
+
+template <typename Lock>
 void runBasicTest() {
   Lock lock;
   SharedMutexToken token1;
   SharedMutexToken token2;
   SharedMutexToken token3;
 
-  EXPECT_TRUE(lock.eligible_for_lock_elision());
   EXPECT_TRUE(lock.try_lock());
-  EXPECT_FALSE(lock.eligible_for_lock_elision());
   EXPECT_FALSE(lock.try_lock());
-  EXPECT_FALSE(lock.eligible_for_lock_shared_elision());
   EXPECT_FALSE(lock.try_lock_shared(token1));
   lock.unlock();
 
-  EXPECT_TRUE(lock.eligible_for_lock_shared_elision());
   EXPECT_TRUE(lock.try_lock_shared(token1));
-  EXPECT_FALSE(lock.eligible_for_lock_elision());
   EXPECT_FALSE(lock.try_lock());
-  EXPECT_TRUE(lock.eligible_for_lock_shared_elision());
   EXPECT_TRUE(lock.try_lock_shared(token2));
   lock.lock_shared(token3);
   lock.unlock_shared(token3);
@@ -796,24 +831,18 @@ void runBasicHoldersTest() {
   {
     // create an exclusive write lock via holder
     std::unique_lock holder(lock);
-    EXPECT_FALSE(lock.eligible_for_lock_elision());
     EXPECT_FALSE(lock.try_lock());
-    EXPECT_FALSE(lock.eligible_for_lock_shared_elision());
     EXPECT_FALSE(lock.try_lock_shared(token));
 
     // move ownership to another write holder via move constructor
     std::unique_lock holder2(std::move(holder));
-    EXPECT_FALSE(lock.eligible_for_lock_elision());
     EXPECT_FALSE(lock.try_lock());
-    EXPECT_FALSE(lock.eligible_for_lock_shared_elision());
     EXPECT_FALSE(lock.try_lock_shared(token));
 
     // move ownership to another write holder via assign operator
     std::unique_lock holder3(lock, std::defer_lock);
     holder3 = std::move(holder2);
-    EXPECT_FALSE(lock.eligible_for_lock_elision());
     EXPECT_FALSE(lock.try_lock());
-    EXPECT_FALSE(lock.eligible_for_lock_shared_elision());
     EXPECT_FALSE(lock.try_lock_shared(token));
 
     // downgrade from exclusive to upgrade lock via move constructor
@@ -821,33 +850,26 @@ void runBasicHoldersTest() {
         folly::transition_lock<folly::upgrade_lock>(holder3));
 
     // ensure we can lock from a shared source
-    EXPECT_FALSE(lock.eligible_for_lock_elision());
     EXPECT_FALSE(lock.try_lock());
-    EXPECT_TRUE(lock.eligible_for_lock_shared_elision());
     EXPECT_TRUE(lock.try_lock_shared(token));
     lock.unlock_shared(token);
 
     // promote from upgrade to exclusive lock via move constructor
     std::unique_lock holder5(folly::transition_lock<std::unique_lock>(holder4));
-    EXPECT_FALSE(lock.eligible_for_lock_elision());
     EXPECT_FALSE(lock.try_lock());
-    EXPECT_FALSE(lock.eligible_for_lock_shared_elision());
     EXPECT_FALSE(lock.try_lock_shared(token));
 
     // downgrade exclusive to shared lock via move constructor
     std::shared_lock holder6(folly::transition_lock<std::shared_lock>(holder5));
 
     // ensure we can lock from another shared source
-    EXPECT_FALSE(lock.eligible_for_lock_elision());
     EXPECT_FALSE(lock.try_lock());
-    EXPECT_TRUE(lock.eligible_for_lock_shared_elision());
     EXPECT_TRUE(lock.try_lock_shared(token));
     lock.unlock_shared(token);
   }
 
   {
     std::unique_lock holder(lock);
-    EXPECT_FALSE(lock.eligible_for_lock_elision());
     EXPECT_FALSE(lock.try_lock());
   }
 
@@ -882,7 +904,6 @@ void runManyReadLocksTestWithTokens() {
   vector<SharedMutexToken> tokens;
   for (int i = 0; i < 1000; ++i) {
     tokens.emplace_back();
-    EXPECT_TRUE(lock.eligible_for_lock_shared_elision());
     EXPECT_TRUE(lock.try_lock_shared(tokens.back()));
   }
   for (auto& token : tokens) {
@@ -905,7 +926,6 @@ void runManyReadLocksTestWithoutTokens() {
   Lock lock;
 
   for (int i = 0; i < 1000; ++i) {
-    EXPECT_TRUE(lock.eligible_for_lock_shared_elision());
     EXPECT_TRUE(lock.try_lock_shared());
   }
   for (int i = 0; i < 1000; ++i) {
@@ -1056,20 +1076,14 @@ void runBasicUpgradeTest() {
   typename Lock::Token token1;
   typename Lock::Token token2;
 
-  EXPECT_TRUE(lock.eligible_for_lock_upgrade_elision());
   lock.lock_upgrade();
-  EXPECT_FALSE(lock.eligible_for_lock_upgrade_elision());
-  EXPECT_FALSE(lock.eligible_for_lock_elision());
   EXPECT_FALSE(lock.try_lock());
-  EXPECT_TRUE(lock.eligible_for_lock_shared_elision());
   EXPECT_TRUE(lock.try_lock_shared(token1));
   lock.unlock_shared(token1);
   lock.unlock_upgrade();
 
-  EXPECT_TRUE(lock.eligible_for_lock_upgrade_elision());
   lock.lock_upgrade();
   lock.unlock_upgrade_and_lock();
-  EXPECT_FALSE(lock.eligible_for_lock_shared_elision());
   EXPECT_FALSE(lock.try_lock_shared(token1));
   lock.unlock();
 
@@ -1082,7 +1096,6 @@ void runBasicUpgradeTest() {
 
   lock.lock();
   lock.unlock_and_lock_upgrade();
-  EXPECT_TRUE(lock.eligible_for_lock_shared_elision());
   EXPECT_TRUE(lock.try_lock_shared(token1));
   lock.unlock_upgrade();
   lock.unlock_shared(token1);

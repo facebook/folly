@@ -422,33 +422,24 @@ class SharedMutexImpl
     annotateDestroy();
   }
 
-  // Checks if an exclusive lock could succeed so that lock elision could be
-  // enabled. Different from the two eligible_for_lock_{upgrade|shared}_elision
-  // functions, this is a conservative check since kMayDefer indicates
-  // "may-existing" deferred readers.
-  bool eligible_for_lock_elision() const {
-    // We rely on the transaction for linearization.  Wait bits are
-    // irrelevant because a successful transaction will be in and out
-    // without affecting the wakeup.  kBegunE is also okay for a similar
-    // reason.
-    auto state = state_.load(std::memory_order_relaxed);
-    return (state & (kHasS | kMayDefer | kHasE | kHasU | kReleaseInProgress)) ==
-        0;
-  }
+  struct LockState {
+    bool unique{false};
+    bool shared{false};
+    bool upgrade{false};
+  };
 
-  // Checks if an upgrade lock could succeed so that lock elision could be
-  // enabled.
-  bool eligible_for_lock_upgrade_elision() const {
-    auto state = state_.load(std::memory_order_relaxed);
-    return (state & (kHasE | kHasU | kReleaseInProgress)) == 0;
-  }
-
-  // Checks if a shared lock could succeed so that lock elision could be
-  // enabled.
-  bool eligible_for_lock_shared_elision() const {
-    // No need to honor kBegunE because a transaction doesn't block anybody
-    auto state = state_.load(std::memory_order_relaxed);
-    return (state & (kHasE | kReleaseInProgress)) == 0;
+  // Returns a diagnostic snapshot which does not synchronize with lock
+  // acquisition or release and does not indicate ownership by the caller.
+  // The fields are conservative and are not mutually exclusive: unique may be
+  // true before lock() returns, and shared may remain true after the last
+  // shared holder releases the lock.
+  LockState get_lock_state() const noexcept {
+    const auto state = state_.load(std::memory_order_relaxed);
+    return {
+        (state & kHasE) != 0,
+        (state & (kHasS | kMayDefer | kPrevDefer)) != 0,
+        (state & kHasU) != 0,
+    };
   }
 
   void lock() {
