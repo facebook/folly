@@ -696,6 +696,7 @@ class RunScenarioTest(unittest.TestCase):
         write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
         for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
             write(self.rules_root / support, support.name)
+        write(self.rules_root / "write/contributor-notes.md", "note policy")
         write(self.rules_root / "write.contrib.md", "decoy")
         manifest = self.manifest(
             inputs=[
@@ -716,6 +717,9 @@ class RunScenarioTest(unittest.TestCase):
         self.assertFalse((workdir / "samples").exists())
         for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
             self.assertTrue((workdir / "rules" / support).is_file())
+        self.assertEqual(
+            (workdir / "rules/write/contributor-notes.md").read_text(), "note policy"
+        )
         inventory = (workdir / "rules/rules-inventory.md").read_text()
         self.assertIn("1. `write.md`", inventory)
         self.assertIn("2. `critic-iterate.md`", inventory)

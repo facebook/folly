@@ -40,6 +40,7 @@ CommandRunner = Callable[..., subprocess.CompletedProcess[bytes]]
 CRITIC_ITERATE_RULE = PurePosixPath("critic-iterate.md")
 CRITIC_ITERATE_SUPPORT_FILES = (
     PurePosixPath("rule-design.md"),
+    PurePosixPath("write/contributor-notes.md"),
     PurePosixPath("critic-iterate/customize.md"),
     PurePosixPath("critic-iterate/cold-review-preamble.md"),
     PurePosixPath("critic-iterate/fresh-review-preamble.md"),

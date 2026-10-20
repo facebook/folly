@@ -29,11 +29,11 @@ Use one fresh task for all targets. For prose targets, also follow
     For stacked commits, review each commit as it will appear after its
     predecessors land. Do not assume the reader has read their messages. Omit
     process history.
-- Each full rule file whose declared trigger covers the artifact type or a
-  decision under review; omit files that are only topically related. Batch reads
-  where practical. When a governing rule is also the candidate, read and apply
-  it only after `REVIEW FRAME:`.
-- Sources, measurements, or run results needed to verify material claims.
+- Each full applicable rule file and its triggered dependencies; omit files that
+  are only topically related. Batch reads where practical. When a governing rule
+  is also the candidate, read and apply it only after `REVIEW FRAME:`.
+- Sources, measurements, or run results needed to verify material claims or
+  requirements governing the target, including relevant maintainer notes.
 - The frozen candidate as an embargoed path. Any diff that exposes it shares the
   embargo. For rule-file candidates, earlier versions do too.
 - For review of a change, read-only access to the diff.

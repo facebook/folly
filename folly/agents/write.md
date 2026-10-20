@@ -2,6 +2,9 @@
 
 Resolve package paths relative to this file's directory.
 
+When writing or reviewing `CONTRIB.md` or `*.contrib.md`, follow
+`{FA}/write/contributor-notes.md`.
+
 ## Critic-iterate
 
 To author prose under critic-iterate, follow `{FA}/write/prose/c-i-review.md`,

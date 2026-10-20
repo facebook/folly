@@ -56,9 +56,9 @@ general rule.
 In operational text, keep background only when it changes how to apply the rule.
 An example stays only when it teaches a distinct point needed to apply the rule.
 
-Keep operational instructions direct and token-efficient. Preserve the rule's
-durable rationale, evidence, and design choices in its contributor note only
-when future editors need them and the rule does not make them clear.
+Keep operational instructions direct and token-efficient. To decide whether a
+rule change needs a maintainer-note update, follow
+`{FA}/write/contributor-notes.md`.
 
 ## Validate and review
 

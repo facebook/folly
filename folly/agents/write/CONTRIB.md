@@ -9,6 +9,8 @@ only when they apply:
   criteria, and commit messages.
 - `../rule-design.md` owns agent-rule editing checks, including
   self-application.
+- `contributor-notes.md` owns shared writing and maintenance criteria for
+  directory `CONTRIB.md` files and rule sidecars.
 - `prose/c-i-author.md` owns prose critic dimensions.
 - `prose/c-i-fresh-review.md` owns prose fresh-review preparation.
 - `prose/c-i-review.md` owns prose review scope and priorities shared by author
