@@ -2846,20 +2846,20 @@ constexpr BasicFixedString<Char, sizeof...(Cs)> operator""_fs() noexcept {
 #endif
 
 #ifndef NO_FIXED_STR_UDL
-#define FOLLY_DEFINE_FIXED_STRING_UDL(N)                     \
-  constexpr FixedString<N> operator""_fs##N(                 \
+#define FOLLY_DEFINE_FIXED_STRING_UDL(N, OP)                 \
+  constexpr FixedString<N> OP(                               \
       const char* that, std::size_t count) noexcept(false) { \
     return {that, count};                                    \
   }                                                          \
 /**/
 
 // Define UDLs _fs4, _fs8, _fs16, etc for FixedString<[4, 8, 16, ...]>
-FOLLY_DEFINE_FIXED_STRING_UDL(4)
-FOLLY_DEFINE_FIXED_STRING_UDL(8)
-FOLLY_DEFINE_FIXED_STRING_UDL(16)
-FOLLY_DEFINE_FIXED_STRING_UDL(32)
-FOLLY_DEFINE_FIXED_STRING_UDL(64)
-FOLLY_DEFINE_FIXED_STRING_UDL(128)
+FOLLY_DEFINE_FIXED_STRING_UDL(4, operator""_fs4)
+FOLLY_DEFINE_FIXED_STRING_UDL(8, operator""_fs8)
+FOLLY_DEFINE_FIXED_STRING_UDL(16, operator""_fs16)
+FOLLY_DEFINE_FIXED_STRING_UDL(32, operator""_fs32)
+FOLLY_DEFINE_FIXED_STRING_UDL(64, operator""_fs64)
+FOLLY_DEFINE_FIXED_STRING_UDL(128, operator""_fs128)
 
 #undef FOLLY_DEFINE_FIXED_STRING_UDL
 #endif
