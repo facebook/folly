@@ -1,0 +1,33 @@
+[manifest]
+name = askbarney
+fbsource_path = fbcode/fife
+shipit_project = askbarney
+shipit_fbcode_builder = true
+
+[build]
+builder = cmake
+
+[dependencies]
+fb303
+fbthrift
+fizz
+fmt
+folly
+gflags
+googletest
+wangle
+
+[cmake.defines.test=on]
+BUILD_TESTS=ON
+
+[cmake.defines.test=off]
+BUILD_TESTS=OFF
+
+[shipit.pathmap]
+fbcode/fife/askbarney/public_tld = .
+fbcode/fife/askbarney = fife/askbarney
+fbcode/fife/if = fife/if
+
+[shipit.strip]
+^fbcode/fife/if/(?!fife\.thrift$).+$
+^fbcode/fife/askbarney/(.+/)?BUCK$
