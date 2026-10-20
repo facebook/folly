@@ -74,7 +74,9 @@ class IsolatedAgentTest(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
-        self.agent = isolated_agent.Agent(FakeImpl(), self.root / "home")
+        self.agent = isolated_agent.Agent(
+            FakeImpl(), _shared_cache_user_home_for_testing=self.root / "home"
+        )
 
     def test_prepare_separates_engine_home_from_workspace(self) -> None:
         prepared = self.agent.prepare(self.root / "run")
@@ -89,7 +91,9 @@ class IsolatedAgentTest(unittest.TestCase):
                 user_home = self.root / f"user-home-{has_local_directory}"
                 if has_local_directory:
                     (user_home / "local").mkdir(parents=True)
-                agent = isolated_agent.Agent(FakeImpl(), user_home)
+                agent = isolated_agent.Agent(
+                    FakeImpl(), _shared_cache_user_home_for_testing=user_home
+                )
                 prepared = agent.prepare(self.root / f"run-{has_local_directory}")
 
                 cache_root = (

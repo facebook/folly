@@ -24,7 +24,7 @@ import json
 import os
 import shutil
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import BinaryIO, Callable, Mapping, Protocol
 
@@ -272,7 +272,9 @@ class Agent:
     """An engine-bound launcher with a shared isolation and workspace contract."""
 
     impl: AgentImpl
-    user_home: Path
+    _shared_cache_user_home_for_testing: Path = field(
+        default_factory=Path.home, kw_only=True
+    )
 
     @property
     def name(self) -> str:
@@ -311,7 +313,7 @@ class Agent:
             path.mkdir(mode=0o700)
         for path in (result.task, result.temporary):
             path.mkdir(mode=0o700, parents=True)
-        _link_shared_cache(result.home, self.user_home)
+        _link_shared_cache(result.home, self._shared_cache_user_home_for_testing)
         if initialize_engine:
             self.initialize(result, command_runner=command_runner)
         return result
@@ -375,4 +377,4 @@ class Agent:
         return self.impl.extract_session_id(trace)
 
 
-CODEX = Agent(CodexImpl(), Path.home())
+CODEX = Agent(CodexImpl())

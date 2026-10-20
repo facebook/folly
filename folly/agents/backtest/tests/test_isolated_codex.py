@@ -110,6 +110,11 @@ class IsolatedCodexTest(unittest.TestCase):
 
         self.assertEqual(prepared.returncode, 0, prepared.stderr)
         self.assertEqual(prepared.stdout.strip(), str(run_root / "workspace/task"))
+        for name in (".cache", "packages"):
+            self.assertEqual(
+                (run_root / "agent-home" / name).resolve(),
+                (self.root / "home" / "isolated_agents_cache" / name).resolve(),
+            )
         self.assertEqual(started.returncode, 0, started.stderr)
         self.assertEqual(resumed.returncode, 0, resumed.stderr)
         self.assertEqual(
