@@ -39,6 +39,7 @@ python_unittest(
     name = "run_scenario_test",
     srcs = ["test_run_scenario.py"],
     network_access = network_access_utils.none(),
+    use_opt_by_default = True,
     deps = ["fbcode//folly/agents/backtest:run_scenario_lib"],
 )
 
