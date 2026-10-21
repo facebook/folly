@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -52,10 +51,10 @@ class IsolatedCodexTest(unittest.TestCase):
     def fake_codex(self, name: str) -> Path:
         executable = self.root / name / "codex"
         executable.parent.mkdir()
-        executable.write_text(f"#!{sys.executable}\n{FAKE_CODEX}")
+        executable.write_text(f"#!/usr/bin/python3 -I\n{FAKE_CODEX}")
         executable.chmod(0o755)
         git = executable.with_name("git")
-        git.write_text(f"#!{sys.executable}\n{FAKE_GIT}")
+        git.write_text(f"#!/usr/bin/python3 -I\n{FAKE_GIT}")
         git.chmod(0o755)
         return executable
 
