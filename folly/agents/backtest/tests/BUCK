@@ -58,5 +58,6 @@ python_unittest(
     name = "isolated_codex_test",
     srcs = ["test_isolated_codex.py"],
     network_access = network_access_utils.none(),
+    use_opt_by_default = True,
     deps = ["fbcode//folly/agents/scripts:isolated_codex_cli_lib"],
 )
