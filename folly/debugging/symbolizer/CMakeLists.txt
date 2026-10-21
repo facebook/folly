@@ -151,6 +151,7 @@ folly_add_library(
     folly_debugging_symbolizer_detail_debug
     folly_debugging_symbolizer_elf
     folly_demangle
+    folly_file
     folly_file_util
     folly_indestructible
     folly_lang_safe_assert

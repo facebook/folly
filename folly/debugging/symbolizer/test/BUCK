@@ -6,6 +6,7 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_sh_binary")
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
 load(":validate_folly_symbolizer.bzl", "SPLIT_DWARF_FLAGS", "customized_unittest", "validate_folly_symbolizer", "validate_symbolizer_dwp")
 
@@ -65,6 +66,15 @@ fbcode_target(
     deps = [
         "//folly/debugging/symbolizer:symbolizer",
     ],
+)
+
+fbcode_target(
+    _kind = python_unittest,
+    name = "small_sigaltstack_lazy_binding_test",
+    srcs = ["small_sigaltstack_lazy_binding_test.py"],
+    env = {
+        "SMALL_SIGALTSTACK_CRASH": "$(location :small_sigaltstack_crash)",
+    },
 )
 
 fbcode_target(

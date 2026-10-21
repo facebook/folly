@@ -380,6 +380,9 @@ inline std::string getStackTraceStr(
  * Note it's still unsafe even with that.
  */
 class UnsafeSelfAllocateStackTracePrinter : public SafeStackTracePrinter {
+ public:
+  using SafeStackTracePrinter::SafeStackTracePrinter;
+
  protected:
   void printSymbolizedStackTrace() override;
   const long pageSizeUnchecked_ = sysconf(_SC_PAGESIZE);

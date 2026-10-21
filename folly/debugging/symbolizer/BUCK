@@ -168,6 +168,7 @@ fb_dirsync_cpp_library(
         "fbsource//third-party/glog:glog",
         ":elf",
         "//folly:demangle",
+        "//folly:file",
         "//folly:file_util",
         "//folly:indestructible",
         "//folly:memory",

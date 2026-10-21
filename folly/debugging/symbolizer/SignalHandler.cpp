@@ -28,6 +28,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/File.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/debugging/symbolizer/Symbolizer.h>
@@ -678,6 +679,11 @@ void installFatalSignalHandler(std::bitset<64> signals) {
   bool useUnsafePrinter = kIsLinux && isSmallSigAltStackEnabled();
   if (useUnsafePrinter) {
 #if FOLLY_HAVE_SWAPCONTEXT
+    // Make sure UnsafeSelfAllocateStackTracePrinter internals are initialized
+    // before the handler is installed. /dev/null discards the output.
+    if (auto devNull = File::makeFile("/dev/null", O_WRONLY | O_CLOEXEC)) {
+      UnsafeSelfAllocateStackTracePrinter(devNull->fd()).printStackTrace(true);
+    }
     gStackTracePrinter = new UnsafeSelfAllocateStackTracePrinter();
 #else
     // This environment does not support swapcontext, so always use
