@@ -2900,3 +2900,20 @@ FOLLY_DEFINE_FIXED_STRING_UDL(128, operator""_fs128)
 // template <unsigned long long val>
 // constexpr FixedString</*...*/> to_fixed_string_ull() noexcept;
 } // namespace folly
+
+#if FMT_VERSION >= 80000
+namespace fmt {
+template <typename Char, std::size_t N>
+struct formatter<folly::BasicFixedString<Char, N>, Char>
+    : private formatter<basic_string_view<Char>, Char> {
+  using formatter<basic_string_view<Char>, Char>::parse;
+
+  template <typename Context>
+  typename Context::iterator format(
+      const folly::BasicFixedString<Char, N>& s, Context& ctx) const {
+    return formatter<basic_string_view<Char>, Char>::format(
+        {s.data(), s.size()}, ctx);
+  }
+};
+} // namespace fmt
+#endif

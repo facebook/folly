@@ -18,6 +18,8 @@
 
 #include <string_view>
 
+#include <fmt/format.h>
+
 #include <folly/Range.h>
 #include <folly/portability/GTest.h>
 
@@ -149,6 +151,12 @@ TEST(FixedStringCtorTest, FromUDL) {
   static_assert(std::is_same<decltype(z), const folly::FixedString<64>>::value);
   static_assert(z.size() == 35u);
   static_assert(z == "now is the time for all good llamas");
+}
+
+TEST(FixedStringFormatTest, Fmt) {
+  constexpr folly::FixedString<8> s{"hello"};
+  EXPECT_EQ("hello", fmt::format("{}", s));
+  EXPECT_EQ("[hello  ]", fmt::format("[{:7}]", s));
 }
 
 TEST(FixedStringConcatTest, FromStringAndLiteral) {

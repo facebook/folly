@@ -701,6 +701,7 @@ fb_dirsync_cpp_unittest(
     name = "fixed_string_test",
     srcs = ["FixedStringTest.cpp"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:fixed_string",
         "//folly:range",
         "//folly/portability:gtest",
@@ -1542,6 +1543,7 @@ fb_dirsync_cpp_unittest(
     ],
     deps = [
         "fbsource//third-party/boost:boost_container",  # @manual
+        "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
         ":subprocess_test_parent_death_helper",  # @manual
         "//folly:exception",

@@ -36,6 +36,7 @@
 #include <vector>
 
 #include <boost/container/flat_set.hpp>
+#include <fmt/ranges.h>
 #include <glog/logging.h>
 
 #include <folly/Exception.h>
