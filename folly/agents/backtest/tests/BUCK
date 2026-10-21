@@ -50,6 +50,7 @@ python_unittest(
     name = "isolated_agent_test",
     srcs = ["test_isolated_agent.py"],
     network_access = network_access_utils.none(),
+    use_opt_by_default = True,
     deps = ["fbcode//folly/agents/scripts:isolated_agent_lib"],
 )
 
