@@ -23,6 +23,12 @@
       "destination": "change.patch"
     }
   ],
+  "packages_under_test": [
+    "task-ledger",
+    "rule-conflicts",
+    "write",
+    "critic-iterate"
+  ],
   "rules": [
     "task-ledger.md",
     "rule-conflicts.md",

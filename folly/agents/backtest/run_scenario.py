@@ -38,26 +38,6 @@ from . import checkpoint_accounting
 CommandRunner = Callable[..., subprocess.CompletedProcess[bytes]]
 
 CRITIC_ITERATE_RULE = PurePosixPath("critic-iterate.md")
-CRITIC_ITERATE_SUPPORT_FILES = (
-    PurePosixPath("rule-design.md"),
-    PurePosixPath("write/contributor-notes.md"),
-    PurePosixPath("critic-iterate/customize.md"),
-    PurePosixPath("critic-iterate/cold-review-preamble.md"),
-    PurePosixPath("critic-iterate/fresh-review-preamble.md"),
-    PurePosixPath("critic-iterate/fresh-review.md"),
-    PurePosixPath("critic-iterate/revise.md"),
-    PurePosixPath("critic-iterate/auth-prompt.md"),
-    PurePosixPath("critic-iterate/run-review.md"),
-    PurePosixPath("critic-iterate/review-failures.md"),
-    PurePosixPath("critic-iterate/delegated-author.md"),
-    PurePosixPath("write/prose/c-i-author.md"),
-    PurePosixPath("write/prose/c-i-fresh-review.md"),
-    PurePosixPath("write/prose/c-i-review.md"),
-    PurePosixPath("write/prose/c-i-revise.md"),
-    PurePosixPath("write/commit-summary/c-i-author.md"),
-    PurePosixPath("write/commit-summary/c-i-fresh-review.md"),
-    PurePosixPath("code/c-i-review.md"),
-)
 TOOL_FILES = {
     "codex-reviewer.py": PurePosixPath("critic-iterate/codex-reviewer.py"),
     "reformat-md": PurePosixPath("scripts/reformat-md"),
@@ -89,6 +69,7 @@ class Manifest:
     inputs: tuple[Mapping, ...]
     rules: tuple[PurePosixPath, ...]
     no_rules_prompt: PurePosixPath | None = None
+    packages_under_test: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -129,9 +110,13 @@ def _relative_path(
 
 
 def _is_development_doc(path: PurePosixPath) -> bool:
-    return path.name in {"README.md", "CONTRIB.md"} or path.name.endswith(
-        (".contrib.md", ".entrypoint.md")
-    )
+    return path.name in {
+        "README.md",
+        "TESTING.md",
+        "TUTORIAL.md",
+        "INSTALL.md",
+        "CONTRIB.md",
+    } or path.name.endswith(".contrib.md")
 
 
 def _validate_input_destination(path: PurePosixPath) -> None:
@@ -149,6 +134,8 @@ def load_manifest(path: Path) -> Manifest:
     manifest_keys = {"prompt", "inputs", "rules"}
     if "no_rules_prompt" in raw:
         manifest_keys.add("no_rules_prompt")
+    if "packages_under_test" in raw:
+        manifest_keys.add("packages_under_test")
     assert set(raw) == manifest_keys
     prompt = _relative_path(raw["prompt"], "prompt")
     no_rules_prompt = (
@@ -185,7 +172,12 @@ def load_manifest(path: Path) -> Manifest:
     for rule in rules:
         if _is_development_doc(rule):
             raise RunnerError(f"rules may not include development material: {rule}")
-    return Manifest(prompt, tuple(inputs), rules, no_rules_prompt)
+    packages = raw.get("packages_under_test", [])
+    assert type(packages) is list
+    for package in packages:
+        package_path = _relative_path(package, "packages_under_test")
+        assert len(package_path.parts) == 1 and package_path.suffix == ""
+    return Manifest(prompt, tuple(inputs), rules, no_rules_prompt, tuple(packages))
 
 
 def _prompt_for_run(manifest: Manifest, install_rules: bool) -> PurePosixPath:
@@ -308,12 +300,65 @@ def _run_source_control(
     return result.stdout.decode(errors="replace").strip()
 
 
+def _package_files(
+    rules_root: Path, packages: tuple[str, ...]
+) -> tuple[PurePosixPath, ...]:
+    if not packages:
+        return ()
+    rules_root = rules_root.resolve()
+    checkout = _find_checkout(rules_root)
+    relative_root = rules_root.relative_to(checkout.root)
+    # Include both the committed and working tracked sets: removed files and
+    # new tracked additions must still reach the clean-source check.
+    commands = (
+        (["files", "-r", ".", "-0"], ["files", "-0"])
+        if checkout.command == "sl"
+        else (["ls-tree", "-r", "--name-only", "-z", "HEAD"], ["ls-files", "-z"])
+    )
+    tracked = set()
+    for command in commands:
+        tracked.update(
+            _run_source_control(
+                checkout, [*command, "--", str(relative_root)], subprocess.run
+            ).split("\0")
+        )
+    files = []
+    found = set()
+    for name in sorted(tracked - {""}):
+        path = PurePosixPath(name).relative_to(relative_root.as_posix())
+        if (
+            path.suffix != ".md"
+            or _is_development_doc(path)
+            or {"tests", "backtest"}.intersection(path.parts)
+        ):
+            continue
+        package = (
+            path.parts[0] if len(path.parts) > 1 else path.stem.removesuffix(".loader")
+        )
+        if package not in packages:
+            continue
+        if any(
+            (rules_root / ancestor).is_symlink() for ancestor in (path, *path.parents)
+        ):
+            raise RunnerError(f"rule packages may not contain symlinks: {path}")
+        files.append(path)
+        found.add(package)
+    missing = set(packages) - found
+    if missing:
+        raise RunnerError(
+            "no tracked operational Markdown for packages: "
+            + ", ".join(sorted(missing))
+        )
+    return tuple(files)
+
+
 def _generation_sources(
     scenario: Path,
     manifest: Manifest,
     rules_root: Path,
     runner_path: Path,
     install_rules: bool,
+    package_files: tuple[PurePosixPath, ...],
 ) -> tuple[Path, ...]:
     sources = [
         runner_path.resolve(),
@@ -321,10 +366,8 @@ def _generation_sources(
         _resolve_below(scenario, _prompt_for_run(manifest, install_rules), "prompt"),
     ]
     sources.extend((scenario / mapping.source).resolve() for mapping in manifest.inputs)
-    selected_rules = manifest.rules if install_rules else ()
-    support_files = (
-        CRITIC_ITERATE_SUPPORT_FILES if CRITIC_ITERATE_RULE in selected_rules else ()
-    )
+    if install_rules and not set(manifest.rules).issubset(package_files):
+        raise RunnerError("startup rules must be tracked files in packages_under_test")
     tool_files = TOOL_FILES.values() if install_rules else ()
     if _uses_checkpoints(manifest, install_rules):
         tool_files = (*tool_files, *CHECKPOINT_TOOL_FILES.values())
@@ -333,8 +376,7 @@ def _generation_sources(
         _resolve_below(rules_root, path, "rule")
         for path in (
             *AGENT_RUNTIME_FILES,
-            *selected_rules,
-            *support_files,
+            *(package_files if install_rules else ()),
             *tool_files,
         )
     )
@@ -349,15 +391,23 @@ def generation_revision(
     install_rules: bool = True,
     runner_path: Path | None = None,
     command_runner: CommandRunner = subprocess.run,
+    package_files: tuple[PurePosixPath, ...] | None = None,
 ) -> str:
     if runner_path is None:
         runner_path = Path(__file__)
+    if package_files is None:
+        package_files = (
+            _package_files(rules_root, manifest.packages_under_test)
+            if install_rules
+            else ()
+        )
     sources = _generation_sources(
         scenario,
         manifest,
         rules_root,
         runner_path,
         install_rules,
+        package_files,
     )
     checkout = _find_checkout(sources[0])
     relative_sources = []
@@ -421,8 +471,8 @@ def _rules_inventory(rules: tuple[PurePosixPath, ...]) -> bytes:
         "# Rules inventory\n\n"
         "Read these files in order, resolving each path relative to this file:\n\n"
         f"{listed_rules}\n\n"
-        "When `critic-iterate.md` is selected, files it may need later are "
-        "staged too. Read them only when directed.\n"
+        "Other files in the declared packages are staged too. "
+        "Read them only when directed.\n"
     ).encode()
 
 
@@ -434,6 +484,7 @@ def stage(
     *,
     install_rules: bool = True,
     runtime_files: Sequence[PurePosixPath] = (),
+    package_files: tuple[PurePosixPath, ...] | None = None,
 ) -> None:
     rules_root = rules_root.resolve()
     if not rules_root.is_dir():
@@ -447,15 +498,17 @@ def stage(
             plan.append((destination, contents))
 
     if install_rules:
+        if package_files is None:
+            package_files = _package_files(rules_root, manifest.packages_under_test)
+        if not set(manifest.rules).issubset(package_files):
+            raise RunnerError(
+                "startup rules must be tracked files in packages_under_test"
+            )
         inventory = PurePosixPath("rules/rules-inventory.md")
         _claim(destinations, inventory)
         plan.append((inventory, _rules_inventory(manifest.rules)))
-        support_files = (
-            CRITIC_ITERATE_SUPPORT_FILES
-            if CRITIC_ITERATE_RULE in manifest.rules
-            else ()
-        )
-        for rule in dict.fromkeys((*manifest.rules, *support_files, *runtime_files)):
+        # Normal runs reject local deletions in generation_revision() before staging.
+        for rule in dict.fromkeys((*package_files, *runtime_files)):
             destination = PurePosixPath("rules") / rule
             _claim(destinations, destination)
             source = _resolve_below(rules_root, rule, "rule")
@@ -483,6 +536,7 @@ def prepare(
     *,
     install_rules: bool = True,
     critic_iterate_rounds: int | None = None,
+    package_files: tuple[PurePosixPath, ...] | None = None,
 ) -> Run:
     scenario = scenario.resolve()
     if not scenario.is_dir():
@@ -536,6 +590,7 @@ def prepare(
             run.workdir,
             install_rules=install_rules,
             runtime_files=runtime_files,
+            package_files=package_files,
         )
         metadata: dict[str, object] = {
             "model": model,
@@ -780,6 +835,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         scenario = args.scenario.resolve()
         manifest = load_manifest(scenario / "scenario.json")
         install_rules = not args.no_rules
+        package_files = (
+            _package_files(agents_root, manifest.packages_under_test)
+            if install_rules
+            else ()
+        )
         _validate_critic_iterate_rounds(
             manifest, install_rules, args.critic_iterate_rounds
         )
@@ -788,6 +848,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             manifest,
             agents_root,
             install_rules=install_rules,
+            package_files=package_files,
         )
         run = prepare(
             scenario,
@@ -798,6 +859,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             revision,
             install_rules=install_rules,
             critic_iterate_rounds=args.critic_iterate_rounds,
+            package_files=package_files,
         )
         print(run.root)
         if args.prepare_only:

@@ -1,3 +1,5 @@
+> NOT A RULE. If loaded as task policy, stop and ask the user.
+
 # Maintaining backtests
 
 A scenario is useful when its result could change a rule or how that rule is
@@ -12,8 +14,8 @@ Each scenario has:
   artifact and reader, the deliberate stop point, and concrete observations to
   report;
 - `scenario.json`: the normal author prompt (`prompt`), optional bare prompt
-  (`no_rules_prompt`), staged file mappings (`inputs`), and exact operational
-  rules (`rules`); copy the shape from a nearby scenario;
+  (`no_rules_prompt`), staged file mappings (`inputs`), startup rules (`rules`),
+  and available rule packages (`packages_under_test`);
 - `input/`: frozen material visible to the author;
 - optional `eval/`: a narrow check used only after `output.md` is frozen; and
 - optional `samples/`: selected prior outputs.
@@ -27,18 +29,24 @@ in `scenario.json`. Keep task- or scope-specific instructions in each scenario's
 prompt instead of copying and editing the shared evidence.
 
 Read-only staging is not a filesystem sandbox. Check the trace after each run;
-an undeclared read makes that run unusable for comparison.
+reading undeclared task evidence makes that run unusable for comparison.
 
-In `scenario.json`, list rules relative to `folly/agents`. Name every required
-rule; the runner does not discover files. It:
+In `scenario.json`, list startup rules relative to `folly/agents`. Declare the
+packages needed by the task's startup and conditional rule loads, including
+cross-package dependencies. Do not copy another scenario's package list: source
+code used only as evidence does not require code-review rules. For example,
+`write` includes `write.md`, `write.loader.md`, and operational Markdown under
+`write/`. A package may have just its root file or just its directory. The
+runner:
 
-- stages those rules and files they may need in one run-specific package;
-- binds `{FA}` to the package's absolute path; and
-- lists only those rules in the startup inventory.
+- stages tracked operational Markdown from those packages;
+- binds `{FA}` to the common directory containing all staged rules; and
+- lists only the selected startup rules in their declared order.
 
-Development documents such as `README.md`, `CONTRIB.md`, and `*.contrib.md` are
-rejected as rules. The runner adds the rule-loading instruction for a normal
-run; keep the scenario prompt focused on the task.
+The runner excludes `README.md`, `TESTING.md`, `TUTORIAL.md`, `INSTALL.md`,
+`CONTRIB.md`, `*.contrib.md`, `tests/` subtrees, and `backtest/`. Runtime
+scripts are staged separately. Keep the scenario prompt focused on the task; the
+runner adds the rule-loading instruction for a normal run.
 
 - **Rule-focused tests.** List the exact operational rules in `scenario.json`.
   These tests exercise only rule behavior, and bypass the loader files.

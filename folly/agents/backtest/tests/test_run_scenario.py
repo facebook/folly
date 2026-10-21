@@ -55,6 +55,152 @@ def make_tools(rules_root: Path) -> None:
         executable(rules_root / relative)
 
 
+class PackageStagingTest(unittest.TestCase):
+    # A committed Git fixture exercises discovery and the clean-source check
+    # together. Runtime-only tests below supply their rule files directly.
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        if git := os.environ.get("FOLLY_TEST_GIT"):
+            self.enterContext(
+                mock.patch.dict(
+                    os.environ,
+                    {
+                        "PATH": f"{Path(git).resolve().parent}{os.pathsep}{os.environ.get('PATH', '')}"
+                    },
+                )
+            )
+        self.rules_root = self.root / "agents"
+        self.scenario = self.root / "scenario"
+        self.scenario.mkdir()
+        write(self.scenario / "prompt.md", "task")
+        write(self.root / "run_scenario.py", "runner")
+        make_tools(self.rules_root)
+        for name in (
+            "alpha.md",
+            "alpha.loader.md",
+            "alpha/nested/rule.md",
+            "alpha/remove.md",
+            "other.md",
+            "alpha/README.md",
+            "alpha/rule.contrib.md",
+            "alpha/tests/input.md",
+            "alpha/backtest/input.md",
+            "alpha/tool.py",
+        ):
+            write(self.rules_root / name, name)
+        self.manifest = write_manifest(
+            self.scenario / "scenario.json",
+            {
+                "prompt": "prompt.md",
+                "inputs": [],
+                "rules": ["alpha/nested/rule.md", "alpha.md"],
+                "packages_under_test": ["alpha"],
+            },
+        )
+        self.git("init", "--quiet")
+        self.git("add", ".")
+        self.git(
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.com",
+            "commit",
+            "--quiet",
+            "-m",
+            "fixture",
+        )
+
+    def git(self, *arguments: str) -> None:
+        subprocess.run(
+            ["git", *arguments],
+            cwd=self.root,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def revision(self) -> str:
+        return runner.generation_revision(
+            self.scenario,
+            self.manifest,
+            self.rules_root,
+            runner_path=self.root / "run_scenario.py",
+        )
+
+    def test_stages_only_package_rules_without_expanding_startup(self) -> None:
+        write(self.rules_root / "alpha/untracked.md", "untracked")
+        workdir = self.root / "workdir"
+        runner.stage(self.scenario, self.manifest, self.rules_root, workdir)
+        self.assertEqual(
+            {
+                path.relative_to(workdir / "rules").as_posix()
+                for path in (workdir / "rules").rglob("*")
+                if path.is_file()
+            },
+            {
+                "alpha.md",
+                "alpha.loader.md",
+                "alpha/nested/rule.md",
+                "alpha/remove.md",
+                "rules-inventory.md",
+            },
+        )
+        inventory = (workdir / "rules/rules-inventory.md").read_text()
+        # Available helpers must not become additional startup instructions.
+        self.assertEqual(
+            [line for line in inventory.splitlines() if line[:1].isdigit()],
+            ["1. `alpha/nested/rule.md`", "2. `alpha.md`"],
+        )
+
+    def test_rejects_edits_additions_and_removals_outside_startup(self) -> None:
+        self.revision()
+        # Index-only discovery misses removals; HEAD-only discovery misses adds.
+        write(self.rules_root / "alpha.loader.md", "changed")
+        write(self.rules_root / "alpha/added.md", "added")
+        self.git("add", "agents/alpha/added.md")
+        self.git("rm", "--quiet", "agents/alpha/remove.md")
+        with self.assertRaisesRegex(runner.RunnerError, "refusing to run") as raised:
+            self.revision()
+        # Check each reported path: one dirty file must not mask another omission.
+        for name in ("alpha.loader.md", "alpha/added.md", "alpha/remove.md"):
+            with self.subTest(name=name):
+                self.assertIn(f"agents/{name}", str(raised.exception))
+
+    def test_package_symlinks_cannot_hide_excluded_or_retargeted_sources(self) -> None:
+        alias = self.rules_root / "alpha/alias.md"
+        alias.symlink_to("tests/input.md")
+        self.git("add", "agents/alpha/alias.md")
+        with self.assertRaisesRegex(runner.RunnerError, "may not contain symlinks"):
+            self.revision()
+        self.git("rm", "--force", "--quiet", "agents/alpha/alias.md")
+
+        # Checking only the final filename would still allow a directory alias.
+        nested = self.rules_root / "alpha/nested"
+        nested.rename(self.root / "retargeted")
+        nested.symlink_to(self.root / "retargeted", target_is_directory=True)
+        with self.assertRaisesRegex(runner.RunnerError, "may not contain symlinks"):
+            self.revision()
+
+    def test_rejects_undeclared_startup_or_missing_dependency(self) -> None:
+        for startup, packages, error in (
+            ("other.md", ("alpha",), "startup rules"),
+            ("alpha.md", ("alpha", "missing"), "packages: missing"),
+        ):
+            manifest = runner.Manifest(
+                self.manifest.prompt,
+                (),
+                (runner.PurePosixPath(startup),),
+                packages_under_test=packages,
+            )
+            with self.subTest(startup=startup, packages=packages):
+                with self.assertRaisesRegex(runner.RunnerError, error):
+                    runner.stage(
+                        self.scenario, manifest, self.rules_root, self.root / "workdir"
+                    )
+
+
 class RunScenarioTest(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -66,6 +212,11 @@ class RunScenarioTest(unittest.TestCase):
         self.scenario.mkdir()
         self.rules_root.mkdir()
         write(self.scenario / "prompt.md", "prompt")
+        # These existing runtime tests use tiny uncommitted rule fixtures.
+        # Package discovery against real source control is tested separately.
+        package_discovery = mock.patch.object(runner, "_package_files", return_value=())
+        self.package_files = package_discovery.start()
+        self.addCleanup(package_discovery.stop)
 
     def manifest(
         self,
@@ -84,6 +235,11 @@ class RunScenarioTest(unittest.TestCase):
         }
         if no_rules_prompt is not None:
             contents["no_rules_prompt"] = no_rules_prompt
+        self.package_files.return_value = tuple(
+            runner.PurePosixPath(path)
+            for path in rules or []
+            if (self.rules_root / path).is_file()
+        )
         return write_manifest(scenario / "scenario.json", contents)
 
     def prepare(
@@ -294,8 +450,7 @@ class RunScenarioTest(unittest.TestCase):
         self.assertNotIn("checkpoint_accounting.py", status)
 
         write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
-        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
-            write(self.rules_root / support, support.name)
+        self.package_files.return_value += (runner.CRITIC_ITERATE_RULE,)
         critic_manifest = runner.Manifest(
             manifest.prompt,
             manifest.inputs,
@@ -315,8 +470,6 @@ class RunScenarioTest(unittest.TestCase):
         )
         self.assertIn("agents/backtest/checkpoint.py", commands[0])
         self.assertIn("checkpoint_accounting.py", commands[0])
-        self.assertIn("agents/rule-design.md", commands[0])
-        self.assertIn("agents/critic-iterate/customize.md", commands[0])
 
     def test_generation_revision_rejects_dirty_or_untracked_inputs(self) -> None:
         (self.root / ".hg").mkdir()
@@ -504,7 +657,7 @@ class RunScenarioTest(unittest.TestCase):
     def test_prepare_removes_a_partial_run_when_staging_fails(self) -> None:
         self.manifest(rules=["missing.md"])
 
-        with self.assertRaisesRegex(runner.RunnerError, "does not exist"):
+        with self.assertRaisesRegex(runner.RunnerError, "tracked files"):
             self.prepare()
 
         self.assertEqual(list(self.run_root.iterdir()), [])
@@ -533,8 +686,6 @@ class RunScenarioTest(unittest.TestCase):
     def test_prepare_injects_and_records_critic_iterate_rounds(self) -> None:
         write(self.scenario / "prompt.md", "Do the task.\n")
         write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
-        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
-            write(self.rules_root / support, support.name)
         self.manifest(rules=[runner.CRITIC_ITERATE_RULE.as_posix()])
 
         run = self.prepare(critic_iterate_rounds=0)
@@ -599,8 +750,6 @@ class RunScenarioTest(unittest.TestCase):
 
     def test_prepare_leaves_review_only_scenarios_uncheckpointed(self) -> None:
         write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
-        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
-            write(self.rules_root / support, support.name)
         self.manifest(
             inputs=[{"source": "prompt.md", "destination": "output.md"}],
             rules=[runner.CRITIC_ITERATE_RULE.as_posix()],
@@ -685,7 +834,7 @@ class RunScenarioTest(unittest.TestCase):
                 self.root / "rule-workdir",
             )
 
-    def test_stage_copies_only_declared_inputs_and_rules(self) -> None:
+    def test_stage_copies_declared_inputs_without_other_task_evidence(self) -> None:
         workdir = self.root / "workdir"
         workdir.mkdir()
         write(self.scenario / "draft.md", "draft")
@@ -694,9 +843,6 @@ class RunScenarioTest(unittest.TestCase):
         write(self.scenario / "samples/1/output.md", "prior output")
         write(self.rules_root / "write.md", "writing")
         write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
-        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
-            write(self.rules_root / support, support.name)
-        write(self.rules_root / "write/contributor-notes.md", "note policy")
         write(self.rules_root / "write.contrib.md", "decoy")
         manifest = self.manifest(
             inputs=[
@@ -715,49 +861,9 @@ class RunScenarioTest(unittest.TestCase):
         self.assertFalse((workdir / "source/Api.h").stat().st_mode & 0o200)
         self.assertFalse((workdir / "rules/write.contrib.md").exists())
         self.assertFalse((workdir / "samples").exists())
-        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
-            self.assertTrue((workdir / "rules" / support).is_file())
-        self.assertEqual(
-            (workdir / "rules/write/contributor-notes.md").read_text(), "note policy"
-        )
         inventory = (workdir / "rules/rules-inventory.md").read_text()
         self.assertIn("1. `write.md`", inventory)
         self.assertIn("2. `critic-iterate.md`", inventory)
-        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
-            self.assertNotIn(f"`{support.as_posix()}`", inventory)
-
-        without_critic_workdir = self.root / "without-critic-workdir"
-        without_critic_workdir.mkdir()
-        runner.stage(
-            self.scenario,
-            self.manifest(rules=["write.md"]),
-            self.rules_root,
-            without_critic_workdir,
-        )
-        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
-            self.assertFalse((without_critic_workdir / "rules" / support).exists())
-
-    def test_stage_allows_explicit_critic_support_rules(self) -> None:
-        workdir = self.root / "workdir"
-        workdir.mkdir()
-        write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
-        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
-            write(self.rules_root / support, support.name)
-        manifest = self.manifest(
-            rules=["critic-iterate.md", "rule-design.md", "critic-iterate/customize.md"]
-        )
-
-        runner.stage(self.scenario, manifest, self.rules_root, workdir)
-
-        self.assertEqual(
-            (workdir / "rules/rule-design.md").read_text(), "rule-design.md"
-        )
-        self.assertEqual(
-            (workdir / "rules/critic-iterate/customize.md").read_text(), "customize.md"
-        )
-        inventory = (workdir / "rules/rules-inventory.md").read_text()
-        self.assertIn("2. `rule-design.md`", inventory)
-        self.assertIn("3. `critic-iterate/customize.md`", inventory)
 
     def test_stage_rejects_hidden_policy_inside_an_input_tree(self) -> None:
         workdir = self.root / "workdir"
@@ -875,8 +981,6 @@ class RunScenarioTest(unittest.TestCase):
 
     def test_checkpoint_mode_installs_runtime_and_marks_bad_accounting(self) -> None:
         write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
-        for support in runner.CRITIC_ITERATE_SUPPORT_FILES:
-            write(self.rules_root / support, support.name)
         self.manifest(rules=[runner.CRITIC_ITERATE_RULE.as_posix()])
         run = self.prepare(critic_iterate_rounds=0)
 

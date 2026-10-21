@@ -10,6 +10,14 @@
       "destination": "adjacent_dedup.cpp"
     }
   ],
+  "packages_under_test": [
+    "task-ledger",
+    "rule-conflicts",
+    "design-vetting",
+    "write",
+    "critic-iterate",
+    "code"
+  ],
   "rules": [
     "task-ledger.md",
     "rule-conflicts.md",
