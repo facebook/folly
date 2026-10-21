@@ -101,6 +101,8 @@
 // (BRKB + CNTP) instead of rebuilding a NEON nibble mask. Keyed off SVE2
 // because svmatch is the SVE2-only intrinsic involved; the rest of the sequence
 // is SVE1.
+// This picks firstEmpty()'s return type; see the rule at
+// FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE in F14Mask.h.
 #if FOLLY_NEON && FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE && FOLLY_ARM_FEATURE_SVE2
 #define FOLLY_F14_SVE_PREDICATE_NATIVE_ACTIVE 1
 #else

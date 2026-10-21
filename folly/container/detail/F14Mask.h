@@ -27,6 +27,16 @@
 #include <folly/lang/Assume.h>
 #include <folly/lang/SafeAssert.h>
 
+// This ISA choice may depend only on the target ISA, which must be the same in
+// every file of a program (as must any -D override of this macro). It must
+// never depend on macros that can differ between files of one binary, such as
+// __OPTIMIZE__. The linker usually keeps one out-of-line copy of each inline
+// F14 function for the whole program, so every copy must be interchangeable:
+// same types, signatures and return layout, and the same meaning for the table
+// data. An -O0 library that took the NEON path inside an optimized SVE2 binary
+// once aborted every process at startup. Copies may differ only in ways every
+// copy agrees on: inlining (FOLLY_F14_SVE_INLINE), or debug-only checks and
+// insertion-slot perturbation under kIsDebug.
 #ifndef FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE
 #if FOLLY_ARM_FEATURE_NEON_SVE_BRIDGE && FOLLY_ARM_FEATURE_SVE2
 #define FOLLY_F14_DETAIL_ISA_SVE2_WITH_BRIDGE 1
