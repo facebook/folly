@@ -58,10 +58,11 @@ To revise prose after a usable review, follow the generic base
   the sentences. (The Iterate loop's Shape pass applies this for commit messages
   specifically.)
 
-- **Lead with why.** For prose about code, start with the problem or goal. Add a
-  constraint, rejected alternative, or invariant when it explains the choice.
-  Include enough of what the code does to make that reason clear, then leave
-  routine mechanics to the code. If one sentence is enough, stop.
+- **Lead with what the reader needs first.** For prose about code, start with
+  the problem or purpose. A fact that needs no background explanation may come
+  first when it helps interpret the rest. Explain enough of what happens or is
+  proposed to make the point clear; leave routine mechanics in the code. If one
+  sentence is enough, stop.
 
 ## Author disposition
 
@@ -80,12 +81,16 @@ The author must adopt a persona free from cognitive biases like rationalization
 
 ## Substance
 
-**Select facts, then compress wording.** Use sources to get the facts right, not
-to decide that every fact belongs. Keep only the facts the primary reader needs
-to do the job the artifact exists to support. Being true, related, or
-non-obvious is not enough. For a fact that stays, keep the concrete detail that
-makes it useful to that reader. Replacing that detail with a broad label is not
-concision.
+**Cut unneeded content; make the rest easy to read.** Keep only the facts and
+connections the reader needs for the artifact's purpose and their task. Use
+sources to get those facts right. Being true, related, or non-obvious is not
+enough to earn space.
+
+Explain the selected content clearly. Then cut words that add nothing to meaning
+or flow. Preserve the concrete details and connections the reader needs to
+understand the point or do the task. Reread the whole passage after cuts, using
+only the reader's expected knowledge. A shorter version that is choppy or harder
+to follow is worse.
 
 - Assume the intended reader's normal background, but not this artifact or its
   drafting history. State the question or problem and enough framing and
@@ -96,9 +101,9 @@ concision.
 - Avoid wordiness: cut filler, hedging, and restatement (don't say the same
   thing twice in different words — merge sentences that make the same point).
 - State simple points simply. Add how or why only when the reader needs it.
-- Prefer common words and concrete verbs when they are equally precise. If a
-  sentence says a change "enables," "supports," or "provides" something vague,
-  rewrite it around the concrete outcome.
+- Prefer familiar words and concrete verbs without losing precision. Keep needed
+  technical terms; explain them when the reader may not know them. Replace vague
+  labels with who or what acts, what happens, or how the parts relate.
 - Prefer a concrete example when it makes a needed point clearer than abstract
   prose.
 - Use identifiers to point readers to relevant code, not in place of a plain
@@ -106,10 +111,13 @@ concision.
 - When shortening rules/guidelines, preserve the decision function: enough
   detail to apply the rule, not just know it exists.
 
-## Sentences
+## Sentences and paragraphs
 
-- Short sentences. Short paragraphs.
-- **Dense sentences.** If a sentence stacks 4+ noun phrases or chained
+Prefer short sentences and paragraphs. Keep a connected explanation together
+when a split would make it harder to follow. Start a new paragraph when moving
+to a different point.
+
+- **Split dense sentences.** If a sentence stacks 4+ noun phrases or chained
   possessives, cut it if unneeded; otherwise restructure it. For a sentence over
   20 words, read it aloud; cut or restructure it if you stumble.
 - One claim per sentence by default — the goal is fast comprehension. Glue
@@ -180,22 +188,18 @@ remaining implementation detail to the diff. A fact's presence in the diff
 neither earns nor disqualifies it; keep it here only when the reviewer needs it
 before reading the code.
 
-**State the goal early.** Commit / diff messages and design docs must say what
-the artifact is trying to accomplish for intended readers. Lead with the goal,
-or with a concise account of the concrete problem it solves followed immediately
-by the goal. A self-explanatory invariant (for example, that a refactor is a
-no-op) may come first when the reviewer needs it to interpret the goal. Put
-context-dependent invariants after the goal. Omit invariants the reviewer does
-not need to understand or verify the change. Stack context may briefly
-cross-reference a prior `D<num>` for detail or evidence; include all framing the
-current reader needs inline.
+**Prepare the reader to review.** For commit / diff messages and design docs,
+make the purpose clear early. Include the approach when the reader needs it to
+assess the work. Keep needed framing in the text; a brief reference to a prior
+`D<num>` can supply detail or evidence.
 
 ## Titles
 
-Commit / diff / doc titles must be clear in a title-only list-view without the
-summary. Name the concrete object and the relationship or condition changed; do
-not shorten away the object that makes the change intelligible. Use plain
-language when implementation detail does not help readers identify the change.
+Titles must make sense without the body. For a change, name the concrete object
+and the relationship or condition changed. For other documents, name the
+concrete topic or task. Keep the words that identify the subject and distinguish
+it from nearby work. Prefer plain language; keep technical names when they help
+readers identify the subject.
 
 Example: Prefer `check job migration state vs that of its reservation` over
 `validate paired migration states`.
@@ -432,7 +436,9 @@ cases:
 
 ## Note on genre
 
-The examples here are commit-message-shaped. The same principles apply to design
-proposals, group posts seeking input, and code-review comments — the audience
-structure (current + future) and the goal (evergreen context, few reasonable
-words) carry over. Adapt the section structure to the medium.
+The examples use commit messages. For design proposals, rules and guidelines,
+group posts seeking input, review comments, and other prose, apply the same
+principles for choosing content and reducing reader effort. Adapt the content
+and structure to the artifact's purpose and established audience. Include
+context for future readers when the artifact is expected to remain useful to
+them.
