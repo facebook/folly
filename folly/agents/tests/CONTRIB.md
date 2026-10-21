@@ -1,7 +1,5 @@
 > NOT A RULE. If loaded as task policy, stop and ask the user.
 
-# Maintaining backtests
-
 A scenario is useful when its result could change a rule or how that rule is
 applied. It should ask one concrete question using a task realistic enough to
 expose the behavior under test.
@@ -16,13 +14,17 @@ Each scenario has:
 - `scenario.json`: the normal author prompt (`prompt`), optional bare prompt
   (`no_rules_prompt`), staged file mappings (`inputs`), startup rules (`rules`),
   and available rule packages (`packages_under_test`);
-- `input/`: frozen material visible to the author;
+- optional `input/`: frozen material visible to the author;
 - optional `eval/`: a narrow check used only after `output.md` is frozen; and
 - optional `samples/`: selected prior outputs.
 
-Keep references, evaluator instructions, sibling outputs, and comparison labels
-out of the author workdir. Store runner-created directories outside the scenario
-directory.
+Keep the author's workdir free of:
+
+- evaluation-only references and evaluator instructions;
+- sibling outputs; and
+- comparison labels.
+
+Store runner-created directories outside the scenario directory.
 
 Related scenarios may reuse the same frozen input with an explicit `../` source
 in `scenario.json`. Keep task- or scope-specific instructions in each scenario's
@@ -39,7 +41,7 @@ code used only as evidence does not require code-review rules. For example,
 `write/`. A package may have just its root file or just its directory. The
 runner:
 
-- stages tracked operational Markdown from those packages;
+- stages tracked operational Markdown from those packages, rejecting symlinks;
 - binds `{FA}` to the common directory containing all staged rules; and
 - lists only the selected startup rules in their declared order.
 
@@ -68,33 +70,18 @@ stop. The marker's trailing colon is deliberately omitted here.
 
 ## Keep comparisons honest
 
-Run `--prepare-only` and inspect the staged workdir before spending model time.
-Across compared runs, keep fixed:
-
-- the task and staged inputs;
-- the model and reasoning effort; and
-- shared executable versions.
-
-Generate a regular/no-rules pair from the same committed revision. Remove only
-the injected rules and rule-only helpers. If the regular prompt refers to those
-rules, isolate only that wording in `no_rules_prompt`. When comparing against an
-older stored sample, treat every other revision difference as another
-intervention instead of attributing it to the rules.
-
-Human reading is the default evaluation. Add an evaluator only when it can make
-a narrow, repeatable observation that ordinary artifact comparison cannot make
-reliably. Evaluators report evidence; the user judges the artifact and rule
-change.
-
-Run evaluator sessions through the shared runner in [TESTING.md](../TESTING.md).
-Keep only the declared inputs and turn sequence in each evaluator's `SETUP.md`.
+Follow [TESTING.md](../TESTING.md) to prepare, evaluate, and compare runs. Add
+an evaluator only for a narrow, repeatable observation that ordinary artifact
+comparison cannot make reliably. Keep only its declared inputs and turn sequence
+in the evaluator's `SETUP.md`.
 
 ## Source snapshots
 
-Freeze source needed by the task inside `input/`; never point an author at a
-live checkout. Store C++ fixtures as `.h.txt` and `.cpp.txt`. The runner removes
-the final `.txt` in its temporary workdir, while the inert suffix keeps fixture
-headers out of Folly's install and build discovery.
+Freeze task evidence in the prompt or inside `input/`; `inputs` lists the files
+to copy and may be empty. Never point an author at a live checkout. Store C++
+fixtures as `.h.txt` and `.cpp.txt`. The runner removes the final `.txt` in its
+temporary workdir, while the inert suffix keeps fixture headers out of Folly's
+install and build discovery.
 
 Before exporting a scenario, internal maintainers must follow
 [`backtest/facebook/CONTRIB.md`](../backtest/facebook/CONTRIB.md).
