@@ -1,6 +1,6 @@
 # Run the contract check
 
-Use the [shared evaluator runner](../../README.md#run-an-evaluator) for this
+Use the [shared evaluator runner](../../../TESTING.md#run-an-evaluator) for this
 optional check after `output.md` is frozen.
 
 In a fresh evaluator run, stage:

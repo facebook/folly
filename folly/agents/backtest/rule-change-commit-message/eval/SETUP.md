@@ -1,6 +1,6 @@
 # Run the evaluator checks
 
-Use the [shared evaluator runner](../../README.md#run-an-evaluator) for both
+Use the [shared evaluator runner](../../../TESTING.md#run-an-evaluator) for both
 optional checks, with a separate run for each.
 
 ## First read

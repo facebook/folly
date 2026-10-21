@@ -1,14 +1,30 @@
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 
 oncall("fbcode_entropy_wardens_folly")
+
+python_library(
+    name = "run_scenario_lib",
+    srcs = [
+        "checkpoint.py",
+        "checkpoint_accounting.py",
+        "compress_checkpoint_outputs.py",
+        "debrief_tables.py",
+        "run_scenario.py",
+    ],
+    resources = {
+        "fbcode//folly/agents/scripts:apply_diffs": "folly/agents/scripts/apply_diffs",
+    },
+    deps = ["fbcode//folly/agents/scripts:isolated_agent_lib"],
+)
 
 python_unittest(
     name = "checkpoint_test",
     srcs = ["test_checkpoint.py"],
     network_access = network_access_utils.none(),
     use_opt_by_default = True,
-    deps = ["fbcode//folly/agents/backtest:run_scenario_lib"],
+    deps = [":run_scenario_lib"],
 )
 
 python_unittest(
@@ -16,7 +32,7 @@ python_unittest(
     srcs = ["test_checkpoint_accounting.py"],
     network_access = network_access_utils.none(),
     use_opt_by_default = True,
-    deps = ["fbcode//folly/agents/backtest:run_scenario_lib"],
+    deps = [":run_scenario_lib"],
 )
 
 python_unittest(
@@ -24,7 +40,7 @@ python_unittest(
     srcs = ["test_compress_checkpoint_outputs.py"],
     network_access = network_access_utils.none(),
     use_opt_by_default = True,
-    deps = ["fbcode//folly/agents/backtest:run_scenario_lib"],
+    deps = [":run_scenario_lib"],
 )
 
 python_unittest(
@@ -32,7 +48,7 @@ python_unittest(
     srcs = ["test_debrief_tables.py"],
     network_access = network_access_utils.none(),
     use_opt_by_default = True,
-    deps = ["fbcode//folly/agents/backtest:run_scenario_lib"],
+    deps = [":run_scenario_lib"],
 )
 
 python_unittest(
@@ -43,7 +59,7 @@ python_unittest(
     },
     network_access = network_access_utils.none(),
     use_opt_by_default = True,
-    deps = ["fbcode//folly/agents/backtest:run_scenario_lib"],
+    deps = [":run_scenario_lib"],
 )
 
 python_unittest(

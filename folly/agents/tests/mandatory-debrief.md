@@ -68,7 +68,7 @@ quote helps the immediate discussion. Keep it before `Comparisons`.
   only `output.md` under `Result`; say when it is partial or missing. Checkpoint
   artifacts remain in the output directory for closer inspection.
 - When `checkpoints.json` exists, run
-  `python3 -m folly.agents.backtest.debrief_tables RUN_DIRECTORY` and use its
+  `python3 -m folly.agents.tests.debrief_tables RUN_DIRECTORY` and use its
   production tables. Replace each `TODO` with a short, evidence-based account of
   that phase's main effect; use `No artifact change` when applicable. Changed
   words show scale, not quality. For a resumed run, name the starting artifact

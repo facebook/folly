@@ -14,15 +14,15 @@ know which run is a baseline or choose a winner.
 Inside a rule-backed run, `{FA}` points to that run's staged rule package.
 No-rules runs have neither the binding nor rule helpers.
 
-After every attempted run, follow [mandatory-debrief.md](mandatory-debrief.md)
-before reporting the result.
+After every attempted run, follow
+[mandatory-debrief.md](tests/mandatory-debrief.md) before reporting the result.
 
 ## Run a scenario
 
 From `fbcode/`, prepare the workdir first:
 
 ```bash
-python3 -m folly.agents.backtest.run_scenario \
+python3 -m folly.agents.tests.run_scenario \
   folly/agents/backtest/SCENARIO \
   --model gpt-5.6-sol \
   --reasoning-effort high \
@@ -122,8 +122,8 @@ executable versions fixed. Change only:
 - **c-i-K:** the external review budget.
 
 When only an older stored sample is available, follow
-[tracking-samples.md](tracking-samples.md) to identify and report any additional
-differences.
+[tracking-samples.md](tests/tracking-samples.md) to identify and report any
+additional differences.
 
 Read the artifacts first. Report concrete differences in correctness and reader
 effort. Use traces, reviewer reports, time, and token use to explain those
@@ -136,6 +136,6 @@ completed-artifact scenario must also complete every review required by its
 rules; a diagnostic may deliberately stop earlier. Authentication, launcher, or
 write failures are inconclusive; preserve their run directories for diagnosis.
 
-See [CONTRIB.md](CONTRIB.md) to add or change a scenario. If the scenario has a
-`samples/` directory, or the user asks to preserve a run, follow
-[tracking-samples.md](tracking-samples.md).
+See [scenario maintenance](tests/CONTRIB.md) to add or change a scenario. If the
+scenario has a `samples/` directory, or the user asks to preserve a run, follow
+[tracking-samples.md](tests/tracking-samples.md).

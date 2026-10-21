@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import BinaryIO
 from unittest import mock
 
-from folly.agents.backtest import run_scenario as runner
+from folly.agents.tests import run_scenario as runner
 
 
 REVISION = "a" * 40
@@ -446,7 +446,7 @@ class RunScenarioTest(unittest.TestCase):
             }.issubset(status)
         )
         self.assertNotIn("scenario/prompt.no-rules.md", status)
-        self.assertNotIn("agents/backtest/checkpoint.py", status)
+        self.assertNotIn("agents/tests/checkpoint.py", status)
         self.assertNotIn("checkpoint_accounting.py", status)
 
         write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
@@ -468,7 +468,7 @@ class RunScenarioTest(unittest.TestCase):
             ),
             REVISION,
         )
-        self.assertIn("agents/backtest/checkpoint.py", commands[0])
+        self.assertIn("agents/tests/checkpoint.py", commands[0])
         self.assertIn("checkpoint_accounting.py", commands[0])
 
     def test_generation_revision_rejects_dirty_or_untracked_inputs(self) -> None:
@@ -556,7 +556,7 @@ class RunScenarioTest(unittest.TestCase):
     def test_generation_revision_rejects_multiple_checkouts(self) -> None:
         agents_root = self.root / "rules-checkout/folly/agents"
         scenario = self.root / "scenario-checkout/scenario"
-        runner_path = agents_root / "backtest/run_scenario.py"
+        runner_path = agents_root / "tests/run_scenario.py"
         (self.root / "rules-checkout/.git").mkdir(parents=True)
         (self.root / "scenario-checkout/.git").mkdir(parents=True)
         write(runner_path, "runner")

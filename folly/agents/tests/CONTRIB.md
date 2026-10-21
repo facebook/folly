@@ -86,8 +86,8 @@ a narrow, repeatable observation that ordinary artifact comparison cannot make
 reliably. Evaluators report evidence; the user judges the artifact and rule
 change.
 
-Run evaluator sessions through the shared runner in `README.md`. Keep only the
-declared inputs and turn sequence in each evaluator's `SETUP.md`.
+Run evaluator sessions through the shared runner in [TESTING.md](../TESTING.md).
+Keep only the declared inputs and turn sequence in each evaluator's `SETUP.md`.
 
 ## Source snapshots
 
@@ -97,4 +97,4 @@ the final `.txt` in its temporary workdir, while the inert suffix keeps fixture
 headers out of Folly's install and build discovery.
 
 Before exporting a scenario, internal maintainers must follow
-`facebook/CONTRIB.md`.
+[`backtest/facebook/CONTRIB.md`](../backtest/facebook/CONTRIB.md).

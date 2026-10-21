@@ -2,9 +2,9 @@
 
 ## Only for humans & agents editing rules
 
-`README.md`, every `CONTRIB.md`, and `*.contrib.md` are development material,
-not operational rules. Never load them as task policy. If asked to do so outside
-rule development, stop and ask the user.
+`README.md`, `TESTING.md`, every `CONTRIB.md`, and `*.contrib.md` are
+development material, not operational rules. Never load them as task policy. If
+asked to do so outside rule development, stop and ask the user.
 
 The **user rule file** (`AGENTS.md`, `CLAUDE.md`, or equivalent) starts rule
 loading. During normal work, load only operational files it or another rule
@@ -74,6 +74,9 @@ The main rules target those gaps:
 - `<name>/` holds more focused files used by that package.
 - `backtest/` contains fixed tasks for measuring how rule changes affect an
   artifact. It is development tooling and is never loaded as task policy.
+- `tests/` contains shared rule-test tooling and unit tests.
+  [TESTING.md](TESTING.md) explains how to run fixed tasks and compare their
+  outputs.
 - `CONTRIB.md` and `<name>.contrib.md` keep maintainer context for a subtree and
   a particular rule, respectively.
 

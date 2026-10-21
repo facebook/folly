@@ -14,7 +14,7 @@
 
 """Compress checkpoint outputs in a saved backtest sample.
 
-Usage: python3 -m folly.agents.backtest.compress_checkpoint_outputs SAMPLE
+Usage: python3 -m folly.agents.tests.compress_checkpoint_outputs SAMPLE
 
 SAMPLE must contain uncompressed `output.md`, `checkpoints.json`, and every
 artifact named by that JSON. The tool deduplicates exact content, preferring

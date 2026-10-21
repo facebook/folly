@@ -24,7 +24,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from folly.agents.backtest import compress_checkpoint_outputs as compressor
+from folly.agents.tests import compress_checkpoint_outputs as compressor
 
 
 def make_sample(root: Path, phases: list[tuple[str, str]]) -> None:

@@ -52,7 +52,7 @@ section outside the sample. From `fbcode/`, run:
 
 ```bash
 checkpoint_map=$(mktemp)
-python3 -m folly.agents.backtest.compress_checkpoint_outputs \
+python3 -m folly.agents.tests.compress_checkpoint_outputs \
   SAMPLE_DIRECTORY >"$checkpoint_map"
 ```
 

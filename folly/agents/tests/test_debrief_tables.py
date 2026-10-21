@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import unittest
 
-from folly.agents.backtest import debrief_tables
+from folly.agents.tests import debrief_tables
 
 
 def record(

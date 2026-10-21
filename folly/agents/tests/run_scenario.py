@@ -46,7 +46,7 @@ TOOL_FILES = {
     ),
 }
 CHECKPOINT_TOOL_FILES = {
-    "backtest-checkpoint": PurePosixPath("backtest/checkpoint.py"),
+    "backtest-checkpoint": PurePosixPath("tests/checkpoint.py"),
 }
 AGENT_RUNTIME_FILES = (PurePosixPath("scripts/isolated_agent.py"),)
 RESERVED_INPUT_NAMES = {"AGENTS.md", "AGENTS.override.md"}
