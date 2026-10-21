@@ -43,20 +43,25 @@ To revise prose after a usable review, follow the generic base
 - **Rework, don't append.** When fixing prose, default to rewriting the line
   rather than adding to it. Append-style patches ("See X for Y", "Note: Z") are
   almost always barnacles.
+
 - **Do not edit for motion.** In review mode, change text only to improve
   clarity or accuracy, or to make it materially shorter without losing needed
   content or increasing reader effort. Replace an abstract process label when
   the target audience would have to unpack it.
-- **Pick the right shape:**
-  - Lifecycle or procedure → numbered list.
-  - 2+ parallel states, facts, decisions, or reasons → bullets.
-  - 3+ inline items → bullets.
 
-  Use lead labels where they aid scanning. Reserve semicolon/em-dash glue for
-  tight causal pairs ("keep X — stripping breaks Y"). A parallel comparison or
-  enumeration hiding in prose is a shape miss — rewrite the container, not just
-  the sentences. (The Iterate loop's Shape pass applies this for commit messages
-  specifically.)
+- **Pick the right shape.** Choose the form that makes the text easiest to
+  follow.
+
+  - Use numbered steps for instructions whose order matters.
+
+  - Prefer bullets for parallel facts, choices or reasons, rather than packing
+    them into paragraphs.
+
+  - Keep a connected explanation in prose when splitting it would make it harder
+    to follow.
+
+  - Use labels only when they help the reader find, compare or interpret
+    information.
 
 - **Lead with what the reader needs first.** For prose about code, start with
   the problem or purpose. A fact that needs no background explanation may come
@@ -246,11 +251,23 @@ concerns; keep each section short. Sections that typically earn their keep:
 - Alternatives considered and why they lost.
 - Privacy / killswitch / rollback strategy.
 
-**Composite diff (main + tangential cleanup) → main mode + `Drive-by:` line.**
-Label the cleanup with `Drive-by:` so the reader knows where the main thread
-ends. Describe pain or constraint (the bug, the awkwardness it removes), not the
-mechanic the diff already shows. If the cleanup is self-evident, a one-liner
-like `Drive-by: drop some dead code.` is enough.
+**Additional fixes.** Mark small incidental fixes so reviewers do not mistake
+them for part of the main change:
+
+- One simple fix:
+  ```text
+  **Also:** Simple fix.
+  ```
+- A few simple fixes:
+  ```text
+  Incidental fixes:
+
+  - Simple fix 1
+  - Simple fix 2
+  ```
+
+Briefly explain non-obvious reasons; do not restate code. Use this sparingly. If
+the fixes are many, complex, or completely unrelated -- split the diff.
 
 ## What evergreen context means
 
@@ -278,20 +295,6 @@ any required Fresh Review from `{FA}/critic-iterate.md`.
 
 Per round: explanation → shape → cut (including the test plan) → plain language
 → cold re-read. Converge when a full round makes no edit.
-
-### Shape pass (before sentence cuts)
-
-If a paragraph has a shape problem, fix the container FIRST — sentence cuts on
-the wrong container are wasted motion.
-
-1. **Prose hiding an enumeration?** "A, B, and C" → bullets.
-2. **Parallel-states comparison?** A vs. B vs. C → bullets, lead labels where
-   they aid scanning.
-3. **One dense paragraph doing two reader jobs?** Split: claim sentence first,
-   consequence sentence next.
-4. **Dense paragraph with jargon pile-up?** If a cold-read makes you re-parse a
-   noun chain ("the X's Y whose Z affects W") or reach for the dictionary, split
-   or rewrite. Jargon stacks fail even when each term is correct.
 
 ### Cut test — per sentence
 
