@@ -15,6 +15,7 @@ python_unittest(
     name = "checkpoint_accounting_test",
     srcs = ["test_checkpoint_accounting.py"],
     network_access = network_access_utils.none(),
+    use_opt_by_default = True,
     deps = ["fbcode//folly/agents/backtest:run_scenario_lib"],
 )
 
