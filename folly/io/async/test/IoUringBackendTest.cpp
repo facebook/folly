@@ -493,13 +493,12 @@ TEST(IoUringBackend, OpenAt) {
   auto path = folly::fs::unique_path();
   auto filePath = dirPath / path;
 
-  int dfd = folly::fileops::open(
-      dirPath.string().c_str(), O_DIRECTORY | O_RDONLY, 0666);
+  int dfd = folly::fileops::open(dirPath.c_str(), O_DIRECTORY | O_RDONLY, 0666);
   CHECK_GE(dfd, 0);
 
   SCOPE_EXIT {
     folly::fileops::close(dfd);
-    ::unlink(filePath.string().c_str());
+    ::unlink(filePath.c_str());
   };
 
   folly::IoUringBackend::FileOpCallback openCb = [&](int res) {
@@ -509,11 +508,7 @@ TEST(IoUringBackend, OpenAt) {
   };
 
   backendPtr->queueOpenat(
-      dfd,
-      path.string().c_str(),
-      O_RDWR | O_CREAT | O_EXCL,
-      0666,
-      std::move(openCb));
+      dfd, path.c_str(), O_RDWR | O_CREAT | O_EXCL, 0666, std::move(openCb));
 
   evbPtr->loopForever();
 }
@@ -530,7 +525,7 @@ TEST(IoUringBackend, OpenAtAbsolutePath) {
   auto filePath = dirPath / path;
 
   SCOPE_EXIT {
-    ::unlink(filePath.string().c_str());
+    ::unlink(filePath.c_str());
   };
 
   folly::IoUringBackend::FileOpCallback openCb = [&](int res) {
@@ -540,11 +535,7 @@ TEST(IoUringBackend, OpenAtAbsolutePath) {
   };
 
   backendPtr->queueOpenat(
-      -1,
-      filePath.string().c_str(),
-      O_RDWR | O_CREAT | O_EXCL,
-      0666,
-      std::move(openCb));
+      -1, filePath.c_str(), O_RDWR | O_CREAT | O_EXCL, 0666, std::move(openCb));
 
   evbPtr->loopForever();
 }
@@ -562,14 +553,13 @@ TEST(IoUringBackend, Rename) {
   auto oldPath = dirPath / oldName;
   auto newPath = dirPath / newName;
 
-  int fd = folly::fileops::open(
-      oldPath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+  int fd = folly::fileops::open(oldPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC);
   CHECK_GE(fd, 0);
 
   SCOPE_EXIT {
     folly::fileops::close(fd);
-    ::unlink(oldPath.string().c_str());
-    ::unlink(newPath.string().c_str());
+    ::unlink(oldPath.c_str());
+    ::unlink(newPath.c_str());
   };
 
   folly::IoUringBackend::FileOpCallback renameCb = [&](int res) {
@@ -580,7 +570,7 @@ TEST(IoUringBackend, Rename) {
   };
 
   backendPtr->queueRename(
-      oldPath.string().c_str(), newPath.string().c_str(), std::move(renameCb));
+      oldPath.c_str(), newPath.c_str(), std::move(renameCb));
 
   evbPtr->loopForever();
 }
@@ -599,19 +589,19 @@ TEST(IoUringBackend, RenameDstExists) {
   auto newPath = dirPath / newName;
 
   {
-    int oldFd = folly::fileops::open(
-        oldPath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+    int oldFd =
+        folly::fileops::open(oldPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC);
     CHECK_GE(oldFd, 0);
     folly::fileops::close(oldFd);
   }
 
   SCOPE_EXIT {
-    ::unlink(oldPath.string().c_str());
+    ::unlink(oldPath.c_str());
   };
 
   {
-    int newFd = folly::fileops::open(
-        newPath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+    int newFd =
+        folly::fileops::open(newPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC);
     CHECK_GE(newFd, 0);
     folly::fileops::close(newFd);
   }
@@ -624,7 +614,7 @@ TEST(IoUringBackend, RenameDstExists) {
   };
 
   backendPtr->queueRename(
-      oldPath.string().c_str(), newPath.string().c_str(), std::move(renameCb));
+      oldPath.c_str(), newPath.c_str(), std::move(renameCb));
 
   evbPtr->loopForever();
 }
@@ -650,7 +640,7 @@ TEST(IoUringBackend, RenameSrcDoesntExist) {
   };
 
   backendPtr->queueRename(
-      oldPath.string().c_str(), newPath.string().c_str(), std::move(renameCb));
+      oldPath.c_str(), newPath.c_str(), std::move(renameCb));
 
   evbPtr->loopForever();
 }
@@ -666,13 +656,12 @@ TEST(IoUringBackend, Unlink) {
   auto fileName = folly::fs::unique_path();
   auto filePath = dirPath / fileName;
 
-  int fd = folly::fileops::open(
-      filePath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+  int fd = folly::fileops::open(filePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC);
   CHECK_GE(fd, 0);
   folly::fileops::close(fd);
 
   SCOPE_EXIT {
-    ::unlink(filePath.string().c_str());
+    ::unlink(filePath.c_str());
   };
 
   EXPECT_TRUE(folly::fs::exists(filePath));
@@ -683,7 +672,7 @@ TEST(IoUringBackend, Unlink) {
     EXPECT_FALSE(folly::fs::exists(filePath));
   };
 
-  backendPtr->queueUnlink(filePath.string().c_str(), std::move(unlinkCb));
+  backendPtr->queueUnlink(filePath.c_str(), std::move(unlinkCb));
 
   evbPtr->loopForever();
 }
@@ -707,7 +696,7 @@ TEST(IoUringBackend, UnlinkDoesntExist) {
     EXPECT_FALSE(folly::fs::exists(filePath));
   };
 
-  backendPtr->queueUnlink(filePath.string().c_str(), std::move(unlinkCb));
+  backendPtr->queueUnlink(filePath.c_str(), std::move(unlinkCb));
 
   evbPtr->loopForever();
 }
@@ -723,17 +712,16 @@ TEST(IoUringBackend, Unlinkat) {
   auto fileName = folly::fs::unique_path();
   auto filePath = dirPath / fileName;
 
-  int fd = folly::fileops::open(
-      filePath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+  int fd = folly::fileops::open(filePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC);
   CHECK_GE(fd, 0);
   folly::fileops::close(fd);
 
-  int dirfd = folly::fileops::open(dirPath.string().c_str(), O_DIRECTORY);
+  int dirfd = folly::fileops::open(dirPath.c_str(), O_DIRECTORY);
   CHECK_GE(dirfd, 0);
 
   SCOPE_EXIT {
     folly::fileops::close(dirfd);
-    ::unlink(filePath.string().c_str());
+    ::unlink(filePath.c_str());
   };
 
   EXPECT_TRUE(folly::fs::exists(filePath));
@@ -744,8 +732,7 @@ TEST(IoUringBackend, Unlinkat) {
     EXPECT_FALSE(folly::fs::exists(filePath));
   };
 
-  backendPtr->queueUnlinkat(
-      dirfd, fileName.string().c_str(), 0, std::move(unlinkCb));
+  backendPtr->queueUnlinkat(dirfd, fileName.c_str(), 0, std::move(unlinkCb));
 
   evbPtr->loopForever();
 }
@@ -778,7 +765,7 @@ TEST(IoUringBackend, UnlinkatRemoveDir) {
 
   // AT_REMOVEDIR flag allows removing directories
   backendPtr->queueUnlinkat(
-      AT_FDCWD, dirPath.string().c_str(), AT_REMOVEDIR, std::move(unlinkCb));
+      AT_FDCWD, dirPath.c_str(), AT_REMOVEDIR, std::move(unlinkCb));
 
   evbPtr->loopForever();
 }
@@ -794,17 +781,15 @@ TEST(IoUringBackend, Statx) {
   auto path = folly::fs::unique_path();
   auto filePath = dirPath / path;
 
-  int dfd = folly::fileops::open(
-      dirPath.string().c_str(), O_DIRECTORY | O_RDONLY, 0666);
+  int dfd = folly::fileops::open(dirPath.c_str(), O_DIRECTORY | O_RDONLY, 0666);
   CHECK_GE(dfd, 0);
-  int fd = folly::fileops::open(
-      filePath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+  int fd = folly::fileops::open(filePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC);
   CHECK_GE(fd, 0);
 
   SCOPE_EXIT {
     folly::fileops::close(dfd);
     folly::fileops::close(fd);
-    ::unlink(filePath.string().c_str());
+    ::unlink(filePath.c_str());
   };
 
   folly::IoUringBackend::FileOpCallback statxCb = [&](int res) {
@@ -814,7 +799,7 @@ TEST(IoUringBackend, Statx) {
 
   struct ::statx s;
   backendPtr->queueStatx(
-      dfd, path.string().c_str(), 0, STATX_MODE, &s, std::move(statxCb));
+      dfd, path.c_str(), 0, STATX_MODE, &s, std::move(statxCb));
 
   evbPtr->loopForever();
 }
@@ -830,13 +815,12 @@ TEST(IoUringBackend, StatxAbsolute) {
   auto path = folly::fs::unique_path();
   auto filePath = dirPath / path;
 
-  int fd = folly::fileops::open(
-      filePath.string().c_str(), O_CREAT | O_WRONLY | O_TRUNC);
+  int fd = folly::fileops::open(filePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC);
   CHECK_GE(fd, 0);
 
   SCOPE_EXIT {
     folly::fileops::close(fd);
-    ::unlink(filePath.string().c_str());
+    ::unlink(filePath.c_str());
   };
 
   folly::IoUringBackend::FileOpCallback statxCb = [&](int res) {
@@ -846,12 +830,7 @@ TEST(IoUringBackend, StatxAbsolute) {
 
   struct ::statx s;
   backendPtr->queueStatx(
-      -1,
-      filePath.string().c_str(),
-      AT_EMPTY_PATH,
-      STATX_MODE,
-      &s,
-      std::move(statxCb));
+      -1, filePath.c_str(), AT_EMPTY_PATH, STATX_MODE, &s, std::move(statxCb));
 
   evbPtr->loopForever();
 }
@@ -867,13 +846,12 @@ TEST(IoUringBackend, OpenAt2) {
   auto path = folly::fs::unique_path();
   auto filePath = dirPath / path;
 
-  int dfd = folly::fileops::open(
-      dirPath.string().c_str(), O_DIRECTORY | O_RDONLY, 0666);
+  int dfd = folly::fileops::open(dirPath.c_str(), O_DIRECTORY | O_RDONLY, 0666);
   CHECK_GE(dfd, 0);
 
   SCOPE_EXIT {
     folly::fileops::close(dfd);
-    ::unlink(filePath.string().c_str());
+    ::unlink(filePath.c_str());
   };
 
   folly::IoUringBackend::FileOpCallback openCb = [&](int res) {
@@ -887,7 +865,7 @@ TEST(IoUringBackend, OpenAt2) {
   how.mode = 0666;
   how.resolve = RESOLVE_IN_ROOT;
 
-  backendPtr->queueOpenat2(dfd, path.string().c_str(), &how, std::move(openCb));
+  backendPtr->queueOpenat2(dfd, path.c_str(), &how, std::move(openCb));
 }
 
 TEST(IoUringBackend, Close) {
@@ -900,15 +878,14 @@ TEST(IoUringBackend, Close) {
   auto path = folly::fs::temp_directory_path();
   path /= folly::fs::unique_path();
 
-  int fd = folly::fileops::open(
-      path.string().c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
+  int fd = folly::fileops::open(path.c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
   CHECK_GE(fd, 0);
 
   SCOPE_EXIT {
     if (fd >= 0) {
       folly::fileops::close(fd);
     }
-    ::unlink(path.string().c_str());
+    ::unlink(path.c_str());
   };
 
   folly::IoUringBackend::FileOpCallback closeCb = [&](int res) {
@@ -934,14 +911,13 @@ TEST(IoUringBackend, Fallocate) {
   auto path = folly::fs::temp_directory_path();
   path /= folly::fs::unique_path();
 
-  int fd = folly::fileops::open(
-      path.string().c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
+  int fd = folly::fileops::open(path.c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
   CHECK_GE(fd, 0);
 
   SCOPE_EXIT {
     if (fd >= 0) {
       folly::fileops::close(fd);
-      ::unlink(path.string().c_str());
+      ::unlink(path.c_str());
     }
   };
 

@@ -21,6 +21,7 @@
 #include <boost/algorithm/string.hpp>
 #include <glog/logging.h>
 
+#include <folly/FileUtil.h>
 #include <folly/Memory.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/GTest.h>
@@ -144,6 +145,54 @@ TEST(TemporaryDirectory, Permanent) {
 
 TEST(TemporaryDirectory, DeleteOnDestruction) {
   testTemporaryDirectory(TemporaryDirectory::Scope::DELETE_ON_DESTRUCTION);
+}
+
+namespace {
+
+constexpr const char* kNamePrefixes[] = {"/prefix", "//prefix", "relative"};
+
+void expectStrictChild(const fs::path& parent, const fs::path& child) {
+  EXPECT_NE(parent, child);
+  EXPECT_FALSE(fs::equivalent(parent, child));
+  EXPECT_TRUE(fs::equivalent(parent, child.parent_path()));
+}
+
+fs::path writeMarker(const fs::path& dir) {
+  auto marker = dir / "marker";
+  EXPECT_TRUE(writeFile(std::string("marker"), marker.string().c_str()));
+  return marker;
+}
+
+} // namespace
+
+TEST(TemporaryDirectory, NamePrefixStaysInDir) {
+  for (const char* prefix : kNamePrefixes) {
+    SCOPED_TRACE(prefix);
+    TemporaryDirectory parent;
+    const auto marker = writeMarker(parent.path());
+    {
+      TemporaryDirectory d(prefix, parent.path());
+      expectStrictChild(parent.path(), d.path());
+      EXPECT_TRUE(fs::is_directory(d.path()));
+    }
+    EXPECT_TRUE(fs::is_directory(parent.path()));
+    EXPECT_TRUE(fs::exists(marker));
+  }
+}
+
+TEST(TemporaryFile, NamePrefixStaysInDir) {
+  for (const char* prefix : kNamePrefixes) {
+    SCOPED_TRACE(prefix);
+    TemporaryDirectory parent;
+    const auto marker = writeMarker(parent.path());
+    {
+      TemporaryFile f(prefix, parent.path());
+      expectStrictChild(parent.path(), f.path());
+      EXPECT_TRUE(fs::is_regular_file(f.path()));
+    }
+    EXPECT_TRUE(fs::is_directory(parent.path()));
+    EXPECT_TRUE(fs::exists(marker));
+  }
 }
 
 void expectTempdirExists(const TemporaryDirectory& d) {

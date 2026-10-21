@@ -9,6 +9,7 @@ fb_dirsync_cpp_unittest(
     deps = [
         "fbsource//third-party/boost:boost_algorithm",
         "fbsource//third-party/glog:glog",
+        "//folly:file_util",
         "//folly:memory",
         "//folly/portability:fcntl",
         "//folly/portability:gtest",

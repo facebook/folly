@@ -43,17 +43,43 @@ namespace test {
 
 namespace {
 
+bool isDirectorySeparator(fs::path::value_type c) {
+#ifdef _WIN32
+  return c == L'/' || c == L'\\';
+#else
+  return c == '/';
+#endif
+}
+
+// Append `name` to `dir` the way Boost.Filesystem v3 `operator/=` does: add the
+// preferred separator unless `name` starts with a separator or `dir` already
+// ends with one, then concatenate. A name prefix such as "/tmp" or "//tmp" thus
+// always names an entry inside `dir`; with std::filesystem `operator/=`, an
+// absolute or root-name `name` would replace `dir` instead.
+fs::path appendName(const fs::path& dir, const fs::path& name) {
+  auto joined = dir.native();
+  const auto& tail = name.native();
+  if (!tail.empty() && !isDirectorySeparator(tail.front()) && !joined.empty() &&
+#ifdef _WIN32
+      joined.back() != L':' &&
+#endif
+      !isDirectorySeparator(joined.back())) {
+    joined += fs::path::preferred_separator;
+  }
+  joined += tail;
+  return fs::path(std::move(joined));
+}
+
 fs::path generateUniquePath(fs::path path, StringPiece namePrefix) {
   if (path.empty()) {
     path = fs::temp_directory_path();
   }
   if (namePrefix.empty()) {
-    path /= fs::unique_path();
-  } else {
-    path /=
-        fs::unique_path(to<std::string>(namePrefix, ".%%%%-%%%%-%%%%-%%%%"));
+    return appendName(path, fs::unique_path());
   }
-  return path;
+  return appendName(
+      path,
+      fs::unique_path(to<std::string>(namePrefix, ".%%%%-%%%%-%%%%-%%%%")));
 }
 
 } // namespace
