@@ -122,5 +122,8 @@ USE_CARGO_VENDOR=ON
 [cmake.defines.fb=on]
 IS_FB_BUILD=ON
 
+[cmake.defines.test=on]
+BUILD_TESTS=ON
+
 [depends.environment]
 EDEN_VERSION_OVERRIDE
