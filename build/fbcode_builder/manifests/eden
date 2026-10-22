@@ -18,6 +18,7 @@ builder = cmake
 
 [dependencies]
 blake3
+boost
 googletest
 folly
 fbthrift
