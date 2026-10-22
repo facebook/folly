@@ -1377,6 +1377,7 @@ fbcode_target(
     supports_static_listing = False,
     deps = [
         "//folly/io/async:io_uring_zero_copy_buffer_pool",
+        "//folly/portability:unistd",
     ],
 )
 

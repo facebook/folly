@@ -99,6 +99,22 @@ class IoUringZeroCopyBufferPool {
   uint64_t getAndResetCopyFallbackBytes() noexcept;
   uint32_t getAndResetNoBufferCount() noexcept;
 
+  // Point-in-time queue state for failure diagnostics. Stats contains interval
+  // counters and advances their publication baselines when read; this snapshot
+  // must not affect those counters.
+  struct Diagnostics {
+    int zcrxId{-1};
+    size_t numBuffers{0};
+    uint32_t bufferSize{0};
+    uint32_t refillRingEntries{0};
+    uint32_t refillRingHead{0};
+    uint32_t refillRingTail{0};
+    uint32_t buffersDispensed{0};
+    size_t pendingBuffers{0};
+  };
+
+  Diagnostics getDiagnostics() noexcept;
+
   struct Stats {
     uint64_t copyFallbackCount{0};
     uint64_t copyFallbackBytes{0};
@@ -116,7 +132,9 @@ class IoUringZeroCopyBufferPool {
  private:
   explicit IoUringZeroCopyBufferPool(Params params);
 
-  struct TestTag {};
+  struct TestTag {
+    bool flushRq{false};
+  };
   explicit IoUringZeroCopyBufferPool(Params params, TestTag);
 
   explicit IoUringZeroCopyBufferPool(

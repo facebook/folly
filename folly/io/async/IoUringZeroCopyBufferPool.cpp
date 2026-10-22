@@ -19,6 +19,7 @@
 #include <mutex>
 
 #include <folly/Conv.h>
+#include <folly/GLog.h>
 #include <folly/String.h>
 #include <folly/container/DynamicRingQueue.h>
 #include <folly/lang/Align.h>
@@ -79,6 +80,7 @@ namespace folly {
 namespace {
 
 constexpr size_t kScarcityReserveDivisor = 8;
+constexpr uint32_t kRefillFlushFreeEntriesDivisor = 4;
 
 } // namespace
 
@@ -105,7 +107,9 @@ class IoUringZeroCopyBufferPoolImpl {
   };
 
   explicit IoUringZeroCopyBufferPoolImpl(
-      IoUringZeroCopyBufferPool::Params params, bool test);
+      IoUringZeroCopyBufferPool::Params params,
+      bool test,
+      bool flushRqForTest = false);
 
   ~IoUringZeroCopyBufferPoolImpl();
 
@@ -151,6 +155,18 @@ class IoUringZeroCopyBufferPoolImpl {
     auto val = noBufferCount_;
     noBufferCount_ = 0;
     return val;
+  }
+  IoUringZeroCopyBufferPool::Diagnostics getDiagnostics() noexcept {
+    std::unique_lock lock{mutex_};
+    return {
+        .numBuffers = buffers_.size(),
+        .bufferSize = bufferSize_,
+        .refillRingEntries = rqEntries_,
+        .refillRingHead = io_uring_smp_load_acquire(rqRing_.khead),
+        .refillRingTail = rqTail_,
+        .buffersDispensed = bufDispensed_.load(std::memory_order_relaxed),
+        .pendingBuffers = pendingBuffers_.size(),
+    };
   }
 
  private:
@@ -275,7 +291,7 @@ bool IoUringZeroCopyBufferPool::kernelZeroCopyRxSupported() {
 }
 
 IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
-    IoUringZeroCopyBufferPool::Params params, bool test)
+    IoUringZeroCopyBufferPool::Params params, bool test, bool flushRqForTest)
     : ring_(params.ring),
       bufferSize_(params.bufferSizeHint),
       rqEntries_(params.rqEntries),
@@ -303,6 +319,7 @@ IoUringZeroCopyBufferPoolImpl::IoUringZeroCopyBufferPoolImpl(
           "IoUringZeroCopyBufferPool: noDev zcrx requires ZCRX_CTRL_FLUSH_RQ support");
     }
   } else {
+    supportedFeatures_.flushRq = flushRqForTest;
     supportedFeatures_.notification = true;
     supportedFeatures_.pageSize = true;
     supportedFeatures_.notifStatsSize =
@@ -568,10 +585,13 @@ void IoUringZeroCopyBufferPoolImpl::returnBuffer(Buffer* buffer) noexcept {
   for (uint32_t i = 0; i < refillCount; i++) {
     refillBuffer(pendingBuffers_.pop());
   }
+  freeEntries -= refillCount;
 
   if (rqTail_ != startTail) {
     io_uring_smp_store_release(rqRing_.ktail, rqTail_);
-    if (FOLLY_UNLIKELY(noDev_)) {
+    const bool shouldFlush = supportedFeatures_.flushRq &&
+        (noDev_ || freeEntries <= rqEntries_ / kRefillFlushFreeEntriesDivisor);
+    if (FOLLY_UNLIKELY(shouldFlush)) {
       lock.unlock();
       flushRefillQueue();
     }
@@ -583,10 +603,21 @@ void IoUringZeroCopyBufferPoolImpl::flushRefillQueue() noexcept {
     return;
   }
 
+  if (FOLLY_UNLIKELY(ring_ == nullptr)) {
+    io_uring_smp_store_release(rqRing_.khead, rqTail_);
+    return;
+  }
+
   struct zcrx_ctrl ctrl{};
   ctrl.zcrx_id = id_;
   ctrl.op = ZCRX_CTRL_FLUSH_RQ;
-  io_uring_register(ring_->ring_fd, IORING_REGISTER_ZCRX_CTRL, &ctrl, 0);
+  const auto ret =
+      io_uring_register(ring_->ring_fd, IORING_REGISTER_ZCRX_CTRL, &ctrl, 0);
+  if (FOLLY_UNLIKELY(ret < 0)) {
+    FB_LOG_EVERY_MS(WARNING, 60000)
+        << "Zero copy receive refill queue flush failed: "
+        << folly::errnoStr(-ret);
+  }
 }
 
 void IoUringZeroCopyBufferPoolImpl::delayedDestroy(uint32_t refs) noexcept {
@@ -614,9 +645,11 @@ IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params)
   zcrxId_ = impl_->id_;
 }
 
-IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params, TestTag)
+IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(Params params, TestTag tag)
     : ring_(params.ring),
-      impl_(new IoUringZeroCopyBufferPoolImpl(params, true), ImplDeleter{}) {}
+      impl_(
+          new IoUringZeroCopyBufferPoolImpl(params, true, tag.flushRq),
+          ImplDeleter{}) {}
 
 IoUringZeroCopyBufferPool::IoUringZeroCopyBufferPool(
     ExportHandle handle, struct io_uring* ring)
@@ -737,6 +770,13 @@ uint64_t IoUringZeroCopyBufferPool::getAndResetCopyFallbackBytes() noexcept {
 
 uint32_t IoUringZeroCopyBufferPool::getAndResetNoBufferCount() noexcept {
   return impl_->getAndResetNoBufferCount();
+}
+
+IoUringZeroCopyBufferPool::Diagnostics
+IoUringZeroCopyBufferPool::getDiagnostics() noexcept {
+  auto diagnostics = impl_->getDiagnostics();
+  diagnostics.zcrxId = zcrxId_;
+  return diagnostics;
 }
 
 void* IoUringZeroCopyBufferPool::getNotifStatsPtr() const noexcept {

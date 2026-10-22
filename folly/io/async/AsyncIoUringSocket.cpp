@@ -23,6 +23,7 @@
 #include <folly/io/async/IoUringProvidedBufferRing.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/SysUio.h>
+#include <folly/tracing/StaticTracepoint.h>
 
 #if FOLLY_HAS_LIBURING
 
@@ -686,6 +687,52 @@ void AsyncIoUringSocket::ReadSqe::callback(const io_uring_cqe* cqe) noexcept {
         parent_->submitRead();
       }
     } else if (res < 0) {
+      if (res == -ENOMEM && parent_ && supportsZeroCopyRx_ && useZeroCopyRx_) {
+        auto* backend = parent_->backend_;
+        auto* pool = backend ? backend->zcBufferPool() : nullptr;
+        const auto diagnostics = pool
+            ? pool->getDiagnostics()
+            : IoUringZeroCopyBufferPool::Diagnostics{};
+        LOG(ERROR)
+            << "ZCRX recv CQE returned ENOMEM"
+            << " socket=" << parent_ << " read_sqe=" << this
+            << " fd=" << parent_->fd_.toFd() << " cqe_flags=" << flags
+            << " backend=" << backend << " pool=" << pool
+            << " backend_napi_id=" << (backend ? backend->getNapiId() : -1)
+            << " event_base_attach_count=" << parent_->eventBaseAttachCount_
+            << " bytes_received=" << bytesReceived_ << " zcrx_id="
+            << diagnostics.zcrxId << " num_buffers=" << diagnostics.numBuffers
+            << " buffer_size=" << diagnostics.bufferSize
+            << " refill_ring_entries=" << diagnostics.refillRingEntries
+            << " refill_ring_head=" << diagnostics.refillRingHead
+            << " refill_ring_tail=" << diagnostics.refillRingTail
+            << " buffers_dispensed=" << diagnostics.buffersDispensed
+            << " pending_buffers=" << diagnostics.pendingBuffers;
+        FOLLY_SDT(
+            folly,
+            folly_async_io_uring_socket_zcrx_recv_enomem,
+            parent_,
+            this,
+            parent_->fd_.toFd(),
+            flags,
+            backend,
+            pool,
+            backend ? backend->getNapiId() : -1,
+            parent_->eventBaseAttachCount_,
+            bytesReceived_);
+        FOLLY_SDT(
+            folly,
+            folly_io_uring_zcrx_pool_on_recv_enomem,
+            pool,
+            diagnostics.zcrxId,
+            diagnostics.numBuffers,
+            diagnostics.bufferSize,
+            diagnostics.refillRingEntries,
+            diagnostics.refillRingHead,
+            diagnostics.refillRingTail,
+            diagnostics.buffersDispensed,
+            diagnostics.pendingBuffers);
+      }
       // assume ECANCELED is not an unrecoverable error state, but we do still
       // have to propagate to the callback as they presumably called the cancel.
       auto callback = readCallback_;
@@ -1100,6 +1147,18 @@ void AsyncIoUringSocket::attachEventBase(EventBase* evb) {
   evb_ = evb;
   isDetaching_ = false;
   registerFd();
+  ++eventBaseAttachCount_;
+  FOLLY_SDT(
+      folly,
+      folly_async_io_uring_socket_event_base_attach,
+      this,
+      fd_.toFd(),
+      evb_,
+      backend_,
+      backend_ ? backend_->zcBufferPool() : nullptr,
+      backend_ ? backend_->getNapiId() : -1,
+      eventBaseAttachCount_,
+      readSqe_->inFlight());
   readSqe_->attachEventBase();
 
   if (writeSqeActive_) {
@@ -1205,6 +1264,17 @@ void AsyncIoUringSocket::detachEventBase() {
   if (isDetaching_) {
     return;
   }
+  FOLLY_SDT(
+      folly,
+      folly_async_io_uring_socket_event_base_detach,
+      this,
+      fd_.toFd(),
+      evb_,
+      backend_,
+      backend_ ? backend_->zcBufferPool() : nullptr,
+      backend_ ? backend_->getNapiId() : -1,
+      eventBaseAttachCount_,
+      readSqe_->inFlight());
   isDetaching_ = true;
 
   if (writeSqeActive_) {

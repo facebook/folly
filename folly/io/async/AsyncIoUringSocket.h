@@ -536,6 +536,7 @@ class AsyncIoUringSocket : public AsyncSocketTransport {
 
   // detach event base
   bool isDetaching_ = false;
+  uint32_t eventBaseAttachCount_{0};
   Optional<SemiFuture<std::vector<std::pair<int, uint32_t>>>>
       detachedWriteResult_;
   std::shared_ptr<folly::Unit> alive_;

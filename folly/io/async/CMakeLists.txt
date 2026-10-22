@@ -145,6 +145,7 @@ folly_add_library(
     folly_memory_malloc
     folly_portability_sys_uio
     folly_random
+    folly_tracing_static_tracepoint
   EXPORTED_DEPS
     Boost::headers
     folly_futures_core
@@ -644,6 +645,7 @@ folly_add_library(
   DEPS
     folly_container_dynamic_ring_queue
     folly_conv
+    folly_glog
     folly_lang_align
     folly_portability_sys_mman
     folly_string

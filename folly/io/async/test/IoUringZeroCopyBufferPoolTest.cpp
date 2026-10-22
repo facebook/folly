@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include <folly/io/async/IoUringZeroCopyBufferPool.h>
+#include <folly/portability/Unistd.h>
 
 using namespace ::testing;
 using namespace ::std;
@@ -28,9 +29,9 @@ namespace folly {
 class IoUringZeroCopyBufferPoolTestHelper {
  public:
   static IoUringZeroCopyBufferPool::UniquePtr create(
-      IoUringZeroCopyBufferPool::Params params) {
+      IoUringZeroCopyBufferPool::Params params, bool flushRq = false) {
     return IoUringZeroCopyBufferPool::UniquePtr(new IoUringZeroCopyBufferPool(
-        params, IoUringZeroCopyBufferPool::TestTag{}));
+        params, IoUringZeroCopyBufferPool::TestTag{flushRq}));
   }
 
   explicit IoUringZeroCopyBufferPoolTestHelper(IoUringZeroCopyBufferPool& pool)
@@ -45,7 +46,6 @@ class IoUringZeroCopyBufferPoolTestHelper {
   uint64_t getNotifUserData() { return pool.kZcrxNotifUserData; }
   void incNoBufferCount() { pool.incNoBufferCount(); }
   void setZcrxId(int zcrxId) { pool.zcrxId_ = zcrxId; }
-
   void consumeRefillRingEntries(uint32_t numEntries) {
     *getHead() += numEntries;
   }
@@ -210,6 +210,66 @@ TEST(IoUringZeroCopyBufferPoolTest, RefillTest) {
   EXPECT_EQ(helper.getRingUsedCount(), 2);
   EXPECT_EQ(helper.getRingFreeCount(), 0);
   EXPECT_EQ(helper.getPendingBuffersSize(), 0);
+}
+
+TEST(IoUringZeroCopyBufferPoolTest, RefillFlushesBeforeRingExhaustion) {
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numBuffers = 16,
+      .bufferSizeHint = 4096,
+      .rqEntries = 8,
+      .ifindex = 0,
+      .queueId = 0,
+  };
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params, true);
+  IoUringZeroCopyBufferPoolTestHelper helper(*pool);
+
+  io_uring_cqe cqe{};
+  cqe.res = 2048;
+  io_uring_zcrx_cqe zcqe{};
+  for (uint32_t i = 0; i < 6; ++i) {
+    zcqe.off = i * 4096;
+    auto result = pool->getIoBuf(&cqe, &zcqe);
+    result.buffer.reset();
+  }
+
+  EXPECT_EQ(helper.getRingUsedCount(), 0);
+  EXPECT_EQ(helper.getRingFreeCount(), 8);
+  EXPECT_EQ(helper.getPendingBuffersSize(), 0);
+}
+
+TEST(IoUringZeroCopyBufferPoolTest, DiagnosticsSnapshot) {
+  IoUringZeroCopyBufferPool::Params params = {
+      .ring = nullptr,
+      .numBuffers = 8,
+      .bufferSizeHint = 4096,
+      .rqEntries = 2,
+      .ifindex = 0,
+      .queueId = 0,
+  };
+  auto pool = IoUringZeroCopyBufferPoolTestHelper::create(params);
+  IoUringZeroCopyBufferPoolTestHelper helper(*pool);
+  helper.setZcrxId(7);
+
+  io_uring_cqe cqe{};
+  cqe.res = 2048;
+  io_uring_zcrx_cqe zcqe{};
+  vector<unique_ptr<IOBuf>> buffers;
+  for (uint32_t i = 0; i < 3; ++i) {
+    zcqe.off = i * 4096;
+    buffers.push_back(pool->getIoBuf(&cqe, &zcqe).buffer);
+  }
+  buffers.clear();
+
+  const auto diagnostics = pool->getDiagnostics();
+  EXPECT_EQ(diagnostics.zcrxId, 7);
+  EXPECT_EQ(diagnostics.numBuffers, 8);
+  EXPECT_EQ(diagnostics.bufferSize, sysconf(_SC_PAGESIZE));
+  EXPECT_EQ(diagnostics.refillRingEntries, 2);
+  EXPECT_EQ(diagnostics.refillRingHead, 0);
+  EXPECT_EQ(diagnostics.refillRingTail, 2);
+  EXPECT_EQ(diagnostics.buffersDispensed, 3);
+  EXPECT_EQ(diagnostics.pendingBuffers, 1);
 }
 
 TEST(IoUringZeroCopyBufferPoolTest, RefillWithLargePendingQueue) {
