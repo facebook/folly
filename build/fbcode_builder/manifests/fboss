@@ -64,6 +64,10 @@ tabulate
 gcc12
 python-pyyaml
 
+# Shared FBOSS libraries and tests must not each register a static glog copy.
+[dependencies.os=linux]
+glog = shared_libs
+
 # ShipitPathMap always assume to use directory to fetch the source code.
 # If you need to sync the files to fboss github repo, please make changes in
 # configerator/source/opensource/shipit_config/facebook/fboss.cconf

@@ -24,6 +24,7 @@ fbthrift
 fizz
 fmt
 folly
+glog = shared_libs
 googletest
 magic_enum
 openr = !default, !full, exported_libraries
