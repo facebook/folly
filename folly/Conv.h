@@ -150,7 +150,6 @@
 #include <folly/lang/Exception.h>
 #include <folly/lang/Pretty.h>
 #include <folly/lang/ToAscii.h>
-#include <folly/portability/Math.h>
 
 namespace folly {
 
@@ -1275,7 +1274,7 @@ checkConversion(const Src& value) {
     if (!(value <= tgtMaxAsSrc)) {
       return false;
     }
-    const Src mmax = folly::nextafter(tgtMaxAsSrc, Src());
+    const Src mmax = std::nextafter(tgtMaxAsSrc, Src());
     if (static_cast<Tgt>(value - mmax) >
         std::numeric_limits<Tgt>::max() - static_cast<Tgt>(mmax)) {
       return false;
@@ -1284,7 +1283,7 @@ checkConversion(const Src& value) {
     if (value < tgtMinAsSrc) {
       return false;
     }
-    const Src mmin = folly::nextafter(tgtMinAsSrc, Src());
+    const Src mmin = std::nextafter(tgtMinAsSrc, Src());
     if (static_cast<Tgt>(value - mmin) <
         std::numeric_limits<Tgt>::min() - static_cast<Tgt>(mmin)) {
       return false;

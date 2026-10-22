@@ -279,7 +279,6 @@ folly_add_library(
     folly_lang_to_ascii
     folly_likely
     folly_portability
-    folly_portability_math
     folly_range
     folly_traits
     folly_unit

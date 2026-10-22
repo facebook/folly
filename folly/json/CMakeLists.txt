@@ -114,7 +114,6 @@ folly_add_library(
     folly_conv
     folly_memory
     folly_optional
-    folly_portability_math
     folly_singleton
     folly_string
   EXPORTED_DEPS

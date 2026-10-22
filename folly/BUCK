@@ -1493,7 +1493,6 @@ non_fbcode_target(
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         "fbsource//xplat/folly/portability:iovec",
-        "fbsource//xplat/folly/portability:math",
         "fbsource//xplat/folly/portability:openssl",
         "fbsource//xplat/folly/portability:pthread",
         "fbsource//xplat/folly/portability:stdlib",
@@ -1737,7 +1736,6 @@ non_fbcode_target(
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         "fbsource//xplat/folly/portability:iovec",
-        "fbsource//xplat/folly/portability:math",
         "fbsource//xplat/folly/portability:openssl",
         "fbsource//xplat/folly/portability:pthread",
         "fbsource//xplat/folly/portability:stdlib",
@@ -1928,7 +1926,6 @@ non_fbcode_target(
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         "fbsource//xplat/folly/portability:iovec",
-        "fbsource//xplat/folly/portability:math",
         "fbsource//xplat/folly/portability:openssl",
         "fbsource//xplat/folly/portability:pthread",
         "fbsource//xplat/folly/portability:stdlib",
@@ -2460,7 +2457,6 @@ fb_dirsync_cpp_library(
         "//folly/lang:exception",
         "//folly/lang:pretty",
         "//folly/lang:to_ascii",
-        "//folly/portability:math",
     ],
 )
 

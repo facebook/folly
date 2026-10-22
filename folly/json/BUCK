@@ -88,7 +88,6 @@ fb_dirsync_cpp_library(
         "//folly:optional",
         "//folly:singleton",
         "//folly:string",
-        "//folly/portability:math",
     ],
     exported_deps = [
         "//folly:exception_wrapper",
