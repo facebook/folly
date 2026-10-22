@@ -20,7 +20,7 @@
 #include <folly/debugging/symbolizer/SignalHandler.h>
 
 namespace {
-std::array<char, 32768> stack;
+std::array<char, 8192> stack;
 }
 
 int main() {
@@ -31,5 +31,5 @@ int main() {
   sigaltstack(&ss, nullptr);
 
   folly::symbolizer::installFatalSignalHandler();
-  raise(SIGILL);
+  __builtin_trap();
 }
