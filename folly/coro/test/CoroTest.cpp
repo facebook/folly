@@ -126,7 +126,8 @@ TEST_F(CoroTest, Sleep) {
   // rounding here.
   auto totalTime = std::chrono::steady_clock::now() - startTime;
   EXPECT_GE(
-      chrono::round<std::chrono::seconds>(totalTime), std::chrono::seconds{1});
+      std::chrono::round<std::chrono::seconds>(totalTime),
+      std::chrono::seconds{1});
 }
 
 TEST_F(CoroTest, ExecutorKeepAlive) {

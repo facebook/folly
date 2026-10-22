@@ -18,7 +18,7 @@
 
 #include <future>
 
-#include <folly/Chrono.h>
+#include <chrono>
 #include <folly/futures/Future.h>
 #include <folly/futures/WTCallback.h>
 
@@ -59,7 +59,7 @@ SemiFuture<Unit> EventBaseThreadTimekeeper::after(HighResDuration dur) {
   // fine here.
   eventBaseRef_.runInEventBaseThread([this, cob2 = std::move(cob), dur] {
     eventBaseRef_.timer().scheduleTimeout(
-        cob2.get(), folly::chrono::ceil<Duration>(dur));
+        cob2.get(), std::chrono::ceil<Duration>(dur));
   });
   return std::move(sf);
 }
