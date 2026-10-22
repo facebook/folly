@@ -80,7 +80,8 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 # Cargo build static library.
 #
 # ```cmake
-# rust_static_library(<TARGET> [CRATE <CRATE_NAME>] [FEATURES <FEATURE_NAME>] [USE_CXX_INCLUDE])
+# rust_static_library(<TARGET> [CRATE <CRATE_NAME>] [PACKAGE <PACKAGE_NAME>]
+#   [FEATURES <FEATURE_NAME>] [USE_CXX_INCLUDE])
 # ```
 #
 # Parameters:
@@ -90,6 +91,10 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 # - CRATE_NAME:
 #   Name of the crate. This parameter is optional. If unspecified, it will
 #   fallback to `${TARGET}`.
+# - PACKAGE_NAME:
+#   Name of the Cargo package that contains the crate, when it differs from
+#   the crate name. This parameter is optional. If unspecified, it will
+#   fallback to `${CRATE_NAME}`.
 # - FEATURE_NAME:
 #   Name of the Rust feature to enable.
 # - USE_CXX_INCLUDE:
@@ -105,12 +110,17 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 # headers with the interface library.
 #
 function(rust_static_library TARGET)
-  fb_cmake_parse_args(ARG "USE_CXX_INCLUDE" "CRATE;FEATURES" "" "${ARGN}")
+  fb_cmake_parse_args(ARG "USE_CXX_INCLUDE" "CRATE;PACKAGE;FEATURES" "" "${ARGN}")
 
   if(DEFINED ARG_CRATE)
     set(crate_name "${ARG_CRATE}")
   else()
     set(crate_name "${TARGET}")
+  endif()
+  if(DEFINED ARG_PACKAGE)
+    set(package_name "${ARG_PACKAGE}")
+  else()
+    set(package_name "${crate_name}")
   endif()
   if(DEFINED ARG_FEATURES)
     set(features --features ${ARG_FEATURES})
@@ -124,9 +134,9 @@ function(rust_static_library TARGET)
   set(rust_staticlib "${CMAKE_CURRENT_BINARY_DIR}/${target_dir}/${staticlib_name}")
 
   if(DEFINED ARG_FEATURES)
-    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name} --features ${ARG_FEATURES} --config fbcode_build=false)
+    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${package_name} --features ${ARG_FEATURES} --config fbcode_build=false)
   else()
-    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name} --config fbcode_build=false)
+    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${package_name} --config fbcode_build=false)
   endif()
   if(USE_CARGO_VENDOR)
     set(extra_cargo_env "CARGO_HOME=${RUST_CARGO_HOME}")
@@ -181,11 +191,12 @@ endfunction()
 # name to `cargo build -p TARGET`. If binary has different name as package,
 # use optional flag BINARY_NAME to override it.
 # It also accepts a `FEATURES` parameter if you want to enable certain features
-# in your Rust binary.
+# in your Rust binary, and an `ENV` list of `NAME=VALUE` pairs to set in the
+# environment of `cargo build`.
 # The CMake target will be registered to build by default as part of the
 # ALL target.
 function(rust_executable TARGET)
-  fb_cmake_parse_args(ARG "" "BINARY_NAME;FEATURES" "" "${ARGN}")
+  fb_cmake_parse_args(ARG "" "BINARY_NAME;FEATURES" "ENV" "${ARGN}")
 
   set(crate_name "${TARGET}")
   set(cargo_target "${TARGET}.cargo")
@@ -221,6 +232,7 @@ function(rust_executable TARGET)
       "${CMAKE_COMMAND}" -E env
       "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}"
       ${extra_cargo_env}
+      ${ARG_ENV}
       ${CARGO_COMMAND}
       ${cargo_flags}
     COMMENT "Building Rust executable '${crate_name}'..."
