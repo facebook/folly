@@ -23,11 +23,43 @@
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/SysMman.h>
 
+#if defined(__wasi__)
+#include <unistd.h> // sysconf
+
+#include <cstdlib> // posix_memalign, free
+#endif
+
 namespace folly {
 
 namespace {
 
 max_align_t dummy; // return value for zero-sized allocations
+
+#if defined(__wasi__)
+
+// wasi has no mmap (wasi-libc's <sys/mman.h> is an opt-in malloc-backed
+// emulation folly does not take) and no asynchronous signals, so on wasi
+// blocks come from posix_memalign and free, page-aligned as large allocations
+// promise.
+// Unlike the mmap version, this calls into malloc: do not use it from inside
+// the allocator, for example from a malloc hook.
+
+void* reentrant_allocate(std::size_t const n) noexcept {
+  FOLLY_SAFE_CHECK(n, "zero-sized");
+  void* addr = nullptr;
+  auto const pageSize = static_cast<std::size_t>(::sysconf(_SC_PAGESIZE));
+  auto const err = ::posix_memalign(&addr, pageSize, n);
+  FOLLY_SAFE_CHECK(!err, "posix_memalign failed");
+  return addr;
+}
+
+void reentrant_deallocate(void* const p, std::size_t const n) noexcept {
+  FOLLY_SAFE_CHECK(p, "null-pointer");
+  FOLLY_SAFE_CHECK(n, "zero-sized");
+  ::free(p);
+}
+
+#else
 
 void* reentrant_allocate(std::size_t const n) noexcept {
   FOLLY_SAFE_CHECK(n, "zero-sized");
@@ -44,6 +76,8 @@ void reentrant_deallocate(void* const p, std::size_t const n) noexcept {
   auto const err = ::munmap(p, n);
   FOLLY_SAFE_PCHECK(!err, "munmap failed");
 }
+
+#endif
 
 } // namespace
 

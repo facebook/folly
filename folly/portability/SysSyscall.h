@@ -129,7 +129,7 @@ template <typename... A>
 FOLLY_ERASE long linux_syscall(
     [[maybe_unused]] long number, [[maybe_unused]] A... a) {
 #if defined(_WIN32) || (defined(__EMSCRIPTEN__) && !defined(syscall)) || \
-    FOLLY_APPLE_TVOS
+    defined(__wasi__) || FOLLY_APPLE_TVOS
   errno = ENOSYS;
   return -1;
 #else

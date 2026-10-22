@@ -16,7 +16,12 @@
 
 #pragma once
 
-#ifndef _WIN32
+#if defined(__wasi__)
+
+// wasi has no mmap. wasi-libc's <sys/mman.h> is an opt-in malloc-backed
+// emulation that folly does not take, so on wasi nothing is declared here.
+
+#elif !defined(_WIN32)
 
 #include <sys/mman.h>
 

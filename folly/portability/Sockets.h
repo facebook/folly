@@ -119,6 +119,11 @@ int setsockopt(
 
 // None of these are implemented or referenced right now.
 
+#elif defined(__wasi__) && !defined(__wasilibc_use_wasip2)
+
+// wasi preview 1 cannot create, bind or connect sockets; nothing is declared
+// (see folly/net/NetOps.h).
+
 #else
 
 using ::accept;

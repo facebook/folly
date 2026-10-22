@@ -16,7 +16,11 @@
 
 #pragma once
 
-#if !defined(_WIN32)
+#if defined(__wasi__)
+// wasi has no resource limits or usage. wasi-libc's <sys/resource.h> is an
+// opt-in emulation that reports wall time as CPU time, which folly does not
+// take, so on wasi nothing is declared here.
+#elif !defined(_WIN32)
 #include <sys/resource.h>
 #else
 #include <cstdint>

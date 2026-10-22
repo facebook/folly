@@ -115,7 +115,9 @@ int pipe(int pth[2]);
 ssize_t write(int fh, void const* buf, size_t count);
 #else
 using ::close;
+#ifndef __wasi__ // wasi-libc declares no pipe().
 using ::pipe;
+#endif
 using ::read;
 using ::write;
 #endif

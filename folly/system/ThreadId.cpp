@@ -61,6 +61,11 @@ uint64_t getOSThreadIDSlow() {
   return uint64_t(tid);
 #elif defined(__EMSCRIPTEN__)
   return uint64_t(gettid());
+#elif defined(__wasi__)
+  // wasi has no syscalls and no kernel thread ids. This is pthread_self(), the
+  // same value getCurrentThreadID() returns: nonzero and distinct among live
+  // threads, but reusable after a thread exits.
+  return uint64_t(pthread_self());
 #else
   return uint64_t(syscall(FOLLY_SYS_gettid));
 #endif

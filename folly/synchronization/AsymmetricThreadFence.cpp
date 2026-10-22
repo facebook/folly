@@ -28,6 +28,8 @@ namespace folly {
 
 namespace {
 
+#if !defined(__wasi__)
+
 // The intention is to force a memory barrier in every core running any of the
 // process's threads. There is not a wide selection of options, but we do have
 // one trick: force a TLB shootdown. There are multiple scenarios in which a TLB
@@ -74,9 +76,15 @@ bool sysMembarrierAvailableCached() {
   return value == 1;
 }
 
+#endif
+
 } // namespace
 
 void asymmetric_thread_fence_heavy_fn::impl_(std::memory_order order) noexcept {
+#if defined(__wasi__)
+  // wasi has no membarrier and no mprotect.
+  std::atomic_thread_fence(order);
+#else
   if (kIsLinux) {
     if (sysMembarrierAvailableCached()) {
       FOLLY_SAFE_PCHECK(-1 != detail::sysMembarrierPrivateExpedited());
@@ -86,6 +94,7 @@ void asymmetric_thread_fence_heavy_fn::impl_(std::memory_order order) noexcept {
   } else {
     std::atomic_thread_fence(order);
   }
+#endif
 }
 
 } // namespace folly

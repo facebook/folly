@@ -62,6 +62,17 @@ void readRandomDevice(void* data, size_t size) {
   }();
   CHECK(size <= std::numeric_limits<DWORD>::max());
   PCHECK(CryptGenRandom(cryptoProv, (DWORD)size, (BYTE*)data));
+#elif defined(__wasi__)
+  // wasi has no /dev/urandom; getentropy, which wasi-libc implements with the
+  // random_get import, is its entropy source. It fills at most 256 bytes a
+  // call.
+  auto* out = static_cast<unsigned char*>(data);
+  while (size > 0) {
+    size_t const chunk = size < 256 ? size : 256;
+    PCHECK(::getentropy(out, chunk) == 0);
+    out += chunk;
+    size -= chunk;
+  }
 #else
   ssize_t bytesRead = 0;
   auto gen = [](int, void* buf, size_t buflen) {

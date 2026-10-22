@@ -16,6 +16,15 @@
 
 #pragma once
 
+// wasi preview 1 cannot create, bind or connect sockets: wasi-libc declares
+// socket, bind, connect and listen only for preview 2. On preview 1 this header
+// declares nothing, so code that uses socket operations fails to compile there.
+// <sys/socket.h> defines __wasilibc_use_wasip2 on preview 2.
+#if defined(__wasi__)
+#include <sys/socket.h>
+#endif
+#if !defined(__wasi__) || defined(__wasilibc_use_wasip2)
+
 #include <cstdint>
 
 #include <folly/Portability.h>
@@ -423,3 +432,5 @@ void set_wsa_error_translator(
 
 } // namespace netops
 } // namespace folly
+
+#endif // !defined(__wasi__) || defined(__wasilibc_use_wasip2)

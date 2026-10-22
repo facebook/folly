@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 
+#if defined(__wasi__)
+#include <sys/socket.h> // Defines __wasilibc_use_wasip2 on preview 2.
+#endif
+// wasi preview 1 cannot create, bind or connect sockets; see NetOps.h.
+#if !defined(__wasi__) || defined(__wasilibc_use_wasip2)
+
 #include <folly/net/NetOps.h>
 
 #include <fcntl.h>
@@ -912,3 +918,5 @@ XPLAT_CMSGHDR* Msgheader::cmsgFirstHrd() {
 }
 } // namespace netops
 } // namespace folly
+
+#endif // !defined(__wasi__) || defined(__wasilibc_use_wasip2)
