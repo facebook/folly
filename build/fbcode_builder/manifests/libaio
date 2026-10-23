@@ -17,8 +17,8 @@ builder = make
 subdir = libaio-0.3.113
 
 [make.build_args]
-ENABLE_SHARED=0
+ENABLE_SHARED=1
 
 [make.install_args]
 install
-ENABLE_SHARED=0
+ENABLE_SHARED=1
