@@ -18,7 +18,6 @@
 
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
-#include <folly/synchronization/AtomicUtil.h>
 
 using namespace folly::test;
 

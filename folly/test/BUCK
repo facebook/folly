@@ -433,7 +433,6 @@ fb_dirsync_cpp_unittest(
         ":deterministic_schedule",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
-        "//folly/synchronization:atomic_util",
     ],
 )
 
