@@ -232,8 +232,24 @@ struct __folly_cxa_exception_with_reserve {
 static const uint64_t kOurExceptionClass = 0x434C4E47432B2B00; // CLNGC++\0
 #endif
 
+#if FOLLY_HAS_FEATURE(ptrauth_calls)
+//  with pointer authentication, a virtual call authenticates the function
+//  pointer against a discriminator derived from the mangled name of the method,
+//  so the shim must have the same name and signature as the real one
+class __shim_type_info : public std::type_info {
+ public:
+  virtual ~__shim_type_info() = 0;
+
+  virtual void noop1() const = 0;
+  virtual void noop2() const = 0;
+  virtual bool can_catch(
+      const __shim_type_info* thrown_type, void*& adjustedPtr) const = 0;
+};
+using __folly_shim_type_info = __shim_type_info;
+#else
 //  named differently from the real shim type __shim_type_info and all members
-//  are pure virtual; as long as the vtable is the same, though, it should work
+//  are pure virtual; absent pointer authentication, a matching vtable layout is
+//  enough
 class __folly_shim_type_info : public std::type_info {
  public:
   virtual ~__folly_shim_type_info() = 0;
@@ -243,6 +259,7 @@ class __folly_shim_type_info : public std::type_info {
   virtual bool can_catch(
       const std::type_info* thrown_type, void*& adjustedPtr) const = 0;
 };
+#endif
 
 } // namespace __cxxabiv1
 
@@ -483,7 +500,8 @@ void* exception_ptr_get_object_(
   auto object = cxxabi_get_object(ptr);
   auto type = exception_ptr_get_type(ptr);
   auto starget = static_cast<abi::__folly_shim_type_info const*>(target);
-  return !target || starget->can_catch(type, object) ? object : nullptr;
+  auto stype = static_cast<abi::__folly_shim_type_info const*>(type);
+  return !target || starget->can_catch(stype, object) ? object : nullptr;
 }
 
 std::size_t exception_ptr_use_count_(std::exception_ptr const& ptr) noexcept {
