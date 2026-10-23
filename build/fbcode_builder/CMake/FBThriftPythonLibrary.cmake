@@ -176,6 +176,9 @@ endmacro()
 # Analogous to add_fbthrift_py_library() but uses the mstch_python generator
 # (--gen mstch_python) which produces thrift_types.py instead of ttypes.py.
 #
+# THRIFT_FILE is relative to the current source directory, or absolute for a
+# thrift file that a dependency installed.
+#
 # Unlike add_fbthrift_py_library(), this does NOT depend on FBThrift::thrift_py
 # (the legacy pure-Python runtime).  The thrift-python runtime (thrift.python
 # and folly) are C extensions resolved at runtime via symlinks — see
@@ -194,7 +197,14 @@ function(add_fbthrift_python_library LIB_NAME THRIFT_FILE)
   endif()
 
   get_filename_component(base ${THRIFT_FILE} NAME_WE)
-  set(output_dir "${CMAKE_CURRENT_BINARY_DIR}/${THRIFT_FILE}-python")
+  if(IS_ABSOLUTE "${THRIFT_FILE}")
+    set(thrift_path "${THRIFT_FILE}")
+    get_filename_component(thrift_name "${THRIFT_FILE}" NAME)
+    set(output_dir "${CMAKE_CURRENT_BINARY_DIR}/${thrift_name}-python")
+  else()
+    set(thrift_path "${CMAKE_CURRENT_SOURCE_DIR}/${THRIFT_FILE}")
+    set(output_dir "${CMAKE_CURRENT_BINARY_DIR}/${THRIFT_FILE}-python")
+  endif()
 
   # Parse the namespace value
   if (NOT DEFINED ARG_NAMESPACE)
@@ -274,7 +284,7 @@ function(add_fbthrift_python_library LIB_NAME THRIFT_FILE)
       "${thrift_include_options}"
       -I "${FBTHRIFT_INCLUDE_DIR}"
       -o "${output_dir}"
-      "${CMAKE_CURRENT_SOURCE_DIR}/${THRIFT_FILE}"
+      "${thrift_path}"
     WORKING_DIRECTORY
       "${CMAKE_BINARY_DIR}"
     MAIN_DEPENDENCY
@@ -304,9 +314,10 @@ endfunction()
 #
 # Differences from add_fb_python_executable():
 #   1. Forces TYPE dir (C extensions cannot load from zip archives)
-#   2. Post-build: symlinks thrift/python/ and thrift.libs/ from the
-#      pip-installed fbthrift-python wheel.  The latter contains auditwheel's
-#      renamed native dependencies, including Folly.
+#   2. Post-build: symlinks each subpackage of thrift/ (python/, py3/, ...)
+#      and thrift.libs/ from the pip-installed fbthrift-python wheel.  The
+#      latter contains auditwheel's renamed native dependencies, including
+#      Folly.
 #   3. Post-build: symlinks folly/ from folly-python site-packages
 #
 # Usage is identical to add_fb_python_executable():
@@ -335,7 +346,7 @@ function(add_fb_thrift_python_executable TARGET)
   #   ├── __main__.py
   #   ├── thrift/
   #   │   ├── __init__.py
-  #   │   └── python/ → <pip-site-packages>/thrift/python/
+  #   │   └── <subpackage>/ → <pip-site-packages>/thrift/<subpackage>/
   #   ├── folly/ → <getdeps-site-packages>/folly/
   #   ├── <your_module>/...            (Python sources)
   #   └── <namespace>/<module>/thrift_types.py  (generated thrift-python)
@@ -348,23 +359,36 @@ function(add_fb_thrift_python_executable TARGET)
     EXISTS "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/python" AND
     EXISTS "${THRIFT_PYTHON_SITE_PACKAGES}/thrift.libs"
   )
+    # The bundled thrift/ hides the wheel's namespace package, so link all of
+    # its subpackages: thrift.python imports thrift.py3, for example.
+    file(GLOB thrift_subpackages LIST_DIRECTORIES true
+      RELATIVE "${THRIFT_PYTHON_SITE_PACKAGES}/thrift"
+      "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/*")
+    set(link_commands)
+    foreach(subpackage IN LISTS thrift_subpackages)
+      if(IS_DIRECTORY "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/${subpackage}")
+        list(APPEND link_commands
+          COMMAND ${CMAKE_COMMAND}
+            "-DFB_REMOVE_PATH=${target_dir}/thrift/${subpackage}"
+            -P "${_FB_THRIFT_PYTHON_REMOVE_PATH_SCRIPT}"
+          COMMAND ${CMAKE_COMMAND} -E create_symlink
+            "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/${subpackage}"
+            "${target_dir}/thrift/${subpackage}"
+        )
+      endif()
+    endforeach()
     add_custom_command(
       TARGET ${TARGET}.GEN_PY_EXE POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory "${target_dir}/thrift"
       COMMAND ${CMAKE_COMMAND} -E touch "${target_dir}/thrift/__init__.py"
-      COMMAND ${CMAKE_COMMAND}
-        "-DFB_REMOVE_PATH=${target_dir}/thrift/python"
-        -P "${_FB_THRIFT_PYTHON_REMOVE_PATH_SCRIPT}"
+      ${link_commands}
       COMMAND ${CMAKE_COMMAND}
         "-DFB_REMOVE_PATH=${target_dir}/thrift.libs"
         -P "${_FB_THRIFT_PYTHON_REMOVE_PATH_SCRIPT}"
       COMMAND ${CMAKE_COMMAND} -E create_symlink
-        "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/python"
-        "${target_dir}/thrift/python"
-      COMMAND ${CMAKE_COMMAND} -E create_symlink
         "${THRIFT_PYTHON_SITE_PACKAGES}/thrift.libs"
         "${target_dir}/thrift.libs"
-      COMMENT "Symlinking thrift.python and its native dependencies into ${TARGET}"
+      COMMENT "Symlinking thrift-python and its native dependencies into ${TARGET}"
     )
   else()
     message(WARNING
