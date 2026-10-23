@@ -247,6 +247,16 @@ else ()
              "$<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>")
   # folly's granular libraries name ${GLOG_LIBRARIES} in their EXPORTED_DEPS.
   set(GLOG_LIBRARIES glog::glog)
+  # A project built alongside folly gets FindGlog's variables from here. The
+  # redirect that OVERRIDE_FIND_PACKAGE writes sets none of them, and the search
+  # above left GLOG_INCLUDE_DIR NOTFOUND in the cache.
+  file(WRITE "${CMAKE_FIND_PACKAGE_REDIRECTS_DIR}/glog-extra.cmake"
+"set(GLOG_FOUND TRUE)
+set(GLOG_INCLUDE_DIR \"${folly_glog_binary_dir}\")
+set(GLOG_INCLUDE_DIRS \"${folly_glog_binary_dir}\")
+set(GLOG_LIBRARY glog::glog)
+set(GLOG_LIBRARIES glog::glog)
+")
   set_property(GLOBAL APPEND PROPERTY FOLLY_BUILD_LOCAL_TARGETS glog glog::glog)
   # glog's own install(EXPORT glog-targets) is validated even though nothing
   # installs it, and it names the fetched gflags. Confine that edge too.
