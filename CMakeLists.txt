@@ -333,6 +333,7 @@ add_library(
   ${FOLLY_DIR}/test/DeterministicSchedule.cpp
   ${FOLLY_DIR}/json/JsonTestUtil.cpp
 )
+add_library(Folly::folly_test_util ALIAS folly_test_util)
 target_compile_definitions(
   folly_test_util
   PUBLIC FOLLY_CERTS_DIR="${FOLLY_DIR}/io/async/test/certs"
