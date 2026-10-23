@@ -249,7 +249,6 @@ folly_add_library(
     folly_algorithm_simd_detail_simd_platform
     folly_algorithm_simd_ignore
     folly_algorithm_simd_movemask
-    folly_container_reserve
     folly_lang_bits
     folly_portability
     folly_range
