@@ -36,13 +36,6 @@ rust-shed
 [dependencies.fbsource=on]
 rust
 
-# macOS ships with sqlite3, and some of the core system
-# frameworks require that that version be linked rather
-# than the one we might build for ourselves here, so we
-# skip building it on macos.
-[dependencies.not(os=darwin)]
-sqlite3
-
 [dependencies.os=darwin]
 osxfuse
 
