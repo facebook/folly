@@ -227,12 +227,6 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
-    name = "math",
-    headers = ["Math.h"],
-    use_raw_headers = True,
-)
-
-fb_dirsync_cpp_library(
     name = "memory",
     headers = ["Memory.h"],
     use_raw_headers = True,

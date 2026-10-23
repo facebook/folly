@@ -137,11 +137,6 @@ folly_add_library(
 )
 
 folly_add_library(
-  NAME math
-  HEADERS Math.h
-)
-
-folly_add_library(
   NAME memory
   HEADERS Memory.h
   EXPORTED_DEPS folly_memory
