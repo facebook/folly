@@ -16,7 +16,7 @@
 
 #include <folly/memory/MallctlHelper.h>
 
-#include <folly/Format.h>
+#include <fmt/format.h>
 #include <folly/String.h>
 #include <folly/lang/Exception.h>
 
@@ -30,7 +30,7 @@ namespace detail {
   assert(err != 0);
   cmd = cmd ? cmd : "<none>";
   throw_exception<std::runtime_error>(
-      sformat("mallctl[{}] {}: {} ({})", fn, cmd, errnoStr(err), err));
+      fmt::format("mallctl[{}] {}: {} ({})", fn, cmd, errnoStr(err), err));
 }
 
 } // namespace detail

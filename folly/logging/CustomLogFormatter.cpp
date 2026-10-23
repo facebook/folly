@@ -19,7 +19,9 @@
 
 #include <algorithm>
 
-#include <folly/Format.h>
+#include <fmt/format.h>
+
+#include <folly/Conv.h>
 #include <folly/logging/LogLevel.h>
 #include <folly/logging/LogMessage.h>
 #include <folly/portability/Time.h>
@@ -88,7 +90,7 @@ struct FormatKeys {
 
 /**
  * The first part of pairs in this array are the key names and the second part
- * of the pairs are the argument index for folly::format().
+ * of the pairs are the argument index for fmt::format().
  *
  * NOTE: This array must be sorted by key name, since we use std::lower_bound
  * to search in it.
@@ -290,7 +292,7 @@ std::string CustomLogFormatter::formatMessage(
         message.getMessage(),
         // If colored logs are enabled, the singleLineLogFormat_ will contain
         // placeholders for the color and the reset sequences. If not, then
-        // the following params will just be ignored by the folly::sformat().
+        // the following params will just be ignored by fmt::format().
         getColorSequence(message.getLevel()),
         getResetSequence(message.getLevel()));
   }

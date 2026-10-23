@@ -16,9 +16,9 @@
 
 #include <random>
 
+#include <fmt/format.h>
 #include <folly/Benchmark.h>
 #include <folly/Fingerprint.h>
-#include <folly/Format.h>
 #include <folly/detail/SlowFingerprint.h>
 
 using namespace folly;
@@ -129,13 +129,13 @@ void fastFingerprintTerms128(int num_iterations, int num_ids) {
 
 int main(int argc, char** argv) {
   folly::gflags::ParseCommandLineFlags(&argc, &argv, true);
-#define BM(name, min, max)                                             \
-  for (size_t i = min; i <= max; i *= 2) {                             \
-    addBenchmark(                                                      \
-        __FILE__, sformat("{}_{}", #name, i).c_str(), [=](int iters) { \
-          name(iters, i);                                              \
-          return iters;                                                \
-        });                                                            \
+#define BM(name, min, max)                                                 \
+  for (size_t i = min; i <= max; i *= 2) {                                 \
+    addBenchmark(                                                          \
+        __FILE__, fmt::format("{}_{}", #name, i).c_str(), [=](int iters) { \
+          name(iters, i);                                                  \
+          return iters;                                                    \
+        });                                                                \
   }
   BM(fastFingerprintIds64, 1, kMaxIds)
   BM(slowFingerprintIds64, 1, kMaxIds)

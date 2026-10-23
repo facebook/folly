@@ -16,7 +16,7 @@
 
 #include <folly/io/async/SSLContext.h>
 
-#include <folly/Format.h>
+#include <fmt/format.h>
 #include <folly/Memory.h>
 #include <folly/Random.h>
 #include <folly/SharedMutex.h>
@@ -69,8 +69,8 @@ void configureProtocolVersion(SSL_CTX* ctx, SSLContext::SSLVersion version) {
       break;
   }
   const auto setMinProtoResult = SSL_CTX_set_min_proto_version(ctx, minVersion);
-  DCHECK(setMinProtoResult == 1)
-      << sformat("unsupported min TLS protocol version: 0x{:04x}", minVersion);
+  DCHECK(setMinProtoResult == 1) << fmt::format(
+      "unsupported min TLS protocol version: 0x{:04x}", minVersion);
 }
 
 static int dispatchTicketCrypto(

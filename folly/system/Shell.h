@@ -25,11 +25,13 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <folly/Conv.h>
-#include <folly/Format.h>
 #include <folly/Range.h>
+
+#include <fmt/format.h>
 
 namespace folly {
 
@@ -42,8 +44,8 @@ namespace detail {
 template <typename... Arguments>
 std::vector<std::string> shellify(
     StringPiece format, Arguments&&... arguments) {
-  auto command = sformat(
-      format,
+  auto command = fmt::format(
+      fmt::runtime(std::string_view(format)),
       shellQuote(to<std::string>(std::forward<Arguments>(arguments)))...);
   return {"/bin/sh", "-c", command};
 }

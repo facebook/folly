@@ -20,7 +20,6 @@
 
 #include <fmt/format.h>
 #include <folly/Benchmark.h>
-#include <folly/Format.h>
 #include <folly/Random.h>
 #include <folly/String.h>
 
@@ -154,7 +153,7 @@ void follyFmtOutputSize(int iters, int param) {
   }
 
   for (int64_t i = 0; i < iters; ++i) {
-    string s = sformat("msg: {}, {}, {}", 10, 20, buffer);
+    string s = fmt::format("msg: {}, {}, {}", 10, 20, buffer);
   }
 }
 

@@ -677,9 +677,9 @@ fb_dirsync_cpp_benchmark(
     name = "fingerprint_benchmark",
     srcs = ["FingerprintBenchmark.cpp"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "//folly:benchmark",
         "//folly:fingerprint",
-        "//folly:format",
         "//folly/detail:slow_fingerprint",
     ],
 )
@@ -1492,7 +1492,6 @@ fb_dirsync_cpp_benchmark(
         "fbsource//third-party/boost:boost_algorithm",  # @manual
         "fbsource//third-party/fmt:fmt",
         "//folly:benchmark",
-        "//folly:format",
         "//folly:random",
         "//folly:string",
     ],
@@ -1547,7 +1546,6 @@ fb_dirsync_cpp_unittest(
         ":subprocess_test_parent_death_helper",  # @manual
         "//folly:exception",
         "//folly:file_util",
-        "//folly:format",
         "//folly:memory",
         "//folly:string",
         "//folly:subprocess",

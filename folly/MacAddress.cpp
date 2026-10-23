@@ -19,8 +19,8 @@
 #include <cassert>
 #include <ostream>
 
+#include <fmt/format.h>
 #include <folly/Exception.h>
-#include <folly/Format.h>
 #include <folly/IPAddressV6.h>
 #include <folly/String.h>
 
@@ -102,7 +102,7 @@ Expected<Unit, MacAddressFormatError> MacAddress::setFromString(
     if (p == str.end()) {
       return err(MacAddressFormatError::Invalid, [&] {
         throw invalid_argument(
-            sformat("invalid MAC address '{}': not enough digits", str));
+            fmt::format("invalid MAC address '{}': not enough digits", str));
       });
     }
 
@@ -112,7 +112,7 @@ Expected<Unit, MacAddressFormatError> MacAddress::setFromString(
       if (p == str.end()) {
         return err(MacAddressFormatError::Invalid, [&] {
           throw invalid_argument(
-              sformat("invalid MAC address '{}': not enough digits", str));
+              fmt::format("invalid MAC address '{}': not enough digits", str));
         });
       }
     }
@@ -122,7 +122,8 @@ Expected<Unit, MacAddressFormatError> MacAddress::setFromString(
     if (upper & 0x10) {
       return err(MacAddressFormatError::Invalid, [&] {
         throw invalid_argument(
-            sformat("invalid MAC address '{}': contains non-hex digit", str));
+            fmt::format(
+                "invalid MAC address '{}': contains non-hex digit", str));
       });
     }
     ++p;
@@ -142,8 +143,9 @@ Expected<Unit, MacAddressFormatError> MacAddress::setFromString(
           upper = 0;
         } else {
           return err(MacAddressFormatError::Invalid, [&] {
-            throw invalid_argument(sformat(
-                "invalid MAC address '{}': contains non-hex digit", str));
+            throw invalid_argument(
+                fmt::format(
+                    "invalid MAC address '{}': contains non-hex digit", str));
           });
         }
       }
@@ -158,7 +160,8 @@ Expected<Unit, MacAddressFormatError> MacAddress::setFromString(
     // String is too long to be a MAC address
     return err(MacAddressFormatError::Invalid, [&] {
       throw invalid_argument(
-          sformat("invalid MAC address '{}': found trailing characters", str));
+          fmt::format(
+              "invalid MAC address '{}': found trailing characters", str));
     });
   }
 
@@ -172,8 +175,7 @@ Expected<Unit, MacAddressFormatError> MacAddress::setFromBinary(
     ByteRange value, OnError err) {
   if (value.size() != SIZE) {
     return err(MacAddressFormatError::Invalid, [&] {
-      throw invalid_argument(
-          sformat("MAC address must be 6 bytes long, got ", value.size()));
+      throw invalid_argument("MAC address must be 6 bytes long, got ");
     });
   }
   memcpy(bytes_ + 2, value.begin(), SIZE);

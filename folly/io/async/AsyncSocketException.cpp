@@ -16,7 +16,7 @@
 
 #include <folly/io/async/AsyncSocketException.h>
 
-#include <folly/Format.h>
+#include <fmt/format.h>
 #include <folly/String.h>
 
 namespace folly {
@@ -64,14 +64,14 @@ namespace folly {
 /* static */ std::string AsyncSocketException::getMessage(
     AsyncSocketExceptionType type, const std::string& message, int errnoCopy) {
   if (errnoCopy != 0) {
-    return sformat(
+    return fmt::format(
         "AsyncSocketException: {}, type = {}, errno = {} ({})",
         message,
         getExceptionTypeString(type),
         errnoCopy,
         errnoStr(errnoCopy));
   } else {
-    return sformat(
+    return fmt::format(
         "AsyncSocketException: {}, type = {}",
         message,
         getExceptionTypeString(type));

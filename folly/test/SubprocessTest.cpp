@@ -39,9 +39,9 @@
 #include <fmt/ranges.h>
 #include <glog/logging.h>
 
+#include <fmt/format.h>
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
-#include <folly/Format.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
 #include <folly/gen/Base.h>
@@ -664,7 +664,7 @@ TEST(CommunicateSubprocessTest, BigWrite) {
 
   Subprocess proc("wc -l", Subprocess::Options().pipeStdin().pipeStdout());
   auto p = proc.communicate(data);
-  EXPECT_EQ(folly::format("{}\n", numLines).str(), p.first);
+  EXPECT_EQ(fmt::format("{}\n", numLines), p.first);
   proc.waitChecked();
 }
 

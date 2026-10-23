@@ -20,7 +20,7 @@
 
 #include <glog/logging.h>
 
-#include <folly/Format.h>
+#include <fmt/format.h>
 #include <folly/container/Enumerate.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Assume.h>
@@ -49,18 +49,20 @@ const char* dynamic::typeName() const {
 }
 
 TypeError::TypeError(const std::string& expected, dynamic::Type actual)
-    : std::runtime_error(sformat(
-          "TypeError: expected dynamic type '{}', but had type '{}'",
-          expected,
-          dynamic::typeName(actual))) {}
+    : std::runtime_error(
+          fmt::format(
+              "TypeError: expected dynamic type '{}', but had type '{}'",
+              expected,
+              dynamic::typeName(actual))) {}
 
 TypeError::TypeError(
     const std::string& expected, dynamic::Type actual1, dynamic::Type actual2)
-    : std::runtime_error(sformat(
-          "TypeError: expected dynamic types '{}', but had types '{}' and '{}'",
-          expected,
-          dynamic::typeName(actual1),
-          dynamic::typeName(actual2))) {}
+    : std::runtime_error(
+          fmt::format(
+              "TypeError: expected dynamic types '{}', but had types '{}' and '{}'",
+              expected,
+              dynamic::typeName(actual1),
+              dynamic::typeName(actual2))) {}
 
 // This is a higher-order preprocessor macro to aid going from runtime
 // types to the compile time type system.
@@ -200,8 +202,8 @@ dynamic const& dynamic::atImpl(dynamic const& idx) const& {
   } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
     auto it = pobject->find(idx);
     if (it == pobject->end()) {
-      throw_exception<std::out_of_range>(
-          sformat("couldn't find key {} in dynamic object", idx.asString()));
+      throw_exception<std::out_of_range>(fmt::format(
+          "couldn't find key {} in dynamic object", idx.asString()));
     }
     return it->second;
   } else {
@@ -217,7 +219,7 @@ dynamic const& dynamic::at(StringPiece idx) const& {
   auto it = pobject->find(idx);
   if (it == pobject->end()) {
     throw_exception<std::out_of_range>(
-        sformat("couldn't find key {} in dynamic object", idx));
+        fmt::format("couldn't find key {} in dynamic object", idx));
   }
   return it->second;
 }
