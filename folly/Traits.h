@@ -457,52 +457,6 @@ concept uncvref_same_as = std::is_same_v<std::remove_cvref_t<Ref>, To>;
  *          type_t<in_place_t, decltype(Value(std::declval<Args>()...))>,
  *          Args&&...);
  *    };
- *
- *  void_t
- *
- *  A type alias for `void`. `void_t` is useful for controlling class-template
- *  and function-template partial specialization.
- *
- *  Example:
- *
- *    // has_value_type<T>::value is true if T has a nested type `value_type`
- *    template <class T, class = void>
- *    struct has_value_type
- *        : std::false_type {};
- *
- *    template <class T>
- *    struct has_value_type<T, folly::void_t<typename T::value_type>>
- *        : std::true_type {};
- */
-
-/**
- * There is a bug in libstdc++, libc++, and MSVC's STL that causes it to
- * ignore unused template parameter arguments in template aliases and does not
- * cause substitution failures. This defect has been recorded here:
- * http://open-std.org/JTC1/SC22/WG21/docs/cwg_defects.html#1558.
- *
- * This causes the implementation of std::void_t to be buggy, as it is likely
- * defined as something like the following:
- *
- *  template <typename...>
- *  using void_t = void;
- *
- * This causes the compiler to ignore all the template arguments and does not
- * help when one wants to cause substitution failures.  Rather declarations
- * which have void_t in orthogonal specializations are treated as the same.
- * For example, assuming the possible `T` types are only allowed to have
- * either the alias `one` or `two` and never both or none:
- *
- *  template <typename T,
- *            typename std::void_t<std::decay_t<T>::one>* = nullptr>
- *  void foo(T&&) {}
- *  template <typename T,
- *            typename std::void_t<std::decay_t<T>::two>* = nullptr>
- *  void foo(T&&) {}
- *
- * The second foo() will be a redefinition because it conflicts with the first
- * one; void_t does not cause substitution failures - the template types are
- * just ignored.
  */
 
 namespace traits_detail {
@@ -514,8 +468,6 @@ struct type_t_ {
 
 template <class T, class... Ts>
 using type_t = typename traits_detail::type_t_<T, Ts...>::type;
-template <class... Ts>
-using void_t = type_t<void, Ts...>;
 
 /// nonesuch
 ///
@@ -540,7 +492,7 @@ struct detected_ {
   using type = D;
 };
 template <typename D, template <typename...> class T, typename... A>
-struct detected_<void_t<T<A...>>, D, T, A...> {
+struct detected_<std::void_t<T<A...>>, D, T, A...> {
   using value_t = std::true_type;
   using type = T<A...>;
 };
@@ -863,7 +815,7 @@ inline constexpr bool is_allocator_ = !require_sizeof<T>;
 template <typename T>
 inline constexpr bool is_allocator_<
     T,
-    void_t<
+    std::void_t<
         typename T::value_type,
         decltype(std::declval<T&>().allocate(std::size_t{})),
         decltype(std::declval<T&>().deallocate(
