@@ -81,7 +81,7 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 #
 # ```cmake
 # rust_static_library(<TARGET> [CRATE <CRATE_NAME>] [PACKAGE <PACKAGE_NAME>]
-#   [FEATURES <FEATURE_NAME>] [USE_CXX_INCLUDE])
+#   [FEATURES <FEATURE_NAME>] [USE_CXX_INCLUDE] [ENV <NAME=VALUE>...])
 # ```
 #
 # Parameters:
@@ -99,6 +99,8 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 #   Name of the Rust feature to enable.
 # - USE_CXX_INCLUDE:
 #   Include cxx.rs include path in `${TARGET}` INTERFACE.
+# - ENV:
+#   A list of `NAME=VALUE` pairs to set in the environment of `cargo build`.
 #
 # This function creates two targets:
 # - "${TARGET}": an interface library target contains the static library built
@@ -110,7 +112,7 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 # headers with the interface library.
 #
 function(rust_static_library TARGET)
-  fb_cmake_parse_args(ARG "USE_CXX_INCLUDE" "CRATE;PACKAGE;FEATURES" "" "${ARGN}")
+  fb_cmake_parse_args(ARG "USE_CXX_INCLUDE" "CRATE;PACKAGE;FEATURES" "ENV" "${ARGN}")
 
   if(DEFINED ARG_CRATE)
     set(crate_name "${ARG_CRATE}")
@@ -151,6 +153,7 @@ function(rust_static_library TARGET)
       "${CMAKE_COMMAND}" -E env
       "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}"
       ${extra_cargo_env}
+      ${ARG_ENV}
       ${CARGO_COMMAND}
       ${cargo_flags}
     COMMENT "Building Rust crate '${crate_name}'..."
