@@ -11,6 +11,15 @@ repo_url = https://github.com/facebook/mvfst.git
 builder = cmake
 subdir = .
 
+# Consumers opt in with `mvfst = haberdashery`. haberdashery only has
+# assembly for Linux.
+[features]
+default =
+haberdashery =
+
+[cmake.defines.all(os=linux, feature_haberdashery=on)]
+MVFST_USE_HABERDASHERY = ON
+
 [cmake.defines.test=on]
 BUILD_TESTS = ON
 
@@ -26,6 +35,9 @@ fizz
 
 [dependencies.all(test=on, not(os=windows))]
 googletest
+
+[dependencies.all(os=linux, feature_haberdashery=on)]
+haberdashery
 
 [shipit.pathmap]
 fbcode/quic/public_root = .
