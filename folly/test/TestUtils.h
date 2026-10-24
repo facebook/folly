@@ -322,7 +322,7 @@ CheckResult checkThrowRegex(
  * internal quotes and non-printable characters, the same way gtest does for the
  * string types it directly supports.
  */
-inline void PrintTo(StringPiece const& stringPiece, std::ostream* out) {
+inline void PrintTo(StringPiece const stringPiece, std::ostream* out) {
   *out << ::testing::PrintToString(stringPiece.str());
 }
 
