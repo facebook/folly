@@ -73,6 +73,15 @@ void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
   if (state_ == SingletonHolderState::NotRegistered) {
     detail::singletonWarnRegisterMockEarlyAndAbort(type());
   }
+
+  // The entry lock is held across teardown and re-registration so that
+  // createInstance() cannot run in between. Without it, a thread that uses the
+  // singleton concurrently can build an instance from the creator being
+  // replaced, which destroyInstance() then tears down via instance_ptr_ while
+  // state_ still reports it as living, leaving every later use of the singleton
+  // pointing at freed memory.
+  std::lock_guard entry_lock(mutex_);
+
   if (state_ == SingletonHolderState::Living ||
       state_ == SingletonHolderState::LivingInChildAfterFork) {
     destroyInstance();
@@ -86,8 +95,6 @@ void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
       creationOrder->erase(it);
     }
   }
-
-  std::lock_guard entry_lock(mutex_);
 
   create_ = std::move(c);
   teardown_ = std::move(t);
