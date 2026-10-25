@@ -14,14 +14,12 @@ ABSL_BUILD_TESTING = OFF
 ABSL_PROPAGATE_CXX_STD = ON
 ABSL_USE_SYSTEM_INCLUDES = ON
 
-# Prefer distro abseil where it is new enough to provide absl::log, and
-# build the pinned rev from source elsewhere. EL8/EL9 ship 20211102.0
-# and Ubuntu 22.04 ships 20210324 (20.04/18.04 older still), all of
-# which predate absl::log.
+# EL8/EL9 ship 20211102.0, too old for absl::log.
 [rpms.any(distro=fedora,all(distro_family=rhel,not(any(distro_vers=8,distro_vers=9))))]
 abseil-cpp-devel
 
-[debs.not(all(distro=ubuntu,any(distro_vers="18.04",distro_vers="20.04",distro_vers="22.04")))]
+# Ubuntu 24.04 ships abseil 20220623.1, too old for absl::log.
+[debs.not(all(distro=ubuntu,any(distro_vers="18.04",distro_vers="20.04",distro_vers="22.04",distro_vers="24.04")))]
 libabsl-dev
 
 [homebrew]
