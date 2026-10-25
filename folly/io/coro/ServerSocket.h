@@ -38,7 +38,8 @@ class ServerSocket {
   ServerSocket(
       std::shared_ptr<AsyncServerSocket> socket,
       std::optional<SocketAddress> bindAddr,
-      uint32_t listenQueueDepth);
+      uint32_t listenQueueDepth,
+      bool reusePort = true);
 
   ServerSocket(ServerSocket&&) = default;
   ServerSocket& operator=(ServerSocket&&) = default;

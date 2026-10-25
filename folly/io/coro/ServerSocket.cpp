@@ -83,9 +83,10 @@ namespace coro {
 ServerSocket::ServerSocket(
     std::shared_ptr<AsyncServerSocket> socket,
     std::optional<SocketAddress> bindAddr,
-    uint32_t listenQueueDepth)
+    uint32_t listenQueueDepth,
+    bool reusePort)
     : socket_{socket} {
-  socket_->setReusePortEnabled(true);
+  socket_->setReusePortEnabled(reusePort);
   if (bindAddr.has_value()) {
     VLOG(1) << "ServerSocket binds on IP: " << bindAddr->describe();
     socket_->bind(*bindAddr);

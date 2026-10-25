@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <system_error>
+
 #include <folly/Portability.h>
 
 #include <folly/coro/BlockingWait.h>
@@ -365,6 +367,23 @@ TEST_F(TransportTest, AcceptCancelled) {
           co_await co_withCancellation(cancelSource.getToken(), css.accept()),
           OperationCancelled);
     }());
+  });
+}
+
+TEST_F(TransportTest, ReusePortCanBeDisabled) {
+  run([&]() -> Task<> {
+    ServerSocket css(
+        AsyncServerSocket::newSocket(&evb),
+        SocketAddress("::1", 0),
+        16,
+        /*reusePort=*/false);
+    auto serverAddr = css.getAsyncServerSocket()->getAddress();
+
+    // Without SO_REUSEPORT on the listener, nothing else can bind its port.
+    EXPECT_THROW(
+        ServerSocket(AsyncServerSocket::newSocket(&evb), serverAddr, 16),
+        std::system_error);
+    co_return;
   });
 }
 
