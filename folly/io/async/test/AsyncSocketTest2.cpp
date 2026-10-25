@@ -10318,6 +10318,72 @@ class TrackingMovableReadCallback : public ReadCallback {
   size_t maxReadBufferSize{0};
 };
 
+class TestAsyncDetachFdCallback : public AsyncDetachFdCallback {
+ public:
+  explicit TestAsyncDetachFdCallback(EventBase* evb = nullptr) : evb_(evb) {}
+
+  void fdDetached(
+      NetworkSocket socket,
+      std::unique_ptr<IOBuf> pendingData) noexcept override {
+    fd = socket;
+    unread = std::move(pendingData);
+    called = true;
+    if (evb_) {
+      evb_->terminateLoopSoon();
+    }
+  }
+
+  void fdDetachFail(const AsyncSocketException& ex) noexcept override {
+    error = std::make_unique<AsyncSocketException>(ex);
+    called = true;
+    if (evb_) {
+      evb_->terminateLoopSoon();
+    }
+  }
+
+  bool called{false};
+  NetworkSocket fd;
+  std::unique_ptr<IOBuf> unread;
+  std::unique_ptr<AsyncSocketException> error;
+
+ private:
+  EventBase* evb_;
+};
+
+TEST_P(AsyncSocketTest, AsyncDetachFdRequiresEstablishedSocket) {
+  EventBase& evb = getEventBase();
+  auto socket = AsyncSocket::newSocket(&evb);
+  TestAsyncDetachFdCallback callback;
+
+  socket->asyncDetachFd(&callback);
+
+  ASSERT_TRUE(callback.called);
+  ASSERT_TRUE(callback.error);
+  EXPECT_EQ(callback.error->getType(), AsyncSocketException::INVALID_STATE);
+  EXPECT_EQ(callback.fd, NetworkSocket());
+}
+
+TEST_P(AsyncSocketTest, AsyncDetachFdWithoutNativeReceiveCompletesInline) {
+  TestServer server;
+  EventBase& evb = getEventBase();
+  auto socket = AsyncSocket::newSocket(&evb);
+  socket->connect(nullptr, server.getAddress(), 30);
+  evb.loop();
+  auto acceptedSocket = server.accept();
+
+  TestAsyncDetachFdCallback callback;
+  socket->asyncDetachFd(&callback);
+
+  ASSERT_TRUE(callback.called);
+  ASSERT_FALSE(callback.error);
+  ASSERT_NE(callback.fd, NetworkSocket());
+  EXPECT_EQ(socket->getNetworkSocket(), NetworkSocket());
+
+  netops::close(callback.fd);
+  callback.fd = NetworkSocket();
+  acceptedSocket->close();
+}
+
 TEST_P(
     AsyncSocketIoUringTest, IoUringMovableCallbackHandsOffToMovableCallback) {
   TestServer server;
@@ -10439,6 +10505,59 @@ TEST_P(
   socket->closeNow();
   acceptedSocket->close();
   evb.loop();
+}
+
+TEST_P(AsyncSocketIoUringTest, IoUringAsyncDetachFdKeepsInFlightBytes) {
+  TestServer server;
+  EventBase& evb = getEventBase();
+  auto socket = AsyncSocket::newSocket(&evb);
+  socket->connect(nullptr, server.getAddress(), 30);
+  evb.loop();
+  auto acceptedSocket = server.accept();
+
+  TrackingMovableReadCallback nativeCallback;
+  socket->setReadCB(&nativeCallback);
+  evb.loopOnce(EVLOOP_NONBLOCK);
+
+  std::string payload(8192, '\0');
+  for (size_t i = 0; i < payload.size(); ++i) {
+    payload[i] = static_cast<char>('a' + i % 26);
+  }
+  acceptedSocket->write(
+      reinterpret_cast<const uint8_t*>(payload.data()), payload.size());
+
+  TestAsyncDetachFdCallback detachCallback(&evb);
+  socket->asyncDetachFd(&detachCallback);
+  EXPECT_FALSE(detachCallback.called);
+  evb.loop();
+
+  ASSERT_TRUE(detachCallback.called);
+  ASSERT_FALSE(detachCallback.error);
+  ASSERT_NE(detachCallback.fd, NetworkSocket());
+  EXPECT_EQ(socket->getNetworkSocket(), NetworkSocket());
+  EXPECT_EQ(nativeCallback.dataRead(), 0);
+
+  auto detachedSocket = AsyncSocket::newSocket(
+      &evb, std::exchange(detachCallback.fd, NetworkSocket()));
+  if (detachCallback.unread) {
+    detachedSocket->setPreReceivedData(std::move(detachCallback.unread));
+  }
+
+  ReadCallback detachedCallback;
+  detachedCallback.dataAvailableCallback = [&] {
+    if (detachedCallback.dataRead() == payload.size()) {
+      detachedSocket->setReadCB(nullptr);
+      evb.terminateLoopSoon();
+    }
+  };
+  detachedSocket->setReadCB(&detachedCallback);
+  if (detachedCallback.dataRead() < payload.size()) {
+    evb.loop();
+  }
+  detachedCallback.verifyData(payload.data(), payload.size());
+
+  detachedSocket->close();
+  acceptedSocket->close();
 }
 
 TEST_P(

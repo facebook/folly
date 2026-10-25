@@ -40,16 +40,6 @@
 #include <folly/portability/Sockets.h>
 #include <folly/small_vector.h>
 
-namespace folly {
-class AsyncDetachFdCallback {
- public:
-  virtual ~AsyncDetachFdCallback() = default;
-  virtual void fdDetached(
-      NetworkSocket ns, std::unique_ptr<IOBuf> unread) noexcept = 0;
-  virtual void fdDetachFail(const AsyncSocketException& ex) noexcept = 0;
-};
-} // namespace folly
-
 #if FOLLY_HAS_LIBURING
 
 namespace folly {

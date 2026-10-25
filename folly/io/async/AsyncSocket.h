@@ -50,6 +50,14 @@
 
 namespace folly {
 
+class AsyncDetachFdCallback {
+ public:
+  virtual ~AsyncDetachFdCallback() = default;
+  virtual void fdDetached(
+      NetworkSocket ns, std::unique_ptr<IOBuf> unread) noexcept = 0;
+  virtual void fdDetachFail(const AsyncSocketException& ex) noexcept = 0;
+};
+
 /**
  * A class for performing asynchronous I/O on a socket.
  *
@@ -624,6 +632,23 @@ class AsyncSocket
    * descriptor, and it will not be closed when the AsyncSocket is destroyed.
    */
   virtual NetworkSocket detachNetworkSocket();
+
+  /**
+   * Extract the file descriptor from an established AsyncSocket.
+   *
+   * The read callback is removed immediately. If a native io_uring receive
+   * is in flight, it is cancelled and any data consumed while cancellation is
+   * in progress is returned to the callback together with pre-received data.
+   * Pending writes are failed as part of detaching the file descriptor.
+   *
+   * On success, the callback assumes ownership of the file descriptor and the
+   * AsyncSocket may no longer be used. The callback may be invoked inline if
+   * there is no native receive operation to drain.
+   *
+   * Fails with INVALID_STATE if the socket is not established. On failure the
+   * socket is left unchanged.
+   */
+  void asyncDetachFd(AsyncDetachFdCallback* callback);
 
   /**
    * Switch from native io_uring socket operations to EventHandler I/O.

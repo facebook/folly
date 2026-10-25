@@ -883,6 +883,54 @@ NetworkSocket AsyncSocket::detachNetworkSocket() {
   return fd;
 }
 
+void AsyncSocket::asyncDetachFd(AsyncDetachFdCallback* callback) {
+  CHECK(callback);
+  eventBase_->dcheckIsInEventBaseThread();
+  DestructorGuard guard(this);
+
+  if (state_ != StateEnum::ESTABLISHED) {
+    callback->fdDetachFail(AsyncSocketException(
+        AsyncSocketException::INVALID_STATE,
+        withAddr("cannot detach an unconnected socket")));
+    return;
+  }
+
+  setReadCB(nullptr);
+  auto unread = takePreReceivedData();
+
+  if (!useIoUring_ || !iouRecvHandle_) {
+    auto fd = detachNetworkSocket();
+    callback->fdDetached(fd, std::move(unread));
+    return;
+  }
+
+  if (!iouRecvHandleDetached_) {
+    iouRecvHandle_->detachEventBase();
+  }
+  iouRecvHandleDetached_ = false;
+  auto recvHandle = std::move(iouRecvHandle_);
+  auto pendingData = recvHandle->takeDetachedData();
+  auto fd = detachNetworkSocket();
+
+  folly::futures::detachOn(
+      eventBase_,
+      std::move(pendingData)
+          .deferValue(
+              [callback,
+               fd,
+               unread = std::move(unread),
+               recvHandle = std::move(recvHandle)](
+                  std::unique_ptr<IOBuf> received) mutable {
+                static_cast<void>(recvHandle);
+                if (!unread) {
+                  unread = std::move(received);
+                } else if (received) {
+                  unread->appendToChain(std::move(received));
+                }
+                callback->fdDetached(fd, std::move(unread));
+              }));
+}
+
 SemiFuture<std::unique_ptr<IOBuf>>
 AsyncSocket::asyncSwitchToEventHandlerMode() {
   eventBase_->dcheckIsInEventBaseThread();
