@@ -142,18 +142,21 @@ struct AsyncStackRootHolder {
   std::atomic<AsyncStackRoot*> value{nullptr};
 };
 
-static thread_local AsyncStackRootHolder currentThreadAsyncStackRoot;
+static AsyncStackRootHolder& getThreadAsyncStackRoot() noexcept {
+  static thread_local AsyncStackRootHolder holder;
+  return holder;
+}
 
 } // namespace
 
 AsyncStackRoot* tryGetCurrentAsyncStackRoot() noexcept {
-  return currentThreadAsyncStackRoot.get();
+  return getThreadAsyncStackRoot().get();
 }
 
 AsyncStackRoot* exchangeCurrentAsyncStackRoot(
     AsyncStackRoot* newRoot) noexcept {
-  auto* oldStackRoot = currentThreadAsyncStackRoot.get();
-  currentThreadAsyncStackRoot.set(newRoot);
+  auto* oldStackRoot = getThreadAsyncStackRoot().get();
+  getThreadAsyncStackRoot().set(newRoot);
   return oldStackRoot;
 }
 
@@ -162,14 +165,14 @@ namespace detail {
 ScopedAsyncStackRoot::ScopedAsyncStackRoot(
     void* framePointer, void* returnAddress) noexcept {
   root_.setStackFrameContext(framePointer, returnAddress);
-  root_.nextRoot = currentThreadAsyncStackRoot.get();
-  currentThreadAsyncStackRoot.set(&root_);
+  root_.nextRoot = getThreadAsyncStackRoot().get();
+  getThreadAsyncStackRoot().set(&root_);
 }
 
 ScopedAsyncStackRoot::~ScopedAsyncStackRoot() {
-  assert(currentThreadAsyncStackRoot.get() == &root_);
+  assert(getThreadAsyncStackRoot().get() == &root_);
   assert(root_.topFrame.load(std::memory_order_relaxed) == nullptr);
-  currentThreadAsyncStackRoot.set_relaxed(root_.nextRoot);
+  getThreadAsyncStackRoot().set_relaxed(root_.nextRoot);
 }
 
 } // namespace detail
