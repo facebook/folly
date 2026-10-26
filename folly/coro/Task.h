@@ -739,10 +739,6 @@ class FOLLY_CORO_TASK_ATTRS Task {
     DCHECK(task.coro_);
     return std::move(task).asTaskWithExecutor();
   }
-  [[deprecated("Legacy form, prefer `co_withExecutor(exec, yourTask())`.")]]
-  TaskWithExecutor<T> scheduleOn(Executor::KeepAlive<> executor) && noexcept {
-    return co_withExecutor(std::move(executor), std::move(*this));
-  }
 
   /// Converts a Task into a SemiFuture object.
   ///
