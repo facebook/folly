@@ -31,8 +31,8 @@ TESTFUN(clause_23_3_6_1_3) {
   auto const n = random(0U, 10000U);
   VECTOR v(n);
   EXPECT_EQ(v.size(), n);
-  FOR_EACH (i, v) {
-    EXPECT_EQ(*i, VECTOR::value_type());
+  for (const auto& element : v) {
+    EXPECT_EQ(element, VECTOR::value_type());
   }
 }
 
@@ -46,8 +46,8 @@ TESTFUN(clause_23_3_6_1_9) {
   VECTOR v(lst.begin(), lst.end());
   EXPECT_EQ(v.size(), lst.size());
   size_t j = 0;
-  FOR_EACH (i, lst) {
-    EXPECT_EQ(v[j], *i);
+  for (const auto& element : lst) {
+    EXPECT_EQ(v[j], element);
     j++;
   }
 }
@@ -63,8 +63,8 @@ TESTFUN(clause_23_3_6_1_11) {
   v.assign(lst.begin(), lst.end());
   EXPECT_EQ(v.size(), lst.size());
   size_t j = 0;
-  FOR_EACH (i, lst) {
-    EXPECT_EQ(v[j], *i);
+  for (const auto& element : lst) {
+    EXPECT_EQ(v[j], element);
     j++;
   }
 
@@ -72,11 +72,11 @@ TESTFUN(clause_23_3_6_1_11) {
   v.assign(v.begin(), v.begin() + v.size() / 2);
   EXPECT_EQ(v.size(), lst.size() / 2);
   j = 0;
-  FOR_EACH (i, lst) {
+  for (const auto& element : lst) {
     if (j == v.size()) {
       break;
     }
-    EXPECT_EQ(v[j], *i);
+    EXPECT_EQ(v[j], element);
     j++;
   }
 }
@@ -87,8 +87,8 @@ TESTFUN(clause_23_3_6_1_12) {
   auto const obj = randomObject<VECTOR::value_type>();
   v.assign(n, obj);
   EXPECT_EQ(v.size(), n);
-  FOR_EACH (i, v) {
-    EXPECT_EQ(*i, obj);
+  for (const auto& element : v) {
+    EXPECT_EQ(element, obj);
   }
 }
 
@@ -108,11 +108,11 @@ TESTFUN(clause_23_3_6_2_7) {
   v1.swap(v2);
   EXPECT_EQ(v1.size(), n2);
   EXPECT_EQ(v2.size(), n1);
-  FOR_EACH (i, v1) {
-    EXPECT_EQ(*i, obj2);
+  for (const auto& element : v1) {
+    EXPECT_EQ(element, obj2);
   }
-  FOR_EACH (i, v2) {
-    EXPECT_EQ(*i, obj1);
+  for (const auto& element : v2) {
+    EXPECT_EQ(element, obj1);
   }
 }
 
@@ -120,11 +120,11 @@ TESTFUN(clause_23_3_6_2_9) {
   VECTOR v;
   auto const n1 = random(0U, 10000U);
   v.resize(n1);
-  FOR_EACH (i, v) {
-    EXPECT_EQ(*i, VECTOR::value_type());
+  for (const auto& element : v) {
+    EXPECT_EQ(element, VECTOR::value_type());
   }
-  FOR_EACH (i, v) {
-    EXPECT_EQ(*i, VECTOR::value_type());
+  for (const auto& element : v) {
+    EXPECT_EQ(element, VECTOR::value_type());
   }
 }
 
@@ -133,8 +133,8 @@ TESTFUN(clause_23_3_6_2_11) {
   auto const n1 = random(0U, 10000U);
   auto const obj1 = randomObject<VECTOR::value_type>();
   v.resize(n1, obj1);
-  FOR_EACH (i, v) {
-    EXPECT_EQ(*i, obj1);
+  for (const auto& element : v) {
+    EXPECT_EQ(element, obj1);
   }
   auto const n2 = random(0U, 10000U);
   auto const obj2 = randomObject<VECTOR::value_type>();
