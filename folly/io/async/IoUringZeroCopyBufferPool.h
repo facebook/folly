@@ -31,6 +31,7 @@ FOLLY_POP_WARNING
 namespace folly {
 
 class IoUringZeroCopyBufferPoolImpl;
+class IoUringBackend;
 
 class IoUringZeroCopyBufferPool {
  public:
@@ -130,6 +131,7 @@ class IoUringZeroCopyBufferPool {
   }
 
  private:
+  friend class IoUringBackend;
   explicit IoUringZeroCopyBufferPool(Params params);
 
   struct TestTag {
@@ -155,6 +157,8 @@ class IoUringZeroCopyBufferPool {
   size_t getBufferSize() const noexcept;
   void* getNotifStatsPtr() const noexcept;
   void incNoBufferCount() noexcept;
+  bool isRefillFlushPending() const noexcept;
+  void flushRefillQueueIfNeeded() noexcept;
 
   struct io_uring* ring_{nullptr};
   std::shared_ptr<IoUringZeroCopyBufferPoolImpl> impl_;

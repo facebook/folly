@@ -1540,6 +1540,10 @@ int IoUringBackend::doPeek(io_uring_cqe*& cqe) noexcept {
 size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
   io_uring_cqe* cqe = nullptr;
 
+  if (FOLLY_UNLIKELY(zcBufferPool_)) {
+    zcBufferPool_->flushRefillQueueIfNeeded();
+  }
+
   if (kIsDebug && gettingEvents_) {
     throw std::runtime_error("getting events is not reentrant");
   }
@@ -1601,6 +1605,10 @@ size_t IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
 unsigned int IoUringBackend::internalProcessCqe(
     unsigned int maxGet, InternalProcessCqeMode mode) noexcept {
   io_uring_cqe* cqe;
+
+  if (FOLLY_UNLIKELY(zcBufferPool_)) {
+    zcBufferPool_->flushRefillQueueIfNeeded();
+  }
 
   unsigned int count_more = 0;
   unsigned int count = 0;
@@ -1665,6 +1673,9 @@ unsigned int IoUringBackend::internalProcessCqe(
       }
     }
   } while (true);
+  if (FOLLY_UNLIKELY(zcBufferPool_)) {
+    zcBufferPool_->flushRefillQueueIfNeeded();
+  }
   numInsertedEvents_ -= (count - count_more);
   numSendEvents_ -= count_send;
   FOLLY_SDT(

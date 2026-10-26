@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -46,6 +47,8 @@ class IoUringZeroCopyBufferPoolTestHelper {
   uint64_t getNotifUserData() { return pool.kZcrxNotifUserData; }
   void incNoBufferCount() { pool.incNoBufferCount(); }
   void setZcrxId(int zcrxId) { pool.zcrxId_ = zcrxId; }
+  bool isRefillFlushPending() { return pool.isRefillFlushPending(); }
+  void flushRefillQueueIfNeeded() { pool.flushRefillQueueIfNeeded(); }
   void consumeRefillRingEntries(uint32_t numEntries) {
     *getHead() += numEntries;
   }
@@ -227,12 +230,25 @@ TEST(IoUringZeroCopyBufferPoolTest, RefillFlushesBeforeRingExhaustion) {
   io_uring_cqe cqe{};
   cqe.res = 2048;
   io_uring_zcrx_cqe zcqe{};
+  vector<unique_ptr<IOBuf>> buffers;
   for (uint32_t i = 0; i < 6; ++i) {
     zcqe.off = i * 4096;
     auto result = pool->getIoBuf(&cqe, &zcqe);
-    result.buffer.reset();
+    buffers.push_back(std::move(result.buffer));
   }
 
+  thread returnThread([buffers = std::move(buffers)]() mutable {
+    buffers.clear();
+  });
+  returnThread.join();
+
+  EXPECT_TRUE(helper.isRefillFlushPending());
+  EXPECT_EQ(helper.getRingUsedCount(), 6);
+  EXPECT_EQ(helper.getRingFreeCount(), 2);
+
+  helper.flushRefillQueueIfNeeded();
+
+  EXPECT_FALSE(helper.isRefillFlushPending());
   EXPECT_EQ(helper.getRingUsedCount(), 0);
   EXPECT_EQ(helper.getRingFreeCount(), 8);
   EXPECT_EQ(helper.getPendingBuffersSize(), 0);
