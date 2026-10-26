@@ -28,11 +28,6 @@
 namespace folly {
 namespace chrono {
 
-/* using override */ using std::chrono::abs;
-/* using override */ using std::chrono::ceil;
-/* using override */ using std::chrono::floor;
-/* using override */ using std::chrono::round;
-
 struct coarse_steady_clock;
 struct coarse_system_clock;
 

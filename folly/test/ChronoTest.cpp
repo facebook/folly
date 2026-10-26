@@ -67,60 +67,6 @@ namespace {
 class ChronoTest : public testing::Test {};
 } // namespace
 
-TEST_F(ChronoTest, abs_duration) {
-  EXPECT_EQ(seconds(7), abs(seconds(7)));
-  EXPECT_EQ(seconds(7), abs(seconds(-7)));
-}
-
-TEST_F(ChronoTest, ceil_duration) {
-  EXPECT_EQ(seconds(7), ceil<seconds>(seconds(7)));
-  EXPECT_EQ(seconds(7), ceil<seconds>(milliseconds(7000)));
-  EXPECT_EQ(seconds(7), ceil<seconds>(milliseconds(6200)));
-}
-
-TEST_F(ChronoTest, ceil_time_point) {
-  auto const point = steady_clock::time_point{};
-  EXPECT_EQ(point + seconds(7), ceil<seconds>(point + seconds(7)));
-  EXPECT_EQ(point + seconds(7), ceil<seconds>(point + milliseconds(7000)));
-  EXPECT_EQ(point + seconds(7), ceil<seconds>(point + milliseconds(6200)));
-}
-
-TEST_F(ChronoTest, floor_duration) {
-  EXPECT_EQ(seconds(7), floor<seconds>(seconds(7)));
-  EXPECT_EQ(seconds(7), floor<seconds>(milliseconds(7000)));
-  EXPECT_EQ(seconds(7), floor<seconds>(milliseconds(7800)));
-}
-
-TEST_F(ChronoTest, floor_time_point) {
-  auto const point = steady_clock::time_point{};
-  EXPECT_EQ(point + seconds(7), floor<seconds>(point + seconds(7)));
-  EXPECT_EQ(point + seconds(7), floor<seconds>(point + milliseconds(7000)));
-  EXPECT_EQ(point + seconds(7), floor<seconds>(point + milliseconds(7800)));
-}
-
-TEST_F(ChronoTest, round_duration) {
-  EXPECT_EQ(seconds(7), round<seconds>(seconds(7)));
-  EXPECT_EQ(seconds(6), round<seconds>(milliseconds(6200)));
-  EXPECT_EQ(seconds(6), round<seconds>(milliseconds(6500)));
-  EXPECT_EQ(seconds(7), round<seconds>(milliseconds(6800)));
-  EXPECT_EQ(seconds(7), round<seconds>(milliseconds(7000)));
-  EXPECT_EQ(seconds(7), round<seconds>(milliseconds(7200)));
-  EXPECT_EQ(seconds(8), round<seconds>(milliseconds(7500)));
-  EXPECT_EQ(seconds(8), round<seconds>(milliseconds(7800)));
-}
-
-TEST_F(ChronoTest, round_time_point) {
-  auto const point = steady_clock::time_point{};
-  EXPECT_EQ(point + seconds(7), round<seconds>(point + seconds(7)));
-  EXPECT_EQ(point + seconds(6), round<seconds>(point + milliseconds(6200)));
-  EXPECT_EQ(point + seconds(6), round<seconds>(point + milliseconds(6500)));
-  EXPECT_EQ(point + seconds(7), round<seconds>(point + milliseconds(6800)));
-  EXPECT_EQ(point + seconds(7), round<seconds>(point + milliseconds(7000)));
-  EXPECT_EQ(point + seconds(7), round<seconds>(point + milliseconds(7200)));
-  EXPECT_EQ(point + seconds(8), round<seconds>(point + milliseconds(7500)));
-  EXPECT_EQ(point + seconds(8), round<seconds>(point + milliseconds(7800)));
-}
-
 TEST_F(ChronoTest, to_coarse_time_point_steady) {
   auto const tp = steady_clock::time_point{} + seconds(7);
   auto const coarse = to_coarse_time_point(tp);
