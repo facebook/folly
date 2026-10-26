@@ -41,10 +41,10 @@ struct EbBackend {
 // Runs `setupStep` on `evb` and reports whether it succeeded.
 //
 // The catch is load-bearing, not defensive: IoUringZeroCopyBufferPool::create()
-// and ::importHandle() never return null, they throw on failure, so throwing is
-// the only way create/import can report a problem. Left uncaught it would
-// propagate on the EventBase worker and terminate the thread. `setupStep`
-// itself reports failure by returning false.
+// and ::importHandle() throw when setup fails, and return null only when folly
+// is built without ZCRX support. Left uncaught, an exception would propagate on
+// the EventBase worker and terminate the thread. `setupStep` itself reports
+// failure by returning false.
 bool runSetupStepOnEventBase(
     folly::EventBase* evb, folly::FunctionRef<bool()> setupStep) {
   bool succeeded = false;

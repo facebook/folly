@@ -16,8 +16,27 @@
 
 #pragma once
 
-#if defined(__linux__) && __has_include(<liburing.h>)
+#if defined(__linux__) && __has_include(<liburing/io_uring_version.h>)
+#include <liburing/io_uring_version.h>
+#endif
+
+// TODO: T294823393: remove these version checks once every liburing that folly
+// builds against is 2.15 or newer.
+// folly's io_uring code uses APIs that first shipped in liburing 2.10, such as
+// io_uring_set_iowait().
+#if defined(IO_URING_VERSION_MAJOR) && \
+    (IO_URING_VERSION_MAJOR > 2 ||     \
+     (IO_URING_VERSION_MAJOR == 2 && IO_URING_VERSION_MINOR >= 10))
 #define FOLLY_HAS_LIBURING 1
 #else
 #define FOLLY_HAS_LIBURING 0
+#endif
+
+// The ZCRX query and control APIs first shipped in liburing 2.15.
+#if FOLLY_HAS_LIBURING &&          \
+    (IO_URING_VERSION_MAJOR > 2 || \
+     (IO_URING_VERSION_MAJOR == 2 && IO_URING_VERSION_MINOR >= 15))
+#define FOLLY_HAS_LIBURING_ZCRX 1
+#else
+#define FOLLY_HAS_LIBURING_ZCRX 0
 #endif

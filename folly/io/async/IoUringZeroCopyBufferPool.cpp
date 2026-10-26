@@ -17,6 +17,7 @@
 #include <folly/io/async/IoUringZeroCopyBufferPool.h>
 
 #include <mutex>
+#include <stdexcept>
 
 #include <folly/Conv.h>
 #include <folly/GLog.h>
@@ -26,7 +27,7 @@
 #include <folly/portability/SysMman.h>
 #include <folly/synchronization/DistributedMutex.h>
 
-#if FOLLY_HAS_LIBURING
+#if FOLLY_HAS_LIBURING_ZCRX
 
 // TODO: T264228475: remove this once liburing/uapi headers are updated.
 #define ZCRX_REG_NODEV 2
@@ -808,6 +809,61 @@ bool IoUringZeroCopyBufferPool::isRefillFlushPending() const noexcept {
 
 void IoUringZeroCopyBufferPool::flushRefillQueueIfNeeded() noexcept {
   impl_->flushRefillQueueIfNeeded(ring_, static_cast<uint32_t>(zcrxId_));
+}
+
+} // namespace folly
+
+#elif FOLLY_HAS_LIBURING
+
+// TODO: T294823393: remove these stand-ins along with FOLLY_HAS_LIBURING_ZCRX.
+
+namespace folly {
+
+bool IoUringZeroCopyBufferPool::kernelZeroCopyRxSupported() {
+  return false;
+}
+
+/* static */ IoUringZeroCopyBufferPool::UniquePtr
+IoUringZeroCopyBufferPool::create(Params) {
+  return nullptr;
+}
+
+/* static */ IoUringZeroCopyBufferPool::UniquePtr
+IoUringZeroCopyBufferPool::importHandle(ExportHandle, struct io_uring*) {
+  return nullptr;
+}
+
+IoUringZeroCopyBufferPool::ExportHandle
+IoUringZeroCopyBufferPool::exportHandle() const {
+  throw std::runtime_error(
+      "io_uring zero-copy receive is not supported by these liburing headers");
+}
+
+IoUringZeroCopyBufferPool::~IoUringZeroCopyBufferPool() = default;
+
+IoUringZeroCopyBufferPool::Result IoUringZeroCopyBufferPool::getIoBuf(
+    const struct io_uring_cqe*, const struct io_uring_zcrx_cqe*) noexcept {
+  return {nullptr, false};
+}
+
+void IoUringZeroCopyBufferPool::processNotificationCqe(
+    const struct io_uring_cqe*) noexcept {}
+
+uint64_t IoUringZeroCopyBufferPool::getAndResetCopyFallbackCount() noexcept {
+  return 0;
+}
+
+uint64_t IoUringZeroCopyBufferPool::getAndResetCopyFallbackBytes() noexcept {
+  return 0;
+}
+
+uint32_t IoUringZeroCopyBufferPool::getAndResetNoBufferCount() noexcept {
+  return 0;
+}
+
+IoUringZeroCopyBufferPool::Diagnostics
+IoUringZeroCopyBufferPool::getDiagnostics() noexcept {
+  return {};
 }
 
 } // namespace folly
