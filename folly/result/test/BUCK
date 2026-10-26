@@ -20,6 +20,7 @@ fb_dirsync_cpp_library(
     name = "common",
     headers = ["common.h"],
     exported_deps = [
+        "//folly:demangle",
         "//folly:unit",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
@@ -37,7 +38,6 @@ fb_dirsync_cpp_unittest(
         "//folly:benchmark",
         "//folly/result:epitaph",
         "//folly/result:immortal_rich_error",
-        "//folly/result:result",
     ],
 )
 
@@ -145,8 +145,7 @@ fb_dirsync_cpp_unittest(
         "//folly:portability",
         "//folly:scope_guard",
         "//folly/lang:keep",
-        "//folly/result:coro",
-        "//folly/result:result",
+        "//folly/result:coro",  # @manual
     ],
 )
 
@@ -172,7 +171,6 @@ fb_dirsync_cpp_unittest(
         ":rich_error_codes",
         "//folly:benchmark",
         "//folly/result:immortal_rich_error",
-        "//folly/result:result",
         "//folly/result:rich_error",
         "//folly/result:rich_error_code",
     ],
@@ -229,7 +227,6 @@ fb_dirsync_cpp_unittest(
         "//folly:benchmark",
         "//folly:exception_wrapper",
         "//folly/result:immortal_rich_error",
-        "//folly/result:result",
         "//folly/result:rich_error",
         "//folly/result:rich_error_base",
     ],
@@ -244,7 +241,6 @@ fb_dirsync_cpp_unittest(
         "//folly:benchmark",
         "//folly/result:epitaph",
         "//folly/result:immortal_rich_error",
-        "//folly/result:result",
         "//folly/result:rich_error",
         "//folly/result:rich_error_base",
     ],
@@ -352,7 +348,6 @@ fb_dirsync_cpp_unittest(
         "//folly/result:coro",
         "//folly/result:epitaph",
         "//folly/result:gtest_helpers",
-        "//folly/result:result",
     ],
 )
 

@@ -227,7 +227,9 @@ TEST(ImmortalRichErrorTest, formatWithEpitaphs) {
   checkFormatOfErrAndRep<MyErr, rich_error_base, std::exception>(
       err,
       fmt::format(
-          "default MyErr \\[via\\] msg @ {}:{}", test_file_name, err_line));
+          "default MyErr \\[via\\] msg @ {}:{}",
+          quoteRegexLiteral(test_file_name),
+          err_line));
 }
 
 struct ConstErrWithNext : rich_error_base {

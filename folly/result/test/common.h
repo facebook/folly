@@ -18,8 +18,11 @@
 
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <type_traits>
+#include <typeinfo>
 
+#include <folly/Demangle.h>
 #include <folly/Unit.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
@@ -32,6 +35,23 @@ consteval void check(bool cond) {
     // NOLINTNEXTLINE(facebook-hte-ThrowNonStdExceptionIssue)
     throw "check failed";
   }
+}
+
+inline std::string quoteRegexLiteral(std::string_view literal) {
+  std::string quoted;
+  quoted.reserve(literal.size());
+  for (const char c : literal) {
+    if (std::string_view{"\\.^$|()[]{}*+?"}.find(c) != std::string_view::npos) {
+      quoted.push_back('\\');
+    }
+    quoted.push_back(c);
+  }
+  return quoted;
+}
+
+template <typename T>
+std::string typeNameRegex() {
+  return quoteRegexLiteral(folly::demangle(typeid(T)).toStdString());
 }
 
 void checkFormat(const auto& err, const std::string& re) {

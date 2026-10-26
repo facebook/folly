@@ -47,12 +47,16 @@ void checkConstructionAndAccess(
       std::exception>(
       err,
       fmt::format(
-          "outer - A1=2 @ {}:[0-9]+ \\[after\\] {}", test_file_name, next_re));
+          "outer - A1=2 @ {}:[0-9]+ \\[after\\] {}",
+          quoteRegexLiteral(test_file_name),
+          next_re));
 }
 
 TEST(NestableCodedRichErrorTest, constructAndAccessWithNonRichNext) {
   checkConstructionAndAccess(
-      std::logic_error{"inner"}, "inner", "std::logic_error: inner");
+      std::logic_error{"inner"},
+      "inner",
+      fmt::format("{}: inner", typeNameRegex<std::logic_error>()));
 }
 
 TEST(NestableCodedRichErrorTest, constructAndAccessWithRichNext) {
@@ -61,7 +65,10 @@ TEST(NestableCodedRichErrorTest, constructAndAccessWithRichNext) {
   checkConstructionAndAccess(
       std::move(err),
       pretty_name<decltype(err)>(), // `what()` for the empty-message case
-      fmt::format("folly::test::C1=102 @ {}:{}", test_file_name, err_line));
+      fmt::format(
+          "folly::test::C1=102 @ {}:{}",
+          quoteRegexLiteral(test_file_name),
+          err_line));
 }
 
 TEST(NestableCodedRichErrorTest, nestThreeLevels) {
@@ -85,9 +92,9 @@ TEST(NestableCodedRichErrorTest, nestThreeLevels) {
       fmt::format(
           "top - A1=2 @ {}:[0-9]+ \\[after\\] middle - B2=-20 @ {}:[0-9]+ "
           "\\[after\\] base - A1=1 @ {}:[0-9]+",
-          test_file_name,
-          test_file_name,
-          test_file_name));
+          quoteRegexLiteral(test_file_name),
+          quoteRegexLiteral(test_file_name),
+          quoteRegexLiteral(test_file_name)));
 }
 
 TEST(NestableCodedRichErrorTest, multipleCodes) {
@@ -108,8 +115,8 @@ TEST(NestableCodedRichErrorTest, multipleCodes) {
       err,
       fmt::format(
           "multi - A1=1, B2=-22 @ {}:[0-9]+ \\[after\\] inner - A1=1 @ {}:[0-9]+",
-          test_file_name,
-          test_file_name));
+          quoteRegexLiteral(test_file_name),
+          quoteRegexLiteral(test_file_name)));
 }
 
 TEST(NestableCodedRichErrorTest, inheritedCodes) {
@@ -129,8 +136,8 @@ TEST(NestableCodedRichErrorTest, inheritedCodes) {
       err,
       fmt::format(
           "outer - B2=-22 @ {}:[0-9]+ \\[after\\] inner - A1=1 @ {}:[0-9]+",
-          test_file_name,
-          test_file_name));
+          quoteRegexLiteral(test_file_name),
+          quoteRegexLiteral(test_file_name)));
 }
 
 } // namespace folly::test

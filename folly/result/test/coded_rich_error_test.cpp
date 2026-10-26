@@ -107,14 +107,21 @@ TEST(CodedRichErrorTest, accessAndFormatError) {
         coded_rich_error<A1>,
         rich_error_base,
         std::exception>(
-        err, fmt::format("{} - A1=1 @ {}:{}", msg, test_file_name, err_line));
+        err,
+        fmt::format(
+            "{} - A1=1 @ {}:{}",
+            msg,
+            quoteRegexLiteral(test_file_name),
+            err_line));
   }
   { // Also check formatting with an empty message
     auto err = make_coded_rich_error(A1::TWO_A1);
     checkFormatOfErrAndRep<
         coded_rich_error<A1>,
         rich_error_base,
-        std::exception>(err, fmt::format("A1=2 @ {}:[0-9]+", test_file_name));
+        std::exception>(
+        err,
+        fmt::format("A1=2 @ {}:[0-9]+", quoteRegexLiteral(test_file_name)));
   }
 }
 
