@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <array>
 #include <atomic>
+#include <cerrno>
+#include <csignal>
 #include <cstdint>
 #include <cstring>
 #include <limits>
@@ -651,31 +654,66 @@ void foo2() {
   verifyStackTraces();
 }
 
-volatile bool handled = false;
-void handler(int /* num */, siginfo_t* /* info */, void* /* ctx */) {
-  // Yes, getStackTrace and VLOG aren't async-signal-safe, but signals
-  // raised with raise() aren't "async" signals.
-  foo1();
-  handled = true;
-}
-
 TEST(StackTraceTest, Simple) {
   foo1();
 }
 
+namespace {
+
+// NOLINTNEXTLINE
+std::array<uintptr_t, 100> signalAddresses{};
+std::atomic<ssize_t> signalFrameCount{-1};
+static_assert(decltype(signalFrameCount)::is_always_lock_free);
+
+FOLLY_NOINLINE void captureSignalStackTrace(int) {
+  const int savedErrno = errno;
+  signalFrameCount.store(
+      getStackTraceSafe(signalAddresses.data(), signalAddresses.size()),
+      std::memory_order_release);
+  errno = savedErrno;
+}
+
+FOLLY_NOINLINE int raiseSignalForStackTrace() {
+  const int result = raise(SIGUSR1);
+  compiler_must_not_elide(result);
+  return result;
+}
+
+} // namespace
+
 TEST(StackTraceTest, Signal) {
-  if (folly::kIsSanitizeThread) {
-    // TSAN doesn't like signal-unsafe functions in a signal handler regardless
-    // of how the signal is raised. So skip the test in that case.
-    SKIP() << "Not supported for TSAN";
-  }
-  struct sigaction sa;
-  memset(&sa, 0, sizeof(sa));
-  sa.sa_sigaction = handler;
-  sa.sa_flags = SA_RESETHAND | SA_SIGINFO;
-  CHECK_ERR(sigaction(SIGUSR1, &sa, nullptr));
-  raise(SIGUSR1);
-  EXPECT_TRUE(handled);
+  struct sigaction sa{};
+  sa.sa_handler = captureSignalStackTrace;
+  sigemptyset(&sa.sa_mask);
+  struct sigaction previous{};
+  ASSERT_EQ(sigaction(SIGUSR1, &sa, &previous), 0);
+  SCOPE_EXIT {
+    CHECK_ERR(sigaction(SIGUSR1, &previous, nullptr));
+  };
+
+  signalFrameCount.store(-1, std::memory_order_relaxed);
+  errno = EDOM;
+  const int result = raiseSignalForStackTrace();
+  const int signalErrno = errno;
+  ASSERT_EQ(result, 0);
+  EXPECT_EQ(signalErrno, EDOM);
+  const auto count = signalFrameCount.load(std::memory_order_acquire);
+  ASSERT_GT(count, 0);
+  ASSERT_LE(count, static_cast<ssize_t>(signalAddresses.size()));
+
+  FrameArray<signalAddresses.size()> frames;
+  frames.frameCount = static_cast<size_t>(count);
+  std::copy_n(signalAddresses.begin(), frames.frameCount, frames.addresses);
+  Symbolizer symbolizer;
+  symbolizer.symbolize(frames);
+  StringSymbolizePrinter printer;
+  printer.println(frames);
+  const auto stackTrace = printer.str();
+  const auto handler = stackTrace.find("captureSignalStackTrace");
+  const auto caller = stackTrace.find("raiseSignalForStackTrace");
+  ASSERT_NE(handler, std::string::npos) << stackTrace;
+  ASSERT_NE(caller, std::string::npos) << stackTrace;
+  EXPECT_LT(handler, caller) << stackTrace;
 }
 
 ssize_t read_all(int fd, uint8_t* buffer, size_t size) {
