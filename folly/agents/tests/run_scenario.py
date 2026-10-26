@@ -775,7 +775,6 @@ def launch(
                 isolated_agent.Request(
                     model=model,
                     effort=effort,
-                    access="workspace-write",
                     working_directory="task",
                 ),
                 stdin=stdin,

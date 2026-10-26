@@ -936,8 +936,6 @@ class RunScenarioTest(unittest.TestCase):
                 str(codex.resolve()),
                 "-a",
                 "never",
-                "-s",
-                "workspace-write",
                 "-C",
                 str(codex_cwd),
                 "exec",
