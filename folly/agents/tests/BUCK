@@ -11,12 +11,20 @@ python_library(
         "checkpoint_accounting.py",
         "compress_checkpoint_outputs.py",
         "debrief_tables.py",
+        "directory_snapshot.py",
         "run_scenario.py",
     ],
     resources = {
         "fbcode//folly/agents/scripts:apply_diffs": "folly/agents/scripts/apply_diffs",
     },
     deps = ["fbcode//folly/agents/scripts:isolated_agent_lib"],
+)
+
+python_unittest(
+    name = "directory_snapshot_test",
+    srcs = ["test_directory_snapshot.py"],
+    network_access = network_access_utils.none(),
+    deps = [":run_scenario_lib"],
 )
 
 python_unittest(
