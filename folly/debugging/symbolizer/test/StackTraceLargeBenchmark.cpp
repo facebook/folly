@@ -47,7 +47,6 @@ namespace {
 
 constexpr uint8_t kDwEhPeSdata4 = 0x0b;
 constexpr uint8_t kDwEhPeSdata8 = 0x0c;
-constexpr uint8_t kDwEhPeDatarel = 0x30;
 constexpr uint8_t kDwEhPeFormatMask = 0x0f;
 
 struct EhFrameHdrInfo {
