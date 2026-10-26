@@ -18,9 +18,11 @@ explaining it. Quote the text that supports your account. Flag only gaps that
 stop you from giving this account. Do not assess body coverage, design
 completeness, or missing work.
 
-For a whole-candidate target, explain what the artifact is for and what it asks
-the reader to understand or do. Quote any text that prevents that task. Do not
-rewrite it.
+For a whole-candidate target, explain in ordinary words the content needed for
+the reader's task, not just the artifact's purpose. Say what happens or is
+proposed, why it matters, and how the relevant parts connect. Quote supporting
+text; mark unclear connections rather than filling them from your own knowledge.
+Flag only gaps that obstruct the reader's task. Do not rewrite it.
 
 Put the complete review in the final response. The wrapper captures that
 response.
