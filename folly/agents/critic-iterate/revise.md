@@ -1,4 +1,4 @@
-# Prepare feedback for the author cycle
+# Prepare external feedback
 
 Mark proposals outside the user's agreed task as `SCOPE_EXPANSION`. Without
 approval, do not apply them or let them block completion.
@@ -14,12 +14,8 @@ fallback, or exposes a deciding correctness assumption, reapply
 `{FA}/design-vetting.md` before editing. Pure presentation or citation changes
 do not trigger this.
 
-Carry the candidate, accepted findings and independent frame into the next
-author cycle. That cycle must resolve every accepted finding. Proposed wording
-or versions are drafts to assess, not instructions to paste.
-
-For prose, use the full critique in `{FA}/write/prose/c-i-author.md` in that
-cycle.
+Proposed wording or versions are drafts to assess in the author critique, not
+instructions to paste.
 
 Record dispositions only in the accountability artifact; summarize
 `SCOPE_EXPANSION` items in the final debrief.

@@ -101,6 +101,28 @@ Verify only claims that could change the answer.
 
 ## General Cycle
 
+### Select the author checks
+
+Before inspecting the draft, choose critic dimensions for each artifact's type
+and task, using its author rules. Reuse them across passes. Revisit the choice
+when the task or new inputs require different checks. Examples:
+
+- Evidence: Are claims that could change the answer supported, with inference
+  and uncertainty visible?
+- `design-vetting.md`: Full problem covered? Viability checked before ranking?
+  Invariants preserved?
+- Test refactoring: apply `code/testing.md`. Distinct material risks survive?
+  Near-copy structure is compressed without hiding differences? Failures still
+  localize the cause?
+- Code: preserved invariants, traceable control flow, and `code.md` "Compression
+  and locality".
+
+### Critique, revise and reread
+
+Before a pass, prepare any new review feedback using
+`{FA}/critic-iterate/revise.md`. Include the accepted findings and any
+independent frame in the author critique.
+
 Run until a full pass makes no edit.
 
 A **pass** = critique → fix every in-scope flag → cold re-read. Adversarial
@@ -116,32 +138,19 @@ convergence. For prose, apply this comparison to the needed sentence that is
 hardest to read. Try one plainer version without changing its meaning or the
 surrounding argument, then keep the clearer version.
 
-Every pass includes a new-reader dimension. For prose, use the primary reader
-established before drafting and verify that choice against the artifact's final
-location. For other artifacts, determine who will review or use them there. Read
-with only what that reader would already know and no drafting history. Do not
-assume repo or subsystem context unless that reader normally has it. Flag any
-heading, comment, helper name, section break, or sentence whose purpose or
-placement only resolves from prior chat, temporary scaffolding, or author
-intent. Rewrite, move, or delete it before checking narrower rules.
+Every pass includes a new-reader check. For prose, verify the established
+primary reader against the artifact's final location. For other artifacts,
+identify who reviews or uses them there. Assume only that reader's normal
+background, not drafting history. Flag wording, names or structure whose purpose
+or placement makes sense only with prior chat, temporary scaffolding or author
+intent. Rewrite, move or delete it before narrower checks.
 
 Per pass:
 
-1. **Identify the critic dimensions** for the artifact type before inspecting
-   the current draft, so dimension selection is not biased toward dimensions the
-   draft happens to pass. Examples:
-   - Evidence: Are claims that could change the answer supported, with inference
-     and uncertainty visible?
-   - `design-vetting.md`: Full problem covered? Viability checked before
-     ranking? Invariants preserved?
-   - Test refactoring: apply `code/testing.md`. Distinct material risks survive?
-     Near-copy structure is compressed without hiding differences? Failures
-     still localize the cause?
-   - Code: preserved invariants, traceable control flow, and `code.md`
-     "Compression and locality".
-2. **Apply each dimension.** Flag what fails.
-3. **Author pass.** Fix every in-scope flag immediately.
-4. **Cold re-read.** Read the whole artifact as if written by someone else. Fix
+1. **Critique.** Apply every selected dimension to the whole candidate with the
+   accepted feedback in scope. Flag what fails.
+2. **Revise.** Resolve the accepted feedback and fix every in-scope flag.
+3. **Cold re-read.** Read the whole artifact as if written by someone else. Fix
    every in-scope issue it finds; any edit requires another full pass. For
    high-stakes artifacts (see "Fresh Review"), this self cold read does not
    replace the required Codex review sequence after self-convergence.
@@ -162,6 +171,11 @@ next material action, or record it in the active TODO tool (`update_plan` for
 Codex; `TaskCreate` for Claude) before doing anything else. Tracked items must
 be actionable and updated to fixed, rejected with reason, or blocked before
 convergence. Resolve concrete critique before fresh review.
+
+## Formatting
+
+Format after author passes and required checks, before fresh review or
+completion.
 
 ## Finding classes
 
@@ -195,9 +209,6 @@ What "text/element (with location)" means by artifact type:
 - Design: the alternative / claim / constraint verbatim + section ref.
 - Code: the line or hunk + `file:line`.
 - Tests: the test name or assertion + file:line.
-
-Quoted findings, not narrative paraphrases, are the anti-Goodhart guard: they
-cannot be produced without actually reading the artifact.
 
 For writing passes, the artifact must show cut-test evidence. Quote at least one
 sentence considered for cutting or compression, state whether it is necessary to
@@ -251,14 +262,14 @@ diff message, the author or orchestrator must follow
 
 To prepare a fresh review, follow `{FA}/critic-iterate/fresh-review.md`.
 
-After the author-side cycle converges, run available, applicable checks that are
-inexpensive relative to fresh review, such as formatting, text checks, lint,
-compilation, or focused unit tests. Fix failures and reconverge. Only then
-launch fresh review.
+Before fresh review, finish the General Cycle and pass available checks for this
+artifact that are cheap compared with fresh review, such as syntax checks, lint
+or focused tests. Reuse successful results when the candidate and relevant
+inputs are unchanged.
 
 Do not edit the candidate while either reviewer runs. If it changes after a
-round starts, that round no longer covers the revision. In that case, after the
-reviewers finish, resume at step 2 under “Revision and closure” below.
+round starts, that round no longer covers the revision. After the reviewers
+finish, follow "Revision and closure" below.
 
 **Run external review:** follow `{FA}/critic-iterate/run-review.md`.
 
@@ -270,13 +281,10 @@ can set a different default with `critic-iterate-K`.
 
 After each review round:
 
-1. Classify the review findings using `{FA}/critic-iterate/revise.md`.
-2. Run the General Cycle to resolve the accepted findings and check the updated
-   candidate, until a full pass makes no edit.
-3. Format, then cold-read the final candidate. Any edit returns to step 2. Any
-   material problem fixed in steps 2 or 3, or material change made after the
+1. Run the General Cycle with the review findings and independent frame.
+2. Any material problem fixed in step 1, or material change made after the
    review started, becomes `MUST_TAKE`.
-4. Take the first action that applies:
+3. Take the first action that applies:
    - If neither the last fresh review nor later checks found a `MUST_TAKE`
      issue, finish.
    - If every `MUST_TAKE` fix since the last fresh review was mechanical, verify

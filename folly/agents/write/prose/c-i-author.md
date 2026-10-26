@@ -4,7 +4,7 @@ In the critique below, compare any independent review frame with the draft by
 what the reader needs to understand and how the text is organized, not sentence
 matching. Neither version is preferred.
 
-Identify these critic dimensions before inspecting the current draft:
+Use these critic dimensions for prose author passes:
 
 - **Explanation critic** — For durable explanatory prose, apply `write.md`
   "Substance". For a durable document, also apply "Document". Flag a missing
