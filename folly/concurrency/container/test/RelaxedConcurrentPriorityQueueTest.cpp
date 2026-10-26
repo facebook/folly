@@ -25,6 +25,7 @@
 #include <folly/concurrency/container/RelaxedConcurrentPriorityQueue.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/AtomicNotification.h>
 #include <folly/test/DeterministicSchedule.h>
 
 #include <glog/logging.h>
@@ -571,7 +572,9 @@ void concurrentBlocking() {
         b.wait();
         int val;
         pq.pop(val);
-        finished.fetch_add(1, std::memory_order_acq_rel);
+        if (finished.fetch_add(1, std::memory_order_acq_rel) == nThrs - 1) {
+          folly::atomic_notify_all(&finished);
+        }
       });
     }
 
@@ -580,8 +583,10 @@ void concurrentBlocking() {
       threads_push[tid] = std::thread([&, tid] {
         b.wait();
         pq.push(tid);
-        while (finished.load(std::memory_order_acquire) != nThrs) {
-          ;
+        auto count = finished.load(std::memory_order_acquire);
+        while (count != nThrs) {
+          folly::atomic_wait(&finished, count);
+          count = finished.load(std::memory_order_acquire);
         }
         EXPECT_EQ(finished.load(std::memory_order_acquire), nThrs);
       });
