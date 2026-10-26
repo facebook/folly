@@ -137,7 +137,7 @@ class ObserverManager {
     explicit DependencyRecorder(const Core& core) : dependencies_(core) {
       DCHECK(inManagerThread());
 
-      previousDepedencies_ = currentDependencies_;
+      previousDependencies_ = currentDependencies_;
       currentDependencies_ = &dependencies_;
     }
 
@@ -192,8 +192,8 @@ class ObserverManager {
 
     DependencySet release() {
       DCHECK(currentDependencies_ == &dependencies_);
-      std::swap(currentDependencies_, previousDepedencies_);
-      previousDepedencies_ = nullptr;
+      std::swap(currentDependencies_, previousDependencies_);
+      previousDependencies_ = nullptr;
 
       return std::move(dependencies_.dependencies);
     }
@@ -206,7 +206,7 @@ class ObserverManager {
 
    private:
     Dependencies dependencies_;
-    Dependencies* previousDepedencies_;
+    Dependencies* previousDependencies_;
 
     static thread_local Dependencies* currentDependencies_;
   };

@@ -101,7 +101,7 @@ std::array<std::uint8_t, 16> expectedLookupByIndex(
   return res;
 }
 
-std::array<std::uint8_t, 16> expectedSuccessfullDecodeToIndex(
+std::array<std::uint8_t, 16> expectedSuccessfulDecodeToIndex(
     std::array<std::uint8_t, 16> in) {
   std::array<std::uint8_t, 16> r = {};
   for (std::size_t i = 0; i != in.size(); ++i) {
@@ -237,7 +237,7 @@ TYPED_TEST(Base64PlatformTest, decodeToIndexSuccess) {
     }
 
     RegBytes encoded = expectedLookupByIndex(in, kBase64EncodeTable);
-    RegBytes expected = expectedSuccessfullDecodeToIndex(encoded);
+    RegBytes expected = expectedSuccessfulDecodeToIndex(encoded);
     RegBytes actual = TestFixture::actualSuccesfullDecodeToIndex(encoded);
 
     ASSERT_EQ(expected, actual) << v;

@@ -283,7 +283,7 @@ class IOBufQueue {
    * @brief Get writeable headroom
    * @methodset Access
    *
-   * @return A pair of buffer-address and writeable-length
+   * @return A pair of buffer-address and writable-length
    */
   std::pair<void*, std::size_t> headroom();
 
