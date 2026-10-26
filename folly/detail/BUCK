@@ -264,6 +264,7 @@ fb_dirsync_cpp_library(
         ":thread_local_globals",
         "//folly:constexpr_math",
         "//folly:utility",
+        "//folly/container:irange",
         "//folly/hash:murmur_hash",
         "//folly/lang:hint",
         "//folly/memory:sanitize_leak",

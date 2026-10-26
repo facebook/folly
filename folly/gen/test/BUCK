@@ -142,7 +142,7 @@ fb_dirsync_cpp_benchmark(
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:string",
-        "//folly/container:foreach",
+        "//folly/container:irange",
         "//folly/gen:base",
         "//folly/gen:string",
     ],

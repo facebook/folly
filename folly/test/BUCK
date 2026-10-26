@@ -119,6 +119,7 @@ fb_dirsync_cpp_unittest(
         "//folly:benchmark",
         "//folly:conv",
         "//folly:portability",
+        "//folly/container:irange",
         "//folly/portability:atomic",
         "//folly/portability:gtest",
         "//folly/portability:sys_time",
@@ -181,7 +182,7 @@ fb_dirsync_cpp_benchmark(
     deps = [
         "//folly:benchmark",
         "//folly:string",
-        "//folly/container:foreach",
+        "//folly/container:irange",
     ],
 )
 
@@ -361,7 +362,7 @@ fb_dirsync_cpp_benchmark(
         "fbsource//third-party/boost:boost_lexical_cast",  # @manual
         "//folly:benchmark",
         "//folly:conv",
-        "//folly/container:foreach",
+        "//folly/container:irange",
         "//folly/lang:to_ascii",
     ],
 )
@@ -374,7 +375,7 @@ fb_dirsync_cpp_unittest(
         "fbsource//third-party/glog:glog",
         "//folly:conv",
         "//folly:random",
-        "//folly/container:foreach",
+        "//folly/container:irange",
         "//folly/portability:gtest",
     ],
 )
@@ -566,7 +567,7 @@ fb_dirsync_cpp_benchmark(
         "//folly:benchmark",
         "//folly:fbstring",
         "//folly:random",
-        "//folly/container:foreach",
+        "//folly/container:irange",
         "//folly/lang:keep",
         "//folly/portability:gflags",
     ],
@@ -585,7 +586,7 @@ fb_dirsync_cpp_unittest(
         "//folly:portability",
         "//folly:random",
         "//folly:utility",
-        "//folly/container:foreach",
+        "//folly/container:irange",
         "//folly/memory:uninitialized_memory_hacks",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
@@ -1285,7 +1286,7 @@ fb_dirsync_cpp_benchmark(
     deps = [
         "//folly:benchmark",
         "//folly:range",
-        "//folly/container:foreach",
+        "//folly/container:irange",
     ],
 )
 
@@ -1647,7 +1648,7 @@ fb_dirsync_cpp_unittest(
         "fbsource//third-party/glog:glog",
         "//folly:benchmark",
         "//folly:thread_cached_int",
-        "//folly/container:foreach",
+        "//folly/container:irange",
         "//folly/hash:hash",
         "//folly/portability:gflags",
         "//folly/portability:gtest",
@@ -1715,6 +1716,7 @@ fb_dirsync_cpp_unittest(
         "//folly:scope_guard",
         "//folly:shared_mutex",
         "//folly:thread_local",
+        "//folly/container:irange",
         "//folly/io:fs_util",
         "//folly/lang:keep",
         "//folly/portability:gtest",

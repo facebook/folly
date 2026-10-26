@@ -86,7 +86,7 @@
 #include <folly/CPortability.h>
 #include <folly/Likely.h>
 #include <folly/ThreadCachedInt.h>
-#include <folly/container/Foreach.h>
+#include <folly/container/irange.h>
 #include <folly/hash/Hash.h>
 
 namespace folly {
@@ -203,7 +203,7 @@ class AtomicHashMap {
   ~AtomicHashMap() {
     const unsigned int numMaps =
         numMapsAllocated_.load(std::memory_order_relaxed);
-    FOR_EACH_RANGE (i, 0, numMaps) {
+    for (const auto i : folly::irange(numMaps)) {
       SubMap* thisMap = subMaps_[i].load(std::memory_order_relaxed);
       DCHECK(thisMap);
       SubMap::destroy(thisMap);

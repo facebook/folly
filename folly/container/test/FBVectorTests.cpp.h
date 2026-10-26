@@ -40,7 +40,7 @@ TESTFUN(clause_23_3_6_1_9) {
   // Insert with iterators
   list<VECTOR::value_type> lst;
   auto const n = random(0U, 10000U);
-  FOR_EACH_RANGE (i, 0, n) {
+  for ([[maybe_unused]] const auto i : folly::irange(n)) {
     lst.push_back(randomObject<VECTOR::value_type>());
   }
   VECTOR v(lst.begin(), lst.end());
@@ -56,7 +56,7 @@ TESTFUN(clause_23_3_6_1_11) {
   // assign with iterators
   list<VECTOR::value_type> lst;
   auto const n = random(0U, 10000U);
-  FOR_EACH_RANGE (i, 0, n) {
+  for ([[maybe_unused]] const auto i : folly::irange(n)) {
     lst.push_back(randomObject<VECTOR::value_type>());
   }
   VECTOR v;
@@ -140,7 +140,7 @@ TESTFUN(clause_23_3_6_2_11) {
   auto const obj2 = randomObject<VECTOR::value_type>();
   v.resize(n2, obj2);
   if (n1 < n2) {
-    FOR_EACH_RANGE (i, n1, n2) {
+    for (const auto i : folly::irange(n1, n2)) {
       EXPECT_EQ(v[i], obj2);
     }
   }
@@ -174,7 +174,7 @@ TESTFUN(clause_23_3_6_3_1) {
 TESTFUN(clause_23_3_6_4_1_a) {
   VECTOR v, w;
   auto const n1 = random(1U, 10000U);
-  FOR_EACH_RANGE (i, 0, n1) {
+  for ([[maybe_unused]] const auto i : folly::irange(n1)) {
     auto const obj1 = randomObject<VECTOR::value_type>();
     v.push_back(obj1);
     w.push_back(obj1);
@@ -188,10 +188,10 @@ TESTFUN(clause_23_3_6_4_1_a) {
   EXPECT_EQ(v.size(), w.size() + 1);
   EXPECT_EQ(r - v.begin(), n2);
   EXPECT_EQ(*r, obj2);
-  FOR_EACH_RANGE (i, 0, r - v.begin()) {
+  for (const auto i : folly::irange(r - v.begin())) {
     EXPECT_EQ(v[i], w[i]);
   }
-  FOR_EACH_RANGE (i, r - v.begin() + 1, v.size()) {
+  for (const auto i : folly::irange(r - v.begin() + 1, v.size())) {
     EXPECT_EQ(v[i], w[i - 1]);
   }
 }
@@ -200,7 +200,7 @@ TESTFUN(clause_23_3_6_4_1_c) {
   // This test only works for fbvector
   fbvector<VECTOR::value_type> v, w;
   auto const n1 = random(1U, 10000U);
-  FOR_EACH_RANGE (i, 0, n1) {
+  for ([[maybe_unused]] const auto i : folly::irange(n1)) {
     auto const obj1 = randomObject<VECTOR::value_type>();
     v.push_back(obj1);
     w.push_back(obj1);
@@ -214,13 +214,13 @@ TESTFUN(clause_23_3_6_4_1_c) {
 
   EXPECT_EQ(v.size(), w.size() + n3);
   EXPECT_EQ(r - v.begin(), n2);
-  FOR_EACH_RANGE (i, 0, r - v.begin()) {
+  for (const auto i : folly::irange(r - v.begin())) {
     EXPECT_EQ(v[i], w[i]);
   }
-  FOR_EACH_RANGE (i, r - v.begin(), r - v.begin() + n3) {
+  for (const auto i : folly::irange(r - v.begin(), r - v.begin() + n3)) {
     EXPECT_EQ(v[i], obj2);
   }
-  FOR_EACH_RANGE (i, r - v.begin() + n3, v.size()) {
+  for (const auto i : folly::irange(r - v.begin() + n3, v.size())) {
     EXPECT_EQ(v[i], w[i - n3]);
   }
 }
@@ -228,7 +228,7 @@ TESTFUN(clause_23_3_6_4_1_c) {
 TESTFUN(clause_23_3_6_4_1_d) {
   VECTOR v, w;
   auto const n1 = random(0U, 10000U);
-  FOR_EACH_RANGE (i, 0, n1) {
+  for ([[maybe_unused]] const auto i : folly::irange(n1)) {
     auto const obj1 = randomObject<VECTOR::value_type>();
     v.push_back(obj1);
     w.push_back(obj1);
@@ -240,7 +240,7 @@ TESTFUN(clause_23_3_6_4_1_d) {
   EXPECT_EQ(v.back(), obj2);
   EXPECT_EQ(v.size(), w.size() + 1);
 
-  FOR_EACH_RANGE (i, 0, w.size()) {
+  for (const auto i : folly::irange(w.size())) {
     EXPECT_EQ(v[i], w[i]);
   }
 }
@@ -248,7 +248,7 @@ TESTFUN(clause_23_3_6_4_1_d) {
 TESTFUN(clause_23_3_6_4_3) {
   VECTOR v, w;
   auto const n1 = random(1U, 10000U);
-  FOR_EACH_RANGE (i, 0, n1) {
+  for ([[maybe_unused]] const auto i : folly::irange(n1)) {
     auto const obj1 = randomObject<VECTOR::value_type>();
     v.push_back(obj1);
     w.push_back(obj1);
@@ -259,11 +259,11 @@ TESTFUN(clause_23_3_6_4_3) {
   auto it = v.erase(v.begin() + n2);
   EXPECT_EQ(v.size() + 1, w.size());
 
-  FOR_EACH_RANGE (i, 0, it - v.begin()) {
+  for (const auto i : folly::irange(it - v.begin())) {
     EXPECT_EQ(v[i], w[i]);
   }
 
-  FOR_EACH_RANGE (i, it - v.begin(), v.size()) {
+  for (const auto i : folly::irange(it - v.begin(), v.size())) {
     EXPECT_EQ(v[i], w[i + 1]);
   }
 }
@@ -271,7 +271,7 @@ TESTFUN(clause_23_3_6_4_3) {
 TESTFUN(clause_23_3_6_4_4) {
   VECTOR v, w;
   auto const n1 = random(1U, 10000U);
-  FOR_EACH_RANGE (i, 0, n1) {
+  for ([[maybe_unused]] const auto i : folly::irange(n1)) {
     auto const obj1 = randomObject<VECTOR::value_type>();
     v.push_back(obj1);
     w.push_back(obj1);
@@ -283,11 +283,11 @@ TESTFUN(clause_23_3_6_4_4) {
   auto it = v.erase(v.begin() + n2, v.begin() + n3);
   EXPECT_EQ(v.size() + (n3 - n2), w.size());
 
-  FOR_EACH_RANGE (i, 0, it - v.begin()) {
+  for (const auto i : folly::irange(it - v.begin())) {
     EXPECT_EQ(v[i], w[i]);
   }
 
-  FOR_EACH_RANGE (i, it - v.begin(), v.size()) {
+  for (const auto i : folly::irange(it - v.begin(), v.size())) {
     EXPECT_EQ(v[i], w[i + (n3 - n2)]);
   }
 }

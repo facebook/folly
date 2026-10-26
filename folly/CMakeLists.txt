@@ -37,7 +37,7 @@ folly_add_library(
   EXPORTED_DEPS
     folly_atomic_hash_array
     folly_c_portability
-    folly_container_foreach
+    folly_container_irange
     folly_detail_atomic_hash_utils
     folly_detail_iterators
     folly_hash_hash

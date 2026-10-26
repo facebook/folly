@@ -275,7 +275,7 @@ into thinking a variable is in fact needed. Example:
 ``` Cpp
     BENCHMARK(fpOps, n) {
       double d = 1;
-      FOR_EACH_RANGE (i, 1, n) {
+      for (const auto i : folly::irange(1, n)) {
         d += i;
         d -= i;
         d *= i;

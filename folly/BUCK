@@ -832,7 +832,7 @@ fb_dirsync_cpp_library(
         ":c_portability",
         ":likely",
         ":thread_cached_int",
-        "//folly/container:foreach",
+        "//folly/container:irange",
         "//folly/detail:atomic_hash_utils",
         "//folly/detail:iterators",
         "//folly/hash:hash",

@@ -42,6 +42,7 @@
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
 #include <folly/SharedMutex.h>
+#include <folly/container/irange.h>
 #include <folly/io/FsUtil.h>
 #include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
@@ -386,7 +387,7 @@ TEST(ThreadLocal, InterleavedDestructors) {
       ++thIter;
     }
   });
-  FOR_EACH_RANGE (i, 0, wVersionMax) {
+  for ([[maybe_unused]] const auto i : folly::irange(wVersionMax)) {
     int thIterPrev = 0;
     {
       std::lock_guard g(lock);

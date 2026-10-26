@@ -21,7 +21,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Range.h>
-#include <folly/container/Foreach.h>
+#include <folly/container/irange.h>
 
 using namespace folly;
 using namespace std;
@@ -117,7 +117,7 @@ void initDelims(int len) {
 
 BENCHMARK(FindSingleCharMemchr, n) {
   StringPiece haystack(str);
-  FOR_EACH_RANGE (i, 0, n) {
+  for ([[maybe_unused]] const auto i : folly::irange(n)) {
     doNotOptimizeAway(haystack.find('b'));
     char x = haystack[0];
     doNotOptimizeAway(&x);
@@ -128,7 +128,7 @@ BENCHMARK_RELATIVE(FindSingleCharRange, n) {
   const char c = 'b';
   StringPiece haystack(str);
   folly::StringPiece needle(&c, &c + 1);
-  FOR_EACH_RANGE (i, 0, n) {
+  for ([[maybe_unused]] const auto i : folly::irange(n)) {
     doNotOptimizeAway(haystack.find(needle));
     char x = haystack[0];
     doNotOptimizeAway(&x);
@@ -140,7 +140,7 @@ BENCHMARK_DRAW_LINE();
 template <class Func>
 void countHits(Func func, size_t n) {
   StringPiece needles = "\r\n\1";
-  FOR_EACH_RANGE (i, 0, n) {
+  for ([[maybe_unused]] const auto i : folly::irange(n)) {
     size_t p, c = 0;
     for (StringPiece left = file;
          (p = func(left, needles)) != StringPiece::npos;
@@ -153,7 +153,7 @@ void countHits(Func func, size_t n) {
 
 template <class Func>
 void findFirstOfRange(StringPiece needles, Func func, size_t n) {
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     const StringPiece haystack = vstrp[i % kVstrSize];
     doNotOptimizeAway(func(haystack, needles));
     char x = haystack[0];
@@ -388,7 +388,7 @@ BENCHMARK(FindFirstOfOffsetRange, n) {
   StringPiece haystack(str);
   folly::StringPiece needles("bc");
   DCHECK_EQ(haystack.size() - 1, haystack.find_first_of(needles, 1)); // works!
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     size_t pos = i % 2; // not a constant to prevent optimization
     doNotOptimizeAway(haystack.find_first_of(needles, pos));
     char x = haystack[0];

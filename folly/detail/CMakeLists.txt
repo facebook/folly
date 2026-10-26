@@ -283,6 +283,7 @@ folly_add_library(
   HEADERS ThreadLocalDetail.h
   DEPS
     folly_constexpr_math
+    folly_container_irange
     folly_detail_thread_local_globals
     folly_hash_murmur_hash
     folly_lang_hint

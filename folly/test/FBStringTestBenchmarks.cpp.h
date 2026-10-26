@@ -27,7 +27,7 @@ void BENCHFUN(initRNG)(size_t /* iters */, size_t) {
 BENCHMARK_PARAM(BENCHFUN(initRNG), 0)
 
 void BENCHFUN(defaultCtor)(size_t iters, size_t) {
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     STRING s[4096];
     doNotOptimizeAway(&s);
   }
@@ -39,7 +39,7 @@ void BENCHFUN(copyCtor)(size_t iters, size_t arg) {
   BENCHMARK_SUSPEND {
     randomString(&s, arg);
   }
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     STRING s1 = s;
     doNotOptimizeAway(&s1);
   }
@@ -54,7 +54,7 @@ void BENCHFUN(ctorFromArray)(size_t iters, size_t arg) {
       s = "This is rare.";
     }
   }
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     STRING s1(s.data(), s.size());
     doNotOptimizeAway(&s1);
   }
@@ -68,7 +68,7 @@ void BENCHFUN(ctorFromTwoPointers)(size_t iters, size_t arg) {
       s.resize(arg);
     }
   }
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     STRING s1(s.begin(), s.end());
     doNotOptimizeAway(&s1);
   }
@@ -80,7 +80,7 @@ BENCHMARK_PARAM(BENCHFUN(ctorFromTwoPointers), 23)
 BENCHMARK_PARAM(BENCHFUN(ctorFromTwoPointers), 24)
 
 void BENCHFUN(ctorFromChar)(size_t iters, size_t arg) {
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     STRING s1('a', arg);
     doNotOptimizeAway(&s1);
   }
@@ -92,7 +92,7 @@ void BENCHFUN(assignmentOp)(size_t iters, size_t arg) {
   BENCHMARK_SUSPEND {
     randomString(&s, arg);
   }
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     STRING s1;
     BENCHMARK_SUSPEND {
       randomString(&s1, arg);
@@ -105,7 +105,7 @@ BENCHMARK_PARAM(BENCHFUN(assignmentOp), 256)
 
 void BENCHFUN(assignmentFill)(size_t iters, size_t) {
   STRING s;
-  FOR_EACH_RANGE (i, 0, iters) {
+  for (const auto i : folly::irange(iters)) {
     s = static_cast<char>(i);
     doNotOptimizeAway(&s);
   }
@@ -114,7 +114,7 @@ BENCHMARK_PARAM(BENCHFUN(assignmentFill), 0)
 
 void BENCHFUN(resize)(size_t iters, size_t arg) {
   STRING s;
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     s.resize(random(0, arg));
     doNotOptimizeAway(&s);
   }
@@ -154,7 +154,7 @@ expect to get a call for an interview.";
     pos = random(0, s.size());
     len = random(0, s.size() - pos);
   }
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     doNotOptimizeAway(s.find(s.data(), pos, len));
   }
 }
@@ -188,7 +188,7 @@ expect to get a call for an interview.";
     s1 = "So how do you tackle that writing sample request?";
   }
 
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     doNotOptimizeAway(s.find(s1));
   }
 }
@@ -203,7 +203,7 @@ void BENCHFUN(equality)(size_t iters, size_t arg) {
     }
   }
 
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     STRING needle;
     randomBinaryString(&needle, 1024);
     doNotOptimizeAway(std::find(haystack.begin(), haystack.end(), needle));
@@ -216,7 +216,7 @@ void BENCHFUN(replace)(size_t iters, size_t arg) {
   BENCHMARK_SUSPEND {
     randomString(&s, arg);
   }
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     BenchmarkSuspender susp;
     doNotOptimizeAway(&s);
     auto const pos = random(0, s.size());
@@ -232,9 +232,9 @@ void BENCHFUN(replace)(size_t iters, size_t arg) {
 BENCHMARK_PARAM(BENCHFUN(replace), 256)
 
 void BENCHFUN(push_back)(size_t iters, size_t arg) {
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     STRING s;
-    FOR_EACH_RANGE (j, 0, arg) {
+    for ([[maybe_unused]] const auto j : folly::irange(arg)) {
       s += ' ';
     }
   }
@@ -245,9 +245,9 @@ BENCHMARK_PARAM(BENCHFUN(push_back), 127)
 BENCHMARK_PARAM(BENCHFUN(push_back), 1024)
 
 void BENCHFUN(short_append)(size_t iters, size_t arg) {
-  FOR_EACH_RANGE (i, 0, iters) {
+  for ([[maybe_unused]] const auto i : folly::irange(iters)) {
     STRING s;
-    FOR_EACH_RANGE (j, 0, arg) {
+    for ([[maybe_unused]] const auto j : folly::irange(arg)) {
       s += "012";
     }
   }
@@ -260,7 +260,7 @@ void BENCHFUN(getline)(size_t iters, size_t arg) {
 
   BENCHMARK_SUSPEND {
     string line;
-    FOR_EACH_RANGE (i, 0, 512) {
+    for ([[maybe_unused]] const auto i : folly::irange(512)) {
       randomString(&line, arg);
       lines += line;
       lines += '\n';

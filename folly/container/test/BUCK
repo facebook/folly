@@ -991,6 +991,7 @@ fb_dirsync_cpp_unittest(
         "//folly:random",
         "//folly:traits",
         "//folly/container:foreach",
+        "//folly/container:irange",
         "//folly/portability:gtest",
         "//folly/test:fbvector_test_util",
     ],

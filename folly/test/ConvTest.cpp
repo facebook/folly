@@ -32,7 +32,7 @@
 #include <glog/logging.h>
 
 #include <folly/Random.h>
-#include <folly/container/Foreach.h>
+#include <folly/container/irange.h>
 #include <folly/portability/GTest.h>
 
 using namespace std;
@@ -249,7 +249,7 @@ void testString2Integral() {
       127,
       42,
   };
-  FOR_EACH_RANGE (i, 0, sizeof(strings) / sizeof(*strings)) {
+  for (const auto i : folly::irange(sizeof(strings) / sizeof(*strings))) {
     EXPECT_EQ(to<Uint>(strings[i]), values[i]);
     EXPECT_EQ(to<Sint>(strings[i]), values[i]);
   }
@@ -265,7 +265,7 @@ void testString2Integral() {
       213,
       255,
   };
-  FOR_EACH_RANGE (i, 0, sizeof(uStrings) / sizeof(*uStrings)) {
+  for (const auto i : folly::irange(sizeof(uStrings) / sizeof(*uStrings))) {
     EXPECT_EQ(to<Uint>(uStrings[i]), uValues[i]);
     if (sizeof(Int) == 1) {
       EXPECT_THROW(to<Sint>(uStrings[i]), std::range_error);
@@ -285,7 +285,7 @@ void testString2Integral() {
         (Uint)63245675,
         (Uint)2147483647,
     };
-    FOR_EACH_RANGE (i, 0, sizeof(strings2) / sizeof(*strings2)) {
+    for (const auto i : folly::irange(sizeof(strings2) / sizeof(*strings2))) {
       EXPECT_EQ(to<Uint>(strings2[i]), values2[i]);
       EXPECT_EQ(to<Sint>(strings2[i]), values2[i]);
     }
@@ -302,7 +302,7 @@ void testString2Integral() {
         (Uint)4147483648U,
         (Uint)4000000000U,
     };
-    FOR_EACH_RANGE (i, 0, sizeof(uStrings2) / sizeof(*uStrings2)) {
+    for (const auto i : folly::irange(sizeof(uStrings2) / sizeof(*uStrings2))) {
       EXPECT_EQ(to<Uint>(uStrings2[i]), uValues2[i]);
       if (sizeof(Int) == 4) {
         EXPECT_THROW(to<Sint>(uStrings2[i]), std::range_error);
@@ -326,7 +326,7 @@ void testString2Integral() {
         (Uint)100000000000000000ULL,
         (Uint)9223372036854775807ULL,
     };
-    FOR_EACH_RANGE (i, 0, sizeof(strings3) / sizeof(*strings3)) {
+    for (const auto i : folly::irange(sizeof(strings3) / sizeof(*strings3))) {
       EXPECT_EQ(to<Uint>(strings3[i]), values3[i]);
       EXPECT_EQ(to<Sint>(strings3[i]), values3[i]);
     }
@@ -343,7 +343,7 @@ void testString2Integral() {
         (Uint)17873648761234698740ULL,
         (Uint)18446744073709551615ULL,
     };
-    FOR_EACH_RANGE (i, 0, sizeof(uStrings3) / sizeof(*uStrings3)) {
+    for (const auto i : folly::irange(sizeof(uStrings3) / sizeof(*uStrings3))) {
       EXPECT_EQ(to<Uint>(uStrings3[i]), uValues3[i]);
       if (sizeof(Int) == 8) {
         EXPECT_THROW(to<Sint>(uStrings3[i]), std::range_error);
@@ -370,7 +370,7 @@ void testString2Integral() {
       (Sint)-2147483648LL,
       (Sint)(-9223372036854775807LL - 1),
   };
-  FOR_EACH_RANGE (i, 0, sizeof(strings4) / sizeof(*strings4)) {
+  for (const auto i : folly::irange(sizeof(strings4) / sizeof(*strings4))) {
     if (sizeof(Int) > std::pow(2, i)) {
       EXPECT_EQ(values4[i], to<Sint>(strings4[i]));
       EXPECT_EQ(values4[i] - 1, to<Sint>(strings5[i]));

@@ -17,7 +17,7 @@
 #include <folly/stats/Histogram.h>
 
 #include <folly/Benchmark.h>
-#include <folly/container/Foreach.h>
+#include <folly/container/irange.h>
 #include <folly/portability/GFlags.h>
 
 using folly::Histogram;
@@ -25,7 +25,7 @@ using folly::Histogram;
 void addValue(unsigned int n, int64_t bucketSize, int64_t min, int64_t max) {
   Histogram<int64_t> hist(bucketSize, min, max);
   int64_t num = min;
-  FOR_EACH_RANGE (i, 0, n) {
+  for ([[maybe_unused]] const auto i : folly::irange(n)) {
     hist.addValue(num);
     ++num;
     if (num > max) {

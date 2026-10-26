@@ -19,7 +19,7 @@
 #include <glog/logging.h>
 
 #include <folly/Random.h>
-#include <folly/container/Foreach.h>
+#include <folly/container/irange.h>
 #include <folly/portability/GTest.h>
 #include <folly/stats/BucketedTimeSeries.h>
 #include <folly/stats/MultiLevelTimeSeries.h>
@@ -524,7 +524,7 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
     // but the average fits in an int64_t
     BucketedTimeSeries<double> ts(60, seconds(600));
     uint64_t value = 0x3fffffffffffffff;
-    FOR_EACH_RANGE (i, 0, 16) {
+    for ([[maybe_unused]] const auto i : folly::irange(16)) {
       ts.addValue(seconds(0), value);
     }
 
@@ -539,7 +539,7 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
   {
     // Test BucketedTimeSeries with a smaller integer type
     BucketedTimeSeries<int16_t> ts(60, seconds(600));
-    FOR_EACH_RANGE (i, 0, 101) {
+    for (const auto i : folly::irange(101)) {
       ts.addValue(seconds(0), i);
     }
 

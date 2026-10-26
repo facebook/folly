@@ -23,7 +23,7 @@
 #include <vector>
 
 #include <folly/String.h>
-#include <folly/container/Foreach.h>
+#include <folly/container/irange.h>
 
 using namespace folly;
 using namespace std;
@@ -48,7 +48,7 @@ BENCHMARK(bmFun) {
   fun();
 }
 BENCHMARK(bmRepeatedFun, n) {
-  FOR_EACH_RANGE (i, 0, n) {
+  for ([[maybe_unused]] const auto i : folly::irange(n)) {
     fun();
   }
 }
@@ -257,14 +257,14 @@ BENCHMARK(baselinevector) {
     v.resize(1000);
   }
 
-  FOR_EACH_RANGE (i, 0, 100) {
+  for ([[maybe_unused]] const auto i : folly::irange(100)) {
     v.push_back(42);
   }
 }
 
 BENCHMARK_RELATIVE(bmVector) {
   vector<int> v;
-  FOR_EACH_RANGE (i, 0, 100) {
+  for ([[maybe_unused]] const auto i : folly::irange(100)) {
     v.resize(v.size() + 1, 42);
   }
 }
@@ -282,14 +282,14 @@ BENCHMARK(noMulti) {
 }
 
 BENCHMARK_MULTI(multiSimple) {
-  FOR_EACH_RANGE (i, 0, 10) {
+  for ([[maybe_unused]] const auto i : folly::irange(10)) {
     fun();
   }
   return 10;
 }
 
 BENCHMARK_RELATIVE_MULTI(multiSimpleRel) {
-  FOR_EACH_RANGE (i, 0, 10) {
+  for ([[maybe_unused]] const auto i : folly::irange(10)) {
     fun();
     fun();
   }
@@ -297,7 +297,7 @@ BENCHMARK_RELATIVE_MULTI(multiSimpleRel) {
 }
 
 BENCHMARK_RELATIVE_MULTI(multiSimpleRelThree) {
-  FOR_EACH_RANGE (i, 0, 10) {
+  for ([[maybe_unused]] const auto i : folly::irange(10)) {
     fun();
     fun();
     fun();
@@ -306,14 +306,14 @@ BENCHMARK_RELATIVE_MULTI(multiSimpleRelThree) {
 }
 
 BENCHMARK_MULTI(multiIterArgs, iter) {
-  FOR_EACH_RANGE (i, 0, 10 * iter) {
+  for ([[maybe_unused]] const auto i : folly::irange(10 * iter)) {
     fun();
   }
   return 10 * iter;
 }
 
 BENCHMARK_RELATIVE_MULTI(multiIterArgsRel, iter) {
-  FOR_EACH_RANGE (i, 0, 10 * iter) {
+  for ([[maybe_unused]] const auto i : folly::irange(10 * iter)) {
     fun();
     fun();
   }

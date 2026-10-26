@@ -26,6 +26,7 @@
 #include <folly/Benchmark.h>
 #include <folly/Conv.h>
 #include <folly/Portability.h>
+#include <folly/container/irange.h>
 #include <folly/portability/Atomic.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysTime.h>
@@ -324,12 +325,12 @@ TEST(Ahm, counter) {
   const size_t mult = 10;
   Counters c(numKeys);
   vector<uint64_t> keys;
-  FOR_EACH_RANGE (i, 1, numKeys) {
+  for (const auto i : folly::irange(1, numKeys)) {
     keys.push_back(i);
   }
   vector<std::thread> threads;
   for (auto key : keys) {
-    FOR_EACH_RANGE (i, 0, key * mult) {
+    for ([[maybe_unused]] const auto i : folly::irange(key * mult)) {
       threads.emplace_back([&, key] { c.increment(key); });
     }
   }

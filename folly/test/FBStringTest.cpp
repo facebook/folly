@@ -31,7 +31,7 @@
 #include <folly/Portability.h>
 #include <folly/Random.h>
 #include <folly/Utility.h>
-#include <folly/container/Foreach.h>
+#include <folly/container/irange.h>
 #include <folly/memory/UninitializedMemoryHacks.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
@@ -224,7 +224,7 @@ void clause11_21_4_2_j(String& test) {
   auto size = random(0, 2000);
   String s(size, '\0');
   EXPECT_EQ(s.size(), size);
-  FOR_EACH_RANGE (i, 0, s.size()) {
+  for (const auto i : folly::irange(s.size())) {
     s[i] = random('a', 'z');
   }
   test = s;
@@ -235,7 +235,7 @@ void clause11_21_4_2_k(String& test) {
   auto size = random(0, 2000);
   String s(size, '\0');
   EXPECT_EQ(s.size(), size);
-  FOR_EACH_RANGE (i, 0, s.size()) {
+  for (const auto i : folly::irange(s.size())) {
     s[i] = random('a', 'z');
   }
   test = std::move(s);
@@ -347,7 +347,7 @@ void clause11_21_4_6_1(String& test) {
   auto len = test.size();
   test += test1;
   EXPECT_EQ(test.size(), test1.size() + len);
-  FOR_EACH_RANGE (i, 0, test1.size()) {
+  for (const auto i : folly::irange(test1.size())) {
     EXPECT_EQ(test[len + i], test1[i]);
   }
   // aliasing modifiers
@@ -364,7 +364,7 @@ void clause11_21_4_6_1(String& test) {
   EXPECT_EQ(test.size(), 2 * len);
   EXPECT_EQ(
       char_traits<typename String::value_type>::length(test.c_str()), 2 * len);
-  FOR_EACH_RANGE (i, 0, len) {
+  for (const auto i : folly::irange(len)) {
     EXPECT_EQ(test[i], copy[i]);
     EXPECT_EQ(test[i], test[len + i]);
   }

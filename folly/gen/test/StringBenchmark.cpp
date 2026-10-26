@@ -20,7 +20,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/String.h>
-#include <folly/container/Foreach.h>
+#include <folly/container/irange.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/String.h>
 
@@ -192,7 +192,7 @@ BENCHMARK_DRAW_LINE();
 void StringUnsplit_Gen(size_t iters, size_t joinSize) {
   std::vector<fbstring> v;
   BENCHMARK_SUSPEND {
-    FOR_EACH_RANGE (i, 0, joinSize) {
+    for ([[maybe_unused]] const auto i : folly::irange(joinSize)) {
       v.push_back(to<fbstring>(rand()));
     }
   }

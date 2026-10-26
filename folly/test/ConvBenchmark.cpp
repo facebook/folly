@@ -23,7 +23,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <folly/Benchmark.h>
-#include <folly/container/Foreach.h>
+#include <folly/container/irange.h>
 #include <folly/lang/ToAscii.h>
 
 using namespace std;
@@ -303,14 +303,14 @@ static StringPiece pc1 = "1234567890123456789";
 
 void handwrittenAtoiMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
-  FOR_EACH_RANGE (i, 0, n) {
+  for ([[maybe_unused]] const auto i : folly::irange(n)) {
     doNotOptimizeAway(handwrittenAtoi(p.begin(), p.end()));
   }
 }
 
 void follyAtoiMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
-  FOR_EACH_RANGE (i, 0, n) {
+  for ([[maybe_unused]] const auto i : folly::irange(n)) {
     doNotOptimizeAway(folly::to<int64_t>(p.begin(), p.end()));
   }
 }
@@ -318,7 +318,7 @@ void follyAtoiMeasure(unsigned int n, unsigned int digits) {
 void clibAtoiMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
   assert(*p.end() == 0);
-  FOR_EACH_RANGE (i, 0, n) {
+  for ([[maybe_unused]] const auto i : folly::irange(n)) {
     doNotOptimizeAway(atoll(p.begin()));
   }
 }
@@ -326,7 +326,7 @@ void clibAtoiMeasure(unsigned int n, unsigned int digits) {
 void lexicalCastMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
   assert(*p.end() == 0);
-  FOR_EACH_RANGE (i, 0, n) {
+  for ([[maybe_unused]] const auto i : folly::irange(n)) {
     doNotOptimizeAway(boost::lexical_cast<uint64_t>(p.begin()));
   }
 }
@@ -369,7 +369,7 @@ unsigned u64ToAsciiTable(uint64_t value, char* dst) {
 void u64ToAsciiTableBM(unsigned int n, size_t index) {
   checkArrayIndex(uint64Num, index);
   char buf[20];
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     doNotOptimizeAway(u64ToAsciiTable(uint64Num[index] + (i % 8), buf));
   }
 }
@@ -399,7 +399,7 @@ unsigned u64ToAsciiClassic(uint64_t value, char* dst) {
 void u64ToAsciiClassicBM(unsigned int n, size_t index) {
   checkArrayIndex(uint64Num, index);
   char buf[20];
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     doNotOptimizeAway(u64ToAsciiClassic(uint64Num[index] + (i % 8), buf));
   }
 }
@@ -407,7 +407,7 @@ void u64ToAsciiClassicBM(unsigned int n, size_t index) {
 void u64ToAsciiFollyBM(unsigned int n, size_t index) {
   checkArrayIndex(uint64Num, index);
   char buf[20];
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     doNotOptimizeAway(to_ascii_decimal(buf, uint64Num[index] + (i % 8)));
   }
 }
@@ -418,7 +418,7 @@ void u64ToStringClibMeasure(unsigned int n, size_t index) {
   // FOLLY_RANGE_CHECK_TO_STRING expands to std::to_string, except on Android
   // where std::to_string is not supported
   checkArrayIndex(uint64Num, index);
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     doNotOptimizeAway(
         FOLLY_RANGE_CHECK_TO_STRING(uint64Num[index] + (i % 8)).size());
   }
@@ -426,7 +426,7 @@ void u64ToStringClibMeasure(unsigned int n, size_t index) {
 
 void u64ToStringFollyMeasure(unsigned int n, size_t index) {
   checkArrayIndex(uint64Num, index);
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     doNotOptimizeAway(to<std::string>(uint64Num[index] + (i % 8)).size());
   }
 }
@@ -435,14 +435,14 @@ void u64ToStringFollyMeasure(unsigned int n, size_t index) {
 
 void i64ToStringFollyMeasurePos(unsigned int n, size_t index) {
   checkArrayIndex(int64Pos, index);
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     doNotOptimizeAway(to<std::string>(int64Pos[index] + (i % 8)).size());
   }
 }
 
 void i64ToStringFollyMeasureNeg(unsigned int n, size_t index) {
   checkArrayIndex(int64Neg, index);
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     doNotOptimizeAway(to<std::string>(int64Neg[index] - (i % 8)).size());
   }
 }
@@ -452,7 +452,7 @@ void i64ToStringFollyMeasureNeg(unsigned int n, size_t index) {
 void u2aAppendClassicBM(unsigned int n, size_t index) {
   checkArrayIndex(uint64Num, index);
   string s;
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     // auto buf = &s.back() + 1;
     char buffer[20];
     s.append(buffer, u64ToAsciiClassic(uint64Num[index] + (i % 8), buffer));
@@ -463,7 +463,7 @@ void u2aAppendClassicBM(unsigned int n, size_t index) {
 void u2aAppendFollyBM(unsigned int n, size_t index) {
   checkArrayIndex(uint64Num, index);
   string s;
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     // auto buf = &s.back() + 1;
     char buffer[20];
     s.append(buffer, to_ascii_decimal(buffer, uint64Num[index] + (i % 8)));
@@ -479,7 +479,7 @@ struct StringIdenticalToBM {
     BENCHMARK_SUSPEND {
       s.append(len, '0');
     }
-    FOR_EACH_RANGE (i, 0, n) {
+    for ([[maybe_unused]] const auto i : folly::irange(n)) {
       String result = to<String>(s);
       doNotOptimizeAway(result.size());
     }
@@ -494,7 +494,7 @@ struct StringVariadicToBM {
     BENCHMARK_SUSPEND {
       s.append(len, '0');
     }
-    FOR_EACH_RANGE (i, 0, n) {
+    for ([[maybe_unused]] const auto i : folly::irange(n)) {
       String result = to<String>(s, nullptr);
       doNotOptimizeAway(result.size());
     }
@@ -794,21 +794,21 @@ BENCHMARK_DRAW_LINE();
 
 void u128ToStringFollyMeasure(unsigned int n, size_t index) {
   checkArrayIndex(uint128Num, index);
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     doNotOptimizeAway(to<std::string>(uint128Num[index] + (i % 8)).size());
   }
 }
 
 void i128ToStringFollyMeasurePos(unsigned int n, size_t index) {
   checkArrayIndex(int128Pos, index);
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     doNotOptimizeAway(to<std::string>(int128Pos[index] + (i % 8)).size());
   }
 }
 
 void i128ToStringFollyMeasureNeg(unsigned int n, size_t index) {
   checkArrayIndex(int128Neg, index);
-  FOR_EACH_RANGE (i, 0, n) {
+  for (const auto i : folly::irange(n)) {
     doNotOptimizeAway(to<std::string>(int128Neg[index] + (i % 8)).size());
   }
 }

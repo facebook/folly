@@ -22,6 +22,7 @@
 
 #include <folly/ConstexprMath.h>
 #include <folly/Utility.h>
+#include <folly/container/irange.h>
 #include <folly/detail/thread_local_globals.h>
 #include <folly/hash/MurmurHash.h>
 #include <folly/lang/Hint.h>
@@ -389,7 +390,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     for (bool shouldRun = true; shouldRun;) {
       shouldRun = false;
       auto elementsCapacity = threadEntry->getElementsCapacity();
-      FOR_EACH_RANGE (i, 0, elementsCapacity) {
+      for (const auto i : folly::irange(elementsCapacity)) {
         if (threadEntry->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
           threadEntry->elements[i].cleanup();
           shouldRun = true;
@@ -434,7 +435,7 @@ void StaticMetaBase::cleanupThreadEntriesAndList(
       for (bool shouldRunInner = true; shouldRunInner;) {
         shouldRunInner = false;
         auto elementsCapacity = tmp->getElementsCapacity();
-        FOR_EACH_RANGE (i, 0, elementsCapacity) {
+        for (const auto i : folly::irange(elementsCapacity)) {
           if (tmp->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
             tmp->elements[i].cleanup();
             shouldRunInner = true;

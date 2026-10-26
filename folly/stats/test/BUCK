@@ -62,7 +62,7 @@ fb_dirsync_cpp_benchmark(
     ],
     deps = [
         "//folly:benchmark",
-        "//folly/container:foreach",
+        "//folly/container:irange",
         "//folly/portability:gflags",
         "//folly/stats:histogram",
     ],
@@ -179,7 +179,7 @@ fb_dirsync_cpp_unittest(
     deps = [
         "fbsource//third-party/glog:glog",
         "//folly:random",
-        "//folly/container:foreach",
+        "//folly/container:irange",
         "//folly/portability:gtest",
         "//folly/stats:bucketed_time_series",
         "//folly/stats:multi_level_time_series",
