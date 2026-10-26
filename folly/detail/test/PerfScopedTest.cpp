@@ -94,7 +94,7 @@ TEST(PerfScopedTest, Record) {
 
   retryWithTimeOuts([&](auto timeOut) {
     {
-      PerfScoped perf{{"record"}, &output};
+      PerfScoped perf{{"record", "-m", "1"}, &output}; // limit locked memory.
       std::this_thread::sleep_for(timeOut);
     }
     return !output.empty();
