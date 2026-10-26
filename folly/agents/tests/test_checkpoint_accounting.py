@@ -43,8 +43,16 @@ def write_jsonl(path: Path, events: list[dict[str, object]]) -> None:
     path.write_text("".join(json.dumps(event) + "\n" for event in events))
 
 
-def checkpoint_events(index: int) -> tuple[dict[str, object], ...]:
+def checkpoint_events(
+    index: int, *, json_output: bool = False
+) -> tuple[dict[str, object], ...]:
     marker = checkpoint.make_checkpoint_marker(index, CHECKPOINT_KEY)
+    stdout = f"{marker}\n{checkpoint.next_instruction(index)}\n"
+    text = (
+        json.dumps({"output": stdout, "exit_code": 0})
+        if json_output
+        else f"Process exited with code 0\nFinal output:\n{stdout}"
+    )
     return (
         {
             "type": "event_msg",
@@ -65,7 +73,7 @@ def checkpoint_events(index: int) -> tuple[dict[str, object], ...]:
                     {"type": "input_text", "text": "Chunk ID: test"},
                     {
                         "type": "input_text",
-                        "text": f"Process exited with code 0\nFinal output:\n{marker}\n",
+                        "text": text,
                     },
                 ],
             },
@@ -116,7 +124,14 @@ class AccountingFixture:
         timestamp = datetime(2026, 9, 4, 0, 0, second, tzinfo=timezone.utc).timestamp()
         os.utime(path, (timestamp, timestamp))
 
-    def checkpoint(self, text: str, tokens: dict[str, int], second: int) -> None:
+    def checkpoint(
+        self,
+        text: str,
+        tokens: dict[str, int],
+        second: int,
+        *,
+        json_output: bool = False,
+    ) -> None:
         index = self.checkpoint_count
         snapshot = self.checkpoints / f"{index}.md"
         snapshot.write_text(text)
@@ -124,7 +139,7 @@ class AccountingFixture:
         (self.workdir / "output.md").write_text(text)
         self.author_events.extend(
             (
-                *checkpoint_events(index),
+                *checkpoint_events(index, json_output=json_output),
                 token_event(tokens, second),
             )
         )
@@ -230,7 +245,7 @@ class CheckpointAccountingTest(unittest.TestCase):
             run.checkpoint("author", usage(250, 20), 20)
             run.review(usage(50, 6), 25)
             run.review(usage(30, 4), 24)
-            run.checkpoint("reviewed once", usage(450, 30), 30)
+            run.checkpoint("reviewed once", usage(450, 30), 30, json_output=True)
             run.review(usage(20, 2), 34)
             run.review(usage(10, 1), 35)
             run.checkpoint("reviewed twice", usage(600, 40), 40)

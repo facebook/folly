@@ -101,6 +101,16 @@ def _checkpoint_marker(
         text = block.get("text")
         if not isinstance(text, str):
             continue
+        # text(await tools.exec_command(...)) serializes the whole result, unlike
+        # text(result.output). Prefer plain stdout so checkpoint instructions stay
+        # readable, but either display can come from a valid checkpoint call.
+        try:
+            result = json.loads(text)
+        except json.JSONDecodeError:
+            pass
+        else:
+            if isinstance(result, dict) and isinstance(result.get("output"), str):
+                text = result["output"]
         for line in text.splitlines():
             if line in marker_to_index:
                 return marker_to_index[line]
