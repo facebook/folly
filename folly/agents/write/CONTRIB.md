@@ -16,3 +16,7 @@ and prepare independent reviews. Post-review revision uses the ordinary author
 checks, not a separate prose revision process. Repetition, delegation, and
 reviewer roles belong to [critic-iterate](../critic-iterate.md), so prose checks
 can change without redefining the review process.
+
+Commit and diff messages need a useful introduction before the reader opens the
+diff. [author.md](commit-summary/author.md) owns that standard with or without
+critic-iterate.

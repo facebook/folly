@@ -5,6 +5,9 @@ Resolve package paths relative to this file's directory.
 When writing or reviewing `CONTRIB.md` or `*.contrib.md`, follow
 `{FA}/write/contributor-notes.md`.
 
+When writing or reviewing a commit or diff Summary, follow
+`{FA}/write/commit-summary/author.md`, with or without critic-iterate.
+
 ## Critic-iterate
 
 To author prose under critic-iterate, follow `{FA}/write/prose/c-i-review.md`,
@@ -286,11 +289,12 @@ below — don't re-enumerate here.
 
 ## Iterate — inner loop, until convergence
 
-Run this loop only for commit messages selected for c-i. After convergence, run
-any required Fresh Review from `{FA}/critic-iterate.md`.
+Use the writing criteria below for every commit or diff message. When
+critic-iterate runs, apply them in its author cycle and follow its convergence,
+review and closure rules.
 
-Per round: explanation → shape → cut (including the test plan) → plain language
-→ cold re-read. Converge when a full round makes no edit.
+Under critic-iterate, repeat: explanation → shape → cut (including the test
+plan) → plain language → cold re-read, until a full round makes no edit.
 
 ### Cut test — per sentence
 
@@ -340,12 +344,13 @@ Commit Summaries usually don't need these sections:
 
 ### Cold re-read and loop
 
-Cold re-read the WHOLE message after each round of cuts. If any paragraph scans
-as dense, jargon-heavy, or "I had to re-read that" — restart the loop.
+Under critic-iterate, cold re-read the WHOLE message after each round of cuts.
+If any paragraph scans as dense, jargon-heavy, or "I had to re-read that" —
+restart the loop.
 
-**Convergence = a full round that makes no edit.** Before declaring convergence,
-confirm every must-know fact named by the context packet is still locatable in
-the draft.
+For every finished Summary, check it against
+`{FA}/write/commit-summary/author.md`. If a context packet was supplied, confirm
+its "Reader must know" facts remain clear in the message.
 
 ### Banned patterns
 

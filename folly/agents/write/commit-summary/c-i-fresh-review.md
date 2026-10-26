@@ -1,5 +1,7 @@
 # Prepare a commit-message fresh review
 
+Require `{FA}/write/commit-summary/author.md` as an input.
+
 Before constructing the task note, reread the active workstream ledger when one
 exists. Use the short task note defined in
 `{FA}/critic-iterate/fresh-review.md`. Never pass the whole author packet,
