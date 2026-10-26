@@ -19,4 +19,6 @@ can change without redefining the review process.
 
 Commit and diff messages need a useful introduction before the reader opens the
 diff. [author.md](commit-summary/author.md) owns that standard with or without
-critic-iterate.
+critic-iterate. The commit-summary review files gather and select context for
+that introduction. Context supplies facts and reasons, not a list of details the
+message must repeat.

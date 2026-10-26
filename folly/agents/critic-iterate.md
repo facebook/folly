@@ -17,6 +17,9 @@ Author and orchestrator sessions load these package files:
 - `rule-design.md`: before agent-rule work.
 - `design-vetting.md`: before choosing a substantive design or correctness fix.
 
+For commit or diff messages under critic-iterate, gather task context before
+drafting by following `{FA}/write/commit-summary/c-i-author.md`.
+
 If a required file is unavailable, stop and report the missing dependency.
 Runtime reviewer roles instead load only the inputs their task permits; their
 preamble defines the role-specific rules.
@@ -252,13 +255,10 @@ launches a cold reader. Use the same pair below this threshold when the user
 requests a cold read or the artifact follows a known first-read comprehension
 failure. "Fresh" means unprimed by the author's diagnosis, not context-free.
 
-**Commit / diff messages.** Before opening the author draft or cold report, put
-a complete independent message, including its Test Plan, in `REVIEW FRAME:`.
-Then follow the general comparison, triage, and closure rules.
-
-**Context packet discipline (commit messages).** Before drafting a commit or
-diff message, the author or orchestrator must follow
-`{FA}/write/commit-summary/c-i-author.md`.
+**Commit / diff messages.** The fresh reviewer puts a complete independent
+message, including its Test Plan, in `REVIEW FRAME:` before opening the author
+draft or cold report. It then follows the general comparison, triage, and
+closure rules.
 
 To prepare a fresh review, follow `{FA}/critic-iterate/fresh-review.md`.
 
@@ -366,9 +366,8 @@ for cases that need them:
 - **Commit messages:** fresh review is required when the change affects ≥1
   sentence of substantive content. Mechanically forced version bumps, renames,
   and pure config-value changes are exempt when one sentence says everything the
-  reader needs, the context packet adds no other `Reader must know` fact, and
-  the author checks the message against the diff. A design choice or known
-  comprehension failure restores fresh review.
+  reader needs and the author checks the message against the diff. A design
+  choice or known comprehension failure restores fresh review.
 - **Rule-doc edits** in the rules package containing this file or another
   personal or project rule document: fresh review is required for every semantic
   or readability change; there is no size threshold.
