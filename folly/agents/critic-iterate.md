@@ -163,6 +163,13 @@ Codex; `TaskCreate` for Claude) before doing anything else. Tracked items must
 be actionable and updated to fixed, rejected with reason, or blocked before
 convergence. Resolve concrete critique before fresh review.
 
+## Finding classes
+
+- `MUST_TAKE`: must be fixed; leaving it would materially harm correctness or
+  the reader's task.
+- `MINOR`: worth fixing, but the artifact still works without it.
+- `REJECTED`: wrong, already addressed, or net-negative.
+
 ## Accountability Artifact
 
 The convergence proof. Required for every pass unless a specialization grants an
@@ -176,9 +183,9 @@ author passes inline in the chat, with each finding marked:
 - ❌ REJECTED — quote the affected text/element, state why kept.
 
 When prose requires Fresh Review, use the `MUST_TAKE` / `MINOR` / `REJECTED`
-classes under "Revision and closure" for reviewer and author findings. Quote the
-affected text and state the applied change or why it was rejected. For `MINOR`,
-also say why the candidate was acceptable without it.
+finding classes above for reviewer and author findings. Quote the affected text
+and state the applied change or why it was rejected. For `MINOR`, also say why
+the candidate was acceptable without it.
 
 In either format, list each `SCOPE_EXPANSION` separately.
 
@@ -255,8 +262,7 @@ reviewers finish, resume at step 2 under “Revision and closure” below.
 
 **Run external review:** follow `{FA}/critic-iterate/run-review.md`.
 
-**Revision and closure.** To revise after a usable review, follow
-`{FA}/critic-iterate/revise.md`.
+### Revision and closure
 
 A successful fresh review and its cold read count as 1 review round. The review
 budget defaults to 1 round for each new user-directed revision. A personal rule
@@ -264,8 +270,9 @@ can set a different default with `critic-iterate-K`.
 
 After each review round:
 
-1. Fix every `MUST_TAKE` and `MINOR` finding.
-2. Run the General Cycle until a full pass makes no edit.
+1. Classify the review findings using `{FA}/critic-iterate/revise.md`.
+2. Run the General Cycle to resolve the accepted findings and check the updated
+   candidate, until a full pass makes no edit.
 3. Format, then cold-read the final candidate. Any edit returns to step 2. Any
    material problem fixed in steps 2 or 3, or material change made after the
    review started, becomes `MUST_TAKE`.

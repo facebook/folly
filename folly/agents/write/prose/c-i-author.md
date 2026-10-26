@@ -1,5 +1,9 @@
 # Review prose as its author
 
+In the critique below, compare any independent review frame with the draft by
+what the reader needs to understand and how the text is organized, not sentence
+matching. Neither version is preferred.
+
 Identify these critic dimensions before inspecting the current draft:
 
 - **Explanation critic** — For durable explanatory prose, apply `write.md`
@@ -7,15 +11,15 @@ Identify these critic dimensions before inspecting the current draft:
   question or problem, missing facts or reasoning needed to follow the
   conclusion, and facts the reader does not need. Check applicable proposal and
   investigation requirements before narrower style issues.
-- **Shape critic** — For prose with multiple sections or that answers more than
-  one independent question, set the draft's structure aside and sketch the
-  simplest outline that serves its primary reader and purpose. Compare it with
-  the draft before line edits. Combine parts that do the same job and cut text
-  that serves no additional reader need. Then apply `write.md` "Pick the right
-  shape" to each remaining container.
+- **Shape critic** — Apply `write.md` "Pick the right shape" to the whole
+  explanation. For prose with multiple sections or that answers more than one
+  independent question, set the draft's structure aside and sketch the simplest
+  outline that serves its primary reader and purpose. Compare it with the draft
+  before line edits. Combine parts that do the same job and cut text that serves
+  no additional reader need.
 - **Sentence critic** — Apply `write.md` "## Iterate" Cut test.
-- **Plain-language critic** — per `write.md` "## Substance". A necessary
-  sentence can still be jargon-heavy. Replace noun chains and abstract process
-  labels with concrete actors, actions, conditions, or outcomes. Restore any
-  needed cause, condition, or sequence, and state how the parts connect. Remove
-  qualifiers that do not change the instruction.
+- **Plain-language critic** — Apply `write.md` "Substance". Start with new or
+  revised passages. For each, explain the needed point plainly from the facts
+  and the reader's starting knowledge. Read both versions with the surrounding
+  text. Keep the one that makes the whole explanation clearer. Then check the
+  rest of the draft.

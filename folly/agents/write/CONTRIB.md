@@ -11,9 +11,8 @@ checks for particular artifacts.
 - [contributor-notes.md](contributor-notes.md) explains how maintainer notes
   preserve purpose and reasons that operational text can omit.
 
-The `prose/` files apply the general review cycle to writing. Author and
-reviewer passes ask what the intended reader needs. Preparation gives the
-independent reviewer that context, and revision addresses its findings.
-Repetition, delegation, and reviewer roles belong to
-[critic-iterate](../critic-iterate.md), so prose checks can change without
-redefining the review process.
+The `prose/` files define author and reviewer checks for the intended reader,
+and prepare independent reviews. Post-review revision uses the ordinary author
+checks, not a separate prose revision process. Repetition, delegation, and
+reviewer roles belong to [critic-iterate](../critic-iterate.md), so prose checks
+can change without redefining the review process.

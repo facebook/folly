@@ -4,7 +4,8 @@
 
 Independent review is useful only when each role sees the intended context. The
 process also leaves evidence that each required check ran.
-`{FA}/critic-iterate.md` coordinates author passes and external review. The
+`{FA}/critic-iterate.md` coordinates author passes and external review. It also
+defines the categories used to judge findings before and after review. The
 fresh- and cold-review preambles define the reviewer roles. `codex-reviewer.py`
 runs them; `session_current_model_id.py` identifies the ambient model used by
 the authoring delegation rule.
@@ -15,7 +16,8 @@ than `5.6-sol/high`. The default context window usually suffices for review.
 - `run-review.md` owns the normal launch and validation procedure.
 - `review-failures.md` owns external-review launch, output, and trace failures.
 - `fresh-review.md` owns generic external-review task and input construction.
-- `revise.md` owns generic scope filtering and post-review handling.
+- `revise.md` prepares review feedback for the next author cycle, so revisions
+  use the same checks as ordinary authoring.
 - `delegated-author.md` owns the conditional writing-author handoff.
 
 `critic-iterate.md` is loaded on the common path, so unused guidance there
