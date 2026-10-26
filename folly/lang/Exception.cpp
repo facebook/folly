@@ -232,7 +232,6 @@ struct __folly_cxa_exception_with_reserve {
 static const uint64_t kOurExceptionClass = 0x434C4E47432B2B00; // CLNGC++\0
 #endif
 
-#if FOLLY_HAS_FEATURE(ptrauth_calls)
 //  with pointer authentication, a virtual call authenticates the function
 //  pointer against a discriminator derived from the mangled name of the method,
 //  so the shim must have the same name and signature as the real one
@@ -246,20 +245,6 @@ class __shim_type_info : public std::type_info {
       const __shim_type_info* thrown_type, void*& adjustedPtr) const = 0;
 };
 using __folly_shim_type_info = __shim_type_info;
-#else
-//  named differently from the real shim type __shim_type_info and all members
-//  are pure virtual; absent pointer authentication, a matching vtable layout is
-//  enough
-class __folly_shim_type_info : public std::type_info {
- public:
-  virtual ~__folly_shim_type_info() = 0;
-
-  virtual void noop1() const = 0;
-  virtual void noop2() const = 0;
-  virtual bool can_catch(
-      const std::type_info* thrown_type, void*& adjustedPtr) const = 0;
-};
-#endif
 
 } // namespace __cxxabiv1
 
