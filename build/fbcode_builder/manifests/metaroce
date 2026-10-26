@@ -50,6 +50,7 @@ glog = shared_libs
 [dependencies.all(test=on, not(os=windows))]
 googletest
 absl
+magic_enum
 
 [rpms.all(distro=centos_stream,distro_vers=8)]
 gcc-toolset-13-gcc-c++
