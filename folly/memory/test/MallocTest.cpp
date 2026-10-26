@@ -19,17 +19,19 @@
 #include <cstdint>
 #include <limits>
 #include <new>
+#include <stdexcept>
 
 #include <folly/portability/GTest.h>
 #include <folly/portability/Malloc.h>
-#include <folly/test/TestUtils.h>
 
 namespace folly {
 
 TEST(MallocTest, getJEMallocMallctlArenasAll) {
-  SKIP_IF(!usingJEMalloc());
-
+#if FOLLY_HAS_JEMALLOC_DEFS
   EXPECT_EQ(4096, getJEMallocMallctlArenasAll());
+#else
+  EXPECT_THROW(getJEMallocMallctlArenasAll(), std::logic_error);
+#endif
 }
 
 TEST(MallocTest, checkedAlignedMallocReturnsAlignedBuffer) {

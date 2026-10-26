@@ -48,7 +48,6 @@ fb_dirsync_cpp_unittest(
         "//folly/memory:malloc",
         "//folly/portability:gtest",
         "//folly/portability:malloc",
-        "//folly/test:test_utils",
     ],
 )
 
