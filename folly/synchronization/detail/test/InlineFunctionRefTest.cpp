@@ -17,8 +17,11 @@
 #include <folly/synchronization/detail/InlineFunctionRef.h>
 
 #include <array>
+#include <cstdint>
 #include <cstring>
+#include <new>
 
+#include <folly/CPortability.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {
@@ -282,6 +285,32 @@ TEST_F(InlineFunctionRefTest, TestLValueConstructibility) {
   EXPECT_TRUE((!std::is_constructible<
                InlineFunctionRef<void(), 24>,
                decltype(lambda)&>{}));
+}
+
+namespace {
+using CopyTarget = InlineFunctionRef<void(), 48>;
+struct StorageValue {
+  std::uint64_t data[5];
+};
+
+FOLLY_NOINLINE void constructInStorageThenCopy(
+    CopyTarget* from,
+    void* storage,
+    CopyTarget* to,
+    const StorageValue& value) {
+  new (storage) StorageValue{value};
+  new (to) CopyTarget{*from};
+}
+} // namespace
+
+TEST_F(InlineFunctionRefTest, CopySeesValueConstructedInStorage) {
+  const auto value = StorageValue{{1, 2, 3, 4, 5}};
+  auto from = CopyTarget{nullptr};
+  auto to = CopyTarget{nullptr};
+  constructInStorageThenCopy(&from, &storage(from), &to, value);
+
+  static_assert(sizeof(storage(to)) == sizeof(value));
+  EXPECT_EQ(std::memcmp(&storage(to), &value, sizeof(value)), 0);
 }
 
 } // namespace detail
