@@ -27,6 +27,7 @@
 
 #include <folly/Expected.h>
 #include <folly/MPMCPipeline.h>
+#include <folly/ScopeGuard.h>
 #include <folly/functional/Invoke.h>
 #include <folly/synchronization/EventCount.h>
 #include <folly/system/HardwareConcurrency.h>
@@ -82,12 +83,20 @@ class PMap : public Operator<PMap<Predicate>> {
       ExecutionPipeline(const Predicate& pred, size_t nThreads)
           : pred_(pred), pipeline_(nThreads, nThreads) {
         workers_.reserve(nThreads);
+        // A std::thread that fails to start (EAGAIN at the thread or pid
+        // limit) leaves the workers already started joinable, and the
+        // destructor does not run for a constructor that throws.
+        auto rollback = makeGuard([&] { stop(); });
         for (size_t i = 0; i < nThreads; i++) {
           workers_.push_back(std::thread([this] { this->predApplier(); }));
         }
+        rollback.dismiss();
       }
 
-      ~ExecutionPipeline() {
+      ~ExecutionPipeline() { stop(); }
+
+     private:
+      void stop() {
         done_.store(true, std::memory_order_release);
         wake_.notifyAll();
         // Drain the pipeline in cases where all results were not consumed,
@@ -100,6 +109,7 @@ class PMap : public Operator<PMap<Predicate>> {
         }
       }
 
+     public:
       bool write(Value&& value) {
         if (!pipeline_.write(std::forward<Value>(value))) {
           return false;

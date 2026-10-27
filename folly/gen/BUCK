@@ -104,6 +104,7 @@ fb_dirsync_cpp_library(
         ":core",
         "//folly:expected",
         "//folly:mpmc_pipeline",
+        "//folly:scope_guard",
         "//folly/functional:invoke",
         "//folly/synchronization:event_count",
         "//folly/system:hardware_concurrency",

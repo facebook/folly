@@ -89,6 +89,7 @@ folly_add_library(
     folly_functional_invoke
     folly_gen_core
     folly_mpmc_pipeline
+    folly_scope_guard
     folly_synchronization_event_count
     folly_system_hardware_concurrency
 )
