@@ -588,6 +588,13 @@ constexpr bool kIsAppleMacOS = FOLLY_APPLE_MACOS == 1;
 constexpr bool kIsAppleTVOS = FOLLY_APPLE_TVOS == 1;
 constexpr bool kIsAppleWatchOS = FOLLY_APPLE_WATCHOS == 1;
 
+/// Whether the target uses GNU libc, independent of its C++ standard library.
+#if defined(__GLIBC__)
+constexpr auto kIsGlibc = true;
+#else
+constexpr auto kIsGlibc = false;
+#endif
+
 #if defined(__GLIBCXX__)
 constexpr auto kIsGlibcxx = true;
 #else
