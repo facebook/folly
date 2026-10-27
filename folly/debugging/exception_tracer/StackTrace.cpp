@@ -17,7 +17,6 @@
 #include <folly/debugging/exception_tracer/StackTrace.h>
 
 #include <cassert>
-#include <cstdlib>
 #include <new>
 
 #include <folly/debugging/symbolizer/StackTrace.h>
