@@ -226,6 +226,7 @@ def folly_xplat_library(
             "ovr_config//os:appletvos": CLANG_CXX_FLAGS,
             "ovr_config//os:iphoneos": CLANG_CXX_FLAGS,
             "ovr_config//os:macos": CLANG_CXX_FLAGS + ["-fvisibility=default"],
+            "ovr_config//os:watchos": CLANG_CXX_FLAGS,
         })
         + select({
             "DEFAULT": [],
