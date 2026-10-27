@@ -21,6 +21,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <functional>
+#include <future>
 #include <list>
 #include <memory>
 #include <optional>
