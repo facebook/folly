@@ -170,6 +170,19 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
+    name = "distributed_mutex_interference_size_test",
+    srcs = [
+        "DistributedMutexInterferenceSizeTest.cpp",
+    ],
+    deps = [
+        "fbsource//third-party/glog:glog",
+        "//folly:scope_guard",
+        "//folly/portability:gtest",
+        "//folly/synchronization:distributed_mutex",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
     name = "hazptr_test",
     srcs = ["HazptrTest.cpp"],
     deps = [
