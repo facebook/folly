@@ -17,6 +17,7 @@
 #include <array>
 #include <atomic>
 #include <bit>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <new>
@@ -163,6 +164,14 @@ constexpr auto kMaxSpinTime = CpuTicks{40000};
 // two-phased mutual exclusion to ensure that we don't starve the combiner
 // thread
 constexpr auto kMaxCombineIterations = 2;
+// The alignment and padding used for Waiter
+//
+// Waiter is shared between the explicit instantiation of DistributedMutex in
+// DistributedMutex.cpp and the code instantiated in the user's translation
+// units (eg. lock_combine()), so its layout must not depend on build flags.
+// hardware_destructive_interference_size can come from the standard library,
+// where it varies with the compiler and -mcpu/-mtune (eg. on aarch64)
+constexpr auto kWaiterAlignment = std::size_t{128};
 
 /**
  * Write only data that is available to the thread that is waking up another.
@@ -257,11 +266,10 @@ class Waiter {
     futex_.store(futex, std::memory_order_release);
   }
 
-  std::array<std::uint8_t, hardware_destructive_interference_size> padding1;
+  std::array<std::uint8_t, kWaiterAlignment> padding1;
   // the atomic that this thread will spin on while waiting for the mutex to
   // be unlocked
-  alignas(hardware_destructive_interference_size) Atomic<std::uint64_t> futex_{
-      kUninitialized};
+  alignas(kWaiterAlignment) Atomic<std::uint64_t> futex_{kUninitialized};
   // The successor of this node.  This will be the thread that had its address
   // on the mutex previously
   //
@@ -357,7 +365,7 @@ class Waiter {
     // this buffer
     folly::aligned_storage_t<48, 8> storage_;
   };
-  std::array<std::uint8_t, hardware_destructive_interference_size> padding2;
+  std::array<std::uint8_t, kWaiterAlignment> padding2;
 };
 
 /**
