@@ -223,6 +223,9 @@ void ThreadEntrySet::compress() {
  * pthread_setspecific), we set an atomic flag that causes onThreadExit
  * callbacks to no-op. The keys and TLS values are intentionally leaked — the
  * process is shutting down and the kernel will reclaim everything.
+ *
+ * A shared library that is about to be unloaded by dlclose deletes the keys
+ * instead, by calling detail::thread_local_delete_pthread_keys.
  */
 // NOLINTNEXTLINE
 std::atomic<bool> threadLocalShuttingDown{false};
@@ -245,6 +248,7 @@ StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
     : nextId_(1), threadEntry_(threadEntry), strict_(strict) {
   int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
   checkPosixError(ret, "pthread_key_create failed");
+  detail::thread_local_register_pthread_key(pthreadKey_);
 }
 
 ThreadEntryList* StaticMetaBase::getThreadEntryList() {
@@ -261,6 +265,7 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
     PthreadKey() {
       int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
       checkPosixError(ret, "pthread_key_create failed");
+      detail::thread_local_register_pthread_key(pthreadKey_);
     }
 
     FOLLY_ALWAYS_INLINE pthread_key_t get() const { return pthreadKey_; }

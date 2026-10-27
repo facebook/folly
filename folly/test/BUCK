@@ -1,3 +1,4 @@
+load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
 load("@fbsource//tools/build_defs:platform_defs.bzl", "ANDROID", "CXX", "FBCODE")
 load("@fbsource//tools/build_defs:testpilot_defs.bzl", "tpx_labels")
@@ -1698,6 +1699,57 @@ fb_dirsync_cpp_binary(
     xplat_sanitizer_runtime_provider = "host",
     deps = [
         "//folly:thread_local",
+    ],
+)
+
+fb_dirsync_cpp_binary(
+    name = "thread_local_dlclose_test_lib.so",
+    srcs = ["ThreadLocalDlcloseTestLib.cpp"],
+    headers = [],
+    dlopen_enabled = True,
+    overridden_link_style = "shared",
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    xplat_sanitizer_runtime_provider = "host",
+    deps = [
+        "//folly:thread_local",
+        "//folly/detail:thread_local_globals",
+    ],
+)
+
+fb_dirsync_cpp_binary(
+    name = "thread_local_dlclose_test_host",
+    srcs = ["ThreadLocalDlcloseTestHost.cpp"],
+    headers = [],
+    # The library gets its sanitizer runtime from this binary, which must
+    # therefore export it. folly_xplat_cxx_binary drops linker_flags.
+    linker_flags = ["--export-dynamic"],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    xplat_impl = fb_xplat_cxx_binary,
+)
+
+fb_dirsync_cpp_unittest(
+    name = "thread_local_dlclose_test",
+    srcs = ["ThreadLocalDlcloseTest.cpp"],
+    resources = [
+        ":thread_local_dlclose_test_host",
+        ":thread_local_dlclose_test_lib.so",
+    ],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    deps = [
+        "//folly:subprocess",
+        "//folly/portability:gtest",
+        "//folly/system:env_util",
+        "//folly/testing:test_util",
+    ],
+)
+
+fb_dirsync_cpp_unittest(
+    name = "thread_local_exit_test",
+    srcs = ["ThreadLocalExitTest.cpp"],
+    target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+    deps = [
+        "//folly:thread_local",
+        "//folly/portability:gtest",
     ],
 )
 

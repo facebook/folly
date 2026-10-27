@@ -304,6 +304,9 @@ fb_dirsync_cpp_library(
     deps = [
         ":static_singleton_manager",
         "//folly/lang:exception",
+        "//folly/synchronization:micro_spin_lock",
+    ],
+    exported_deps = [
         "//folly/portability:pthread",
     ],
 )

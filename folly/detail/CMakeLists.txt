@@ -322,7 +322,8 @@ folly_add_library(
   DEPS
     folly_detail_static_singleton_manager
     folly_lang_exception
-    folly_portability_pthread
+    folly_synchronization_micro_spin_lock
+  EXPORTED_DEPS folly_portability_pthread
 )
 
 folly_add_library(

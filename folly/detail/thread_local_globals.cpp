@@ -16,15 +16,47 @@
 
 #include <folly/detail/thread_local_globals.h>
 
+#include <stdexcept>
 #include <system_error>
 
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/lang/Exception.h>
-#include <folly/portability/PThread.h>
+#include <folly/synchronization/MicroSpinLock.h>
 
 namespace folly::detail {
 
 namespace {
+
+// Constant-initialized and trivially destructible, so that keys may be
+// registered at any point in static initialization or destruction.
+class pthread_key_registry {
+ public:
+  constexpr pthread_key_registry() noexcept : lock_(), size_(0), keys_() {}
+
+  void add(pthread_key_t key) {
+    MSLGuard lg(lock_);
+    if (size_ == kCapacity) {
+      throw_exception<std::logic_error>("too many pthread keys to register");
+    }
+    keys_[size_++] = key;
+  }
+
+  void delete_all() {
+    MSLGuard lg(lock_);
+    while (size_) {
+      pthread_key_delete(keys_[--size_]);
+    }
+  }
+
+ private:
+  static constexpr size_t kCapacity = 1024;
+
+  MicroSpinLock lock_;
+  size_t size_;
+  pthread_key_t keys_[kCapacity];
+};
+
+pthread_key_registry pthread_keys;
 
 /// thread_is_dying_global
 ///
@@ -49,6 +81,7 @@ struct thread_is_dying_global {
       throw_exception<std::system_error>(
           ret, std::generic_category(), "pthread_key_create failed");
     }
+    thread_local_register_pthread_key(key);
   }
 };
 
@@ -64,6 +97,14 @@ void thread_is_dying_mark() {
   if (!pthread_getspecific(global.key)) {
     pthread_setspecific(global.key, &global.key);
   }
+}
+
+void thread_local_register_pthread_key(pthread_key_t key) {
+  pthread_keys.add(key);
+}
+
+void thread_local_delete_pthread_keys() {
+  pthread_keys.delete_all();
 }
 
 } // namespace folly::detail
