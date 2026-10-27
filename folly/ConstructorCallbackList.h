@@ -55,7 +55,7 @@ namespace folly {
 // places with low overhead.
 //
 // NOTE: The callback is triggered with a *partially* constructed object.
-// This implies that that callback code can only access members that are
+// This implies that callback code can only access members that are
 // constructed *before* the ConstructorCallbackList object.  Also, at the time
 // of the callback, none of the Foo() constructor code will have run.
 // Per the example above,

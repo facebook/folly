@@ -266,7 +266,7 @@ TEST_F(ThreadLocalDetailTest, accessAllAndRealloc) {
 
   spawnMoreThreads = std::thread([&]() {
     spawnHelperBarrier.wait();
-    // create a bunch of threads. let them assign some value to the elemnts
+    // create a bunch of threads. let them assign some value to the elements
     // other than one at index 0. This will cause elements array to be
     // reallocated a few times. They should not get blocked by presence of the
     // accessAllThreads accessor.
