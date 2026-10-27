@@ -275,36 +275,6 @@ BENCHMARK(ForLoopFetch, iters) {
   });
 }
 
-BENCHMARK(ForEachKVNoMacroAssign, iters) {
-  [[maybe_unused]] int sumKeys = 0;
-  std::string sumValues;
-
-  BENCHMARK_SUSPEND {
-    setupBenchmark(iters);
-  }
-
-  FOR_EACH (iter, bmMap) {
-    const int k = iter->first;
-    const std::string v = iter->second;
-    sumKeys += k;
-    sumValues += v;
-  }
-}
-
-BENCHMARK(ForEachKVNoMacroNoAssign, iters) {
-  [[maybe_unused]] int sumKeys = 0;
-  std::string sumValues;
-
-  BENCHMARK_SUSPEND {
-    setupBenchmark(iters);
-  }
-
-  FOR_EACH (iter, bmMap) {
-    sumKeys += iter->first;
-    sumValues += iter->second;
-  }
-}
-
 BENCHMARK(ForEachManual, iters) {
   int sum = 1;
   for (size_t i = 1; i < iters; ++i) {

@@ -127,25 +127,6 @@ constexpr decltype(auto) fetch(Sequence&& sequence, Index&& index);
  * Everything below is deprecated.
  */
 
-/*
- * Form a local variable name from "FOR_EACH_" x __LINE__, so that
- * FOR_EACH can be nested without creating shadowed declarations.
- */
-#define _FE_ANON(x) FB_CONCATENATE(FOR_EACH_, FB_CONCATENATE(x, __LINE__))
-
-/*
- * If you just want the element values, please use:
- *
- *    for (auto&& element : collection)
- *
- * If you need access to the iterators please write an explicit iterator loop
- */
-#define FOR_EACH(i, c)                                                     \
-  if (bool _FE_ANON(s1_) = false) {                                        \
-  } else                                                                   \
-    for (auto&& _FE_ANON(s2_) = (c); !_FE_ANON(s1_); _FE_ANON(s1_) = true) \
-      for (auto i = _FE_ANON(s2_).begin(); i != _FE_ANON(s2_).end(); ++i)
-
 namespace folly {
 namespace detail {
 

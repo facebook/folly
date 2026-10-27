@@ -345,15 +345,3 @@ TEST(ForEach, LargeTuple) {
   folly::for_each(arr, [&](auto i) { s += i; });
   EXPECT_EQ(0, s);
 }
-
-TEST(Foreach, ForEachNested) {
-  const std::string hello = "hello";
-  size_t n = 0;
-  FOR_EACH (i, hello) {
-    FOR_EACH (j, hello) {
-      ++n;
-    }
-  }
-  auto len = hello.size();
-  EXPECT_EQ(len * len, n);
-}
