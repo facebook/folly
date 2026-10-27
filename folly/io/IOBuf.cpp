@@ -860,7 +860,11 @@ IOBuf IOBuf::cloneCoalescedAsValueWithHeadroomTailroom(
 
   // Coalesce into newBuf
   const std::size_t newLength = computeChainDataLength();
-  const std::size_t newCapacity = newLength + newHeadroom + newTailroom;
+  std::size_t newCapacity = 0;
+  if (!checked_add(&newCapacity, newLength, newHeadroom, newTailroom) ||
+      newCapacity > kMaxIOBufSize) {
+    throw_exception<std::bad_alloc>();
+  }
   IOBuf newBuf{CREATE, newCapacity};
   newBuf.advance(newHeadroom);
 
@@ -1040,7 +1044,11 @@ void IOBuf::coalesceSlow(size_t maxLength) {
 
 void IOBuf::coalesceAndReallocate(
     size_t newHeadroom, size_t newLength, IOBuf* end, size_t newTailroom) {
-  std::size_t newCapacity = newLength + newHeadroom + newTailroom;
+  std::size_t newCapacity = 0;
+  if (!checked_add(&newCapacity, newLength, newHeadroom, newTailroom) ||
+      newCapacity > kMaxIOBufSize) {
+    throw_exception<std::bad_alloc>();
+  }
 
   // Allocate space for the coalesced buffer.
   // We always convert to an external buffer, even if we happened to be an
