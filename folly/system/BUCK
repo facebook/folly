@@ -67,6 +67,17 @@ fb_dirsync_cpp_library(
 )
 
 fb_dirsync_cpp_library(
+    name = "libc",
+    srcs = ["libc.cpp"],
+    headers = ["libc.h"],
+    feature = triage_InfrastructureSupermoduleOptou,
+    use_raw_headers = True,
+    deps = [
+        "//folly:portability",
+    ],
+)
+
+fb_dirsync_cpp_library(
     name = "memory_mapping",
     srcs = ["MemoryMapping.cpp"],
     headers = ["MemoryMapping.h"],

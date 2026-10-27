@@ -64,6 +64,13 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME libc
+  SRCS libc.cpp
+  HEADERS libc.h
+  DEPS folly_portability
+)
+
+folly_add_library(
   NAME memory_mapping
   SRCS MemoryMapping.cpp
   HEADERS MemoryMapping.h

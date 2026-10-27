@@ -52,6 +52,7 @@
 #include <folly/portability/Unistd.h>
 #include <folly/system/AtFork.h>
 #include <folly/system/Shell.h>
+#include <folly/system/libc.h>
 
 /// interceptors to work around:
 ///
@@ -120,14 +121,6 @@ auto SubprocessFdActionsList::find(int fd) const noexcept -> int const* {
   return nullptr;
 }
 
-// clang-format off
-static inline constexpr auto subprocess_libc_soname =
-    kIsLinux ? "libc.so.6" :
-    kIsFreeBSD ? "libc.so.7" :
-    kIsApple ? "/usr/lib/libSystem.B.dylib" :
-    nullptr;
-// clang-format on
-
 template <typename Ret>
 static Ret subprocess_libc_load(
     void* const handle, Ret const ptr, char const* const name) {
@@ -183,7 +176,8 @@ FOLLY_DETAIL_SUBPROCESS_LIBC_X(FOLLY_DETAIL_SUBPROCESS_LIBC_FIELD_DEFN)
 __attribute__((constructor(101))) static void subprocess_libc_init() {
   auto handle = !kIsSanitize
       ? nullptr
-      : ::dlopen(subprocess_libc_soname, RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);
+      : ::dlopen(
+            folly::detail::libc_soname(), RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);
   assert(!kIsSanitize || !!handle);
   FOLLY_DETAIL_SUBPROCESS_LIBC_X(FOLLY_DETAIL_SUBPROCESS_LIBC_INIT)
 }

@@ -1243,6 +1243,7 @@ if (NOT WIN32)
       folly_scope_guard
       folly_string
       folly_system_at_fork
+      folly_system_libc
       folly_system_shell
     EXPORTED_DEPS
       Boost::headers

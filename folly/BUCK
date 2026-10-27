@@ -364,6 +364,7 @@ fb_dirsync_cpp_library(
         "//folly/portability:sys_syscall",
         "//folly/portability:unistd",
         "//folly/system:at_fork",
+        "//folly/system:libc",
         "//folly/system:shell",
     ],
     exported_deps = [
