@@ -172,6 +172,44 @@ TEST_F(ElfCacheTest, SignalSafeElfCache) {
   }
 }
 
+TEST(SignalSafeElfCache, PathViewExcludesNullTerminator) {
+  SignalSafeElfCache::State state;
+  const std::array<char, 3> bytes = {'a', 'b', 'c'};
+  SignalSafeElfCache::Path path(bytes.data(), bytes.size(), state.alloc);
+  const cstring_view view = path;
+
+  EXPECT_EQ(cstring_view("abc"), view);
+  EXPECT_EQ(std::string_view("abc"), std::string_view(view));
+  EXPECT_STREQ("abc", view.c_str());
+}
+
+TEST(SignalSafeElfCache, PathStringOrdering) {
+  SignalSafeElfCache::State state;
+  SignalSafeElfCache::Path empty("", 0, state.alloc);
+  SignalSafeElfCache::Path prefix("a", 1, state.alloc);
+  SignalSafeElfCache::Path longer("ab", 2, state.alloc);
+  SignalSafeElfCache::Path high("\x80", 1, state.alloc);
+  SignalSafeElfCache::Path equal("a", 1, state.alloc);
+
+  EXPECT_TRUE(empty < prefix);
+  EXPECT_TRUE(prefix < longer);
+  EXPECT_TRUE(longer < high);
+  EXPECT_FALSE(longer < prefix);
+  EXPECT_FALSE(prefix < equal);
+  EXPECT_FALSE(equal < prefix);
+}
+
+TEST(SignalSafeElfCache, NonNullTerminatedLookup) {
+  SignalSafeElfCache cache;
+  const char path[] = "/proc/self/exe?";
+  const StringPiece lookup(path, sizeof(path) - 2);
+  auto first = cache.getFile(lookup);
+
+  ASSERT_NE(nullptr, first);
+  EXPECT_EQ(first, cache.getFile(lookup));
+  EXPECT_EQ(first, cache.getFile("/proc/self/exe"));
+}
+
 TEST(SymbolizerTest, SymbolCache) {
   SKIP_IF(!Symbolizer::isAvailable());
 

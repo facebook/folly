@@ -69,12 +69,14 @@ folly_add_library(
   SRCS ElfCache.cpp
   HEADERS ElfCache.h
   DEPS
+    folly_c_portability
     folly_portability_sys_mman
     folly_scope_guard
   EXPORTED_DEPS
     Boost::headers
     folly_debugging_symbolizer_elf
     folly_hash_hash
+    folly_lang_cstring_view
     folly_memory_reentrant_allocator
     folly_optional
     folly_portability_config

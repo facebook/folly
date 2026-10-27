@@ -73,6 +73,7 @@ fb_dirsync_cpp_library(
     ],
     use_raw_headers = True,
     deps = [
+        "//folly:c_portability",
         "//folly:scope_guard",
         "//folly/portability:sys_mman",
     ],
@@ -82,6 +83,7 @@ fb_dirsync_cpp_library(
         "//folly:optional",
         "//folly:range",
         "//folly/hash:hash",
+        "//folly/lang:cstring_view",
         "//folly/memory:reentrant_allocator",
         "//folly/portability:config",
     ],

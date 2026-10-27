@@ -17,7 +17,9 @@
 #include <folly/debugging/symbolizer/ElfCache.h>
 
 #include <signal.h>
+#include <string_view>
 
+#include <folly/CPortability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/SysMman.h>
@@ -26,6 +28,17 @@
 
 namespace folly {
 namespace symbolizer {
+
+namespace {
+
+/// Binding resolution is not async-signal-safe. Keep this comparison out of
+/// line so warmup eagerly resolves its libc binding before installing handlers.
+FOLLY_NOINLINE bool pathLess(
+    std::string_view lhs, std::string_view rhs) noexcept {
+  return lhs < rhs;
+}
+
+} // namespace
 
 SignalSafeElfCache::Path::Path(
     char const* const data,
@@ -37,13 +50,21 @@ SignalSafeElfCache::Path::Path(
   data_.insert(data_.end(), '\0');
 }
 
+bool operator<(
+    SignalSafeElfCache::Path const& lhs,
+    SignalSafeElfCache::Path const& rhs) noexcept {
+  return pathLess(cstring_view(lhs), cstring_view(rhs));
+}
+
 std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
   struct cmp {
     bool operator()(Entry const& a, StringPiece b) const noexcept {
-      return a.path < b;
+      return pathLess(
+          cstring_view(a.path), std::string_view(b.data(), b.size()));
     }
     bool operator()(StringPiece a, Entry const& b) const noexcept {
-      return a < b.path;
+      return pathLess(
+          std::string_view(a.data(), a.size()), cstring_view(b.path));
     }
   };
 
@@ -67,7 +88,7 @@ std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
   }
 
   if (!pos->init) {
-    int r = pos->file->openAndFollow(pos->path.c_str());
+    int r = pos->file->openAndFollow(cstring_view(pos->path).c_str());
     pos->init = r == ElfFile::kSuccess;
   }
   if (!pos->init) {
