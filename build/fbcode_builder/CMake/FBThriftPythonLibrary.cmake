@@ -244,7 +244,7 @@ function(add_fbthrift_python_library LIB_NAME THRIFT_FILE)
   target_include_directories(
     "${LIB_NAME}.thrift_includes"
     INTERFACE
-      "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>"
+      "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>"
       "$<INSTALL_INTERFACE:${ARG_THRIFT_INCLUDE_DIR}>"
   )
   foreach(dep IN LISTS ARG_DEPENDS)
