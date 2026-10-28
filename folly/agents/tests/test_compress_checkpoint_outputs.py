@@ -30,54 +30,58 @@ from folly.agents.tests import (
 )
 
 
-def make_sample(root: Path, phases: list[tuple[str, str]]) -> None:
+def make_sample(
+    root: Path, phases: list[tuple[str, directory_snapshot.Snapshot]]
+) -> None:
+    root.mkdir()
     records = []
-    for name, contents in phases:
+    for name, entries in phases:
         artifact = f"output-{name}.md"
-        (root / artifact).write_text(contents)
-        records.append({"artifact": artifact, "phase": name})
+        (root / artifact).write_bytes(entries[Path("main.md")])
+        records.append({"artifact": artifact, "phase": name, "wall_seconds": 1.0})
     (root / "output").mkdir()
-    (root / "output/main.md").write_text(phases[-1][1])
+    (root / "output/main.md").write_bytes(phases[-1][1][Path("main.md")])
     (root / "checkpoints.json").write_text(json.dumps(records))
 
 
-def make_diff_sample(root: Path) -> None:
-    initial = "".join(f"line {index}\n" for index in range(100))
-    author = initial.replace("line 50\n", "author edit\n")
-    make_sample(
-        root,
-        [("initial", initial), ("author", author), ("review1", "final\n")],
-    )
+def compress(root: Path) -> list[dict]:
+    compressor.compress(root, io.StringIO())
+    return json.loads((root / "checkpoints.json").read_text())
 
 
-def compress(sample: Path) -> str:
-    mapping = io.StringIO()
-    compressor.compress(sample, mapping)
-    return mapping.getvalue()
+def text_phases() -> list[tuple[str, directory_snapshot.Snapshot]]:
+    initial = b"".join(f"line {index}\n".encode() for index in range(100))
+    author = initial.replace(b"line 50\n", b"author edit\n")
+    return [
+        ("initial", {Path("main.md"): initial}),
+        ("author", {Path("main.md"): author}),
+        ("review1", {Path("main.md"): b"final\n"}),
+    ]
 
 
 class CompressCheckpointOutputsTest(unittest.TestCase):
     def test_deduplicates_and_removes_artifact_fields(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            sample = Path(temporary)
+            sample = Path(temporary) / "sample"
             repeated = "".join(f"line {index}\n" for index in range(100))
             author = repeated.replace("line 20\n", "author edit\n")
             final = repeated.replace("line 80\n", "review edit\n")
             make_sample(
                 sample,
                 [
-                    ("initial", repeated),
-                    ("author", author),
-                    ("review1", repeated),
-                    ("review2", final),
-                    ("review3", final),
+                    ("initial", {Path("main.md"): (repeated).encode()}),
+                    ("author", {Path("main.md"): (author).encode()}),
+                    ("review1", {Path("main.md"): (repeated).encode()}),
+                    ("review2", {Path("main.md"): (final).encode()}),
+                    ("review3", {Path("main.md"): (final).encode()}),
                 ],
             )
             (sample / "output-author-to-initial.diff").write_text("stale")
             (sample / "output-author-to-review1.diff").write_text("stale")
             (sample / "output-unrelated.diff").write_text("unrelated")
 
-            mapping = compress(sample)
+            mapping = io.StringIO()
+            compressor.compress(sample, mapping)
 
             self.assertTrue((sample / "output-initial.md").is_file())
             self.assertFalse((sample / "output-author.md").exists())
@@ -95,7 +99,9 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
             self.assertEqual(
                 records[-1]["storage"]["files"]["main.md"]["base"], "output/main.md"
             )
-            self.assertIn("--restore author --destination /path/to/author", mapping)
+            self.assertIn(
+                "--restore author --destination /path/to/author", mapping.getvalue()
+            )
             for record, (name, expected) in zip(
                 records,
                 (
@@ -116,7 +122,7 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
 
     def test_forward_diffs_reconstruct_each_phase(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            sample = Path(temporary)
+            sample = Path(temporary) / "sample"
             initial = "".join(f"line {index}\n" for index in range(100)).replace(
                 "line 40\n", "line 40\rsegment\n"
             )
@@ -126,10 +132,10 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
             make_sample(
                 sample,
                 [
-                    ("initial", initial),
-                    ("author", author),
-                    ("review1", review1),
-                    ("review2", final),
+                    ("initial", {Path("main.md"): (initial).encode()}),
+                    ("author", {Path("main.md"): (author).encode()}),
+                    ("review1", {Path("main.md"): (review1).encode()}),
+                    ("review2", {Path("main.md"): (final).encode()}),
                 ],
             )
 
@@ -157,13 +163,13 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
 
     def test_diff_threshold_uses_later_phase_size(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            sample = Path(temporary)
+            sample = Path(temporary) / "sample"
             make_sample(
                 sample,
                 [
-                    ("initial", "i" * 199 + "\n"),
-                    ("author", "a" * 299 + "\n"),
-                    ("review1", "final\n"),
+                    ("initial", {Path("main.md"): ("i" * 199 + "\n").encode()}),
+                    ("author", {Path("main.md"): ("a" * 299 + "\n").encode()}),
+                    ("review1", {Path("main.md"): ("final\n").encode()}),
                 ],
             )
             _, phases = compressor._load(sample)
@@ -177,22 +183,23 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
     def test_keeps_output_that_cannot_be_diffed(self) -> None:
         for initial in ("missing newline", "binary\0value\n"):
             with self.subTest(initial=initial), tempfile.TemporaryDirectory() as temp:
-                sample = Path(temp)
+                sample = Path(temp) / "sample"
                 make_sample(
                     sample,
                     [
-                        ("initial", initial),
-                        ("author", "complete\n"),
-                        ("review1", "final\n"),
+                        ("initial", {Path("main.md"): (initial).encode()}),
+                        ("author", {Path("main.md"): ("complete\n").encode()}),
+                        ("review1", {Path("main.md"): ("final\n").encode()}),
                     ],
                 )
 
-                mapping = compress(sample)
+                mapping = io.StringIO()
+                compressor.compress(sample, mapping)
 
                 self.assertTrue((sample / "output-initial.md").is_file())
                 self.assertTrue((sample / "output-author.md").is_file())
                 self.assertFalse((sample / "output-initial-to-author.diff").exists())
-                self.assertNotIn("apply_diffs", mapping)
+                self.assertNotIn("apply_diffs", mapping.getvalue())
 
     def test_declines_diffs_for_unrepresentable_files(self) -> None:
         for unsuitable in (b"missing newline", b"binary\0value\n", b"\xff\n"):
@@ -206,16 +213,22 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
 
     def test_rejects_invalid_phase_sequence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            sample = Path(temporary)
-            make_sample(sample, [("initial", "initial\n"), ("final", "final\n")])
+            sample = Path(temporary) / "sample"
+            make_sample(
+                sample,
+                [
+                    ("initial", {Path("main.md"): ("initial\n").encode()}),
+                    ("final", {Path("main.md"): ("final\n").encode()}),
+                ],
+            )
 
             with self.assertRaisesRegex(ValueError, "phase or artifact"):
                 compress(sample)
 
     def test_reconstruction_failure_keeps_sources_and_accounting(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            sample = Path(temporary)
-            make_diff_sample(sample)
+            sample = Path(temporary) / "sample"
+            make_sample(sample, text_phases())
             accounting = (sample / "checkpoints.json").read_bytes()
             executable = shutil.which("diff")
             self.assertIsNotNone(executable)
@@ -239,8 +252,8 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
 
     def test_mapping_write_failure_keeps_sources_and_accounting(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            sample = Path(temporary)
-            make_diff_sample(sample)
+            sample = Path(temporary) / "sample"
+            make_sample(sample, text_phases())
             accounting = (sample / "checkpoints.json").read_bytes()
             mapping = io.StringIO()
             mapping.close()
@@ -257,8 +270,10 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
 
     def test_rejects_symlinked_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            sample = Path(temporary)
-            make_sample(sample, [("initial", "initial\n")])
+            sample = Path(temporary) / "sample"
+            make_sample(
+                sample, [("initial", {Path("main.md"): ("initial\n").encode()})]
+            )
             (sample / "output-initial.md").unlink()
             (sample / "output-initial.md").symlink_to(sample / "output/main.md")
 
@@ -269,8 +284,7 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             sample = root / "sample"
-            sample.mkdir()
-            make_diff_sample(sample)
+            make_sample(sample, text_phases())
             expected = (sample / "output-author.md").read_bytes()
             compress(sample)
             destination = root / "restored"
