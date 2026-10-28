@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <source_location>
+
 #include <folly/result/epitaph.h>
 #include <folly/result/rich_error.h>
 #include <folly/result/test/rich_exception_ptr_common.h>
@@ -54,7 +56,7 @@ REP checkEptrRoundtrip(const auto& original_src) {
     return std::tuple{
         rex ? fmt::format("{}", rex->all_codes_for_fmt()) : std::string{},
         rex ? rex->partial_message() : "",
-        rex ? rex->source_location().line() : source_location{}.line(),
+        rex ? rex->source_location().line() : std::source_location{}.line(),
         rep.to_exception_ptr_slow(),
         rep == REP{}};
   };

@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <source_location>
+
 #include <folly/result/rich_error.h>
 #include <folly/result/rich_error_base.h>
 #include <folly/result/rich_error_code.h>
@@ -75,7 +77,7 @@ class coded_rich_error : public rich_error_base {
       rich_msg msg = vtag<literal_string{""}>)
       : codes_{code_entry<Codes>{codes}...}, msg_{std::move(msg)} {}
 
-  folly::source_location source_location() const noexcept override {
+  std::source_location source_location() const noexcept override {
     return msg_.location();
   }
 

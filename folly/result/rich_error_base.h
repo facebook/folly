@@ -16,18 +16,19 @@
 
 #pragma once
 
+#include <iosfwd>
+#include <iterator>
+#include <source_location>
+
+#include <fmt/format.h>
+
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h> // FOLLY_HAS_RESULT
 #include <folly/Traits.h>
 #include <folly/Unit.h>
 #include <folly/Utility.h> // FOLLY_DECLVAL
 #include <folly/lang/Pretty.h>
-#include <folly/portability/SourceLocation.h>
 #include <folly/result/rich_error_fwd.h>
-
-#include <iosfwd>
-#include <iterator>
-#include <fmt/core.h>
 
 // Old `fmt` isn't actually supported, but ... it needs to build :(
 #if FMT_VERSION < 80000
@@ -161,7 +162,7 @@ class rich_error_base {
  public:
   virtual ~rich_error_base() = default;
 
-  virtual folly::source_location source_location() const noexcept;
+  virtual std::source_location source_location() const noexcept;
 
   // Use `<<` or `fmt` to log errors, AVOID `partial_message()` & `what()`.
   //   - `<<` and `fmt` render more information than this partial message:

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <source_location>
+
 #include <folly/result/nestable_coded_rich_error.h>
 
 #include <folly/portability/GMock.h>
@@ -27,7 +29,7 @@ namespace folly::test {
 
 using namespace folly::string_literals;
 
-const auto test_file_name = source_location::current().file_name();
+const auto test_file_name = std::source_location::current().file_name();
 
 void checkConstructionAndAccess(
     auto next, const char* next_what, std::string next_re) {
@@ -60,7 +62,7 @@ TEST(NestableCodedRichErrorTest, constructAndAccessWithNonRichNext) {
 }
 
 TEST(NestableCodedRichErrorTest, constructAndAccessWithRichNext) {
-  int err_line = source_location::current().line() + 1;
+  int err_line = std::source_location::current().line() + 1;
   auto err = make_coded_rich_error(C1::TWO_C1);
   checkConstructionAndAccess(
       std::move(err),

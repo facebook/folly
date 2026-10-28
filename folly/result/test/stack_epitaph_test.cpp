@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <source_location>
+
 #include <folly/result/epitaph.h>
 
 #include <folly/Benchmark.h>
@@ -87,7 +89,7 @@ TEST(StackEpitaphTest, fullFormat) {
 TEST(StackEpitaphTest, spillVsInline) {
   constexpr stack_epitaph_opts kSpill{.max_frames = 31, .inline_frames = 2};
   static_assert(epitaph_stack_location<kSpill>::kFramesMayUseHeap);
-  auto spillLine = source_location::current().line() + 1;
+  auto spillLine = std::source_location::current().line() + 1;
   auto spill = stack_epitaph<kSpill>(error_or_stopped{std::logic_error{"doh"}});
 
   auto spillStr = fmt::format("{}", get_exception<std::logic_error>(spill));
@@ -99,7 +101,7 @@ TEST(StackEpitaphTest, spillVsInline) {
 
   constexpr stack_epitaph_opts kInline{.max_frames = 31, .inline_frames = 31};
   static_assert(!epitaph_stack_location<kInline>::kFramesMayUseHeap);
-  auto inlLine = source_location::current().line() + 1;
+  auto inlLine = std::source_location::current().line() + 1;
   auto inl = stack_epitaph<kInline>(error_or_stopped{std::logic_error{"doh"}});
 
   // Stacks are identical modulo the call-site line number.

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <source_location>
+
 #include <folly/result/test/common.h>
 
 #include <folly/portability/GMock.h>
@@ -29,7 +31,7 @@ namespace folly::test {
 using namespace folly::detail;
 using S = private_rich_exception_ptr_sigil;
 
-const auto kTestFile = source_location::current().file_name();
+const auto kTestFile = std::source_location::current().file_name();
 
 // Checks REP formatting directly, and via get_exception<Queries...>.
 template <typename... Queries>
@@ -71,7 +73,7 @@ TEST(RichExceptionPtrFormat, stopped) {
       "folly::detail::StoppedNoThrow");
 
   auto checkWrappedStopped = [](auto eos, std::string_view expected_inner) {
-    auto line = source_location::current().line() + 1;
+    auto line = std::source_location::current().line() + 1;
     auto wrapped = epitaph(std::move(eos), "ctx");
     checkFormat(
         copy(wrapped).release_rich_exception_ptr(),
@@ -115,7 +117,7 @@ TEST(RichExceptionPtrFormat, nonStdException) {
 
 // Epitaph-wrapped rich error
 TEST(RichExceptionPtrFormat, epitaphWrappedRichError) {
-  auto line = source_location::current().line() + 1;
+  auto line = std::source_location::current().line() + 1;
   auto eos = epitaph(error_or_stopped{rich_error<MsgErr>{}}, "ctx");
   checkRepAndGetFormat<MsgErr, rich_error_base>(
       eos, fmt::format("msg \\[via\\] ctx @ {}:{}", kTestFile, line));
@@ -123,14 +125,14 @@ TEST(RichExceptionPtrFormat, epitaphWrappedRichError) {
 
 // Epitaph-wrapped std::exception -- also check 2-epitaph chain
 TEST(RichExceptionPtrFormat, epitaphWrappedStdException) {
-  auto line1 = source_location::current().line() + 1;
+  auto line1 = std::source_location::current().line() + 1;
   auto eos1 = epitaph(error_or_stopped{std::logic_error{"inner"}}, "ctx");
   checkRepAndGetFormat<std::logic_error, std::exception>(
       eos1,
       fmt::format(
           "std::logic_error: inner \\[via\\] ctx @ {}:{}", kTestFile, line1));
 
-  auto line2 = source_location::current().line() + 1;
+  auto line2 = std::source_location::current().line() + 1;
   auto eos2 = epitaph(std::move(eos1), "outer");
   checkRepAndGetFormat<std::logic_error, std::exception>(
       eos2,

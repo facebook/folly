@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <source_location>
+
 #include <folly/Benchmark.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/result/immortal_rich_error.h>
@@ -30,12 +32,10 @@ TEST(RichExceptionPtrBench, benchmarksDoNotCrash) {
 }
 
 struct MyErr : rich_error_base {
-  folly::source_location sl_;
-  explicit constexpr MyErr(folly::source_location sl) : sl_{std::move(sl)} {}
-  explicit constexpr MyErr(const folly::source_location* sl) : sl_{*sl} {}
-  folly::source_location source_location() const noexcept override {
-    return sl_;
-  }
+  std::source_location sl_;
+  explicit constexpr MyErr(std::source_location sl) : sl_{sl} {}
+  explicit constexpr MyErr(const std::source_location* sl) : sl_{*sl} {}
+  std::source_location source_location() const noexcept override { return sl_; }
   // As noted in the `rich_error_with_partial_message` doc, using the default
   // `partial_message()` implementation makes `dynamic_cast` slower.  Since the
   // benchmark's goal is to model realistic usage, let's not pay that cost
@@ -66,22 +66,25 @@ FOLLY_ALWAYS_INLINE auto bench_copy_and_compare(size_t iters, auto ep) {
 
 BENCHMARK(copyAndCompare_exceptionWrapper, n) {
   bench_copy_and_compare(
-      n, make_exception_wrapper<rich_error<MyErr>>(source_location::current()));
+      n,
+      make_exception_wrapper<rich_error<MyErr>>(
+          std::source_location::current()));
 }
 
 BENCHMARK(copyAndCompare_dynamicRichExceptionPtr, n) {
   bench_copy_and_compare(
-      n, rich_exception_ptr{rich_error<MyErr>{source_location::current()}});
+      n,
+      rich_exception_ptr{rich_error<MyErr>{std::source_location::current()}});
 }
 
 BENCHMARK(copyAndCompare_immortalRichExceptionPtr, n) {
-  static constexpr auto sl = source_location::current();
+  static constexpr auto sl = std::source_location::current();
   bench_copy_and_compare(n, immortal_rich_error<MyErr, &sl>.ptr());
 }
 
 BENCHMARK_DRAW_LINE();
 
-static constexpr auto src_loc = source_location::current();
+static constexpr auto src_loc = std::source_location::current();
 
 const auto same_src_line = [](const auto& ex) {
   return ex->source_location().line() == src_loc.line();

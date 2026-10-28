@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <source_location>
+#include <stdexcept>
+
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/result/epitaph.h>
@@ -23,15 +26,13 @@
 #include <folly/result/test/common.h>
 #include <folly/result/test/rich_error_codes.h>
 
-#include <stdexcept>
-
 #if FOLLY_HAS_RESULT
 
 namespace folly::test {
 
 using namespace folly::detail;
 
-const auto test_file_name = source_location::current().file_name();
+const auto test_file_name = std::source_location::current().file_name();
 
 constexpr bool manually_test_asserts() {
 #if 0 // Rich error derives from `rich_error_base`
@@ -99,17 +100,18 @@ TEST(RichErrorTest, basics) {
     };
     rich_error<MyErr> err;
     EXPECT_STREQ("MyErr", err.partial_message());
-    EXPECT_EQ(source_location{}.file_name(), err.source_location().file_name());
+    EXPECT_EQ(
+        std::source_location{}.file_name(), err.source_location().file_name());
     checkNoOpAPIs(err);
     checkFormatOfErrAndRep<MyErr, rich_error_base, std::exception>(
         err, "MyErr");
   }
 
-  static constexpr source_location loc = source_location::current();
+  static constexpr std::source_location loc = std::source_location::current();
   EXPECT_GT(loc.line(), 0);
   struct ErrWithLoc : rich_error_base {
     using folly_get_exception_hint_types = rich_error_hints<ErrWithLoc>;
-    folly::source_location source_location() const noexcept override {
+    std::source_location source_location() const noexcept override {
       return loc;
     }
   };
@@ -166,9 +168,9 @@ TEST(RichErrorTest, fmtAndOstreamEpitaphNonRichError) {
   using WrapErr = rich_error<epitaph_non_value>;
 
   rich_exception_ptr inner{std::logic_error{"inner"}};
-  auto err_line1 = source_location::current().line() + 1;
+  auto err_line1 = std::source_location::current().line() + 1;
   rich_exception_ptr middle{WrapErr{std::move(inner), rich_msg{"middle"}}};
-  auto err_line2 = source_location::current().line() + 1;
+  auto err_line2 = std::source_location::current().line() + 1;
   WrapErr outer{std::move(middle), rich_msg{"outer"}};
 
   // Check the wrapper's `rich_error_base` API -- NOT user-visible without

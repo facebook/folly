@@ -151,7 +151,7 @@ These are *roughly* sorted from "near future" to "far future".
 
 ## Auto-capture locations for immortals on C++23
 
-A "nice to have" would be a way to automatically capture `source_location`
+A "nice to have" would be a way to automatically capture `std::source_location`
 while supplying a `rich_msg` to an `immortal_rich_error<MyErr, ...>` template
 parameter list.
 
@@ -159,7 +159,7 @@ You can see a not-very-satisfactory example of what *can* be done today in
 `immortal_rich_error_test.cpp`. Roughly:
 
 ```cpp
-constexpr static auto myLoc = source_location::current();
+constexpr static auto myLoc = std::source_location::current();
 auto rep = immortal_rich_error<MyErr, &myLoc>.ptr();
 ```
 
@@ -168,27 +168,27 @@ structural helper type implicitly-convertible to `rich_msg` (as with `vtag<Str>`
 today). We do want to use `rich_msg` in the user types, since that offers a
 consistent & good experience for runtime errors.
 
-The trouble is that `source_location` is not structural, and so the helper type
+The trouble is that `std::source_location` is not structural, and so the helper type
 can only store its pointer. But, in C++20, there is no way to allocate static
 storage from a variable -- unless it's `constexpr`, which an auto-captured
-`source_location::current()` could not be. So, we have to wait for C++23 support
+`std::source_location::current()` could not be. So, we have to wait for C++23 support
 of `static constexpr` locals. As of late 2025, this sort of thing only works on
 GCC. Clang wrongly garbage-collects the `loc` symbol, getting a linker error.
 And the MSVC on Godbolt doesn't seem to support the C++23 feature yet.
 
 ```cpp
-template<const source_location* Loc>
+template<const std::source_location* Loc>
 struct SourceTag { ... };
 #define HERE() \
 ([] { \
-  static constexpr auto loc = source_location::current(); \
+  static constexpr auto loc = std::source_location::current(); \
   return SourceTag<&loc>{}; \
 }())
 ```
 
 Technically, one could side-step these issues by creating a custom structural
 type that stores filename & function name as char arrays, and is constructed via
-a macro. Essentially, roll-your-own-`source_location` (be sure to indirect it
+a macro. Essentially, roll-your-own-`std::source_location` (be sure to indirect it
 through a pointer so that `rich_msg` stays 8 bytes!). However, using a
 non-standard type is a heavy interface cost, for a use-case that doesn't seem
 that critical. After all, one can usually easily search for an immortal string

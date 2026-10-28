@@ -149,7 +149,6 @@ folly_add_library(
     folly_lang_exception
     folly_lang_pretty
     folly_portability
-    folly_portability_source_location
     folly_result_detail_rich_exception_ptr_storage
     folly_result_rich_error_fwd
     folly_traits
@@ -182,7 +181,6 @@ folly_add_library(
     fmt::fmt
     folly_lang_exception
     folly_lang_safe_assert
-    folly_portability_source_location
     folly_utility
 )
 

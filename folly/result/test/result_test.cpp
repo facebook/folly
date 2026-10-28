@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <concepts>
 #include <cstdint>
 #include <functional>
+#include <source_location>
 #include <utility>
+
+#include <gtest/gtest.h>
 
 #include <folly/coro/GtestHelpers.h>
 #include <folly/coro/Traits.h>
@@ -1522,14 +1523,14 @@ TEST(Result, of_exception_wrapper) {
 // Minimal test for error_or_stopped fmt/ostream formatting.
 // See `rich_exception_ptr_fmt_test.cpp` for comprehensive formatting tests.
 TEST(Result, error_or_stopped_format) {
-  auto line = source_location::current().line() + 1;
+  auto line = std::source_location::current().line() + 1;
   auto eos = epitaph(error_or_stopped{stopped_result}, "ctx");
   checkFormat(
       eos,
       fmt::format(
           "folly::OperationCancelled: coroutine operation cancelled"
           " \\[via\\] ctx @ {}:{}",
-          source_location::current().file_name(),
+          std::source_location::current().file_name(),
           line));
 }
 

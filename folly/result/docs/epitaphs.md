@@ -45,7 +45,7 @@ There is no way to add rich context *into* the `logic_error`, so we wrap it.
 Internally, `epitaph` stores:
   - A `rich_exception_ptr` owning the original `logic_error`, accessible via
     `underlying_error()` for O(1) unwrapping by `get_exception<Ex>()`.
-  - A `source_location` of the `epitaph` call-site.
+  - A `std::source_location` of the `epitaph` call-site.
   - A `rich_msg` message (empty, literal, or heap-formatted).
 
 **Important:** Epitaphs **cannot** add error codes. Codes direct control flow,

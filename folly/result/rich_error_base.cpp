@@ -14,22 +14,23 @@
  * limitations under the License.
  */
 
+#include <ostream>
+#include <source_location>
+
 #include <folly/result/rich_error_base.h>
 #include <folly/result/rich_exception_ptr.h>
 
 #include <folly/lang/SafeAssert.h>
 
-#include <ostream>
-
 #if FOLLY_HAS_RESULT
 
 namespace folly {
 
-source_location rich_error_base::source_location() const noexcept {
+std::source_location rich_error_base::source_location() const noexcept {
   // The content of the default-constructed class is unspecified by the
   // standard, but ...  libstdc++, libc++, and MSVC all default to an empty
   // name.  So, rather than make this `std::optional`, our `format_to` omits
-  // the location if `sl.file_name() != source_location{}.file_name()`.
+  // the location if `sl.file_name() != std::source_location{}.file_name()`.
   return {};
 }
 
@@ -50,7 +51,7 @@ void rich_error_base::format_to(fmt::appender& out) const {
   fmt::format_to(out, "{}", fmt_codes);
   auto sl = source_location();
   // See `rich_error_base::source_location()` for the rationale
-  if (sl.file_name() != folly::source_location{}.file_name()) {
+  if (sl.file_name() != std::source_location{}.file_name()) {
     // Omit the separator if the previous steps had no output.
     if (msg[0] || fmt_codes.saw_code_) {
       fmt::format_to(out, " @ ");

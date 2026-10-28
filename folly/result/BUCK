@@ -178,7 +178,6 @@ fb_dirsync_cpp_library(
         "//folly:utility",
         "//folly/lang:exception",
         "//folly/lang:pretty",
-        "//folly/portability:source_location",
         "//folly/result/detail:rich_exception_ptr_storage",
     ],
 )
@@ -213,7 +212,6 @@ fb_dirsync_cpp_library(
         "//folly:utility",
         "//folly/lang:exception",
         "//folly/lang:safe_assert",
-        "//folly/portability:source_location",
     ],
 )
 

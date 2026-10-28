@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <source_location>
 
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h> // FOLLY_HAS_RESULT
@@ -41,10 +42,10 @@ namespace detail {
 // Source location (the regular epitaph case).
 struct epitaph_source_location {
   static constexpr bool has_stack = false;
-  source_location loc_{};
+  std::source_location loc_{};
 
   epitaph_source_location() = default;
-  explicit epitaph_source_location(source_location loc)
+  explicit epitaph_source_location(std::source_location loc)
       : loc_{std::move(loc)} {} // NOLINT(performance-move-const-arg)
 };
 
@@ -113,8 +114,9 @@ void format_epitaph_stack(
 
 // Common epitaph implementation parameterized on location storage.
 //
-//   `epitaph_source_location`: regular epitaph (message + `source_location`)
-//   `epitaph_stack_location<Opt>`: stack epitaph (message + inline frames)
+//   `epitaph_source_location`: regular epitaph (message +
+//   `std::source_location`) `epitaph_stack_location<Opt>`: stack epitaph
+//   (message + inline frames)
 //
 // IMPORTANT: Epitaphs should NEVER support adding codes.  Codes often direct
 // program control flow, whereas epitaphs are inherently discardable.  There
@@ -201,7 +203,7 @@ class epitaph_impl : public rich_error_base {
     setup_underlying();
   }
 
-  folly::source_location source_location() const noexcept override {
+  std::source_location source_location() const noexcept override {
     if constexpr (Location::has_stack) {
       return {};
     } else {

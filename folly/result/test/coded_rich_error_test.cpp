@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <source_location>
+
 #include <folly/result/coded_rich_error.h>
 
 #include <folly/portability/GMock.h>
@@ -28,7 +30,7 @@ namespace folly::test {
 
 using namespace folly::string_literals;
 
-const auto test_file_name = source_location::current().file_name();
+const auto test_file_name = std::source_location::current().file_name();
 
 constexpr bool testImmortalCodedRichError() {
   { // default message is empty
@@ -69,7 +71,7 @@ constexpr bool testMultipleCodes() {
 static_assert(testMultipleCodes());
 
 TEST(CodedRichErrorTest, basics) {
-  auto err_line = source_location::current().line() + 1;
+  auto err_line = std::source_location::current().line() + 1;
   auto err1 = make_coded_rich_error(A1::ONE_A1, "msg");
 
   auto accessError = [&err_line](const auto& err) {
@@ -95,7 +97,7 @@ TEST(CodedRichErrorTest, basics) {
 
 TEST(CodedRichErrorTest, accessAndFormatError) {
   {
-    auto err_line = source_location::current().line() + 1;
+    auto err_line = std::source_location::current().line() + 1;
     auto err = make_coded_rich_error(A1::ONE_A1, "msg {} and {}", 42, "test");
 
     const char* msg = "msg 42 and test";

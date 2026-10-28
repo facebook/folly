@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <source_location>
+
 #include <folly/result/epitaph.h>
 
 #include <folly/result/test/common.h>
@@ -32,7 +34,7 @@ namespace folly::test {
 using namespace folly::detail;
 using namespace folly::string_literals;
 
-const auto test_file_name = source_location::current().file_name();
+const auto test_file_name = std::source_location::current().file_name();
 
 struct TinyErr : rich_error_base {
   using folly_get_exception_hint_types = rich_error_hints<TinyErr>;
@@ -46,7 +48,7 @@ TEST(RichErrorBaseFormatTest, SameErrorDirectThenUnderlying2) {
   };
 
   rich_exception_ptr inner{rich_error<MyErr>{}};
-  auto err_line = source_location::current().line() + 1;
+  auto err_line = std::source_location::current().line() + 1;
   rich_error<epitaph_non_value> err{std::move(inner), rich_msg{"msg"}};
   checkFormatOfErrAndRep<MyErr, rich_error_base, std::exception>(
       err,
@@ -89,7 +91,7 @@ TEST(EpitaphTest, accessEpitaphsAndUnderlyingException) {
     // Cover the underlying `rich_error_base` interface (except codes)
     EXPECT_EQ(bare_msg, rex->partial_message());
     EXPECT_EQ(
-        source_location{}.file_name(), rex->source_location().file_name());
+        std::source_location{}.file_name(), rex->source_location().file_name());
     EXPECT_TRUE(nullptr == rex->next_error_for_epitaph());
     EXPECT_TRUE(nullptr == rex->underlying_error());
     EXPECT_TRUE(std::nullopt == get_rich_error_code<A1>(*rex));
@@ -114,7 +116,7 @@ TEST(EpitaphTest, accessEpitaphsAndUnderlyingException) {
   };
 
   // Add and test 1 epitaph wrapper
-  auto err_line1 = source_location::current().line() + 1;
+  auto err_line1 = std::source_location::current().line() + 1;
   auto eos1 = epitaph(std::move(eos0));
 
   assertOuter(eos1, err_line1);
@@ -124,7 +126,7 @@ TEST(EpitaphTest, accessEpitaphsAndUnderlyingException) {
 
   // Wrap a second epitaph wrapper to ensure skip-to-underlying, not
   // skip-to-next
-  auto err_line2 = source_location::current().line() + 1;
+  auto err_line2 = std::source_location::current().line() + 1;
   auto eos2 = epitaph(std::move(eos1), "literal");
   assertOuter(eos2, err_line2, "literal");
   assertUnderlying(

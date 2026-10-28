@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <source_location>
+
 #include <folly/result/immortal_rich_error.h>
 
 #include <folly/result/epitaph.h>
@@ -30,7 +32,7 @@ namespace folly::test {
 using namespace folly::detail;
 using namespace folly::string_literals;
 
-const auto test_file_name = source_location::current().file_name();
+const auto test_file_name = std::source_location::current().file_name();
 
 struct MyErr : rich_error_base {
   using folly_get_exception_hint_types = rich_error_hints<MyErr>;
@@ -42,14 +44,14 @@ struct MyErr : rich_error_base {
   //
   // To plumb it into `rich_msg` we'd have to give it a new ctor, but since
   // this doesn't seem practically useful, I'm leaving it as demoware.
-  constexpr MyErr(rich_msg msg, const folly::source_location*)
+  constexpr MyErr(rich_msg msg, const std::source_location*)
       : msg_{std::move(msg)} {}
 
   constexpr const char* partial_message() const noexcept override {
     return msg_.message();
   }
 
-  // NB: Since we immortals currently don't use `source_location` (see ctor
+  // NB: Since we immortals currently don't use `std::source_location` (see ctor
   // above), it would reduce binary size for an immortal-only error to use
   // `const char*`, like you can see below in `ConstErrWithNext`.
   //
@@ -133,7 +135,7 @@ static_assert(testCopyMoveAndAccess(
     immortal_rich_error<rich_error<MyErr>, "howdy"_litv>.ptr(), // same
     "howdy"));
 // See the corresponding `MyErr` ctor for the rationale.
-inline constexpr auto testSrcLoc = source_location::current();
+inline constexpr auto testSrcLoc = std::source_location::current();
 static_assert(testCopyMoveAndAccess(
     immortal_rich_error<MyErr, "hi"_litv, &testSrcLoc>.ptr(),
     immortal_rich_error<MyErr, "hi"_litv, &testSrcLoc>.ptr(), // same
@@ -221,7 +223,7 @@ TEST(ImmortalRichErrorTest, formatWithEpitaphs) {
   auto rep = immortal_rich_error<MyErr>.ptr();
   EXPECT_EQ("default MyErr", fmt::format("{}", get_rich_error(rep)));
 
-  auto err_line = source_location::current().line() + 1;
+  auto err_line = std::source_location::current().line() + 1;
   rich_error<epitaph_non_value> err{std::move(rep), rich_msg{"msg"}};
 
   checkFormatOfErrAndRep<MyErr, rich_error_base, std::exception>(

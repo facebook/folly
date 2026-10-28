@@ -16,12 +16,13 @@
 
 #pragma once
 
+#include <source_location>
+
 #include <fmt/format.h>
 
 #include <folly/Utility.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/SafeAssert.h>
-#include <folly/portability/SourceLocation.h>
 
 namespace folly {
 
@@ -47,25 +48,26 @@ namespace ext { // For extension authors -- public details
 /// since template deduction does not consider implicit conversions.
 ///
 /// BUG ALERT: Due to https://github.com/llvm/llvm-project/issues/137907 avoid
-/// writing constructors like this: T(source_location sl =
-/// source_location::current()) A constructor with a defaulted
-/// `source_location` should take at least one mandatory argument to avoid this
-/// pitfall.
+/// writing constructors like this: T(std::source_location sl =
+/// std::source_location::current()) A constructor with a defaulted
+/// `std::source_location` should take at least one mandatory argument to avoid
+/// this pitfall.
 template <typename... Args>
 class format_string_and_location {
  private:
   friend class ::folly::rich_msg;
 
-  source_location loc_;
+  std::source_location loc_;
   fmt::format_string<Args...> fmt_str_;
   literal_c_str lit_str_;
 
  public:
   /* implicit */ consteval format_string_and_location(
-      const char* str, source_location loc = source_location::current())
+      const char* str,
+      std::source_location loc = std::source_location::current())
       : loc_{std::move(loc)}, fmt_str_{str}, lit_str_{str} {}
 
-  constexpr source_location location() const { return loc_; }
+  constexpr std::source_location location() const { return loc_; }
 
   constexpr exception_shared_string as_exception_shared_string(Args const&...)
     requires(sizeof...(Args) == 0)
@@ -99,7 +101,7 @@ class format_string_and_location {
 class rich_msg {
  private:
   exception_shared_string msg_;
-  source_location loc_;
+  std::source_location loc_;
 
  public:
   // Writing `rich_error{"fmt {} str {}", 1, 2}` auto-captures the location.
@@ -117,7 +119,7 @@ class rich_msg {
   // This overload exists specifically for use in `immortal_rich_error`, which
   // passes all of the error's constructor arguments as template parameters.
   // In C++20, this imposes severe constraints.  We cannot pass:
-  //   - `source_location` since it's not a structural type.
+  //   - `std::source_location` since it's not a structural type.
   //   - `rich_msg`, since it's not structural (and can likely never be).
   //   - String literals, or `literal_c_str` because `char*` is forbidden in
   //     template parameters.
@@ -130,10 +132,12 @@ class rich_msg {
   /* implicit */ consteval rich_msg(vtag_t<Str>)
       : msg_{literal_c_str{Str.c_str()}}, loc_{} {}
 
-  rich_msg(exception_shared_string msg, source_location loc)
+  rich_msg(exception_shared_string msg, std::source_location loc)
       : msg_{std::move(msg)}, loc_{std::move(loc)} {}
 
-  constexpr const source_location& location() const noexcept { return loc_; }
+  constexpr const std::source_location& location() const noexcept {
+    return loc_;
+  }
   constexpr const char* message() const noexcept { return msg_.what(); }
   exception_shared_string&& shared_string() && noexcept {
     return std::move(msg_);
