@@ -177,6 +177,7 @@ def build_zipapp(args, path_map):
 def create_main_module(args, inst_dir, path_map):
     if not args.main:
         assert "__main__.py" in path_map
+        os.chmod(os.path.join(inst_dir, "__main__.py"), 0o755)
         return
 
     dest_path = os.path.join(inst_dir, "__main__.py")

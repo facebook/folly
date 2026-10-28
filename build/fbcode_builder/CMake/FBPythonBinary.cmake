@@ -218,6 +218,12 @@ function(add_fb_python_executable TARGET)
   # "WATCHMAN_WAIT_PATH=$<TARGET_PROPERTY:watchman-wait.GEN_PY_EXE,EXECUTABLE>"
   set_property(TARGET "${TARGET}.GEN_PY_EXE"
       PROPERTY EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/${output_file}")
+
+  # Let install_fb_python_executable() install the whole directory.
+  if(is_dir_output)
+    set_property(TARGET "${TARGET}.GEN_PY_EXE"
+        PROPERTY OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/${zipapp_output}")
+  endif()
 endfunction()
 
 # Define a python unittest executable.
@@ -557,12 +563,18 @@ endfunction()
 #
 # Install an FB-style packaged python binary.
 #
-# - DESTINATION <export-name>:
-#   Associate the installed target files with the given export-name.
+# - DESTINATION <dir>:
+#   The directory to install the executable into, relative to
+#   ${CMAKE_INSTALL_PREFIX}.  Defaults to bin.
+# - LIB_DESTINATION <dir>:
+#   For a TYPE dir executable, install its directory as <dir>/<TARGET>,
+#   relative to ${CMAKE_INSTALL_PREFIX}, and make the executable in
+#   DESTINATION a symlink to its __main__.py (except on Windows).  Defaults
+#   to lib.
 #
 function(install_fb_python_executable TARGET)
   # Parse the arguments
-  set(one_value_args DESTINATION)
+  set(one_value_args DESTINATION LIB_DESTINATION)
   set(multi_value_args)
   fb_cmake_parse_args(
     ARG "" "${one_value_args}" "${multi_value_args}" "${ARGN}"
@@ -571,11 +583,35 @@ function(install_fb_python_executable TARGET)
   if(NOT DEFINED ARG_DESTINATION)
     set(ARG_DESTINATION bin)
   endif()
+  if(NOT DEFINED ARG_LIB_DESTINATION)
+    set(ARG_LIB_DESTINATION lib)
+  endif()
 
-  install(
-    PROGRAMS "$<TARGET_PROPERTY:${TARGET}.GEN_PY_EXE,EXECUTABLE>"
-    DESTINATION "${ARG_DESTINATION}"
-  )
+  get_target_property(output_dir "${TARGET}.GEN_PY_EXE" OUTPUT_DIR)
+  if(output_dir)
+    set(lib_dir "${ARG_LIB_DESTINATION}/${TARGET}")
+    install(
+      DIRECTORY "${output_dir}/"
+      DESTINATION "${lib_dir}"
+      USE_SOURCE_PERMISSIONS
+    )
+    if(NOT WIN32)
+      file(
+        RELATIVE_PATH link_target
+        "/${ARG_DESTINATION}" "/${lib_dir}/__main__.py"
+      )
+      set(bin_dir "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${ARG_DESTINATION}")
+      install(CODE "
+        file(MAKE_DIRECTORY \"${bin_dir}\")
+        file(CREATE_LINK \"${link_target}\" \"${bin_dir}/${TARGET}\" SYMBOLIC)
+      ")
+    endif()
+  else()
+    install(
+      PROGRAMS "$<TARGET_PROPERTY:${TARGET}.GEN_PY_EXE,EXECUTABLE>"
+      DESTINATION "${ARG_DESTINATION}"
+    )
+  endif()
 endfunction()
 
 #
