@@ -347,6 +347,24 @@ target_link_libraries(folly_test_util PUBLIC folly ${LIBGMOCK_LIBRARIES})
 apply_folly_compile_options_to_target(folly_test_util)
 list(APPEND FOLLY_INSTALL_TARGETS folly_test_util)
 
+# The main() of folly's tests, for downstream test executables. Each target
+# that links this compiles TestMain.cpp itself, against its own GoogleTest.
+add_library(folly_test_main INTERFACE)
+add_library(Folly::folly_test_main ALIAS folly_test_main)
+target_sources(
+  folly_test_main
+  INTERFACE
+    $<BUILD_INTERFACE:${FOLLY_DIR}/test/common/TestMain.cpp>
+    $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}/folly/test/common/TestMain.cpp>
+)
+target_link_libraries(folly_test_main INTERFACE folly)
+list(APPEND FOLLY_INSTALL_TARGETS folly_test_main)
+install(
+  FILES
+  ${FOLLY_DIR}/test/common/TestMain.cpp
+  DESTINATION ${INCLUDE_INSTALL_DIR}/folly/test/common
+)
+
 install(
   TARGETS
   ${FOLLY_INSTALL_TARGETS}
