@@ -132,8 +132,9 @@
 ///
 /// NOTE: Calling `try_get()` **before**
 /// `SingletonVault::registrationComplete()` has completed (i.e. before
-/// `folly::init()` completed) is a logic error. In this case, `try_get()`
-///  will abort via `singletonWarnCreateBeforeRegistrationCompleteAndAbort()`.
+/// the `folly::Init` constructor has returned) is a logic error. In this
+/// case, `try_get()` will abort via
+/// `singletonWarnCreateBeforeRegistrationCompleteAndAbort()`.
 /// @class folly::Singleton
 
 #pragma once

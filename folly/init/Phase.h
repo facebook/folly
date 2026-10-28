@@ -35,8 +35,8 @@ enum class ProcessPhase {
 
 /// Start Regular phase and register handler to set Exit phase.
 /// To be called exactly once in each program that uses Folly.
-/// Ideally, it is to be called from folly::init(), which in turn
-/// is to be called by every program that uses Folly.
+/// Ideally, it is to be called from folly::Init, which in turn
+/// is to be constructed by every program that uses Folly.
 void set_process_phases();
 
 /// Get the current process phase.

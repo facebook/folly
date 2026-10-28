@@ -34,7 +34,7 @@ class InitOptions {
   bool install_fatal_signal_callbacks{true};
 
   // mask of all fatal (default handler of terminating the process) signals for
-  // which `init()` will install handler that print stack traces and invokes
+  // which `Init` will install handler that print stack traces and invokes
   // previously established handler  (or terminate if there were none).
   // Signals that are not in `symbolizer::kAllFatalSignals` will be ignored
   // if passed here
@@ -98,14 +98,5 @@ class [[nodiscard]] Init {
 
 void unsafe_unscoped_init(int* argc, char*** argv, bool removeFlags = true);
 void unsafe_unscoped_init(int* argc, char*** argv, InitOptions options);
-
-[[deprecated("Use the RAII version Init")]] inline void init(
-    int* argc, char*** argv, bool removeFlags = true) {
-  unsafe_unscoped_init(argc, argv, removeFlags);
-}
-[[deprecated("Use the RAII version Init")]] inline void init(
-    int* argc, char*** argv, InitOptions options) {
-  unsafe_unscoped_init(argc, argv, std::move(options));
-}
 
 } // namespace folly
