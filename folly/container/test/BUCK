@@ -9,6 +9,7 @@ load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_benchmark.bzl", "fb_dir
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_binary.bzl", "fb_dirsync_cpp_binary")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_library.bzl", "fb_dirsync_cpp_library")
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load(
     "../../defs.bzl",
     "FBANDROID_CXXFLAGS",
@@ -16,6 +17,10 @@ load(
 )
 
 oncall("fbcode_entropy_wardens_folly")
+
+_F14_FALLBACK_CI_LABELS = ci.labels(
+    ci.map(ci.buckconfig("cxx.extra_cxxflags", "-DFOLLY_F14_FORCE_FALLBACK=1")),
+)
 
 fb_dirsync_cpp_unittest(
     name = "dynamic_ring_queue_test",
@@ -602,6 +607,7 @@ fb_dirsync_cpp_unittest(
     srcs = [
         "F14MapTest.cpp",
     ],
+    labels = _F14_FALLBACK_CI_LABELS,
     preprocessor_flags = ["-DFOLLY_F14_FORCE_FALLBACK=1"],
     deps = [
         "fbsource//third-party/glog:glog",
@@ -655,6 +661,7 @@ fb_dirsync_cpp_unittest(
     srcs = [
         "F14SetTest.cpp",
     ],
+    labels = _F14_FALLBACK_CI_LABELS,
     preprocessor_flags = ["-DFOLLY_F14_FORCE_FALLBACK=1"],
     deps = [
         "fbsource//third-party/glog:glog",
