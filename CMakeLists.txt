@@ -268,6 +268,8 @@ list(
   ${FOLLY_DIR}/io/async/test/TimeUtil.h
   ${FOLLY_DIR}/io/async/test/UndelayedDestruction.h
   ${FOLLY_DIR}/io/async/test/Util.h
+  ${FOLLY_DIR}/logging/test/TestLogHandler.h
+  ${FOLLY_DIR}/synchronization/test/Barrier.h
   ${FOLLY_DIR}/synchronization/test/Semaphore.h
   ${FOLLY_DIR}/test/DeterministicSchedule.h
   ${FOLLY_DIR}/test/TestUtils.h
@@ -332,6 +334,8 @@ add_library(
   folly_test_util
   ${FOLLY_DIR}/test/DeterministicSchedule.cpp
   ${FOLLY_DIR}/json/JsonTestUtil.cpp
+  ${FOLLY_DIR}/io/async/test/TimeUtil.cpp
+  ${FOLLY_DIR}/logging/test/TestLogHandler.cpp
 )
 add_library(Folly::folly_test_util ALIAS folly_test_util)
 target_compile_definitions(
