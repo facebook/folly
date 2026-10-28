@@ -233,6 +233,7 @@ folly_add_library(
   NAME range_traits
   HEADERS range_traits.h
   EXPORTED_DEPS
+    folly_portability
     folly_traits
     folly_utility
 )

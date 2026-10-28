@@ -279,6 +279,7 @@ fb_dirsync_cpp_library(
     headers = ["range_traits.h"],
     use_raw_headers = True,
     exported_deps = [
+        "//folly:portability",
         "//folly:traits",
         "//folly:utility",
     ],

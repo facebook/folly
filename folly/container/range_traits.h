@@ -18,6 +18,7 @@
 
 #include <type_traits>
 
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 
@@ -26,6 +27,32 @@
 #endif
 
 namespace folly {
+
+/// from_range_t
+/// from_range
+///
+/// mimic: std::from_range_t, std::from_range, C++23
+///
+/// The tag that selects a container's from-range constructor. Where the
+/// standard library provides std::from_range_t, these are aliases of
+/// std::from_range_t and std::from_range, so one constructor taking
+/// folly::from_range_t accepts std::from_range too. Otherwise they are a
+/// folly-defined tag of the same shape: an empty type whose default
+/// constructor is explicit.
+#if defined(__cpp_lib_ranges_to_container) && \
+    __cpp_lib_ranges_to_container >= 202202L
+
+using std::from_range;
+using std::from_range_t;
+
+#else
+
+struct from_range_t {
+  explicit from_range_t() = default;
+};
+inline constexpr from_range_t from_range{};
+
+#endif
 
 namespace detail {
 

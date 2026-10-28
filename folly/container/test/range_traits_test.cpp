@@ -20,6 +20,7 @@
 #include <list>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #if __has_include(<span>)
@@ -29,6 +30,44 @@
 #include <folly/portability/GTest.h>
 
 struct RangeTraitsTest : testing::Test {};
+
+namespace {
+
+template <typename T>
+void takeByCopyListInitialization(T);
+
+template <typename T>
+concept implicitly_default_constructible = requires {
+  takeByCopyListInitialization<T>({});
+};
+
+struct FromRangeConstructible {
+  template <typename R>
+  explicit FromRangeConstructible(folly::from_range_t, const R& range)
+      : size{std::size(range)} {}
+
+  std::size_t size;
+};
+
+} // namespace
+
+TEST_F(RangeTraitsTest, from_range) {
+  static_assert(
+      std::is_same_v<decltype(folly::from_range), const folly::from_range_t>);
+  static_assert(std::is_trivially_copyable_v<folly::from_range_t>);
+  static_assert(std::is_default_constructible_v<folly::from_range_t>);
+  static_assert(!implicitly_default_constructible<folly::from_range_t>);
+  static_assert(implicitly_default_constructible<std::vector<int>>);
+
+  const std::vector<int> values{1, 2, 3};
+  EXPECT_EQ(3, FromRangeConstructible(folly::from_range, values).size);
+
+#if defined(__cpp_lib_ranges_to_container) && \
+    __cpp_lib_ranges_to_container >= 202202L
+  static_assert(std::is_same_v<folly::from_range_t, std::from_range_t>);
+  EXPECT_EQ(3, FromRangeConstructible(std::from_range, values).size);
+#endif
+}
 
 TEST_F(RangeTraitsTest, is_contiguous_range_v) {
   enum some_enum {};
