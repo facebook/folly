@@ -57,18 +57,25 @@ python3 -m folly.agents.tests.compress_checkpoint_outputs \
   SAMPLE_DIRECTORY >"$checkpoint_map"
 ```
 
-The compressor stores byte-identical outputs once:
+The compressor deduplicates identical content and verifies that every phase can
+be restored with all its relative paths and exact file bytes before removing
+redundant copies. The final `output/` tree remains directly readable. Insert the
+printed `## Checkpoints` section before the debrief in `README.md`, then remove
+the temporary file.
 
-1. For each remaining change, it uses a verified ordinary forward diff only when
-   that diff is less than 60% of the later phase.
-2. It removes stale `artifact` fields from `checkpoints.json` and prints the
-   `## Checkpoints` section.
-3. Insert that section before the debrief in `README.md`, then remove the
-   temporary file.
+Each phase entry gives a complete restore command. `checkpoints.json` names
+every file in that phase. To restore a phase's files into a new directory, run:
 
-Each phase bullet links a full file or says how to reconstruct it. `apply_diffs`
-starts with an earlier state, applies forward diffs from left to right, and
-writes the reconstructed output to stdout.
+```bash
+python3 -m folly.agents.tests.compress_checkpoint_outputs \
+  SAMPLE_DIRECTORY --restore PHASE --destination PATH
+```
+
+Use `initial`, `author`, or `reviewN` for `PHASE`, matching the phase in the
+generated map. `PATH` is the new directory for that phase's complete artifact.
+The command restores every file at its original relative path. Uncompressed
+phases are `output-initial.md`, `output-author.md`, and `output-reviewN.md`. The
+final artifact remains in `output/main.md`.
 
 ## Refresh stale samples
 

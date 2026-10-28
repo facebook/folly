@@ -24,7 +24,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from folly.agents.tests import compress_checkpoint_outputs as compressor
+from folly.agents.tests import (
+    compress_checkpoint_outputs as compressor,
+    directory_snapshot,
+)
 
 
 def make_sample(root: Path, phases: list[tuple[str, str]]) -> None:
@@ -84,30 +87,32 @@ class CompressCheckpointOutputsTest(unittest.TestCase):
             self.assertFalse((sample / "output-author-to-initial.diff").exists())
             self.assertFalse((sample / "output-author-to-review1.diff").exists())
             self.assertTrue((sample / "output-unrelated.diff").is_file())
+            records = json.loads((sample / "checkpoints.json").read_text())
             self.assertEqual(
-                json.loads((sample / "checkpoints.json").read_text()),
-                [
-                    {"phase": "initial"},
-                    {"phase": "author"},
-                    {"phase": "review1"},
-                    {"phase": "review2"},
-                    {"phase": "review3"},
-                ],
+                [record["phase"] for record in records],
+                ["initial", "author", "review1", "review2", "review3"],
             )
-            helper = os.path.relpath(compressor._APPLY_DIFFS, sample)
             self.assertEqual(
-                mapping,
-                f"""## Checkpoints
-
-Below, `apply_diffs` is short for `{helper}`.
-
-- **Initial draft:** [output-initial.md](output-initial.md)
-- **Author review:** `apply_diffs output-initial.md output-initial-to-author.diff`
-- **Review 1:** [output-initial.md](output-initial.md)
-- **Review 2:** [output/main.md](output/main.md)
-- **Review 3:** [output/main.md](output/main.md)
-""",
+                records[-1]["storage"]["files"]["main.md"]["base"], "output/main.md"
             )
+            self.assertIn("--restore author --destination /path/to/author", mapping)
+            for record, (name, expected) in zip(
+                records,
+                (
+                    ("initial", repeated),
+                    ("author", author),
+                    ("review1", repeated),
+                    ("review2", final),
+                    ("review3", final),
+                ),
+            ):
+                self.assertNotIn("artifact", record)
+                destination = sample / f"restore-{name}"
+                compressor.restore(sample, name, destination)
+                self.assertEqual(
+                    directory_snapshot.read(destination),
+                    {Path("main.md"): expected.encode()},
+                )
 
     def test_forward_diffs_reconstruct_each_phase(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -128,18 +133,23 @@ Below, `apply_diffs` is short for `{helper}`.
                 ],
             )
 
-            mapping = compress(sample)
+            compress(sample)
 
             author_diff = "output-initial-to-author.diff"
             review_diff = "output-author-to-review1.diff"
             self.assertTrue((sample / "output-initial.md").is_file())
             self.assertFalse((sample / "output-author.md").exists())
             self.assertFalse((sample / "output-review1.md").exists())
-            self.assertIn(
-                f"`apply_diffs output-initial.md {author_diff} {review_diff}`",
-                mapping,
+            records = json.loads((sample / "checkpoints.json").read_text())
+            self.assertEqual(
+                records[2]["storage"]["files"]["main.md"]["diffs"],
+                [author_diff, review_diff],
             )
-            self.assertEqual(mapping.count("`apply_diffs "), 2)
+            compressor.restore(sample, "review1", sample / "restored")
+            self.assertEqual(
+                directory_snapshot.read(sample / "restored"),
+                {Path("main.md"): review1.encode()},
+            )
 
     def test_diff_threshold_is_strict(self) -> None:
         self.assertTrue(compressor._use_diff(179, 300))
@@ -254,6 +264,35 @@ Below, `apply_diffs` is short for `{helper}`.
 
             with self.assertRaisesRegex(ValueError, "not a regular file"):
                 compress(sample)
+
+    def test_restore_is_exclusive_and_cli_restores_exact_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            sample = root / "sample"
+            sample.mkdir()
+            make_diff_sample(sample)
+            expected = (sample / "output-author.md").read_bytes()
+            compress(sample)
+            destination = root / "restored"
+            self.assertEqual(
+                compressor.main(
+                    [
+                        str(sample),
+                        "--restore",
+                        "author",
+                        "--destination",
+                        str(destination),
+                    ]
+                ),
+                0,
+            )
+            self.assertEqual(
+                directory_snapshot.read(destination), {Path("main.md"): expected}
+            )
+            existing = root / "existing"
+            existing.mkdir()
+            with self.assertRaises(FileExistsError):
+                compressor.restore(sample, "initial", existing)
 
 
 if __name__ == "__main__":

@@ -22,20 +22,22 @@ artifact named by that JSON. The tool deduplicates exact content, preferring
 change, it stores an earlier-to-later normal diff when the diff is less than 60%
 of the later file. It verifies every reconstruction before deleting redundant
 full files, removes stale `artifact` fields from `checkpoints.json`, and prints
-the `## Checkpoints` README section.
+the `## Checkpoints` README section. File membership in `checkpoints.json`
+lets `SAMPLE --restore PHASE --destination PATH` restore a phase as output files.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Sequence, TextIO
+
+from folly.agents.tests import directory_snapshot
 
 
 _STAGED_SCRIPTS = Path(__file__).parent / "folly/agents/scripts"
@@ -175,26 +177,49 @@ def _representations(sample: Path, phases: list[Phase]) -> list[Representation]:
     return result
 
 
-def _reconstruct(sample: Path, representation: Representation) -> bytes:
-    """Use the reader-facing helper to verify one stored representation."""
-    if not representation.diffs:
-        return _read_regular(sample, representation.base)
-    result = subprocess.run(
-        [str(_APPLY_DIFFS), representation.base, *representation.diffs],
-        cwd=sample,
-        check=True,
-        stdout=subprocess.PIPE,
-    )
-    return result.stdout
+def _reconstruct(sample: Path, storage: dict[str, Any]) -> directory_snapshot.Snapshot:
+    entries: directory_snapshot.Snapshot = {}
+    for name, stored in storage["files"].items():
+        relative = Path(name)
+        representation = Representation(stored["base"], tuple(stored["diffs"]))
+        for source in (representation.base, *representation.diffs):
+            path = Path(source)
+            if not path.parts or path.is_absolute() or ".." in path.parts:
+                raise ValueError(f"invalid storage reference: {source}")
+            _read_regular(sample, path)
+        if representation.diffs:
+            result = subprocess.run(
+                [str(_APPLY_DIFFS), representation.base, *representation.diffs],
+                cwd=sample,
+                check=True,
+                stdout=subprocess.PIPE,
+            )
+            entries[relative] = result.stdout
+        else:
+            entries[relative] = _read_regular(sample, representation.base)
+    return entries
 
 
-def _mapping(sample: Path, phases: list[Phase], stored: list[Representation]) -> str:
-    """Render the complete phase-to-storage map for the sample README."""
-    helper = os.path.relpath(_APPLY_DIFFS, sample)
-    lines = ["## Checkpoints", ""]
-    if any(representation.diffs for representation in stored):
-        lines.extend([f"Below, `apply_diffs` is short for `{helper}`.", ""])
-    for phase, representation in zip(phases, stored):
+def restore(sample: Path, phase: str, destination: Path) -> None:
+    """Restore each file at its original relative path."""
+    records = json.loads(_read_regular(sample, "checkpoints.json").decode())
+    matching = [record for record in records if record["phase"] == phase]
+    if len(matching) != 1:
+        raise ValueError(f"expected one checkpoint phase: {phase}")
+    entries = _reconstruct(sample, matching[0]["storage"])
+    if destination.exists() or destination.is_symlink():
+        raise FileExistsError(f"restore destination already exists: {destination}")
+    directory_snapshot.write(entries, destination)
+
+
+def _mapping(phases: list[Phase]) -> str:
+    lines = [
+        "## Checkpoints",
+        "",
+        "From the checkout's `fbcode/`, replace `SAMPLE_DIRECTORY` and each destination path.",
+        "",
+    ]
+    for phase in phases:
         label = (
             "Initial draft"
             if phase.name == "initial"
@@ -204,13 +229,10 @@ def _mapping(sample: Path, phases: list[Phase], stored: list[Representation]) ->
                 else f"Review {phase.name.removeprefix('review')}"
             )
         )
-        if not representation.diffs:
-            target = f"[{representation.base}]({representation.base})"
-        else:
-            target = (
-                f"`apply_diffs {representation.base} {' '.join(representation.diffs)}`"
-            )
-        lines.append(f"- **{label}:** {target}")
+        lines.append(
+            f"- **{label}:** `python3 -m folly.agents.tests.compress_checkpoint_outputs "
+            f"SAMPLE_DIRECTORY --restore {phase.name} --destination /path/to/{phase.name}`"
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -219,11 +241,12 @@ def compress(sample: Path, mapping_output: TextIO) -> None:
     sample = sample.resolve()
     records, phases = _load(sample)
     stored = _representations(sample, phases)
-    for phase, representation in zip(phases, stored):
-        if _reconstruct(sample, representation) != phase.contents:
+    for record, phase, representation in zip(records, phases, stored):
+        record["storage"] = {"files": {"main.md": asdict(representation)}}
+        if _reconstruct(sample, record["storage"]) != {Path("main.md"): phase.contents}:
             raise ValueError(f"could not reconstruct phase {phase.name}")
 
-    mapping_output.write(_mapping(sample, phases, stored))
+    mapping_output.write(_mapping(phases))
     mapping_output.flush()
 
     retained = {
@@ -255,8 +278,15 @@ def compress(sample: Path, mapping_output: TextIO) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("sample", type=Path)
+    parser.add_argument("--restore", metavar="PHASE")
+    parser.add_argument("--destination", type=Path)
     args = parser.parse_args(argv)
-    compress(args.sample, sys.stdout)
+    if (args.restore is None) != (args.destination is None):
+        parser.error("--restore and --destination must be supplied together")
+    if args.restore is None:
+        compress(args.sample, sys.stdout)
+    else:
+        restore(args.sample, args.restore, args.destination)
     return 0
 
 
