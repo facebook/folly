@@ -29,7 +29,10 @@
 #include <cstddef>
 #include <new>
 
-#if !defined(__cpp_lib_hardware_interference_size)
+// GCC < 12 does not know -Winterference-size, which Align.h disables when the
+// standard library provides the constant
+#if !defined(__cpp_lib_hardware_interference_size) && \
+    (defined(__clang__) || __GNUC__ >= 12)
 #define __cpp_lib_hardware_interference_size 201703L
 namespace std {
 inline constexpr std::size_t hardware_destructive_interference_size = 64;
