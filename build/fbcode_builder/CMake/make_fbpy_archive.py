@@ -124,6 +124,15 @@ def populate_install_tree(inst_dir, path_map):
             pass
 
 
+def remove_output(path):
+    """Remove an earlier build's output, which is a directory if that build
+    used a different --type."""
+    if os.path.isdir(path) and not os.path.islink(path):
+        shutil.rmtree(path)
+    elif os.path.lexists(path):
+        os.unlink(path)
+
+
 def build_pex(args, path_map):
     """Create a self executing python binary using the PEX tool
 
@@ -151,6 +160,7 @@ def build_pex(args, path_map):
             + ["-e", args.main]
         )
 
+        remove_output(args.output)
         os.replace(tmp_output, args.output)
 
 
@@ -171,6 +181,7 @@ def build_zipapp(args, path_map):
         zipapp.create_archive(
             inst_dir, target=tmp_output, interpreter=args.python, main=args.main
         )
+        remove_output(args.output)
         os.replace(tmp_output, args.output)
 
 
@@ -208,6 +219,8 @@ def build_install_dir(args, path_map):
         inst_dir = os.path.join(tmpdir, "tree")
         populate_install_tree(inst_dir, path_map)
         create_main_module(args, inst_dir, path_map)
+        os.utime(os.path.join(inst_dir, "__main__.py"), None)
+        remove_output(args.output)
         os.rename(inst_dir, args.output)
 
 

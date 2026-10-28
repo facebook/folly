@@ -160,16 +160,18 @@ function(add_fb_python_executable TARGET)
       set(zipapp_output_file "${zipapp_output}/__main__.py")
       # Update output_file to match zipapp_output_file for dir type
       set(output_file "${zipapp_output_file}")
-      list(APPEND
-        extra_cmd_params
-        COMMAND "${CMAKE_COMMAND}" -E remove_directory "${zipapp_output}"
-      )
     endif()
   endif()
 
   if(DEFINED ARG_MAIN_MODULE)
     list(APPEND make_py_args "--main" "${ARG_MAIN_MODULE}")
   endif()
+
+  # Rebuild when the type changes. Otherwise an output that an earlier build
+  # made with another type looks up to date: a directory where a zipapp is
+  # expected, for example.
+  set(type_file "${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.py_type")
+  file(GENERATE OUTPUT "${type_file}" CONTENT "${ARG_TYPE}")
 
   add_custom_command(
     OUTPUT "${zipapp_output_file}"
@@ -182,6 +184,7 @@ function(add_fb_python_executable TARGET)
       ${source_files}
       "${TARGET}.main_lib.py_sources_built"
       "${FB_MAKE_PYTHON_ARCHIVE}"
+      "${type_file}"
   )
 
   if(WIN32)
