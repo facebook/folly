@@ -18,21 +18,7 @@ include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
 include(CMakePushCheckState)
 
-function (folly_manifest_path manifest out)
-  # for in-fbsource builds
-  set(path
-      "${CMAKE_CURRENT_SOURCE_DIR}/../opensource/fbcode_builder/manifests/${manifest}"
-  )
-  if (NOT EXISTS "${path}")
-    # For shipit-transformed builds
-    set(path
-        "${CMAKE_CURRENT_SOURCE_DIR}/build/fbcode_builder/manifests/${manifest}"
-    )
-  endif ()
-  set(${out}
-      "${path}"
-      PARENT_SCOPE)
-endfunction ()
+include(FBFetchFromManifest)
 
 # Fetch the archive or commit `manifest` pins, so a fetched dependency cannot
 # drift from the one getdeps builds. OVERRIDE_FIND_PACKAGE makes a later
@@ -41,42 +27,6 @@ endfunction ()
 # directories are not set in the caller's scope; read them back with
 # FetchContent_GetProperties.
 function (folly_fetch_from_manifest name manifest)
-  folly_manifest_path(${manifest} path)
-  file(READ "${path}" text)
-  include(FetchContent)
-  # A fetched dependency is a build-time convenience, not part of what folly
-  # installs, so suppress its install rules. Consumers get it from the
-  # find_package() calls in folly-config.cmake instead.
-  set(exclude "")
-  if (CMAKE_VERSION VERSION_LESS 3.28)
-    message(
-      WARNING
-        "Fetching ${name} needs CMake 3.28 to keep it out of folly's install, "
-        "so install will fail. Install ${name}, or configure with "
-        "-DCMAKE_SKIP_INSTALL_RULES=ON to build without installing.")
-  else ()
-    set(exclude EXCLUDE_FROM_ALL)
-  endif ()
-  if (text MATCHES
-      "url = (https://[^\r\n]+\\.tar\\.gz)[\r\n]+sha256 = ([0-9a-f]+)")
-    message(STATUS "${name} not found, fetching ${CMAKE_MATCH_1}")
-    FetchContent_Declare(
-      ${name}
-      URL "${CMAKE_MATCH_1}"
-      URL_HASH SHA256=${CMAKE_MATCH_2}
-      OVERRIDE_FIND_PACKAGE ${exclude})
-  elseif (text MATCHES "repo_url = ([^\r\n]+)[\r\n]+rev = ([0-9a-f]+)")
-    # A revision pins the tree as tightly as the sha256 above.
-    message(
-      STATUS "${name} not found, fetching ${CMAKE_MATCH_1} ${CMAKE_MATCH_2}")
-    FetchContent_Declare(
-      ${name}
-      GIT_REPOSITORY "${CMAKE_MATCH_1}"
-      GIT_TAG "${CMAKE_MATCH_2}"
-      OVERRIDE_FIND_PACKAGE ${exclude})
-  else ()
-    message(FATAL_ERROR "no archive or pinned commit in ${path}")
-  endif ()
   # Some dependencies build a static library whatever BUILD_SHARED_LIBS says,
   # gflags and libevent among them, and folly links those into its shared
   # libraries. An ELF linker takes that only if the objects are position
@@ -84,13 +34,7 @@ function (folly_fetch_from_manifest name manifest)
   if (BUILD_SHARED_LIBS)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
   endif ()
-  # CMAKE_REQUIRED_* configure folly's own check_* calls, and a subproject
-  # inherits them. An imported target such as Threads::Threads is absent from
-  # the separate project a try_compile() generates, so a dependency's own checks
-  # fail there with "target was not found".
-  cmake_push_check_state(RESET)
-  FetchContent_MakeAvailable(${name})
-  cmake_pop_check_state()
+  fb_fetch_from_manifest(${name} ${manifest} OVERRIDE_FIND_PACKAGE)
   set_property(GLOBAL APPEND PROPERTY FOLLY_FETCHED_DEPS ${name})
 endfunction ()
 
@@ -258,14 +202,6 @@ set(GLOG_LIBRARY glog::glog)
 set(GLOG_LIBRARIES glog::glog)
 ")
   set_property(GLOBAL APPEND PROPERTY FOLLY_BUILD_LOCAL_TARGETS glog glog::glog)
-  # glog's own install(EXPORT glog-targets) is validated even though nothing
-  # installs it, and it names the fetched gflags. Confine that edge too.
-  get_target_property(folly_glog_link glog INTERFACE_LINK_LIBRARIES)
-  if (folly_glog_link)
-    folly_localize_deps(folly_glog_link ${folly_glog_link})
-    set_property(TARGET glog PROPERTY INTERFACE_LINK_LIBRARIES
-                                      ${folly_glog_link})
-  endif ()
 endif ()
 set(FOLLY_HAVE_LIBGLOG ON)
 list(APPEND FOLLY_LINK_LIBRARIES glog::glog)
@@ -321,15 +257,8 @@ endif ()
 # configure; that is only workable because nothing here compiles against
 # OpenSSL at configure time.
 function (folly_build_openssl)
-  folly_manifest_path(openssl path)
-  file(READ "${path}" text)
-  if (NOT text MATCHES
-      "url = (https://[^\r\n]+\\.tar\\.gz)[\r\n]+sha256 = ([0-9a-f]+)")
-    message(FATAL_ERROR "no archive in ${path}")
-  endif ()
-  # Captured now: any intervening command that matches clobbers CMAKE_MATCH_*.
-  set(url "${CMAKE_MATCH_1}")
-  set(sha "${CMAKE_MATCH_2}")
+  fb_manifest_value(openssl download url url)
+  fb_manifest_value(openssl download sha256 sha)
   # The trailing letter matters: 1.1.x releases are versioned 1.1.1w and the
   # like, and that is the string FindOpenSSL would have reported.
   if (NOT url MATCHES "openssl-([0-9]+\\.[0-9]+\\.[0-9]+[a-z]*)")
