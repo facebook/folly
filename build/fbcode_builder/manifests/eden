@@ -28,6 +28,7 @@ re2
 libgit2
 pexpect
 python-psutil
+python-parameterized
 python-toml
 python-filelock
 edencommon
