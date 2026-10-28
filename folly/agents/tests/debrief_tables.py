@@ -48,7 +48,7 @@ def _phase_label(phase: str) -> str:
 def _tokens(record: dict[str, Any]) -> dict[str, int]:
     """Combine author and nested-review usage into billed categories."""
     author = record["author_tokens"]
-    reviewers = record["reviewer_tokens"]
+    reviewers = [reviewer for reviewer in record["reviewer_tokens"] if reviewer]
     cached = author["cached_input_tokens"] + sum(
         reviewer["cached_input_tokens"] for reviewer in reviewers
     )
@@ -96,7 +96,11 @@ def _impact_table(records: list[dict[str, Any]], model: str) -> list[str]:
     costs: list[Decimal | None] = []
     durations = []
     for record in records:
-        cost = _cost(_tokens(record), model)
+        cost = (
+            None
+            if any(not reviewer for reviewer in record["reviewer_tokens"])
+            else _cost(_tokens(record), model)
+        )
         costs.append(cost.quantize(_COST_PRECISION) if cost is not None else None)
         duration = Decimal(str(record["wall_seconds"])).quantize(_TIME_PRECISION)
         durations.append(duration)
@@ -126,24 +130,34 @@ def _notes(model: str) -> list[str]:
 
 def _token_table(records: list[dict[str, Any]]) -> list[str]:
     """Show the billed token categories behind the cost estimate."""
-    rows = [(_phase_label(record["phase"]), _tokens(record)) for record in records]
+    rows = [
+        (
+            _phase_label(record["phase"]),
+            _tokens(record),
+            " + ?"
+            if any(not reviewer for reviewer in record["reviewer_tokens"])
+            else "",
+        )
+        for record in records
+    ]
     total_tokens = {
-        name: sum(tokens[name] for _, tokens in rows)
+        name: sum(tokens[name] for _, tokens, _ in rows)
         for name in ("uncached_input", "cached_input", "cache_write", "output")
     }
+    total_unknown = " + ?" if any(unknown for _, _, unknown in rows) else ""
     return [
         "| Phase | Uncached input | Cached input | Cache write | Output |",
         "| --- | ---: | ---: | ---: | ---: |",
         *(
-            f"| {phase} | {tokens['uncached_input']:,} | "
-            f"{tokens['cached_input']:,} | {tokens['cache_write']:,} | "
-            f"{tokens['output']:,} |"
-            for phase, tokens in rows
+            f"| {phase} | {tokens['uncached_input']:,}{unknown} | "
+            f"{tokens['cached_input']:,}{unknown} | {tokens['cache_write']:,}{unknown} | "
+            f"{tokens['output']:,}{unknown} |"
+            for phase, tokens, unknown in rows
         ),
-        f"| **Production total** | **{total_tokens['uncached_input']:,}** | "
-        f"**{total_tokens['cached_input']:,}** | "
-        f"**{total_tokens['cache_write']:,}** | "
-        f"**{total_tokens['output']:,}** |",
+        f"| **Production total** | **{total_tokens['uncached_input']:,}{total_unknown}** | "
+        f"**{total_tokens['cached_input']:,}{total_unknown}** | "
+        f"**{total_tokens['cache_write']:,}{total_unknown}** | "
+        f"**{total_tokens['output']:,}{total_unknown}** |",
     ]
 
 
@@ -155,6 +169,19 @@ def render(records: list[dict[str, Any]], model: str) -> str:
             "",
             *_token_table(records),
             "",
+            *(
+                [
+                    "`+ ?` denotes additional unrecorded review usage; costs for "
+                    "affected phases and the production total are unavailable.",
+                    "",
+                ]
+                if any(
+                    not reviewer
+                    for record in records
+                    for reviewer in record["reviewer_tokens"]
+                )
+                else []
+            ),
             *_notes(model),
             "",
         ]

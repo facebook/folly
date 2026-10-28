@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import unittest
+from typing import Any
 
 from folly.agents.tests import debrief_tables
 
@@ -25,7 +26,7 @@ def record(
     wall_seconds: float,
     author: tuple[int, int, int, int],
     reviewers: tuple[tuple[int, int, int, int], ...] = (),
-) -> dict[str, object]:
+) -> dict[str, Any]:
     def tokens(values: tuple[int, int, int, int]) -> dict[str, int]:
         total, cached, cache_write, output = values
         return {
@@ -43,6 +44,10 @@ def record(
         "reviewer_tokens": [tokens(reviewer) for reviewer in reviewers],
         "wall_seconds": wall_seconds,
     }
+
+
+def cells(line: str) -> list[str]:
+    return [cell.strip().strip("*") for cell in line.strip("|").split("|")]
 
 
 class DebriefTablesTest(unittest.TestCase):
@@ -99,3 +104,25 @@ Estimated cost uses published `gpt-5.6-sol` rates for all production tokens.
             "| **Production total** |  | — | **0:01.0** | **unavailable** |", output
         )
         self.assertIn("Published rates are not configured for `other-model`.", output)
+
+    def test_failed_review_retains_known_retry_usage_and_marks_unknown_cost(
+        self,
+    ) -> None:
+        records = [
+            record("initial", None, 10.04, (100, 40, 10, 5)),
+            record("review1", 12.5, 9.04, (200, 150, 0, 10), ((50, 20, 5, 2),)),
+        ]
+        records[1]["reviewer_tokens"].insert(0, {})
+
+        output = debrief_tables.render(records, "gpt-5.6-sol")
+        impact, tokens, *_ = output.split("\n\n")
+        impact_rows = impact.splitlines()
+        token_rows = tokens.splitlines()
+        self.assertEqual(cells(impact_rows[3])[2:], ["12.5%", "0:09.0", "unavailable"])
+        self.assertEqual(cells(impact_rows[4])[-2:], ["0:19.0", "unavailable"])
+        self.assertEqual(
+            cells(token_rows[3])[1:], ["80 + ?", "170 + ?", "5 + ?", "12 + ?"]
+        )
+        self.assertEqual(
+            cells(token_rows[4])[1:], ["140 + ?", "210 + ?", "15 + ?", "17 + ?"]
+        )
