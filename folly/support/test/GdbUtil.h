@@ -28,8 +28,10 @@ namespace folly {
 FOLLY_ALWAYS_INLINE void asm_gdb_breakpoint() {
 #ifdef _MSC_VER
   __debugbreak();
-#elif FOLLY_ARM || FOLLY_AARCH64
-  __asm__ volatile("svc 3");
+#elif FOLLY_AARCH64
+  __asm__ volatile("brk #0");
+#elif FOLLY_ARM
+  __asm__ volatile("bkpt #0");
 #else
   // powerpc64, x86, ...
   __asm__ volatile("int $3");

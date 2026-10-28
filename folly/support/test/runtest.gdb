@@ -3,6 +3,7 @@ fbload folly
 fbload stl
 
 run
+frame function main
 
 #### FBString Tests ####
 p empty

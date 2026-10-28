@@ -44,10 +44,20 @@ fb_dirsync_cpp_binary(
     # @fb-only[end= ]: binary = "main",
     # @fb-only[end= ]: fbcode_only = True,
     # @fb-only[end= ]: fbcode_rule = gdb_unittest,
+    # @fb-only[end= ]: gdb = "fbcode//third-party-buck/projects/gdb:bin/gdb",
+    # @fb-only[end= ]: gdb_libraries = [
+        # @fb-only[end= ]: "fbcode//third-party-buck/projects/expat:expat[soname-lib]",
+        # @fb-only[end= ]: "fbcode//third-party-buck/projects/gmp:gmp[soname-lib]",
+        # @fb-only[end= ]: "fbcode//third-party-buck/projects/mpfr:mpfr[soname-lib]",
+        # @fb-only[end= ]: "fbcode//third-party-buck/projects/zlib:z[soname-lib]",
+    # @fb-only[end= ]: ],
+    # @fb-only[end= ]: modifiers = ["ovr_config//third-party/zlib/constraints:1.3.1"],
+    # @fb-only[end= ]: remote_execution = "disabled",
     # @fb-only[end= ]: script = "runtest.gdb",
     # @fb-only[end= ]: skip_modes = [
         # @fb-only[end= ]: "dev",
         # @fb-only[end= ]: "libcxx",
         # @fb-only[end= ]: "opt*",
     # @fb-only[end= ]: ],
+    # @fb-only[end= ]: source_root = "fbcode",
 # @fb-only[end= ]: )
