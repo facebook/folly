@@ -12,6 +12,6 @@
 		}
 	},
 	"features": {
-		"ghcr.io/facebook/devcontainers/features/dotslash:1": {}
+		"ghcr.io/meta/devcontainers/features/dotslash:1": {}
 	}
 }
