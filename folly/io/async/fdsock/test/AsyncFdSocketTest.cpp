@@ -26,13 +26,10 @@ namespace folly { // required for FRIEND_TEST to work
 
 std::string getFdProcMagic(int fd) {
   char magic[PATH_MAX];
-  PCHECK(
-      -1 !=
-      ::readlink(
-          fmt::format("/proc/{}/fd/{}", getpid(), fd).c_str(),
-          magic,
-          PATH_MAX));
-  return std::string(magic);
+  const auto len = ::readlink(
+      fmt::format("/proc/{}/fd/{}", getpid(), fd).c_str(), magic, PATH_MAX);
+  PCHECK(-1 != len);
+  return std::string(magic, len);
 }
 
 void checkFdsMatch(
