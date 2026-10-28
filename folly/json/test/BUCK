@@ -74,6 +74,16 @@ fb_dirsync_cpp_benchmark(
     ],
 )
 
+fb_dirsync_cpp_benchmark(
+    name = "json_string_bench",
+    srcs = ["JsonStringBench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly/init:init",
+        "//folly/json:dynamic",
+    ],
+)
+
 fb_dirsync_cpp_unittest(
     name = "json_other_test",
     srcs = ["JsonOtherTest.cpp"],
