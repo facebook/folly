@@ -46,16 +46,16 @@ class CheckpointTest(unittest.TestCase):
     def test_captures_sequence_and_reports_errors(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            output = root / "workdir/output.md"
-            output.parent.mkdir()
+            output = root / "workdir/output/main.md"
+            output.parent.mkdir(parents=True)
             output.write_text("initial")
             (root / "run.json").write_text(
                 json.dumps({"checkpoint_key": CHECKPOINT_KEY.hex()})
             )
 
-            first = self.run_checkpoint(0, root, output.parent)
+            first = self.run_checkpoint(0, root, output.parent.parent)
             output.write_text("author")
-            second = self.run_checkpoint(1, root, output.parent)
+            second = self.run_checkpoint(1, root, output.parent.parent)
 
             self.assertEqual(first.returncode, 0)
             self.assertEqual(first.stderr, "")
@@ -81,7 +81,7 @@ class CheckpointTest(unittest.TestCase):
                 self.assertIn(phrase, second.stdout)
             self.assertEqual((root / "checkpoints/0.md").read_text(), "initial")
             self.assertEqual((root / "checkpoints/1.md").read_text(), "author")
-            invalid = self.run_checkpoint(1, root, output.parent)
+            invalid = self.run_checkpoint(1, root, output.parent.parent)
             self.assertNotEqual(invalid.returncode, 0)
             self.assertEqual(
                 invalid.stdout.strip(),

@@ -12,11 +12,11 @@ solves and connects the edits to that purpose. It does not inventory every rule
 hunk or assume the reader has the source packet.
 
 The run ends after the author follows the staged rules, writes the complete
-replacement commit message to `output.md`, and completes any review those rules
-require (unless in no-rules mode).
+replacement commit message to `output/main.md`, and completes any review those
+rules require (unless in no-rules mode).
 
-After the run, confirm that `output.md` is nonempty and that the trace contains
-no undeclared reads.
+After the run, confirm that `output/main.md` is nonempty and that the trace
+contains no undeclared reads.
 
 The [optional evaluator checks](eval/SETUP.md) record what a fresh reader can
 recover from the message, then compare its rationale with the source packet.

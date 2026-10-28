@@ -14,7 +14,7 @@ unsupported or TODO boundary only when it changes how readers use the API. If
 the evidence leaves a material contract point unresolved, say so rather than
 inventing an answer.
 
-Write the document to `output.md`. Treat staged inputs as read-only. Write only
-`output.md` and process artifacts required by the staged rules. Do not inspect
-parent directories, a live checkout, source control, earlier outputs, evaluator
-material, or network content.
+Write the document to `output/main.md`. Treat staged inputs as read-only. Write
+only `output/main.md` and process artifacts required by the staged rules. Do not
+inspect parent directories, a live checkout, source control, earlier outputs,
+evaluator material, or network content.

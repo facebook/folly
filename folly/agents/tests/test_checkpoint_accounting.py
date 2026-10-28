@@ -105,6 +105,7 @@ class AccountingFixture:
         self.checkpoints = root / "checkpoints"
         self.reviews = root / "reviews"
         self.workdir.mkdir(parents=True)
+        (self.workdir / "output").mkdir()
         self.checkpoints.mkdir()
         self.reviews.mkdir()
         (root / "run.json").write_text(
@@ -136,7 +137,7 @@ class AccountingFixture:
         snapshot = self.checkpoints / f"{index}.md"
         snapshot.write_text(text)
         self._set_time(snapshot, second)
-        (self.workdir / "output.md").write_text(text)
+        (self.workdir / "output/main.md").write_text(text)
         self.author_events.extend(
             (
                 *checkpoint_events(index, json_output=json_output),
@@ -185,7 +186,7 @@ class AccountingFixture:
         return checkpoint_accounting.collect(
             self.root,
             review_budget,
-            output=self.workdir / "output.md",
+            output=self.workdir / "output/main.md",
             agent_home=self.agent_home,
         )
 
@@ -317,13 +318,13 @@ class CheckpointAccountingTest(unittest.TestCase):
             ):
                 root = Path(temporary)
                 (root / "checkpoints").mkdir()
-                (root / "workdir").mkdir()
+                (root / "workdir/output").mkdir(parents=True)
                 for index, content in enumerate(contents):
                     (root / f"checkpoints/{index}.md").write_text(content)
-                (root / "workdir/output.md").write_text(contents[-1])
+                (root / "workdir/output/main.md").write_text(contents[-1])
 
                 paths = checkpoint_accounting._checkpoint_paths(
-                    root, budget, output=root / "workdir/output.md"
+                    root, budget, output=root / "workdir/output/main.md"
                 )
 
                 self.assertEqual([path.read_text() for path in paths], list(contents))

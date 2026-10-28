@@ -33,7 +33,8 @@ def make_sample(root: Path, phases: list[tuple[str, str]]) -> None:
         artifact = f"output-{name}.md"
         (root / artifact).write_text(contents)
         records.append({"artifact": artifact, "phase": name})
-    (root / "output.md").write_text(phases[-1][1])
+    (root / "output").mkdir()
+    (root / "output/main.md").write_text(phases[-1][1])
     (root / "checkpoints.json").write_text(json.dumps(records))
 
 
@@ -103,8 +104,8 @@ Below, `apply_diffs` is short for `{helper}`.
 - **Initial draft:** [output-initial.md](output-initial.md)
 - **Author review:** `apply_diffs output-initial.md output-initial-to-author.diff`
 - **Review 1:** [output-initial.md](output-initial.md)
-- **Review 2:** [output.md](output.md)
-- **Review 3:** [output.md](output.md)
+- **Review 2:** [output/main.md](output/main.md)
+- **Review 3:** [output/main.md](output/main.md)
 """,
             )
 
@@ -249,7 +250,7 @@ Below, `apply_diffs` is short for `{helper}`.
             sample = Path(temporary)
             make_sample(sample, [("initial", "initial\n")])
             (sample / "output-initial.md").unlink()
-            (sample / "output-initial.md").symlink_to(sample / "output.md")
+            (sample / "output-initial.md").symlink_to(sample / "output/main.md")
 
             with self.assertRaisesRegex(ValueError, "not a regular file"):
                 compress(sample)

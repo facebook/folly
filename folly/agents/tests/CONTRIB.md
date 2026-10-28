@@ -15,7 +15,8 @@ Each scenario has:
   (`no_rules_prompt`), staged file mappings (`inputs`), startup rules (`rules`),
   and available rule packages (`packages_under_test`);
 - optional `input/`: frozen material visible to the author;
-- optional `eval/`: a narrow check used only after `output.md` is frozen; and
+- optional `eval/`: a narrow check used only after `output/main.md` is frozen;
+  and
 - optional `samples/`: selected prior outputs.
 
 Keep the author's workdir free of:

@@ -65,7 +65,7 @@ checkpoints when the author writes a new draft:
 The run directory stores them as `output-initial.md`, `output-author.md`, and
 `output-reviewN.md`. `checkpoints.json` records each phase's time, author and
 reviewer token use, context window, and outcome. This mode does not apply to
-review-only scenarios that stage an existing `output.md`.
+review-only scenarios that stage an existing `output/main.md`.
 
 For scenarios listing `critic-iterate.md` in startup `rules`, add
 `--critic-iterate-rounds K` to override the normal external-review budget. `K=0`
@@ -80,9 +80,9 @@ that behavior matters in real use, and where the run deliberately stops. The
 scenario README supplies this framing.
 
 The run directory contains the staged workdir, author prompt, run metadata,
-trace, stderr, and any `output.md`. A regular rule-backed workdir also contains
-its selected rules. Runs live under the system temporary directory by default;
-pass `--run-root` when one must survive normal temporary cleanup.
+trace, stderr, and any `output/main.md`. A regular rule-backed workdir also
+contains its selected rules. Runs live under the system temporary directory by
+default; pass `--run-root` when one must survive normal temporary cleanup.
 
 ## Repeat a rule test
 
@@ -171,10 +171,11 @@ differences. Evaluators may add narrow, repeatable observations; they do not
 declare a pass, failure, or winner. Leave that judgment to the user.
 
 Before comparing a run, confirm that it reached the scenario's declared stop
-point, produced a nonempty `output.md`, and read no undeclared task evidence. A
-completed-artifact scenario must also complete every review required by its
-rules; a diagnostic may deliberately stop earlier. Authentication, launcher, or
-write failures are inconclusive; preserve their run directories for diagnosis.
+point, produced a nonempty `output/main.md`, and read no undeclared task
+evidence. A completed-artifact scenario must also complete every review required
+by its rules; a diagnostic may deliberately stop earlier. Authentication,
+launcher, or write failures are inconclusive; preserve their run directories for
+diagnosis.
 
 If the scenario has a `samples/` directory, or the user asks to preserve a run,
 follow [tracking-samples.md](tests/tracking-samples.md).

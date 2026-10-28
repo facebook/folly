@@ -37,6 +37,9 @@ from . import checkpoint_accounting
 
 CommandRunner = Callable[..., subprocess.CompletedProcess[bytes]]
 
+OUTPUT_DIR = "output"
+DEFAULT_OUTPUT = "output/main.md"
+
 CRITIC_ITERATE_RULE = PurePosixPath("critic-iterate.md")
 TOOL_FILES = {
     "codex-reviewer.py": PurePosixPath("critic-iterate/codex-reviewer.py"),
@@ -227,7 +230,7 @@ def _uses_checkpoints(manifest: Manifest, install_rules: bool) -> bool:
         and CRITIC_ITERATE_RULE in manifest.rules
         # For now, review-only scenarios compare their staged draft with the output.
         and not any(
-            mapping.destination == PurePosixPath("output.md")
+            mapping.destination == PurePosixPath("output/main.md")
             for mapping in manifest.inputs
         )
     )
@@ -520,7 +523,7 @@ def stage(
         path = workdir / destination
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(contents)
-        if destination == PurePosixPath("output.md"):
+        if destination == PurePosixPath("output/main.md"):
             path.chmod(0o644)
         else:
             path.chmod(path.stat().st_mode & 0o555)
@@ -592,6 +595,7 @@ def prepare(
             runtime_files=runtime_files,
             package_files=package_files,
         )
+        (run.workdir / OUTPUT_DIR).mkdir(exist_ok=True)
         metadata: dict[str, object] = {
             "model": model,
             "reasoning_effort": effort,
@@ -670,14 +674,15 @@ def _update_metadata(run: Run, **updates: object) -> None:
 
 
 def _preserve_output(run: Run) -> bool:
-    output = run.workdir / "output.md"
+    output = run.workdir / "output/main.md"
     try:
         output_stat = output.lstat()
     except FileNotFoundError:
         return False
     if not stat.S_ISREG(output_stat.st_mode):
-        raise RunnerError("output.md is not a regular file")
-    shutil.copyfile(output, run.root / "output.md")
+        raise RunnerError("output/main.md is not a regular file")
+    (run.root / OUTPUT_DIR).mkdir()
+    shutil.copyfile(output, run.root / DEFAULT_OUTPUT)
     return output_stat.st_size > 0
 
 
@@ -724,7 +729,7 @@ def _finish_run(run: Run, returncode: int) -> int:
             records = checkpoint_accounting.collect(
                 run.root,
                 run.critic_iterate_rounds,
-                output=run.workdir / "output.md",
+                output=run.root / DEFAULT_OUTPUT,
                 agent_home=run.agent_home,
             )
         except Exception:

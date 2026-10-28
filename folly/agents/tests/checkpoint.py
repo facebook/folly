@@ -50,7 +50,7 @@ def get_checkpoint_dir() -> Path:
 
 
 def get_output_md() -> Path:
-    return Path(os.environ["FOLLY_BACKTEST_WORKDIR"]) / "output.md"
+    return Path(os.environ["FOLLY_BACKTEST_WORKDIR"]) / "output/main.md"
 
 
 def next_instruction(index: int) -> str:

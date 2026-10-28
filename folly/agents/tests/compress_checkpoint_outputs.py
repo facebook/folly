@@ -16,9 +16,9 @@
 
 Usage: python3 -m folly.agents.tests.compress_checkpoint_outputs SAMPLE
 
-SAMPLE must contain uncompressed `output.md`, `checkpoints.json`, and every
+SAMPLE must contain uncompressed `output/main.md`, `checkpoints.json`, and every
 artifact named by that JSON. The tool deduplicates exact content, preferring
-`output.md` and otherwise the earliest phase file. For each remaining adjacent
+`output/main.md` and otherwise the earliest phase file. For each remaining adjacent
 change, it stores an earlier-to-later normal diff when the diff is less than 60%
 of the later file. It verifies every reconstruction before deleting redundant
 full files, removes stale `artifact` fields from `checkpoints.json`, and prints
@@ -100,9 +100,9 @@ def _load(sample: Path) -> tuple[list[dict[str, Any]], list[Phase]]:
             raise ValueError("checkpoint phase or artifact is invalid")
         phases.append(Phase(name, artifact, _read_regular(sample, artifact)))
 
-    output = _read_regular(sample, "output.md")
+    output = _read_regular(sample, "output/main.md")
     if output != phases[-1].contents:
-        raise ValueError("output.md does not match the final checkpoint")
+        raise ValueError("output/main.md does not match the final checkpoint")
     return records, phases
 
 
@@ -138,13 +138,13 @@ def _forward_diff(
 
 def _representations(sample: Path, phases: list[Phase]) -> list[Representation]:
     """Choose one verified full-or-diff representation for every phase."""
-    output = (sample / "output.md").read_bytes()
-    canonical = {output: "output.md"}
+    output = (sample / "output/main.md").read_bytes()
+    canonical = {output: "output/main.md"}
     for phase in phases:
         canonical.setdefault(phase.contents, phase.artifact)
 
     counts = Counter(phase.contents for phase in phases)
-    by_contents = {output: Representation("output.md")}
+    by_contents = {output: Representation("output/main.md")}
     result = []
     for index, phase in enumerate(phases):
         representation = by_contents.get(phase.contents)
@@ -227,7 +227,7 @@ def compress(sample: Path, mapping_output: TextIO) -> None:
     mapping_output.flush()
 
     retained = {
-        "output.md",
+        "output/main.md",
         *(item.base for item in stored),
         *(diff for item in stored for diff in item.diffs),
     }

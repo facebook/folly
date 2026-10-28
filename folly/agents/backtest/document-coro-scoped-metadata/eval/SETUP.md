@@ -1,7 +1,7 @@
 # Run the contract check
 
 Use the [shared evaluator runner](../../../TESTING.md#run-an-evaluator) for this
-optional check after `output.md` is frozen.
+optional check after `output/main.md` is frozen.
 
 In a fresh evaluator run, stage:
 

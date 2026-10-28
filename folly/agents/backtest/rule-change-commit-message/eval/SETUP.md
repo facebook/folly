@@ -7,7 +7,7 @@ optional checks, with a separate run for each.
 
 In one evaluator run, stage only:
 
-- the frozen `output.md` as `candidate.md`; and
+- the frozen `output/main.md` as `candidate.md`; and
 - `prompt-first-read.md` at the task root.
 
 Run `prompt-first-read.md` as the prompt to record the causal account a new
