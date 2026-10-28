@@ -1,6 +1,8 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
+load("@fbcode_macros//build_defs/lib:split_dwarf.bzl", "split_dwarf")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 
 SPLIT_DWARF_FLAGS = {
     "none": ["-gno-split-dwarf"],
@@ -61,6 +63,7 @@ def customized_unittest(available_dwarf_versions = [], avilable_split_dwarf_keys
                                 "--emit-relocs",  # makes linker ignore `--strip-debug-*` flags
                             ],
                             target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+                            modifiers = split_dwarf.modifiers(separate = False) if split_dwarf_option == "single_inlining" else [],
                         )
                         cpp_unittest(
                             name = "symbolizer_test_"
@@ -85,6 +88,7 @@ def customized_unittest(available_dwarf_versions = [], avilable_split_dwarf_keys
                             ],
                             supports_static_listing = True,
                             target_compatible_with = ["fbcode//opensource/macros:broken-in-oss"],
+                            modifiers = split_dwarf.modifiers(separate = False) if split_dwarf_option == "single_inlining" else [],
                             deps = [
                                 ":symbolizer_test_utils_"
                                 + dwarf_version
@@ -121,7 +125,7 @@ def validate_folly_symbolizer(name, binary):
         type = "simple",
     )
 
-def validate_symbolizer_dwp(name, binary):
+def validate_symbolizer_dwp(name, binary, mode = "fbcode//mode/opt", modifiers = []):
     custom_unittest(
         name = name,
         command = [
@@ -130,6 +134,11 @@ def validate_symbolizer_dwp(name, binary):
             "$(location {}[dwp])".format(binary),
         ],
         type = "simple",
+        labels = ci.labels(
+            ci.linux(ci.mode(mode)),
+            ci.linux(ci.aarch64(ci.mode(mode))),
+        ),
+        modifiers = modifiers,
         # Only test in opt mode.
         # In dev mode, the test still depends on the shared libraries except
         # binary + dwp file.

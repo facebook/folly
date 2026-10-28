@@ -297,6 +297,8 @@ fbcode_target(
     _kind = validate_symbolizer_dwp,
     name = "validate_symbolizer_dwp_dwarf4_dwarf32_single_inlining_aaranges",
     binary = ":symbolizer_test_dwarf4_dwarf32_single_inlining_aaranges",
+    mode = "fbcode//mode/opt-dwarf4",
+    modifiers = ["ovr_config//build_mode/constraints:debug_style[split-dwarf-single]"],
 )
 
 fbcode_target(
