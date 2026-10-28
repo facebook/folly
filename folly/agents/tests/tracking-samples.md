@@ -17,7 +17,8 @@ explicit critic-iterate budget under
 generation revision and run style; each explicit `K` is a separate run style.
 Use the first 10 characters of the `generation_revision` recorded in `run.json`.
 
-- `output/main.md` is the exact user-facing artifact.
+- Copy every `output/` file, preserving its relative path and exact bytes. Empty
+  directories are omitted; parents are recreated when copying files.
 - For a checkpointed run, first copy `checkpoints.json` and every output file it
   names. Compress only the saved copy, as described below.
 - `README.md` starts as a copy of the completed
@@ -85,5 +86,5 @@ the user chooses.
 
 Append a sample when another run under substantially the same setup usefully
 shows run-to-run variation. When an evaluator changes, reevaluate the unchanged
-`output/main.md` and update the evaluation metadata and findings in the saved
+`output/` artifact and update the evaluation metadata and findings in the saved
 debrief.

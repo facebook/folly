@@ -15,7 +15,8 @@ produced.
 ## Result
 
 - **Scenario:** <what it exercises, where it stops, and whether it got there>
-- **Output:** <link to output/main.md, or say none; complete or partial>
+- **Output:** <link to the user-facing files in output/, or say none; complete
+  or partial>
 - **Generation:** <revision and model/effort>
 - **Review:** <type, count, required/optional, and models/effort>
 - **Evaluation:** <checks, required/optional, source revisions, and
@@ -65,8 +66,9 @@ quote helps the immediate discussion. Keep it before `Comparisons`.
 
 - Use `run.json` for status and configuration, and each trace's final
   `turn.completed` record for tokens. Label estimates and unavailable data. Link
-  only `output/main.md` under `Result`; say when it is partial or missing.
-  Checkpoint artifacts remain in the output directory for closer inspection.
+  the user-facing files in `output/` under `Result`; say when the artifact is
+  partial or missing. Do not present private process notes as deliverables.
+  Checkpoint artifacts remain in the run directory for closer inspection.
 - When `checkpoints.json` exists, run
   `python3 -m folly.agents.tests.debrief_tables RUN_DIRECTORY` and use its
   production tables. Replace each `TODO` with a short, evidence-based account of

@@ -32,7 +32,7 @@ from typing import Any, Callable, Iterable, Sequence
 
 from folly.agents.scripts import isolated_agent
 
-from . import checkpoint_accounting
+from . import checkpoint_accounting, directory_snapshot
 
 
 CommandRunner = Callable[..., subprocess.CompletedProcess[bytes]]
@@ -83,6 +83,7 @@ class Run:
     install_rules: bool
     critic_iterate_rounds: int | None
     checkpoint: bool
+    outputs: tuple[PurePosixPath, ...] = (PurePosixPath(DEFAULT_OUTPUT),)
 
     @property
     def workdir(self) -> Path:
@@ -230,8 +231,7 @@ def _uses_checkpoints(manifest: Manifest, install_rules: bool) -> bool:
         and CRITIC_ITERATE_RULE in manifest.rules
         # For now, review-only scenarios compare their staged draft with the output.
         and not any(
-            mapping.destination == PurePosixPath("output/main.md")
-            for mapping in manifest.inputs
+            mapping.destination.parts[0] == OUTPUT_DIR for mapping in manifest.inputs
         )
     )
 
@@ -365,6 +365,7 @@ def _generation_sources(
 ) -> tuple[Path, ...]:
     sources = [
         runner_path.resolve(),
+        (runner_path.parent / "directory_snapshot.py").resolve(),
         (scenario / "scenario.json").resolve(),
         _resolve_below(scenario, _prompt_for_run(manifest, install_rules), "prompt"),
     ]
@@ -523,7 +524,7 @@ def stage(
         path = workdir / destination
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(contents)
-        if destination == PurePosixPath("output/main.md"):
+        if destination.parts[0] == OUTPUT_DIR:
             path.chmod(0o644)
         else:
             path.chmod(path.stat().st_mode & 0o555)
@@ -674,16 +675,24 @@ def _update_metadata(run: Run, **updates: object) -> None:
 
 
 def _preserve_output(run: Run) -> bool:
-    output = run.workdir / "output/main.md"
-    try:
-        output_stat = output.lstat()
-    except FileNotFoundError:
-        return False
-    if not stat.S_ISREG(output_stat.st_mode):
-        raise RunnerError("output/main.md is not a regular file")
-    (run.root / OUTPUT_DIR).mkdir()
-    shutil.copyfile(output, run.root / DEFAULT_OUTPUT)
-    return output_stat.st_size > 0
+    # The worker may replace its task or workspace directory; neither is a
+    # trusted parent alias for the output tree.
+    for directory in (run.agent_workspace.workspace_root, run.workdir):
+        if not stat.S_ISDIR(directory.lstat().st_mode):
+            raise RunnerError(
+                f"output ancestor is not a regular directory: {directory}"
+            )
+    entries = directory_snapshot.read(run.workdir / OUTPUT_DIR)
+    has_output = any(entries.values())
+    for relative in run.outputs:
+        if (run.workdir / relative).is_dir():
+            raise RunnerError(f"{relative} is not a regular file")
+        if not entries.get(Path(relative.relative_to(OUTPUT_DIR))):
+            has_output = False
+    directory_snapshot.write(entries, run.root / OUTPUT_DIR)
+    if directory_snapshot.read(run.root / OUTPUT_DIR) != entries:
+        raise RunnerError("saved output/ does not match the captured artifact")
+    return has_output
 
 
 def _author_environment_additions(run: Run, tool_bin: Path | None) -> dict[str, str]:
@@ -704,16 +713,20 @@ def _author_environment_additions(run: Run, tool_bin: Path | None) -> dict[str, 
 
 
 def _finish_run(run: Run, returncode: int) -> int:
+    """Keep worker failures primary when saving output also fails.
+
+    The original workspace remains available for diagnosis.
+    """
     if returncode:
         _update_metadata(run, status="failed", exit_code=returncode)
         try:
             _preserve_output(run)
-        except (OSError, RunnerError) as error:
+        except (OSError, ValueError) as error:
             _update_metadata(run, output_preservation_error=str(error))
         return returncode
     try:
         has_output = _preserve_output(run)
-    except (OSError, RunnerError) as error:
+    except (OSError, ValueError) as error:
         _update_metadata(
             run,
             status="invalid-output",
