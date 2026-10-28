@@ -85,7 +85,6 @@ fb_dirsync_cpp_binary(
     srcs = ["AtomicSharedPtrPerformance.cpp"],
     deps = [
         "//folly/concurrency:atomic_shared_ptr",
-        "//folly/portability:config",
     ],
 )
 
@@ -99,7 +98,6 @@ fb_dirsync_cpp_unittest(
         "//folly/concurrency:core_cached_shared_ptr",
         "//folly/concurrency:thread_cached_synchronized",
         "//folly/concurrency/memory:read_mostly_shared_ptr",
-        "//folly/portability:config",
         "//folly/portability:gtest",
         "//folly/system:hardware_concurrency",
     ],

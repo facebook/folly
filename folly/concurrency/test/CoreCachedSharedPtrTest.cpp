@@ -25,15 +25,8 @@
 #include <folly/concurrency/CoreCachedSharedPtr.h>
 #include <folly/concurrency/ThreadCachedSynchronized.h>
 #include <folly/concurrency/memory/ReadMostlySharedPtr.h>
-#include <folly/portability/Config.h>
 #include <folly/portability/GTest.h>
 #include <folly/system/HardwareConcurrency.h>
-
-// AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
-// other vendors
-// PackedSyncPtr requires x64, ppc64 or aarch64, skip these tests for
-// other arches
-#if defined(__GLIBCXX__) && (FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64)
 
 namespace {
 
@@ -331,8 +324,6 @@ int main(int argc, char** argv) {
 
   return ret;
 }
-
-#endif // defined(__GLIBCXX__)
 
 #if 0
 // On Intel(R) Xeon(R) Gold 6138 CPU @ 2.00GHz, 2 sockets, 40 cores, 80 threads.

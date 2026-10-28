@@ -23,11 +23,6 @@
 #include <vector>
 
 #include <folly/concurrency/AtomicSharedPtr.h>
-#include <folly/portability/Config.h>
-
-// The benchmarked implementation lives in AtomicSharedPtr-detail.h, which
-// supports libstdc++ and libc++, so skip this suite for other vendors
-#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
 
 using std::atomic;
 using std::cerr;
@@ -239,15 +234,9 @@ void runSuite() {
 }
 
 int main(int, char**) {
-  cout << endl << "Folly implementation.  Is lock free: 1" << endl;
+  const folly::atomic_shared_ptr<int> ptr;
+  cout << endl
+       << "Folly implementation.  Is lock free: " << ptr.is_lock_free() << endl;
   runSuite<folly::atomic_shared_ptr<int>>();
   return 0;
 }
-
-#else // defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
-
-int main(int, char**) {
-  return 1;
-}
-
-#endif // defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
