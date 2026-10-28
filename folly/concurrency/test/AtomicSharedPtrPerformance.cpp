@@ -14,14 +14,6 @@
  * limitations under the License.
  */
 
-#include <folly/portability/Config.h>
-
-// The benchmarked implementation lives in AtomicSharedPtr-detail.h, which
-// supports libstdc++ and libc++, so skip this suite for other vendors
-#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
-
-#include <folly/concurrency/AtomicSharedPtr.h>
-
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -29,6 +21,13 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+
+#include <folly/concurrency/AtomicSharedPtr.h>
+#include <folly/portability/Config.h>
+
+// The benchmarked implementation lives in AtomicSharedPtr-detail.h, which
+// supports libstdc++ and libc++, so skip this suite for other vendors
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
 
 using std::atomic;
 using std::cerr;
