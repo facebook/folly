@@ -1,6 +1,6 @@
 [manifest]
 name = fizz
-fbsource_path = fbcode/fizz
+fbsource_path = xplat/fizz
 shipit_project = fizz
 shipit_fbcode_builder = true
 
@@ -34,5 +34,5 @@ zstd
 googletest
 
 [shipit.pathmap]
-fbcode/fizz/public_tld = .
-fbcode/fizz = fizz
+xplat/fizz/public_tld = .
+xplat/fizz = fizz
