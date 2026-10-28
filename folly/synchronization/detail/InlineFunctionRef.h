@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <functional>
 #include <new>
 
@@ -73,8 +74,12 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
   template <typename Arg>
   using CallArg = function::CallArg<Arg>;
 
-  using Storage =
-      folly::aligned_storage_t<Size - sizeof(uintptr_t), sizeof(uintptr_t)>;
+  // not folly::aligned_storage_t, GCC < 13 miscompiles copies of
+  // InlineFunctionRef when the storage is a class template specialization
+  // (https://github.com/gcc-mirror/gcc/commit/b33213135983)
+  struct alignas(sizeof(uintptr_t)) Storage {
+    std::byte data[Size - sizeof(uintptr_t)];
+  };
   using Call = ReturnType (*)(CallArg<Args>..., const Storage&);
 
   struct InSituTag {};

@@ -8,6 +8,7 @@ fb_dirsync_cpp_unittest(
         "InlineFunctionRefTest.cpp",
     ],
     deps = [
+        "//folly:c_portability",
         "//folly/portability:gtest",
         "//folly/synchronization/detail:inline_function_ref",
     ],
