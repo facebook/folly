@@ -172,10 +172,14 @@ TEST_F(ElfCacheTest, SignalSafeElfCache) {
   }
 }
 
+struct SignalSafeElfCacheTestAccess : SignalSafeElfCache {
+  using SignalSafeElfCache::Path;
+};
+
 TEST(SignalSafeElfCache, PathViewExcludesNullTerminator) {
-  SignalSafeElfCache::State state;
+  reentrant_allocator<char> alloc{reentrant_allocator_options()};
   const std::array<char, 3> bytes = {'a', 'b', 'c'};
-  SignalSafeElfCache::Path path(bytes.data(), bytes.size(), state.alloc);
+  SignalSafeElfCacheTestAccess::Path path(bytes.data(), bytes.size(), alloc);
   const cstring_view view = path;
 
   EXPECT_EQ(cstring_view("abc"), view);
@@ -184,12 +188,12 @@ TEST(SignalSafeElfCache, PathViewExcludesNullTerminator) {
 }
 
 TEST(SignalSafeElfCache, PathStringOrdering) {
-  SignalSafeElfCache::State state;
-  SignalSafeElfCache::Path empty("", 0, state.alloc);
-  SignalSafeElfCache::Path prefix("a", 1, state.alloc);
-  SignalSafeElfCache::Path longer("ab", 2, state.alloc);
-  SignalSafeElfCache::Path high("\x80", 1, state.alloc);
-  SignalSafeElfCache::Path equal("a", 1, state.alloc);
+  reentrant_allocator<char> alloc{reentrant_allocator_options()};
+  SignalSafeElfCacheTestAccess::Path empty("", 0, alloc);
+  SignalSafeElfCacheTestAccess::Path prefix("a", 1, alloc);
+  SignalSafeElfCacheTestAccess::Path longer("ab", 2, alloc);
+  SignalSafeElfCacheTestAccess::Path high("\x80", 1, alloc);
+  SignalSafeElfCacheTestAccess::Path equal("a", 1, alloc);
 
   EXPECT_TRUE(empty < prefix);
   EXPECT_TRUE(prefix < longer);

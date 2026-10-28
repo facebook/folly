@@ -58,6 +58,7 @@ class SignalSafeElfCache : public ElfCacheBase {
  public:
   std::shared_ptr<ElfFile> getFile(StringPiece path) override;
 
+ protected:
   //  Path
   //
   //  A minimal implementation of the subset of std::string used below, as if:
@@ -86,11 +87,12 @@ class SignalSafeElfCache : public ElfCacheBase {
       return {data_.data(), data_.size() - 1};
     }
 
-    friend bool operator<(Path const& a, Path const& b) noexcept;
-
    private:
     std::vector<char, reentrant_allocator<char>> data_;
   };
+
+ private:
+  friend bool operator<(Path const& a, Path const& b) noexcept;
 
   struct Entry : boost::intrusive::avl_set_base_hook<> {
     Path path;
