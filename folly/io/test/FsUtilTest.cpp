@@ -74,6 +74,23 @@ TEST(Simple, Path) {
   EXPECT_THROW({ remove_prefix(abs1, abs6); }, filesystem_error);
 }
 
+TEST(Simple, PathPrefixTrailingSlashAndDot) {
+  path abs("/a/b/c");
+  EXPECT_TRUE(starts_with(abs, path("/a/b/")));
+  EXPECT_EQ(path("c"), remove_prefix(abs, path("/a/b/")));
+  EXPECT_FALSE(starts_with(path("/a/b"), path("/a/b/")));
+  EXPECT_THROW(
+      { remove_prefix(path("/a/b"), path("/a/b/")); }, filesystem_error);
+
+  EXPECT_TRUE(starts_with(path("/a/b"), path("/a/./b")));
+  EXPECT_TRUE(starts_with(abs, path("/a/./b")));
+  EXPECT_EQ(path("c"), remove_prefix(abs, path("/a/./b")));
+  EXPECT_TRUE(starts_with(abs, path("/a/./")));
+  EXPECT_EQ(path("b/c"), remove_prefix(abs, path("/a/./")));
+  EXPECT_FALSE(starts_with(abs, path("/a/./x")));
+  EXPECT_THROW({ remove_prefix(abs, path("/a/./x")); }, filesystem_error);
+}
+
 TEST(Simple, CanonicalizeParent) {
   TempDir tmpd;
 

@@ -16,24 +16,17 @@
 
 #pragma once
 
-#include <filesystem>
-#include <boost/filesystem.hpp>
+#include <system_error>
+
+#include <folly/portability/Filesystem.h>
 
 namespace folly {
 namespace fs {
 
-namespace std_fs = std::filesystem;
-
-// Functions defined in this file are meant to extend the
-// boost::filesystem library; functions will be named according to boost's
-// naming conventions instead of ours.  For convenience, import the
-// boost::filesystem namespace into folly::fs.
-using namespace ::boost::filesystem;
-
 // TEMPORARY: lets callers that pass error codes to folly::fs functions compile
 // both before and after folly::fs switches to std::filesystem. Remove once the
 // switch has landed and callers use std::error_code.
-using error_code = ::boost::system::error_code;
+using error_code = std::error_code;
 
 /**
  * Check whether "path" starts with "prefix".
@@ -55,7 +48,7 @@ path remove_prefix(const path& p, const path& prefix);
 /**
  * Canonicalize the parent path, leaving the filename (last component)
  * unchanged.  You may use this before creating a file instead of
- * boost::filesystem::canonical, which requires that the entire path exists.
+ * canonical, which requires that the entire path exists.
  */
 path canonical_parent(const path& p, const path& basePath = current_path());
 
@@ -73,10 +66,15 @@ path canonical_parent(const path& p, const path& basePath = current_path());
  */
 path executable_path();
 
+/**
+ * Replace each '%' in model with a random hex digit, like the function of the
+ * same name in Boost.Filesystem.
+ */
 struct unique_path_fn {
-  std_fs::path operator()(
-      std_fs::path const& model = "%%%%-%%%%-%%%%-%%%%") const;
+  path operator()(path const& model = "%%%%-%%%%-%%%%-%%%%") const;
 };
+inline constexpr unique_path_fn unique_path;
+
 using std_fs_unique_path_fn = unique_path_fn;
 inline constexpr std_fs_unique_path_fn std_fs_unique_path;
 

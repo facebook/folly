@@ -113,7 +113,7 @@ set(Boost_USE_STATIC_LIBS "${FOLLY_BOOST_LINK_STATIC}")
 # link them globally. Targets that need specific Boost libraries should
 # add them to their EXTERNAL_DEPS (e.g., Boost::regex, Boost::context).
 # Boost::thread is needed by Windows pthread compatibility layer.
-set(FOLLY_BOOST_COMPONENTS context filesystem program_options regex)
+set(FOLLY_BOOST_COMPONENTS context program_options regex)
 if (WIN32)
   list(APPEND FOLLY_BOOST_COMPONENTS thread)
 endif ()

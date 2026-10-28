@@ -17,6 +17,7 @@
 #include <folly/io/FsUtil.h>
 
 #include <random>
+#include <system_error>
 
 #include <folly/Exception.h>
 
@@ -28,20 +29,18 @@
 #include <folly/portability/Windows.h>
 #endif
 
-namespace bsys = ::boost::system;
-
 namespace folly {
 namespace fs {
 
 namespace {
 bool skipPrefix(const path& pth, const path& prefix, path::const_iterator& it) {
   it = pth.begin();
-  for (auto& p : prefix) {
+  for (const auto& p : prefix) {
     if (it == pth.end()) {
       return false;
     }
-    if (p == ".") {
-      // Should only occur at the end, if prefix ends with a slash
+    if (p.empty() || p == ".") {
+      // An empty element ends a prefix with a trailing slash; "." is a no-op.
       continue;
     }
     if (*it++ != p) {
@@ -64,7 +63,7 @@ path remove_prefix(const path& pth, const path& prefix) {
         "Path does not start with prefix",
         pth,
         prefix,
-        bsys::errc::make_error_code(bsys::errc::invalid_argument));
+        std::make_error_code(std::errc::invalid_argument));
   }
 
   path p;
@@ -76,7 +75,7 @@ path remove_prefix(const path& pth, const path& prefix) {
 }
 
 path canonical_parent(const path& pth, const path& base) {
-  return canonical(pth.parent_path(), base) / pth.filename();
+  return canonical(absolute(base) / pth.parent_path()) / pth.filename();
 }
 
 path executable_path() {
@@ -103,8 +102,8 @@ path executable_path() {
   return L"0123456789abcdef";
 }
 
-std_fs::path unique_path_fn::operator()(std_fs::path const& model) const {
-  constexpr auto pin = std_fs::path::value_type('%');
+path unique_path_fn::operator()(path const& model) const {
+  constexpr auto pin = path::value_type('%');
   constexpr auto hex = hex_(pin);
   std::random_device rng;
   auto cache = std::random_device::result_type{};

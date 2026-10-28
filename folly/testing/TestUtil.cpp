@@ -95,7 +95,7 @@ TemporaryFile::TemporaryFile(
   checkUnixError(fd_, "open failed");
 
   if (scope_ == Scope::UNLINK_IMMEDIATELY) {
-    boost::system::error_code ec;
+    std::error_code ec;
     fs::remove(path_, ec);
     if (ec) {
       LOG(WARNING) << "unlink on construction failed: " << ec;
@@ -128,7 +128,7 @@ void TemporaryFile::reset() {
   // If we previously failed to unlink() (UNLINK_IMMEDIATELY), we'll
   // try again here.
   if (scope_ != Scope::PERMANENT && !path_.empty()) {
-    boost::system::error_code ec;
+    std::error_code ec;
     fs::remove(path_, ec);
     if (ec) {
       LOG(WARNING) << "unlink on destruction failed: " << ec;
@@ -151,7 +151,7 @@ TemporaryDirectory::TemporaryDirectory(
 
 TemporaryDirectory::~TemporaryDirectory() {
   if (scope_ == Scope::DELETE_ON_DESTRUCTION && path_ != nullptr) {
-    boost::system::error_code ec;
+    std::error_code ec;
     fs::remove_all(path(), ec);
     if (ec) {
       LOG(WARNING) << "recursive delete on destruction failed: " << ec;

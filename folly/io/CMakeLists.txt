@@ -19,17 +19,9 @@ folly_add_library(
   SRCS FsUtil.cpp
   HEADERS FsUtil.h
   DEPS
-    Boost::filesystem
     folly_exception
     folly_portability_windows
-  EXPORTED_DEPS Boost::filesystem
-)
-set_property(
-  GLOBAL
-  APPEND
-  PROPERTY
-    FOLLY_MONOLITHIC_EXTERNAL_DEPS
-    Boost::filesystem
+  EXPORTED_DEPS folly_portability_filesystem
 )
 
 folly_add_library(
