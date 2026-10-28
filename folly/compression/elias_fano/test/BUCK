@@ -7,7 +7,6 @@ fb_dirsync_cpp_unittest(
     srcs = ["BitVectorCodingTest.cpp"],
     deps = [
         "//folly:benchmark",
-        "//folly:portability",
         "//folly/compression:select64",
         "//folly/compression/elias_fano:bit_vector_coding",
         "//folly/compression/test:coding_test_utils",
