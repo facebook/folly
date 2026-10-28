@@ -81,7 +81,8 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 #
 # ```cmake
 # rust_static_library(<TARGET> [CRATE <CRATE_NAME>] [PACKAGE <PACKAGE_NAME>]
-#   [FEATURES <FEATURE_NAME>] [USE_CXX_INCLUDE] [ENV <NAME=VALUE>...])
+#   [FEATURES <FEATURE_NAME>] [USE_CXX_INCLUDE] [ENV <NAME=VALUE>...]
+#   [LINK_LIBRARIES <library>...])
 # ```
 #
 # Parameters:
@@ -101,18 +102,25 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 #   Include cxx.rs include path in `${TARGET}` INTERFACE.
 # - ENV:
 #   A list of `NAME=VALUE` pairs to set in the environment of `cargo build`.
+# - LINK_LIBRARIES:
+#   Libraries that have to come after the static library on a link line, such
+#   as the C++ side of its cxx bridges.
 #
-# This function creates two targets:
+# This function creates three targets:
 # - "${TARGET}": an interface library target contains the static library built
 #   from Cargo.
 # - "${TARGET}.cargo": an internal custom target that invokes Cargo.
+# - "${TARGET}.archive": an internal imported target for the static library,
+#   which orders LINK_LIBRARIES after it.
 #
 # If you are going to use this static library from C/C++, you will need to
 # write header files for the library (or generate with cbindgen) and bind these
 # headers with the interface library.
 #
 function(rust_static_library TARGET)
-  fb_cmake_parse_args(ARG "USE_CXX_INCLUDE" "CRATE;PACKAGE;FEATURES" "ENV" "${ARGN}")
+  fb_cmake_parse_args(
+    ARG "USE_CXX_INCLUDE" "CRATE;PACKAGE;FEATURES" "ENV;LINK_LIBRARIES" "${ARGN}"
+  )
 
   if(DEFINED ARG_CRATE)
     set(crate_name "${ARG_CRATE}")
@@ -181,9 +189,18 @@ function(rust_static_library TARGET)
     )
   endif()
 
+  # CMake orders a target's link dependencies after it, but not a plain path's.
+  add_library(${TARGET}.archive STATIC IMPORTED GLOBAL)
+  set_target_properties(
+    ${TARGET}.archive
+    PROPERTIES
+      IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/release/${staticlib_name}"
+      IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/debug/${staticlib_name}"
+  )
+  target_link_libraries(${TARGET}.archive INTERFACE ${ARG_LINK_LIBRARIES})
   target_link_libraries(
     ${TARGET}
-    INTERFACE "$<BUILD_INTERFACE:${rust_staticlib}>"
+    INTERFACE "$<BUILD_INTERFACE:${TARGET}.archive>"
   )
 endfunction()
 
