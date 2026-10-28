@@ -183,6 +183,16 @@ Below, `apply_diffs` is short for `{helper}`.
                 self.assertFalse((sample / "output-initial-to-author.diff").exists())
                 self.assertNotIn("apply_diffs", mapping)
 
+    def test_declines_diffs_for_unrepresentable_files(self) -> None:
+        for unsuitable in (b"missing newline", b"binary\0value\n", b"\xff\n"):
+            for old, new in ((unsuitable, b"valid\n"), (b"valid\n", unsuitable)):
+                with self.subTest(old=old, new=new):
+                    self.assertIsNone(
+                        compressor._forward_diff(
+                            Path("."), Path("earlier"), Path("later"), old, new
+                        )
+                    )
+
     def test_rejects_invalid_phase_sequence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             sample = Path(temporary)

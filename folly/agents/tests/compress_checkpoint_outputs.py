@@ -59,16 +59,23 @@ class Representation:
     diffs: tuple[str, ...] = ()
 
 
-def _read_regular(path: Path) -> bytes:
-    """Reject links and special files before reading destructive-work inputs."""
+def _read_regular(sample: Path, relative: str | Path) -> bytes:
+    parent = sample
+    if parent.is_symlink() or not parent.is_dir():
+        raise ValueError(f"sample input is not a regular directory: {parent}")
+    for component in Path(relative).parts[:-1]:
+        parent /= component
+        if parent.is_symlink() or not parent.is_dir():
+            raise ValueError(f"sample input is not a regular directory: {parent}")
+    path = sample / relative
     if path.is_symlink() or not path.is_file():
-        raise ValueError(f"sample input is not a regular file: {path.name}")
+        raise ValueError(f"sample input is not a regular file: {path}")
     return path.read_bytes()
 
 
 def _load(sample: Path) -> tuple[list[dict[str, Any]], list[Phase]]:
     """Read the uncompressed phase sequence and enforce its flat-file shape."""
-    records = json.loads(_read_regular(sample / "checkpoints.json").decode())
+    records = json.loads(_read_regular(sample, "checkpoints.json").decode())
     if not isinstance(records, list) or not records:
         raise ValueError("checkpoints.json must contain a nonempty list")
 
@@ -91,9 +98,9 @@ def _load(sample: Path) -> tuple[list[dict[str, Any]], list[Phase]]:
             or artifact != f"output-{name}.md"
         ):
             raise ValueError("checkpoint phase or artifact is invalid")
-        phases.append(Phase(name, artifact, _read_regular(sample / artifact)))
+        phases.append(Phase(name, artifact, _read_regular(sample, artifact)))
 
-    output = _read_regular(sample / "output.md")
+    output = _read_regular(sample, "output.md")
     if output != phases[-1].contents:
         raise ValueError("output.md does not match the final checkpoint")
     return records, phases
@@ -104,22 +111,23 @@ def _use_diff(diff_size: int, full_size: int) -> bool:
     return diff_size * 5 < full_size * 3
 
 
-def _forward_diff(sample: Path, earlier: Phase, later: Phase) -> bytes | None:
-    """Describe one text transition, or retain non-text input as a full file."""
+def _forward_diff(
+    sample: Path, earlier: Path, later: Path, old: bytes, new: bytes
+) -> bytes | None:
     if (
-        b"\0" in later.contents
-        or b"\0" in earlier.contents
-        or not later.contents.endswith(b"\n")
-        or not earlier.contents.endswith(b"\n")
+        b"\0" in old
+        or b"\0" in new
+        or not old.endswith(b"\n")
+        or not new.endswith(b"\n")
     ):
         return None
     try:
-        later.contents.decode()
-        earlier.contents.decode()
+        old.decode()
+        new.decode()
     except UnicodeDecodeError:
         return None
     result = subprocess.run(
-        ["diff", "--", earlier.artifact, later.artifact],
+        ["diff", "--", str(earlier), str(later)],
         cwd=sample,
         stdout=subprocess.PIPE,
     )
@@ -144,7 +152,13 @@ def _representations(sample: Path, phases: list[Phase]) -> list[Representation]:
             representation = Representation(canonical[phase.contents])
         if representation is None and index:
             earlier = phases[index - 1]
-            diff = _forward_diff(sample, earlier, phase)
+            diff = _forward_diff(
+                sample,
+                Path(earlier.artifact),
+                Path(phase.artifact),
+                earlier.contents,
+                phase.contents,
+            )
             diff_name = f"output-{earlier.name}-to-{phase.name}.diff"
             if diff is not None and _use_diff(len(diff), len(phase.contents)):
                 diff_path = sample / diff_name
@@ -164,7 +178,7 @@ def _representations(sample: Path, phases: list[Phase]) -> list[Representation]:
 def _reconstruct(sample: Path, representation: Representation) -> bytes:
     """Use the reader-facing helper to verify one stored representation."""
     if not representation.diffs:
-        return (sample / representation.base).read_bytes()
+        return _read_regular(sample, representation.base)
     result = subprocess.run(
         [str(_APPLY_DIFFS), representation.base, *representation.diffs],
         cwd=sample,
