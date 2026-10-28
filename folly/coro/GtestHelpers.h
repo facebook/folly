@@ -319,9 +319,10 @@ bool gtestAddTypedTest(
 #define CO_ASSERT_TRUE(condition) \
   GTEST_TEST_BOOLEAN_(            \
       (condition), #condition, false, true, CO_GTEST_FATAL_FAILURE_)
-#define CO_ASSERT_FALSE(condition) \
-  GTEST_TEST_BOOLEAN_(             \
-      (condition), #condition, true, false, CO_GTEST_FATAL_FAILURE_)
+// GTEST_TEST_BOOLEAN_ checks that the expression is true before
+// GoogleTest 1.18, and that it matches the expected value from 1.18 on. A
+// negated CO_ASSERT_TRUE works with both.
+#define CO_ASSERT_FALSE(condition) CO_ASSERT_TRUE(!(condition))
 
 #if defined(GTEST_IS_NULL_LITERAL_)
 #define CO_ASSERT_EQ(val1, val2)                                            \
