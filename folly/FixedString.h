@@ -559,6 +559,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
         size_{left_size - left_count + right_count} {}
 
  public:
+  using value_type = Char;
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
   using reference = Char&;

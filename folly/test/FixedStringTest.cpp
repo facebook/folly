@@ -19,6 +19,7 @@
 #include <string_view>
 
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include <folly/Range.h>
 #include <folly/portability/GTest.h>
