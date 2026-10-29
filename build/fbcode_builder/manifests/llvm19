@@ -1,5 +1,10 @@
 [manifest]
 name = llvm19
 
+# clang19-devel puts libclang-cpp.so and the clang headers under
+# /usr/lib64/llvm19, next to llvm19-devel. glean-clang finds both through
+# llvm-config-19. The `clang` rpm in the clang19 manifest is the
+# distribution's default clang and does not provide clang 19 libraries.
 [rpms]
 llvm19-devel
+clang19-devel
