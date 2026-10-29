@@ -54,7 +54,16 @@ macro(_fb_probe_thrift_python_runtime)
   unset(_fb_thrift_python_saved_pythonpath)
 endmacro()
 
+# With QUIET, not finding thrift-python or folly-python isn't a warning, for a
+# project that builds without thrift-python then.
 macro(fb_find_thrift_python_runtime)
+  set(_fb_thrift_python_args ${ARGN})
+  list(FIND _fb_thrift_python_args QUIET _fb_thrift_python_quiet)
+  if(_fb_thrift_python_quiet EQUAL -1)
+    set(_fb_thrift_python_quiet FALSE)
+  else()
+    set(_fb_thrift_python_quiet TRUE)
+  endif()
   if(
     NOT _FB_THRIFT_PYTHON_RUNTIME_FOUND OR
     NOT EXISTS "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/python" OR
@@ -101,10 +110,12 @@ macro(fb_find_thrift_python_runtime)
     endif()
 
     if(NOT THRIFT_PYTHON_SITE_PACKAGES)
-      message(WARNING
-        "thrift-python runtime not found.  "
-        "Searched: ${_getdeps_root}/fbthrift-python/share/thrift/wheels/*.whl  "
-        "pip install the fbthrift-python wheel before configuring the project.")
+      if(NOT _fb_thrift_python_quiet)
+        message(WARNING
+          "thrift-python runtime not found.  "
+          "Searched: ${_getdeps_root}/fbthrift-python/share/thrift/wheels/*.whl  "
+          "pip install the fbthrift-python wheel before configuring the project.")
+      endif()
     elseif(NOT EXISTS "${THRIFT_PYTHON_SITE_PACKAGES}/thrift/python")
       message(WARNING
         "fbthrift-python was found at ${THRIFT_PYTHON_SITE_PACKAGES}, but "
@@ -145,7 +156,7 @@ macro(fb_find_thrift_python_runtime)
       endforeach()
       if(FOLLY_PYTHON_SITE_PACKAGES)
         message(STATUS "Found folly-python runtime (via prefix): ${FOLLY_PYTHON_SITE_PACKAGES}")
-      else()
+      elseif(NOT _fb_thrift_python_quiet)
         message(WARNING
           "folly-python runtime not found.  "
           "Searched: ${_getdeps_root}/folly-python/lib*/python*/site-packages  "
@@ -167,6 +178,8 @@ macro(fb_find_thrift_python_runtime)
       unset(FOLLY_PYTHON_SITE_PACKAGES CACHE)
     endif()
   endif()
+  unset(_fb_thrift_python_args)
+  unset(_fb_thrift_python_quiet)
 endmacro()
 
 # ---------------------------------------------------------------------------
