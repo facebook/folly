@@ -168,6 +168,23 @@ unsigned parseStringControl(
   return runFixture(suspend, iters, fixture);
 }
 
+unsigned parseSparseSpecial(
+    unsigned iters,
+    size_t length,
+    size_t position,
+    bool escaped,
+    Parser parser = Parser::Default) {
+  folly::BenchmarkSuspender suspend;
+  auto body = plainText(length);
+  body[position] = '\t';
+  auto encoded = plainText(length);
+  encoded.replace(position, 1, escaped ? "\\t" : "\t");
+  Fixture fixture{'"' + encoded + '"', body, 1};
+  return parser == Parser::Default
+      ? runFixture(suspend, iters, fixture)
+      : runFixture<true>(suspend, iters, fixture);
+}
+
 // Each reported iteration is one string/key, including its share of document
 // parsing and destruction. Setup and fixture validation are not timed.
 #define PLAIN_STRING_LENGTHS(label, layout, parser)                           \
@@ -238,6 +255,26 @@ BENCHMARK_NAMED_PARAM_MULTI(
     parsePlainString, Json5_8, 8, Layout::Standalone, Parser::Json5)
 BENCHMARK_NAMED_PARAM_MULTI(
     parsePlainString, Json5_16, 16, Layout::Standalone, Parser::Json5)
+
+#define SPARSE_SPECIAL_LENGTH(label, length, escaped, parser)                  \
+  BENCHMARK_NAMED_PARAM_MULTI(                                                 \
+      parseSparseSpecial, label##_first, length, 0, escaped, parser)           \
+  BENCHMARK_NAMED_PARAM_MULTI(                                                 \
+      parseSparseSpecial, label##_middle, length, length / 2, escaped, parser) \
+  BENCHMARK_NAMED_PARAM_MULTI(                                                 \
+      parseSparseSpecial, label##_last, length, length - 1, escaped, parser)
+
+#define SPARSE_SPECIAL_LENGTHS(label, escaped, parser)       \
+  SPARSE_SPECIAL_LENGTH(label##_64, 64, escaped, parser)     \
+  SPARSE_SPECIAL_LENGTH(label##_1024, 1024, escaped, parser) \
+  SPARSE_SPECIAL_LENGTH(label##_65536, 65536, escaped, parser)
+
+SPARSE_SPECIAL_LENGTHS(Escape, true, Parser::Default)
+SPARSE_SPECIAL_LENGTHS(RawControl, false, Parser::Default)
+SPARSE_SPECIAL_LENGTHS(OptionsEscape, true, Parser::Options)
+SPARSE_SPECIAL_LENGTHS(OptionsRawControl, false, Parser::Options)
+#undef SPARSE_SPECIAL_LENGTHS
+#undef SPARSE_SPECIAL_LENGTH
 
 } // namespace
 
