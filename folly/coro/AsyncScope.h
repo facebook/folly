@@ -36,6 +36,7 @@
 #include <atomic>
 #include <cassert>
 #include <optional>
+#include <source_location>
 
 #if FOLLY_HAS_COROUTINES
 
@@ -130,7 +131,7 @@ class AsyncScope {
   void addWithSourceLoc(
       Awaitable&& awaitable,
       void* returnAddress = nullptr,
-      source_location sourceLocation = source_location::current());
+      std::source_location sourceLocation = std::source_location::current());
 
   /**
    * Asynchronously wait for all started tasks to complete.
@@ -155,7 +156,7 @@ class AsyncScope {
       Awaitable awaitable,
       bool throwOnJoin,
       folly::exception_wrapper& maybeException,
-      std::optional<source_location> source,
+      std::optional<std::source_location> source,
       std::atomic<bool>& exceptionRaised) {
     static_assert(
         std::is_void_v<await_result_t<Awaitable>> ||
@@ -241,7 +242,7 @@ template <typename Awaitable>
 FOLLY_NOINLINE inline void AsyncScope::addWithSourceLoc(
     Awaitable&& awaitable,
     void* returnAddress,
-    source_location sourceLocation) {
+    std::source_location sourceLocation) {
   CHECK(!joined_)
       << "It is invalid to add() more work after work has been joined";
   anyTasksStarted_ = true;
@@ -337,7 +338,7 @@ class CancellableAsyncScope {
       Awaitable&& awaitable,
       std::optional<CancellationToken> token,
       void* returnAddress = nullptr,
-      source_location sourceLocation = source_location::current()) {
+      std::source_location sourceLocation = std::source_location::current()) {
     scope_.addWithSourceLoc(
         co_withCancellation(
             token ? cancellation_token_merge(*token, cancellationToken_)
@@ -350,7 +351,7 @@ class CancellableAsyncScope {
   template <typename Awaitable>
   void addWithSourceLoc(
       Awaitable&& awaitable,
-      source_location sourceLocation = source_location::current()) {
+      std::source_location sourceLocation = std::source_location::current()) {
     addWithSourceLoc(
         std::forward<Awaitable>(awaitable),
         std::nullopt,
