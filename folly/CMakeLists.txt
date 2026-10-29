@@ -548,6 +548,8 @@ folly_add_library(
   EXPORTED_DEPS
     fmt::fmt
     folly_cpp_attributes
+    folly_lang_exception
+    folly_portability_fmt_compile
 )
 
 folly_add_library(

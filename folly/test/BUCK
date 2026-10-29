@@ -714,8 +714,19 @@ fb_dirsync_cpp_unittest(
     name = "fmt_utility_test",
     srcs = ["FmtUtilityTest.cpp"],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gtest",
         "//folly:fmt_utility",
+    ],
+)
+
+fb_dirsync_cpp_benchmark(
+    name = "fmt_utility_bench",
+    srcs = ["FmtUtilityBench.cpp"],
+    deps = [
+        "//folly:benchmark",
+        "//folly:fmt_utility",
+        "//folly/init:init",
     ],
 )
 
