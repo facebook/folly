@@ -43,7 +43,7 @@ fb_dirsync_cpp_unittest(
     srcs = ["TcpInfoTest.cpp"],
     supports_static_listing = False,
     deps = [
-        ":tcpinfo_test_util",
+        ":tcpinfo_test_util",  # @manual
         "//folly/net:tcpinfo",
         "//folly/net/test:mock_net_ops_dispatcher",
         "//folly/portability:gmock",

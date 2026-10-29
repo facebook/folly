@@ -333,19 +333,28 @@ Optional<uint64_t> TcpInfo::cwndInPackets() const {
 #elif defined(__linux__)
   return getFieldAsOptUInt64(&tcp_info::tcpi_snd_cwnd);
 #elif defined(__APPLE__)
-  return getFieldAsOptUInt64(&tcp_info::tcpi_snd_cwnd);
+  const auto cwndInBytesOpt = getFieldAsOptUInt64(&tcp_info::tcpi_snd_cwnd);
+  const auto mssOpt = mss();
+  if (cwndInBytesOpt && mssOpt && mssOpt.value() > 0) {
+    return (cwndInBytesOpt.value() + mssOpt.value() - 1) / mssOpt.value();
+  }
+  return folly::none;
 #else
   return folly::none;
 #endif
 }
 
 Optional<uint64_t> TcpInfo::cwndInBytes() const {
+#if defined(FOLLY_HAVE_TCP_INFO) && defined(__APPLE__)
+  return getFieldAsOptUInt64(&tcp_info::tcpi_snd_cwnd);
+#else
   const auto cwndInPacketsOpt = cwndInPackets();
   const auto mssOpt = mss();
   if (cwndInPacketsOpt && mssOpt) {
     return cwndInPacketsOpt.value() * mssOpt.value();
   }
   return folly::none;
+#endif
 }
 
 Optional<uint64_t> TcpInfo::ssthresh() const {

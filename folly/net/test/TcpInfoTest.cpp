@@ -17,24 +17,26 @@
 #include <cstring>
 #include <folly/net/TcpInfo.h>
 #include <folly/net/test/MockNetOpsDispatcher.h>
-#include <folly/net/test/TcpInfoTestUtil.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace testing;
-using namespace folly::test;
 
 using us = std::chrono::microseconds;
-
-const auto kTestSiocoutqVal = 10U;
-const auto kTestSiocinqVal = 100U;
-const auto kTestUnknownCcName = "coolNewCCA"; // it's cool, new, and a CCA!
 
 // tests are only supported on Linux right now
 #ifdef __linux__
 #include <linux/sockios.h>
 #include <sys/ioctl.h>
+
+#include <folly/net/test/TcpInfoTestUtil.h>
+
+using namespace folly::test;
+
+const auto kTestSiocoutqVal = 10U;
+const auto kTestSiocinqVal = 100U;
+const auto kTestUnknownCcName = "coolNewCCA"; // it's cool, new, and a CCA!
 
 class TcpInfoTest : public Test {
  public:
@@ -903,3 +905,31 @@ TEST_P(TcpInfoTestCcParam, FetchAllAndCheck) {
 }
 
 #endif // #ifdef __linux__
+
+#ifdef __APPLE__
+TEST(TcpInfoAppleTest, CwndIsReportedInBytes) {
+  folly::TcpInfo::tcp_info tInfo = {};
+  tInfo.tcpi_maxseg = 1448;
+  tInfo.tcpi_snd_cwnd = 14480;
+  TcpInfo wrappedTcpInfo{tInfo};
+  EXPECT_EQ(14480U, wrappedTcpInfo.cwndInBytes());
+  EXPECT_EQ(10U, wrappedTcpInfo.cwndInPackets());
+}
+
+TEST(TcpInfoAppleTest, CwndInPacketsCountsPartialSegment) {
+  folly::TcpInfo::tcp_info tInfo = {};
+  tInfo.tcpi_maxseg = 1448;
+  tInfo.tcpi_snd_cwnd = 15927;
+  TcpInfo wrappedTcpInfo{tInfo};
+  EXPECT_EQ(15927U, wrappedTcpInfo.cwndInBytes());
+  EXPECT_EQ(11U, wrappedTcpInfo.cwndInPackets());
+}
+
+TEST(TcpInfoAppleTest, CwndInPacketsUnavailableWithoutMss) {
+  folly::TcpInfo::tcp_info tInfo = {};
+  tInfo.tcpi_snd_cwnd = 14480;
+  TcpInfo wrappedTcpInfo{tInfo};
+  EXPECT_EQ(14480U, wrappedTcpInfo.cwndInBytes());
+  EXPECT_FALSE(wrappedTcpInfo.cwndInPackets().has_value());
+}
+#endif // #ifdef __APPLE__
