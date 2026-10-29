@@ -66,7 +66,10 @@ endif ()
 find_package(Boost 1.69.0 QUIET COMPONENTS ${FOLLY_BOOST_COMPONENTS})
 if (NOT Boost_FOUND)
   set(BOOST_ENABLE_CMAKE ON)
-  set(BOOST_INCLUDE_LIBRARIES ${FOLLY_BOOST_COMPONENTS})
+  # A parent project that builds folly can ask for more of Boost's libraries
+  # in BOOST_INCLUDE_LIBRARIES, as eden does for filesystem.
+  list(APPEND BOOST_INCLUDE_LIBRARIES ${FOLLY_BOOST_COMPONENTS})
+  list(REMOVE_DUPLICATES BOOST_INCLUDE_LIBRARIES)
   # Boost 1.83's libs/predef and libs/filesystem still ask for
   # cmake_minimum_required 2.8 and 3.0. CMake 4 rejects anything below 3.5 and
   # warns below 3.10.
@@ -83,7 +86,7 @@ if (NOT Boost_FOUND)
     boost_headers INTERFACE "$<BUILD_INTERFACE:${Boost_INCLUDE_DIRS}>")
   # Both the alias and the underlying name get linked.
   set(folly_boost_local Boost::headers boost_headers)
-  foreach (folly_boost_component IN LISTS FOLLY_BOOST_COMPONENTS)
+  foreach (folly_boost_component IN LISTS BOOST_INCLUDE_LIBRARIES)
     list(APPEND folly_boost_local "Boost::${folly_boost_component}"
          "boost_${folly_boost_component}")
   endforeach ()
