@@ -260,6 +260,14 @@ folly_add_library(
 )
 
 folly_add_library(
+  NAME source_location
+  SRCS source_location.cpp
+  HEADERS source_location.h
+  DEPS fmt::fmt
+  EXPORTED_DEPS folly_portability_source_location
+)
+
+folly_add_library(
   NAME static_const
   HEADERS StaticConst.h
   EXPORTED_DEPS folly_portability

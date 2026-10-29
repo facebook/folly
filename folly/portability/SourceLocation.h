@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <version>
 
 #include <fmt/format.h>
@@ -46,4 +47,4 @@ inline auto sourceLocationToString(const source_location& location) {
       location.line(),
       location.function_name());
 }
-}
+} // namespace folly

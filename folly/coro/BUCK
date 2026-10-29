@@ -82,7 +82,7 @@ fb_dirsync_cpp_library(
         "//folly:cancellation_token",
         "//folly:exception_wrapper",
         "//folly/futures:core",
-        "//folly/portability:source_location",
+        "//folly/lang:source_location",
         "//folly/synchronization:relaxed_atomic",
     ],
 )

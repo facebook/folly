@@ -28,7 +28,7 @@
 #include <folly/coro/detail/Barrier.h>
 #include <folly/coro/detail/BarrierTask.h>
 #include <folly/futures/Future.h>
-#include <folly/portability/SourceLocation.h>
+#include <folly/lang/source_location.h>
 #include <folly/synchronization/RelaxedAtomic.h>
 
 #include <glog/logging.h>
@@ -180,7 +180,7 @@ class AsyncScope {
     if (exn && !exn.get_exception<OperationCancelled>()) {
       if (throwOnJoin) {
         LOG(ERROR)
-            << (source.has_value() ? sourceLocationToString(source.value())
+            << (source.has_value() ? source_location_to_string(source.value())
                                    : "")
             << "Unhandled exception thrown from task added to AsyncScope: "
             << exn;
@@ -189,7 +189,7 @@ class AsyncScope {
         }
       } else {
         LOG(DFATAL)
-            << (source.has_value() ? sourceLocationToString(source.value())
+            << (source.has_value() ? source_location_to_string(source.value())
                                    : "")
             << "Unhandled exception thrown from task added to AsyncScope: "
             << exn;

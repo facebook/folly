@@ -75,7 +75,7 @@ folly_add_library(
     folly_coro_task
     folly_exception_wrapper
     folly_futures_core
-    folly_portability_source_location
+    folly_lang_source_location
     folly_synchronization_relaxed_atomic
 )
 
