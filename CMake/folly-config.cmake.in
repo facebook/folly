@@ -62,7 +62,7 @@ set(Boost_USE_STATIC_LIBS "@FOLLY_BOOST_LINK_STATIC@")
 find_package(Boost 1.69.0 REQUIRED
   COMPONENTS
     context
-    program_options
+    @FOLLY_BOOST_PROGRAM_OPTIONS@
     regex
     thread
 )

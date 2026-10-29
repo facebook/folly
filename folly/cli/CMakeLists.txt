@@ -27,36 +27,39 @@ if (LIBGFLAGS_FOUND OR gflags_FOUND)
     EXPORTED_DEPS folly_lang_cstring_view
   )
 
-  folly_add_library(
-    NAME program_options
-    SRCS
-      NestedCommandLineApp.cpp
-      ProgramOptions.cpp
-    HEADERS
-      NestedCommandLineApp.h
-      ProgramOptions.h
-    DEPS
-      ${GLOG_LIBRARIES}
-      Boost::headers
-      fmt::fmt
-      folly_conv
-      folly_file_util
-      folly_format
-      folly_io_fs_util
-      folly_portability
-    EXPORTED_DEPS
-      Boost::program_options
-      folly_c_portability
-      folly_optional
-      folly_portability_gflags
-      folly_string
-  )
-  set_property(
-    GLOBAL
-    APPEND
-    PROPERTY
-      FOLLY_MONOLITHIC_EXTERNAL_DEPS
-      Boost::program_options
-  )
+  # program_options requires gflags and Boost.ProgramOptions
+  if (FOLLY_BUILD_CLI_PROGRAM_OPTIONS)
+    folly_add_library(
+      NAME program_options
+      SRCS
+        NestedCommandLineApp.cpp
+        ProgramOptions.cpp
+      HEADERS
+        NestedCommandLineApp.h
+        ProgramOptions.h
+      DEPS
+        ${GLOG_LIBRARIES}
+        Boost::headers
+        fmt::fmt
+        folly_conv
+        folly_file_util
+        folly_format
+        folly_io_fs_util
+        folly_portability
+      EXPORTED_DEPS
+        Boost::program_options
+        folly_c_portability
+        folly_optional
+        folly_portability_gflags
+        folly_string
+    )
+    set_property(
+      GLOBAL
+      APPEND
+      PROPERTY
+        FOLLY_MONOLITHIC_EXTERNAL_DEPS
+        Boost::program_options
+    )
+  endif ()
 
 endif () # LIBGFLAGS_FOUND OR gflags_FOUND

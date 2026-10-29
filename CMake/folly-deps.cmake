@@ -57,13 +57,15 @@ set(Boost_USE_STATIC_LIBS "${FOLLY_BOOST_LINK_STATIC}")
 # link them globally. Targets that need specific Boost libraries should
 # add them to their EXTERNAL_DEPS (e.g., Boost::regex, Boost::context).
 # Boost::thread is needed by Windows pthread compatibility layer.
-set(FOLLY_BOOST_COMPONENTS context program_options regex)
+set(FOLLY_BOOST_COMPONENTS context regex)
 if (WIN32)
   list(APPEND FOLLY_BOOST_COMPONENTS thread)
 endif ()
 
 # CMake 4 dropped FindBoost, so this config-only probe warns without QUIET.
-find_package(Boost 1.69.0 QUIET COMPONENTS ${FOLLY_BOOST_COMPONENTS})
+# folly/cli's ProgramOptions is built only if Boost.ProgramOptions is found.
+find_package(Boost 1.69.0 QUIET COMPONENTS ${FOLLY_BOOST_COMPONENTS}
+             OPTIONAL_COMPONENTS program_options)
 if (NOT Boost_FOUND)
   set(BOOST_ENABLE_CMAKE ON)
   # A parent project that builds folly can ask for more of Boost's libraries
@@ -622,6 +624,17 @@ if (FOLLY_LIBRARY_SANITIZE_ADDRESS)
         -fno-sanitize=unsigned-integer-overflow)
     list(APPEND FOLLY_CXX_FLAGS ${FOLLY_ASAN_FLAGS})
   endif ()
+endif ()
+
+# folly/cli's ProgramOptions needs gflags and Boost.ProgramOptions. The library,
+# its installed headers and the components folly-config.cmake asks for all
+# follow this.
+if (TARGET Boost::program_options AND (LIBGFLAGS_FOUND OR gflags_FOUND))
+  set(FOLLY_BUILD_CLI_PROGRAM_OPTIONS ON)
+  set(FOLLY_BOOST_PROGRAM_OPTIONS program_options)
+else ()
+  set(FOLLY_BUILD_CLI_PROGRAM_OPTIONS OFF)
+  set(FOLLY_BOOST_PROGRAM_OPTIONS "")
 endif ()
 
 add_library(folly_deps INTERFACE)

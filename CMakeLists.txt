@@ -243,6 +243,10 @@ remove_matches_from_lists(
   "^${FOLLY_DIR_REGEX_ESCAPED}/rust/"
   "^${FOLLY_DIR_REGEX_ESCAPED}/ext/buck2/"
 )
+if (NOT FOLLY_BUILD_CLI_PROGRAM_OPTIONS)
+  list(REMOVE_ITEM hfiles ${FOLLY_DIR}/cli/NestedCommandLineApp.h
+       ${FOLLY_DIR}/cli/ProgramOptions.h)
+endif ()
 # Add test utility headers that are part of public API
 list(
   APPEND
