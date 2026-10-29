@@ -1,6 +1,5 @@
 load("@fbsource//tools/build_defs/dirsync:fb_dirsync_cpp_unittest.bzl", "fb_dirsync_cpp_unittest")
-load("@fbsource//tools/build_defs/dirsync:fb_dirsync_rule.bzl", "fb_dirsync_rule")
-load("../../../../io/async/test/certs/defs.bzl", "alias_pem", "alias_pem_for_xplat")
+load("../../../../io/async/test/certs/defs.bzl", "alias_pem")
 
 oncall("fbcode_entropy_wardens_folly")
 
@@ -36,16 +35,10 @@ fb_dirsync_cpp_unittest(
 
 # !!!! fbcode/folly/io/async/ssl/test/TARGETS was merged into this file, see https://fburl.com/workplace/xl8l9yuo for more info !!!!
 
-fb_dirsync_rule(
-    name = "dummy_name",
-    fbcode_rule = alias_pem,
+alias_pem(
     pems = [
         "tests-cert.pem",
     ],
-    # alias_pem ignores `name` and creates one alias per pem; there is no
-    # single "_dummy_name" target to redirect to.
-    redirect = False,
-    xplat_rule = alias_pem_for_xplat,
 )
 
 fb_dirsync_cpp_unittest(

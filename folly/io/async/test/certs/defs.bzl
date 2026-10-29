@@ -1,16 +1,11 @@
 load("@fbcode_macros//build_defs:native_rules.bzl", "alias")
 
-def alias_pem(pems: list[str], name: str | None = None):  # name ignored
+def alias_pem(pems: list[str]):
+    # The folly root is `folly` in fbcode and OSS, and `xplat/folly` in fbsource.
+    package = native.package_name()
+    folly_root = package[: package.find("folly/") + len("folly")]
     for pem in pems:
         alias(
             name = pem,
-            actual = "//folly/io/async/test/certs:{pem}".format(pem = pem),
-        )
-
-def alias_pem_for_xplat(pems: list[str], name: str | None = None):  # name ignored
-    # in xplat these pem files are exported in //xplat/folly/io/async/test/certs
-    for pem in pems:
-        alias(
-            name = pem,
-            actual = "//xplat/folly/io/async/test/certs:{pem}".format(pem = pem),
+            actual = "//{}/io/async/test/certs:{}".format(folly_root, pem),
         )
