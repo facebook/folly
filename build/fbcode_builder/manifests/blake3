@@ -2,9 +2,9 @@
 name = blake3
 
 [download]
-url = https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.5.1.tar.gz
-sha256 = 822cd37f70152e5985433d2c50c8f6b2ec83aaf11aa31be9fe71486a91744f37
+url = https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.8.6.tar.gz
+sha256 = da7b5b0b6cf7106fe54b7d718d1ea371cce434cd15ebe5e56ca011b645cbef0e
 
 [build]
 builder = cmake
-subdir = BLAKE3-1.5.1/c
+subdir = BLAKE3-1.8.6/c
