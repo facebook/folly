@@ -38,7 +38,7 @@ struct TemporaryEmplaceKey {
   template <typename... Args>
   TemporaryEmplaceKey(Alloc& a, std::tuple<Args...>&& args) : alloc_(a) {
     auto p = &value();
-    apply(
+    std::apply(
         [&, p](auto&&... inner) {
           std::allocator_traits<Alloc>::construct(
               alloc_, p, std::forward<decltype(inner)>(inner)...);

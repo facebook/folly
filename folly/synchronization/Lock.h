@@ -629,21 +629,25 @@ template <typename, typename>
 struct transition_lock_policy;
 
 template <typename Mutex>
-struct transition_lock_policy<unique_lock<Mutex>, shared_lock<Mutex>> {
+struct transition_lock_policy<
+    std::unique_lock<Mutex>,
+    std::shared_lock<Mutex>> {
   using transition_fn = access::unlock_and_lock_shared_fn;
 };
 template <typename Mutex>
-struct transition_lock_policy<unique_lock<Mutex>, upgrade_lock<Mutex>> {
+struct transition_lock_policy<std::unique_lock<Mutex>, upgrade_lock<Mutex>> {
   using transition_fn = access::unlock_and_lock_upgrade_fn;
 };
 template <typename Mutex>
-struct transition_lock_policy<shared_lock<Mutex>, unique_lock<Mutex>> {
+struct transition_lock_policy<
+    std::shared_lock<Mutex>,
+    std::unique_lock<Mutex>> {
   using try_transition_fn = access::try_unlock_shared_and_lock_fn;
   using try_transition_for_fn = access::try_unlock_shared_and_lock_for_fn;
   using try_transition_until_fn = access::try_unlock_shared_and_lock_until_fn;
 };
 template <typename Mutex>
-struct transition_lock_policy<shared_lock<Mutex>, upgrade_lock<Mutex>> {
+struct transition_lock_policy<std::shared_lock<Mutex>, upgrade_lock<Mutex>> {
   using try_transition_fn = access::try_unlock_shared_and_lock_upgrade_fn;
   using try_transition_for_fn =
       access::try_unlock_shared_and_lock_upgrade_for_fn;
@@ -651,14 +655,14 @@ struct transition_lock_policy<shared_lock<Mutex>, upgrade_lock<Mutex>> {
       access::try_unlock_shared_and_lock_upgrade_until_fn;
 };
 template <typename Mutex>
-struct transition_lock_policy<upgrade_lock<Mutex>, unique_lock<Mutex>> {
+struct transition_lock_policy<upgrade_lock<Mutex>, std::unique_lock<Mutex>> {
   using transition_fn = access::unlock_upgrade_and_lock_fn;
   using try_transition_fn = access::try_unlock_upgrade_and_lock_fn;
   using try_transition_for_fn = access::try_unlock_upgrade_and_lock_for_fn;
   using try_transition_until_fn = access::try_unlock_upgrade_and_lock_until_fn;
 };
 template <typename Mutex>
-struct transition_lock_policy<upgrade_lock<Mutex>, shared_lock<Mutex>> {
+struct transition_lock_policy<upgrade_lock<Mutex>, std::shared_lock<Mutex>> {
   using transition_fn = access::unlock_upgrade_and_lock_shared_fn;
 };
 
@@ -736,8 +740,9 @@ ToLock<Mutex> try_transition_lock_until(
 //  Represents an immediate atomic downgrade transition from exclusive lock to
 //  to shared lock.
 template <typename Mutex>
-shared_lock<Mutex> transition_to_shared_lock(unique_lock<Mutex>& lock) {
-  return transition_lock<shared_lock>(lock);
+std::shared_lock<Mutex> transition_to_shared_lock(
+    std::unique_lock<Mutex>& lock) {
+  return transition_lock<std::shared_lock>(lock);
 }
 
 //  transition_to_shared_lock(upgrade_lock)
@@ -747,8 +752,8 @@ shared_lock<Mutex> transition_to_shared_lock(unique_lock<Mutex>& lock) {
 //  Represents an immediate atomic downgrade transition from upgrade lock to
 //  shared lock.
 template <typename Mutex>
-shared_lock<Mutex> transition_to_shared_lock(upgrade_lock<Mutex>& lock) {
-  return transition_lock<shared_lock>(lock);
+std::shared_lock<Mutex> transition_to_shared_lock(upgrade_lock<Mutex>& lock) {
+  return transition_lock<std::shared_lock>(lock);
 }
 
 //  transition_to_upgrade_lock(unique_lock)
@@ -758,7 +763,7 @@ shared_lock<Mutex> transition_to_shared_lock(upgrade_lock<Mutex>& lock) {
 //  Represents an immediate atomic downgrade transition from unique lock to
 //  upgrade lock.
 template <typename Mutex>
-upgrade_lock<Mutex> transition_to_upgrade_lock(unique_lock<Mutex>& lock) {
+upgrade_lock<Mutex> transition_to_upgrade_lock(std::unique_lock<Mutex>& lock) {
   return transition_lock<upgrade_lock>(lock);
 }
 
@@ -769,8 +774,8 @@ upgrade_lock<Mutex> transition_to_upgrade_lock(unique_lock<Mutex>& lock) {
 //  Represents an eventual atomic upgrade transition from upgrade lock to unique
 //  lock.
 template <typename Mutex>
-unique_lock<Mutex> transition_to_unique_lock(upgrade_lock<Mutex>& lock) {
-  return transition_lock<unique_lock>(lock);
+std::unique_lock<Mutex> transition_to_unique_lock(upgrade_lock<Mutex>& lock) {
+  return transition_lock<std::unique_lock>(lock);
 }
 
 //  try_transition_to_unique_lock(upgrade_lock)
@@ -780,8 +785,9 @@ unique_lock<Mutex> transition_to_unique_lock(upgrade_lock<Mutex>& lock) {
 //  Represents an immediate attempted atomic upgrade transition from upgrade
 //  lock to unique lock.
 template <typename Mutex>
-unique_lock<Mutex> try_transition_to_unique_lock(upgrade_lock<Mutex>& lock) {
-  return transition_lock<unique_lock>(lock);
+std::unique_lock<Mutex> try_transition_to_unique_lock(
+    upgrade_lock<Mutex>& lock) {
+  return transition_lock<std::unique_lock>(lock);
 }
 
 //  try_transition_to_unique_lock_for(upgrade_lock)
@@ -791,10 +797,10 @@ unique_lock<Mutex> try_transition_to_unique_lock(upgrade_lock<Mutex>& lock) {
 //  Represents an eventual attempted atomic upgrade transition from upgrade
 //  lock to unique lock.
 template <typename Mutex, typename Rep, typename Period>
-unique_lock<Mutex> try_transition_to_unique_lock_for(
+std::unique_lock<Mutex> try_transition_to_unique_lock_for(
     upgrade_lock<Mutex>& lock,
     std::chrono::duration<Rep, Period> const& timeout) {
-  return try_transition_lock_for<unique_lock>(lock, timeout);
+  return try_transition_lock_for<std::unique_lock>(lock, timeout);
 }
 
 //  try_transition_to_unique_lock_until(upgrade_lock)
@@ -804,10 +810,10 @@ unique_lock<Mutex> try_transition_to_unique_lock_for(
 //  Represents an eventual attempted atomic upgrade transition from upgrade
 //  lock to unique lock.
 template <typename Mutex, typename Clock, typename Duration>
-unique_lock<Mutex> try_transition_to_unique_lock_until(
+std::unique_lock<Mutex> try_transition_to_unique_lock_until(
     upgrade_lock<Mutex>& lock,
     std::chrono::time_point<Clock, Duration> const& deadline) {
-  return try_transition_lock_until<unique_lock>(lock, deadline);
+  return try_transition_lock_until<std::unique_lock>(lock, deadline);
 }
 
 //  try_transition_to_unique_lock(shared_lock)
@@ -817,8 +823,9 @@ unique_lock<Mutex> try_transition_to_unique_lock_until(
 //  Represents an immediate attempted atomic upgrade transition from shared
 //  lock to unique lock.
 template <typename Mutex>
-unique_lock<Mutex> try_transition_to_unique_lock(shared_lock<Mutex>& lock) {
-  return try_transition_lock<unique_lock>(lock);
+std::unique_lock<Mutex> try_transition_to_unique_lock(
+    std::shared_lock<Mutex>& lock) {
+  return try_transition_lock<std::unique_lock>(lock);
 }
 
 //  try_transition_to_unique_lock_for(shared_lock)
@@ -828,10 +835,10 @@ unique_lock<Mutex> try_transition_to_unique_lock(shared_lock<Mutex>& lock) {
 //  Represents an eventual attempted atomic upgrade transition from shared
 //  lock to unique lock.
 template <typename Mutex, typename Rep, typename Period>
-unique_lock<Mutex> try_transition_to_unique_lock_for(
-    shared_lock<Mutex>& lock,
+std::unique_lock<Mutex> try_transition_to_unique_lock_for(
+    std::shared_lock<Mutex>& lock,
     std::chrono::duration<Rep, Period> const& timeout) {
-  return try_transition_lock_for<unique_lock>(lock, timeout);
+  return try_transition_lock_for<std::unique_lock>(lock, timeout);
 }
 
 //  try_transition_to_unique_lock_until(shared_lock)
@@ -841,10 +848,10 @@ unique_lock<Mutex> try_transition_to_unique_lock_for(
 //  Represents an eventual attempted atomic upgrade transition from shared
 //  lock to unique lock.
 template <typename Mutex, typename Clock, typename Duration>
-unique_lock<Mutex> try_transition_to_unique_lock_until(
-    shared_lock<Mutex>& lock,
+std::unique_lock<Mutex> try_transition_to_unique_lock_until(
+    std::shared_lock<Mutex>& lock,
     std::chrono::time_point<Clock, Duration> const& deadline) {
-  return try_transition_lock_until<unique_lock>(lock, deadline);
+  return try_transition_lock_until<std::unique_lock>(lock, deadline);
 }
 
 //  try_transition_to_upgrade_lock(shared_lock)
@@ -854,7 +861,8 @@ unique_lock<Mutex> try_transition_to_unique_lock_until(
 //  Represents an immediate attempted atomic upgrade transition from shared
 //  lock to upgrade lock.
 template <typename Mutex>
-upgrade_lock<Mutex> try_transition_to_upgrade_lock(shared_lock<Mutex>& lock) {
+upgrade_lock<Mutex> try_transition_to_upgrade_lock(
+    std::shared_lock<Mutex>& lock) {
   return try_transition_lock<upgrade_lock>(lock);
 }
 
@@ -866,7 +874,7 @@ upgrade_lock<Mutex> try_transition_to_upgrade_lock(shared_lock<Mutex>& lock) {
 //  lock to upgrade lock.
 template <typename Mutex, typename Rep, typename Period>
 upgrade_lock<Mutex> try_transition_to_upgrade_lock_for(
-    shared_lock<Mutex>& lock,
+    std::shared_lock<Mutex>& lock,
     std::chrono::duration<Rep, Period> const& timeout) {
   return try_transition_lock_for<upgrade_lock>(lock, timeout);
 }
@@ -879,7 +887,7 @@ upgrade_lock<Mutex> try_transition_to_upgrade_lock_for(
 //  lock to upgrade lock.
 template <typename Mutex, typename Clock, typename Duration>
 upgrade_lock<Mutex> try_transition_to_upgrade_lock_until(
-    shared_lock<Mutex>& lock,
+    std::shared_lock<Mutex>& lock,
     std::chrono::time_point<Clock, Duration> const& deadline) {
   return try_transition_lock_until<upgrade_lock>(lock, deadline);
 }

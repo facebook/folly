@@ -183,13 +183,13 @@ class thread_cached_synchronized {
   }
   template <typename F, typename R = invoke_result_t<F, value_type&>>
   R mutate(F f) {
-    unique_lock<Mutex> lock{truth_.mutex};
+    std::unique_lock<Mutex> lock{truth_.mutex};
     return mutate_locked(f);
   }
 
   template <typename A>
   bool mutate_cx(value_type& expected, A&& desired) {
-    unique_lock<Mutex> lock{truth_.mutex};
+    std::unique_lock<Mutex> lock{truth_.mutex};
     auto const eq = std::as_const(truth_.value) == std::as_const(expected);
     if (eq) {
       truth_.value = // value first: mutation may throw

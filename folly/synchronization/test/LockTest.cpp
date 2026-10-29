@@ -333,16 +333,16 @@ using param_to_lock_t =
 template <typename L>
 [[maybe_unused]] static constexpr Held held_v = Held::None;
 template <typename M>
-static constexpr Held held_v<folly::unique_lock<M>> = Held::Unique;
+static constexpr Held held_v<std::unique_lock<M>> = Held::Unique;
 template <typename M>
-static constexpr Held held_v<folly::shared_lock<M>> = Held::Shared;
+static constexpr Held held_v<std::shared_lock<M>> = Held::Shared;
 template <typename M>
 static constexpr Held held_v<folly::upgrade_lock<M>> = Held::Upgrade;
 
 template <typename M>
-using x = folly::unique_lock<M>;
+using x = std::unique_lock<M>;
 template <typename M>
-using s = folly::shared_lock<M>;
+using s = std::shared_lock<M>;
 template <typename M>
 using u = folly::upgrade_lock<M>;
 
@@ -355,11 +355,11 @@ template <typename>
 struct lock_guard_lock_t_;
 template <typename M>
 struct lock_guard_lock_t_<folly::unique_lock_guard<M>> {
-  using type = folly::unique_lock<M>;
+  using type = std::unique_lock<M>;
 };
 template <typename M>
 struct lock_guard_lock_t_<folly::shared_lock_guard<M>> {
-  using type = folly::shared_lock<M>;
+  using type = std::shared_lock<M>;
 };
 template <typename LG>
 using lock_guard_lock_t = typename lock_guard_lock_t_<LG>::type;

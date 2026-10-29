@@ -1090,7 +1090,7 @@ class SynchronizedLocker {
 
   auto lock() const {
     auto args = std::tuple<const Args&...>{args_};
-    return apply(lockFunc_, std::tuple_cat(std::tie(synchronized), args));
+    return std::apply(lockFunc_, std::tuple_cat(std::tie(synchronized), args));
   }
   auto tryLock() const { return tryLockFunc_(synchronized); }
 
@@ -1627,7 +1627,7 @@ auto lock(const Synchronized<D, M>& synchronized, Args&&... args) {
  */
 template <typename Func, typename... SynchronizedLockers>
 decltype(auto) synchronized(Func&& func, SynchronizedLockers&&... lockers) {
-  return apply(
+  return std::apply(
       std::forward<Func>(func),
       lock(std::forward<SynchronizedLockers>(lockers)...));
 }

@@ -166,8 +166,8 @@ class Uncurry {
 
   template <class Tuple>
   auto operator()(Tuple&& tuple) const
-      -> decltype(apply(std::declval<F>(), std::forward<Tuple>(tuple))) {
-    return apply(func_, std::forward<Tuple>(tuple));
+      -> decltype(std::apply(std::declval<F>(), std::forward<Tuple>(tuple))) {
+    return std::apply(func_, std::forward<Tuple>(tuple));
   }
 
  private:
