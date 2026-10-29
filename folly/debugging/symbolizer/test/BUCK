@@ -110,9 +110,12 @@ fbcode_target(
     ],
     deps = [
         "fbsource//third-party/googletest:gmock",
+        "//folly:conv",
         "//folly:cpp_attributes",
+        "//folly:file",
         "//folly:file_util",
         "//folly:string",
+        "//folly:subprocess",
         "//folly/debugging/symbolizer:elf",
         "//folly/debugging/symbolizer/detail:debug",
         "//folly/portability:gtest",

@@ -17,10 +17,21 @@
 #include <span>
 #include <folly/debugging/symbolizer/Elf.h>
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <algorithm>
+#include <filesystem>
+#include <iterator>
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
+#include <folly/Conv.h>
 #include <folly/CppAttributes.h>
+#include <folly/File.h>
 #include <folly/FileUtil.h>
 #include <folly/String.h>
+#include <folly/Subprocess.h>
 #include <folly/debugging/symbolizer/detail/Debug.h>
 #include <folly/portability/GTest.h>
 #include <folly/testing/TestUtil.h>
@@ -417,6 +428,70 @@ TEST(TestFindNote, SimpleElf) {
     EXPECT_TRUE(noteMaybe.hasError());
     EXPECT_FALSE(noteMaybe.error().isDataCorruptionError());
   }
+}
+
+namespace {
+
+// This process's fds that are open on the file at `path`, in ascending order.
+std::vector<int> fdsOpenOn(const char* path) {
+  struct stat target{};
+  std::vector<int> fds;
+  if (::stat(path, &target) != 0) {
+    return fds;
+  }
+  for (const auto& entry :
+       std::filesystem::directory_iterator("/proc/self/fd")) {
+    const int fd = std::stoi(entry.path().filename().string());
+    struct stat st{};
+    if (::fstat(fd, &st) == 0 && st.st_dev == target.st_dev &&
+        st.st_ino == target.st_ino) {
+      fds.push_back(fd);
+    }
+  }
+  std::sort(fds.begin(), fds.end());
+  return fds;
+}
+
+// What `fd` refers to in a child spawned (fork and exec) now: empty if the
+// child did not inherit it.
+std::string fdTargetInChild(int fd) {
+  folly::Subprocess child(
+      {"/bin/readlink", folly::to<std::string>("/proc/self/fd/", fd)},
+      folly::Subprocess::Options().pipeStdout().stderrFd(
+          folly::Subprocess::DEV_NULL));
+  const auto target = child.communicate().first;
+  child.wait();
+  return folly::rtrimWhitespace(target).str();
+}
+
+} // namespace
+
+// The symbolizer's ELF cache keeps its files open for the life of the
+// process, so a helper the process later forks and execs must not inherit
+// them.
+TEST(ElfFileFd, NotInheritedByChildProcesses) {
+  const auto binary = std::filesystem::read_symlink(kDefaultElf).string();
+  {
+    // The probe sees a descriptor a child inherits, and only that one.
+    const folly::File inherited(kDefaultElf, O_RDONLY);
+    EXPECT_EQ(binary, fdTargetInChild(inherited.fd()));
+    const folly::File closeOnExec(kDefaultElf, O_RDONLY | O_CLOEXEC);
+    EXPECT_EQ("", fdTargetInChild(closeOnExec.fd()));
+  }
+
+  const auto before = fdsOpenOn(kDefaultElf);
+  ElfFile elfFile(kDefaultElf);
+  const auto after = fdsOpenOn(kDefaultElf);
+  std::vector<int> opened;
+  std::set_difference(
+      after.begin(),
+      after.end(),
+      before.begin(),
+      before.end(),
+      std::back_inserter(opened));
+  ASSERT_EQ(1, opened.size());
+
+  EXPECT_EQ("", fdTargetInChild(opened[0]));
 }
 
 #endif

@@ -84,7 +84,7 @@ ElfFile::OpenResult ElfFile::openNoThrow(
   // check failure above if we leave fd != -1 and the object is recycled
   auto guard = makeGuard([&] { reset(); });
   strlcpy(filepath_, name, kFilepathMaxLen - 1);
-  fd_ = ::open(name, options.writable() ? O_RDWR : O_RDONLY);
+  fd_ = ::open(name, (options.writable() ? O_RDWR : O_RDONLY) | O_CLOEXEC);
   if (fd_ == -1) {
     return {kSystemError, "open"};
   }
