@@ -84,9 +84,11 @@ class InitOptions {
 class [[nodiscard]] Init {
  public:
   // Force ctor & dtor out of line for better stack traces even with LTO.
-  FOLLY_NOINLINE Init(int* argc, char*** argv, bool removeFlags = true);
+  [[nodiscard]] FOLLY_NOINLINE Init(
+      int* argc, char*** argv, bool removeFlags = true);
 
-  FOLLY_NOINLINE Init(int* argc, char*** argv, InitOptions options);
+  [[nodiscard]] FOLLY_NOINLINE Init(
+      int* argc, char*** argv, InitOptions options);
 
   FOLLY_NOINLINE ~Init();
 
