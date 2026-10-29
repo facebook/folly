@@ -207,7 +207,6 @@ folly_add_library(
 folly_add_library(
   NAME source_location
   HEADERS SourceLocation.h
-  EXPORTED_DEPS fmt::fmt
 )
 
 folly_add_library(

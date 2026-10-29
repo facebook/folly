@@ -19,8 +19,6 @@
 #include <cstdint>
 #include <version>
 
-#include <fmt/format.h>
-
 #if __has_include(<source_location>) && defined __cpp_lib_source_location
 #include <source_location> // @manual
 namespace folly {
@@ -40,11 +38,4 @@ struct source_location {
 };
 #endif
 
-inline auto sourceLocationToString(const source_location& location) {
-  return fmt::format(
-      "{}:{} [{}]",
-      location.file_name(),
-      location.line(),
-      location.function_name());
-}
 } // namespace folly
