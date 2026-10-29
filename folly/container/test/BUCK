@@ -630,6 +630,8 @@ fb_dirsync_cpp_unittest(
         "F14PolicyTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly/lang:align",
         "//folly/container:f14_hash",
         "//folly/container/detail:f14_intrinsics_availability",
         "//folly/portability:gtest",

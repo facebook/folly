@@ -1038,10 +1038,74 @@ class VectorContainerPolicy
  private:
   using Super::kIsMap;
 
-  // Allocation alignment must satisfy both chunk alignment (for SIMD tag
-  // loads) and value alignment (values are placed after chunks).
+  // Required alignment for SIMD tags and values in their shared allocation,
+  // independent of optional cache-line padding.
   static constexpr std::size_t kAllocAlignment =
       constexpr_max(Super::kChunkAllocAlignment, alignof(Value));
+
+  // Chunks hold indices but share an allocation with values. Value size
+  // affects the size class and padding cost. The 16-byte cutoff is a
+  // benchmark-based footprint tradeoff. Custom and over-aligned paths
+  // stay unchanged.
+  static constexpr bool kShouldCacheLineAlignChunks = sizeof(Value) >= 16 &&
+      kAllocAlignment <= alignof(max_align_t) &&
+      std::is_same_v<ByteAlloc, std::allocator<uint8_t>>;
+
+  // Fixed cache-line target for vector padding; prefetch policy is separate.
+  static constexpr std::size_t kChunkCacheLineSize = 64;
+
+  // A prefix of at most 32 bytes fits in one line with 32-byte alignment.
+  // Larger prefixes use cache-line alignment to avoid extra line fetches.
+  static constexpr std::size_t cacheLineAlignmentForChunk(
+      std::size_t chunkAllocSize) {
+    return chunkAllocSize <= 32 ? 32 : kChunkCacheLineSize;
+  }
+
+  // Pad the whole chunk/value allocation, not just its chunk prefix, when
+  // eligible. Other allocator paths retain allocationSize.
+  static std::size_t chunkStorageSize(
+      std::size_t chunkAllocSize, std::size_t allocationSize) {
+    if constexpr (kShouldCacheLineAlignChunks) {
+      if (usingJEMalloc()) {
+        using lim = std::numeric_limits<std::size_t>;
+
+        // Jemalloc aligns each small allocation to the least-significant set
+        // bit of its size class. Rounding the request gets that alignment
+        // without using its slower explicit-alignment path.
+        const auto alignment = cacheLineAlignmentForChunk(chunkAllocSize);
+        if (allocationSize > (lim::max)() - (alignment - 1)) {
+          throw_exception<std::bad_alloc>();
+        }
+        return align_ceil(allocationSize, alignment);
+      }
+    }
+    return allocationSize;
+  }
+
+  // Allocate shared chunk/value storage using the size-class policy above.
+  BytePtr allocateChunkStorage(
+      std::size_t chunkAllocSize, std::size_t allocationSize) {
+    const auto size = chunkStorageSize(chunkAllocSize, allocationSize);
+    return allocateOverAligned<ByteAlloc, kAllocAlignment>(
+        ByteAlloc{Super::alloc()}, size);
+  }
+
+  // Recompute the same padded size used for allocation from the original sizes.
+  void deallocateChunkStorage(
+      BytePtr allocation,
+      std::size_t chunkAllocSize,
+      std::size_t allocationSize) {
+    const auto size = chunkStorageSize(chunkAllocSize, allocationSize);
+    deallocateOverAligned<ByteAlloc, kAllocAlignment>(
+        ByteAlloc{Super::alloc()}, allocation, size);
+  }
+
+  // Account for size-class padding as well as allocator alignment overhead.
+  static std::size_t chunkStorageAllocationBytes(
+      std::size_t chunkAllocSize, std::size_t allocationSize) {
+    return allocationBytesForOverAligned<ByteAlloc, kAllocAlignment>(
+        chunkStorageSize(chunkAllocSize, allocationSize));
+  }
 
  public:
   static constexpr bool kEnableItemIteration = false;
@@ -1364,8 +1428,8 @@ class VectorContainerPolicy
             newCapacity <= (std::numeric_limits<Item>::max)(),
         "");
 
-    outChunkAllocation = allocateOverAligned<ByteAlloc, kAllocAlignment>(
-        ByteAlloc{Super::alloc()}, allocSize(chunkAllocSize, newCapacity));
+    outChunkAllocation = allocateChunkStorage(
+        chunkAllocSize, allocSize(chunkAllocSize, newCapacity));
 
     ValuePtr before = values_;
     ValuePtr after = std::pointer_traits<ValuePtr>::pointer_to(
@@ -1405,9 +1469,9 @@ class VectorContainerPolicy
     // on success, chunkAllocation is the old allocation, on failure it is the
     // new one
     if (chunkAllocation != nullptr) {
-      deallocateOverAligned<ByteAlloc, kAllocAlignment>(
-          ByteAlloc{Super::alloc()},
+      deallocateChunkStorage(
           chunkAllocation,
+          chunkAllocSize,
           allocSize(chunkAllocSize, (success ? oldCapacity : newCapacity)));
     }
   }
@@ -1431,10 +1495,8 @@ class VectorContainerPolicy
       BytePtr chunkAllocation,
       std::size_t chunkAllocSize) {
     if (chunkAllocation != nullptr) {
-      deallocateOverAligned<ByteAlloc, kAllocAlignment>(
-          ByteAlloc{Super::alloc()},
-          chunkAllocation,
-          allocSize(chunkAllocSize, capacity));
+      deallocateChunkStorage(
+          chunkAllocation, chunkAllocSize, allocSize(chunkAllocSize, capacity));
       values_ = nullptr;
     }
   }
@@ -1448,8 +1510,8 @@ class VectorContainerPolicy
     FOLLY_SAFE_DCHECK((chunkAllocSize == 0) == (capacity == 0), "");
     if (chunkAllocSize > 0) {
       visitor(
-          allocationBytesForOverAligned<ByteAlloc, kAllocAlignment>(
-              allocSize(chunkAllocSize, capacity)),
+          chunkStorageAllocationBytes(
+              chunkAllocSize, allocSize(chunkAllocSize, capacity)),
           1);
     }
   }
