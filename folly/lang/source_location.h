@@ -16,12 +16,11 @@
 
 #pragma once
 
+#include <source_location>
 #include <string>
-
-#include <folly/portability/SourceLocation.h>
 
 namespace folly {
 
-std::string source_location_to_string(const source_location& location);
+std::string source_location_to_string(const std::source_location& location);
 
 } // namespace folly

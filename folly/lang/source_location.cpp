@@ -16,11 +16,13 @@
 
 #include <folly/lang/source_location.h>
 
+#include <source_location>
+
 #include <fmt/format.h>
 
 namespace folly {
 
-std::string source_location_to_string(const source_location& location) {
+std::string source_location_to_string(const std::source_location& location) {
   return fmt::format(
       "{}:{} [{}]",
       location.file_name(),

@@ -264,7 +264,6 @@ folly_add_library(
   SRCS source_location.cpp
   HEADERS source_location.h
   DEPS fmt::fmt
-  EXPORTED_DEPS folly_portability_source_location
 )
 
 folly_add_library(

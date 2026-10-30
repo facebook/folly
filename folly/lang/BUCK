@@ -321,9 +321,6 @@ fb_dirsync_cpp_library(
     deps = [
         "fbsource//third-party/fmt:fmt",
     ],
-    exported_deps = [
-        "//folly/portability:source_location",
-    ],
 )
 
 fb_dirsync_cpp_library(

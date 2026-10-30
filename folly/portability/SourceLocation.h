@@ -16,26 +16,4 @@
 
 #pragma once
 
-#include <cstdint>
-#include <version>
-
-#if __has_include(<source_location>) && defined __cpp_lib_source_location
-#include <source_location> // @manual
-namespace folly {
-using source_location = ::std::source_location;
-#elif __has_include(<experimental/source_location>)
-#include <experimental/source_location>
-namespace folly {
-using source_location = ::std::experimental::source_location;
-#else
-namespace folly {
-struct source_location {
-  static source_location current() noexcept { return source_location{}; }
-  const char* function_name() const noexcept { return ""; }
-  const char* file_name() const noexcept { return ""; }
-  std::uint_least32_t line() const noexcept { return 0; }
-  std::uint_least32_t column() const noexcept { return 0; }
-};
-#endif
-
-} // namespace folly
+#include <source_location>

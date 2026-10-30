@@ -207,16 +207,6 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
-    name = "source_location_test",
-    srcs = ["source_location_test.cpp"],
-    deps = [
-        "//folly:conv",
-        "//folly/lang:source_location",
-        "//folly/portability:gtest",
-    ],
-)
-
-fb_dirsync_cpp_unittest(
     name = "strong_test",
     srcs = ["StrongTest.cpp"],
     deps = [
