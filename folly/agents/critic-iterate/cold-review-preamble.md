@@ -22,7 +22,8 @@ For a whole-candidate target, explain in ordinary words the content needed for
 the reader's task, not just the artifact's purpose. Say what happens or is
 proposed, why it matters, and how the relevant parts connect. Quote supporting
 text; mark unclear connections rather than filling them from your own knowledge.
-Flag only gaps that obstruct the reader's task. Do not rewrite it.
+Flag only gaps that obstruct the reader's task or wording or structure that
+materially increases reader effort. Do not rewrite it.
 
 Put the complete review in the final response. The wrapper captures that
 response.

@@ -77,17 +77,16 @@ domain policy.
 
 ## Code comments
 
-Code comments are read beside the code. Explain the outside fact, invariant, or
-reason that the code alone does not show; do not narrate what the code already
-shows.
+Add comments where the code and names leave the next reader to reconstruct why a
+step is needed or what a result establishes. Supply the missing fact, invariant,
+or reason beside the relevant code; do not narrate what the code already shows.
 
 Prefer compact notation or examples for data shapes and simple relationships.
 Familiar pseudocode is fine; it need not match the implementation language.
 
-- State the condition the reader should rely on, not the mechanism that checks
-  or produces it. For a side-effecting call or ignored return, "Check that every
-  X resolves" beats "Fetch every X"; name the mechanism only when the mechanism
-  is surprising.
+- Lead with the condition or purpose, not the operation. Include the mechanism
+  when the reader needs it to understand why the check is needed or why the
+  condition holds.
 - When a comment's claim depends on facts outside the local expression, include
   the shortest checkable proof. Name the outside source of truth and the
   invariant it establishes; don't compress so far that a cold reader must infer

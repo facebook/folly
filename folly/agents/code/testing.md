@@ -7,6 +7,11 @@ changed unit does not automatically need a new test.
 
 Project rules refine this file. For gtest, also load `gtest.md`.
 
+Make it easy to see what behavior the test protects and how a regression would
+be detected. Keep the essential setup, action, and assertions easy to follow
+together. Simplify incidental details that obscure them; explain non-obvious
+details needed for the case.
+
 ## Add or extend coverage
 
 Do not retest ordinary library or platform behavior merely because your code
