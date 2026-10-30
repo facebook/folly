@@ -434,16 +434,6 @@ class hybrid_lock_base : public detail::lock_base_hybrid<Mutex> {
   friend void swap(self& a, self& b) noexcept { a.swap(b); }
 };
 
-//  unique_lock
-//
-//  Alias to std::unique_lock.
-using std::unique_lock;
-
-//  shared_lock
-//
-//  Alias to std::shared_lock.
-using std::shared_lock;
-
 //  upgrade_lock
 //
 //  A lock-holder type which holds upgrade locks, usable with any upgrade mutex
@@ -470,7 +460,7 @@ explicit upgrade_lock(Mutex&, A const&...) -> upgrade_lock<Mutex>;
 //  A lock-holder type which holds shared locks for shared mutex types or
 //  exclusive locks otherwise.
 //
-//  See unique_lock and shared_lock.
+//  See std::unique_lock and std::shared_lock.
 template <typename Mutex>
 class hybrid_lock : public hybrid_lock_base<Mutex> {
  public:
