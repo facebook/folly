@@ -85,21 +85,20 @@ The author must adopt a persona free from cognitive biases like rationalization
 
 ## Substance
 
-**Cut unneeded content; make the rest easy to read.** Keep only the facts and
-connections the reader needs for the artifact's purpose and their task. Use
-sources to get those facts right. Being true, related, or non-obvious is not
-enough to earn space.
+**Establish the reader's understanding before cutting.** Assume the intended
+reader's normal background, not knowledge of this artifact or its discussion.
+Explain the starting situation and connections needed to understand the point or
+use the text. For actions or behavior, say who does what and why before relying
+on names or shorthand. Use sources to get the facts right; a definition alone
+may leave a needed connection unexplained.
 
-Explain the selected content clearly. Then cut words that add nothing to meaning
-or flow. Preserve the concrete details and connections the reader needs to
-understand the point or do the task. Reread the whole passage after cuts, using
-only the reader's expected knowledge. A shorter version that is choppy or harder
-to follow is worse.
+Check that the reader can explain the starting situation and how the relevant
+parts relate from the text and their expected knowledge. Add only the missing
+facts or connections needed for that understanding. Then cut facts and words the
+reader's task does not need. Being true, related, or non-obvious is not enough
+to earn space. Reread the whole passage after cuts; a shorter version that is
+harder to follow is worse.
 
-- Assume the intended reader's normal background, but not this artifact or its
-  drafting history. State the question or problem and enough framing and
-  reasoning to follow the conclusion; process labels and bare verdicts do not
-  suffice.
 - Be direct: each word earns its place, but not telegraphic. Prose should read
   naturally.
 - Avoid wordiness: cut filler, hedging, and restatement (don't say the same
