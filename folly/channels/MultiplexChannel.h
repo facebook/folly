@@ -16,7 +16,8 @@
 
 #pragma once
 
-#include <range/v3/view/map.hpp>
+#include <ranges>
+
 #include <folly/channels/Channel.h>
 #include <folly/channels/FanoutSender.h>
 #include <folly/channels/OnClosedException.h>
@@ -224,7 +225,7 @@ class MultiplexedSubscriptions {
   /**
    * Returns a view containing a list of subscribed keys.
    */
-  auto getAllSubscriptionKeys() { return subscriptions_ | ranges::views::keys; }
+  auto getAllSubscriptionKeys() { return subscriptions_ | std::views::keys; }
 
  private:
   using SubscriptionMap = folly::F14FastMap<

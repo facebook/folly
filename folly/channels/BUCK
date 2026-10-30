@@ -132,7 +132,6 @@ fb_dirsync_cpp_library(
         "MultiplexChannel-inl.h",
     ],
     exported_deps = [
-        "fbsource//third-party/range-v3:range-v3",
         ":channel",
         ":fanout_sender",
         ":on_closed_exception",

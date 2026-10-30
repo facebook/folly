@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #include <folly/channels/ConsumeChannel.h>
 #include <folly/channels/MaxConcurrentRateLimiter.h>
 #include <folly/channels/MultiplexChannel.h>
@@ -124,6 +128,26 @@ struct TestMultiplexer {
   std::shared_ptr<RateLimiter> rateLimiter_;
 };
 
+struct KeysRecordingMultiplexer : TestMultiplexer {
+  KeysRecordingMultiplexer(
+      folly::Executor::KeepAlive<folly::SequencedExecutor> executor,
+      std::vector<std::string>& keys)
+      : TestMultiplexer(std::move(executor)), keys_(&keys) {}
+
+  folly::coro::Task<void> onInputValue(
+      Try<TestInputValue> /* inputValue */,
+      MultiplexedSubscriptions<KeysRecordingMultiplexer>& subscriptions) {
+    keys_->clear();
+    for (const auto& key : subscriptions.getAllSubscriptionKeys()) {
+      keys_->push_back(key);
+    }
+    co_return;
+  }
+
+ private:
+  std::vector<std::string>* keys_ = nullptr;
+};
+
 TEST_F(MultiplexChannelFixture, ReceiveValues_MultiplexesValues) {
   auto [inputReceiver, inputSender] = Channel<TestInputValue>::create();
   auto multiplexChannel = createMultiplexChannel(
@@ -176,6 +200,37 @@ TEST_F(MultiplexChannelFixture, ReceiveValues_MultiplexesValues) {
   executor_.drain();
 
   EXPECT_FALSE(multiplexChannel.anySubscribers());
+}
+
+TEST_F(MultiplexChannelFixture, GetAllSubscriptionKeys) {
+  auto [inputReceiver, inputSender] = Channel<TestInputValue>::create();
+  auto keys = std::vector<std::string>();
+  auto multiplexChannel = createMultiplexChannel(
+      KeysRecordingMultiplexer(&executor_, keys), std::move(inputReceiver));
+
+  auto [handle1, callback1] = processValues(multiplexChannel.subscribe(
+      "one"s,
+      TestSubscriptionArg{
+          100 /* initialValue */, true /* firstSubscriptionForKey */}));
+  auto [handle2, callback2] = processValues(multiplexChannel.subscribe(
+      "two"s,
+      TestSubscriptionArg{
+          200 /* initialValue */, true /* firstSubscriptionForKey */}));
+
+  EXPECT_CALL(*callback1, onValue(100));
+  EXPECT_CALL(*callback2, onValue(200));
+  executor_.drain();
+
+  inputSender.write(TestInputValue{});
+  executor_.drain();
+
+  std::sort(keys.begin(), keys.end());
+  EXPECT_EQ(keys, (std::vector<std::string>{"one"s, "two"s}));
+
+  std::move(inputSender).close();
+  EXPECT_CALL(*callback1, onClosed());
+  EXPECT_CALL(*callback2, onClosed());
+  executor_.drain();
 }
 
 TEST_F(MultiplexChannelFixture, InputThrows_AllOutputReceiversGetException) {
