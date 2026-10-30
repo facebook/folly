@@ -1,9 +1,9 @@
 Folly: Facebook Open-source Library
 ===================================
 
-[![linux](https://github.com/facebook/folly/actions/workflows/linux.yml/badge.svg)](https://github.com/facebook/folly/actions/workflows/linux.yml)
-[![macos](https://github.com/facebook/folly/actions/workflows/macos.yml/badge.svg)](https://github.com/facebook/folly/actions/workflows/macos.yml)
-[![windows](https://github.com/facebook/folly/actions/workflows/windows.yml/badge.svg)](https://github.com/facebook/folly/actions/workflows/windows.yml)
+[![linux](https://github.com/meta/folly/actions/workflows/linux.yml/badge.svg)](https://github.com/meta/folly/actions/workflows/linux.yml)
+[![macos](https://github.com/meta/folly/actions/workflows/macos.yml/badge.svg)](https://github.com/meta/folly/actions/workflows/macos.yml)
+[![windows](https://github.com/meta/folly/actions/workflows/windows.yml/badge.svg)](https://github.com/meta/folly/actions/workflows/windows.yml)
 
 # What is `folly`?
 
@@ -12,7 +12,7 @@ Folly: Facebook Open-source Library
 Folly (an acronym loosely after Facebook Open Source Library) is a
 library of C++20 components designed with practicality and efficiency
 in mind. **Folly contains a variety of core library components used extensively
-at Facebook**. In particular, it's often a dependency of Facebook's other
+at Meta**. In particular, it's often a dependency of Meta's other
 open source C++ efforts and place where those projects can share code.
 
 It complements (as opposed to competing against) offerings
@@ -50,7 +50,7 @@ with the library name as a prefix, e.g. `#include <folly/FBString.h>`.
 The directory structure is flat (mimicking the namespace structure),
 i.e. we don't have an elaborate directory hierarchy (it is possible
 this will change in future versions). The subdirectory `experimental`
-contains files that are used inside folly and possibly at Facebook but
+contains files that are used inside folly and possibly at Meta but
 not considered stable enough for client use. Your code should not use
 files in `folly/experimental` lest it may break when you update Folly.
 
@@ -83,7 +83,7 @@ and Linux (on the latest Ubuntu LTS release or newer.)
 The CMake build fetches any dependency it cannot find installed, so a clone and
 two commands are enough:
 
-    git clone https://github.com/facebook/folly
+    git clone https://github.com/meta/folly
     cd folly
     cmake -B _build
     cmake --build _build
@@ -131,7 +131,7 @@ The settings for folly's cmake build are held in its getdeps manifest `build/fbc
 If on Linux or MacOS (with homebrew installed) you can install system dependencies to save building them:
 
     # Clone the repo
-    git clone https://github.com/facebook/folly
+    git clone https://github.com/meta/folly
     # Install dependencies
     cd folly
     sudo build/fbcode_builder/getdeps.py install-system-deps --recursive
@@ -150,7 +150,7 @@ Some of the dependencies `getdeps.py` uses and installs are:
 ### Build
 
     # Clone the repo
-    git clone https://github.com/facebook/folly
+    git clone https://github.com/meta/folly
     cd folly
     # Build, using system dependencies if available
     python3 build/fbcode_builder/getdeps.py --allow-system-packages build
@@ -189,7 +189,7 @@ Running tests with ctests also works if you cd to the build dir, e.g.
 
 Either build approach works. We test in CI on Ubuntu LTS, and occasionally on other distros.
 
-If you find the set of system packages is not quite right for your chosen distro, you can specify distro version specific overrides in the dependency manifests (e.g. https://github.com/facebook/folly/blob/main/build/fbcode_builder/manifests/boost ). You could probably make it work on most recent Ubuntu/Debian or Fedora/Redhat derived distributions.
+If you find the set of system packages is not quite right for your chosen distro, you can specify distro version specific overrides in the dependency manifests (e.g. https://github.com/meta/folly/blob/main/build/fbcode_builder/manifests/boost ). You could probably make it work on most recent Ubuntu/Debian or Fedora/Redhat derived distributions.
 
 ## Windows (Vcpkg)
 

@@ -112,7 +112,7 @@ A collection of utilities to deal with IPAddresses, including ipv4 and ipv6.
 #### `io/`
 
 A collection of useful of abstractions for high-performance io. This is heavily relied upon
-in Facebook's internally networking code.
+in Meta's internal networking code.
 
 #### `Hash.h`
 
