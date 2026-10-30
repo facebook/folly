@@ -44,11 +44,8 @@ in those namespaces.
 
 # Physical Design
 
-At the top level Folly uses the classic "stuttering" scheme
-`folly/folly` used by Boost and others. The first directory serves as
-an installation root of the library (with possible versioning a la
-`folly-1.0/`), and the second is to distinguish the library when
-including files, e.g. `#include <folly/FBString.h>`.
+The sources live in the `folly/` directory, so headers are included
+with the library name as a prefix, e.g. `#include <folly/FBString.h>`.
 
 The directory structure is flat (mimicking the namespace structure),
 i.e. we don't have an elaborate directory hierarchy (it is possible
@@ -57,19 +54,19 @@ contains files that are used inside folly and possibly at Facebook but
 not considered stable enough for client use. Your code should not use
 files in `folly/experimental` lest it may break when you update Folly.
 
-The `folly/folly/test` subdirectory includes the unittests for all
+The `folly/test` subdirectory includes the unittests for all
 components, usually named `ComponentXyzTest.cpp` for each
-`ComponentXyz.*`. The `folly/folly/docs` directory contains
+`ComponentXyz.*`. The `folly/docs` directory contains
 documentation.
 
 # What's in it?
 
 Because of folly's fairly flat structure, the best way to see what's in it
-is to look at the headers in [top level `folly/` directory](https://github.com/facebook/folly/tree/main/folly). You can also
+is to look at the headers in [top level `folly/` directory](https://github.com/meta/folly/tree/main/folly). You can also
 check the [`docs` folder](folly/docs) for documentation, starting with the
 [overview](folly/docs/Overview.md).
 
-Folly is published on GitHub at https://github.com/facebook/folly.
+Folly is published on GitHub at https://github.com/meta/folly.
 
 # Build Notes
 
