@@ -50,9 +50,12 @@ def make_memory_limit_preexec_fn(
     fires, not a tight per-job budget.
 
     Only applies on Linux, where the OOM killer is the problem. Returns None
-    on other platforms.
+    on other platforms, or when GETDEPS_NO_MEMORY_LIMIT is set: AddressSanitizer
+    binaries reserve terabytes of address space for shadow memory at startup,
+    so any that run during the build (test discovery, code generators) fail
+    under any practical limit.
     """
-    if sys.platform != "linux":
+    if sys.platform != "linux" or os.environ.get("GETDEPS_NO_MEMORY_LIMIT"):
         return None
 
     # Each job is budgeted job_weight_mib of physical RAM. Virtual address
