@@ -15,11 +15,11 @@ in mind. **Folly contains a variety of core library components used extensively
 at Meta**. In particular, it's often a dependency of Meta's other
 open source C++ efforts and place where those projects can share code.
 
-It complements (as opposed to competing against) offerings
-such as Boost and of course `std`. In fact, we embark on defining our
-own component only when something we need is either not available, or
-does not meet the needed performance profile. We endeavor to remove
-things from folly if or when `std` or Boost obsoletes them.
+It builds on `std` and fills its gaps. We add a component when `std`
+doesn't provide it, or doesn't meet the performance, scalability or
+interface Meta's code needs. When `std` provides an equivalent, we move
+folly and its users to the standard one and keep the folly name only as
+long as users need it.
 
 Performance concerns permeate much of Folly, sometimes leading to
 designs that are more idiosyncratic than they would otherwise be (see
