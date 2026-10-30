@@ -70,7 +70,7 @@ glog = shared_libs
 
 # ShipitPathMap always assume to use directory to fetch the source code.
 # If you need to sync the files to fboss github repo, please make changes in
-# configerator/source/opensource/shipit_config/facebook/fboss.cconf
+# configerator/source/opensource/shipit_config/meta/fboss.cconf
 [shipit.pathmap]
 fbcode/fboss/github = .
 fbcode/fboss/common = common
