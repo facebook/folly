@@ -627,6 +627,12 @@ class AsyncSSLSocket : public AsyncSocket {
   virtual const char* getNegotiatedCipherName() const;
 
   /**
+   * Get the negociated cipher IANA ID for this SSL connection.
+   * Returns 0 when no SSL session has been established.
+   */
+  uint16_t getNegotiatedCipherId() const;
+
+  /**
    * Get the server name for this SSL connection. Returns the SNI sent in the
    * ClientHello, if enableClientHelloParsing() was called.
    *

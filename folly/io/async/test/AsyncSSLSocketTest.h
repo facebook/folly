@@ -1368,6 +1368,7 @@ class SSLHandshakeServerParseClientHello : public SSLHandshakeBase {
   }
 
   std::string clientCiphers_, sharedCiphers_, serverCiphers_, chosenCipher_;
+  uint16_t chosenCipherId_{0};
 
  protected:
   void handshakeSuc(AsyncSSLSocket* sock) noexcept override {
@@ -1376,6 +1377,7 @@ class SSLHandshakeServerParseClientHello : public SSLHandshakeBase {
     sock->getSSLServerCiphers(serverCiphers_);
     sock->getSSLClientCiphers(clientCiphers_);
     chosenCipher_ = sock->getNegotiatedCipherName();
+    chosenCipherId_ = sock->getNegotiatedCipherId();
   }
 };
 

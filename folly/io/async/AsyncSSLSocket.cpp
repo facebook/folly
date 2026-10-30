@@ -1001,6 +1001,14 @@ const char* AsyncSSLSocket::getNegotiatedCipherName() const {
   return (ssl_ != nullptr) ? SSL_get_cipher_name(ssl_.get()) : nullptr;
 }
 
+uint16_t AsyncSSLSocket::getNegotiatedCipherId() const {
+  if (ssl_ == nullptr) {
+    return 0;
+  }
+  const SSL_CIPHER* cipher = SSL_get_current_cipher(ssl_.get());
+  return cipher != nullptr ? SSL_CIPHER_get_protocol_id(cipher) : 0;
+}
+
 /* static */
 const char* AsyncSSLSocket::getSSLServerNameFromSSL(SSL* ssl) {
   if (ssl == nullptr) {

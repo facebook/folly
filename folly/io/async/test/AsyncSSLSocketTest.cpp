@@ -1151,6 +1151,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
       "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384:00ff");
 #endif
   EXPECT_EQ(server.chosenCipher_, "TLS_CHACHA20_POLY1305_SHA256");
+  EXPECT_EQ(server.chosenCipherId_, 0x1303);
   EXPECT_TRUE(client.handshakeVerify_);
   EXPECT_TRUE(client.handshakeSuccess_);
   EXPECT_TRUE(!client.handshakeError_);
