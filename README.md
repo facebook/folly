@@ -97,11 +97,21 @@ packages first:
     sudo build/fbcode_builder/getdeps.py install-system-deps --recursive
 
 Tests are not part of the `all` target. Configure with `-DBUILD_TESTS=ON` to
-build them, which also fetches googletest if it is not installed:
+build them, which also fetches googletest and gflags if they are not installed
+(the library itself uses gflags only if it is installed):
 
     cmake -B _build -DBUILD_TESTS=ON
     cmake --build _build
     (cd _build && ctest)
+
+Whether folly uses gflags is decided when folly is built and recorded in the
+installed `folly/folly-config.h`; linking gflags into a program later does not
+turn it on. Without gflags, `folly::Init` does not parse command-line flags,
+`folly::gflags::FlagSaver` and `folly::gflags::SetCommandLineOption` do
+nothing, and the `cli` libraries are not built. Declare folly's flags with the
+`FOLLY_GFLAGS_DECLARE_*` macros from `folly/portability/GFlags.h`, not with
+gflags' `DECLARE_*`, which would not match how folly defined them: without
+gflags, for example, a string flag is a `std::string` rather than a reference.
 
 `cmake --install` needs CMake 3.28 or newer once anything has been fetched,
 because fetched dependencies are deliberately left out of what folly installs.

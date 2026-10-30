@@ -27,7 +27,7 @@ endif()
 
 # Likewise for gflags, which the targets name when folly built it as a
 # subproject rather than finding it on the system.
-if(NOT TARGET gflags::gflags_static)
+if(@FOLLY_HAVE_LIBGFLAGS@ AND NOT TARGET gflags::gflags_static)
   find_package(gflags QUIET)
 endif()
 

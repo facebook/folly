@@ -120,8 +120,11 @@ if (NOT FASTFLOAT_FOUND)
 endif ()
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${FASTFLOAT_INCLUDE_DIR})
 
+# gflags is optional: without it, folly/portability/GFlags.h defines folly's
+# flags as plain variables. The tests and benchmarks use gflags directly, so
+# they still need it.
 find_package(Gflags MODULE)
-if (NOT LIBGFLAGS_FOUND)
+if (NOT LIBGFLAGS_FOUND AND (BUILD_TESTS OR BUILD_BENCHMARKS))
   # As a subproject gflags builds only its single-threaded library.
   set(GFLAGS_BUILD_gflags_LIB ON)
   set(GFLAGS_BUILD_gflags_nothreads_LIB OFF)
@@ -142,12 +145,15 @@ if (NOT LIBGFLAGS_FOUND)
     GLOBAL APPEND PROPERTY FOLLY_BUILD_LOCAL_TARGETS gflags gflags_static
                            gflags::gflags gflags::gflags_static)
 endif ()
-set(FOLLY_HAVE_LIBGFLAGS ${LIBGFLAGS_FOUND})
+# folly-config.cmake.in substitutes this, so it has to be a literal ON or OFF.
 if (LIBGFLAGS_FOUND)
+  set(FOLLY_HAVE_LIBGFLAGS ON)
   list(APPEND FOLLY_LINK_LIBRARIES ${LIBGFLAGS_LIBRARY})
   list(APPEND FOLLY_INCLUDE_DIRECTORIES ${LIBGFLAGS_INCLUDE_DIR})
   set(FOLLY_LIBGFLAGS_LIBRARY ${LIBGFLAGS_LIBRARY})
   set(FOLLY_LIBGFLAGS_INCLUDE ${LIBGFLAGS_INCLUDE_DIR})
+else ()
+  set(FOLLY_HAVE_LIBGFLAGS OFF)
 endif ()
 
 find_package(Glog MODULE)

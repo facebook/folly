@@ -191,6 +191,15 @@ else ()
 endif ()
 include(FollyFunctions)
 
+# A parent project's BUILD_TESTS is for its own tests. Set before option(),
+# which then adds no BUILD_TESTS to the parent's cache.
+if (NOT CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+  set(BUILD_TESTS OFF)
+endif ()
+# Defined before folly-deps, which requires gflags only for these.
+option(BUILD_TESTS "If enabled, compile the tests." OFF)
+option(BUILD_BENCHMARKS "If enabled, compile the benchmarks." OFF)
+
 include(folly-deps) # Find the required packages
 
 # A shared folly links what it was built against, and a fetched dependency
@@ -445,13 +454,6 @@ install(
   COMPONENT dev
 )
 
-# A parent project's BUILD_TESTS is for its own tests. Set before option(),
-# which then adds no BUILD_TESTS to the parent's cache.
-if (NOT CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-  set(BUILD_TESTS OFF)
-endif ()
-option(BUILD_TESTS "If enabled, compile the tests." OFF)
-option(BUILD_BENCHMARKS "If enabled, compile the benchmarks." OFF)
 option(
   BUILD_BROKEN_TESTS
   "If enabled, compile tests that are known to be broken."
