@@ -1825,18 +1825,6 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     SOURCES
     FmtUtilityTest.cpp
     TEST
-    format_other_test
-    SOURCES
-    FormatOtherTest.cpp
-    BENCHMARK
-    format_benchmark
-    SOURCES
-    FormatBenchmark.cpp
-    TEST
-    format_test
-    SOURCES
-    FormatTest.cpp
-    TEST
     function_test
     BROKEN
     SOURCES

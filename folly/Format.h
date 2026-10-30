@@ -19,14 +19,11 @@
 //
 
 /**
- * folly::format has been superseded by
- * [fmt](https://fmt.dev/latest/index.html). `#include <fmt/core.h>`
+ * folly::format and folly::sformat have been removed in favor of
+ * [fmt](https://fmt.dev/latest/index.html): use fmt::format from
+ * `#include <fmt/format.h>`. This header only retains the FormatValue
+ * machinery until its remaining users are migrated.
  *
- * format() performs text-formatting, similar to Python's str.format. The full
- * specification is on github:
- * https://github.com/facebook/folly/blob/main/folly/docs/Format.md
- *
- * @refcode folly/docs/examples/folly/Format.cpp
  * @file Format.h
  */
 
@@ -55,8 +52,6 @@ namespace folly {
 // forward declarations
 template <bool containerMode, class... Args>
 class Formatter;
-template <class... Args>
-Formatter<false, Args...> format(StringPiece fmt, Args&&... args);
 template <class T, class Enable = void>
 class FormatValue;
 
@@ -239,14 +234,6 @@ class Formatter
   }
 
   friend base;
-
-  template <class... A>
-  friend Formatter<false, A...> format(StringPiece fmt, A&&... arg);
-  template <class Str, class... A>
-  friend typename std::enable_if<IsSomeString<Str>::value>::type format(
-      Str* out, StringPiece fmt, A&&... args);
-  template <class... A>
-  friend std::string sformat(StringPiece fmt, A&&... arg);
 };
 
 namespace detail {
@@ -270,30 +257,6 @@ std::ostream& operator<<(
   auto writer = detail::FormatterOstreamInsertionWriterFn<out_t>{out};
   formatter(writer);
   return out;
-}
-
-/**
- * Create a formatter object.
- *
- * std::string formatted = format("{} {}", 23, 42).str();
- * LOG(INFO) << format("{} {}", 23, 42);
- * writeTo(stdout, format("{} {}", 23, 42));
- */
-template <class... Args>
-[[deprecated(
-    "Use fmt::format instead of folly::format for better performance, build "
-    "times and compatibility with std::format")]] //
-Formatter<false, Args...> format(StringPiece fmt, Args&&... args) {
-  return Formatter<false, Args...>(fmt, static_cast<Args&&>(args)...);
-}
-
-/**
- * Like format(), but immediately returns the formatted string instead of an
- * intermediate format object.
- */
-template <class... Args>
-inline std::string sformat(StringPiece fmt, Args&&... args) {
-  return Formatter<false, Args...>(fmt, static_cast<Args&&>(args)...).str();
 }
 
 /**
@@ -339,20 +302,6 @@ template <class Container, class Value>
 detail::DefaultValueWrapper<Container, Value> defaulted(
     const Container& c, const Value& v) {
   return detail::DefaultValueWrapper<Container, Value>(c, v);
-}
-
-/**
- * Append formatted output to a string.
- *
- * std::string foo;
- * format(&foo, "{} {}", 42, 23);
- *
- * Shortcut for toAppend(format(...), &foo);
- */
-template <class Str, class... Args>
-typename std::enable_if<IsSomeString<Str>::value>::type format(
-    Str* out, StringPiece fmt, Args&&... args) {
-  Formatter<false, Args...>(fmt, static_cast<Args&&>(args)...).appendTo(*out);
 }
 
 /**

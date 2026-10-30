@@ -1550,7 +1550,6 @@ FOLLY_TEST_SRCS = [
     "test/FBVectorTestUtil.cpp",
     "test/FBVectorTest.cpp",
     "test/ForeachTest.cpp",
-    "test/FormatTest.cpp",
     "test/FunctionTest.cpp",
     "test/HashTest.cpp",
     "test/LoggingTest.cpp",

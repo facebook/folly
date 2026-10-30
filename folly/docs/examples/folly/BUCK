@@ -57,17 +57,6 @@ fb_dirsync_cpp_unittest(
 )
 
 fb_dirsync_cpp_unittest(
-    name = "format_demo",
-    srcs = ["Format.cpp"],
-    headers = [],
-    deps = [
-        "fbsource//third-party/fmt:fmt",
-        "//folly:format",
-        "//folly/portability:gtest",
-    ],
-)
-
-fb_dirsync_cpp_unittest(
     name = "likely_demo",
     srcs = ["Likely.cpp"],
     headers = [],

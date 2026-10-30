@@ -730,58 +730,6 @@ fb_dirsync_cpp_benchmark(
     ],
 )
 
-fb_dirsync_cpp_benchmark(
-    name = "format_benchmark",
-    srcs = ["FormatBenchmark.cpp"],
-    args = [
-        "--json",
-    ],
-    compiler_flags = select({
-        "DEFAULT": [],
-        "ovr_config//compiler:clang": [
-            "-ftemplate-depth=512",
-        ],
-    }),
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:benchmark",
-        "//folly:fbvector",
-        "//folly:format",
-        "//folly:utility",
-        "//folly/init:init",
-        "//folly/json:dynamic",
-    ],
-)
-
-# This test depends only on :format.  Tests for user-defined formatters
-# should be added to format_other_test.
-fb_dirsync_cpp_unittest(
-    name = "format_test",
-    srcs = ["FormatTest.cpp"],
-    deps = [
-        "fbsource//third-party/fmt:fmt",
-        "//folly:format",
-        "//folly:utility",
-        "//folly/portability:gtest",
-    ],
-)
-
-fb_dirsync_cpp_unittest(
-    name = "format_other_test",
-    srcs = ["FormatOtherTest.cpp"],
-    deps = [
-        "fbsource//third-party/glog:glog",
-        "//folly:fbvector",
-        "//folly:file_util",
-        "//folly:format",
-        "//folly:portability",
-        "//folly:small_vector",
-        "//folly/json:dynamic",
-        "//folly/portability:gflags",
-        "//folly/portability:gtest",
-    ],
-)
-
 fb_dirsync_cpp_unittest(
     name = "function_ref_test",
     srcs = ["FunctionRefTest.cpp"],

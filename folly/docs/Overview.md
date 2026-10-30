@@ -94,10 +94,6 @@ A polymorphic wrapper for callables similar to `std::function` but not copyable 
 
 Futures is a framework for expressing asynchronous code in C++ using the Promise/Future pattern.
 
-#### [`Format.h`](Format.md)
-
-Python-style formatting utilities.
-
 #### `gen/`
 
 This library makes it possible to write declarative comprehensions for
