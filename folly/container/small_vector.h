@@ -32,8 +32,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <boost/operators.hpp>
-
 #include <folly/ConstexprMath.h>
 #include <folly/CppAttributes.h>
 #include <folly/FormatTraits.h>
@@ -451,14 +449,7 @@ struct small_vector_base {
       !Policy::in_situ_only::value,
       RequestedMaxInline == 0>;
 
-  /*
-   * Now inherit from them all.  This is done in such a convoluted
-   * way to make sure we get the empty base optimization on all these
-   * types to keep sizeof(small_vector<>) minimal.
-   */
-  using type = boost::totally_ordered1<
-      small_vector<Value, RequestedMaxInline, InPolicy>,
-      ActualSizePolicy>;
+  using type = ActualSizePolicy;
 };
 
 namespace small_vector_detail {
@@ -659,6 +650,19 @@ class small_vector
 
   bool operator<(small_vector const& o) const {
     return std::lexicographical_compare(begin(), end(), o.begin(), o.end());
+  }
+
+  friend bool operator!=(small_vector const& a, small_vector const& b) {
+    return !(a == b);
+  }
+  friend bool operator>(small_vector const& a, small_vector const& b) {
+    return b < a;
+  }
+  friend bool operator<=(small_vector const& a, small_vector const& b) {
+    return !(b < a);
+  }
+  friend bool operator>=(small_vector const& a, small_vector const& b) {
+    return !(a < b);
   }
 
 #if FOLLY_CPLUSPLUS >= 202002L && defined(__cpp_lib_three_way_comparison)

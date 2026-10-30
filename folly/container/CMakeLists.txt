@@ -274,7 +274,6 @@ folly_add_library(
   NAME small_vector
   HEADERS small_vector.h
   EXPORTED_DEPS
-    Boost::headers
     folly_constexpr_math
     folly_format_traits
     folly_functional_invoke

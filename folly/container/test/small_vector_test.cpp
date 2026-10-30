@@ -1675,6 +1675,28 @@ TEST(smallVector, comparisons) {
 #endif
 }
 
+namespace {
+struct LessOnly {
+  int v;
+  friend bool operator==(LessOnly a, LessOnly b) { return a.v == b.v; }
+  friend bool operator<(LessOnly a, LessOnly b) { return a.v < b.v; }
+};
+} // namespace
+
+TEST(smallVector, comparisonsWithoutThreeWay) {
+  folly::small_vector<LessOnly, 2> vec1 = {{1}, {2}};
+  folly::small_vector<LessOnly, 2> vec2 = {{1}, {3}};
+  EXPECT_TRUE(vec1 != vec2);
+  EXPECT_FALSE(vec1 != vec1);
+  EXPECT_TRUE(vec1 < vec2);
+  EXPECT_TRUE(vec1 <= vec2);
+  EXPECT_TRUE(vec1 <= vec1);
+  EXPECT_FALSE(vec1 > vec2);
+  EXPECT_TRUE(vec2 > vec1);
+  EXPECT_FALSE(vec1 >= vec2);
+  EXPECT_TRUE(vec1 >= vec1);
+}
+
 struct NontrivialImmovable {
   NontrivialImmovable() {}
   NontrivialImmovable(const NontrivialImmovable&) = default;

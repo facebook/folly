@@ -410,7 +410,6 @@ fb_dirsync_cpp_library(
     compiler_flags = ["-fno-omit-frame-pointer"],
     use_raw_headers = True,
     exported_deps = [
-        "fbsource//third-party/boost:boost",
         "//folly:constexpr_math",
         "//folly:format_traits",
         "//folly:likely",
