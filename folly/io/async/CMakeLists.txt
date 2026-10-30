@@ -308,9 +308,7 @@ folly_add_library(
     folly_io_async_write_flags
     folly_io_iobuf
     folly_optional
-    folly_portability_openssl
     folly_portability_sys_uio
-    folly_ssl_openssl_ptr_types
 )
 
 folly_add_library(

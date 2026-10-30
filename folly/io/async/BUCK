@@ -305,9 +305,7 @@ fb_dirsync_cpp_library(
         ":write_flags",
         "//folly:optional",
         "//folly/io:iobuf",
-        "//folly/portability:openssl",
         "//folly/portability:sys_uio",
-        "//folly/ssl:openssl_ptr_types",
     ],
 )
 
