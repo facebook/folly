@@ -15,19 +15,3 @@
  */
 
 #include <folly/portability/GFlags.h>
-
-namespace folly {
-
-#if !(FOLLY_HAVE_LIBGFLAGS && __has_include(<gflags/gflags.h>))
-
-namespace gflags {
-
-std::string SetCommandLineOption(const char* name, const char* value) {
-  return "";
-}
-
-} // namespace gflags
-
-#endif
-
-} // namespace folly

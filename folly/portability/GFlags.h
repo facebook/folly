@@ -129,7 +129,10 @@ namespace gflags {
 
 struct FlagSaver {};
 
-std::string SetCommandLineOption(const char* name, const char* value);
+inline std::string SetCommandLineOption(
+    const char* /* name */, const char* /* value */) {
+  return "";
+}
 
 } // namespace gflags
 
