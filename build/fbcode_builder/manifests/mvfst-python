@@ -1,6 +1,6 @@
 [manifest]
 name = mvfst-python
-fbsource_path = fbcode/quic
+fbsource_path = xplat/quic
 shipit_project = mvfst
 shipit_fbcode_builder = true
 
@@ -35,5 +35,5 @@ fizz-python
 googletest
 
 [shipit.pathmap]
-fbcode/quic/public_root = .
-fbcode/quic = quic
+xplat/quic/public_root = .
+xplat/quic = quic
