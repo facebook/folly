@@ -11,6 +11,12 @@ mechanics in the diff. Choose paragraphs or lists to make the explanation clear,
 not to enumerate everything changed. A no-op or new capability may be the best
 entry point.
 
+For a behavior-preserving refactor, make unchanged behavior clear and
+distinguish this commit's code reorganization from any later work mentioned. A
+simple rename or move may already convey that scope. Explain the reorganization
+the reviewer needs: what did the work before, what takes it over, and how the
+new arrangement helps the practical goal.
+
 Before finishing, simplify the language: use familiar words and short sentences
 when they make reading easier. Keep a longer term or compound when it is clearer
 than a paraphrase.

@@ -337,7 +337,7 @@ read alone.
 Commit Summaries usually don't need these sections:
 
 - **Roadmap / implementation status.** Track future work outside the commit.
-- **File-by-file / shape-of-diff.** Let the diff carry file shape.
+- **File inventories and change counts.** Let the diff carry these.
 - **"What survives" / mission-preserved.** Keep the invariant once, not as a
   section.
 
@@ -359,8 +359,8 @@ passes the sentence Cut test, and lead with the content that earns it.
 - Empirical checks in Summary prose: "we verified that …", "tested that …", "no
   production caller actually depends on …". These are Test Plan bullets, not
   Summary prose.
-- Shape-of-diff: "Source diff is N lines per file", "this extracts ... into a
-  helper", "renamed parameter X to Y", "the 13k-line diff is mechanical".
+- Change counts and mechanical inventories: "Source diff is N lines per file",
+  "renamed parameter X to Y", "the 13k-line diff is mechanical".
 - Jargon that hides the actor, action, or outcome: "enables analysis of",
   "supports future extensibility", "provides a robust foundation". State the
   concrete outcome instead.
