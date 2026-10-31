@@ -1373,12 +1373,23 @@ TYPED_TEST_P(EventBaseTest, ScheduledFnAt) {
   // Even though we asked to schedule the first function in the past,
   // in practice it doesn't run until after 1 iteration of the HHWheelTimer tick
   // interval.
-  T_CHECK_TIMEOUT(start, timestamp0, eb.timer().getTickInterval());
+  // The IoUring backend can deliver timer callbacks up to a loop iteration
+  // later than other backends (see the loopOnce() special-case above), so on
+  // loaded hosts it can exceed the tight default tolerance. Allow it extra
+  // room without weakening the check for other backends.
+  auto timeoutTolerance = TypeParam::isIoUringBackend()
+      ? std::chrono::milliseconds(15)
+      : std::chrono::milliseconds(5);
+  T_CHECK_TIMEOUT(
+      start, timestamp0, eb.timer().getTickInterval(), timeoutTolerance);
 
-  T_CHECK_TIMEOUT(start, timestamp1, std::chrono::milliseconds(9));
-  T_CHECK_TIMEOUT(start, timestamp2, std::chrono::milliseconds(19));
-  T_CHECK_TIMEOUT(start, timestamp3, std::chrono::milliseconds(39));
-  T_CHECK_TIMEOUT(start, end, std::chrono::milliseconds(39));
+  T_CHECK_TIMEOUT(
+      start, timestamp1, std::chrono::milliseconds(9), timeoutTolerance);
+  T_CHECK_TIMEOUT(
+      start, timestamp2, std::chrono::milliseconds(19), timeoutTolerance);
+  T_CHECK_TIMEOUT(
+      start, timestamp3, std::chrono::milliseconds(39), timeoutTolerance);
+  T_CHECK_TIMEOUT(start, end, std::chrono::milliseconds(39), timeoutTolerance);
 }
 
 ///////////////////////////////////////////////////////////////////////////
