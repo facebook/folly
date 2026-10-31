@@ -67,6 +67,10 @@
  */
 #define FB_SINGLE_ARG(...) __VA_ARGS__
 
+//  MSVC's traditional preprocessor passes __VA_ARGS__ to another macro as one
+//  argument unless the call is wrapped in FOLLY_PP_DETAIL_EXPAND.
+#define FOLLY_PP_DETAIL_EXPAND(x) x
+
 #define FOLLY_PP_DETAIL_APPEND_VA_ARG(...) , ##__VA_ARGS__
 
 /**
@@ -139,63 +143,142 @@
     _0,                          \
     ...)                         \
   _0
+
+//  FOLLY_PP_DETAIL_NARGS counts its arguments, an empty list as 0. GCC keeps
+//  the comma of `, ##__VA_ARGS__` in its strict modes, so use __VA_OPT__ there
+//  in C++20; strict C++17 still counts an empty list as 1. MSVC's traditional
+//  preprocessor drops the comma itself but needs FB_VA_GLUE to split
+//  __VA_ARGS__.
+#if defined(__GNUC__) && !defined(__clang__) && defined(__STRICT_ANSI__) && \
+    __cplusplus >= 202002L
+#define FOLLY_PP_DETAIL_NARGS(...)      \
+  FOLLY_PP_DETAIL_NARGS_1(              \
+      dummy __VA_OPT__(, ) __VA_ARGS__, \
+      15,                               \
+      14,                               \
+      13,                               \
+      12,                               \
+      11,                               \
+      10,                               \
+      9,                                \
+      8,                                \
+      7,                                \
+      6,                                \
+      5,                                \
+      4,                                \
+      3,                                \
+      2,                                \
+      1,                                \
+      0,                                \
+      ~)
+#else
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wgnu-zero-variadic-macro-arguments")
 #define FOLLY_PP_DETAIL_NARGS(...) \
-  FOLLY_PP_DETAIL_NARGS_1(         \
-      dummy,                       \
-      ##__VA_ARGS__,               \
-      15,                          \
-      14,                          \
-      13,                          \
-      12,                          \
-      11,                          \
-      10,                          \
-      9,                           \
-      8,                           \
-      7,                           \
-      6,                           \
-      5,                           \
-      4,                           \
-      3,                           \
-      2,                           \
-      1,                           \
-      0)
+  FB_VA_GLUE(                      \
+      FOLLY_PP_DETAIL_NARGS_1,     \
+      (dummy,                      \
+       ##__VA_ARGS__,              \
+       15,                         \
+       14,                         \
+       13,                         \
+       12,                         \
+       11,                         \
+       10,                         \
+       9,                          \
+       8,                          \
+       7,                          \
+       6,                          \
+       5,                          \
+       4,                          \
+       3,                          \
+       2,                          \
+       1,                          \
+       0,                          \
+       ~))
+FOLLY_POP_WARNING
+#endif
 
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_0(fn, ...)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_1(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_0(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_2(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_1(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_3(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_2(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_4(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_3(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_5(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_4(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_6(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_5(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_7(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_6(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_8(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_7(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_9(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_8(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_10(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_9(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_11(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_10(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_12(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_11(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_13(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_12(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_14(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_13(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_REC_15(fn, a, ...) \
-  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_14(fn, __VA_ARGS__)
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_0(fn, arg, ...)
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_1(fn, arg, a) fn(arg, a)
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_2(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                    \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_1(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_3(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                    \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_2(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_4(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                    \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_3(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_5(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                    \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_4(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_6(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                    \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_5(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_7(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                    \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_6(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_8(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                    \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_7(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_9(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                    \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_8(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_10(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                     \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_9(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_11(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                     \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_10(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_12(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                     \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_11(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_13(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                     \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_12(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_14(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                     \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_13(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_15(fn, arg, a, ...) \
+  fn(arg, a) FOLLY_PP_DETAIL_EXPAND(                     \
+      FOLLY_PP_DETAIL_FOR_EACH_REC_14(fn, arg, __VA_ARGS__))
 
-#define FOLLY_PP_DETAIL_FOR_EACH_2(fn, n, ...) \
-  FOLLY_PP_DETAIL_FOR_EACH_REC_##n(fn, __VA_ARGS__)
-#define FOLLY_PP_DETAIL_FOR_EACH_1(fn, n, ...) \
-  FOLLY_PP_DETAIL_FOR_EACH_2(fn, n, __VA_ARGS__)
+//  MSVC's traditional preprocessor needs the extra level to finish expanding
+//  FOLLY_PP_DETAIL_NARGS before pasting it.
+#define FOLLY_PP_DETAIL_FOR_EACH_3(fn, arg, n, ...) \
+  FOLLY_PP_DETAIL_EXPAND(FOLLY_PP_DETAIL_FOR_EACH_REC_##n(fn, arg, __VA_ARGS__))
+#define FOLLY_PP_DETAIL_FOR_EACH_2(fn, arg, n, ...) \
+  FOLLY_PP_DETAIL_FOR_EACH_3(fn, arg, n, __VA_ARGS__)
+#define FOLLY_PP_DETAIL_FOR_EACH_1(fn, arg, n, ...) \
+  FOLLY_PP_DETAIL_FOR_EACH_2(fn, arg, n, __VA_ARGS__)
+#define FOLLY_PP_DETAIL_FOR_EACH_APPLY(fn, a) fn(a)
+
+/**
+ *  FOLLY_PP_FOR_EACH_WITH
+ *
+ *  Used to invoke a preprocessor macro, the name of which is passed as the
+ *  first argument, once for each variadic argument after the second, passing
+ *  the second argument through as the first argument of each call.
+ *
+ *  At present, supports [0, 16) variadic arguments. An empty variadic argument
+ *  list invokes nothing, but an empty argument in a longer list is passed on.
+ *
+ *  This input:
+ *
+ *    #define DOIT(f, a) f(a);
+ *    FOLLY_PP_FOR_EACH_WITH(DOIT, go_do_it, 3, 5, 7)
+ *    #undef DOIT
+ *
+ *  Expands to this output (with whitespace adjusted for clarity):
+ *
+ *    go_do_it(3);
+ *    go_do_it(5);
+ *    go_do_it(7);
+ */
+#define FOLLY_PP_FOR_EACH_WITH(fn, arg, ...) \
+  FOLLY_PP_DETAIL_FOR_EACH_1(                \
+      fn, arg, FOLLY_PP_DETAIL_NARGS(__VA_ARGS__), __VA_ARGS__)
 
 /**
  *  FOLLY_PP_FOR_EACH
@@ -203,7 +286,8 @@
  *  Used to invoke a preprocessor macro, the name of which is passed as the
  *  first argument, once for each subsequent variadic argument.
  *
- *  At present, supports [0, 16) arguments.
+ *  At present, supports [0, 16) arguments. An empty variadic argument list
+ *  invokes nothing.
  *
  *  This input:
  *
@@ -218,8 +302,7 @@
  *    go_do_it(7);
  */
 #define FOLLY_PP_FOR_EACH(fn, ...) \
-  FOLLY_PP_DETAIL_FOR_EACH_1(      \
-      fn, FOLLY_PP_DETAIL_NARGS(__VA_ARGS__), __VA_ARGS__)
+  FOLLY_PP_FOR_EACH_WITH(FOLLY_PP_DETAIL_FOR_EACH_APPLY, fn, __VA_ARGS__)
 
 #if defined(U)
 #error defined(U) // literal U is used below

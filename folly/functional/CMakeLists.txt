@@ -27,7 +27,6 @@ folly_add_library(
   NAME invoke
   HEADERS Invoke.h
   EXPORTED_DEPS
-    Boost::headers
     folly_cpp_attributes
     folly_lang_customization_point
     folly_portability

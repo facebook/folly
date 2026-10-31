@@ -1194,6 +1194,15 @@ fb_dirsync_cpp_unittest(
     ],
 )
 
+fb_dirsync_cpp_unittest(
+    name = "preprocessor_test",
+    srcs = ["PreprocessorTest.cpp"],
+    deps = [
+        "//folly:preprocessor",
+        "//folly/portability:gtest",
+    ],
+)
+
 fb_dirsync_cpp_benchmark(
     name = "producer_consumer_queue_benchmark",
     srcs = ["ProducerConsumerQueueBenchmark.cpp"],

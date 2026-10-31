@@ -1944,6 +1944,10 @@ if (BUILD_TESTS OR BUILD_BENCHMARKS)
     portability_test
     SOURCES
     PortabilityTest.cpp
+    TEST
+    preprocessor_test
+    SOURCES
+    PreprocessorTest.cpp
     # Turns out this benchmark uses Linux only API for setting CPU affinity i.e. cpu_set_t.
     BENCHMARK
     producer_consumer_queue_benchmark

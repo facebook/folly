@@ -97,12 +97,47 @@ namespace unswappable {
 [[maybe_unused]] AltSwappableRet swap(AltSwappable&, AltSwappable&);
 } // namespace unswappable
 
+namespace picky {
+int pick(int) {
+  return 1;
+}
+} // namespace picky
+// Found by `::pick`, from the namespace list entry left empty.
+char pick(char const*) {
+  return 'g';
+}
+
 namespace invoker {
 
 FOLLY_CREATE_FREE_INVOKER_SUITE(go);
 FOLLY_CREATE_FREE_INVOKER_SUITE(swap, std, unswappable);
 FOLLY_CREATE_FREE_INVOKER_SUITE(no_such_thing);
 FOLLY_CREATE_QUAL_INVOKER_SUITE(std_swap, ::std::swap);
+
+FOLLY_CREATE_FREE_INVOKER(pick_none, pick);
+FOLLY_CREATE_FREE_INVOKER(pick_empty, pick, );
+FOLLY_CREATE_FREE_INVOKER(pick_qualified, pick, ::picky);
+FOLLY_CREATE_FREE_INVOKER(pick_global_first, pick, , picky);
+FOLLY_CREATE_FREE_INVOKER(pick_global_last, pick, picky, );
+FOLLY_CREATE_FREE_INVOKER(pick_global_twice, pick, , );
+FOLLY_CREATE_FREE_INVOKER(
+    swap_15,
+    swap,
+    std,
+    std,
+    std,
+    std,
+    std,
+    std,
+    std,
+    std,
+    std,
+    std,
+    std,
+    std,
+    std,
+    std,
+    unswappable);
 
 } // namespace invoker
 
@@ -214,6 +249,29 @@ TEST_F(InvokeTest, free_is_nothrow_invocable_r) {
   EXPECT_FALSE((traits::is_nothrow_invocable_r_v<char, y::Obj, char const*>));
   EXPECT_FALSE((traits::is_nothrow_invocable_r_v<float, z::Obj, int>));
   EXPECT_FALSE((traits::is_nothrow_invocable_r_v<from_any, float>));
+}
+
+TEST_F(InvokeTest, free_invoke_namespace_list) {
+  EXPECT_FALSE((folly::is_invocable<invoker::pick_none, int>::value));
+  EXPECT_FALSE((folly::is_invocable<invoker::pick_none, char const*>::value));
+  EXPECT_FALSE((folly::is_invocable<invoker::pick_empty, int>::value));
+  EXPECT_FALSE((folly::is_invocable<invoker::pick_empty, char const*>::value));
+  EXPECT_EQ(1, invoker::pick_qualified{}(1));
+  EXPECT_FALSE(
+      (folly::is_invocable<invoker::pick_qualified, char const*>::value));
+  EXPECT_EQ(1, invoker::pick_global_first{}(1));
+  EXPECT_EQ('g', invoker::pick_global_first{}("s"));
+  EXPECT_EQ(1, invoker::pick_global_last{}(1));
+  EXPECT_EQ('g', invoker::pick_global_last{}("s"));
+  EXPECT_FALSE((folly::is_invocable<invoker::pick_global_twice, int>::value));
+  EXPECT_EQ('g', invoker::pick_global_twice{}("s"));
+  EXPECT_TRUE(
+      (std::is_same_v<
+          AltSwappableRet,
+          folly::invoke_result_t<
+              invoker::swap_15,
+              AltSwappable&,
+              AltSwappable&>>));
 }
 
 TEST_F(InvokeTest, free_invoke_swap) {
