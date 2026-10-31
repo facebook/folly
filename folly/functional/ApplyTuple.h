@@ -97,8 +97,6 @@ struct ApplyInvoke {
 
 //////////////////////////////////////////////////////////////////////
 
-/* using override */ using std::apply;
-
 /**
  * Get a tuple of references from the passed tuple, forwarding will be applied
  * on the individual types of the tuple based on the value category of the
