@@ -16,17 +16,10 @@
 
 #pragma once
 
-#include <system_error>
-
 #include <folly/portability/Filesystem.h>
 
 namespace folly {
 namespace fs {
-
-// TEMPORARY: lets callers that pass error codes to folly::fs functions compile
-// both before and after folly::fs switches to std::filesystem. Remove once the
-// switch has landed and callers use std::error_code.
-using error_code = std::error_code;
 
 /**
  * Check whether "path" starts with "prefix".
