@@ -164,18 +164,18 @@ TEST_F(FmtUtilityTest, fmt_sized_format_preserves_arguments) {
 }
 
 TEST_F(FmtUtilityTest, fmt_sized_format_size_mismatch) {
-  for (auto const first : {""sv, "a"sv, "long"sv}) {
-    for (auto const second : {""sv, "a"sv, "long"sv}) {
-      if (first.size() == second.size()) {
-        continue;
-      }
+  std::string const large(4096, 'x');
+  for (auto const first : {""sv, "a"sv, "long"sv, std::string_view(large)}) {
+    for (auto const second : {""sv, "a"sv, "long"sv, std::string_view(large)}) {
       ChangingSize value{first, second};
-      EXPECT_THROW(folly::fmt_sized_format("{}", value), fmt::format_error);
+      EXPECT_EQ(second, folly::fmt_sized_format("{}", value));
       EXPECT_EQ(2, value.calls);
       value.calls = 0;
-      EXPECT_THROW(
-          folly::fmt_sized_format(FOLLY_FMT_COMPILE("{}"), value),
-          fmt::format_error);
+      EXPECT_EQ(
+          second, folly::fmt_sized_format(FOLLY_FMT_COMPILE("{}"), value));
+      EXPECT_EQ(2, value.calls);
+      value.calls = 0;
+      EXPECT_EQ(second, folly::fmt_sized_format(fmt::runtime("{}"), value));
       EXPECT_EQ(2, value.calls);
     }
   }

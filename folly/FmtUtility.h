@@ -24,7 +24,6 @@
 #include <fmt/format.h>
 
 #include <folly/CppAttributes.h>
-#include <folly/lang/Exception.h>
 #include <folly/portability/FmtCompile.h>
 
 namespace folly {
@@ -46,9 +45,9 @@ concept fmt_compiled_string =
 /// then format into it. Accepts checked, runtime, and FOLLY_FMT_COMPILE format
 /// strings.
 ///
-/// Custom formatters must produce the same output on both passes. A size
-/// mismatch throws fmt::format_error. Values are passed by const reference,
-/// without moves.
+/// The size pass reserves capacity, not a limit on the output. The string
+/// grows as needed if a custom formatter underestimates the output size.
+/// Values are passed by const reference, without moves.
 /// Fmt view wrappers are copied for fmt's argument bookkeeping.
 ///
 /// Prefer compiled formats to reduce the cost of the sizing pass. Two-pass
@@ -83,10 +82,6 @@ struct fmt_sized_format_fn {
     std::string out;
     out.reserve(size);
     fmt::format_to(std::back_inserter(out), spec, format_arg_t<Args>(args)...);
-    if (out.size() != size) {
-      throw_exception<fmt::format_error>(
-          "formatted size changed between counting and writing");
-    }
     return out;
   }
 };
