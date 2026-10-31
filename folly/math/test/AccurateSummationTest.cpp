@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/Traits.h>
 #include <folly/math/AccurateSummation.h>
 
 #include <algorithm>
@@ -62,6 +63,46 @@ class AccurateSummationTest : public ::testing::Test {
 
 using FloatTypes = ::testing::Types<float, double, long double>;
 TYPED_TEST_SUITE(AccurateSummationTest, FloatTypes);
+
+// NOTE: quadReferenceSum/referenceTruth below are mirrored in
+// KahanSummationTest.cpp; keep the two copies in sync.
+
+#if defined(__SIZEOF_FLOAT128__)
+// Straightforward accumulation in IEEE-quad precision for reference truth.
+// With 113 bits of mantissa the residual error is negligible versus the
+// effects measured here, so plain summation suffices. __float128 is not
+// std::floating_point, so folly::kahan_sum cannot take it; accumulate
+// directly instead.
+template <typename T>
+__float128 quadReferenceSum(std::vector<T> const& data) {
+  __float128 sum = 0;
+  for (T x : data) {
+    sum += static_cast<__float128>(x);
+  }
+  return sum;
+}
+#endif
+
+// Reference truth for the accuracy comparisons below: compensated summation
+// in long double, or IEEE-quad __float128 where T is already long double
+// (long double is the widest hardware type, so it cannot serve as its own
+// reference). Callers compile out the long double case on platforms without
+// __float128 instead of skipping it at runtime.
+template <typename T>
+long double referenceTruth(std::vector<T> const& data) {
+  if constexpr (std::is_same_v<T, long double>) {
+#if defined(__SIZEOF_FLOAT128__)
+    return static_cast<long double>(quadReferenceSum(data));
+#else
+    // Unreachable: the long double case is not instantiated on platforms
+    // without __float128 (see the TruthTypes list above).
+    return 0;
+#endif
+  } else {
+    auto const to_ld = [](T x) { return static_cast<long double>(x); };
+    return folly::kahan_sum(data | std::views::transform(to_ld));
+  }
+}
 
 TYPED_TEST(AccurateSummationTest, SumIteratorMatchesRange) {
   using T = TypeParam;
@@ -112,21 +153,56 @@ TYPED_TEST(AccurateSummationTest, AccuracyOnIllConditionedData) {
 // accurate_sum (now using Neumaier internally) should be at least as accurate
 // as Kahan. Skipped for long double where the reference truth is computed in
 // long double via Kahan, making Kahan error trivially 0.
-TYPED_TEST(AccurateSummationTest, AtLeastAsAccurateAsKahan) {
+// Tests below compare against reference truth computed in a strictly wider
+// type. long double has no wider hardware type, so the long double case
+// exists only where IEEE-quad __float128 truth exists; otherwise the case
+// does not exist at all instead of skipping at runtime.
+#if defined(__SIZEOF_FLOAT128__)
+constexpr bool kHasQuadReferenceTruth = true;
+#else
+// No floating-point type is wider than long double on this platform (e.g.
+// MSVC, where long double == double).
+constexpr bool kHasQuadReferenceTruth = false;
+#endif
+
+template <typename T>
+class AccurateSummationTruthTest : public AccurateSummationTest<T> {};
+
+// ::testing::Types is an alias, which can never name a template, so it
+// cannot be the output of type_list_concat_t. Concatenate into
+// folly::tag_t instead and convert back, so the public alias remains the
+// only spelling of the list type itself.
+template <typename List>
+struct ToGtestTypes;
+template <typename... Ts>
+struct ToGtestTypes<folly::tag_t<Ts...>> {
+  using type = ::testing::Types<Ts...>;
+};
+template <typename List>
+using ToGtestTypesT = typename ToGtestTypes<List>::type;
+
+using AccurateSummationTruthTypes = ToGtestTypesT<folly::type_list_concat_t<
+    folly::tag_t,
+    ::testing::Types<float, double>,
+    std::conditional_t<
+        kHasQuadReferenceTruth,
+        ::testing::Types<long double>,
+        ::testing::Types<>>>>;
+TYPED_TEST_SUITE(AccurateSummationTruthTest, AccurateSummationTruthTypes);
+
+TYPED_TEST(AccurateSummationTruthTest, AtLeastAsAccurateAsKahan) {
   using T = TypeParam;
-  if constexpr (std::is_same_v<T, long double>) {
-    GTEST_SKIP() << "No wider type for long double reference";
-  }
   auto data = this->makeIllConditionedVector(50'000, 99);
 
-  auto const to_ld = [](T x) { return static_cast<long double>(x); };
-  long double const truth =
-      folly::kahan_sum(data | std::views::transform(to_ld));
+  long double const truth = referenceTruth(data);
 
   T const accurateError =
       std::abs(folly::accurate_sum(data) - static_cast<T>(truth));
   T const kahanError = std::abs(folly::kahan_sum(data) - static_cast<T>(truth));
 
+  // Note: for long double, accurate_sum falls back to kahan_sum (no wider
+  // type for its fast path), so both errors are identical and this holds
+  // trivially; it guards against future divergence.
   EXPECT_LE(accurateError, kahanError + std::numeric_limits<T>::epsilon())
       << "accurate_sum error " << accurateError << " exceeds Kahan error "
       << kahanError;
@@ -135,11 +211,9 @@ TYPED_TEST(AccurateSummationTest, AtLeastAsAccurateAsKahan) {
 // Verify that the ill-conditioned data actually stresses naive summation:
 // with value magnitudes scaled to 1/ε, naive summation loses nearly all
 // significant digits while compensated summation remains accurate.
-TYPED_TEST(AccurateSummationTest, NaiveSummationFailsOnIllConditionedData) {
+TYPED_TEST(
+    AccurateSummationTruthTest, NaiveSummationFailsOnIllConditionedData) {
   using T = TypeParam;
-  if constexpr (std::is_same_v<T, long double>) {
-    GTEST_SKIP() << "No wider type for reference truth";
-  }
   auto data = this->makeIllConditionedVector(50'000, 42);
 
   // Shuffle to break the paired structure — when (val, -val+δ) pairs are
@@ -149,9 +223,7 @@ TYPED_TEST(AccurateSummationTest, NaiveSummationFailsOnIllConditionedData) {
   std::mt19937 rng(123);
   std::shuffle(data.begin(), data.end(), rng);
 
-  auto const to_ld = [](T x) { return static_cast<long double>(x); };
-  long double const truth =
-      folly::kahan_sum(data | std::views::transform(to_ld));
+  long double const truth = referenceTruth(data);
 
   T naive = 0;
   for (auto x : data) {

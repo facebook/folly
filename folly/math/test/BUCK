@@ -39,6 +39,7 @@ fb_dirsync_cpp_unittest(
     name = "kahan_summation_test",
     srcs = ["KahanSummationTest.cpp"],
     deps = [
+        "fbsource//xplat/folly:traits",
         "//folly/math:kahan_summation",
         "//folly/portability:gtest",
     ],
@@ -48,6 +49,7 @@ fb_dirsync_cpp_unittest(
     name = "accurate_summation_test",
     srcs = ["AccurateSummationTest.cpp"],
     deps = [
+        "fbsource//xplat/folly:traits",
         "//folly/math:accurate_summation",
         "//folly/math:kahan_summation",
         "//folly/portability:gtest",
