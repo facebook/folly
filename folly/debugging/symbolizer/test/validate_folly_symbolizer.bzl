@@ -125,7 +125,16 @@ def validate_folly_symbolizer(name, binary):
         type = "simple",
     )
 
-def validate_symbolizer_dwp(name, binary, mode = "fbcode//mode/opt", modifiers = []):
+def validate_symbolizer_dwp(name, binary, mode = "fbcode//mode/opt", modifiers = [], drop_modes = []):
+    ci_labels = [
+        ci.linux(ci.mode(mode)),
+        ci.linux(ci.aarch64(ci.mode(mode))),
+    ]
+    if drop_modes:
+        # The dwp-packaged binary cannot build in these modes (its objects
+        # would mix ambient and pinned DWARF versions), so do not schedule it
+        # there at all.
+        ci_labels.append(ci.remove(*[ci.linux(ci.mode(m)) for m in drop_modes]))
     custom_unittest(
         name = name,
         command = [
@@ -134,10 +143,7 @@ def validate_symbolizer_dwp(name, binary, mode = "fbcode//mode/opt", modifiers =
             "$(location {}[dwp])".format(binary),
         ],
         type = "simple",
-        labels = ci.labels(
-            ci.linux(ci.mode(mode)),
-            ci.linux(ci.aarch64(ci.mode(mode))),
-        ),
+        labels = ci.labels(*ci_labels),
         modifiers = modifiers,
         # Only test in opt mode.
         # In dev mode, the test still depends on the shared libraries except

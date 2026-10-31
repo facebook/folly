@@ -300,6 +300,15 @@ fbcode_target(
     _kind = validate_symbolizer_dwp,
     name = "validate_symbolizer_dwp_dwarf4_dwarf32_single_inlining_aaranges",
     binary = ":symbolizer_test_dwarf4_dwarf32_single_inlining_aaranges",
+    # The test objects force -gdwarf-4 while dependencies follow the ambient
+    # toolchain default (DWARF5 since the clang21 rollout), and dwp refuses to
+    # package mixed-version units. Only run where the ambient is DWARF4; the
+    # dwarf5 sibling keeps covering dwp packaging in the dropped modes.
+    drop_modes = [
+        "fbcode//mode/opt",
+        "fbcode//mode/opt-tsan",
+        "fbcode//mode/opt-asan",
+    ],
     mode = "fbcode//mode/opt-dwarf4",
     modifiers = ["ovr_config//build_mode/constraints:debug_style[split-dwarf-single]"],
 )
