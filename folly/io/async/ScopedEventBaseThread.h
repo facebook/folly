@@ -81,6 +81,10 @@ class ScopedEventBaseThread : public IOExecutor, public SequencedExecutor {
 
   EventBase* getEventBase() override { return &eb_; }
 
+  Executor::KeepAlive<EventBase> getEventBaseKeepAlive() override {
+    return getKeepAliveToken(&eb_);
+  }
+
   /**
    * Returns the ID of the thread.
    * @methodset Observers

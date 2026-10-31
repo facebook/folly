@@ -204,6 +204,15 @@ EventBase* IOThreadPoolExecutor::getEventBase() {
   return pickThread()->eventBase;
 }
 
+Executor::KeepAlive<EventBase> IOThreadPoolExecutor::getEventBaseKeepAlive() {
+  ensureActiveThreads();
+  std::shared_lock r{threadListLock_};
+  if (threadList_.get().empty()) {
+    throw std::runtime_error("No threads available");
+  }
+  return getKeepAliveToken(pickThread()->eventBase);
+}
+
 std::vector<Executor::KeepAlive<EventBase>>
 IOThreadPoolExecutor::getAllEventBases() {
   ensureMaxActiveThreads();

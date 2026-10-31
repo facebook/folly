@@ -40,6 +40,20 @@ TEST_F(ScopedEventBaseThreadTest, example) {
   ASSERT_TRUE(done.try_wait_for(seconds(1)));
 }
 
+TEST_F(ScopedEventBaseThreadTest, event_base_keepalive) {
+  ScopedEventBaseThread sebt;
+  auto eventBase = static_cast<IOExecutor&>(sebt).getEventBaseKeepAlive();
+
+  ASSERT_TRUE(eventBase);
+  EXPECT_EQ(sebt.getEventBase(), eventBase.get());
+  EXPECT_EQ(
+      eventBase.get(),
+      static_cast<IOExecutor&>(*eventBase).getEventBaseKeepAlive().get());
+  bool ran = false;
+  eventBase->runInEventBaseThreadAndWait([&] { ran = true; });
+  EXPECT_TRUE(ran);
+}
+
 TEST_F(ScopedEventBaseThreadTest, named_example) {
   static constexpr StringPiece kThreadName{"named_example"};
 

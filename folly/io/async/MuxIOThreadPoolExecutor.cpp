@@ -325,6 +325,10 @@ void MuxIOThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
 
 std::vector<folly::Executor::KeepAlive<folly::EventBase>>
 MuxIOThreadPoolExecutor::getAllEventBases() {
+  auto shutdown = eventBasesShutdown_.rlock();
+  if (*shutdown) {
+    throw std::runtime_error("No EventBases available");
+  }
   return keepAlives_;
 }
 
@@ -334,6 +338,15 @@ folly::EventBaseManager* MuxIOThreadPoolExecutor::getEventBaseManager() {
 
 EventBase* MuxIOThreadPoolExecutor::getEventBase() {
   return &pickEvbState().evb;
+}
+
+Executor::KeepAlive<EventBase>
+MuxIOThreadPoolExecutor::getEventBaseKeepAlive() {
+  auto shutdown = eventBasesShutdown_.rlock();
+  if (*shutdown) {
+    throw std::runtime_error("No EventBases available");
+  }
+  return getKeepAliveToken(&pickEvbState().evb);
 }
 
 void MuxIOThreadPoolExecutor::stopThreads(size_t n) {
@@ -353,13 +366,19 @@ void MuxIOThreadPoolExecutor::join() {
   }
 
   {
+    auto shutdown = eventBasesShutdown_.wlock();
+    *shutdown = true;
+  }
+
+  {
     std::shared_lock lock{threadListLock_};
     for (const auto& o : observers_) {
       maybeUnregisterEventBases(o.get());
     }
   }
 
-  // Release keepalives so the loops can complete and handles be reclaimed.
+  // Release keepalives outside the admission gate: release hooks and loop
+  // callbacks may re-enter the accessors while shutdown drains references.
   for (auto& keepAlive : keepAlives_) {
     keepAlive.reset();
   }

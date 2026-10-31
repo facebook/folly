@@ -17,9 +17,11 @@
 #include <atomic>
 #include <stdexcept>
 #include <system_error>
+#include <thread>
 
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/test/IOThreadPoolExecutorBaseTestLib.h>
+#include <folly/synchronization/Baton.h>
 
 namespace folly {
 namespace test {
@@ -75,6 +77,86 @@ TEST(IOThreadPoolExecutor, GetAllEventBasesRecoversFromStartupFailure) {
   auto eventBases = executor.getAllEventBases();
   EXPECT_EQ(eventBases.size(), 1);
   EXPECT_EQ(executor.numActiveThreads(), 1);
+}
+
+TEST(IOThreadPoolExecutor, GetEventBaseKeepAliveStartsOnlyOneThread) {
+  auto executor = IOThreadPoolExecutor{4, 0};
+  auto eventBase = static_cast<IOExecutor&>(executor).getEventBaseKeepAlive();
+
+  ASSERT_TRUE(eventBase);
+  EXPECT_EQ(1, executor.numActiveThreads());
+  eventBase->runInEventBaseThreadAndWait([&] {
+    EXPECT_TRUE(eventBase->isInEventBaseThread());
+  });
+}
+
+TEST(IOThreadPoolExecutor, GetEventBaseKeepAliveEmptyPoolThrows) {
+  auto executor = IOThreadPoolExecutor{0};
+
+  EXPECT_THROW(executor.getEventBaseKeepAlive(), std::runtime_error);
+}
+
+TEST(IOThreadPoolExecutor, GetEventBaseKeepAliveStartupFailureIsHandled) {
+  auto options =
+      EventBase::Options{}.setBackendFactory(throwEventBaseConstructionFailure);
+  auto manager = EventBaseManager{std::move(options)};
+  auto executor = IOThreadPoolExecutor{
+      1, 0, std::make_shared<NamedThreadFactory>("IOThreadPool"), &manager};
+
+  EXPECT_THROW(executor.getEventBaseKeepAlive(), std::runtime_error);
+  EXPECT_EQ(0, executor.numActiveThreads());
+}
+
+TEST(IOThreadPoolExecutor, GetEventBaseKeepAliveSurvivesDownsize) {
+  auto executor = IOThreadPoolExecutor{1, 1};
+  auto eventBase = static_cast<IOExecutor&>(executor).getEventBaseKeepAlive();
+  ASSERT_TRUE(eventBase);
+
+  Baton<> destructionStarted;
+  std::atomic<bool> destructionFinished{false};
+  eventBase->runOnDestructionStart([&] { destructionStarted.post(); });
+  eventBase->runOnDestruction([&] { destructionFinished = true; });
+
+  std::thread downsizing([&] { executor.setNumThreads(0); });
+  destructionStarted.wait();
+  EXPECT_FALSE(destructionFinished);
+
+  bool ran = false;
+  eventBase->runInEventBaseThreadAndWait([&] { ran = true; });
+  EXPECT_TRUE(ran);
+
+  auto copy = eventBase;
+  eventBase.reset();
+  EXPECT_FALSE(destructionFinished);
+  copy.reset();
+  downsizing.join();
+
+  EXPECT_TRUE(destructionFinished);
+  EXPECT_EQ(0, executor.numActiveThreads());
+  EXPECT_THROW(executor.getEventBaseKeepAlive(), std::runtime_error);
+}
+
+TEST(IOThreadPoolExecutor, GetEventBaseKeepAliveConcurrentDownsize) {
+  auto executor = IOThreadPoolExecutor{2, 2};
+  Baton<> start;
+  size_t completed = 0;
+  constexpr size_t kIterations = 100;
+
+  std::thread caller([&] {
+    start.wait();
+    for (size_t i = 0; i < kIterations; ++i) {
+      auto eventBase = executor.getEventBaseKeepAlive();
+      eventBase->runInEventBaseThreadAndWait([&] { ++completed; });
+    }
+  });
+  start.post();
+  for (size_t i = 0; i < 10; ++i) {
+    executor.setNumThreads(1);
+    executor.setNumThreads(2);
+  }
+  caller.join();
+
+  EXPECT_EQ(kIterations, completed);
 }
 
 TEST(IOThreadPoolExecutor, MaxReadAtOnce) {

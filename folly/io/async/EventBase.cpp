@@ -1272,6 +1272,10 @@ EventBase* EventBase::getEventBase() {
   return this;
 }
 
+Executor::KeepAlive<EventBase> EventBase::getEventBaseKeepAlive() {
+  return getKeepAliveToken(this);
+}
+
 WorkerProvider* EventBase::getThreadIdCollector() {
   return threadIdCollector_.get();
 }

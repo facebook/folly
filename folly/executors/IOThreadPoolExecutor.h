@@ -134,6 +134,7 @@ class IOThreadPoolExecutor : public IOThreadPoolExecutorBase {
       Func expireCallback = nullptr) override;
 
   folly::EventBase* getEventBase() override;
+  folly::Executor::KeepAlive<folly::EventBase> getEventBaseKeepAlive() override;
 
   // Ensures that the maximum number of active threads is running and returns
   // the EventBase associated with each thread.

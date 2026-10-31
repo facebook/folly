@@ -21,6 +21,7 @@
 #include <optional>
 
 #include <folly/Portability.h>
+#include <folly/Synchronized.h>
 #include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/QueueObserver.h>
@@ -117,6 +118,8 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
 
   folly::EventBase* getEventBase() override;
 
+  Executor::KeepAlive<EventBase> getEventBaseKeepAlive() override;
+
   // Returns all the EventBase instances
   std::vector<folly::Executor::KeepAlive<folly::EventBase>> getAllEventBases()
       override;
@@ -163,6 +166,9 @@ class MuxIOThreadPoolExecutor : public IOThreadPoolExecutorBase {
   std::unique_ptr<EventBasePoller> poller_;
   std::vector<std::unique_ptr<EvbState>> evbStates_;
   std::vector<Executor::KeepAlive<EventBase>> keepAlives_;
+  // Serializes admission of EventBase references with shutdown. The gate is
+  // closed before releasing keepAlives_ or reclaiming any poller handles.
+  folly::Synchronized<bool> eventBasesShutdown_{false};
 
   relaxed_atomic<size_t> nextEvb_{0};
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;

@@ -1503,6 +1503,7 @@ fbcode_target(
         "//folly/io/async:epoll",
         "//folly/io/async:mux_io_thread_pool_executor",
         "//folly/portability:gtest",
+        "//folly/synchronization:baton",
         "//folly/synchronization:latch",
     ],
 )

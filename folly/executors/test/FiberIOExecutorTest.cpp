@@ -34,6 +34,23 @@ TEST_F(FiberIOExecutorTest, event_base) {
   ASSERT_EQ(e.getEventBase(), tpe->getEventBase());
 }
 
+TEST_F(FiberIOExecutorTest, owning_event_base) {
+  auto tpe = std::make_shared<folly::IOThreadPoolExecutor>(1);
+  folly::FiberIOExecutor e(tpe);
+  auto* expected = tpe->getEventBase();
+  size_t baseline = 0;
+  expected->runInEventBaseThreadAndWait([&] {
+    baseline = expected->loopKeepAliveCount();
+  });
+  auto eventBase = static_cast<folly::IOExecutor&>(e).getEventBaseKeepAlive();
+
+  ASSERT_TRUE(eventBase);
+  EXPECT_EQ(expected, eventBase.get());
+  eventBase->runInEventBaseThreadAndWait([&] {
+    EXPECT_EQ(baseline + 1, eventBase->loopKeepAliveCount());
+  });
+}
+
 TEST_F(FiberIOExecutorTest, basic_execution) {
   auto tpe = std::make_shared<folly::IOThreadPoolExecutor>(1);
   folly::FiberIOExecutor e(tpe);

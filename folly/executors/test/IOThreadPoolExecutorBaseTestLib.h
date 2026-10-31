@@ -80,16 +80,23 @@ TYPED_TEST_P(IOThreadPoolExecutorBaseTest, GetEventBaseFromEvb) {
 
   for (auto ka : evbs) {
     auto* evb = ka.get();
+    Baton<> added;
     // If called from the EventBase thread, getEventBase() and add() stick to
     // the current EventBase.
     evb->runInEventBaseThreadAndWait([&] {
       EXPECT_EQ(evb, EventBaseManager::get()->getExistingEventBase());
       EXPECT_EQ(evb, ex.getEventBase());
-      ex.add([&ex, evb] {
+      EXPECT_EQ(
+          evb, static_cast<IOExecutor&>(ex).getEventBaseKeepAlive().get());
+      ex.add([&ex, evb, &added] {
         EXPECT_EQ(evb, ex.getEventBase());
+        EXPECT_EQ(
+            evb, static_cast<IOExecutor&>(ex).getEventBaseKeepAlive().get());
         EXPECT_EQ(evb, EventBaseManager::get()->getExistingEventBase());
+        added.post();
       });
     });
+    added.wait();
   }
 }
 

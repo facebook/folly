@@ -44,6 +44,11 @@ class FiberIOExecutor : public IOExecutor {
     return ioExecutor_->getEventBase();
   }
 
+  folly::Executor::KeepAlive<folly::EventBase> getEventBaseKeepAlive()
+      override {
+    return ioExecutor_->getEventBaseKeepAlive();
+  }
+
  private:
   std::shared_ptr<IOExecutor> ioExecutor_;
   fibers::FiberManager::Options options_;

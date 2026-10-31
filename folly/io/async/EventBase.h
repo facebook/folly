@@ -976,6 +976,7 @@ class EventBase
 
   /// Implements the IOExecutor interface
   EventBase* getEventBase() override;
+  Executor::KeepAlive<EventBase> getEventBaseKeepAlive() override;
 
   /// Implements the GetThreadIdCollector interface
   WorkerProvider* getThreadIdCollector() override;

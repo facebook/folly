@@ -94,6 +94,9 @@ TEST(GlobalExecutorTest, GlobalIOExecutor) {
    public:
     void add(Func) override { count++; }
     folly::EventBase* getEventBase() override { return nullptr; }
+    Executor::KeepAlive<EventBase> getEventBaseKeepAlive() override {
+      return {};
+    }
     int count{0};
   };
 

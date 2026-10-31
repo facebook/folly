@@ -40,7 +40,17 @@ namespace folly {
 class IOExecutor : public virtual folly::Executor {
  public:
   ~IOExecutor() override = default;
+
+  // Returns a borrowed EventBase. Its lifetime must be coordinated with the
+  // implementation's shutdown or resizing.
   virtual folly::EventBase* getEventBase() = 0;
+
+  // Returns an implementation-selected EventBase protected by the token, which
+  // may delay shutdown or resizing. This does not retain the IOExecutor or
+  // change EventBase thread-affinity requirements. An unavailable EventBase may
+  // be represented by an empty token or an exception, as with getEventBase().
+  virtual folly::Executor::KeepAlive<folly::EventBase>
+  getEventBaseKeepAlive() = 0;
 };
 
 } // namespace folly

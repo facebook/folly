@@ -292,6 +292,7 @@ fb_dirsync_cpp_unittest(
     deps = [
         ":IOThreadPoolExecutorBaseTestLib",
         "//folly/executors:io_thread_pool_executor",
+        "//folly/synchronization:baton",
     ],
 )
 

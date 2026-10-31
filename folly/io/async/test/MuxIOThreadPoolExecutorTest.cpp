@@ -18,6 +18,7 @@
 
 #if FOLLY_HAS_EPOLL
 
+#include <memory>
 #include <thread>
 #include <vector>
 
@@ -25,6 +26,7 @@
 #include <folly/executors/test/IOThreadPoolExecutorBaseTestLib.h>
 #include <folly/io/async/MuxIOThreadPoolExecutor.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 #include <folly/synchronization/Latch.h>
 
 namespace folly {
@@ -116,6 +118,119 @@ TEST(MuxIOThreadPoolExecutor, SingleEpollLoopTimers) {
     });
   }
   latch.wait();
+}
+
+TEST(MuxIOThreadPoolExecutor, EventBaseKeepAlivePreservesSelection) {
+  constexpr size_t kNumEventBases = 3;
+  MuxIOThreadPoolExecutor::Options options;
+  options.setNumEventBases(kNumEventBases);
+  MuxIOThreadPoolExecutor ex(2, options);
+  IOExecutor& io = ex;
+  const auto evbs = ex.getAllEventBases();
+  ASSERT_EQ(evbs.size(), kNumEventBases);
+
+  for (size_t i = 0; i < 2 * kNumEventBases; ++i) {
+    const auto evb = io.getEventBaseKeepAlive();
+    EXPECT_EQ(evb.get(), evbs[i % kNumEventBases].get());
+  }
+
+  Latch callbacks(kNumEventBases);
+  for (const auto& evb : evbs) {
+    evb->runInEventBaseThread([&, expected = evb.get()] {
+      const auto current = io.getEventBaseKeepAlive();
+      EXPECT_EQ(current.get(), expected);
+      EXPECT_TRUE(current->isInEventBaseThread());
+      callbacks.count_down();
+    });
+  }
+  callbacks.wait();
+  EXPECT_EQ(io.getEventBaseKeepAlive().get(), evbs.front().get());
+}
+
+TEST(
+    MuxIOThreadPoolExecutor,
+    EventBaseKeepAliveBlocksShutdownWithoutLockingDrain) {
+  class ShutdownObserver : public IOThreadPoolExecutorBase::IOObserver {
+   public:
+    explicit ShutdownObserver(MuxIOThreadPoolExecutor& executor)
+        : executor_(executor) {}
+
+    void unregisterEventBase(EventBase&) noexcept override {
+      EXPECT_THROW(executor_.getEventBaseKeepAlive(), std::runtime_error);
+      EXPECT_THROW(executor_.getAllEventBases(), std::runtime_error);
+      started.post();
+    }
+
+    Baton<> started;
+
+   private:
+    MuxIOThreadPoolExecutor& executor_;
+  };
+
+  MuxIOThreadPoolExecutor ex(1);
+  auto observer = std::make_shared<ShutdownObserver>(ex);
+  ex.addObserver(observer);
+  auto evb = ex.getEventBaseKeepAlive();
+  Baton<> stopped;
+  std::thread shutdown([&] {
+    ex.join();
+    stopped.post();
+  });
+  observer->started.wait();
+
+  EXPECT_FALSE(stopped.try_wait());
+  EXPECT_THROW(ex.getEventBaseKeepAlive(), std::runtime_error);
+  EXPECT_THROW(ex.getAllEventBases(), std::runtime_error);
+  Baton<> callback;
+  evb->runInEventBaseThread([&] {
+    EXPECT_TRUE(evb->isInEventBaseThread());
+    EXPECT_THROW(ex.getEventBaseKeepAlive(), std::runtime_error);
+    EXPECT_THROW(ex.getAllEventBases(), std::runtime_error);
+    callback.post();
+  });
+  callback.wait();
+  EXPECT_FALSE(stopped.try_wait());
+
+  evb.reset();
+  shutdown.join();
+  EXPECT_TRUE(stopped.try_wait());
+  EXPECT_THROW(ex.getEventBaseKeepAlive(), std::runtime_error);
+  EXPECT_THROW(ex.getAllEventBases(), std::runtime_error);
+}
+
+TEST(MuxIOThreadPoolExecutor, EventBaseKeepAliveRacesShutdown) {
+  MuxIOThreadPoolExecutor ex(1);
+  auto held = ex.getEventBaseKeepAlive();
+  Baton<> acquired;
+  size_t acquisitions = 0;
+  std::thread acquire([&] {
+    try {
+      while (true) {
+        const auto evb = ex.getEventBaseKeepAlive();
+        EXPECT_EQ(evb.get(), held.get());
+        const auto all = ex.getAllEventBases();
+        EXPECT_EQ(all.size(), 1);
+        if (++acquisitions == 1) {
+          acquired.post();
+        }
+      }
+    } catch (const std::runtime_error&) {
+      EXPECT_THROW(ex.getEventBaseKeepAlive(), std::runtime_error);
+    }
+  });
+  acquired.wait();
+  Baton<> stopped;
+  std::thread shutdown([&] {
+    ex.join();
+    stopped.post();
+  });
+
+  acquire.join();
+  EXPECT_GE(acquisitions, 1);
+  EXPECT_FALSE(stopped.try_wait());
+  held.reset();
+  shutdown.join();
+  EXPECT_TRUE(stopped.try_wait());
 }
 
 TEST(MuxIOThreadPoolExecutor, InvalidSetNumThreads) {
