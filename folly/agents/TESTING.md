@@ -55,17 +55,17 @@ refuses otherwise. It stages only the declared inputs and does not add its
 private rule-helper directory to `PATH`. Inspect the prepared prompt and workdir
 before starting the author.
 
-Scenarios listing `critic-iterate.md` in startup `rules` record these
-checkpoints when the author writes a new draft:
+Find results in the printed run directory's `output/`, usually `main.md`.
 
-- the initial draft before the first author critique;
-- the draft after author review converges, before external review; and
-- the draft after each external review is integrated and author checks finish.
+Rule-backed scenarios listing `critic-iterate.md` in `rules` save these stages:
 
-The run directory stores them as `output-initial.md`, `output-author.md`, and
-`output-reviewN.md`. `checkpoints.json` records each phase's time, author and
-reviewer token use, context window, and outcome. This mode does not apply to
-review-only scenarios that stage an existing `output/main.md`.
+- `initial`: draft before the first author critique;
+- `author`: draft after author review converges, before external review;
+- `reviewN`: draft after integrating review N and finishing author checks.
+
+`checkpoints.json` records each stage's directory, measurements and outcome. The
+final stage uses `output/`; earlier stages use `output-PHASE/`. Review-only
+scenarios that stage an existing artifact do not use these checkpoints.
 
 For scenarios listing `critic-iterate.md` in startup `rules`, add
 `--critic-iterate-rounds K` to override the normal external-review budget. `K=0`
@@ -79,10 +79,10 @@ Before starting, explain to the user what behavior the scenario isolates, why
 that behavior matters in real use, and where the run deliberately stops. The
 scenario README supplies this framing.
 
-The run directory contains the staged workdir, author prompt, run metadata,
-trace, stderr, and any `output/main.md`. A regular rule-backed workdir also
-contains its selected rules. Runs live under the system temporary directory by
-default; pass `--run-root` when one must survive normal temporary cleanup.
+The run directory also contains the staged workdir, author prompt, run metadata,
+trace, and stderr. A regular rule-backed workdir also contains its selected
+rules. Runs live under the system temporary directory by default; pass
+`--run-root` when one must survive normal temporary cleanup.
 
 ## Repeat a rule test
 

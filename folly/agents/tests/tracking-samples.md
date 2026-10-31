@@ -19,8 +19,9 @@ Use the first 10 characters of the `generation_revision` recorded in `run.json`.
 
 - Copy every `output/` file, preserving its relative path and exact bytes. Empty
   directories are omitted; parents are recreated when copying files.
-- For a checkpointed run, first copy `checkpoints.json` and every output file it
-  names. Compress only the saved copy, as described below.
+- For a checkpointed run, also copy `checkpoints.json` and the earlier artifact
+  directories it names. The final entry names `output/`, already copied above.
+  Compress only the saved copy, as described below.
 - `README.md` starts as a copy of the completed
   [run debrief](mandatory-debrief.md). Do not write a second account.
 
@@ -73,9 +74,9 @@ python3 -m folly.agents.tests.compress_checkpoint_outputs \
 
 Use `initial`, `author`, or `reviewN` for `PHASE`, matching the phase in the
 generated map. `PATH` is the new directory for that phase's complete artifact.
-The command restores every file at its original relative path. Uncompressed
-phases are `output-initial.md`, `output-author.md`, and `output-reviewN.md`. The
-final artifact remains in `output/main.md`.
+The command restores every file at its original relative path. Earlier
+uncompressed phases live in `output-PHASE/`. The final phase names `output/`
+directly; there is no second copy under its phase name.
 
 ## Refresh stale samples
 

@@ -3,9 +3,11 @@
 Purpose: retain useful prior runs without storing or presenting repeated walls
 of text.
 
-Every checkpoint output remains byte-for-byte reconstructible. Compression
-happens only in the saved copy after the run completes. The final
-`output/main.md` is always directly readable. Byte-identical outputs are stored
-once. A verified ordinary reverse diff replaces a full phase only below a strict
-60% size threshold, making small review changes easier to inspect without
-storing a large patch instead of a useful full file.
+A sample preserves one observed run for later comparison. Saved drafts from its
+writing and review stages must retain their relative paths and exact bytes,
+including when an artifact spans several files.
+
+Compression happens only in a saved copy after the run. Checking exact
+restoration before removing full copies protects the evidence, while keeping
+final output directly readable avoids making readers unpack it just to judge the
+result.

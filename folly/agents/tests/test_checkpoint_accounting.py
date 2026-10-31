@@ -16,12 +16,13 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from folly.agents.tests import checkpoint, checkpoint_accounting
+from folly.agents.tests import checkpoint, checkpoint_accounting, directory_snapshot
 
 
 THREAD_ID = "01a00000-0000-7000-8000-000000000000"
@@ -53,6 +54,8 @@ def checkpoint_events(
         if json_output
         else f"Process exited with code 0\nFinal output:\n{stdout}"
     )
+    # CommandExecution.stdout can be empty on a successful checkpoint. Its
+    # model-visible tool result still carries the marker accounting needs.
     return (
         {
             "type": "event_msg",
@@ -96,7 +99,7 @@ def token_event(tokens: dict[str, int], second: int) -> dict[str, object]:
 
 
 class AccountingFixture:
-    """Build the three evidence streams around a visible sequence of phases."""
+    """Build saved trees, cumulative author usage, and reviewer attempts."""
 
     def __init__(self, root: Path) -> None:
         self.root = root
@@ -105,7 +108,6 @@ class AccountingFixture:
         self.checkpoints = root / "checkpoints"
         self.reviews = root / "reviews"
         self.workdir.mkdir(parents=True)
-        (self.workdir / "output").mkdir()
         self.checkpoints.mkdir()
         self.reviews.mkdir()
         (root / "run.json").write_text(
@@ -132,12 +134,17 @@ class AccountingFixture:
         second: int,
         *,
         json_output: bool = False,
+        companions: directory_snapshot.Snapshot | None = None,
     ) -> None:
         index = self.checkpoint_count
-        snapshot = self.checkpoints / f"{index}.md"
-        snapshot.write_text(text)
+        snapshot = self.checkpoints / str(index)
+        entries = {Path("main.md"): text.encode(), **(companions or {})}
+        directory_snapshot.write(entries, snapshot)
         self._set_time(snapshot, second)
-        (self.workdir / "output/main.md").write_text(text)
+        output = self.workdir / "output"
+        if output.exists():
+            shutil.rmtree(output)
+        directory_snapshot.write(entries, output)
         self.author_events.extend(
             (
                 *checkpoint_events(index, json_output=json_output),
@@ -169,6 +176,13 @@ class AccountingFixture:
     def collect(
         self, review_budget: int | None, final_message: str = "Done."
     ) -> list[dict[str, object]]:
+        # The runner saves the delivered tree before collecting phase accounting.
+        output = self.root / "output"
+        if output.exists():
+            shutil.rmtree(output)
+        directory_snapshot.write(
+            directory_snapshot.read(self.workdir / "output"), output
+        )
         write_jsonl(
             self.root / "trace.jsonl",
             [
@@ -186,13 +200,14 @@ class AccountingFixture:
         return checkpoint_accounting.collect(
             self.root,
             review_budget,
-            output=self.workdir / "output/main.md",
             agent_home=self.agent_home,
         )
 
 
 class CheckpointAccountingTest(unittest.TestCase):
     def test_ignores_long_running_tool_output_before_checkpoint(self) -> None:
+        # An unfinished tool call has not saved a draft. It must not consume a
+        # checkpoint or claim the following usage event.
         with tempfile.TemporaryDirectory() as temporary:
             run = AccountingFixture(Path(temporary))
             run.author_events.append(
@@ -239,11 +254,53 @@ class CheckpointAccountingTest(unittest.TestCase):
                 checkpoint_accounting._changed_word_percent(before, after), 66.7
             )
 
+    def test_word_count_tolerates_invalid_utf8(self) -> None:
+        # A stray undecodable byte must not invalidate an otherwise saved run.
+        with tempfile.TemporaryDirectory() as temporary:
+            before = Path(temporary) / "before.md"
+            after = Path(temporary) / "after.md"
+            before.write_bytes(b"same words \xff\n")
+            after.write_text("same words\n")
+            self.assertEqual(
+                checkpoint_accounting._changed_word_percent(before, after), 0.0
+            )
+
+    def test_companion_only_mutation_after_final_checkpoint_is_rejected(self) -> None:
+        # main.md stays fixed. Changing only the notes' line endings, or deleting
+        # them, must still invalidate the final checkpoint's saved file set.
+        with tempfile.TemporaryDirectory() as temporary:
+            run = AccountingFixture(Path(temporary))
+            run.checkpoint(
+                "same",
+                usage(100, 10),
+                10,
+                companions={Path("notes.md"): b"checkpointed notes\r\n"},
+            )
+            run.author_events.append(token_event(usage(150, 15), 15))
+            for mutation in ("change", "delete"):
+                with self.subTest(mutation=mutation):
+                    output = run.workdir / "output"
+                    shutil.rmtree(output)
+                    directory_snapshot.write(
+                        directory_snapshot.read(run.checkpoints / "0"), output
+                    )
+                    if mutation == "change":
+                        (output / "notes.md").write_text("checkpointed notes\n")
+                    else:
+                        (output / "notes.md").unlink()
+                    with self.assertRaisesRegex(
+                        ValueError, "changed after the final checkpoint"
+                    ):
+                        run.collect(review_budget=None)
+
     def test_tracks_two_review_rounds(self) -> None:
+        # Two reviewers finish in each round. Charge them to the next author
+        # checkpoint, and charge final delivery to the last phase, not a new one.
         with tempfile.TemporaryDirectory() as temporary:
             run = AccountingFixture(Path(temporary))
             run.checkpoint("initial", usage(100, 10), 10)
             run.checkpoint("author", usage(250, 20), 20)
+            # Reviews are assigned to phases and ordered by completion time.
             run.review(usage(50, 6), 25)
             run.review(usage(30, 4), 24)
             run.checkpoint("reviewed once", usage(450, 30), 30, json_output=True)
@@ -280,8 +337,10 @@ class CheckpointAccountingTest(unittest.TestCase):
             self.assertEqual(records[2]["wall_seconds"], 10.0)
             self.assertEqual(records[3]["wall_seconds"], 15.0)
             self.assertEqual(
-                (run.root / "output-review2.md").read_text(), "reviewed twice"
+                (run.root / "output/main.md").read_text(), "reviewed twice"
             )
+            self.assertEqual(records[-1]["artifact"], "output")
+            self.assertFalse((run.root / "output-review2").exists())
             self.assertEqual(
                 json.loads((run.root / "checkpoints.json").read_text()), records
             )
@@ -306,28 +365,6 @@ class CheckpointAccountingTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "changed during the run"):
                 run.collect(review_budget=1)
-
-    def test_counts_distinguish_initial_only_from_ci_zero(self) -> None:
-        for budget, contents in (
-            (None, ("initial",)),
-            (0, ("initial", "author")),
-        ):
-            with (
-                self.subTest(budget=budget),
-                tempfile.TemporaryDirectory() as temporary,
-            ):
-                root = Path(temporary)
-                (root / "checkpoints").mkdir()
-                (root / "workdir/output").mkdir(parents=True)
-                for index, content in enumerate(contents):
-                    (root / f"checkpoints/{index}.md").write_text(content)
-                (root / "workdir/output/main.md").write_text(contents[-1])
-
-                paths = checkpoint_accounting._checkpoint_paths(
-                    root, budget, output=root / "workdir/output/main.md"
-                )
-
-                self.assertEqual([path.read_text() for path in paths], list(contents))
 
     def test_failed_review_is_recorded_before_completed_retry(self) -> None:
         # A reviewer can abort and be retried before the author checkpoints.
@@ -361,6 +398,8 @@ class CheckpointAccountingTest(unittest.TestCase):
                 run.collect(review_budget=1)
 
     def test_requires_usage_after_the_final_checkpoint(self) -> None:
+        # The last checkpoint excludes the author's final response. Without the
+        # later usage event, the run would underreport the last phase's cost.
         with tempfile.TemporaryDirectory() as temporary:
             run = AccountingFixture(Path(temporary))
             run.checkpoint("initial", usage(100, 10), 10)
@@ -371,6 +410,8 @@ class CheckpointAccountingTest(unittest.TestCase):
                 run.collect(review_budget=None)
 
     def test_outcomes_distinguish_budget_continuation_and_stop(self) -> None:
+        # (checkpoint index, final index, review budget, final response) -> outcome.
+        # Going beyond budget differs from stopping at it with an OutOfBudget notice.
         cases = (
             ((2, 3, 2, ""), "continued"),
             ((2, 3, 1, ""), "must-continue"),
@@ -380,7 +421,7 @@ class CheckpointAccountingTest(unittest.TestCase):
             ((2, 2, 2, "The rule contains OutOfBudget literally."), "converged"),
         )
         for arguments, expected in cases:
-            with self.subTest(expected=expected):
+            with self.subTest(arguments=arguments, expected=expected):
                 self.assertEqual(checkpoint_accounting._outcome(*arguments), expected)
 
     def test_tokens_preserve_zero_and_require_every_field(self) -> None:

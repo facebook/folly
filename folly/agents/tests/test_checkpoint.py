@@ -21,7 +21,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from folly.agents.tests import checkpoint
+from folly.agents.tests import checkpoint, directory_snapshot
 
 
 CHECKPOINT_KEY = bytes.fromhex("00112233445566778899aabbccddeeff")
@@ -44,18 +44,27 @@ class CheckpointTest(unittest.TestCase):
         )
 
     def test_captures_sequence_and_reports_errors(self) -> None:
+        # Save every output file, not just main.md. The second checkpoint must
+        # capture the revision while retaining nested companions and empty files.
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            output = root / "workdir/output/main.md"
-            output.parent.mkdir(parents=True)
-            output.write_text("initial")
+            workdir = root / "workdir"
+            output = workdir / "output"
+            output.mkdir(parents=True)
+            (output / "main.md").write_text("initial")
+            (output / "nested").mkdir()
+            # Ordinary UTF-8/CRLF text must stay byte-exact through the save.
+            (output / "nested/notes.md").write_text(
+                "Notes — café\r\n", encoding="utf-8"
+            )
+            (output / "empty-file").touch()
             (root / "run.json").write_text(
                 json.dumps({"checkpoint_key": CHECKPOINT_KEY.hex()})
             )
 
-            first = self.run_checkpoint(0, root, output.parent.parent)
-            output.write_text("author")
-            second = self.run_checkpoint(1, root, output.parent.parent)
+            first = self.run_checkpoint(0, root, workdir)
+            (output / "main.md").write_text("author")
+            second = self.run_checkpoint(1, root, workdir)
 
             self.assertEqual(first.returncode, 0)
             self.assertEqual(first.stderr, "")
@@ -79,11 +88,55 @@ class CheckpointTest(unittest.TestCase):
                 "follow its stdout",
             ):
                 self.assertIn(phrase, second.stdout)
-            self.assertEqual((root / "checkpoints/0.md").read_text(), "initial")
-            self.assertEqual((root / "checkpoints/1.md").read_text(), "author")
-            invalid = self.run_checkpoint(1, root, output.parent.parent)
+            self.assertEqual((root / "checkpoints/0/main.md").read_text(), "initial")
+            self.assertEqual((root / "checkpoints/1/main.md").read_text(), "author")
+            self.assertEqual(
+                (root / "checkpoints/0/nested/notes.md").read_bytes(),
+                "Notes — café\r\n".encode("utf-8"),
+            )
+            self.assertEqual((root / "checkpoints/0/empty-file").read_bytes(), b"")
+            self.assertEqual(
+                directory_snapshot.read(root / "checkpoints/1"),
+                directory_snapshot.read(output),
+            )
+
+            invalid = self.run_checkpoint(1, root, workdir)
+
             self.assertNotEqual(invalid.returncode, 0)
             self.assertEqual(
                 invalid.stdout.strip(),
                 "This run is invalid. Stop and explain the error in your final response.",
             )
+
+    def test_invalid_tree_does_not_publish_or_advance_a_checkpoint(self) -> None:
+        # A failed save must not consume checkpoint 0 or print its success marker;
+        # after fixing the draft, the author can retry the same checkpoint.
+        for kind in ("empty", "link"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                output = root / "workdir/output"
+                output.mkdir(parents=True)
+                if kind == "link":
+                    (output / "main.md").write_text("valid draft")
+                    (output / "bad-link").symlink_to(root / "missing")
+                (root / "run.json").write_text(
+                    json.dumps({"checkpoint_key": CHECKPOINT_KEY.hex()})
+                )
+
+                failed = self.run_checkpoint(0, root, output.parent)
+
+                self.assertNotEqual(failed.returncode, 0)
+                self.assertNotIn("@@FOLLY_BACKTEST_CHECKPOINT:", failed.stdout)
+                self.assertEqual(list((root / "checkpoints").iterdir()), [])
+                if kind == "link":
+                    self.assertIn("bad-link", failed.stderr)
+                    (output / "bad-link").unlink()
+
+                (output / "main.md").write_text("valid draft")
+                retried = self.run_checkpoint(0, root, output.parent)
+
+                self.assertEqual(retried.returncode, 0, retried.stderr)
+                self.assertEqual(
+                    directory_snapshot.read(root / "checkpoints/0"),
+                    directory_snapshot.read(output),
+                )

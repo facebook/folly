@@ -25,11 +25,18 @@ not expose earlier drafts. This is not a security boundary.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import os
-import shutil
+import stat
 import sys
 from pathlib import Path
+
+# A main/library split would add more import wiring for this small copied CLI.
+if __package__:
+    from . import directory_snapshot
+else:
+    directory_snapshot = importlib.import_module("directory_snapshot")
 
 
 # Accounting checks that checkpoint indices are sequential, but the agent being
@@ -49,8 +56,12 @@ def get_checkpoint_dir() -> Path:
     return Path(os.environ["FOLLY_BACKTEST_RUN_DIR"]) / "checkpoints"
 
 
-def get_output_md() -> Path:
-    return Path(os.environ["FOLLY_BACKTEST_WORKDIR"]) / "output/main.md"
+def get_output_dir() -> Path:
+    workdir = Path(os.environ["FOLLY_BACKTEST_WORKDIR"])
+    for directory in (workdir.parent, workdir):
+        if not stat.S_ISDIR(directory.lstat().st_mode):
+            raise ValueError(f"output ancestor is not a regular directory: {directory}")
+    return workdir / "output"
 
 
 def next_instruction(index: int) -> str:
@@ -74,13 +85,23 @@ def main() -> None:
         index = int(sys.argv[1])
         checkpoints = get_checkpoint_dir()
         if index == 0:
-            checkpoints.mkdir()
-        expected = len(list(checkpoints.glob("*.md")))
+            checkpoints.mkdir(exist_ok=True)
+        if not stat.S_ISDIR(checkpoints.lstat().st_mode):
+            raise ValueError("checkpoints are not a regular directory")
+        paths = sorted(checkpoints.iterdir(), key=lambda path: int(path.name))
+        expected = len(paths)
+        if [path.name for path in paths] != [
+            str(number) for number in range(expected)
+        ] or any(not stat.S_ISDIR(path.lstat().st_mode) for path in paths):
+            raise ValueError("checkpoints are not a gap-free sequence")
         if index != expected:
             raise ValueError(f"expected checkpoint {expected}, got {index}")
         metadata = json.loads((checkpoints.parent / "run.json").read_text())
         checkpoint_key = bytes.fromhex(metadata["checkpoint_key"])
-        shutil.copyfile(get_output_md(), checkpoints / f"{index}.md")
+        entries = directory_snapshot.read(get_output_dir())
+        if not any(entries.values()):
+            raise ValueError("checkpoint requires a nonempty draft")
+        directory_snapshot.write(entries, checkpoints / str(index))
         print(make_checkpoint_marker(index, checkpoint_key))
         print(next_instruction(index))
     except Exception:

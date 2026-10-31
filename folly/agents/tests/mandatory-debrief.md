@@ -68,7 +68,7 @@ quote helps the immediate discussion. Keep it before `Comparisons`.
   `turn.completed` record for tokens. Label estimates and unavailable data. Link
   the user-facing files in `output/` under `Result`; say when the artifact is
   partial or missing. Do not present private process notes as deliverables.
-  Checkpoint artifacts remain in the run directory for closer inspection.
+  Checkpoint trees remain in the run directory for closer inspection.
 - When `checkpoints.json` exists, run
   `python3 -m folly.agents.tests.debrief_tables RUN_DIRECTORY` and use its
   production tables. Replace each `TODO` with a short, evidence-based account of

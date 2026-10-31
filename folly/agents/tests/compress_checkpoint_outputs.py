@@ -12,18 +12,65 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Compress checkpoint outputs in a saved backtest sample.
+"""Compress a saved run without losing files from any draft.
+
+Before compression, a sample keeps its final draft in output/ and earlier drafts
+in output-PHASE/.
+
+Saved stages contain the author's files, not reviewer reports:
+
+- initial: the first draft, before author self-review;
+- author: after author self-review, before external review;
+- reviewN: after incorporating external review N and checking the revisions.
 
 Usage: python3 -m folly.agents.tests.compress_checkpoint_outputs SAMPLE
 
-SAMPLE must contain uncompressed `output/main.md`, `checkpoints.json`, and every
-artifact named by that JSON. The tool deduplicates exact content, preferring
-`output/main.md` and otherwise the earliest phase file. For each remaining adjacent
-change, it stores an earlier-to-later normal diff when the diff is less than 60%
-of the later file. It verifies every reconstruction before deleting redundant
-full files, removes stale `artifact` fields from `checkpoints.json`, and prints
-the `## Checkpoints` README section. File membership in `checkpoints.json`
-lets `SAMPLE --restore PHASE --destination PATH` restore a phase as output files.
+Keep final output/ readable and share identical file contents across phases.
+For the same filename in adjacent phases, use a forward normal diff when it is
+smaller than 60% of the later file. Append .diff to the complete relative filename.
+Store patches and whole replacement files together in output-A-to-B/.
+
+Example: two external review rounds. Author review makes a small edit to main.md
+but rewrites docs/guide.md, so main.md uses a patch and guide.md stays whole.
+It also adds notes.md and deletes retired.md. Review1 makes small edits to both
+documents. The final review2 draft lives only in output/.
+Empty directories are omitted from these trees.
+
+    Before compression                 After compression
+    sample/                            sample/
+      output-initial/                     output-initial/
+        main.md                             main.md
+        docs/guide.md                       docs/guide.md
+        retired.md                          retired.md
+      output-author/                      output-initial-to-author/
+        main.md                             main.md.diff
+        docs/guide.md                       docs/guide.md
+        notes.md
+      output-review1/                     output-author-to-review1/
+        main.md                             main.md.diff
+        docs/guide.md                       docs/guide.md.diff
+        notes.md                          output/
+      output/  (after review2)               main.md
+        main.md                             docs/guide.md
+        docs/guide.md                       notes.md
+        notes.md                          checkpoints.json
+      checkpoints.json
+
+checkpoints.json lists each phase's complete file set. Restore author's main.md
+from its initial file plus output-initial-to-author/main.md.diff. Copy guide.md
+whole from output-initial-to-author/docs/guide.md, and notes.md from output/.
+Review1 adds another patch to main.md's chain, but patches guide.md's author
+version. Each file has its own base and ordered patches.
+
+Restoration creates a new tree from that file map, not an overlay on the previous
+phase; retired.md therefore stays absent from author and later drafts. Identical
+contents can share a base even when their filenames differ.
+
+Verify every restored path and byte before removing redundant copies.
+If a patch name matches a real file or directory, keep the changed file whole.
+Files without a final newline stay whole: the normal-diff reader cannot apply
+their missing-newline markers. Restore with SAMPLE --restore PHASE --destination PATH; the destination
+must not exist.
 """
 
 from __future__ import annotations
@@ -52,7 +99,7 @@ _APPLY_DIFFS = (
 class Phase:
     name: str
     artifact: str
-    contents: bytes
+    contents: directory_snapshot.Snapshot
 
 
 @dataclass(frozen=True)
@@ -76,60 +123,56 @@ def _read_regular(sample: Path, relative: str | Path) -> bytes:
 
 
 def _load(sample: Path) -> tuple[list[dict[str, Any]], list[Phase]]:
-    """Read the uncompressed phase sequence and enforce its flat-file shape."""
     records = json.loads(_read_regular(sample, "checkpoints.json").decode())
     if not isinstance(records, list) or not records:
         raise ValueError("checkpoints.json must contain a nonempty list")
-
     phases = []
     for index, record in enumerate(records):
         if not isinstance(record, dict):
             raise ValueError("checkpoint record is not an object")
-        name = record.get("phase")
-        artifact = record.get("artifact")
-        if index == 0:
-            expected_name = "initial"
-        elif index == 1:
-            expected_name = "author"
-        else:
-            expected_name = f"review{index - 1}"
-        if (
-            not isinstance(name, str)
-            or name != expected_name
-            or not isinstance(artifact, str)
-            or artifact != f"output-{name}.md"
-        ):
+        expected = (
+            "initial"
+            if index == 0
+            else "author"
+            if index == 1
+            else f"review{index - 1}"
+        )
+        expected_artifact = (
+            "output" if index == len(records) - 1 else f"output-{expected}"
+        )
+        # Older saved runs may have a separate named copy of the final phase.
+        if record.get("phase") != expected or record.get("artifact") not in {
+            expected_artifact,
+            f"output-{expected}",
+        }:
             raise ValueError("checkpoint phase or artifact is invalid")
-        phases.append(Phase(name, artifact, _read_regular(sample, artifact)))
-
-    output = _read_regular(sample, "output/main.md")
-    if output != phases[-1].contents:
-        raise ValueError("output/main.md does not match the final checkpoint")
+        phases.append(
+            Phase(
+                expected,
+                record["artifact"],
+                directory_snapshot.read(sample / record["artifact"]),
+            )
+        )
+    if (
+        phases[-1].artifact != "output"
+        and directory_snapshot.read(sample / "output") != phases[-1].contents
+    ):
+        raise ValueError("output/ does not match the final checkpoint")
     return records, phases
 
 
 def _use_diff(diff_size: int, full_size: int) -> bool:
-    """Apply the strict 60% storage threshold without floating-point math."""
+    """Apply the strict 60% threshold without floating-point math."""
     return diff_size * 5 < full_size * 3
 
 
 def _forward_diff(
     sample: Path, earlier: Path, later: Path, old: bytes, new: bytes
 ) -> bytes | None:
-    if (
-        b"\0" in old
-        or b"\0" in new
-        or not old.endswith(b"\n")
-        or not new.endswith(b"\n")
-    ):
-        return None
-    try:
-        old.decode()
-        new.decode()
-    except UnicodeDecodeError:
+    if not old.endswith(b"\n") or not new.endswith(b"\n"):
         return None
     result = subprocess.run(
-        ["diff", "--", str(earlier), str(later)],
+        ["diff", "--text", "--", str(earlier), str(later)],
         cwd=sample,
         stdout=subprocess.PIPE,
     )
@@ -138,42 +181,82 @@ def _forward_diff(
     return result.stdout
 
 
-def _representations(sample: Path, phases: list[Phase]) -> list[Representation]:
-    """Choose one verified full-or-diff representation for every phase."""
-    output = (sample / "output/main.md").read_bytes()
-    canonical = {output: "output/main.md"}
-    for phase in phases:
-        canonical.setdefault(phase.contents, phase.artifact)
-
-    counts = Counter(phase.contents for phase in phases)
-    by_contents = {output: Representation("output/main.md")}
+def _representations(
+    sample: Path, phases: list[Phase]
+) -> list[dict[str, Representation]]:
+    storage_directories = [Path("output-initial")] + [
+        Path(f"output-{earlier.name}-to-{later.name}")
+        for earlier, later in zip(phases, phases[1:])
+    ]
+    storage_directories[-1] = Path("output")
+    final = phases[-1].contents
+    contents_to_base = {
+        contents: f"output/{relative}" for relative, contents in final.items()
+    }
+    for phase, directory in zip(phases, storage_directories):
+        for relative, contents in phase.contents.items():
+            contents_to_base.setdefault(contents, f"{directory}/{relative}")
+    counts = Counter(
+        contents for phase in phases for contents in phase.contents.values()
+    )
+    contents_to_representation = {
+        contents: Representation(contents_to_base[contents])
+        for contents in final.values()
+    }
     result = []
+    storage: dict[Path, directory_snapshot.Snapshot] = {}
     for index, phase in enumerate(phases):
-        representation = by_contents.get(phase.contents)
-        if representation is None and counts[phase.contents] > 1:
-            representation = Representation(canonical[phase.contents])
-        if representation is None and index:
-            earlier = phases[index - 1]
-            diff = _forward_diff(
-                sample,
-                Path(earlier.artifact),
-                Path(phase.artifact),
-                earlier.contents,
-                phase.contents,
-            )
-            diff_name = f"output-{earlier.name}-to-{phase.name}.diff"
-            if diff is not None and _use_diff(len(diff), len(phase.contents)):
-                diff_path = sample / diff_name
-                diff_path.unlink(missing_ok=True)
-                diff_path.write_bytes(diff)
-                representation = Representation(
-                    result[-1].base,
-                    (*result[-1].diffs, diff_name),
+        directory = storage_directories[index]
+        files = {}
+        directories = {parent for path in phase.contents for parent in path.parents}
+        for relative, contents in phase.contents.items():
+            representation = contents_to_representation.get(contents)
+            if representation is None and counts[contents] > 1:
+                representation = Representation(contents_to_base[contents])
+            if representation is None and index:
+                earlier = phases[index - 1]
+                old = earlier.contents.get(relative)
+                patch_path = Path(f"{relative}.diff")
+                # A real file named x.diff must not collide with x's patch.
+                if (
+                    old is not None
+                    and patch_path not in phase.contents
+                    and patch_path not in directories
+                ):
+                    diff = _forward_diff(
+                        sample,
+                        Path(earlier.artifact) / relative,
+                        Path(phase.artifact) / relative,
+                        old,
+                        contents,
+                    )
+                    if diff is not None and _use_diff(len(diff), len(contents)):
+                        storage.setdefault(directory, {})[patch_path] = diff
+                        previous = result[-1][relative.as_posix()]
+                        representation = Representation(
+                            previous.base,
+                            (*previous.diffs, f"{directory}/{patch_path}"),
+                        )
+            if representation is None:
+                representation = Representation(contents_to_base[contents])
+            # Copy only new full bases; initial and final bases already exist.
+            if (
+                index not in (0, len(phases) - 1)
+                and representation.base == f"{directory}/{relative}"
+            ):
+                storage.setdefault(directory, {})[relative] = contents
+            contents_to_representation[contents] = representation
+            files[relative.as_posix()] = representation
+        result.append(files)
+    for directory, entries in storage.items():
+        destination = sample / directory
+        if destination.exists() or destination.is_symlink():
+            if directory_snapshot.read(destination) != entries:
+                raise ValueError(
+                    "existing checkpoint storage differs from this compression"
                 )
-        if representation is None:
-            representation = Representation(canonical[phase.contents])
-        by_contents[phase.contents] = representation
-        result.append(representation)
+        else:
+            directory_snapshot.write(entries, destination)
     return result
 
 
@@ -237,22 +320,21 @@ def _mapping(phases: list[Phase]) -> str:
 
 
 def compress(sample: Path, mapping_output: TextIO) -> None:
-    """Compress only after reconstruction and map output both succeed."""
-    sample = sample.resolve()
+    """Verify every complete phase and emit its map before deleting sources."""
     records, phases = _load(sample)
     stored = _representations(sample, phases)
-    for record, phase, representation in zip(records, phases, stored):
-        record["storage"] = {"files": {"main.md": asdict(representation)}}
-        if _reconstruct(sample, record["storage"]) != {Path("main.md"): phase.contents}:
+    for record, phase, files in zip(records, phases, stored):
+        record["storage"] = {
+            "files": {
+                name: asdict(representation) for name, representation in files.items()
+            },
+        }
+        if _reconstruct(sample, record["storage"]) != phase.contents:
             raise ValueError(f"could not reconstruct phase {phase.name}")
-
     mapping_output.write(_mapping(phases))
     mapping_output.flush()
-
     retained = {
-        "output/main.md",
-        *(item.base for item in stored),
-        *(diff for item in stored for diff in item.diffs),
+        representation.base for files in stored for representation in files.values()
     }
     for record in records:
         record.pop("artifact")
@@ -264,15 +346,11 @@ def compress(sample: Path, mapping_output: TextIO) -> None:
     )
     temporary_accounting.replace(accounting)
     for phase in phases:
-        if phase.artifact not in retained:
-            (sample / phase.artifact).unlink()
-    known_diffs = {
-        f"output-{source.name}-to-{target.name}.diff"
-        for earlier, later in zip(phases, phases[1:])
-        for source, target in ((earlier, later), (later, earlier))
-    }
-    for diff in known_diffs - retained:
-        (sample / diff).unlink(missing_ok=True)
+        if phase.artifact == "output":
+            continue
+        for relative in phase.contents:
+            if f"{phase.artifact}/{relative}" not in retained:
+                (sample / phase.artifact / relative).unlink()
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -20,11 +20,12 @@ import subprocess
 import tempfile
 import unittest
 from collections.abc import Mapping
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import BinaryIO
+from typing import Any, BinaryIO
 from unittest import mock
 
-from folly.agents.tests import run_scenario as runner
+from folly.agents.tests import checkpoint, run_scenario as runner
 
 
 REVISION = "a" * 40
@@ -50,6 +51,7 @@ def make_tools(rules_root: Path) -> None:
     for relative in (
         *runner.TOOL_FILES.values(),
         *runner.CHECKPOINT_TOOL_FILES.values(),
+        *runner.CHECKPOINT_RUNTIME_FILES,
         *runner.AGENT_RUNTIME_FILES,
     ):
         executable(rules_root / relative)
@@ -212,8 +214,8 @@ class RunScenarioTest(unittest.TestCase):
         self.scenario.mkdir()
         self.rules_root.mkdir()
         write(self.scenario / "prompt.md", "prompt")
-        # These existing runtime tests use tiny uncommitted rule fixtures.
-        # Package discovery against real source control is tested separately.
+        # Runtime tests supply rule fixtures directly; PackageStagingTest covers
+        # discovery from source control.
         package_discovery = mock.patch.object(runner, "_package_files", return_value=())
         self.package_files = package_discovery.start()
         self.addCleanup(package_discovery.stop)
@@ -455,6 +457,7 @@ class RunScenarioTest(unittest.TestCase):
             REVISION,
         )
         self.assertIn("agents/tests/checkpoint.py", commands[0])
+        self.assertIn("agents/tests/directory_snapshot.py", commands[0])
         self.assertIn("checkpoint_accounting.py", commands[0])
 
     def test_generation_revision_rejects_dirty_or_untracked_inputs(self) -> None:
@@ -854,6 +857,8 @@ class RunScenarioTest(unittest.TestCase):
         self.assertIn("2. `critic-iterate.md`", inventory)
 
     def test_every_seeded_output_file_is_writable_not_just_required_names(self) -> None:
+        # Only main.md is required, but the author must be able to revise every
+        # supplied draft file. Other inputs remain read-only and unchanged.
         write(self.scenario / "draft/main.md", "main draft")
         write(self.scenario / "draft/nested/notes.md", "notes draft")
         write(self.scenario / "evidence.md", "readonly evidence")
@@ -863,12 +868,16 @@ class RunScenarioTest(unittest.TestCase):
                 {"source": "evidence.md", "destination": "evidence.md"},
             ]
         )
+
         run = self.prepare()
+
         for name in ("main.md", "nested/notes.md"):
             self.assertTrue((run.workdir / "output" / name).stat().st_mode & 0o222)
         self.assertFalse((run.workdir / "evidence.md").stat().st_mode & 0o222)
+
         (run.workdir / "output/nested/notes.md").write_text("finished notes")
         self.assertEqual(runner._finish_run(run, 0), 0)
+
         self.assertEqual(
             (run.root / "output/nested/notes.md").read_text(), "finished notes"
         )
@@ -988,27 +997,165 @@ class RunScenarioTest(unittest.TestCase):
         self.assertEqual(metadata["exit_code"], 0)
         self.assertEqual(metadata["executables"]["codex"], str(codex.resolve()))
 
-    def test_checkpoint_mode_installs_runtime_and_marks_bad_accounting(self) -> None:
+    def test_launch_preserves_whole_tree_and_runs_installed_checkpoints(self) -> None:
+        # Companion files must survive the installed checkpoint CLI and final
+        # delivery. Both notes revisions expose a copy that saves only main.md.
+        write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
+        self.manifest(
+            rules=[runner.CRITIC_ITERATE_RULE.as_posix()],
+        )
+        make_tools(self.rules_root)
+        write(
+            self.rules_root / "tests/checkpoint.py",
+            Path(checkpoint.__file__).read_text(),
+        )
+        write(
+            self.rules_root / "tests/directory_snapshot.py",
+            Path(runner.directory_snapshot.__file__).read_text(),
+        )
+        run = runner.prepare(
+            self.scenario,
+            self.rules_root,
+            self.run_root,
+            "model",
+            "high",
+            REVISION,
+            critic_iterate_rounds=0,
+        )
+        thread_id = "01a00000-0000-7000-8000-000000000000"
+        checkpoint_key = bytes.fromhex("00112233445566778899aabbccddeeff")
+        runner._update_metadata(run, checkpoint_key=checkpoint_key.hex())
+        trace = b"".join(
+            (json.dumps(event) + "\n").encode()
+            for event in [
+                {"type": "thread.started", "thread_id": thread_id},
+                {
+                    "type": "item.completed",
+                    "item": {"type": "agent_message", "text": "Done."},
+                },
+            ]
+        )
+        commands, _, fake_codex = self.fake_codex(
+            run, returncode=0, output="initial", trace=trace
+        )
+
+        def execute(
+            command: list[str], **arguments: Any
+        ) -> subprocess.CompletedProcess[bytes]:
+            result = fake_codex(command, **arguments)
+            if command[0] == "git":
+                return result
+            output = run.workdir / "output"
+            (output / "notes.md").write_text("notes")
+            (output / "nested").mkdir()
+            (output / "nested/guide.md").write_text(
+                "Guide — café\r\n", encoding="utf-8"
+            )
+            (output / "nested/empty-file").touch()
+            events: list[dict[str, object]] = [
+                {"timestamp": "2026-09-04T00:00:00Z", "type": "session_meta"}
+            ]
+            # Final delivery adds usage without creating a third checkpoint.
+            for index, (second, tokens) in enumerate(((10, 100), (20, 200), (25, 250))):
+                if index < 2:
+                    if index:
+                        (output / "notes.md").write_text("reviewed notes")
+                    captured = subprocess.run(
+                        [str(run.root / "bin/backtest-checkpoint"), str(index)],
+                        env=arguments["env"],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    self.assertEqual(captured.returncode, 0, captured.stderr)
+                    self.assertIn(
+                        checkpoint.make_checkpoint_marker(index, checkpoint_key),
+                        captured.stdout,
+                    )
+                    timestamp = datetime(
+                        2026, 9, 4, 0, 0, second, tzinfo=timezone.utc
+                    ).timestamp()
+                    os.utime(
+                        run.root / "checkpoints" / str(index), (timestamp, timestamp)
+                    )
+                    events.append(
+                        {
+                            "type": "response_item",
+                            "payload": {
+                                "type": "custom_tool_call_output",
+                                "output": [
+                                    {"type": "input_text", "text": captured.stdout}
+                                ],
+                            },
+                        }
+                    )
+                events.append(
+                    {
+                        "timestamp": f"2026-09-04T00:00:{second:02d}Z",
+                        "type": "event_msg",
+                        "payload": {
+                            "type": "token_count",
+                            "info": {
+                                "model_context_window": 1000,
+                                "total_token_usage": {
+                                    "input_tokens": tokens,
+                                    "cached_input_tokens": tokens // 2,
+                                    "cache_write_input_tokens": 0,
+                                    "output_tokens": tokens // 10,
+                                    "reasoning_output_tokens": tokens // 20,
+                                },
+                            },
+                        },
+                    }
+                )
+            write(
+                run.agent_home
+                / "sessions/2026/09/04"
+                / f"rollout-test-{thread_id}.jsonl",
+                "".join(json.dumps(event) + "\n" for event in events),
+            )
+            return result
+
+        result = runner.launch(
+            run,
+            executable(self.root / "codex"),
+            "model",
+            "high",
+            command_runner=execute,
+        )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(len(commands), 1)
+        self.assertIn(
+            f'host_executable(name="backtest-checkpoint", paths=["{run.root / "bin/backtest-checkpoint"}"])',
+            (run.agent_home / "rules/default.rules").read_text().splitlines(),
+        )
+        self.assertEqual(
+            runner.directory_snapshot.read(run.root / "output"),
+            runner.directory_snapshot.read(run.workdir / "output"),
+        )
+        self.assertEqual(
+            (run.root / "output/nested/guide.md").read_bytes(),
+            "Guide — café\r\n".encode("utf-8"),
+        )
+        self.assertEqual((run.root / "output/nested/empty-file").read_bytes(), b"")
+        self.assertEqual((run.root / "output-initial/notes.md").read_text(), "notes")
+        self.assertEqual((run.root / "output/notes.md").read_text(), "reviewed notes")
+        self.assertFalse((run.root / "output-author").exists())
+        self.assertEqual(
+            json.loads((run.root / "run.json").read_text())["checkpoint_count"], 2
+        )
+
+    def test_invalid_accounting_does_not_complete_a_run(self) -> None:
+        # A saved draft is not a valid run without matching checkpoint evidence.
         write(self.rules_root / runner.CRITIC_ITERATE_RULE, "critic")
         self.manifest(rules=[runner.CRITIC_ITERATE_RULE.as_posix()])
         run = self.prepare(critic_iterate_rounds=0)
-
-        tool_bin, tools = runner._install_tools(run)
-        environment = runner._author_environment_additions(run, tool_bin)
-
-        self.assertIn("backtest-checkpoint", tools)
-        installed = tool_bin / "backtest-checkpoint"
-        self.assertEqual(tools["backtest-checkpoint"].stat().st_mode & 0o777, 0o555)
-        self.assertTrue(os.access(installed, os.X_OK))
-        policy = (run.agent_home / "rules/default.rules").read_text()
-        self.assertIn(f'paths=["{installed}"]', policy)
-        self.assertEqual(environment["FOLLY_BACKTEST_RUN_DIR"], str(run.root))
-        self.assertEqual(environment["FOLLY_BACKTEST_WORKDIR"], str(run.workdir))
-        self.assertTrue((run.root / "reviews").is_dir())
-
         (run.workdir / "output/main.md").write_text("complete")
-        with self.assertRaisesRegex(ValueError, "gap-free sequence"):
+
+        with self.assertRaises(ValueError):
             runner._finish_run(run, 0)
+
         metadata = json.loads((run.root / "run.json").read_text())
         self.assertEqual(metadata["status"], "invalid-checkpoints")
         self.assertNotIn("exit_code", metadata)
@@ -1117,17 +1264,19 @@ class RunScenarioTest(unittest.TestCase):
         self.assertIn("cannot preserve output", metadata["output_preservation_error"])
 
     def test_successful_but_inexact_preservation_does_not_complete_a_run(self) -> None:
+        # Simulate a copy that succeeds but corrupts a nested companion. The
+        # author succeeded; the runner must reject the copy and retain its source.
         self.manifest()
         run = self.prepare()
         (run.workdir / "output/nested").mkdir()
         (run.workdir / "output/main.md").write_text("valid draft")
-        (run.workdir / "output/nested/data.bin").write_bytes(b"\0\xff")
+        (run.workdir / "output/nested/notes.md").write_text("original notes\n")
         expected = runner.directory_snapshot.read(run.workdir / "output")
         write_tree = runner.directory_snapshot.write
 
         def faulty_write(entries, destination):
             copied = dict(entries)
-            copied[Path("nested/data.bin")] = b"wrong bytes"
+            copied[Path("nested/notes.md")] = b"wrong notes\n"
             write_tree(copied, destination)
 
         with mock.patch.object(runner.directory_snapshot, "write", faulty_write):

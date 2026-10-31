@@ -18,13 +18,14 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
+import stat
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, NamedTuple
 
+from . import directory_snapshot
 from .checkpoint import make_checkpoint_marker
 
 
@@ -249,19 +250,26 @@ def _checkpoint_paths(
     output: Path,
 ) -> list[Path]:
     """Establish one gap-free snapshot sequence ending at the delivered output."""
-    paths = sorted(
-        (run_root / "checkpoints").glob("*.md"), key=lambda path: int(path.stem)
-    )
-    if not paths or [path.name for path in paths] != [
-        f"{index}.md" for index in range(len(paths))
-    ]:
+    directory = run_root / "checkpoints"
+    try:
+        mode = directory.lstat().st_mode
+    except FileNotFoundError:
+        raise ValueError("checkpoints are not a gap-free sequence") from None
+    if not stat.S_ISDIR(mode):
+        raise ValueError("checkpoints are not a regular directory")
+    paths = sorted(directory.iterdir(), key=lambda path: int(path.name))
+    if (
+        not paths
+        or [path.name for path in paths] != [str(index) for index in range(len(paths))]
+        or any(not stat.S_ISDIR(path.lstat().st_mode) for path in paths)
+    ):
         raise ValueError("checkpoints are not a gap-free sequence")
     if review_budget == 0 and len(paths) != 2:
         raise ValueError("checkpoint count does not match the review mode")
     if review_budget is not None and review_budget > 0 and len(paths) < 3:
         raise ValueError("checkpoint count does not match the review mode")
-    if output.read_bytes() != paths[-1].read_bytes():
-        raise ValueError("output.md changed after the final checkpoint")
+    if directory_snapshot.read(output) != directory_snapshot.read(paths[-1]):
+        raise ValueError("output/ changed after the final checkpoint")
     return paths
 
 
@@ -298,8 +306,10 @@ def _changed_word_percent(before: Path | None, after: Path) -> float | None:
     if before is None:
         return None
     pattern = r"\w+(?:[-'./:]+\w+)*"
-    old_words = re.findall(pattern, before.read_text())
-    new_words = re.findall(pattern, after.read_text())
+    old_words = re.findall(
+        pattern, before.read_text(encoding="utf-8", errors="replace")
+    )
+    new_words = re.findall(pattern, after.read_text(encoding="utf-8", errors="replace"))
     matcher = SequenceMatcher(None, old_words, new_words, autojunk=False)
     unchanged = sum(block.size for block in matcher.get_matching_blocks())
     changed = max(len(old_words), len(new_words)) - unchanged
@@ -339,13 +349,16 @@ def _write_phase_records(
         phase = "initial" if index == 0 else "author"
         if index >= 2:
             phase = f"review{index - 1}"
-        artifact = f"output-{phase}.md"
-        shutil.copyfile(path, run_root / artifact)
+        artifact = "output" if index == len(paths) - 1 else f"output-{phase}"
+        if artifact != "output":
+            directory_snapshot.write(directory_snapshot.read(path), run_root / artifact)
         records.append(
             {
                 "artifact": artifact,
                 "author_tokens": author_tokens,
-                "changed_word_percent": _changed_word_percent(previous_path, path),
+                "changed_word_percent": _changed_word_percent(
+                    previous_path, path / "main.md"
+                ),
                 "context_window": context_window,
                 "outcome": _outcome(
                     index, len(paths) - 1, review_budget, final_message
@@ -356,7 +369,7 @@ def _write_phase_records(
             }
         )
         previous_author = author_cumulative
-        previous_path = path
+        previous_path = path / "main.md"
         previous_time = completed
     return records
 
@@ -365,11 +378,10 @@ def collect(
     run_root: Path,
     review_budget: int | None,
     *,
-    output: Path,
     agent_home: Path,
 ) -> list[dict[str, object]]:
-    """Materialize accounting only when snapshots, author, and reviews agree."""
-    paths = _checkpoint_paths(run_root, review_budget, output=output)
+    """Account for saved output/ only when snapshots, author, and reviews agree."""
+    paths = _checkpoint_paths(run_root, review_budget, output=run_root / "output")
     metadata_path = run_root / "run.json"
     metadata = json.loads(metadata_path.read_text())
     checkpoint_key = bytes.fromhex(metadata["checkpoint_key"])

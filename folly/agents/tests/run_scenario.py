@@ -51,6 +51,7 @@ TOOL_FILES = {
 CHECKPOINT_TOOL_FILES = {
     "backtest-checkpoint": PurePosixPath("tests/checkpoint.py"),
 }
+CHECKPOINT_RUNTIME_FILES = (PurePosixPath("tests/directory_snapshot.py"),)
 AGENT_RUNTIME_FILES = (PurePosixPath("scripts/isolated_agent.py"),)
 RESERVED_INPUT_NAMES = {"AGENTS.md", "AGENTS.override.md"}
 RESERVED_INPUT_ROOTS = {".codex", ".git", ".llms"}
@@ -374,7 +375,11 @@ def _generation_sources(
         raise RunnerError("startup rules must be tracked files in packages_under_test")
     tool_files = TOOL_FILES.values() if install_rules else ()
     if _uses_checkpoints(manifest, install_rules):
-        tool_files = (*tool_files, *CHECKPOINT_TOOL_FILES.values())
+        tool_files = (
+            *tool_files,
+            *CHECKPOINT_TOOL_FILES.values(),
+            *CHECKPOINT_RUNTIME_FILES,
+        )
         sources.append((runner_path.parent / "checkpoint_accounting.py").resolve())
     sources.extend(
         _resolve_below(rules_root, path, "rule")
@@ -586,7 +591,10 @@ def prepare(
         shutil.copyfile(manifest_path, root / "scenario.json")
         runtime_files = (*TOOL_FILES.values(), *AGENT_RUNTIME_FILES)
         if checkpoint_run:
-            runtime_files += tuple(CHECKPOINT_TOOL_FILES.values())
+            runtime_files += (
+                *CHECKPOINT_TOOL_FILES.values(),
+                *CHECKPOINT_RUNTIME_FILES,
+            )
         stage(
             scenario,
             manifest,
@@ -659,6 +667,9 @@ def _install_tools(run: Run) -> tuple[Path, dict[str, Path]]:
             ]
         )
     if run.checkpoint:
+        for relative in CHECKPOINT_RUNTIME_FILES:
+            shutil.copyfile(run.workdir / "rules" / relative, tool_bin / relative.name)
+            (tool_bin / relative.name).chmod(0o444)
         # The installed reviewer wrapper writes its attempts here for accounting.
         (run.root / "reviews").mkdir(mode=0o700)
     policy = run.agent_home / "rules" / "default.rules"
@@ -742,7 +753,6 @@ def _finish_run(run: Run, returncode: int) -> int:
             records = checkpoint_accounting.collect(
                 run.root,
                 run.critic_iterate_rounds,
-                output=run.root / DEFAULT_OUTPUT,
                 agent_home=run.agent_home,
             )
         except Exception:
