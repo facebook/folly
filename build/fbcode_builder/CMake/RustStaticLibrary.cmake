@@ -538,12 +538,19 @@ function(_rust_cxxbridge CXXBRIDGE_VAR DEPENDS_VAR CXX_VERSION_DIR)
     WORKING_DIRECTORY "${CXX_VERSION_DIR}"
     RESULT_VARIABLE cxx_version_result
     OUTPUT_VARIABLE cxx_version_output
+    ERROR_VARIABLE cxx_version_error
   )
 
   if(NOT "${cxx_version_result}" EQUAL "0")
+    if(cxx_version_error MATCHES "did not match any packages")
+      message(
+        FATAL_ERROR
+        "The crate in ${CXX_VERSION_DIR} does not depend on cxx."
+      )
+    endif()
     message(
       FATAL_ERROR
-      "The crate in ${CXX_VERSION_DIR} does not depend on cxx."
+      "`cargo tree -i cxx` failed in ${CXX_VERSION_DIR}:\n${cxx_version_error}"
     )
   endif()
   if(cxx_version_output MATCHES "cxx v([0-9]+.[0-9]+.[0-9]+)")
