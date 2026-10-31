@@ -78,6 +78,11 @@
 #cmakedefine01 FOLLY_HAVE_LIBZSTD
 #cmakedefine01 FOLLY_HAVE_LIBBZ2
 
+// The CMake build neither finds nor links BLAKE3 or xxHash, so the
+// UniqueHashKey algorithms that need them are left out.
+#define FOLLY_HAVE_BLAKE3 0
+#define FOLLY_HAVE_XXH3 0
+
 #cmakedefine01 FOLLY_LIBRARY_SANITIZE_ADDRESS
 
 #cmakedefine FOLLY_SUPPORT_SHARED_LIBRARY 1

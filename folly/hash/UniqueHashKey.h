@@ -26,6 +26,25 @@
 #include <type_traits>
 
 #include <folly/Traits.h>
+#include <folly/portability/Config.h>
+
+// Detect the headers here rather than in folly-config.h: in modular builds,
+// folly-config.h is compiled without this library's deps on the include path.
+#ifndef FOLLY_HAVE_BLAKE3
+#if __has_include(<blake3.h>)
+#define FOLLY_HAVE_BLAKE3 1
+#else
+#define FOLLY_HAVE_BLAKE3 0
+#endif
+#endif
+
+#ifndef FOLLY_HAVE_XXH3
+#if __has_include(<xxh3.h>)
+#define FOLLY_HAVE_XXH3 1
+#else
+#define FOLLY_HAVE_XXH3 0
+#endif
+#endif
 
 namespace folly {
 
@@ -64,7 +83,7 @@ template <size_t Size>
 inline constexpr unique_hash_key_algo_strong_sha256_fn<Size>
     unique_hash_key_algo_strong_sha256{};
 
-#if __has_include(<blake3.h>)
+#if FOLLY_HAVE_BLAKE3
 
 /// unique_hash_key_algo_strong_blake3_fn
 ///
@@ -85,7 +104,7 @@ template <size_t Size>
 inline constexpr unique_hash_key_algo_strong_blake3_fn<Size>
     unique_hash_key_algo_strong_blake3{};
 
-#if __has_include(<xxh3.h>)
+#if FOLLY_HAVE_XXH3
 
 /// unique_hash_key_algo_fast_xxh3_fn
 ///
@@ -106,9 +125,9 @@ template <size_t Size>
 inline constexpr unique_hash_key_algo_fast_xxh3_fn<Size>
     unique_hash_key_algo_fast_xxh3{};
 
-#endif // __has_include(<xxh3.h>)
+#endif // FOLLY_HAVE_XXH3
 
-#endif // __has_include(<blake3.h>)
+#endif // FOLLY_HAVE_BLAKE3
 
 template <auto Algo>
 constexpr size_t unique_hash_key_algo_size_v =
@@ -254,7 +273,7 @@ template <size_t Size>
 using unique_hash_key_strong_sha256 =
     unique_hash_key_with<unique_hash_key_algo_strong_sha256<Size>>;
 
-#if __has_include(<blake3.h>)
+#if FOLLY_HAVE_BLAKE3
 
 /// unique_hash_key_strong_blake3
 ///
@@ -267,7 +286,7 @@ template <size_t Size>
 using unique_hash_key_strong_blake3 =
     unique_hash_key_with<unique_hash_key_algo_strong_blake3<Size>>;
 
-#if __has_include(<xxh3.h>)
+#if FOLLY_HAVE_XXH3
 
 /// unique_hash_key_strong_blake3
 ///
@@ -280,9 +299,9 @@ template <size_t Size>
 using unique_hash_key_fast_xxh3 =
     unique_hash_key_with<unique_hash_key_algo_fast_xxh3<Size>>;
 
-#endif // __has_include(<xxh3.h>)
+#endif // FOLLY_HAVE_XXH3
 
-#endif // __has_include(<blake3.h>)
+#endif // FOLLY_HAVE_BLAKE3
 
 } // namespace folly
 

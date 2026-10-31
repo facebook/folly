@@ -120,7 +120,9 @@ folly_add_library(
     folly_lang_cast
     folly_portability_openssl
     folly_portability_unistd
-  EXPORTED_DEPS folly_traits
+  EXPORTED_DEPS
+    folly_portability_config
+    folly_traits
 )
 
 add_subdirectory(detail)
