@@ -37,8 +37,11 @@ class Futures(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError, msg="0 is not allowed"):
             await simplebridge.get_value_x5(0)
 
-    @unittest.skipIf(platform.startswith("win"), "Broken on Windows.")
-    async def test_bridge_fibers(self):
-        val = 1337
-        res = await simplebridge.get_value_x5_fibers(val)
-        self.assertEqual(val * 5, res)
+    # Folly fibers are not supported on Windows, so this test only exists
+    # on other platforms instead of skipping there.
+    if not platform.startswith("win"):
+
+        async def test_bridge_fibers(self):
+            val = 1337
+            res = await simplebridge.get_value_x5_fibers(val)
+            self.assertEqual(val * 5, res)

@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import asyncio
-import unittest
 from sys import platform
 from unittest import IsolatedAsyncioTestCase
 
@@ -23,7 +22,6 @@ from unittest import IsolatedAsyncioTestCase
 from folly.python.test import simplebridge, simplebridgecoro
 
 
-@unittest.skipIf(platform.startswith("win"), "Broken on Windows.")
 class Teardown(IsolatedAsyncioTestCase):
     """
     The lifetimes of the native AsyncioExecutor/FiberManager objects
@@ -38,29 +36,34 @@ class Teardown(IsolatedAsyncioTestCase):
     objects are destroyed.
     """
 
-    def test_fiber_manager_tear_down(self) -> None:
-        simplebridge.get_value_x5_semifuture(1)
-        simplebridge.get_value_x5_fibers(1)
+    # Folly fibers and the native executor-teardown path are not supported
+    # on Windows, so these tests only exist on other platforms instead of
+    # skipping there.
+    if not platform.startswith("win"):
 
-    def test_drive_on_teardown(self) -> None:
-        """
-        A test to ensure that any pending keep-alives are respected when an
-        AsyncioExecutor instance is dropped
-        """
+        def test_fiber_manager_tear_down(self) -> None:
+            simplebridge.get_value_x5_semifuture(1)
+            simplebridge.get_value_x5_fibers(1)
 
-        async def test() -> None:
-            # Sanity check
-            self.assertEqual(123, await simplebridgecoro.sleep_then_echo(1, 123))
+        def test_drive_on_teardown(self) -> None:
+            """
+            A test to ensure that any pending keep-alives are respected when an
+            AsyncioExecutor instance is dropped
+            """
 
-            # Schedule a sleep for 1s and the immediately exit
-            # pyre-fixme[16]: Module `test` has no attribute `simplebridgecoro`.
-            # pyre-fixme[1001]: Intentionally fire-and-forget; we want to test
-            # that the executor drives pending work on teardown.
-            asyncio.ensure_future(simplebridgecoro.sleep_then_echo(10, 0))
+            async def test() -> None:
+                # Sanity check
+                self.assertEqual(123, await simplebridgecoro.sleep_then_echo(1, 123))
 
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(test())
-        loop.close()
+                # Schedule a sleep for 1s and the immediately exit
+                # pyre-fixme[16]: Module `test` has no attribute `simplebridgecoro`.
+                # pyre-fixme[1001]: Intentionally fire-and-forget; we want to test
+                # that the executor drives pending work on teardown.
+                asyncio.ensure_future(simplebridgecoro.sleep_then_echo(10, 0))
 
-        # Once the loop goes out of scope, AsyncioExecutor's destructor must drive
-        # until all keep-alives are released (otherwise the test should crash with a UB)
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(test())
+            loop.close()
+
+            # Once the loop goes out of scope, AsyncioExecutor's destructor must drive
+            # until all keep-alives are released (otherwise the test should crash with a UB)
