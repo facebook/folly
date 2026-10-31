@@ -6,9 +6,12 @@ Do not propose new scope or optional completeness. Flag only:
   or act wrongly; and
 - wording or structure that materially increases reader effort.
 
-Apply [Substance](../../write.md#substance) before judging cuts. Check what the
-text lets the reader understand using their expected knowledge, rather than
-filling missing explanations from sources.
+Apply [Substance](../../write.md#substance) before judging cuts. Judge the
+reader's actual account. Check the setting their task needs and how the action
+produces its result or the reasoning supports the conclusion. Locate support for
+each needed connection in the prose or their expected knowledge. Flag a missing
+connection even when the reader calls the text clear. Sources cannot fill a gap
+in the explanation.
 
 For each proposed addition, name the reader task or required relationship it
 serves. For each proposed cut, show that the artifact's purpose does not need
