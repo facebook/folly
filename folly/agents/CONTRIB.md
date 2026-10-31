@@ -57,7 +57,8 @@ a similar name does not make one rule load another.
 ## User rule-file loaders
 
 The user rule file defines `{FA}` and loads every top-level `<name>.loader.md`.
-It stops if a loader or referenced rule is unavailable.
+It also defines what to do if the package, a loader, or a referenced rule is
+unavailable.
 
 Each loader says when to load its package's rules. Keep loaders small because
 agents read all of them up front. Use `{FA}` for package paths, and update a

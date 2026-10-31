@@ -37,8 +37,10 @@ a revision with the complete original note. Default to no growth; extra text
 earns its place only by making a key purpose or needed connection clearer. Apply
 the same standard when reviewing.
 
-Update a note when its design explanation changes or becomes stale. A routine
-edit does not need a new paragraph.
+Update stale explanations. Add only what a maintainer needs to find relevant
+code, understand a design choice, or preserve a constraint. Brief “what goes
+where” lists are fine. Changes to files, imports, or callers do not by
+themselves justify expanding the note.
 
 ## Template and format
 
